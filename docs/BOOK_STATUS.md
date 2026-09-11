@@ -1,33 +1,32 @@
-# Book & Research Status — Voice Edge AI
+# Tiến độ Soạn thảo & Nghiên cứu — Voice Edge AI (Book Status)
 
-> **Tracking progress across all 10 chapters and paper sections.**
-> Last updated: 2026-09-11
+> **Theo dõi tiến độ 10 chương chuyên khảo và các mục của bài báo khoa học.**
+> Cập nhật lần cuối: 2026-09-11
 
 ---
 
-## 1. Chapter Progress Overview
+## 1. Bảng Trạng thái 10 Chương
 
-| Chapter | Title | VI Draft | EN Draft | Experiments | Status |
+| Chương | Tên Chương | Bản thảo Tiếng Việt | Bản thảo Tiếng Anh | Thí nghiệm | Trạng thái |
 |:---:|---|:---:|:---:|:---:|:---:|
-| **01** | Từ Sóng Âm đến Suy diễn Biên | Complete | In Progress | ✅ exp_01 | In Active Development |
-| **02** | Jetson Orin: Điểm chuẩn & Giới hạn | Complete | In Progress | ✅ exp_02 | In Active Development |
-| **03** | Điểm nghẽn Streaming trên Edge GPU | Planned | Planned | 🚧 exp_03 | Outlined |
-| **04** | Vi kiến trúc FPGA cho Edge AI | Planned | Planned | 🚧 exp_04 | Outlined |
-| **05** | Phương pháp luận Tăng tốc: HLS, DPU, FINN | Planned | Planned | 🚧 exp_05 | Outlined |
-| **06** | Tăng tốc Tầng Tiền xử lý Âm thanh | Planned | Planned | 🚧 exp_06 | Outlined |
-| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng | Planned | Planned | 🚧 exp_07 | Outlined |
-| **08** | Tăng tốc Attention & Conformer | Planned | Planned | 🚧 exp_08 | Outlined |
-| **09** | Tích hợp SoC & Đồng thiết kế HW/SW | Planned | Planned | 🚧 exp_09 | Outlined |
-| **10** | Phương pháp Luận Nghiên cứu & Viết Paper | Planned | Planned | 🚧 exp_10 | Outlined |
+| **01** | Kiến trúc Pipeline Xử lý Tiếng nói & Ràng buộc Thời gian thực | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_01 | Đã tạo khung |
+| **02** | Phân tích Vi kiến trúc & Đo kiểm Điểm chuẩn trên Jetson Orin | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_02 | Đã tạo khung |
+| **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_03 | Đã tạo khung |
+| **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
+| **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_05 | Đã tạo khung |
+| **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_06 | Đã tạo khung |
+| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_07 | Đã tạo khung |
+| **08** | Tăng tốc Các Khối Tính toán Cốt lõi của Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_08 | Đã tạo khung |
+| **09** | Tích hợp Hệ thống SoC & Đồng thiết kế Phần cứng / Phần mềm | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_09 | Đã tạo khung |
+| **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
 
 ---
 
-## 2. Paper Drafting Milestone
+## 2. Kế hoạch Bài báo Khoa học (Paper Roadmap)
 
-- **Target Venue**: IEEE/ACM FCCM / ICASSP / ESL
-- **Core Title**: *Spatial Dataflow vs. SIMT for Continuous Edge Voice AI: A Comprehensive Pareto Analysis from Jetson Orin to FPGA*
-- **Target Metrics**:
-  - Word Error Rate (WER) degradation $< 0.3\%$ under INT8/INT4 quantization
-  - Real-Time Factor (RTF) $< 0.05$ on FPGA fabric
-  - Active Power $< 4.5\text{W}$ on FPGA vs. $10.2\text{W}$ on Jetson Orin
-  - Energy per Audio Frame: $\ge 2.5\times$ improvement on FPGA
+- **Mục tiêu Hội nghị / Tạp chí**: IEEE/ACM FCCM, FPGA, ICASSP, Interspeech, hoặc IEEE ESL.
+- **Tiêu đề Dự kiến**: *Spatial Dataflow vs. SIMT for Continuous Edge Voice AI: A Comprehensive Pareto Analysis from Jetson Orin to FPGA*.
+- **Đóng góp Dự kiến**:
+  1. Phân tích định lượng sâu sắc về hiện tượng suy giảm hiệu suất SIMT khi xử lý âm thanh luồng ($batch=1$).
+  2. Kiến trúc luồng dữ liệu tùy biến trên FPGA tích hợp trực tiếp tầng tiền xử lý I2S/STFT và tầng nơ-ron.
+  3. Đo kiểm thực nghiệm Pareto Frontier: Đối sánh đa chiều giữa TensorRT (FP16/INT8) trên Orin và FPGA overlay.

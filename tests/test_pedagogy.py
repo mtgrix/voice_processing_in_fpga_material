@@ -7,30 +7,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_manuscript_chapter_presence() -> None:
-    """Check that Chapter 1 and Chapter 2 exist in both Vietnamese and English editions."""
-    assert (ROOT / "book" / "chapter01.md").exists()
-    assert (ROOT / "book" / "chapter02.md").exists()
-    assert (ROOT / "book-en" / "chapter01.md").exists()
-    assert (ROOT / "book-en" / "chapter02.md").exists()
+def test_all_10_chapters_presence() -> None:
+    """Check that all 10 chapters exist in both Vietnamese and English editions."""
+    for i in range(1, 11):
+        ch_num = f"{i:02d}"
+        vi_path = ROOT / "book" / f"chapter{ch_num}.md"
+        en_path = ROOT / "book-en" / f"chapter{ch_num}.md"
+        assert vi_path.exists(), f"Missing Vietnamese chapter {vi_path}"
+        assert en_path.exists(), f"Missing English chapter {en_path}"
 
 
-def test_vietnamese_chapter01_pedagogical_structure() -> None:
-    """Verify Chapter 01 adheres to pedagogical conventions (Sidebar, Headings)."""
-    ch1_vi = (ROOT / "book" / "chapter01.md").read_text(encoding="utf-8")
-    assert "# Chương 1:" in ch1_vi
-    # Verify Minimal Math Sidebar is present
-    assert "Toán học Tối thiểu cho Chương này" in ch1_vi
-    # Verify STFT and Mel equations are present
-    assert "STFT" in ch1_vi
-    assert "Mel" in ch1_vi
+def test_chapter_pedagogical_sidebars() -> None:
+    """Verify all chapters contain the Minimal Math / Concepts sidebar."""
+    for i in range(1, 11):
+        ch_num = f"{i:02d}"
+        ch_vi = (ROOT / "book" / f"chapter{ch_num}.md").read_text(encoding="utf-8")
+        assert f"# Chương {i}:" in ch_vi
+        assert "Toán học / Khái niệm Tối thiểu" in ch_vi or "Toán học Tối thiểu" in ch_vi
 
 
-def test_vietnamese_chapter02_pedagogical_structure() -> None:
-    """Verify Chapter 02 includes the Minimal Math Sidebar and key hardware concepts."""
-    ch2_vi = (ROOT / "book" / "chapter02.md").read_text(encoding="utf-8")
-    assert "# Chương 2:" in ch2_vi
-    assert "Toán học Tối thiểu cho Chương này" in ch2_vi
-    assert "TensorRT" in ch2_vi
-    assert "tegrastats" in ch2_vi
-    assert "RTF" in ch2_vi
+def test_experiment_template_and_readmes() -> None:
+    """Verify that the official experiment template exists and contains all 13 sections."""
+    template_path = ROOT / "experiments_template" / "README.md"
+    assert template_path.exists(), "Missing experiments_template/README.md"
+    content = template_path.read_text(encoding="utf-8")
+    for sec_num in range(1, 14):
+        assert f"## {sec_num}." in content, f"Missing section {sec_num} in experiment template"

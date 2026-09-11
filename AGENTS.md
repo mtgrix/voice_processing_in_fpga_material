@@ -1,70 +1,63 @@
 # Agents Guide — voice-edge-jetson-to-fpga
 
-This repository is designed for AI-assisted development and scientific research. Follow these rules when working on this project.
+This repository is designed for AI-assisted research and monograph authoring. Follow these rules when working on this project.
+
+## Project Scope
+
+The topic of this repository is **Edge Voice AI Hardware Acceleration**: migrating voice processing models (e.g. Keyword Spotting, Speech Enhancement, Streaming ASR/Conformer) from **NVIDIA Jetson Orin** (Edge GPU) to an **FPGA kit** (AMD Xilinx Kria / Zynq UltraScale+).
+
+**Do NOT conflate with other topics (such as Knowledge Graphs).**
 
 ## Language Policy
 
-- **Book content** (`book/`, chapter READMEs, experiment READMEs): Write in **Vietnamese**. Keep technical terms in English on first occurrence: "lượng tử hóa thích ứng phần cứng (hardware-aware quantization)", "luồng dữ liệu không gian (spatial dataflow)".
+- **Book drafts** (`book/`, chapter skeletons, experiment READMEs): Write in **Vietnamese**. Keep technical terms in English on first occurrence: "lượng tử hóa thích ứng phần cứng (hardware-aware quantization)", "luồng dữ liệu không gian (spatial dataflow)".
 - **English monograph / Paper drafts** (`book-en/`): Write in **English**.
 - **Code, tests, configs, docs/**: Write in **English**.
 - **Commit messages**: English, conventional commits format (`feat:`, `fix:`, `docs:`, `test:`, `perf:`).
 
-## Before Writing Chapter Content or Research Papers
+## Pedagogy & Authoring Policy
 
-1. Read `docs/BOOK_PEDAGOGY.md` — the canonical authoring policy for concept introduction, forward references, and reader-friction review.
-2. Read `docs/RESEARCH_METHODOLOGY.md` — guidelines on scientific rigor, benchmarking setup, and paper structure.
-3. Read `docs/SOURCES.md` and `docs/source_index.json` to identify authoritative sources for the topic (NVIDIA, AMD/Xilinx, IEEE, ACM, NeurIPS).
-4. Never copy text from external sources. Research, understand, derive originally, and cite.
+1. Follow `docs/BOOK_PEDAGOGY.md` for chapter structure:
+   - Local Sufficiency Principle.
+   - Defer Depth, Never Required Understanding.
+   - Three-Level Concept Introduction: Intuition → Mechanism → Application.
+   - Minimal Mathematics Sidebar requirement for chapters with math.
+2. Follow `docs/RESEARCH_METHODOLOGY.md` for academic rigor and benchmarking standards.
+3. Every claim or hardware metric must reference an authoritative source registered in `docs/source_index.json`.
 
 ## Experiment Standards
 
-Every experiment MUST have a `README.md` with all required sections:
+Every experiment directory MUST have a `README.md` conforming to the 13-section template:
 1. Experiment Metadata & Purpose
 2. Theoretical Context & Pedagogical Goal
-3. Hardware Target (Jetson Orin vs FPGA Kit)
+3. Hardware Target (Jetson Orin vs. FPGA)
 4. Mathematical Derivation / Algorithm
 5. Input Signal & Dataset Specs
 6. Execution Command
 7. Expected Numerical Output / Tolerances
-8. Profiling & Measurement Methodology (Latency, Power, Memory)
+8. Profiling & Measurement Methodology
 9. Empirical Results & Artifacts
 10. Hardware-Software Trade-offs
 11. Limitations & Assumptions
 12. Pedagogical Takeaways
 13. Source Citations
 
-Status markers mean:
-- ✅ = Actually executed successfully with captured evidence
-- 📖 = Requires external hardware kit or manual reproduction
-- 🚧 = Design/research exercise, not yet implemented
+Status markers:
+- 🚧 = Design phase / Scaffolded
+- 📖 = Hardware-in-the-loop / Manual execution required
+- ✅ = Executed successfully with verified output and captured logs
 
-Never mark ✅ without running the experiment and capturing real output.
+Do NOT mark ✅ or fabricate benchmark data unless actual code runs and outputs real evidence.
+
+## Key Mental Models
+
+1. **Voice Edge System = Audio Preprocessing / DSP + Neural Acoustic Model + Hardware Microarchitecture**
+2. **Hardware Migration = Profiling & Bottlenecks (GPU) → Hardware-Aware Quantization → Spatial Architecture Mapping (FPGA) → Pareto Verification**
 
 ## Code Quality
 
 ```bash
-python -m ruff check .        # Lint
-python -m ruff format .       # Format
-python -m pytest              # Test
-python -m mypy .              # Type check (when configured)
+python -m ruff check .
+python -m ruff format --check .
+python -m pytest
 ```
-
-All checks must pass before declaring work complete.
-
-## Capstone Domain
-
-The recurring capstone is the **Voice Edge Benchmark** under `capstone/voice_edge_benchmark/`. All chapters should contribute modular kernels, acoustic front-ends, or quantization layers that build toward this benchmark comparing NVIDIA Jetson Orin with an FPGA kit (e.g. AMD Xilinx Kria KV260 / ZCU104).
-
-## Key Mental Models
-
-Always frame content through these two models:
-
-1. **Voice Edge System = Streaming Audio Pipeline + Neural Acoustic/Spectral Graph + Hardware Microarchitecture**
-2. **Hardware Migration = Profiling & Bottlenecks → Hardware-Aware Quantization → Architecture Mapping → Pareto Verification**
-
-State explicitly that Model 1 and Model 2 are engineering learning and research models, not universal formal definitions.
-
-## Autonomous Execution (YOLO Mode)
-
-- Full autonomy is enabled for this project: terminal commands, file edits/reads, and testing run proactively without unnecessary confirmations.
-- Proactively verify changes using tests and linters before reporting back.
