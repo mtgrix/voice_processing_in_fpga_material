@@ -1,0 +1,49 @@
+[project]
+name = "voice-edge-jetson-to-fpga"
+version = "0.1.0"
+description = "From Jetson Orin to FPGA: An open-source executable monograph and research framework on edge voice AI hardware acceleration."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Voice Edge AI Contributors" }]
+
+dependencies = [
+    "numpy>=1.26.0",
+    "scipy>=1.12.0",
+    "matplotlib>=3.8.0",
+    "rich>=13.0.0",
+    "pydantic>=2.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+]
+audio = [
+    "soundfile>=0.12.1",
+    "librosa>=0.10.0",
+]
+ml = [
+    "torch>=2.2.0",
+    "torchaudio>=2.2.0",
+    "onnx>=1.15.0",
+    "onnxruntime>=1.17.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["N806", "N803"]  # Allow math notation uppercase variables (e.g. X, W, A, B)
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "chapter01", "chapter02"]
+addopts = "-v --tb=short"

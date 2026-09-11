@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-09-11",
+  "sources": [
+    {
+      "id": "R01-01",
+      "title": "NVIDIA Jetson AGX Orin Architecture Whitepaper",
+      "authors": "NVIDIA Corporation",
+      "year": 2022,
+      "type": "Technical Whitepaper",
+      "url": "https://developer.nvidia.com/embedded/learn/jetson-agx-orin-architecture-whitepaper",
+      "research_note_path": "docs/research_notes/R01_jetson_orin_arch.md",
+      "topics": ["Jetson Orin", "Ampere GPU", "Tensor Cores", "DLA", "LPDDR5", "nvpmodel"]
+    },
+    {
+      "id": "R01-02",
+      "title": "FINN: A Framework for Fast, Scalable Binarized Neural Network Inference on FPGAs",
+      "authors": "Yaman Umuroglu et al.",
+      "year": 2017,
+      "type": "ACM FPGA Conference",
+      "url": "https://doi.org/10.1145/3020078.3021744",
+      "research_note_path": "docs/research_notes/R02_fpga_audio_streaming.md",
+      "topics": ["FINN", "FPGA", "Streaming Dataflow", "Quantized Neural Networks", "Initiation Interval"]
+    },
+    {
+      "id": "R01-03",
+      "title": "Conformer: Convolution-augmented Transformer for Speech Recognition",
+      "authors": "Anmol Gulati et al.",
+      "year": 2020,
+      "type": "Interspeech",
+      "url": "https://arxiv.org/abs/2005.08100",
+      "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
+      "topics": ["Conformer", "Speech Recognition", "Self-Attention", "Depthwise Separable Convolution", "Streaming ASR"]
+    },
+    {
+      "id": "R01-04",
+      "title": "AMD Xilinx Kria KV260 Vision AI Starter Kit User Guide",
+      "authors": "Advanced Micro Devices, Inc.",
+      "year": 2023,
+      "type": "Hardware User Guide",
+      "url": "https://docs.amd.com/v/u/en-US/ug1089-kv260-starter-kit",
+      "research_note_path": "docs/research_notes/R01_jetson_orin_arch.md",
+      "topics": ["Kria KV260", "Zynq UltraScale+", "DPU", "AXI-Stream", "PYNQ"]
+    },
+    {
+      "id": "R01-05",
+      "title": "MatchboxNet: 1D Time-Channel Separable Convolutional Neural Network for Speech Command Recognition",
+      "authors": "Somshubra Majumdar et al.",
+      "year": 2020,
+      "type": "Interspeech",
+      "url": "https://arxiv.org/abs/2004.08531",
+      "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
+      "topics": ["Keyword Spotting", "1D Convolution", "Time-Channel Separable", "Edge Voice", "Low Footprint"]
+    }
+  ]
+}
