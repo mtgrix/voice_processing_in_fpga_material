@@ -268,6 +268,7 @@ không phải 764.7 mà `MAXN_SUPER` cho ra. Hai tử số thì vẫn chưa có 
 `Bytes_moved_per_frame` của mô hình đã chốt ở §4.2 là mục P1-B…P1-D của
 `docs/AGENT_FETCH_BRIEF_2026-09-12.md`. Cho tới lúc đó §6.1 là **thủ tục**, không phải kết luận,
 và không dòng nào ở đây được viết thành khẳng định có số kèm theo.
+
 **Phía FPGA của phép so sánh là projection, không phải số in ra.** `V-07-03` (39.0 – 78.0 OP/byte) được dựng trên ba đầu vào: **1 248 DSP slices** (`V-01-09`, truy vết được), **19.2 GB/s** DDR4 (`V-01-13`, truy vết được) và **300 MHz**. Đầu thứ ba không thuộc loại nào: nó là giả định thiết kế, và **không fetch được** — mức xung nhịp đóng được là mức một design cụ thể synthesis được trên đúng part đó ở đúng điện áp đó, không phải hằng số datasheet. `V-01-10` chỉ khẳng định XCK26-SFVC784-2LV là speed grade `-2` tại `VCCINT = 0.72 V`, tức chặn câu hỏi chứ không trả lời nó. Kết quả tỷ lệ thuận với nó: ở **500 MHz** cặp số thành **65.0** và **130.0** OP/byte, khoảng cách tới 490.2 của Orin hẹp từ 12.6× còn 7.5×. Vì vậy dòng chú thích cũ ở code block trên, "cả hai lấy từ §3, đã verify", là sai và đã bị bỏ: phía Orin (`V-07-02`) là peak in ra từ datasheet, phía KV260 là dự đoán dựa trên giả định. Quy ước "1 MAC = 2 OP" là chung cho cả hai nên chúng vẫn so sánh được; đó cũng là lý do dòng `ridge_point` phải viết `Peak_OPS` chứ không phải `Peak_MACs` — `Peak_MACs` lệch một thừa số 2 với tử số của dòng `I`, và người tính theo block như cũ ra 245.1 OP/byte rồi phân loại nhầm toàn dải 245–490. Chi tiết nằm trong `notes` của chính `V-07-03` và Issue #16.
 
 
