@@ -3,11 +3,13 @@
 This directory contains primary-source evidence collected per `docs/WEB_SEARCH_PROTOCOL.md` to resolve
 hardware and model parameter questions in `plan-v2.md`.
 
-Three passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
+Four passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
 The second pass went the other way: it re-read the underlying documents to settle what the first review
-had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. See
-[Audit of 2026-09-12](#audit-of-2026-09-12).
+had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. The third pass
+audited provenance fields instead of values: it tiered three derived quantities as derived, titled three
+records that had no title, and raised a sixth conflict about which revision of one NVIDIA datasheet ten
+records actually cite. See [Audit of 2026-09-12](#audit-of-2026-09-12).
 
 **No record here is marked done or final; nothing in this directory has been applied to `plan.md`,
 `plan-v2.md`, or `book/`.**
@@ -18,10 +20,11 @@ had left asserted rather than evidenced, added 18 records, and raised a fifth co
 - **Verified:** 89
 - **Unresolved:** 4
 - **Conflict (records in `status: conflict`):** 3
-- **Conflicts registered:** 5 (C-01 … C-05; two of them are against repository text and carry no
-  `status: conflict` record — see [Conflicts](#conflicts))
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.2.0, `generated_utc`
-  2026-09-12T12:40:00Z, includes an `audit` block describing both passes)
+- **Conflicts registered:** 6 (C-01 … C-06; three of them concern repository text or record provenance
+  rather than a contested value, so they carry no `status: conflict` record — see
+  [Conflicts](#conflicts))
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.3.0, `generated_utc`
+  2026-09-12T15:05:00Z, includes an `audit` block describing the two value-level passes)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
 
@@ -164,6 +167,29 @@ other number in a vendor page should be able to see why it differs.
   NVIDIA which page is current. Meanwhile quote "92 (datasheet also prints 98 on p.12)".
 - Resolution status: `needs-human-decision`
 - Record in `status: conflict`: V-02-33
+
+### C-06 · Which Revision of DS-11105-001 Backs Ten Records
+- Identity A: eight records cite `DS-11105-001_v1.1` — V-02-01, V-02-03, V-02-04, V-02-05, V-02-07,
+  V-02-08, V-02-29, V-02-34 — read from the mirror copy at 2026-09-12T04:25Z and 12:00Z.
+- Identity B: two records cite `DS-11105-001` with no revision — V-02-02 and V-02-06, read at 07:18Z —
+  and their own notes state the reason: "DS-11105-001 carries no revision number on its cover and is
+  stamped 'SUBJECT TO CHANGE | PRELIMINARY - ADVANCE INFORMATION'".
+- Same URL in all ten: `https://connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf`. One file
+  cannot be both revision 1.1 and an unnumbered preliminary, so either the distributor replaced the PDF
+  between the two retrievals or one group recorded the revision wrong.
+- Why this directory cannot settle it: on 2026-09-12 a direct fetch of that URL returned HTTP 403 with a
+  5,547-byte HTML body — no PDF at all. Those ten records are not merely mirrored, they are currently
+  unreachable, so the quoted text cannot be re-read from anything this directory holds.
+- What is at stake is not a rounding difference. The two contested records are the Orin Nano memory
+  bandwidths, 34 GB/s and 68 GB/s, which are the denominator of every roofline in chapter 7, and V-02-29
+  and V-02-34 carry the TOPS ladder and the 2133 MHz unit reading.
+- Position of this directory: both identities are kept, per protocol rule 6. Retiring one is a
+  substitution, not a correction, and no record may be edited to make a provenance question disappear.
+- Resolution proposed: fetch DS-11105-001 from `docs.nvidia.com`, read its cover, and set all ten records
+  to the revision NVIDIA prints. If the vendor cover carries a revision, Identity B's note becomes wrong
+  about the vendor document and must be amended to say it was true only of the mirror copy.
+- Resolution status: `needs-human-decision`, though a vendor fetch rather than a judgement unblocks it —
+  once the NVIDIA copy is readable the choice is mechanical.
 
 ---
 
@@ -321,9 +347,33 @@ acceptance criterion for this pass: a reader can no longer mistake the URL for N
 **That is acknowledgement, not a fix.** The remaining work is to substitute `docs.nvidia.com` URLs, and
 it is still open because a mirror is a copy of a document this directory cannot verify against the
 original host — the quoted text was read out of the mirror copy, and only a re-fetch from NVIDIA can
-confirm the mirror is unaltered. Four records point at `raw.githubusercontent.com`, which is canonical
+confirm the mirror is unaltered.
+
+The mirrors are not all still there. `connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf`, which
+ten records cite, returned HTTP 403 to a direct fetch on 2026-09-12, so those ten are unreachable from
+any host this directory trusts, and the ambiguity over which revision they hold is C-06. Four records point at `raw.githubusercontent.com`, which is canonical
 for repository content and is fine. Several already point at `docs.nvidia.com` or `docs.amd.com`
 directly. `make verify-evidence` fails if any mirror record loses its acknowledgement.
+
+### Third pass: provenance hygiene (same day)
+
+The first two passes asked whether a value matches its quote. This one asked whether the *fields
+describing the value* mean what they claim, across the 96 records as they now stand.
+
+- **Three derived quantities were tiered T1.** V-01-13 (19.2 GB/s), V-07-02 (490.2 and 980.4 OP/byte)
+  and V-07-03 (39.0 to 78.0 OP/byte) are arithmetic on printed figures and appear nowhere printed.
+  V-02-36's note already states the rule — a derived value is T2 because the document never prints it —
+  and V-04-09 and V-04-12 follow it. Now all six agree. Tiers went from 58 T1 / 26 T2 to 55 T1 / 29 T2.
+  No value changed, so no chapter loses support; three claims lose datasheet authority.
+- **Three records had an empty `title`.** V-02-36, V-04-12 and V-04-13 rendered a heading with nothing
+  but a document number to identify the source. Filled, and V-04-12's title now says it is a derivation.
+- **One document-identity conflict raised: C-06.** Ten records cite one URL under two revisions.
+- **A convention this pass chose not to change:** six records carry prose in `doc_id`
+  (`"Derived from DS987 (v1.2)"`, `"Derived from V-04-10, V-04-11, ..."`). `audit_claims.py` reads
+  `doc_id` as evidence text when hunting for a printed number, so a record id sitting in that field
+  counts as a place a value's digits may appear. That is a loophole worth closing, but closing it means
+  a separate field for derivation provenance, and a schema change is not a hygiene fix. Recorded here so
+  it is not mistaken for tidy formatting.
 
 ### What these audits deliberately did not do
 
