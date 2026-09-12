@@ -59,7 +59,16 @@ MIRROR_HOSTS = (
 
 #: Hosts that are canonical for the content they serve. Kept so that the mirror list can
 #: be widened without ever swallowing one of these.
-VENDOR_HOSTS = ("docs.nvidia.com", "docs.amd.com", "docs.pytorch.org", "arxiv.org")
+#: NVIDIA's Jetson datasheets are served from developer.nvidia.com, not docs.nvidia.com, and
+#: the download host redirects there. Both are canonical for the documents they carry.
+VENDOR_HOSTS = (
+    "docs.nvidia.com",
+    "developer.nvidia.com",
+    "developer.download.nvidia.com",
+    "docs.amd.com",
+    "docs.pytorch.org",
+    "arxiv.org",
+)
 
 UNIT_TOKEN = re.compile(r"[A-Za-z][A-Za-z0-9_./+-]*")
 COMPARISON = re.compile(r"^(?P<lhs>[^=<>]*?)\s*(?P<op>>=|<=|==|>|<)\s*(?P<rhs>[^=<>]+)$")
