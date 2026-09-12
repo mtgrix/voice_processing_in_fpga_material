@@ -66,7 +66,7 @@ khối lượng công việc của cuốn sách này.
   (`V-01-11`). Hệ quả bắt buộc của §3.3: một Conformer 10–30 M tham số **không** nằm trọn trong chip
   kể cả ở INT4, nên sách phải tách **hai chương trình** — KWS vừa chip, ASR không vừa.
 
-## Chương 5: So sánh Các Phương pháp luận Tăng tốc trên FPGA
+## Chương 5: So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL
 
 **Trọng tâm:** DPU, HLS, FINN, RTL tự viết — cái nào thắng, và thắng trên **cùng một model**.
 **Nghiệm thu (chặng 5):** Bốn hàng, mỗi hàng có log tổng hợp thật. Chương này dạy **thủ tục so sánh**;
