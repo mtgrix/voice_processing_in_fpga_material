@@ -1,6 +1,6 @@
 # Chương 7: Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại
 
-> *Mục tiêu: Nắm vững lý thuyết lượng tử hóa thích ứng phần cứng (Hardware-Aware Quantization), kỹ thuật PTQ và QAT (INT8, INT4, Non-uniform) nhằm bảo toàn tỷ lệ lỗi từ (WER) và chất lượng thoại (PESQ).*
+> *Mục tiêu: Nắm vững lý thuyết lượng tử hóa thích ứng phần cứng (Hardware-Aware Quantization), kỹ thuật PTQ và QAT (INT8, INT4, Non-uniform), với chi phí chất lượng đo bằng **metric đúng theo tác vụ**: accuracy/EER cho KWS, WER/CER cho ASR, PESQ/STOI cho tăng cường tiếng nói. `plan-v2.md` §5.3 cấm reporting lẫn lộn — MatchboxNet không có WER nào để mà bảo toàn.*
 
 ---
 
@@ -9,6 +9,7 @@
 > - **Lượng tử hóa Đối xứng Đồng nhất (Uniform Symmetric Quantization)**: $q = \text{clamp}(\lfloor x/S \rceil, -2^{b-1}, 2^{b-1}-1)$.
 > - **Khoảng cách Kullback-Leibler (KL Divergence)**: Đo lường sự mất mát phân phối thông tin khi cắt cụt dải động (clipping threshold).
 > - **Straight-Through Estimator (STE)**: Kỹ thuật xấp xỉ đạo hàm của hàm bậc thang lượng tử hóa trong quá trình lan truyền ngược.
+> **Cẩn thận khi đối chiếu lý thuyết:** công thức ở trên là dạng **đối xứng, chỉ có scale**, không có zero-point. Dạng affine $r = S(q-Z)$ là một lý thuyết khác và phải có nguồn riêng (Jacob et al. 2018) hoặc dẫn xuất thẳng; `plan-v2.md` §9.1 ghi nhận `plan.md` đã viện dẫn affine trong khi nguồn đăng ký lại chỉ chứa symmetric.
 
 ---
 

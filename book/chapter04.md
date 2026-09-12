@@ -37,8 +37,9 @@ TODO:
 ## 4.4 Khả năng Lưu trữ Trọng số Hoàn toàn trên Chip (On-Chip Weight Residency)
 <!-- 
 TODO:
-- Khảo sát dung lượng BRAM/URAM trên các kit phổ biến (Kria KV260: ~4.5MB SRAM).
+- Dung lượng on-chip SRAM của Kria KV260 (ZU5EV): 144 khối BRAM × 36 Kb + 64 khối URAM × 288 Kb = **23 616 Kb = 2.88 MiB** fabric, **3.13 MiB** nếu tính cả 256 KB PS OCM. Hồ sơ bằng chứng: `V-01-11` (DS890 v4.10, Table 23: Block RAM 5.1 Mb + UltraRAM 18.0 Mb). Quy ước đơn vị phải nói tường minh, vì chính va chạm MB/MiB đã sinh ra hai giá trị sai "4 MB" và "~4.5 MB": cùng một dung lượng: 23 616 Kb ÷ 8 = **2 952 KiB = 3 022 848 byte**, tức **2.88 MiB ≡ 3.02 MB decimal**. Hai số đó là một dung lượng viết theo hai quy ước, không phải hai giá trị để chọn. (Chữ `i` trong KiB là toàn bộ vấn đề: đọc 2 952 là KB hệ 1000 thì ra 2.95 MB, một con số thứ ba không khớp với cột nào). Xem `plan-v2.md` §3.3. Tuyệt đối không dùng lại số cũ.
 - Lợi ích triệt tiêu việc truy cập DDR DRAM: giảm điện năng từ Watts xuống milliwatts và đạt độ trễ chu kỳ xung nhịp tất định.
+- Hệ quả bắt buộc của §3.3: với mẫu số 2.88 MiB (= 3.02 MB) thì một Conformer 10–30 M tham số **không** nằm trọn trong chip kể cả ở INT4 (10 M INT4 = 5 MB = 1.7×). Lập luận "zero off-chip traffic" chỉ đứng được với KWS cỡ nhỏ: MatchboxNet 77–140 K tham số theo `V-05-01`, tức ~0.04–0.07 MiB ở INT4 — dưới 2.5 % fabric, nên chương này phải nói rõ có **hai chương trình riêng**, đừng hứa một.
 -->
 
 ---

@@ -31,6 +31,7 @@ TODO:
 TODO:
 - Tính toán Arithmetic Intensity (FLOPs/byte) của mô hình thoại tại batch=1.
 - Chứng minh điểm hoạt động rơi vào sườn dốc (memory-bound) của đồ thị Roofline.
+- Chốt điểm vận hành NGAY TỪ ĐẦU: `MAXN` (chủ repo quyết 2026-09-12, đóng C-07). Ridge point hai phía là 490.2 OP/byte trên Orin (`V-07-02`) và 39–78 OP/byte trên KV260 (`V-07-03`) — khoảng cách 6.2× đến 12.5× chính là luận điểm của chương này. Không dùng 764.7 của `MAXN_SUPER` làm điểm tính.
 -->
 
 ## 3.4 Động lực Chuyển dịch Sang Kiến trúc FPGA

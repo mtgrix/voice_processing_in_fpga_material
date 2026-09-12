@@ -105,7 +105,7 @@ Ba chỗ trong repo đưa ba giá trị khác nhau cho cùng một đại lượ
 |---|---|
 | `plan.md` dòng 55 | "chỉ khoảng **4 MB** trên Kria KV260" |
 | `docs/research_notes/R02_fpga_audio_streaming.md` | "144 BRAMs and 64 URAMs, providing **~4.5 MB**" |
-| Chính phép tính từ số liệu của R02 | 144×36 Kb + 64×288 Kb = 23 616 Kb ≈ **3.02 MB** |
+| Chính phép tính từ số liệu của R02 | 144×36 Kb + 64×288 Kb = 23 616 Kb = 2 952 KiB ≈ **3.02 MB** decimal, tức **2.88 MiB** — cùng một số byte, hai quy ước |
 
 Con số 3.02 MB **không cần datasheet** để phủ định 4.5 MB — nó là phép cộng trên chính số block mà R02 nêu. `docs/SOURCES.md` thì nêu "256K LUTs, 1.2K DSP slices" và **không** nêu dung lượng nhớ, nên không chỗ nào dẫn nguồn gốc.
 
@@ -118,7 +118,7 @@ Hệ quả trực tiếp lên `plan.md` §3, vốn lấy "4 MB" làm mẫu số 
 
 (mẫu số = 3.02 MB; "10–30 M tham số" là con số `plan.md` tự nêu, chưa verify)
 
-**Kết luận bắt buộc phải viết lại:** ngay cả ở INT4, một Conformer 10–30 M tham số **không** nằm trọn trong BRAM/URAM. Toàn bộ lập luận "zero off-chip traffic" của `R02` chỉ đứng được với KWS cỡ nhỏ (MatchboxNet ~0.5 M). Đề cương phải tách làm **hai chương trình riêng**, xem §7 Chặng 4 và Chặng 8.
+**Kết luận bắt buộc phải viết lại:** ngay cả ở INT4, một Conformer 10–30 M tham số **không** nằm trọn trong BRAM/URAM. Toàn bộ lập luận "zero off-chip traffic" của `R02` chỉ đứng được với KWS cỡ nhỏ: MatchboxNet **77 K / 93 K / 140 K** tham số tuỳ biến thể (`V-05-01`, Interspeech 2020, Table 2–3), tức cỡ 0.04–0.07 MiB ở INT4 — chưa tới 2.5 % fabric. Đề cương phải tách làm **hai chương trình riêng**, xem §7 Chặng 4 và Chặng 8.
 
 > **Hành động:** mở `docs/DATASHEET_VERIFICATION.md`, điền từng ô từ file PDF thật, ghi rõ trang. Mọi claim trong sách chỉ được dùng số sau khi bảng này đầy.
 

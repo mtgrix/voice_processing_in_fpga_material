@@ -1,6 +1,6 @@
 # Chương 6: Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh
 
-> *Mục tiêu: Thiết kế và hiện thực hóa lõi phần cứng (Hardware IP Core) tính toán FFT/STFT và Mel Filterbank sử dụng số dấu phẩy tĩnh (Fixed-Point), kết nối trực tiếp với giao diện micrô I2S/PDM.*
+> *Mục tiêu: Thiết kế và hiện thực hóa lõi phần cứng (Hardware IP Core) tính toán FFT/STFT và Mel Filterbank sử dụng số dấu phẩy tĩnh (Fixed-Point), nối vào luồng micrô I2S/PDM **đi qua carrier vào PL** — vì kit Kria KV260 không có micro trên board.*
 
 ---
 
@@ -36,7 +36,7 @@ TODO:
 ## 6.4 Giao diện Thu nhận Âm thanh Phần cứng: I2S và PDM Decimation Filter
 <!-- 
 TODO:
-- Giao tiếp micro kỹ thuật số MEMS qua I2S bus.
+- Giao tiếp micro kỹ thuật số MEMS qua I2S bus. Trên KV260, đường tín hiệu này không có sẵn: nó phải đi qua một carrier/UBB vào PL (chốt 2026-09-12, `plan-v2.md` §3.2 và §8.2 — carrier là mục BOM bắt buộc). USB audio chỉ là dự phòng, vì USB vào thẳng PS sẽ đi vòng qua fabric và biến chương này thành bài toán số học không có micro nào trong FPGA. Chưa verify: carrier có I2S/PDM thật không (`AGENT_FETCH_BRIEF_2026-09-12.md` P3).
 - Bộ lọc giải điều chế PDM (CIC Decimation Filter) tích hợp trực tiếp trên FPGA fabric.
 -->
 

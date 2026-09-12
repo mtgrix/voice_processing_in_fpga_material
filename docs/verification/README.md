@@ -71,7 +71,7 @@ applies, because choosing between them changes downstream arithmetic.
 | Quantity | Reading A | Reading B | Which governs, and why | Record |
 |---|---|---|---|---|
 | KV260 GTH transceiver rate | 16.3 Gb/s | 12.5 Gb/s | Both are printed on the same DS890 page. 16.3 is what the silicon's 16 GTH transceivers can do; 12.5 is what the SFVC784 package the SOM uses bonds out, and it bonds out 4 of them. A link budget for this board uses 12.5. | V-01-20, V-01-21 |
-| KV260 fabric SRAM size | 2.8828 MiB | 3.02 MB | Same bytes. 23,616 Kb = 2,952 KB; divide by 1024 for binary MiB, by 1,000,000 bytes for decimal MB. `plan-v2.md` §3.3 writes "3.02 MB", which is correct only if MB means 10⁶. Neither 4 MB nor 4.5 MB is either reading — see C-01. | V-01-22 |
+| KV260 fabric SRAM size | 2.8828 MiB | 3.02 MB | Same bytes. 23,616 Kb / 8 = 2,952 KiB = 3,022,848 B; divide by 1,048,576 for binary MiB, by 1,000,000 for decimal MB. The middle term is kibibytes, and that letter is the whole collision: read 2,952 as 1000-based KB and you get 2.95 MB, which is neither column. `plan-v2.md` §3.3 writes "3.02 MB", which is correct only if MB means 10⁶. Neither 4 MB nor 4.5 MB is either reading — see C-01. | V-01-22 |
 | …including the PS OCM or not | 2.8828 MiB (fabric only) | 3.13 MiB (fabric + 256 KB OCM) | The OCM is reachable from the PL over AXI but is not fabric SRAM and is not in the DPU address space. Keep it out of a weight budget; mention it only for a total on-chip figure. | V-01-22, V-01-17 |
 | DS890 `Block RAM (Mb)` column basis | 1000-based | 1024-based | Solved rather than assumed: 144 tiles × 36 Kb ÷ 1024 = 5.0625, printed as 5.1, and the KU19P control row gives 288 × 288 ÷ 1024 = 81.0 exactly. The column is 1024-based. One row (ZU3TEG) does not reconcile and nothing here depends on it. | V-01-23 |
 | NVIDIA datasheet "MHz" for LPDDR5 | memory clock (CK), so data rate = 2 × MHz | data rate, single-pumped | The clock reading reproduces all four printed bandwidth figures; the single-pump reading reproduces none and assigns the 4 GB Nano's bandwidth to the 8 GB module. Printed MHz is the clock on every Orin datasheet here. Contrast K26, where DS987's "2400 Mb/s" is already a data rate and no doubling applies. | V-02-34, V-02-35, V-01-13 |
@@ -95,7 +95,7 @@ other number in a vendor page should be able to see why it differs.
 - Existing claim B: "144 BRAMs and 64 URAMs, providing ~4.5 MB on-chip memory" —
   `docs/research_notes/R02_fpga_audio_streaming.md:23` — value ~4.5 MB
 - Computed from verified block counts: 144 BRAM36 (5,184 Kb) + 64 URAM288 (18,432 Kb) = 23,616 Kb =
-  2,952 KB ≈ 2.8828 MiB (or 3.13 MiB if 256 KB PS OCM is included). The tile sizes that make that
+  2,952 KiB = 3,022,848 B ≈ 2.8828 MiB = 3.02 MB decimal (or 3.13 MiB if the 256 KB PS OCM is included). The tile sizes that make that
   addition legal are now established by V-01-23 rather than assumed.
 - New verified source: V-01-05, V-01-07, V-01-11 (DS890 v4.10 p.22 Table 23, DS891 v1.9 p.8 Table 5,
   DS986 v1.3 Product Details); unit readings enumerated in V-01-22.

@@ -40,10 +40,10 @@ Hai mô hình trên đóng vai trò kim chỉ nam phân tách rành mạch giữ
 | **II. Vi kiến trúc FPGA & Tăng tốc** | 4 | **Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu** | Nguyên lý tính toán không gian (spatial computing), đường ống luồng (pipelining), chu kỳ khởi tạo ($II=1$). |
 | | 5 | **So sánh Các Phương pháp luận Tăng tốc trên FPGA** | So sánh 4 hướng triển khai: AMD Vitis AI DPU, FINN Streaming Dataflow, Vivado HLS và Custom RTL. |
 | | 6 | **Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh** | Thiết kế phần cứng tính toán STFT/FFT fixed-point bit-exact, Mel filterbank và giao tiếp micrô I2S/PDM trực tiếp. |
-| **III. Nén & Lượng tử hóa Thích ứng** | 7 | **Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại** | Lý thuyết PTQ và QAT (INT8, INT4, non-uniform); kiểm soát suy giảm tỷ lệ lỗi từ (WER) và chất lượng âm (PESQ). |
+| **III. Nén & Lượng tử hóa Thích ứng** | 7 | **Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại** | Lý thuyết PTQ và QAT (INT8, INT4, non-uniform); kiểm soát suy giảm chất lượng theo metric đúng tác vụ: accuracy/EER cho KWS, WER/CER cho ASR, PESQ/STOI cho tăng cường tiếng nói. |
 | | 8 | **Tăng tốc Các Khối Tính toán Cốt lõi của Mô hình Thoại** | Tối ưu hóa Attention (Softmax phi tuyến), Depthwise Separable Convolutions và các khối nơ-ron trên FPGA fabric. |
 | **IV. Tích hợp & Viết Paper** | 9 | **Tích hợp Hệ thống SoC & Đồng thiết kế Phần cứng/Phần mềm** | Giao tiếp ARM Host + FPGA Logic qua DMA, AXI-Stream, PYNQ driver và tối ưu hóa băng thông bộ nhớ DDR. |
-| | 10 | **Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo** | Phương pháp luận thực nghiệm đo đạc (WER, RTF, mJ/frame, TOPS/W, Tài nguyên FPGA), dựng Pareto Frontier và cấu trúc bài báo. |
+| | 10 | **Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo** | Phương pháp luận thực nghiệm đo đạc (chất lượng theo metric đúng tác vụ, RTF, mJ/frame, TOPS/W, Tài nguyên FPGA), dựng Pareto Frontier và cấu trúc bài báo. |
 
 ---
 
