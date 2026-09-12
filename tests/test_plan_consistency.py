@@ -6,18 +6,16 @@ in ``docs/EXPERIMENT_STATUS.md``, and ``README.md``. plan-v2 section 9.3 rules t
 chapters is canonical, and notes that fixing the count once is not enough: nothing stopped a
 fifth document from re-introducing a different number. This file is that stop.
 
-It also looks at ``book/TOC.md``, which currently disagrees. That test is an expected failure
-rather than a pass or a hard failure, so the conflict is visible in every test run without
-blocking work that is unrelated to it. Resolving it needs a human, because the fix is a
-rewrite of a file under ``book/``.
+``book/TOC.md`` is tracked and derived from ``plan-v2.md`` section 7 as of 2026-09-13, so its
+chapter count is a hard assertion rather than an expected failure. Before that it declared five
+chapters inherited from ``plan.md``, which is exactly the drift section 9.3 rules invalid and
+this file exists to make unreproducible.
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -82,18 +80,12 @@ def test_no_document_claims_a_different_chapter_count() -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "book/TOC.md is untracked and declares 5 chapters while plan-v2 section 9.3 makes "
-        "10 canonical. Closing this needs a human decision: regenerate the TOC from "
-        "plan-v2 section 7, or delete it. Editing a file under book/ is not an agent's call."
-    ),
-)
 def test_toc_agrees_with_the_canonical_chapter_count() -> None:
     path = ROOT / "book" / "TOC.md"
-    if not path.exists():
-        pytest.skip("book/TOC.md does not exist in this checkout")
+    assert path.exists(), (
+        "book/TOC.md is the tracked spine; do not delete it in silence, "
+        "regenerate it from plan-v2 section 7 instead"
+    )
     text = path.read_text(encoding="utf-8")
     declared = len(re.findall(r"^## Chương \d+", text, re.MULTILINE))
     assert declared == CANONICAL_CHAPTER_COUNT, f"book/TOC.md declares {declared} chapters"
