@@ -59,13 +59,19 @@ For chapter or paper work, inspect corresponding research notes in `docs/researc
 
 ## Validation
 
-Before merge or completing a task, run relevant checks:
+Before merge or completing a task, run the checks relevant to what you changed. `make gate`
+runs all of them, which is exactly what CI runs, so a green `make gate` locally means a green
+CI. There is no make binary on every machine; the individual commands are listed below.
 
 ```bash
-python -m pytest
-python -m ruff check .
-python -m ruff format --check .
-python scripts/verify_integrity.py
+make gate                                  # everything, in one command
+python -m pytest                           # unit and book-code tests
+python -m ruff check .                     # lint
+python -m ruff format --check .            # formatting
+python -m mypy .                           # type hints
+python scripts/verify_integrity.py         # source registry and chapter claims
+python scripts/verification/audit_claims.py   # docs/verification evidence checks
+python scripts/verification/render_claims.py --check  # markdown matches claims.json
 ```
 
 Never report unverified results.
