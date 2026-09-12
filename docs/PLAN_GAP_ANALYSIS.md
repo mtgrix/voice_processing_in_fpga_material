@@ -147,6 +147,23 @@ for small KWS-class networks. **The plan's central memory premise is arithmetica
 written**, and the fix is not a corrected number but splitting the work into two programs
 (`plan-v2.md` §4.2, §7 chặng 4 vs 9).
 
+> **The same unit collision recurred on the fix side, 2026-09-13.** The table above writes
+> `23 616 Kb ≈ 3.02 MB` without naming the base of the intermediate term. `V-01-11` carried
+> `= 2952 KB = 2.8828 MiB`, where `2952 KB` is 1000-based and `2.8828 MiB` is 1024-based: those two
+> are not the same number of bytes. `V-01-22` refutes the pair with its own declared clause,
+> `2952 * 1024 / 1000000 = 3.02`. The correct chain is **23 616 Kb ÷ 8 = 2 952 KiB = 3 022 848 B =
+> 2.88 MiB ≡ 3.02 MB decimal**, and `2.95 MB` is not a reading of this quantity at all. It had
+> already propagated into `book/chapter04.md`, which wrote "2.88 MiB = 2.95 MB decimal" — two
+> conventions multiplied together inside one sentence. Corrected in place, including inside
+> `V-01-11`'s `notes`, because what was wrong there is the repo's own arithmetic rather than a
+> source's statement: rule 6 forbids overwriting a *contradicting record*, not recomputing badly.
+>
+> **Gate gap this exposes.** `audit_claims.py` recomputed this chain, and passed, because
+> `check_arithmetic` evaluates numeric text only — `SAFE_EXPR` rejects letters — so the unit
+> *label*, which is the only token that was wrong, is read by no check in the repository. This is
+> PROCESS-1's finding (CI certifies shape, not substance) appearing in a gate that was written
+> specifically to catch arithmetic.
+
 ### MAJOR-1 — Underived quantitative claims, one with a misattributed source
 
 `plan.md` makes four percentage claims (lines 32, 36, 58, 64): "80–90 % DSP", "100 % integer",
@@ -163,6 +180,16 @@ titled "Mathematical Uniform **Symmetric** Quantization Contract" and derives
 source registered.
 
 **Fix:** `plan-v2.md` §9.1.
+
+> **This defect class survived the rewrite that exists to remove it, 2026-09-13.** `plan-v2.md`
+> §3.3 concludes that on-chip weight residency holds only for small KWS, and names the example as
+> "MatchboxNet ~0.5 M". No fetched document states 0.5 M, and the repo's own verified record
+> `V-05-01` (Interspeech 2020, Table 2–3) gives **77 K / 93 K / 140 K** parameters — 3.6–6.5×
+> smaller. The direction of the conclusion is unaffected and in fact strengthened, since 93 K at INT4
+> is ~0.04 MiB, about 1.5 % of the fabric. `git log -S"0.5 M"` puts the figure in `e816928`, the
+> commit that adopted `plan-v2.md`. The lesson is not that the number was wrong but that writing a
+> document whose purpose is to forbid underived claims does not implement that rule; a figure that
+> reads as a parenthetical example is the form most likely to be typed rather than fetched.
 
 ### MAJOR-2 — Milestone ordering inverts the empirical logic
 

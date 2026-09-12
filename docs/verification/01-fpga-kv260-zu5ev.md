@@ -208,7 +208,7 @@
 | quantity | `total_on_chip_sram_capacity` |
 | value | `23616` |
 | unit | `Kb` |
-| conditions | `Fabric SRAM only (144 BRAM36 + 64 URAM288 = 5184 Kb + 18432 Kb = 23616 Kb = 2952 KB = 2.8828 MiB)` |
+| conditions | `Fabric SRAM only (144 BRAM36 + 64 URAM288 = 5184 Kb + 18432 Kb = 23616 Kb = 2952 KiB = 3022848 bytes = 2.8828 MiB)` |
 | source_tier | `T1` |
 | doc_id | `DS890 (v4.10) & DS891 (v1.9)` |
 | title | UltraScale Architecture and Product Data Sheet: Overview |
@@ -218,7 +218,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Conflicts with plan.md:55 ('chỉ khoảng 4 MB') and R02_fpga_audio_streaming.md:23 ('providing ~4.5 MB'). True fabric SRAM is 2.88 MiB (2.95 MB decimal). Adding 256 KB PS OCM gives 3.13 MiB total on-chip SRAM. DS890 re-parsed from the v4.10 (21 May 2026) PDF: Table 23 ZU5EV values unchanged. Distributed RAM (V-01-16) and PS OCM (V-01-17) are additional on-chip storage and do not alter the BRAM+URAM figure of 23,616 Kb.; Unit readings of the same quantity are enumerated in V-01-22; the tile sizes behind the sum are established in V-01-23. |
+| notes | Conflicts with plan.md:55 ('chỉ khoảng 4 MB') and R02_fpga_audio_streaming.md:23 ('providing ~4.5 MB'). True fabric SRAM is 2.88 MiB (3.02 MB decimal). Corrected 2026-09-13: this parenthetical read '(2.95 MB decimal)'. The middle term of the chain is kibibytes, not kilobytes -- V-01-22's own declared clause computes 2952 * 1024 / 1000000 = 3.02 -- so 2.95 MB is not a reading of this quantity at all, and pairing 2.88 MiB with 2.95 MB mixed two conventions in one sentence. Reproduced in book/chapter04.md until the same date. Adding 256 KB PS OCM gives 3.13 MiB total on-chip SRAM. DS890 re-parsed from the v4.10 (21 May 2026) PDF: Table 23 ZU5EV values unchanged. Distributed RAM (V-01-16) and PS OCM (V-01-17) are additional on-chip storage and do not alter the BRAM+URAM figure of 23,616 Kb.; Unit readings of the same quantity are enumerated in V-01-22; the tile sizes behind the sum are established in V-01-23. |
 
 ### V-01-12 · Ddr Capacity And Bus Width
 
@@ -426,7 +426,7 @@
 |---|---|
 | status | `verified` |
 | quantity | `on_chip_fabric_sram_in_each_unit` |
-| value | `23,616 Kb = 2,952 KB = 2.8828 MiB = 3.02 MB decimal; 3.13 MiB if the 256 KB PS OCM is included` |
+| value | `23,616 Kb = 2,952 KiB = 3,022,848 B = 2.8828 MiB = 3.02 MB decimal; 3.13 MiB if the 256 KB PS OCM is included` |
 | unit | `bytes` |
 | conditions | `144 BRAM36 tiles + 64 URAM288 tiles; the unit collision is the point` |
 | source_tier | `T1` |
@@ -438,7 +438,7 @@
 | retrieved_utc | `2026-09-12T12:00:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | This record exists because '4 MB' and '4.5 MB' were each defensible under some unit reading and neither survives arithmetic (C-01). 3.02 MB decimal and 2.8828 MiB are the same bytes; plan-v2 SS3.3 writes 3.02 MB, which is right only if MB is read as 1,000,000. The 256 KB PS OCM term is a family-wide merged cell (V-01-17), not ZU5EV-specific, and it is not in the DPU address space. |
+| notes | This record exists because '4 MB' and '4.5 MB' were each defensible under some unit reading and neither survives arithmetic (C-01). 3.02 MB decimal and 2.8828 MiB are the same bytes; plan-v2 SS3.3 writes 3.02 MB, which is right only if MB is read as 1,000,000. The middle term is kibibytes: 23,616 Kb / 8 = 2,952 KiB, exactly as the locator clause computes it. Reading 2,952 as 1000-based KB instead yields 2.95 MB, a third figure that matches no column here and that briefly lived in V-01-11's notes. The 256 KB PS OCM term is a family-wide merged cell (V-01-17), not ZU5EV-specific, and it is not in the DPU address space. |
 
 ### V-01-23 · Bram And Uram Tile Size
 

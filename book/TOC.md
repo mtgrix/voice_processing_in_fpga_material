@@ -125,8 +125,10 @@ viết lại §7, rồi xoá mục này. Ghi cả hai bản ghi theo đúng tinh
 
 - **Không một con số đo nào** (ms, W, %, TOPS/W) được viết nếu chưa có log thô trong `results/` —
   `scripts/verify_integrity.py` từ chối dấu ✅ không kèm log, và rule 8 cấm tự nhận đã xong.
-- **"4 MB" / "4.5 MB" / "3.02 MB"** cho SRAM KV260: chỉ một giá trị được phép sống, và đó là giá trị
-  có trang datasheet (`V-01-11`, `plan-v2.md` §3.3).
+- **"4 MB" / "4.5 MB"** cho SRAM KV260: cả hai không có cơ sở silicon (`V-01-22`, C-01). Số đúng là
+  **23 616 Kb = 2 952 KiB**, và nó được phép viết **2.88 MiB** hoặc **3.02 MB** — cùng một số byte,
+  hai quy ước. Bắt buộc ghi rõ quy ước ngay cạnh số; viết `2.88 MiB = 2.95 MB` là trộn hai quy ước
+  trong một câu, lỗi đã từng xảy ra ở `V-01-11` và `book/chapter04.md`.
 - **"10–30 M tham số"** cho Conformer: `plan.md` tự nêu, chưa verify. Thông số kiến trúc của model
   đích phải **tính ra** từ checkpoint theo §4.2 — hiện vẫn là placeholder trỏ tới mục P1 của fetch brief.
 - **Bảng điểm kiểu "97.4 %"**: `plan-v2.md` §9.2 chỉ ra bốn dòng số viết tay trong
