@@ -26,8 +26,21 @@ it, and exactly how to record the answer** so the result is admissible as a sour
 5. **One record per quantity.** Do not batch several numbers into one prose paragraph.
 6. **Never overwrite an existing record to resolve a contradiction.** Add the second record and
    raise a `CONFLICT` entry (§6). Contradictions are findings, not mess.
-7. **Do not edit `plan.md`, `plan-v2.md`, or any `book/` file.** This task produces evidence only.
-   A human decides which claims to rewrite afterwards.
+7. **Retired 2026-09-12 by the repository owner.** The rule read: "Do not edit `plan.md`,
+   `plan-v2.md`, or any `book/` file. This task produces evidence only. A human decides which
+   claims to rewrite afterwards." The owner lifted it so that planning text and book prose can
+   be revised against verified evidence, on the ground that the project's deliverable is the
+   knowledge, and no board is available to measure on.
+
+   The number 7 is kept rather than renumbering the list, because `docs/verification/` cites
+   rules 1, 2, 6 and 8 by number and a renumber would silently misdirect them.
+
+   **What this did not lift:** rules 1, 2, 6 and 8 still bind, and they are the ones that stop
+   fabrication rather than the ones that assign territory. No number that was not read in a
+   fetched document. No blog, forum, marketing page or model-generated summary as a sole source.
+   Never overwrite a contradicting record. Nothing is marked ✅ without executed code and
+   captured logs, which an owner's decision about scope does not manufacture. Editing `book/` is
+   now permitted; inventing a measurement in it is not.
 8. **Do not mark anything ✅.** Per `AGENTS.md`, ✅ requires executed code and captured logs, which
    web search cannot produce.
 
@@ -137,6 +150,12 @@ Every record needs a stable `id` of the form `V-<file-number>-<seq>`, unique acr
 
 Work top to bottom. Stop when the time budget is exhausted and report what is left. Tier 1 items
 block the most downstream work.
+
+**Partly superseded 2026-09-12.** The owner's decision package named the ASR checkpoint, closed
+C-07 to `MAXN`, and made a carrier card a required BOM line. Items T1-D, T2-A and T3-B below are
+those same questions asked in the abstract; they were narrowed to concrete targets, and joined
+by new ones, in [`AGENT_FETCH_BRIEF_2026-09-12.md`](AGENT_FETCH_BRIEF_2026-09-12.md). An agent
+fetching today works from that brief. Everything else here stays valid.
 
 ### Tier 1 — blocks every later number
 

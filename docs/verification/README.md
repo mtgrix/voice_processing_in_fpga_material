@@ -25,10 +25,12 @@ nine quotations, two page locators and two values. See
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 7 (C-01 … C-07; three of them concern repository text or record provenance
   rather than a contested value, so they carry no `status: conflict` record — see
-  [Conflicts](#conflicts))
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.4.0, `generated_utc`
-  2026-09-12T16:20:00Z, includes an `audit` block describing the two value-level passes and the
-  two provenance passes)
+  [Conflicts](#conflicts)). One is now closed: the owner decided C-07 on 2026-09-12 in favour
+  of `MAXN`. Closing it changed which operating point the book teaches, not what either record
+  says, so no record was deleted or re-typed.
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.5.0, `generated_utc`
+  2026-09-12T15:55:00Z, includes an `audit` block describing the two value-level passes, the two
+  provenance passes and the decision package that closed C-07)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
 
@@ -38,7 +40,7 @@ nine quotations, two page locators and two values. See
    Kria KV260 (XCK26 / ZU5EV), clocking, on-chip SRAM capacity (BRAM, URAM, LUTRAM, PS OCM) and the tile
    sizes behind them, the DDR4 subsystem, and the GTH transceiver rate as it differs between device and
    package.
-2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 36 records. Jetson Orin per-SKU specification
+2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 41 records. Jetson Orin per-SKU specification
    matrix (Orin Nano 4GB/8GB/Super, Orin NX 8GB/16GB, AGX Orin 32GB/64GB, nvpmodel power modes), the
    sparse-versus-dense TOPS pair for every SKU, the memory-clock convention, and how a module TOPS
    figure decomposes into GPU plus DLA.
@@ -113,7 +115,8 @@ other number in a vendor page should be able to see why it differs.
   (CVPR 2018), and retain FINN strictly for streaming spatial dataflow principles.
 - Resolution status: `needs-human-decision`
 - Record in `status: conflict`: none. The conflicting text lives in `plan.md` /
-  `docs/research_notes/`, which protocol rule 7 forbids this directory from editing, so no record here
+  `docs/research_notes/`, which protocol rule 7 forbade this directory from editing until it was
+  retired on 2026-09-12, so at the time of writing no record here
   carries a contradicting value.
 
 ### C-03 · MatchboxNet Benchmark Metric
@@ -225,8 +228,19 @@ other number in a vendor page should be able to see why it differs.
   defensible default for a portable voice product, because 40W and an 8V rail are exactly what a
   battery-powered carrier cannot promise, and because nvpmodel as read in the r36.4.4 guide names modes
   only up to 20W and 25W. Whichever is picked, `plan-v2.md` and the chapter 7 arithmetic must then be
-  restated against it, and that is protocol rule 7 territory.
-- Resolution status: `needs-human-decision`
+  restated against it.
+- **Resolution, 2026-09-12:** the repository owner chose **`MAXN`**. The book and `plan-v2.md`
+  compute from the default operating point: 918 MHz on the 16GB GPU, 765 MHz on the 8GB, 100
+  sparse / 50 dense INT8 TOPS on the 16GB, and module modes up to 25W. The ridge point the book
+  teaches is therefore 490.2 OP/byte (V-07-02) and not 764.7.
+  Three things follow from that choice and are recorded rather than assumed. The
+  `MAXN_SUPER` records V-02-37 … V-02-41 stay in this directory unchanged, because rule 6
+  outlaws overwriting a contradicting record and because they are true of the module: they
+  describe what a carrier that can supply 40W and an 8V rail gets. A chapter may cite them as
+  the upper profile, and must then name it. And `MAXN` is now an assumption that any measured
+  Orin number has to be taken under, which is why `plan-v2.md` §3.1 writes it into the row for
+  the power mode of measurement.
+- Resolution status: `resolved-by-owner`, 2026-09-12
 - Records involved: V-02-12, V-02-13, V-02-15, V-02-16, V-02-17, V-02-19, V-02-30, V-02-36, V-07-02,
   V-02-37, V-02-38, V-02-39, V-02-40, V-02-41
 
@@ -487,7 +501,10 @@ describing the value* mean what they claim, across the 96 records as they now st
 
 ### What these audits deliberately did not do
 
-Per protocol rule 7, nothing was changed in `plan.md`, `plan-v2.md`, or `book/`. Every resolution above is
-`needs-human-decision`. Note that `plan-v2.md` §3.3 currently writes the fabric SRAM figure as "3.02 MB",
+Rule 7 as it then stood kept these audit passes out of `plan.md`, `plan-v2.md`, and `book/`, and
+every resolution above was left `needs-human-decision`. That is history, not the current state:
+the owner retired rule 7 on 2026-09-12 and the same package closed C-07 and named the ASR model
+in `plan-v2.md`. `book/` still holds no new prose, because chapter drafting is a separate branch
+and nothing has been written into it yet. Note that `plan-v2.md` §3.3 currently writes the fabric SRAM figure as "3.02 MB",
 which is the same quantity as 2.8828 MiB in decimal megabytes — the table is not wrong, but the unit is
 ambiguous and C-01 is where that gets settled.
