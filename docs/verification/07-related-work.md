@@ -28,17 +28,17 @@
 | quantity | `jetson_orin_ridge_point` |
 | value | `490.2 (Dense INT8) / 980.4 (Sparse INT8)` |
 | unit | `OP/byte` |
-| conditions | `Jetson Orin NX 16GB: 50 TOPS dense / 100 TOPS sparse, 102 GB/s memory bandwidth` |
-| source_tier | `T1` |
-| doc_id | `Derived from DS-10712-001_v1.0 (V-02-16, V-02-18)` |
+| conditions | `Jetson Orin NX 16GB at the MAXN profile: 50 TOPS dense / 100 TOPS sparse, 102 GB/s memory bandwidth` |
+| source_tier | `T2` |
+| doc_id | `Derived from DS-10712-001_v1.7 (V-02-16, V-02-18)` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
 | locator | Arithmetic derivation: 50,000 GOP/s / 102 GB/s = 490.2 OP/byte; 100,000 GOP/s / 102 GB/s = 980.4 OP/byte |
-| quote | The Jetson Orin NX 16GB integrates 16 GB 128-bit LPDDR5 DRAM, and Jetson Orin NX 8GB integrates 8GB LPDDR5 DRAM. The maximum frequency of Jetson Orin NX is 3200 MHz, and has a theoretical peak memory bandwidth of 102 GB/s. ... Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs and 50 (Dense) INT8 TOPs |
-| retrieved_utc | `2026-09-12T07:18:00Z` |
+| quote | The Jetson Orin NX 16GB integrates 16 GB 128-bit LPDDR5 DRAM, and Jetson Orin NX 8GB integrates 8GB LPDDR5 DRAM. The maximum frequency of Jetson Orin NX is 3200 MHz, and has a theoretical peak memory bandwidth of 102 GB/s. ... Jetson Orin NX (ONX)16GB \| Number of Operations (up to) \| Sparse \| 100 INT8 TOPs \| 157 INT8 TOPs \| Dense \| 50 INT8 TOPs \| 78 INT8 TOPs |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Recomputed 2026-09-12 against the vendor v1.7 copy; 490.2 and 980.4 are unchanged because the inputs print in v1.7 as in v1.0. The MAXN_SUPER operating point moves the ridge point, which is C-07. |
 
 ### V-07-03 · Kria Kv260 Fpga Ridge Point
 
@@ -49,7 +49,7 @@
 | value | `39.0 - 78.0` |
 | unit | `OP/byte` |
 | conditions | `KV260 (1248 DSP48E2 @ 300 MHz): 748.8 GOP/s (1 MAC/DSP) or 1497.6 GOP/s (packed INT8), 19.2 GB/s DDR4` |
-| source_tier | `T1` |
+| source_tier | `T2` |
 | doc_id | `Derived from DS890 (V-01-09) and DS987 (V-01-13)` |
 | title | UltraScale Architecture Overview & Kria K26 SOM Data Sheet |
 | url | https://docs.amd.com/v/u/en-US/ds890-ultrascale-overview |
@@ -58,7 +58,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Ridge point is 6.2x to 12.5x lower than Orin NX, illustrating FPGA's advantage in streaming low-arithmetic-intensity workloads. |
+| notes | Ridge point is 6.2x to 12.5x lower than Orin NX, illustrating FPGA's advantage in streaming low-arithmetic-intensity workloads. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from. |
 
 ### V-07-04 · Fccm Artifact Evaluation Badging Policy
 

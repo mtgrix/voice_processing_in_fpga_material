@@ -1,6 +1,7 @@
 {
-  "version": "1.0.0",
-  "last_updated": "2026-09-11",
+  "version": "1.1.0",
+  "last_updated": "2026-09-12",
+  "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms.",
   "sources": [
     {
       "id": "R01-01",
@@ -10,7 +11,15 @@
       "type": "Technical Whitepaper",
       "url": "https://developer.nvidia.com/embedded/learn/jetson-agx-orin-architecture-whitepaper",
       "research_note_path": "docs/research_notes/R01_jetson_orin_arch.md",
-      "topics": ["Jetson Orin", "Ampere GPU", "Tensor Cores", "DLA", "LPDDR5", "nvpmodel"]
+      "topics": [
+        "Jetson Orin",
+        "Ampere GPU",
+        "Tensor Cores",
+        "DLA",
+        "LPDDR5",
+        "nvpmodel"
+      ],
+      "claims_supported": []
     },
     {
       "id": "R01-02",
@@ -20,7 +29,16 @@
       "type": "ACM FPGA Conference",
       "url": "https://doi.org/10.1145/3020078.3021744",
       "research_note_path": "docs/research_notes/R02_fpga_audio_streaming.md",
-      "topics": ["FINN", "FPGA", "Streaming Dataflow", "Quantized Neural Networks", "Initiation Interval"]
+      "topics": [
+        "FINN",
+        "FPGA",
+        "Streaming Dataflow",
+        "Quantized Neural Networks",
+        "Initiation Interval"
+      ],
+      "claims_supported": [
+        "V-06-03"
+      ]
     },
     {
       "id": "R01-03",
@@ -30,7 +48,14 @@
       "type": "Interspeech",
       "url": "https://arxiv.org/abs/2005.08100",
       "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
-      "topics": ["Conformer", "Speech Recognition", "Self-Attention", "Depthwise Separable Convolution", "Streaming ASR"]
+      "topics": [
+        "Conformer",
+        "Speech Recognition",
+        "Self-Attention",
+        "Depthwise Separable Convolution",
+        "Streaming ASR"
+      ],
+      "claims_supported": []
     },
     {
       "id": "R01-04",
@@ -39,8 +64,18 @@
       "year": 2023,
       "type": "Hardware User Guide",
       "url": "https://docs.amd.com/v/u/en-US/ug1089-kv260-starter-kit",
-      "research_note_path": "docs/research_notes/R01_jetson_orin_arch.md",
-      "topics": ["Kria KV260", "Zynq UltraScale+", "DPU", "AXI-Stream", "PYNQ"]
+      "research_note_path": "docs/research_notes/R02_fpga_audio_streaming.md",
+      "topics": [
+        "Kria KV260",
+        "Zynq UltraScale+",
+        "DPU",
+        "AXI-Stream",
+        "PYNQ"
+      ],
+      "claims_supported": [
+        "V-03-01",
+        "V-03-02"
+      ]
     },
     {
       "id": "R01-05",
@@ -50,7 +85,17 @@
       "type": "Interspeech",
       "url": "https://arxiv.org/abs/2004.08531",
       "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
-      "topics": ["Keyword Spotting", "1D Convolution", "Time-Channel Separable", "Edge Voice", "Low Footprint"]
+      "topics": [
+        "Keyword Spotting",
+        "1D Convolution",
+        "Time-Channel Separable",
+        "Edge Voice",
+        "Low Footprint"
+      ],
+      "claims_supported": [
+        "V-05-01",
+        "V-05-02"
+      ]
     }
   ]
 }

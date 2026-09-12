@@ -38,7 +38,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.amd.com/r/en-US/ug973-vivado-release-notes-install-license |
-| notes | Full Unified Vitis installer with multiple architectures requires >150-200 GB. URL is a university course mirror (hthreads.github.io) of a Xilinx document; replace with a docs.amd.com URL. |
+| notes | Full Unified Vitis installer with multiple architectures requires >150-200 GB. URL is a university course mirror (hthreads.github.io) of a Xilinx document. Vendor substitution was attempted on 2026-09-12 and is not possible for this revision: the revision-pinned vendor path xilinx.com/support/documents/sw_manuals/xilinx2024_1/ug973-vivado-release-notes-install-license.pdf returns HTTP 404, while the identical pattern for xilinx2022_2 serves a 2,885,302-byte PDF; docs.amd.com resolves this guide only to UG973 2026.1 (released 2026-06-23), which is a different release whose figures are not these; and adaptivesupport.amd.com answers HTTP 401. This mirror is therefore the only place these 2024.1 figures are readable. Either cite them as 'UG973, mirror copy of the 2024.1 guide' or read the 2026.1 disk table and record it as its own quantity -- do not point a 2024.1 value at a 2026.1 URL. |
 
 ### V-04-03 · Kv260 Dpu Architecture
 
@@ -231,7 +231,7 @@
 | conditions | `Standalone single core against ZU5EV/XCK26 totals from V-01-05 and V-01-07; no video pipeline` |
 | source_tier | `T2` |
 | doc_id | `Derived from V-04-10, V-04-11, V-01-05, V-01-07` |
-| title |  |
+| title | Derived: PG338 v4.1 core ladder against DS890 v4.10 ZU5EV limits |
 | url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
 | locator | PG338 v4.1 Tables 1-2 against DS890 v4.10 p.22 Table 23; arithmetic: 126 <= 144; 165 > 144; 64 <= 64; 68 > 64; 208 > 144; 60 <= 64 |
 | quote | B1600 \| 38418 \| 58831 \| 126 \| 326 ; B2304 \| 42127 \| 68829 \| 165 \| 438 ; B3136 \| 46260 \| 80079 \| 0 \| 64 \| 566 ; B4096 \| 51843 \| 98567 \| 0 \| 68 \| 710 ; Block RAM Blocks \| 128 \| 144 \| 312 ; UltraRAM Blocks \| 48 \| 64 \| 96 |
@@ -251,7 +251,7 @@
 | conditions | `Which DPUCZDX8G rung the KV260 factory PetaLinux image actually loads` |
 | source_tier | `T5` |
 | doc_id | `no primary source found` |
-| title |  |
+| title | No primary source found |
 | url |  |
 | locator |  |
 | quote |  |

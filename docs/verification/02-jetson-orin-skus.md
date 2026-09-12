@@ -38,7 +38,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: previous value 34.1 GB/s was bus-width arithmetic presented as a datasheet reading, with a p.1 quote that prints no bandwidth. The datasheet itself states 34 GB/s. DS-11105-001 carries no revision number on its cover and is stamped 'SUBJECT TO CHANGE \| PRELIMINARY - ADVANCE INFORMATION'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: previous value 34.1 GB/s was bus-width arithmetic presented as a datasheet reading, with a p.1 quote that prints no bandwidth. The datasheet itself states 34 GB/s. DS-11105-001 carries no revision number on its cover and is stamped 'SUBJECT TO CHANGE \| PRELIMINARY - ADVANCE INFORMATION'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 the vendor equivalent was measured: `https://developer.nvidia.com/downloads/jetson-orin-nano-series-data-sheet` answers HTTP 302 to /login, so NVIDIA does host this document but it cannot be re-read anonymously. The substitution is blocked on an authenticated fetch, not on effort. |
 
 ### V-02-03 · Orin Nano 4Gb Dla Count
 
@@ -118,7 +118,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: previous value 68.2 GB/s was arithmetic; the datasheet states 68 GB/s. Use 68 GB/s in roofline arithmetic for consistency with the source. DS-11105-001 carries no revision number on its cover and is stamped 'SUBJECT TO CHANGE \| PRELIMINARY - ADVANCE INFORMATION'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: previous value 68.2 GB/s was arithmetic; the datasheet states 68 GB/s. Use 68 GB/s in roofline arithmetic for consistency with the source. DS-11105-001 carries no revision number on its cover and is stamped 'SUBJECT TO CHANGE \| PRELIMINARY - ADVANCE INFORMATION'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 the vendor equivalent was measured: `https://developer.nvidia.com/downloads/jetson-orin-nano-series-data-sheet` answers HTTP 302 to /login, so NVIDIA does host this document but it cannot be re-read anonymously. The substitution is blocked on an authenticated fetch, not on effort. |
 
 ### V-02-07 · Orin Nano 8Gb Dla Count
 
@@ -228,17 +228,17 @@
 | quantity | `orin_nx_8gb_gpu_specs` |
 | value | `1024 CUDA cores, 32 Tensor Cores, 765 MHz` |
 | unit | `string` |
-| conditions | `Orin NX 8GB, Ampere GPU, max operating frequency 765 MHz` |
+| conditions | `Orin NX 8GB, Ampere GPU, MAXN profile (765 MHz). The same table prints 1,173 MHz under MAXN_SUPER; see V-02-37.` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Ampere GPU section |
-| quote | 1024 NVIDIA® CUDA® cores \| 32 Tensor cores ... ONX 8GB: Maximum Operating Frequency: 765 MHz |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1, Ampere GPU table |
+| quote | Jetson Orin NX (ONX) 8GB \| Maximum Operating Frequency (up to): \| 1024 NVIDIA® CUDA® cores \| 32 Tensor cores: \| 765 MHz \| 1,173 MHz |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Dense INT8 TOPS = 35, Sparse INT8 TOPS = 70.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Dense INT8 TOPS = 35, Sparse INT8 TOPS = 70. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12: the core counts and 765 MHz print unchanged from v1.0. v1.7 additionally prints a MAXN_SUPER column. |
 
 ### V-02-13 · Orin Nx 8Gb Dla Specs
 
@@ -248,17 +248,17 @@
 | quantity | `orin_nx_8gb_dla_specs` |
 | value | `1x NVDLA, 610 MHz, 20 TOPS (Sparse INT8)` |
 | unit | `string` |
-| conditions | `Orin NX 8GB` |
+| conditions | `Orin NX 8GB, MAXN profile; v1.7 prints 1229 MHz / 40 TOPS under MAXN_SUPER (V-02-38)` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Deep Learning Accelerator section |
-| quote | ONX 8GB: 1x NVDLA \| Maximum Operating Frequency: 610 MHz \| 20 TOPs (Sparse INT8) |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.2, Deep Learning Accelerator (DLA) table |
+| quote | Jetson Orin NX (ONX) 8GB: 1x NVDLA \| Maximum Operating Frequency (up to) \| Sparse INT8 Operations (up to) \| 610 MHz \| 20 TOPS \| 1229 MHz \| 40 TOPS |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 1 DLA engine enabled.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | 1 DLA engine enabled. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12. v1.0 put this table on p.1; v1.7 prints it on p.2, so the locator changed without the value changing. |
 
 ### V-02-14 · Orin Nx 8Gb Memory Bandwidth
 
@@ -270,15 +270,15 @@
 | unit | `GB/s` |
 | conditions | `Jetson Orin NX 8GB: 8GB LPDDR5, max frequency 3200 MHz` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
 | locator | p.9, 'Memory' paragraph |
 | quote | The Jetson Orin NX 16GB integrates 16 GB 128-bit LPDDR5 DRAM, and Jetson Orin NX 8GB integrates 8GB LPDDR5 DRAM. The maximum frequency of Jetson Orin NX is 3200 MHz, and has a theoretical peak memory bandwidth of 102 GB/s. |
-| retrieved_utc | `2026-09-12T07:18:00Z` |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: previous value 102.4 GB/s was arithmetic; the datasheet prints 102 GB/s for the series. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: previous value 102.4 GB/s was arithmetic; the datasheet prints 102 GB/s for the series. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12: the sentence prints verbatim, including 3200 MHz and 102 GB/s. The memory subsystem table on p.2 prints the same two figures. |
 
 ### V-02-15 · Orin Nx 8Gb Power Modes
 
@@ -286,19 +286,19 @@
 |---|---|
 | status | `verified` |
 | quantity | `orin_nx_8gb_power_modes` |
-| value | `10W, 15W, 20W` |
+| value | `10W, 15W, 20W, 40W (MAXN_SUPER)` |
 | unit | `Watts` |
 | conditions | `Orin NX 8GB, nvpmodel Mode 0 (MAXN), Mode 1 (10W), Mode 2 (15W default), Mode 3 (20W)` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Operating Requirements; Jetson Linux Dev Guide r36.4.4 line 932 |
-| quote | Jetson Orin NX 8GB Modes: 10W \| 15W \| 20W |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.3, Operating Requirements; Jetson Linux Dev Guide r36.4.4 line 932 |
+| quote | Jetson Orin NX 8GB Modes: 10W \| 15W \| 20W \| 40W (MAXN_SUPER) |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (15W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Default mode is Mode 2 (15W). Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. CORRECTED 2026-09-12 against the vendor v1.7: the v1.0 mirror listed 10W, 15W and 20W, and v1.7 adds a fourth mode, 40W (MAXN_SUPER). The nvpmodel numbering in conditions was read from the r36.4.4 developer guide and names no mode for 40W, so the datasheet mode list and the software mode list are not the same length. |
 
 ### V-02-16 · Orin Nx 16Gb Gpu Specs
 
@@ -308,17 +308,17 @@
 | quantity | `orin_nx_16gb_gpu_specs` |
 | value | `1024 CUDA cores, 32 Tensor Cores, 918 MHz` |
 | unit | `string` |
-| conditions | `Orin NX 16GB, Ampere GPU, max operating frequency 918 MHz` |
+| conditions | `Orin NX 16GB, Ampere GPU, MAXN profile (918 MHz). The same table prints 1,173 MHz under MAXN_SUPER; see V-02-37.` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Ampere GPU section |
-| quote | 1024 NVIDIA® CUDA® cores \| 32 Tensor cores ... ONX 16GB: Maximum Operating Frequency: 918 MHz |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1, Ampere GPU table |
+| quote | Jetson Orin NX (ONX) 16GB \| Maximum Operating Frequency (up to): \| 1024 NVIDIA® CUDA® cores \| 32 Tensor cores: \| 918 MHz \| 1,173 MHz |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Dense INT8 TOPS = 50, Sparse INT8 TOPS = 100.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Dense INT8 TOPS = 50, Sparse INT8 TOPS = 100. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12: the core counts and 918 MHz print unchanged from v1.0. v1.7 additionally prints a MAXN_SUPER column. |
 
 ### V-02-17 · Orin Nx 16Gb Dla Specs
 
@@ -326,19 +326,19 @@
 |---|---|
 | status | `verified` |
 | quantity | `orin_nx_16gb_dla_specs` |
-| value | `2x NVDLA, 614 MHz, 20 TOPS each (40 TOPS total Sparse INT8)` |
+| value | `2x NVDLA, 614 MHz, 40 TOPS (Sparse INT8); 20 TOPS per engine is arithmetic` |
 | unit | `string` |
-| conditions | `Orin NX 16GB` |
+| conditions | `Orin NX 16GB, MAXN profile; v1.7 prints 1229 MHz / 80 TOPS under MAXN_SUPER (V-02-38)` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Deep Learning Accelerator section; arithmetic: 2 * 20 = 40 |
-| quote | ONX 16GB: 2x NVDLA \| Maximum Operating Frequency: 614 MHz \| 20 TOPS each (Sparse INT8) |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.2, Deep Learning Accelerator (DLA) table; arithmetic: 40 / 2 = 20 |
+| quote | Jetson Orin NX (ONX)16GB: 2x NVDLA \| Maximum Operating Frequency (up to) \| Sparse INT8 Operations (up to) \| 614 MHz \| 40 TOPS \| 1229 MHz \| 80 TOPS |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 2 DLA engines enabled.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | 2 DLA engines enabled. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. DEFECT CORRECTED 2026-09-12: v1.0 was read as printing "20 TOPS each". The vendor v1.7 prints 40 TOPS for the 2x NVDLA configuration and never prints a per-engine figure, so the per-engine number is now declared as arithmetic (40 / 2 = 20) rather than as a datasheet reading. The total is unchanged. |
 
 ### V-02-18 · Orin Nx 16Gb Memory Bandwidth
 
@@ -350,15 +350,15 @@
 | unit | `GB/s` |
 | conditions | `Jetson Orin NX 16GB: 16 GB 128-bit LPDDR5, max frequency 3200 MHz` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
 | locator | p.9, 'Memory' paragraph |
 | quote | The Jetson Orin NX 16GB integrates 16 GB 128-bit LPDDR5 DRAM, and Jetson Orin NX 8GB integrates 8GB LPDDR5 DRAM. The maximum frequency of Jetson Orin NX is 3200 MHz, and has a theoretical peak memory bandwidth of 102 GB/s. |
-| retrieved_utc | `2026-09-12T07:18:00Z` |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: previous value 102.4 GB/s was arithmetic. The datasheet gives one bandwidth figure for the whole Orin NX series, so 8GB and 16GB share it. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: previous value 102.4 GB/s was arithmetic. The datasheet gives one bandwidth figure for the whole Orin NX series, so 8GB and 16GB share it. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12: the sentence prints verbatim. Both SKUs share it, and the p.2 memory subsystem table prints 3200 MHz / 102 GB/s once for the series. |
 
 ### V-02-19 · Orin Nx 16Gb Power Modes
 
@@ -366,19 +366,19 @@
 |---|---|
 | status | `verified` |
 | quantity | `orin_nx_16gb_power_modes` |
-| value | `10W, 15W, 25W` |
+| value | `10W, 15W, 25W, 40W (MAXN_SUPER)` |
 | unit | `Watts` |
 | conditions | `Orin NX 16GB, nvpmodel Mode 0 (MAXN), Mode 1 (10W), Mode 2 (15W default), Mode 3 (25W)` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Operating Requirements; Jetson Linux Dev Guide r36.4.4 line 1106 |
-| quote | Jetson Orin NX 16GB Modes: 10W \| 15W \| 25W |
-| retrieved_utc | `2026-09-12T04:25:00Z` |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.3, Operating Requirements; Jetson Linux Dev Guide r36.4.4 line 1106 |
+| quote | Jetson Orin NX 16GB Modes: 10W \| 15W \| 25W \| 40W (MAXN_SUPER) |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (15W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Default mode is Mode 2 (15W). Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. CORRECTED 2026-09-12 against the vendor v1.7: the v1.0 mirror listed 10W, 15W and 25W, and v1.7 adds 40W (MAXN_SUPER). This doubles the ceiling a reader would plan a thermal envelope from, so it is recorded as C-07 rather than settled here. |
 
 ### V-02-20 · Agx Orin 32Gb Gpu Specs
 
@@ -398,7 +398,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: the previous frequency 930.75 MHz does not appear anywhere in DS-10662-001v1.8 (whole-document search) and is withdrawn; the datasheet prints 939 MHz. The core counts were right but the old locator pointed at p.10-11, where the GPU table lists only GPC/TPC and TOPS. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: the previous frequency 930.75 MHz does not appear anywhere in DS-10662-001v1.8 (whole-document search) and is withdrawn; the datasheet prints 939 MHz. The core counts were right but the old locator pointed at p.10-11, where the GPU table lists only GPC/TPC and TOPS. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 no vendor download slug for DS-10662-001 could be derived: four candidate paths under `developer.nvidia.com/downloads/` answer HTTP 404, while the Orin NX and Orin Nano slugs resolve. The Orin NX document is openly downloadable, so this is a slug problem rather than a policy conclusion, and it will not be settled by guessing. |
 
 ### V-02-21 · Agx Orin 32Gb Dla Specs
 
@@ -418,7 +418,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: the previous value '92-98 TOPS' spanned three different products - 92 is JAOi, 98 is JAO 32GB, 105 is JAO 64GB. Per disambiguation trap 8 (a table column is a part, not the family), the JAO 32GB figure is 98. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book.AMENDED by the second pass: the note here once asserted '92 is JAOi' as though that settled the 32GB SKU, but 92 is also printed for JAO 32GB, on p.10, and follows from p.8's 46 TOPS per engine. The 98 in this record is p.12's figure and it is the odd one out. Both readings and the additivity argument are in V-02-33 (C-05). |
+| notes | CORRECTED 2026-09-12: the previous value '92-98 TOPS' spanned three different products - 92 is JAOi, 98 is JAO 32GB, 105 is JAO 64GB. Per disambiguation trap 8 (a table column is a part, not the family), the JAO 32GB figure is 98. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 no vendor download slug for DS-10662-001 could be derived: four candidate paths under `developer.nvidia.com/downloads/` answer HTTP 404, while the Orin NX and Orin Nano slugs resolve. The Orin NX document is openly downloadable, so this is a slug problem rather than a policy conclusion, and it will not be settled by guessing.AMENDED by the second pass: the note here once asserted '92 is JAOi' as though that settled the 32GB SKU, but 92 is also printed for JAO 32GB, on p.10, and follows from p.8's 46 TOPS per engine. The 98 in this record is p.12's figure and it is the odd one out. Both readings and the additivity argument are in V-02-33 (C-05). |
 
 ### V-02-22 · Agx Orin 32Gb Memory Bandwidth
 
@@ -438,7 +438,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 256-bit bus width. Quote confirmed verbatim against the v1.8 PDF; note the datasheet wording is 'up to'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | 256-bit bus width. Quote confirmed verbatim against the v1.8 PDF; note the datasheet wording is 'up to'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 no vendor download slug for DS-10662-001 could be derived: four candidate paths under `developer.nvidia.com/downloads/` answer HTTP 404, while the Orin NX and Orin Nano slugs resolve. The Orin NX document is openly downloadable, so this is a slug problem rather than a policy conclusion, and it will not be settled by guessing. |
 
 ### V-02-23 · Agx Orin 32Gb Power Modes
 
@@ -478,7 +478,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: the previous frequency 1301 MHz does not appear anywhere in DS-10662-001v1.8 (whole-document search) and is withdrawn; the datasheet prints 1.3 GHz. JAOi (industrial) is a separate row at 1.185 GHz and 156 Sparse TOPS. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: the previous frequency 1301 MHz does not appear anywhere in DS-10662-001v1.8 (whole-document search) and is withdrawn; the datasheet prints 1.3 GHz. JAOi (industrial) is a separate row at 1.185 GHz and 156 Sparse TOPS. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 no vendor download slug for DS-10662-001 could be derived: four candidate paths under `developer.nvidia.com/downloads/` answer HTTP 404, while the Orin NX and Orin Nano slugs resolve. The Orin NX document is openly downloadable, so this is a slug problem rather than a policy conclusion, and it will not be settled by guessing. |
 
 ### V-02-25 · Agx Orin 64Gb Dla Specs
 
@@ -518,7 +518,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 256-bit bus width. Quote confirmed verbatim against the v1.8 PDF; note the datasheet wording is 'up to'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | 256-bit bus width. Quote confirmed verbatim against the v1.8 PDF; note the datasheet wording is 'up to'. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; on 2026-09-12 no vendor download slug for DS-10662-001 could be derived: four candidate paths under `developer.nvidia.com/downloads/` answer HTTP 404, while the Orin NX and Orin Nano slugs resolve. The Orin NX document is openly downloadable, so this is a slug problem rather than a policy conclusion, and it will not be settled by guessing. |
 
 ### V-02-27 · Agx Orin 64Gb Power Modes
 
@@ -588,17 +588,17 @@
 | quantity | `orin_nx_sparse_versus_dense_tops` |
 | value | `16GB: up to 100 sparse / 50 dense INT8 TOPS; 8GB: up to 70 sparse / 35 dense INT8 TOPS` |
 | unit | `INT8 TOPS` |
-| conditions | `Jetson Orin NX at 918 MHz (16GB) or 765 MHz (8GB) GPU` |
+| conditions | `Jetson Orin NX at the MAXN profile: 918 MHz (16GB) or 765 MHz (8GB) GPU. The same block prints 157/78 and 117/58 TOPS under MAXN_SUPER; see V-02-39, V-02-40.` |
 | source_tier | `T1` |
-| doc_id | `DS-10712-001_v1.0` |
+| doc_id | `DS-10712-001_v1.7` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
 | locator | p.1, 'AI Performance' block; arithmetic: 100 / 2 = 50; 70 / 2 = 35 |
-| quote | Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs and 50 (Dense) INT8 TOPs; Jetson Orin NX 8GB: Up to 70 (Sparse) INT8 TOPs and 35 (Dense) INT8 TOPs |
-| retrieved_utc | `2026-09-12T12:00:00Z` |
+| quote | Jetson Orin NX (ONX)16GB \| Number of Operations (up to) \| Sparse \| 100 INT8 TOPs \| 157 INT8 TOPs \| Dense \| 50 INT8 TOPs \| 78 INT8 TOPs ... Jetson Orin NX (ONX) 8GB \| Number of Operations (up to) \| Sparse \| 70 INT8 TOPs \| 117 INT8 TOPs \| Dense \| 35 INT8 TOPs \| 58 INT8 TOPs |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Recorded alongside the sparse figure because '100 TOPS' is the number this project's plan uses for the NX, and it is the number a 2:4-pruned network would have to earn. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Recorded alongside the sparse figure because '100 TOPS' is the number this project's plan uses for the NX, and it is the number a 2:4-pruned network would have to earn. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-read from the vendor v1.7 on 2026-09-12: 100/50 and 70/35 print unchanged. v1.7 adds a MAXN_SUPER column with higher figures, which is why this record now names the profile it belongs to. |
 
 ### V-02-31 · Ampere Structured Sparsity Speedup
 
@@ -708,14 +708,114 @@
 | quantity | `orin_nx_16gb_gpu_share_of_sparse_tops` |
 | value | `60 (derived: 100 module sparse total minus 40 DLA sparse)` |
 | unit | `sparse INT8 TOPS` |
-| conditions | `Jetson Orin NX 16GB; no page of DS-10712-001_v1.0 prints a GPU-only TOPS figure` |
+| conditions | `Jetson Orin NX 16GB at the MAXN profile; no page of DS-10712-001_v1.7 prints a GPU-only TOPS figure` |
 | source_tier | `T2` |
-| doc_id | `Derived from DS-10712-001_v1.0 (V-02-16, V-02-17, V-02-30)` |
-| title |  |
-| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1 'AI Performance' and 'Deep Learning Accelerator'; arithmetic: 2 * 20 = 40; 100 - 40 = 60 |
-| quote | Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs ... ONX 16GB: 2x NVDLA \| Maximum Operating Frequency: 614 MHz \| 20 TOPS each (Sparse INT8) |
-| retrieved_utc | `2026-09-12T12:00:00Z` |
+| doc_id | `Derived from DS-10712-001_v1.7 (V-02-16, V-02-17, V-02-30)` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1 'AI Performance' and p.2 'Deep Learning Accelerator (DLA)'; arithmetic: 100 - 40 = 60 |
+| quote | Jetson Orin NX (ONX)16GB \| Number of Operations (up to) \| Sparse \| 100 INT8 TOPs \| 157 INT8 TOPs \| Dense \| 50 INT8 TOPs \| 78 INT8 TOPs ... Jetson Orin NX (ONX)16GB: 2x NVDLA \| Maximum Operating Frequency (up to) \| Sparse INT8 Operations (up to) \| 614 MHz \| 40 TOPS \| 1229 MHz \| 80 TOPS |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Labelled derived and tiered T2 for that reason: the datasheet prints 100, 20 and '2x', but never 60. The subtraction assumes the module total is GPU plus DLA, which V-02-32 demonstrates on the same vendor's AGX datasheet but which this datasheet never states. A roofline that double-counts the DLA overstates Orin NX headroom by up to 40%, so the split matters even though the total is printed. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+| notes | Labelled derived and tiered T2 for that reason: the datasheet prints 100, 20 and '2x', but never 60. The subtraction assumes the module total is GPU plus DLA, which V-02-32 demonstrates on the same vendor's AGX datasheet but which this datasheet never states. A roofline that double-counts the DLA overstates Orin NX headroom by up to 40%, so the split matters even though the total is printed. Source is NVIDIA's own copy of the datasheet, fetched anonymously from developer.nvidia.com on 2026-09-12 (HTTP 200, application/pdf, 753,138 bytes, 56 pages, cover prints "DS-10712-001_v1.7 \| February 2026"). The citable URL 302-redirects to a token-bearing file URL on developer.download.nvidia.com that expires, so quote the developer.nvidia.com link, not the redirect target. Table rows are quoted with cells joined by " \| ", the convention this directory already uses for tabular evidence. Re-derived against the vendor v1.7 on 2026-09-12; 60 is unchanged because both inputs (100 and 40) print in v1.7 as they did in v1.0. Under MAXN_SUPER the same subtraction gives 157 - 80 = 77, which is why the profile is now named. |
+
+### V-02-37 · Orin Nx Gpu Maxn Super Frequency
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_gpu_maxn_super_frequency` |
+| value | `1173` |
+| unit | `MHz` |
+| conditions | `Jetson Orin NX 16GB and 8GB, Ampere GPU, MAXN_SUPER profile. Both SKUs print the same 1,173 MHz.` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.7` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1, Ampere GPU table, MAXN_SUPER column |
+| quote | Jetson Orin NX (ONX) 16GB \| Maximum Operating Frequency (up to): \| 1024 NVIDIA® CUDA® cores \| 32 Tensor cores: \| 918 MHz \| 1,173 MHz ... Jetson Orin NX (ONX) 8GB \| Maximum Operating Frequency (up to): \| 1024 NVIDIA® CUDA® cores \| 32 Tensor cores: \| 765 MHz \| 1,173 MHz |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | New fact that the v1.0 mirror does not contain. The second column of the overview tables is headed "MAXN_SUPER", and the CUDA Core Performance row under it prints 2.40 FP32 / 4.80 FP16 TFLOPs for both SKUs, which is consistent with 1,173 MHz on 1024 cores. |
+
+### V-02-38 · Orin Nx Dla Maxn Super
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_dla_maxn_super` |
+| value | `1229 MHz; 16GB 80 TOPS, 8GB 40 TOPS (Sparse INT8)` |
+| unit | `mixed` |
+| conditions | `Jetson Orin NX at the MAXN_SUPER profile` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.7` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.2, Deep Learning Accelerator (DLA) table, MAXN_SUPER column |
+| quote | Jetson Orin NX (ONX)16GB: 2x NVDLA \| Maximum Operating Frequency (up to) \| Sparse INT8 Operations (up to) \| 614 MHz \| 40 TOPS \| 1229 MHz \| 80 TOPS ... Jetson Orin NX (ONX) 8GB: 1x NVDLA \| Maximum Operating Frequency (up to) \| Sparse INT8 Operations (up to) \| 610 MHz \| 20 TOPS \| 1229 MHz \| 40 TOPS |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | New fact from the vendor v1.7. Read beside V-02-13 and V-02-17, which carry the MAXN column the older mirror showed only. |
+
+### V-02-39 · Orin Nx 16Gb Maxn Super Ai Tops
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_16gb_maxn_super_ai_tops` |
+| value | `157 sparse / 78 dense` |
+| unit | `INT8 TOPS` |
+| conditions | `Jetson Orin NX 16GB at the MAXN_SUPER profile; 40W module mode (V-02-19)` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.7` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1, 'AI Performance' block, MAXN_SUPER column |
+| quote | Jetson Orin NX (ONX)16GB \| Number of Operations (up to) \| Sparse \| 100 INT8 TOPs \| 157 INT8 TOPs \| Dense \| 50 INT8 TOPs \| 78 INT8 TOPs |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | New fact from the vendor v1.7. This is the number that supersedes 100 in any ceiling calculation that assumes MAXN_SUPER, and it is not what the project plan currently uses. Registered as C-07. |
+
+### V-02-40 · Orin Nx 8Gb Maxn Super Ai Tops
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_8gb_maxn_super_ai_tops` |
+| value | `117 sparse / 58 dense` |
+| unit | `INT8 TOPS` |
+| conditions | `Jetson Orin NX 8GB at the MAXN_SUPER profile; 40W module mode (V-02-15)` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.7` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.1, 'AI Performance' block, MAXN_SUPER column |
+| quote | Jetson Orin NX (ONX) 8GB \| Number of Operations (up to) \| Sparse \| 70 INT8 TOPs \| 117 INT8 TOPs \| Dense \| 35 INT8 TOPs \| 58 INT8 TOPs |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | New fact from the vendor v1.7, the 8GB counterpart of V-02-39. |
+
+### V-02-41 · Orin Nx Maxn Super Supply Voltage Floor
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_maxn_super_supply_voltage_floor` |
+| value | `8` |
+| unit | `V` |
+| conditions | `Jetson Orin NX, any SKU, MAXN_SUPER operation` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.7` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet |
+| locator | p.3, Operating Requirements |
+| quote | Supported Power Input: 5V-20V (8V-20V for MAXN_SUPER) |
+| retrieved_utc | `2026-09-12T16:10:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | New fact from the vendor v1.7 and the reason MAXN_SUPER is not free: a carrier that supplies 5V cannot reach the profile that makes the 157 TOPS figure of V-02-39 true. Relevant here because the plan's budget arithmetic assumes the module can be run at its datasheet ceiling. |
