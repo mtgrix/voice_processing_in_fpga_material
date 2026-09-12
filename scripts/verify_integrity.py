@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -36,6 +37,86 @@ def check_source_index() -> list[str]:
     except Exception as e:
         errors.append(f"Failed to parse docs/source_index.json: {e}")
 
+    return errors
+
+
+#: Legacy chapter-scoped ids are grandfathered: book/chapter01.md and book/chapter02.md cite
+#: R01-03, R01-05 and R01-01 by that name, and the evidence protocol forbids an agent from
+#: editing book/. New sources therefore take the global S<NNN> form, and both are accepted so
+#: that the registry can grow without a rewrite that a human has not approved yet.
+SOURCE_ID_PATTERN = re.compile(r"^(?:R\d{2}-\d{2}|S\d{3})$")
+
+#: Rows in a status table that claim a result. A legend line defining a symbol is not a claim,
+#: which is why only table rows are scanned.
+RESULT_MARKER = "✅"
+
+
+def check_source_claim_linkage() -> tuple[list[str], list[str]]:
+    """Every source id is well formed and its claims_supported entries are real records.
+
+    Returns errors plus warnings. plan-v2 section 9.4 asks for the strict rule that each source
+    support at least one claim; that is a warning today, because the whitepaper, FINN and
+    Conformer entries describe material no record has cited yet. Tightening it is a later step
+    once those records exist, not a reason to leave the link unchecked now.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    try:
+        sources = json.loads((ROOT / "docs" / "source_index.json").read_text(encoding="utf-8"))[
+            "sources"
+        ]
+    except Exception as e:
+        return [f"Failed to parse docs/source_index.json: {e}"], warnings
+    try:
+        claims = json.loads(
+            (ROOT / "docs" / "verification" / "claims.json").read_text(encoding="utf-8")
+        )["records"]
+    except Exception as e:
+        return [f"Failed to parse docs/verification/claims.json: {e}"], warnings
+    claim_ids = {str(c.get("id")) for c in claims}
+    for s in sources:
+        sid = str(s.get("id"))
+        if not SOURCE_ID_PATTERN.match(sid):
+            errors.append(
+                f"Source id {sid!r} is neither a grandfathered legacy id (R01-NN) nor the "
+                "global S<NNN> form reserved for new sources"
+            )
+        supported = s.get("claims_supported")
+        if supported is None:
+            errors.append(f"Source {sid} has no claims_supported field; link it or set it to []")
+            continue
+        if not isinstance(supported, list):
+            errors.append(f"Source {sid} claims_supported is not a list")
+            continue
+        dangling = [c for c in supported if c not in claim_ids]
+        if dangling:
+            errors.append(f"Source {sid} claims_supported points at missing records {dangling}")
+        if not supported:
+            warnings.append(f"Source {sid} supports no verification record yet")
+    return errors, warnings
+
+
+def check_result_markers_have_logs() -> list[str]:
+    """No table row may claim a completed result while results/ holds no raw log.
+
+    plan-v2 section 9.2 item 5: a checkmark is a claim of measurement, and a book about
+    measurements is only worth as much as the logs behind its checkmarks.
+    """
+    errors: list[str] = []
+    log_dir = ROOT / "results"
+    logs = sorted(p.name for p in log_dir.rglob("*") if p.is_file()) if log_dir.is_dir() else []
+    for relative in ("docs/BOOK_STATUS.md", "docs/EXPERIMENT_STATUS.md"):
+        path = ROOT / relative
+        if not path.exists():
+            errors.append(f"{relative} does not exist")
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if RESULT_MARKER in line and line.lstrip().startswith("| **"):
+                if not logs:
+                    errors.append(
+                        f"{relative} marks a row as done with {RESULT_MARKER} but results/ "
+                        "contains no raw measurement log"
+                    )
     return errors
 
 
@@ -73,7 +154,13 @@ def main() -> int:
     print("Verifying Voice Edge AI repository integrity...")
     all_errors = []
     all_errors.extend(check_source_index())
+    linkage_errors, linkage_warnings = check_source_claim_linkage()
+    all_errors.extend(linkage_errors)
+    all_errors.extend(check_result_markers_have_logs())
     all_errors.extend(check_forbidden_markers())
+
+    for warning in linkage_warnings:
+        print(f"  note: {warning}")
 
     if all_errors:
         print("FAIL: Integrity errors detected:")
