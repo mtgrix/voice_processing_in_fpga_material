@@ -91,7 +91,7 @@ python -m ruff check .
   author    = {Nguyen, Minh Tuan},
   year      = {2026},
   publisher = {Open Source Monograph \& Research Journey},
-  url       = {https://github.com/MinhTuan76800310/voice_jetson_to_fpga_learning-journey}
+  url       = {https://github.com/mtgrix/voice_processing_in_fpga_material}
 }
 ```
 

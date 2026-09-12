@@ -61,3 +61,18 @@ python -m ruff check .
 python -m ruff format --check .
 python -m pytest
 ```
+
+## Cognitive & Reasoning Harness (Pro-Emulation Protocol)
+
+When processing instructions, the agent MUST strictly adhere to the 5-phase cognitive framework defined in [.agents/rules/thinking_harness.md](.agents/rules/thinking_harness.md):
+1. **Intent Decoding & Problem Deconstruction**: Identify core vs. implicit goals, inventory hardware/system constraints, enforce the anti-rushing rule.
+2. **First-Principles & Architectural Grounding**: Anchor problems into Key Mental Models (DSP + Acoustic Model + Microarchitecture).
+3. **Multi-Hypothesis & Stress-Testing**: Brainstorm at least two viable approaches, failure modes, and trade-offs before deciding.
+4. **Pre-Execution Verification Protocol**: Explicitly define verification tests, lint checks, and numerical tolerances before modifying code.
+5. **Structured Execution & Self-Correction**: Atomic steps with root-cause critique on errors instead of guessing.
+
+## Autonomous Execution (YOLO Mode)
+
+- Full autonomy is enabled for this project: terminal commands, file edits/reads, and testing run proactively without unnecessary confirmations.
+- Proactively verify changes using tests and linters before reporting back.
+
