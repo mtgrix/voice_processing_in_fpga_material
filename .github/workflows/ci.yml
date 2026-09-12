@@ -1,0 +1,36 @@
+name: CI
+
+# One gate for the whole repository. Everything below is also `make gate`, so a check that
+# passes here and fails locally, or the reverse, means the two have drifted.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package and its dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      # `make gate` order: lint, format-check, typecheck, test, verify,
+      # verify-evidence, check-render.
+      - name: Run every repository check
+        run: make gate

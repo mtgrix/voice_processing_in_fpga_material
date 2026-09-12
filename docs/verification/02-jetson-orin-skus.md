@@ -18,7 +18,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://media.digikey.com/pdf/Data%20Sheets/Seeed%20Technology/Jetson_Orin_Nano_Series_DS-11105-001_v1.1.pdf |
-| notes | Dense INT8 TOPS = 10, Sparse INT8 TOPS = 20. |
+| notes | Dense INT8 TOPS = 10, Sparse INT8 TOPS = 20.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-02 · Orin Nano 4Gb Memory Bandwidth
 
@@ -58,7 +58,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | DLA is not present on any Orin Nano SKU. |
+| notes | DLA is not present on any Orin Nano SKU.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-04 · Orin Nano 4Gb Power Modes
 
@@ -78,7 +78,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 0 (10W). |
+| notes | Default mode is Mode 0 (10W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-05 · Orin Nano 8Gb Gpu Specs
 
@@ -98,7 +98,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://media.digikey.com/pdf/Data%20Sheets/Seeed%20Technology/Jetson_Orin_Nano_Series_DS-11105-001_v1.1.pdf |
-| notes | Dense INT8 TOPS = 20, Sparse INT8 TOPS = 40. |
+| notes | Dense INT8 TOPS = 20, Sparse INT8 TOPS = 40.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-06 · Orin Nano 8Gb Memory Bandwidth
 
@@ -138,7 +138,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | No DLA engines on Orin Nano 8GB. |
+| notes | No DLA engines on Orin Nano 8GB.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-08 · Orin Nano 8Gb Power Modes
 
@@ -158,7 +158,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 0 (15W). |
+| notes | Default mode is Mode 0 (15W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-09 · Orin Nano Super Ai Tops
 
@@ -238,7 +238,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Dense INT8 TOPS = 35, Sparse INT8 TOPS = 70. |
+| notes | Dense INT8 TOPS = 35, Sparse INT8 TOPS = 70.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-13 · Orin Nx 8Gb Dla Specs
 
@@ -258,7 +258,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 1 DLA engine enabled. |
+| notes | 1 DLA engine enabled.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-14 · Orin Nx 8Gb Memory Bandwidth
 
@@ -298,7 +298,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (15W). |
+| notes | Default mode is Mode 2 (15W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-16 · Orin Nx 16Gb Gpu Specs
 
@@ -318,7 +318,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Dense INT8 TOPS = 50, Sparse INT8 TOPS = 100. |
+| notes | Dense INT8 TOPS = 50, Sparse INT8 TOPS = 100.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-17 · Orin Nx 16Gb Dla Specs
 
@@ -333,12 +333,12 @@
 | doc_id | `DS-10712-001_v1.0` |
 | title | NVIDIA Jetson Orin NX Series Data Sheet |
 | url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
-| locator | p.1, Deep Learning Accelerator section |
+| locator | p.1, Deep Learning Accelerator section; arithmetic: 2 * 20 = 40 |
 | quote | ONX 16GB: 2x NVDLA \| Maximum Operating Frequency: 614 MHz \| 20 TOPS each (Sparse INT8) |
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | 2 DLA engines enabled. |
+| notes | 2 DLA engines enabled.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-18 · Orin Nx 16Gb Memory Bandwidth
 
@@ -378,7 +378,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (15W). |
+| notes | Default mode is Mode 2 (15W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-20 · Agx Orin 32Gb Gpu Specs
 
@@ -418,7 +418,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | CORRECTED 2026-09-12: the previous value '92-98 TOPS' spanned three different products - 92 is JAOi, 98 is JAO 32GB, 105 is JAO 64GB. Per disambiguation trap 8 (a table column is a part, not the family), the JAO 32GB figure is 98. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book. |
+| notes | CORRECTED 2026-09-12: the previous value '92-98 TOPS' spanned three different products - 92 is JAOi, 98 is JAO 32GB, 105 is JAO 64GB. Per disambiguation trap 8 (a table column is a part, not the family), the JAO 32GB figure is 98. URL is a third-party mirror of the NVIDIA PDF, not a NVIDIA-hosted document; replace with a docs.nvidia.com URL before this record is cited in the book.AMENDED by the second pass: the note here once asserted '92 is JAOi' as though that settled the 32GB SKU, but 92 is also printed for JAO 32GB, on p.10, and follows from p.8's 46 TOPS per engine. The 98 in this record is p.12's figure and it is the odd one out. Both readings and the additivity argument are in V-02-33 (C-05). |
 
 ### V-02-22 · Agx Orin 32Gb Memory Bandwidth
 
@@ -458,7 +458,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (30W). |
+| notes | Default mode is Mode 2 (30W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-24 · Agx Orin 64Gb Gpu Specs
 
@@ -498,7 +498,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Total module AI compute = 275 Sparse INT8 TOPS (170 GPU + 105 DLA). |
+| notes | Total module AI compute = 275 Sparse INT8 TOPS (170 GPU + 105 DLA).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-26 · Agx Orin 64Gb Memory Bandwidth
 
@@ -538,7 +538,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html |
-| notes | Default mode is Mode 2 (30W). |
+| notes | Default mode is Mode 2 (30W).URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-02-28 · Project Selected Orin Sku
 
@@ -559,3 +559,163 @@
 | access | `open` |
 | corroborating_url |  |
 | notes | Pending human decision. Candidates characterized in V-02-01..27: (1) Orin Nano 8GB (low cost, 40 TOPS sparse, 68.2 GB/s, 15W, 0 DLA); (2) Orin NX 16GB (balanced edge, 100 TOPS sparse, 102.4 GB/s, 25W, 2x DLA); (3) AGX Orin 64GB (flagship edge, 275 TOPS sparse, 204.8 GB/s, 60W, 2x DLA). |
+
+### V-02-29 · Orin Nano Sparse Versus Dense Tops
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nano_sparse_versus_dense_tops` |
+| value | `8GB: up to 40 sparse / 20 dense INT8 TOPS; 4GB: up to 20 sparse / 10 dense INT8 TOPS` |
+| unit | `INT8 TOPS` |
+| conditions | `Jetson Orin Nano at 625 MHz GPU; no DLA on either SKU` |
+| source_tier | `T1` |
+| doc_id | `DS-11105-001_v1.1` |
+| title | NVIDIA Jetson Orin Nano Series Data Sheet |
+| url | https://connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf |
+| locator | p.1, 'AI Performance' block; restated p.4 in the Jetson Orin Nano introduction; arithmetic: 40 / 2 = 20; 20 / 2 = 10 |
+| quote | Jetson Orin Nano 8GB: Up to 40 (Sparse) INT8 TOPs and 20 (Dense) INT8 TOPs; Jetson Orin Nano 4GB: Up to 20 (Sparse) INT8 TOPs and 10 (Dense) INT8 TOPs |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The datasheet prints both numbers for both SKUs, so the factor of two is NVIDIA's own rather than a reading. Headline figures in marketing, and in this repository's plan, consistently use the sparse number; a model that is not 2:4 pruned will not reach it. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-30 · Orin Nx Sparse Versus Dense Tops
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_sparse_versus_dense_tops` |
+| value | `16GB: up to 100 sparse / 50 dense INT8 TOPS; 8GB: up to 70 sparse / 35 dense INT8 TOPS` |
+| unit | `INT8 TOPS` |
+| conditions | `Jetson Orin NX at 918 MHz (16GB) or 765 MHz (8GB) GPU` |
+| source_tier | `T1` |
+| doc_id | `DS-10712-001_v1.0` |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
+| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| locator | p.1, 'AI Performance' block; arithmetic: 100 / 2 = 50; 70 / 2 = 35 |
+| quote | Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs and 50 (Dense) INT8 TOPs; Jetson Orin NX 8GB: Up to 70 (Sparse) INT8 TOPs and 35 (Dense) INT8 TOPs |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Recorded alongside the sparse figure because '100 TOPS' is the number this project's plan uses for the NX, and it is the number a 2:4-pruned network would have to earn. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-31 · Ampere Structured Sparsity Speedup
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `ampere_structured_sparsity_speedup` |
+| value | `2x (structured sparsity doubles throughput; up to 2x higher inference performance)` |
+| unit | `multiplier` |
+| conditions | `NVIDIA Ampere GPU Tensor Cores, 2:4 structured sparsity only` |
+| source_tier | `T1` |
+| doc_id | `DS-10662-001v1.8` |
+| title | NVIDIA Jetson AGX Orin Series Modules Data Sheet |
+| url | https://static.generation-robots.com/media/Jetson-AGX-Orin-Data-Sheet.pdf |
+| locator | p.18, Ampere GPU enhancements, first bullet; p.19, structured-sparsity paragraph |
+| quote | Sparsity: fine grained structured sparsity doubles throughput and reduces memory usage. ... Ampere adds support for structured sparsity. ... The Tensor Cores in Ampere can provide up to 2x higher performance for inference of sparse models. |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | This is the primary justification for reading any Orin sparse TOPS figure as twice its dense figure, and for the reverse division. Note 'up to': 2x needs the network actually pruned to 2:4. Unstructured sparsity is a different feature on the same page (Compute Data Compression). URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-32 · Agx Module Tops Equals Gpu Plus Dla
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `agx_module_tops_equals_gpu_plus_dla` |
+| value | `JAOi 156 + 92 = 248; JAO 64GB 170 + 105 = 275` |
+| unit | `sparse INT8 TOPS` |
+| conditions | `module totals on p.7 reconciled against GPU rows on p.7/p.10 and DLA rows on p.10/p.12` |
+| source_tier | `T1` |
+| doc_id | `DS-10662-001v1.8` |
+| title | NVIDIA Jetson AGX Orin Series Modules Data Sheet |
+| url | https://static.generation-robots.com/media/Jetson-AGX-Orin-Data-Sheet.pdf |
+| locator | p.7 'AI Performance' and 'Ampere GPU'; p.10 'GPU' and 'Vision and DNN accelerators'; p.12 'Vision and DNN Accelerators'; arithmetic: 156 + 92 = 248; 170 + 105 = 275 |
+| quote | JAOi: Up to 248 TOPs (INT8) ; JAO 64GB: Up to 275 Sparse TOPS (INT8) ; JAOi: 156 Sparse TOPS ; JAO 64GB: 170 Sparse TOPS ; JAOi: Up to 92 INT8 TOPS (Sparse, Deep Learning Inference) ; JAO 64GB: Up to 105 INT8 TOPS (Sparse, Deep Learning Inference) |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Establishes that the printed module figure is the sum of the printed GPU and DLA figures, which is what makes V-02-33's failure to sum a finding rather than a rounding fuss. It also settles that JAOi's unqualified '248 TOPs (INT8)' on p.7 is a sparse figure, since both of its components are printed as sparse. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-33 · Agx Orin 32Gb Dla Tops
+
+| Field | Value |
+|---|---|
+| status | `conflict` |
+| quantity | `agx_orin_32gb_dla_tops` |
+| value | `92 (p.8 per-engine x 2, and p.10) or 98 (p.12)` |
+| unit | `sparse INT8 TOPS` |
+| conditions | `Jetson AGX Orin 32GB DLA throughput; same document, three pages, two answers` |
+| source_tier | `T1` |
+| doc_id | `DS-10662-001v1.8` |
+| title | NVIDIA Jetson AGX Orin Series Modules Data Sheet |
+| url | https://static.generation-robots.com/media/Jetson-AGX-Orin-Data-Sheet.pdf |
+| locator | p.8 'DL Accelerator' ('JAO 32GB: Maximum Operating Frequency: 1.4 GHz \| 46 TOPs each (Sparse INT8)'); p.10 'Vision and DNN accelerators' ('JAO 32GB: Up to 92'); p.12 'Vision and DNN Accelerators' ('JAO 32GB: Up to 98'); arithmetic: 2 * 46 = 92; 108 + 92 = 200; 108 + 98 = 206; 206 > 200 |
+| quote | JAOi/JAO: 2x NVDLA 2.0 Engines ... JAO 32GB: Maximum Operating Frequency: 1.4 GHz \| 46 TOPs each (Sparse INT8) ; JAO 32GB: Up to 92 INT8 TOPS (Sparse, Deep Learning Inference) ; JAO 32GB:  Up to 98 INT8 Sparse TOPS (Deep Learning Inference) ; JAO 32GB: Up to 200 Sparse TOPs (INT8) ; JAO 32GB: 108 Sparse TOPS |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | C-05. WHY BOTH ARE RECORDED: 92 and 98 are each printed verbatim in DS-10662-001v1.8 for the same SKU, and protocol rule 6 forbids overwriting a record to hide a contradiction. READING 1 (92): two engines at 46 TOPS each on p.8 gives 92, p.10 states 92 outright, and only 92 makes the datasheet's own module total work, since the p.7 figure 200 equals 108 GPU + 92 DLA. READING 2 (98): p.12 states 98 outright - the row V-02-21 quotes - and it is the only page that disagrees; with 98 the module total would have to be 206, which appears nowhere in the document. WEIGHING: the additivity V-02-32 demonstrates for JAOi and JAO 64GB holds for the 32GB SKU only under reading 1, so 92 is the better supported figure and 98 is most likely an editorial slip on p.12. NOT ADOPTED as the value, because that would be this directory choosing over the datasheet. This also amends the first-pass note on V-02-21, which asserted '92 is JAOi' as though 92 were not also printed for the 32GB SKU: it is, on p.10 and per-engine on p.8. ACTION: measure on hardware, or ask NVIDIA. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-34 · Orin Nano Lpddr5 Clock Versus Data Rate
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nano_lpddr5_clock_versus_data_rate` |
+| value | `2133 MHz printed as the memory clock is 4266 MT/s as a data rate` |
+| unit | `MHz / MT/s` |
+| conditions | `LPDDR5 on Jetson Orin Nano; the datasheet's MHz figure is CK, not data rate` |
+| source_tier | `T1` |
+| doc_id | `DS-11105-001_v1.1` |
+| title | NVIDIA Jetson Orin Nano Series Data Sheet |
+| url | https://connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf |
+| locator | p.7, 'Memory' paragraph; arithmetic: 2133 * 2 = 4266; 4266 * 16 / 1000 = 68.3; 4266 * 8 / 1000 = 34.1; 2133 * 16 / 1000 = 34.1 |
+| quote | Maximum frequency of Jetson Orin Nano Memory is 2133 MHz. The theoretical peak memory bandwidth on Orin Nano 8GB is 68 GB/s, and on Orin Nano 4GB is 34 GB/s. |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | TWO READINGS OF THE SAME '2133 MHz', differing by a factor of two: taken as a data rate it predicts 34 GB/s on a 128-bit bus, taken as the memory clock - DDR being double data rate, so 4266 MT/s - it predicts 68.3 against a printed 68. The datasheet prints 68 for the 8GB and 34 for the 4GB, so the clock reading reproduces both numbers and the single-pump reading quietly assigns the 4GB module's bandwidth to the 8GB module. The same convention reconciles Orin NX 3200 MHz to 102 GB/s (V-02-18) and AGX 3200 MHz to 204.8 GB/s (V-02-35). Contrast K26, where DS987 prints 2400 Mb/s already as a data rate and no doubling applies (V-01-13). URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-35 · Agx Orin Memory Bandwidth Derivation
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `agx_orin_memory_bandwidth_derivation` |
+| value | `204.8 GB/s from 3200 MHz x 2 x 32 bytes` |
+| unit | `GB/s` |
+| conditions | `256-bit LPDDR5 bus; the datasheet words it as '(up to) 204.8 GB/s'` |
+| source_tier | `T1` |
+| doc_id | `DS-10662-001v1.8` |
+| title | NVIDIA Jetson AGX Orin Series Modules Data Sheet |
+| url | https://static.generation-robots.com/media/Jetson-AGX-Orin-Data-Sheet.pdf |
+| locator | p.12 'Memory Subsystem' (256-bit LPDDR5, '(up to) 204.8 GB/s'); p.29 section 4.10 (memory clock 3200 MHz); arithmetic: 3200 * 2 = 6400; 6400 * 32 = 204800; 204800 / 1000 = 204.8 |
+| quote | Memory Subsystem \| Memory Type 256-bit LPDDR5 \| Maximum Memory Bus Bandwidth (up to) 204.8 GB/s |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The derivation is recorded so a reader can see why the datasheet writes 'up to': 204.8 GB/s is the peak at the maximum supported clock, and the clock is DVFS-scaled, so measured bandwidth is always lower. With V-02-34 this is the third SKU whose printed MHz reconciles to its printed GB/s under the 2x convention and fails under the 1x reading, which is what makes the convention a finding rather than an assumption. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
+
+### V-02-36 · Orin Nx 16Gb Gpu Share Of Sparse Tops
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `orin_nx_16gb_gpu_share_of_sparse_tops` |
+| value | `60 (derived: 100 module sparse total minus 40 DLA sparse)` |
+| unit | `sparse INT8 TOPS` |
+| conditions | `Jetson Orin NX 16GB; no page of DS-10712-001_v1.0 prints a GPU-only TOPS figure` |
+| source_tier | `T2` |
+| doc_id | `Derived from DS-10712-001_v1.0 (V-02-16, V-02-17, V-02-30)` |
+| title |  |
+| url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
+| locator | p.1 'AI Performance' and 'Deep Learning Accelerator'; arithmetic: 2 * 20 = 40; 100 - 40 = 60 |
+| quote | Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs ... ONX 16GB: 2x NVDLA \| Maximum Operating Frequency: 614 MHz \| 20 TOPS each (Sparse INT8) |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Labelled derived and tiered T2 for that reason: the datasheet prints 100, 20 and '2x', but never 60. The subtraction assumes the module total is GPU plus DLA, which V-02-32 demonstrates on the same vendor's AGX datasheet but which this datasheet never states. A roofline that double-counts the DLA overstates Orin NX headroom by up to 40%, so the split matters even though the total is printed. URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |

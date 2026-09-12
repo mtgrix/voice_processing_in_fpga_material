@@ -32,6 +32,14 @@ ml = [
     "onnxruntime>=1.17.0",
 ]
 
+[tool.setuptools]
+# Nothing in this repository is meant to be imported from site-packages. The chapters are
+# scripts run in place, pytest imports them by path, and book/ and docs/ are prose. Left to
+# itself, setuptools' flat-layout autodiscovery reads book/, capstone/ and chapter01..10/ as
+# top-level packages and refuses to build at all, which is what made `pip install -e .` fail.
+# The install exists to bring in the dependency and dev-extras set, not to ship a module.
+packages = []
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -43,6 +51,11 @@ ignore = ["N806", "N803"]  # Allow math notation uppercase variables (e.g. X, W,
 [tool.mypy]
 python_version = "3.12"
 strict = true
+# The chapter directories are run as scripts, not installed packages, so the repository root is
+# intentionally on the search path. Without this mypy resolves every file twice under
+# two different module names and aborts before checking anything.
+explicit_package_bases = true
+mypy_path = [".", "scripts/verification"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "chapter01", "chapter02"]

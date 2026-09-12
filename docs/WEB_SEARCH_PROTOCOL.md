@@ -100,7 +100,7 @@ Rules for the fields:
 
 ### 3.2 `claims.json`
 
-Same data, machine-readable, so `scripts/verify_integrity.py` can later check claim→source linkage.
+Same data, machine-readable, so it can be checked rather than read. Today `scripts/verification/audit_claims.py` checks the file against itself: field shape, id order, that every number in a `verified` value is printed in its own `quote`/`locator`/`doc_id` or derived by an `arithmetic:` clause it declares, and that mirror citations admit it. Checking each record against `docs/source_index.json` is still not implemented.
 
 ```json
 {

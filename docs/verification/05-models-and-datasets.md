@@ -99,7 +99,7 @@ use_dynamic_chunk: true |
 | doc_id | `WeNet LibriSpeech README` |
 | title | WeNet LibriSpeech Performance Record |
 | url | https://raw.githubusercontent.com/wenet-e2e/wenet/main/examples/librispeech/s0/README.md |
-| locator | Section 'Conformer U2++ Result', Table 'test clean' |
+| locator | Section 'Conformer U2++ Result', Table 'test clean'; arithmetic: 16 * 40 = 640 |
 | quote | \| decoding mode \| full \| 16 \| |
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |

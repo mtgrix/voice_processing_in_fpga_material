@@ -169,7 +169,7 @@
 | value | `No, as tabulated` |
 | unit | `boolean` |
 | conditions | `Compares the PG338 v4.1 Table 1 and Table 2 B4096 rows against the DS890 v4.10 ZU5EV totals` |
-| source_tier | `T1` |
+| source_tier | `T2` |
 | doc_id | `Derived from V-04-07, V-04-08, V-01-05, V-01-07` |
 | title | Derived feasibility check |
 | url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
@@ -178,4 +178,84 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.amd.com/v/u/en-US/ds890-ultrascale-overview |
-| notes | DSP is the one resource with headroom (710 of 1,248). Both memory variants of B4096 exceed ZU5EV. Therefore the DPU that actually runs on a KV260 overlay cannot be the full B4096 as tabulated in PG338: it is a smaller range (B1024 / B2048), a reduced or ranged-core build, or a design that trades LUTRAM. Which core configuration KV260 ships is NOT established by any record in this directory and must be read off the running overlay before any capacity claim in the plan is written as fact. |
+| notes | DSP is the one resource with headroom (710 of 1,248). Both memory variants of B4096 exceed ZU5EV. Therefore the DPU that actually runs on a KV260 overlay cannot be the full B4096 as tabulated in PG338: it is a smaller range (B1024 / B2048), a reduced or ranged-core build, or a design that trades LUTRAM. Which core configuration KV260 ships is NOT established by any record in this directory and must be read off the running overlay before any capacity claim in the plan is written as fact.Tier lowered from T1 to T2 on the second pass: a record whose value comes from comparing two other records is derived evidence however certain the comparison, and T1 means a datasheet says it. The comparison itself is unchanged and still holds. See V-04-12 for the largest core of each variant that does fit, and V-04-13 for the shipped configuration, which stays unresolved. |
+
+### V-04-10 · Dpuczdx8G Bram Variant Ladder
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `dpuczdx8g_bram_variant_ladder` |
+| value | `B512 72 / B800 90 / B1024 104 / B1152 121 / B1600 126 / B2304 165 / B3136 208 / B4096 255 Block RAM` |
+| unit | `Block RAM` |
+| conditions | `PG338 v4.1 Table 1, ZCU102 platform, low RAM usage option, standalone single core` |
+| source_tier | `T2` |
+| doc_id | `PG338 (v4.1)` |
+| title | DPUCZDX8G for Zynq UltraScale+ MPSoCs Product Guide (PG338) |
+| url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
+| locator | Resource Utilization, Table 1 'Resources of Different DPUCZDX8G Architectures' |
+| quote | Table 1. Resources of Different DPUCZDX8G Architectures \| DPUCZDX8G Architecture \| LUT \| Register \| Block RAM \| DSP \| B512 \| 26922 \| 34543 \| 72 \| 118 \| B800 \| 29721 \| 41147 \| 90 \| 166 \| B1024 \| 34074 \| 48057 \| 104 \| 230 \| B1152 \| 32169 \| 47374 \| 121 \| 222 \| B1600 \| 38418 \| 58831 \| 126 \| 326 \| B2304 \| 42127 \| 68829 \| 165 \| 438 \| B3136 \| 46714 \| 79710 \| 208 \| 566 \| B4096 \| 52161 \| 98249 \| 255 \| 710 |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url | https://github.com/Xilinx/Vitis-AI/tree/master/src/vai_runtime/target_factory/targets |
+| notes | The whole ladder rather than one row, so any capacity question can be answered without re-fetching. Two limits: the table is measured on ZCU102 with a specific option set ('low RAM usage, channel augmentation, alu parallel = PP/2, conv: leaky ReLU + ReLU6, alu: ReLU6'), and it is a standalone single-core footprint, so a design carrying a video pipeline as well costs more than these numbers. PG338 never defines the unit: 'Block RAM' is a count of 36 Kb tiles, which is what makes 255 exceed ZU5EV's 144 rather than being a comparison of sizes. Vitis-AI ships one prototxt per rung with matching feature codes (B512 0x000056010200 through B4096 0x000056010407), corroborating the ladder's shape from a different AMD artifact. |
+
+### V-04-11 · Dpuczdx8G Uram Variant Ladder
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `dpuczdx8g_uram_variant_ladder` |
+| value | `B512 18 / B800 40 / B1024 26 / B1152 44 / B1600 56 / B2304 60 / B3136 64 / B4096 68 UltraRAM, 0 Block RAM` |
+| unit | `UltraRAM` |
+| conditions | `PG338 v4.1 Table 2, ZCU104 platform, image and weights buffered in UltraRAM` |
+| source_tier | `T2` |
+| doc_id | `PG338 (v4.1)` |
+| title | DPUCZDX8G for Zynq UltraScale+ MPSoCs Product Guide (PG338) |
+| url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
+| locator | Resource Utilization, Table 2 'Resources of DPUCZDX8G using UltraRAM' |
+| quote | Table 2. Resources of DPUCZDX8G using UltraRAM \| DPUCZDX8G Architecture \| LUT \| Register \| Block RAM \| UltraRAM \| DSP \| B512 \| 26767 \| 34538 \| 0 \| 18 \| 118 \| B800 \| 29563 \| 41129 \| 0 \| 40 \| 166 \| B1024 \| 33973 \| 48036 \| 0 \| 26 \| 230 \| B1152 \| 32064 \| 47357 \| 0 \| 44 \| 222 \| B1600 \| 38325 \| 58809 \| 0 \| 56 \| 326 \| B2304 \| 42060 \| 68808 \| 0 \| 60 \| 438 \| B3136 \| 46260 \| 80079 \| 0 \| 64 \| 566 \| B4096 \| 51843 \| 98567 \| 0 \| 68 \| 710 |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The UltraRAM column is not monotonic with the architecture name - B1024 uses 26 where B800 uses 40 - so it is not a budget you can interpolate between rungs. Each rung must be read from this table or measured. Same standalone-single-core caveat as V-04-10, and the same undefined unit; per V-01-23 the URAM tile is 288 Kb, so these are tile counts. |
+
+### V-04-12 · Largest Pg338 Core Fitting Zu5Ev
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `largest_pg338_core_fitting_zu5ev` |
+| value | `B1600 for the Block RAM variant (126 of 144); B3136 for the UltraRAM variant (64 of 64, exactly full)` |
+| unit | `architecture` |
+| conditions | `Standalone single core against ZU5EV/XCK26 totals from V-01-05 and V-01-07; no video pipeline` |
+| source_tier | `T2` |
+| doc_id | `Derived from V-04-10, V-04-11, V-01-05, V-01-07` |
+| title |  |
+| url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
+| locator | PG338 v4.1 Tables 1-2 against DS890 v4.10 p.22 Table 23; arithmetic: 126 <= 144; 165 > 144; 64 <= 64; 68 > 64; 208 > 144; 60 <= 64 |
+| quote | B1600 \| 38418 \| 58831 \| 126 \| 326 ; B2304 \| 42127 \| 68829 \| 165 \| 438 ; B3136 \| 46260 \| 80079 \| 0 \| 64 \| 566 ; B4096 \| 51843 \| 98567 \| 0 \| 68 \| 710 ; Block RAM Blocks \| 128 \| 144 \| 312 ; UltraRAM Blocks \| 48 \| 64 \| 96 |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | DERIVED, and stated as such: PG338 never mentions KV260, ZU5EV, ZU9EG or XCK26 anywhere, so no row of either table is a vendor statement about this board. The Block RAM ceiling is firm - the next rung needs 165 tiles against 144. The UltraRAM ceiling at B3136 is arithmetical only: it consumes exactly 64 of 64 tiles, leaving nothing for the rest of the design, so in practice B2304 (60 tiles) is the largest UltraRAM core with any headroom, which is the 60 <= 64 statement above. LUT cost matters too: B1600 takes 38,418 of ZU5EV's 117,120 LUTs, about a third of the device for one core. |
+
+### V-04-13 · Kv260 Shipped Dpu Core Architecture
+
+| Field | Value |
+|---|---|
+| status | `unresolved` |
+| quantity | `kv260_shipped_dpu_core_architecture` |
+| value | `` |
+| unit | `architecture` |
+| conditions | `Which DPUCZDX8G rung the KV260 factory PetaLinux image actually loads` |
+| source_tier | `T5` |
+| doc_id | `no primary source found` |
+| title |  |
+| url |  |
+| locator |  |
+| quote |  |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | STILL UNRESOLVED after the second pass, and now recorded explicitly rather than left implicit in C-04. WHAT WAS TRIED: the AMD software-manual deep link docs.amd.com/r/en-US/ug230-kv260-vision-software-manual/DPU returns HTTP 404; a code search for DPUCZDX8G across org:Xilinx returns compiler targets and examples, not a KV260 core designation; searches restricted to device-tree arch directories return nothing; and PG338 v4.1 names no Kria board (V-04-10). WHY THE COMMUNITY ANSWER WAS NOT ADOPTED: third-party KV260 files disagree with each other - one board.env records DPU fingerprint 0x101000056010407, whose tail matches B4096 in PG338's ladder, while other KV260 files name DPUCZDX8G_ISA1_B3136 at 300 MHz and yet others _B4096 at 325 MHz. Those are tier T5, corroborating only under protocol rule 2, and mutually inconsistent. B4096 as tabulated does not fit this device at all (V-04-09), so a fingerprint read as B4096 needs explaining rather than repeating. TO RESOLVE: read dpu-sysfs resource_info and the fingerprint on a KV260 running the factory image, or open the DPU XSA the PetaLinux rootfs was built from. This is the one capacity question in the plan that documents cannot settle. |

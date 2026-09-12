@@ -1,32 +1,81 @@
 # Verification Evidence Index
 
-This directory contains primary-source evidence collected per `docs/WEB_SEARCH_PROTOCOL.md` to resolve hardware and model parameter questions in `plan-v2.md`.
+This directory contains primary-source evidence collected per `docs/WEB_SEARCH_PROTOCOL.md` to resolve
+hardware and model parameter questions in `plan-v2.md`.
 
-The initial pass ran on 2026-09-12 and wrote 71 records. A second review re-read every
-`verified` record against its own `quote` field and corrected 28 of them, added 7, and raised a
-fourth conflict. See [Audit of 2026-09-12](#audit-of-2026-09-12) for what was wrong and how it was
-checked. **No record here is marked done or final; nothing in this directory has been applied to
-`plan.md`, `plan-v2.md`, or `book/`.**
+Three passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
+`verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
+The second pass went the other way: it re-read the underlying documents to settle what the first review
+had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. See
+[Audit of 2026-09-12](#audit-of-2026-09-12).
+
+**No record here is marked done or final; nothing in this directory has been applied to `plan.md`,
+`plan-v2.md`, or `book/`.**
 
 ## Summary
 
-- **Total Records:** 78
-- **Verified:** 72
+- **Total Records:** 96
+- **Verified:** 89
 - **Unresolved:** 4
-- **Conflict (records in `status: conflict`):** 2
-- **Conflicts registered:** 4 (C-01 … C-04; two of them are against repository text and carry no
+- **Conflict (records in `status: conflict`):** 3
+- **Conflicts registered:** 5 (C-01 … C-05; two of them are against repository text and carry no
   `status: conflict` record — see [Conflicts](#conflicts))
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.1.0, `generated_utc` 2026-09-12T07:18:00Z, includes an `audit` block)
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.2.0, `generated_utc`
+  2026-09-12T12:40:00Z, includes an `audit` block describing both passes)
+- **Checks:** `make verify-evidence` runs the auditor over this directory;
+  `make render-evidence` regenerates the seven record files from `claims.json`.
 
 ## Record Files
 
-1. [`01-fpga-kv260-zu5ev.md`](01-fpga-kv260-zu5ev.md) — 17 records. Exact hardware resource counts for Kria KV260 (XCK26 / ZU5EV), clocking, on-chip SRAM capacity (BRAM, URAM, LUTRAM, PS OCM), and the DDR4 subsystem.
-2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 28 records. Jetson Orin per-SKU specification matrix (Orin Nano 4GB/8GB/Super, Orin NX 8GB/16GB, AGX Orin 32GB/64GB, nvpmodel power modes).
-3. [`03-kv260-audio-path.md`](03-kv260-audio-path.md) — 5 records. Audio input evaluation for the KV260 carrier card (PMOD I2S2 Digilent SKU 410-379 vs USB Audio).
-4. [`04-toolchain-versions.md`](04-toolchain-versions.md) — 9 records. Vivado ML Standard device support, disk footprint, Vitis AI DPU overlay architecture (DPUCZDX8G) and its measured footprint on KV260-class silicon, and XPE accuracy caveats.
-5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 9 records. Model architectures (MatchboxNet vs Streaming Conformer), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk latency, and speaker-independent splits.
-6. [`06-quantization-sources.md`](06-quantization-sources.md) — 5 records. Primary mathematical source for affine zero-point quantization (Jacob et al. CVPR 2018), integer multiply-shift requantization, the rounding operator Brevitas actually defaults to, FINN framework scope clarification.
-7. [`07-related-work.md`](07-related-work.md) — 5 records. Roofline model formulation (Williams et al. CACM 2009), Orin vs KV260 ridge points, and IEEE FCCM 2025 artifact evaluation requirements.
+1. [`01-fpga-kv260-zu5ev.md`](01-fpga-kv260-zu5ev.md) — 23 records. Exact hardware resource counts for
+   Kria KV260 (XCK26 / ZU5EV), clocking, on-chip SRAM capacity (BRAM, URAM, LUTRAM, PS OCM) and the tile
+   sizes behind them, the DDR4 subsystem, and the GTH transceiver rate as it differs between device and
+   package.
+2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 36 records. Jetson Orin per-SKU specification
+   matrix (Orin Nano 4GB/8GB/Super, Orin NX 8GB/16GB, AGX Orin 32GB/64GB, nvpmodel power modes), the
+   sparse-versus-dense TOPS pair for every SKU, the memory-clock convention, and how a module TOPS
+   figure decomposes into GPU plus DLA.
+3. [`03-kv260-audio-path.md`](03-kv260-audio-path.md) — 5 records. Audio input evaluation for the KV260
+   carrier card (PMOD I2S2 Digilent SKU 410-379 vs USB Audio).
+4. [`04-toolchain-versions.md`](04-toolchain-versions.md) — 13 records. Vivado ML Standard device
+   support, disk footprint, Vitis AI DPU overlay architecture (DPUCZDX8G), the full PG338 resource
+   ladders for both the Block RAM and UltraRAM variants, what of those ladders fits ZU5EV, and XPE
+   accuracy caveats.
+5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 9 records. Model architectures (MatchboxNet
+   vs Streaming Conformer), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk
+   latency, and speaker-independent splits.
+6. [`06-quantization-sources.md`](06-quantization-sources.md) — 5 records. Primary mathematical source
+   for affine zero-point quantization (Jacob et al. CVPR 2018), integer multiply-shift requantization,
+   the rounding operator Brevitas actually defaults to, the tie rule `torch.round` documents, and FINN
+   framework scope clarification.
+7. [`07-related-work.md`](07-related-work.md) — 5 records. Roofline model formulation (Williams et al.
+   CACM 2009), Orin vs KV260 ridge points, and IEEE FCCM 2025 artifact evaluation requirements.
+
+---
+
+## Ambiguous Quantities — Both Readings
+
+Some numbers below are not wrong; they are ambiguous, and a record that stores a single value silently
+picks one reading. Each of these is recorded with **both** values and an explanation of when each
+applies, because choosing between them changes downstream arithmetic.
+
+| Quantity | Reading A | Reading B | Which governs, and why | Record |
+|---|---|---|---|---|
+| KV260 GTH transceiver rate | 16.3 Gb/s | 12.5 Gb/s | Both are printed on the same DS890 page. 16.3 is what the silicon's 16 GTH transceivers can do; 12.5 is what the SFVC784 package the SOM uses bonds out, and it bonds out 4 of them. A link budget for this board uses 12.5. | V-01-20, V-01-21 |
+| KV260 fabric SRAM size | 2.8828 MiB | 3.02 MB | Same bytes. 23,616 Kb = 2,952 KB; divide by 1024 for binary MiB, by 1,000,000 bytes for decimal MB. `plan-v2.md` §3.3 writes "3.02 MB", which is correct only if MB means 10⁶. Neither 4 MB nor 4.5 MB is either reading — see C-01. | V-01-22 |
+| …including the PS OCM or not | 2.8828 MiB (fabric only) | 3.13 MiB (fabric + 256 KB OCM) | The OCM is reachable from the PL over AXI but is not fabric SRAM and is not in the DPU address space. Keep it out of a weight budget; mention it only for a total on-chip figure. | V-01-22, V-01-17 |
+| DS890 `Block RAM (Mb)` column basis | 1000-based | 1024-based | Solved rather than assumed: 144 tiles × 36 Kb ÷ 1024 = 5.0625, printed as 5.1, and the KU19P control row gives 288 × 288 ÷ 1024 = 81.0 exactly. The column is 1024-based. One row (ZU3TEG) does not reconcile and nothing here depends on it. | V-01-23 |
+| NVIDIA datasheet "MHz" for LPDDR5 | memory clock (CK), so data rate = 2 × MHz | data rate, single-pumped | The clock reading reproduces all four printed bandwidth figures; the single-pump reading reproduces none and assigns the 4 GB Nano's bandwidth to the 8 GB module. Printed MHz is the clock on every Orin datasheet here. Contrast K26, where DS987's "2400 Mb/s" is already a data rate and no doubling applies. | V-02-34, V-02-35, V-01-13 |
+| Orin INT8 TOPS | sparse | dense | Differ by exactly 2× on every SKU, which is NVIDIA's own factor: the Ampere whitepaper states structured sparsity "doubles throughput". Marketing headlines and this project's plan always quote sparse, so a network that is not 2:4 pruned should be planned against the dense number. | V-02-29, V-02-30, V-02-31 |
+| KV260 resource counts | 256K / 1.2K (DS986 marketing) | 256,200 / 1,248 (DS890 exact) | The rounded vector understates DSP by 4%, which is the one rounding that matters for a roofline. Use DS890's exact column for capacity, DS986's rounded figures for prose. | V-01-15, V-01-18, V-01-19 |
+| Orin NX 16 GB "100 TOPS" | 100 as a module figure | 60 GPU + 40 DLA | The datasheet prints 100 and 20-per-engine-DLA but never 60. The split is derived (T2), and it matters because a roofline that lets the GPU claim use all 100 double-counts up to 40% of the module. | V-02-36 |
+| PG338 `Block RAM` / `UltraRAM` columns | count of tiles | volume | PG338 never defines the unit, which is why "255 Block RAM" reads as smaller than ZU5EV's "144" until you know both are tile counts of 36 Kb and 288 Kb tiles respectively. | V-04-10, V-04-11, V-01-23 |
+| Rounding a tie (x.5) | round half to even (`round(2.5)` → 2) | round half away from zero (`+ (1 << (shift-1))`) | PyTorch documents the first, Brevitas defaults to `RoundSte`, and an RTL fixed-point pipeline usually implements the second. Three tie behaviours across one toolchain is a bit-exactness trap, not a style choice. | V-06-05, V-06-04 |
+| AGX Orin 32 GB DLA TOPS | 92 | 98 | Same datasheet, three pages, two answers, and only 92 makes the module total add up. Recorded as a conflict rather than resolved by preference — see C-05. | V-02-33 |
+
+Two of these became conflicts with a `needs-human-decision` resolution (C-01 and C-05). The rest are
+recorded as settled readings with the rejected reading kept visible, because a reader who meets the
+other number in a vendor page should be able to see why it differs.
 
 ---
 
@@ -34,72 +83,141 @@ checked. **No record here is marked done or final; nothing in this directory has
 
 ### C-01 · On-Chip SRAM Capacity on Kria KV260
 - Existing claim A: "chỉ khoảng 4 MB trên Kria KV260" — `plan.md:55` — value 4 MB
-- Existing claim B: "144 BRAMs and 64 URAMs, providing ~4.5 MB on-chip memory" — `docs/research_notes/R02_fpga_audio_streaming.md:23` — value ~4.5 MB
-- Computed from verified block counts: 144 BRAM36 (5,184 Kb) + 64 URAM288 (18,432 Kb) = 23,616 Kb = 2,952 KB ≈ 2.8828 MiB (or 3.13 MiB if 256 KB PS OCM is included).
-- New verified source: V-01-05, V-01-07, V-01-11 (DS890 v4.10 p.22 Table 23, DS891 v1.9 p.8 Table 5, DS986 v1.3 Product Details)
-- Resolution proposed: Replace all references to 4 MB or 4.5 MB with 2.88 MiB (23,616 Kb) fabric SRAM. Acknowledge that neither 4 MB nor 4.5 MB has any silicon basis.
+- Existing claim B: "144 BRAMs and 64 URAMs, providing ~4.5 MB on-chip memory" —
+  `docs/research_notes/R02_fpga_audio_streaming.md:23` — value ~4.5 MB
+- Computed from verified block counts: 144 BRAM36 (5,184 Kb) + 64 URAM288 (18,432 Kb) = 23,616 Kb =
+  2,952 KB ≈ 2.8828 MiB (or 3.13 MiB if 256 KB PS OCM is included). The tile sizes that make that
+  addition legal are now established by V-01-23 rather than assumed.
+- New verified source: V-01-05, V-01-07, V-01-11 (DS890 v4.10 p.22 Table 23, DS891 v1.9 p.8 Table 5,
+  DS986 v1.3 Product Details); unit readings enumerated in V-01-22.
+- Resolution proposed: Replace all references to 4 MB or 4.5 MB with 2.88 MiB (23,616 Kb) fabric SRAM.
+  Acknowledge that neither 4 MB nor 4.5 MB has any silicon basis.
 - Resolution status: `needs-human-decision`
 - Record in `status: conflict`: V-01-11
 
 ### C-02 · Affine / Asymmetric Quantization Theoretical Foundation
 - Existing claim: Cites FINN [R01-02] for affine quantization theory `r = S(q - Z)` — `plan.md:58`
-- New verified source: V-06-01, V-06-02 (Jacob et al., CVPR 2018, arXiv:1712.05877 p.3 Equation 1) and V-06-03 (Umuroglu et al., ACM FPGA 2017, arXiv:1612.07119)
-- Analysis: FINN is a framework for Binarized Neural Networks (1-bit XNOR-popcount) and sub-8-bit streaming dataflow. The affine asymmetric zero-point mapping `r = S(q - Z)` and integer-only multiply-shift requantization were formulated by Jacob et al. (CVPR 2018).
-- Resolution proposed: Re-anchor affine quantization citations in the book and plan to Jacob et al. (CVPR 2018), and retain FINN strictly for streaming spatial dataflow principles.
+- New verified source: V-06-01, V-06-02 (Jacob et al., CVPR 2018, arXiv:1712.05877 p.3 Equation 1) and
+  V-06-03 (Umuroglu et al., ACM FPGA 2017, arXiv:1612.07119)
+- Analysis: FINN is a framework for Binarized Neural Networks (1-bit XNOR-popcount) and sub-8-bit
+  streaming dataflow. The affine asymmetric zero-point mapping `r = S(q - Z)` and integer-only
+  multiply-shift requantization were formulated by Jacob et al. (CVPR 2018).
+- Resolution proposed: Re-anchor affine quantization citations in the book and plan to Jacob et al.
+  (CVPR 2018), and retain FINN strictly for streaming spatial dataflow principles.
 - Resolution status: `needs-human-decision`
-- Record in `status: conflict`: none. The conflicting text lives in `plan.md` / `docs/research_notes/`, which protocol rule 7 forbids this directory from editing, so no record here carries a contradicting value.
+- Record in `status: conflict`: none. The conflicting text lives in `plan.md` /
+  `docs/research_notes/`, which protocol rule 7 forbids this directory from editing, so no record here
+  carries a contradicting value.
 
 ### C-03 · MatchboxNet Benchmark Metric
 - Existing text: Mentions WER in the context of MatchboxNet evaluation — `plan.md`
 - New verified source: V-05-01, V-05-02 (Majumdar et al., Interspeech 2020, arXiv:2004.08531)
-- Analysis: MatchboxNet is an isolated keyword spotter / speech command classifier evaluated on Google Speech Commands (12 or 35 classes), reporting top-1 classification accuracy (97.21% - 97.48%). It does not output token sequences and has no Word Error Rate (WER).
-- Resolution proposed: Separate metrics cleanly in the plan: Top-1 Classification Accuracy (%) for KWS (MatchboxNet), and Word Error Rate (WER %) strictly for continuous streaming ASR (Conformer).
+- Analysis: MatchboxNet is an isolated keyword spotter / speech command classifier evaluated on Google
+  Speech Commands (12 or 35 classes), reporting top-1 classification accuracy (97.21% - 97.48%). It
+  does not output token sequences and has no Word Error Rate (WER).
+- Resolution proposed: Separate metrics cleanly in the plan: Top-1 Classification Accuracy (%) for KWS
+  (MatchboxNet), and Word Error Rate (WER %) strictly for continuous streaming ASR (Conformer).
 - Resolution status: `needs-human-decision`
 - Record in `status: conflict`: none, for the same reason as C-02.
 
 ### C-04 · DPUCZDX8G B4096 Resource Footprint on KV260-Class Silicon
-- Existing claim (now withdrawn as evidence): V-04-04 recorded 37,266 LUT / 92,630 FF / 642 DSP / 249.5 BRAM for DPUCZDX8G B4096, attributed to "PG338 Table 11".
-- Why withdrawn: PG338 v4.1 (Release_Date 2023-01-23) contains no Table 11 and no `Resources for Different DSP Usage` caption, and none of 37266 / 92630 / 642 / 249.5 appears anywhere in the document. The numbers cannot be reproduced from the cited revision.
-- Replacement evidence: V-04-07 (PG338 v4.1 Table 1, B4096 on ZCU102: 52161 LUT / 98249 FF / **255 BRAM** / 710 DSP) and V-04-08 (Table 2, UltraRAM variant on ZCU104: 51843 LUT / 98567 FF / 0 BRAM / **68 URAM** / 710 DSP).
-- Feasibility consequence (V-04-09): the B4096 as tabulated **does not fit** ZU5EV / XCK26. 255 BRAM exceeds the 144 available, and 68 URAM exceeds the 64 available; DSP is the only resource with headroom (710 of 1,248).
-- Unresolved sub-question: **which DPU core configuration the KV260 overlay actually ships is established by no record in this directory.** V-04-03 evidences the IP name `DPUCZDX8G`, not the shipped arithmetic configuration. Read it off the running overlay (`dpu-sysfs` resource info, or the DPU XSA used by the PetaLinux rootfs) before any capacity claim in the plan is written as fact.
-- Resolution proposed: strike the V-04-04 figures from any planning arithmetic; treat B4096 as unavailable on KV260 until the shipped configuration is measured; if a specific core count is needed for the book, measure it on hardware.
+- Existing claim (now withdrawn as evidence): V-04-04 recorded 37,266 LUT / 92,630 FF / 642 DSP / 249.5
+  BRAM for DPUCZDX8G B4096, attributed to "PG338 Table 11".
+- Why withdrawn: PG338 v4.1 (Release_Date 2023-01-23) contains no Table 11 and no `Resources for
+  Different DSP Usage` caption, and none of 37266 / 92630 / 642 / 249.5 appears anywhere in the
+  document. The numbers cannot be reproduced from the cited revision.
+- Replacement evidence: the full ladders are now transcribed rather than sampled — V-04-10 (Table 1,
+  Block RAM variant, ZCU102, eight architectures) and V-04-11 (Table 2, UltraRAM variant, ZCU104, eight
+  architectures). The B4096 rows specifically are V-04-07 and V-04-08.
+- Feasibility consequence (V-04-09, re-tiered to T2 on the second pass because a comparison of two
+  records is derived evidence): the B4096 as tabulated **does not fit** ZU5EV / XCK26. 255 Block RAM
+  tiles exceed the 144 available and 68 URAM tiles exceed the 64 available; DSP is the only resource
+  with headroom (710 of 1,248). The largest core of each variant that does fit is B1600 (126 of 144
+  BRAM) and B3136 (64 of 64 URAM, exactly full, so B2304 at 60 is the largest with headroom) — V-04-12.
+- Unresolved sub-question: now its own record. **V-04-13** carries
+  `kv260_shipped_dpu_core_architecture` as `unresolved`, with the primary-source attempts that failed
+  and the mutually inconsistent tier-T5 evidence that remains. V-04-03 evidences the IP name
+  `DPUCZDX8G`, not the shipped arithmetic configuration.
+- Resolution proposed: strike the V-04-04 figures from any planning arithmetic; treat B4096 as
+  unavailable on KV260 until the shipped configuration is measured; if a specific core count is needed
+  for the book, measure it on hardware.
 - Resolution status: `needs-human-decision`
 - Record in `status: conflict`: V-04-04 (kept in place rather than deleted, per protocol rule 6)
+
+### C-05 · Jetson AGX Orin 32 GB DLA TOPS
+- Reading A (92): DS-10662-001v1.8 p.8 states "JAO 32GB: Maximum Operating Frequency: 1.4 GHz | 46 TOPs
+  each (Sparse INT8)" for a 2× NVDLA 2.0 configuration, so 2 × 46 = 92; p.10 states 92 outright.
+- Reading B (98): the same document, p.12, states "JAO 32GB: Up to 98 INT8 Sparse TOPS (Deep Learning
+  Inference)". This is the row V-02-21 quotes.
+- Discriminating evidence: p.7 prints the module total as "Up to 200 Sparse TOPs (INT8)" and the GPU
+  figure as 108. V-02-32 demonstrates for two other SKUs that the module total is the sum of the printed
+  GPU and DLA figures (156 + 92 = 248, 170 + 105 = 275). That additivity holds for the 32 GB SKU under
+  reading A only: 108 + 92 = 200, which is the printed total, while 108 + 98 = 206 appears nowhere in
+  the document.
+- Position of this directory: reading A is better supported and 98 is most likely an editorial slip on
+  p.12 — but the value is **not adopted**, because that would be this directory choosing over a
+  datasheet. Both readings are carried in V-02-33.
+- Also corrected here: the first-pass note on V-02-21 asserted "92 is JAOi" as though that disposed of
+  the 32 GB SKU. It does not. 92 is printed for the 32 GB SKU too, on p.10 and per-engine on p.8. The
+  note has been amended to say so.
+- Resolution proposed: measure DLA throughput on hardware for a 2:4-pruned network at 1.4 GHz, or ask
+  NVIDIA which page is current. Meanwhile quote "92 (datasheet also prints 98 on p.12)".
+- Resolution status: `needs-human-decision`
+- Record in `status: conflict`: V-02-33
 
 ---
 
 ## Unresolved Items
 
-1. **V-02-28 · Project Selected Orin SKU**
+1. **V-04-13 · KV260 shipped DPU core architecture**
+   - Question: which DPUCZDX8G rung the KV260 factory PetaLinux image actually loads.
+   - Reason unresolved: the AMD software-manual deep link
+     `docs.amd.com/r/en-US/ug230-kv260-vision-software-manual/DPU` returns HTTP 404; code search across
+     `org:Xilinx` for DPUCZDX8G returns compiler targets and examples rather than a KV260 designation;
+     PG338 v4.1 names no Kria board. Third-party KV260 files disagree with each other (fingerprint
+     `0x101000056010407` whose tail matches B4096, versus `DPUCZDX8G_ISA1_B3136` at 300 MHz, versus
+     `_B4096` at 325 MHz), all tier T5 and therefore corroborating only under protocol rule 2 — and B4096
+     as tabulated does not fit this device at all (V-04-09), so a B4096 fingerprint needs explaining
+     rather than repeating.
+   - To resolve: read `dpu-sysfs` `resource_info` and the fingerprint on a KV260 running the factory
+     image, or open the DPU XSA the PetaLinux rootfs was built from. This is the one capacity question in
+     the plan that documents cannot settle.
+
+2. **V-02-28 · Project Selected Orin SKU**
    - Question: Which Jetson Orin SKU will be the experimental baseline?
-   - Candidates: Orin Nano 8GB (low cost / edge), Orin NX 16GB (balanced 100 TOPS, 2x DLA), or AGX Orin 64GB (flagship 275 TOPS).
+   - Candidates: Orin Nano 8GB (low cost / edge), Orin NX 16GB (balanced 100 TOPS sparse / 50 dense, 2×
+     DLA), or AGX Orin 64GB (flagship 275 TOPS sparse).
    - Reason unresolved: Requires project hardware decision by authors based on lab kit availability.
 
-2. **V-03-04 · Digilent PMOD I2S2 Retail Price**
+3. **V-03-04 · Digilent PMOD I2S2 Retail Price**
    - Recorded value: none (previously 19.99–24.99 USD, withdrawn — see audit class 5).
-   - Reason unresolved: The quote in the record contained no price, and a re-fetch of the Digilent product page on 2026-09-12 returned HTTP 403. A vendor product page is tier T4, which protocol rule 2 does not admit as a sole source for a volatile retail figure.
-   - To resolve: capture a DigiKey or Mouser order-page quote with its date, or reclassify price as a BOM decision rather than a verification record. The PMOD I2S2 part identity itself remains evidenced by V-03-02 and V-03-03.
-
-3. **V-06-05 · torch.round Tie-Breaking Mode**
-   - Recorded value: none.
-   - Reason unresolved: The PyTorch page formerly relied upon (`torch.ao.quantization.quantize_per_tensor`) returned HTTP 404 in this session, and no live PyTorch text was captured, so no tie-breaking rule is asserted here.
-   - To resolve: read the rule from a live PyTorch page or from ATen's rounding implementation. This is not academic: bit-exact parity between the QAT software path (Brevitas `RoundSte`, evidenced in V-06-04) and an RTL fixed-point pipeline depends on the software tie rule matching whatever `+ (1 << (shift-1))` or truncation the RTL implements.
+   - Reason unresolved: The quote in the record contained no price, and a re-fetch of the Digilent
+     product page on 2026-09-12 returned HTTP 403. A vendor product page is tier T4, which protocol rule 2
+     does not admit as a sole source for a volatile retail figure.
+   - To resolve: capture a DigiKey or Mouser order-page quote with its date, or reclassify price as a BOM
+     decision rather than a verification record. The PMOD I2S2 part identity itself remains evidenced by
+     V-03-02 and V-03-03.
 
 4. **V-07-05 · Published FPGA KWS Comparative Table**
-   - Question: Unified comparative numbers (latency, power, energy/frame, LUT/DSP) across published FPGA speech accelerators on Google Speech Commands.
-   - Reason unresolved: Deferred pending systematic survey across MLPerf Tiny and ACM FPGA/FCCM papers with matching benchmark conditions.
+   - Question: Unified comparative numbers (latency, power, energy/frame, LUT/DSP) across published FPGA
+     speech accelerators on Google Speech Commands.
+   - Reason unresolved: Deferred pending systematic survey across MLPerf Tiny and ACM FPGA/FCCM papers
+     with matching benchmark conditions.
+
+Resolved by the second pass and removed from this list: **V-06-05 · `torch.round` tie-breaking mode**,
+now `verified` against the versioned PyTorch 2.14 URL. The first pass could not re-reach the page and so
+asserted nothing; see the audit note on that record for the redirect-shell problem that caused it.
 
 ---
 
 ## Audit of 2026-09-12
 
-### What the method was
+### What the method was (first review)
 
-Every `verified` record was re-tested with one question: **could the text in `quote` produce the
-number in `value`?** A record fails when its value is arithmetic, a recollection, or a number from a
-different row of the same table. 17 records failed that test; the ones flagged below as false
-positives failed only because their value is legitimately derived or is a citation year.
+Every `verified` record was re-tested with one question: **could the text in `quote` produce the number
+in `value`?** A record fails when its value is arithmetic, a recollection, or a number from a different
+row of the same table. 17 records failed that test; the ones flagged below as false positives failed only
+because their value is legitimately derived or is a citation year.
 
 Where a record failed, the underlying document was fetched again and read directly, in this session:
 
@@ -107,12 +225,13 @@ Where a record failed, the underlying document was fetched again and read direct
   parsed locally with PyMuPDF, so every quoted sentence was read out of the file rather than recalled.
 - `DS986 (v1.3)` Product Details and `PG338 (v4.1)` Resource Utilization — live AMD deep links
   (`docs.amd.com/r/en-US/<slug>/<Section>`; the plain landing pages return only a JS shell).
-- Brevitas `master` — read through the GitHub contents API (`raw.githubusercontent.com` 404s on this repo).
+- Brevitas `master` — read through the GitHub contents API (`raw.githubusercontent.com` 404s on this
+  repo).
 
-Whole-document search was used to prove absence, not just presence: `930.75` and `1301` occur nowhere
-in the 56-page AGX Orin datasheet, and PG338 v4.1 has no Table 11.
+Whole-document search was used to prove absence, not just presence: `930.75` and `1301` occur nowhere in
+the 56-page AGX Orin datasheet, and PG338 v4.1 has no Table 11.
 
-### Defect classes found
+### Defect classes found (first review)
 
 1. **Arithmetic presented as a datasheet reading** — V-02-02, V-02-06, V-02-14, V-02-18. Bus width ×
    data rate was computed (34.1 / 68.2 / 102.4 GB/s) and recorded against a p.1 quote that prints no
@@ -121,52 +240,94 @@ in the 56-page AGX Orin datasheet, and PG338 v4.1 has no Table 11.
    products: 92 is JAOi, 98 is JAO 32GB, 105 is JAO 64GB.
 3. **Numbers that do not exist in the cited document** — V-02-20 (930.75 MHz), V-02-24 (1301 MHz),
    V-04-04 (all four figures). Corrected to 939 MHz and 1.3 GHz from p.7; V-04-04 is C-04.
-4. **Wrong locator for a correct value** — V-02-20, V-02-24 pointed at p.10–11, where the GPU table
-   lists only GPC/TPC and TOPS; core counts are on p.7.
+4. **Wrong locator for a correct value** — V-02-20, V-02-24 pointed at p.10–11, where the GPU table lists
+   only GPC/TPC and TOPS; core counts are on p.7.
 5. **A value with no source inside the record** — V-03-04 (retail price), now `unresolved`.
-6. **A correct value with a partial quote** — V-02-11 (quote widened to show the 15W mode, not only
-   the 25W default), V-05-06 (both WERs now visible in one excerpt).
+6. **A correct value with a partial quote** — V-02-11 (quote widened to show the 15W mode, not only the
+   25W default), V-05-06 (both WERs now visible in one excerpt).
 7. **A fabricated derived quantity** — V-05-05 carried a "0ms rightaway / future context" token that
-   appears in no fetched document. Removed; 640 ms is now labelled as arithmetic on the published
-   chunk size, and right-away latency in milliseconds stays unverified.
+   appears in no fetched document. Removed; 640 ms is now labelled as arithmetic on the published chunk
+   size, and right-away latency in milliseconds stays unverified.
 8. **A claim resting on a quote that supports less than the value** — V-01-02 asserted the exact part
-   `XCZU5EV` from a quote naming only "an AMD Zynq UltraScale+ MPSoC based silicon device". Re-scoped
-   to the family; the part-level identification is now V-01-15, stated as an inference.
+   `XCZU5EV` from a quote naming only "an AMD Zynq UltraScale+ MPSoC based silicon device". Re-scoped to
+   the family; the part-level identification is now V-01-15, stated as an inference.
 9. **An unsourced library behaviour attributed to a tool** — V-06-04 asserted "Round-half-to-even
-   (PyTorch/Brevitas)" on the strength of a `torch.round` page that says nothing about what a QAT
-   library uses. Now evidenced from Brevitas itself; the inherited tie rule is separated out as V-06-05.
-10. **Doc revisions named inaccurately** — V-01-03 … V-01-09 cited "DS890 (v4.9)"; the PDF is v4.10
-    (21 May 2026). Re-read from v4.10; no value changed.
-11. **Markdown broken by the evidence itself** — 26 records contained raw `|` inside `quote`, which
-    split their own table rows mid-sentence. Now escaped at render time.
+   (PyTorch/Brevitas)" on the strength of a `torch.round` page that says nothing about what a QAT library
+   uses. Now evidenced from Brevitas itself; the inherited tie rule is separated out as V-06-05.
+10. **Doc revisions named inaccurately** — V-01-03 … V-01-09 cited "DS890 (v4.9)"; the PDF is v4.10 (21
+    May 2026). Re-read from v4.10; no value changed.
+11. **Markdown broken by the evidence itself** — 26 records contained raw `|` inside `quote`, which split
+    their own table rows mid-sentence. Now escaped at render time.
 
-### Resources the original pass missed
+### Resources the first pass missed
 
-- **V-01-16** — Distributed RAM (LUTRAM): 3.5 Mb = 448 KiB. Not part of the 23,616 Kb budget in
-  V-01-11, and it costs LUTs rather than being free.
-- **V-01-17** — PS On-Chip Memory: 256 KB with ECC. Reachable from the PL over AXI, but not fabric
-  SRAM and not in the DPU address space; keep it out of the weight budget.
+- **V-01-16** — Distributed RAM (LUTRAM): 3.5 Mb = 448 KiB. Not part of the 23,616 Kb budget in V-01-11,
+  and it costs LUTs rather than being free.
+- **V-01-17** — PS On-Chip Memory: 256 KB with ECC. Reachable from the PL over AXI, but not fabric SRAM
+  and not in the DPU address space; keep it out of the weight budget.
 - **V-01-15** — the XCK26 ↔ ZU5EV identification, made explicit as an inference instead of a fact.
-- **V-04-07 / V-04-08 / V-04-09** — the DPU footprint that actually fits on KV260-class silicon,
-  which the B4096 as published does not.
+- **V-04-07 / V-04-08 / V-04-09** — the DPU footprint that actually fits on KV260-class silicon, which
+  the B4096 as published does not.
 
-### Open defect: mirror URLs, not vendor URLs
+### Second pass (same day)
 
-26 records point at third-party mirrors of vendor documents rather than at the vendor host:
-`connecttech.com` (8), `files.waveshare.com` (9), `static.generation-robots.com` (8),
-`hthreads.github.io` (1). **Only 10 of the 26 carry a note saying so.** The 16 that do not are all
-NVIDIA records — V-02-01, V-02-03, V-02-04, V-02-05, V-02-07, V-02-08, V-02-12, V-02-13, V-02-15,
-V-02-16, V-02-17, V-02-19, V-02-23, V-02-25, V-02-27, and V-07-02 — so a reader of those records
-alone cannot tell that the URL is not NVIDIA's own. Replace all 26 with `docs.nvidia.com` /
-`docs.amd.com` URLs before any of this is cited in the book. Writing the caveat note into those 16
-records is deliberately left undone here: it touches records whose evidence is otherwise sound, and
-the approved scope of this pass was to correct evidence that was wrong, not to relabel evidence that
-is merely awkwardly hosted. Three Orin records already point at `docs.nvidia.com` directly. Four
-records point at `raw.githubusercontent.com`, which is canonical for repository content and is fine.
+The first review asked whether a quote could produce its value. The second asked the harder question:
+**where the first review had asserted a convention or a unit, could the document be read to prove it?**
+Four things were settled by reading rather than reasoning, and one of the four overturned the first
+review's own correction.
 
-### What this audit deliberately did not do
+- DS890 v4.10 p.22 Table 23 and p.23 Table 24 re-read, including a package table whose 13 columns
+  interleave unreliably in extracted linear text and had to be located by coordinate extraction.
+- DS-10662-001v1.8 reconciled page by page (p.7 module totals, p.8 DLA engines, p.10 and p.12 tables),
+  which is what turned a suspected typo into C-05.
+- PG338 v4.1 Tables 1 and 2 transcribed in full rather than sampled, giving both variant ladders.
+- `torch.round` re-fetched from the versioned `docs/2.14/` URL after the `/docs/stable/` URL returned only
+  a "Redirecting…" shell — a trap worth knowing: a checker reading the stable URL sees no claim to check.
 
-Per protocol rule 7, nothing was changed in `plan.md`, `plan-v2.md`, or `book/`. Every resolution
-above is `needs-human-decision`. Note that `plan-v2.md` §3.3 currently writes the fabric SRAM figure
-as "3.02 MB", which is the same quantity as 2.8828 MiB in decimal megabytes — the table is not wrong,
-but the unit is ambiguous and C-01 is where that gets settled.
+**What the second pass corrected:** V-01-11, V-01-13, V-01-15, V-02-17, V-02-21, V-04-09, V-05-05,
+V-06-05, V-07-03.
+
+1. **A value assembled from two documents, one of them mis-quoted** — V-01-15 carried DS986's marketing
+   line as its quote while stating DS890's exact numbers (256,200 and 1,248) as its value. The value was
+   right, the quote could not produce it, and the first review missed it because both pages print a
+   number. Split into three records: exact column (V-01-15), marketing vector (V-01-18), and the
+   difference between them (V-01-19).
+2. **A convention asserted instead of solved** — V-01-23 establishes the 36 Kb / 288 Kb tile sizes and
+   the 1024-based Mb column by making two printed numbers come out right, with the KU19P row of DS890
+   Table 9 as a control. V-01-11's note pointed at it instead of resting on the assumption.
+3. **Arithmetic that was real but undeclared** — V-01-13, V-02-17, V-05-05, V-07-03 now carry `arithmetic`
+   clauses in `locator`, which the auditor evaluates rather than admires. Declaring a clause is the only
+   way a record can be exempt from the printed-digit test, so an undeclared derivation looks identical to
+   an unsourced one.
+4. **A derived comparison filed as a datasheet fact** — V-04-09 lowered from T1 to T2. The comparison is
+   unchanged and still holds; the tier was wrong because T1 means a datasheet says it.
+5. **A correction that was itself wrong** — V-02-21's first-pass note asserted "92 is JAOi" and thereby
+   dismissed the 98 it had just recorded for the 32 GB SKU. p.8 and p.10 print 92 for that SKU, and 92 is
+   the only figure that makes the datasheet's own module total work. Both readings now live in V-02-33;
+   the note on V-02-21 is amended. This is the defect the audit method cannot catch about itself: a
+   reviewer who replaces one wrong page with another wrong page.
+6. **Silent mirrors** — the 16 records that pointed at third-party hosts without saying so, plus the 8
+   new records that would have inherited the same silence, are now self-declared. See below.
+
+**What the second pass added:** 18 records — V-01-18 … V-01-23, V-02-29 … V-02-36, V-04-10 … V-04-13.
+
+### Open defect: Mirror URLs, not vendor URLs
+
+34 records point at third-party mirrors of vendor documents rather than at the vendor host:
+`static.generation-robots.com` (12), `files.waveshare.com` (11), `connecttech.com` (10),
+`hthreads.github.io` (1). Every one of them now says so in its `notes` field, which was the second
+acceptance criterion for this pass: a reader can no longer mistake the URL for NVIDIA's own.
+
+**That is acknowledgement, not a fix.** The remaining work is to substitute `docs.nvidia.com` URLs, and
+it is still open because a mirror is a copy of a document this directory cannot verify against the
+original host — the quoted text was read out of the mirror copy, and only a re-fetch from NVIDIA can
+confirm the mirror is unaltered. Four records point at `raw.githubusercontent.com`, which is canonical
+for repository content and is fine. Several already point at `docs.nvidia.com` or `docs.amd.com`
+directly. `make verify-evidence` fails if any mirror record loses its acknowledgement.
+
+### What these audits deliberately did not do
+
+Per protocol rule 7, nothing was changed in `plan.md`, `plan-v2.md`, or `book/`. Every resolution above is
+`needs-human-decision`. Note that `plan-v2.md` §3.3 currently writes the fabric SRAM figure as "3.02 MB",
+which is the same quantity as 2.8828 MiB in decimal megabytes — the table is not wrong, but the unit is
+ambiguous and C-01 is where that gets settled.
