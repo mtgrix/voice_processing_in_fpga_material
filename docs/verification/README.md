@@ -351,7 +351,22 @@ confirm the mirror is unaltered.
 
 The mirrors are not all still there. `connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf`, which
 ten records cite, returned HTTP 403 to a direct fetch on 2026-09-12, so those ten are unreachable from
-any host this directory trusts, and the ambiguity over which revision they hold is C-06. Four records point at `raw.githubusercontent.com`, which is canonical
+any host this directory trusts, and the ambiguity over which revision they hold is C-06.
+
+**Substituting a vendor URL is not always possible, and that is now measured rather than assumed.**
+V-04-02 cites the Vivado installation disk table for **2024.1**. The revision-pinned vendor path
+`xilinx.com/support/documents/sw_manuals/xilinx2024_1/ug973-vivado-release-notes-install-license.pdf`
+answers HTTP 404, while the same pattern for `xilinx2022_2` serves a 2,885,302-byte PDF — so the path
+convention is right and AMD simply no longer publishes that revision there. `docs.amd.com` resolves the
+guide only to UG973 **2026.1**, and `adaptivesupport.amd.com` requires a login. A 2024.1 figure pointed at
+a 2026.1 URL would look vendor-backed and not be, so the mirror stays with its reason written into the
+record.
+
+**A trap for whoever finishes this list:** `docs.amd.com` returns HTTP 200 with the same 2,575-byte
+JavaScript shell for every path, including paths that name no document at all. A 200 from that host proves
+nothing about whether a page exists. Content has to be confirmed as rendered text, which is how the DS986
+and PG338 deep links in this directory were read, and a bare status code must never be recorded as a
+successful fetch. Four records point at `raw.githubusercontent.com`, which is canonical
 for repository content and is fine. Several already point at `docs.nvidia.com` or `docs.amd.com`
 directly. `make verify-evidence` fails if any mirror record loses its acknowledgement.
 
