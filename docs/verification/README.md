@@ -3,28 +3,32 @@
 This directory contains primary-source evidence collected per `docs/WEB_SEARCH_PROTOCOL.md` to resolve
 hardware and model parameter questions in `plan-v2.md`.
 
-Four passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
+Five passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
 The second pass went the other way: it re-read the underlying documents to settle what the first review
 had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. The third pass
 audited provenance fields instead of values: it tiered three derived quantities as derived, titled three
 records that had no title, and raised a sixth conflict about which revision of one NVIDIA datasheet ten
-records actually cite. See [Audit of 2026-09-12](#audit-of-2026-09-12).
+records actually cite. The fourth pass tested whether the vendor hosts those documents at all;
+for the Orin NX datasheet it does, and re-pointing eleven records at NVIDIA's own copy moved
+nine quotations, two page locators and two values. See
+[Audit of 2026-09-12](#audit-of-2026-09-12).
 
 **No record here is marked done or final; nothing in this directory has been applied to `plan.md`,
 `plan-v2.md`, or `book/`.**
 
 ## Summary
 
-- **Total Records:** 96
-- **Verified:** 89
+- **Total Records:** 101
+- **Verified:** 94
 - **Unresolved:** 4
 - **Conflict (records in `status: conflict`):** 3
-- **Conflicts registered:** 6 (C-01 … C-06; three of them concern repository text or record provenance
+- **Conflicts registered:** 7 (C-01 … C-07; three of them concern repository text or record provenance
   rather than a contested value, so they carry no `status: conflict` record — see
   [Conflicts](#conflicts))
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.3.0, `generated_utc`
-  2026-09-12T15:05:00Z, includes an `audit` block describing the two value-level passes)
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.4.0, `generated_utc`
+  2026-09-12T16:20:00Z, includes an `audit` block describing the two value-level passes and the
+  two provenance passes)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
 
@@ -185,11 +189,47 @@ other number in a vendor page should be able to see why it differs.
   and V-02-34 carry the TOPS ladder and the 2133 MHz unit reading.
 - Position of this directory: both identities are kept, per protocol rule 6. Retiring one is a
   substitution, not a correction, and no record may be edited to make a provenance question disappear.
-- Resolution proposed: fetch DS-11105-001 from `docs.nvidia.com`, read its cover, and set all ten records
-  to the revision NVIDIA prints. If the vendor cover carries a revision, Identity B's note becomes wrong
+- Resolution proposed: fetch DS-11105-001 from its vendor host, read its cover, and set all ten
+  records to the revision NVIDIA prints. **Measured 2026-09-12, and the route is not open:** the
+  vendor equivalent of this document is
+  `https://developer.nvidia.com/downloads/jetson-orin-nano-series-data-sheet`, which answers 302
+  to `/login` — the host is `developer.nvidia.com`, not the `docs.nvidia.com` this section first
+  assumed, and settling C-06 now needs an authenticated fetch or someone with NVIDIA access. If the vendor cover carries a revision, Identity B's note becomes wrong
   about the vendor document and must be amended to say it was true only of the mirror copy.
 - Resolution status: `needs-human-decision`, though a vendor fetch rather than a judgement unblocks it —
   once the NVIDIA copy is readable the choice is mechanical.
+
+### C-07 · Which Operating Point of the Orin NX the Book May Assume
+- What the mirror (DS-10712-001_v1.0) printed, and what every one of these records was built on: the
+  8 GB GPU tops out at 765 MHz and the 16 GB at 918 MHz; AI performance is 100 sparse / 50 dense INT8
+  TOPS (16 GB) and 70 / 35 (8 GB); the mode lists are 10W, 15W, 20W and 10W, 15W, 25W.
+- What the vendor (DS-10712-001_v1.7) prints: **all of those numbers, unchanged**, in a first column.
+  Beside it stands a second column headed `MAXN_SUPER`, which prints 1,173 MHz on the Ampere GPU for
+  both SKUs, 1,229 MHz on the DLA (80 TOPS on 16 GB, 40 TOPS on 8 GB), 157 sparse / 78 dense INT8 TOPS
+  for the 16 GB and 117 / 58 for the 8 GB, and a fourth module mode of 40W. `MAXN_SUPER` additionally
+  requires an 8V-20V supply where the module otherwise accepts 5V-20V.
+- Why this is a conflict rather than an addition: the contested word is *maximum*. V-02-12 and V-02-16
+  are records of a maximum operating frequency, and V-02-15 and V-02-19 of a power-mode list. Each was
+  complete for the document it cited and each is incomplete for the module. Two records that cannot
+  both be true of the hardware are being kept, per protocol rule 6.
+- What is at stake for this project is the roofline, not a footnote. `plan-v2.md` takes 100 sparse INT8
+  TOPS as the Orin NX ceiling, and V-07-02 divides 50 dense TOPS by 102 GB/s to get a ridge point of
+  490.2 OP/byte. Under `MAXN_SUPER` the same division takes 78 TOPS over 102 GB/s, which is 764.7
+  OP/byte. A chapter that tells a reader "Orin becomes compute-bound above roughly 490 OP/byte" is
+  wrong by half for a profile it never names, and the port's whole premise — that a batch-of-one voice
+  pipeline sits far below the ridge point — is stated in those units.
+- Position of this directory: nothing is chosen. The eleven records that moved to the vendor keep their
+  values and now name their profile in `conditions`; the five `MAXN_SUPER` figures are recorded as
+  **V-02-37 … V-02-41** rather than substituted for anything.
+- Resolution proposed: a human picks the operating point the book's arithmetic uses. `MAXN` is the
+  defensible default for a portable voice product, because 40W and an 8V rail are exactly what a
+  battery-powered carrier cannot promise, and because nvpmodel as read in the r36.4.4 guide names modes
+  only up to 20W and 25W. Whichever is picked, `plan-v2.md` and the chapter 7 arithmetic must then be
+  restated against it, and that is protocol rule 7 territory.
+- Resolution status: `needs-human-decision`
+- Records involved: V-02-12, V-02-13, V-02-15, V-02-16, V-02-17, V-02-19, V-02-30, V-02-36, V-07-02,
+  V-02-37, V-02-38, V-02-39, V-02-40, V-02-41
+
 
 ---
 
@@ -339,13 +379,14 @@ V-06-05, V-07-03.
 
 ### Open defect: Mirror URLs, not vendor URLs
 
-34 records point at third-party mirrors of vendor documents rather than at the vendor host:
-`static.generation-robots.com` (12), `files.waveshare.com` (11), `connecttech.com` (10),
-`hthreads.github.io` (1). Every one of them now says so in its `notes` field, which was the second
+23 records point at third-party mirrors of vendor documents rather than at the vendor host:
+`static.generation-robots.com` (12), `connecttech.com` (10), `hthreads.github.io` (1). Eleven
+that cited `files.waveshare.com` for the Orin NX datasheet moved to NVIDIA's own copy on
+2026-09-12; see [the fifth pass](#fifth-pass-the-orin-nx-records-moved-to-the-vendor-same-day). Every one of them now says so in its `notes` field, which was the second
 acceptance criterion for this pass: a reader can no longer mistake the URL for NVIDIA's own.
 
-**That is acknowledgement, not a fix.** The remaining work is to substitute `docs.nvidia.com` URLs, and
-it is still open because a mirror is a copy of a document this directory cannot verify against the
+**That is acknowledgement, not a fix.** The remaining work is to substitute `developer.nvidia.com`
+URLs, and it is still open because a mirror is a copy of a document this directory cannot verify against the
 original host — the quoted text was read out of the mirror copy, and only a re-fetch from NVIDIA can
 confirm the mirror is unaltered.
 
@@ -369,6 +410,58 @@ and PG338 deep links in this directory were read, and a bare status code must ne
 successful fetch. Four records point at `raw.githubusercontent.com`, which is canonical
 for repository content and is fine. Several already point at `docs.nvidia.com` or `docs.amd.com`
 directly. `make verify-evidence` fails if any mirror record loses its acknowledgement.
+### Fifth pass: the Orin NX records moved to the vendor (same day)
+
+The mirror defect kept asking a question nobody had tested: does NVIDIA host these PDFs where this
+directory can reach them? For the Orin NX datasheet the answer turned out to be yes, and testing it
+changed the records rather than just their URLs.
+
+- **The fetch.** `https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet`
+  answers 302 to a token-bearing URL on `developer.download.nvidia.com`, which serves HTTP 200,
+  `application/pdf`, 753,138 bytes, 56 pages, cover stamped `DS-10712-001_v1.7 | February 2026`. The
+  signed URL expires, so all eleven records cite the `developer.nvidia.com` form. Note that the
+  original instruction for this defect named `docs.nvidia.com`, which is not where this document
+  lives: `VENDOR_HOSTS` in `audit_claims.py` now lists `developer.nvidia.com` and
+  `developer.download.nvidia.com` beside it.
+- **Three of the eleven quotations did not survive the move**, and not because the values were wrong.
+  Nine of the eleven v1.0 quotations do not appear as text in v1.7 at all. V-02-12 for instance
+  "quoted" `ONX 8GB: Maximum Operating Frequency: 765 MHz`, which is a reconstruction of a table row:
+  the vendor table prints the label `Maximum Operating Frequency (up to):` on one line and the bare
+  cell `765 MHz` several lines away, with the SKU name in a third place. Every quote now in these
+  records was checked cell by cell against the vendor text layer, and each printed page in each
+  locator is the page that cell actually appears on (the PDF page is the printed page plus six).
+- **Two locator defects and one value defect were found by that check.** The power-mode list is printed
+  on p.3, not p.1 (V-02-15, V-02-19). The DLA table moved from p.1 to p.2 between revisions (V-02-13,
+  V-02-17). V-02-17 had been read as printing "20 TOPS each"; v1.7 prints 40 TOPS for the `2x NVDLA`
+  configuration and no per-engine figure anywhere, so the per-engine number is now declared arithmetic
+  (`40 / 2 = 20`) instead of presented as a datasheet reading.
+- **Two values changed.** Both mode lists gained a fourth entry, 40W (`MAXN_SUPER`). That is the
+  visible half of C-07.
+- **The document does not explain itself.** v1.7's Revision History table stops at v1.1, December 8
+  2023. Nothing in the PDF says what arrived in v1.2 through v1.7, so the only way to learn what the
+  vendor added was to diff it, which is what this pass did for the pages these records cite.
+- **A convention made explicit, because it was implicit and that cost nine quotes.** Prose quotations
+  are verbatim substrings. Table quotations join cells with `" | "`, because a PDF text layer emits one
+  cell per line and a table row can therefore never be a substring of extracted text. The check has to
+  be per cell, and a single substring test over a whole table quote is not evidence of anything.
+- **A near-miss, stated plainly because it is a hole in the suite.** The script that moved these
+  records first left nine of them naming `DS-10712-001_v1.0` in `doc_id` while pointing at NVIDIA's
+  v1.7 file: a record reading as though the older revision backs a newer quotation.
+  `make verify-evidence` passed it, and it cannot do otherwise. `doc_id` is free text, the URL is now
+  a vendor host so the mirror rule is satisfied, and every value token still appears in the quote. The
+  mismatch surfaced only by reading the rendered table. This is the same gap the third pass recorded as
+  the `doc_id` loophole, and it argues for the same fix: a structured revision field that the locator,
+  the URL and a check can all agree on.
+
+- **What did not move, and why the count is 23 rather than 0.** The Orin Nano vendor path
+  `.../downloads/jetson-orin-nano-series-data-sheet` resolves but answers 302 to `/login`, so the ten
+  `connecttech.com` records cannot be re-read anonymously. For DS-10662-001v1.8 no download slug could
+  be derived: four `developer.nvidia.com` candidates answer 404 while the NX and Nano slugs resolve.
+  Recording a guess's 404 as "NVIDIA does not publish this" would be a fabrication, so the twelve
+  `generation-robots.com` records stay mirrored with the measurement in their notes, and
+  `hthreads.github.io` (V-04-02) stays as settled in the third pass. All 23 still say they are mirrors;
+  `make verify-evidence` fails if one stops saying so.
+
 
 ### Third pass: provenance hygiene (same day)
 
@@ -383,6 +476,8 @@ describing the value* mean what they claim, across the 96 records as they now st
 - **Three records had an empty `title`.** V-02-36, V-04-12 and V-04-13 rendered a heading with nothing
   but a document number to identify the source. Filled, and V-04-12's title now says it is a derivation.
 - **One document-identity conflict raised: C-06.** Ten records cite one URL under two revisions.
+  (The fifth pass raised C-07 and took the T1 count from 55 to 60 by adding five records, so the
+  tier figures in the bullets above are as of this pass, not as of the final file.)
 - **A convention this pass chose not to change:** six records carry prose in `doc_id`
   (`"Derived from DS987 (v1.2)"`, `"Derived from V-04-10, V-04-11, ..."`). `audit_claims.py` reads
   `doc_id` as evidence text when hunting for a printed number, so a record id sitting in that field
