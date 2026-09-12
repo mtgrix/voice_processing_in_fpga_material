@@ -8,6 +8,7 @@ comparing streaming execution against full-batch offline execution.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast, overload
 
 import numpy as np
 
@@ -23,13 +24,29 @@ class AudioConfig:
     f_max: float = 8000.0
 
 
-def hz_to_mel(hz: float) -> float:
-    """Convert Hz frequency to Mel scale."""
+@overload
+def hz_to_mel(hz: float) -> float: ...
+
+
+@overload
+def hz_to_mel(hz: np.ndarray) -> np.ndarray: ...
+
+
+def hz_to_mel(hz: float | np.ndarray) -> float | np.ndarray:
+    """Convert Hz frequency to Mel scale. Accepts a scalar or an array of frequencies."""
     return 2595.0 * np.log10(1.0 + hz / 700.0)
 
 
-def mel_to_hz(mel: float) -> float:
-    """Convert Mel scale frequency to Hz."""
+@overload
+def mel_to_hz(mel: float) -> float: ...
+
+
+@overload
+def mel_to_hz(mel: np.ndarray) -> np.ndarray: ...
+
+
+def mel_to_hz(mel: float | np.ndarray) -> float | np.ndarray:
+    """Convert Mel scale frequency to Hz. Accepts a scalar or an array of mel values."""
     return 700.0 * (10.0 ** (mel / 2595.0) - 1.0)
 
 
@@ -73,7 +90,8 @@ class StreamingAudioPreprocessor:
         fft_complex = np.fft.rfft(windowed, n=self.config.n_fft)
         power_spectrum = np.abs(fft_complex) ** 2
         mel_energy = np.dot(self.mel_fb, power_spectrum)
-        return np.log(np.maximum(mel_energy, 1e-6))
+        # np.dot returns Any under the installed NumPy stubs.
+        return cast("np.ndarray", np.log(np.maximum(mel_energy, 1e-6)))
 
     def feed_and_compute(self, hop_samples: np.ndarray) -> np.ndarray:
         """Slide buffer by hop_length, insert new hop samples, and compute log-mel features."""
