@@ -59,10 +59,12 @@ khối lượng công việc của cuốn sách này.
 ## Chương 4: Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu
 
 **Trọng tâm:** Tài nguyên thật của ZU5EV và hệ quả của nó lên bài toán chứa trọng số.
-**Nghiệm thu (chặng 4):** Bảng tài nguyên đã verify trong `docs/DATASHEET_VERIFICATION.md`, mọi ô có
-trang datasheet. Số phải dạy: SRAM fabric **23 616 Kb = 2.88 MiB**, **3.13 MiB** nếu tính cả 256 KB
-PS OCM (`V-01-11`). Hệ quả bắt buộc của §3.3: một Conformer 10–30 M tham số **không** nằm trọn trong
-chip kể cả ở INT4, nên sách phải tách **hai chương trình** — KWS vừa chip, ASR không vừa.
+**Nghiệm thu (chặng 4):** `docs/DATASHEET_VERIFICATION.md` — file này **chưa tồn tại**, §7 lập ra để
+  chứa bảng tài nguyên ZU5EV mà mỗi ô phải ghi rõ trang datasheet. Gate của chặng này chưa vượt qua.
+  Số đã verify của chương này hiện nằm trong `docs/verification/` (hồ sơ `V-01-*`), không phải trong
+  file đó. Số phải dạy: SRAM fabric **23 616 Kb = 2.88 MiB**, **3.13 MiB** nếu tính cả 256 KB PS OCM
+  (`V-01-11`). Hệ quả bắt buộc của §3.3: một Conformer 10–30 M tham số **không** nằm trọn trong chip
+  kể cả ở INT4, nên sách phải tách **hai chương trình** — KWS vừa chip, ASR không vừa.
 
 ## Chương 5: So sánh Các Phương pháp luận Tăng tốc trên FPGA
 
