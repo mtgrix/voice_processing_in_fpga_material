@@ -435,9 +435,33 @@ Không đủ 3 vòng thì claim phải viết dưới dạng `⚠ CHƯA CHỨNG 
 
 ### 9.2 ★ Cách ly dữ liệu bịa — blocker nghiêm trọng nhất
 
-`capstone/voice_edge_benchmark/benchmark_runner.py::build_default_benchmark_suite()` trả về **4 kết quả viết tay** (Orin Nano FP16 2.15 ms/8.8 W/97.4 %/52.8 FPS/W; Orin INT8 1.45 ms/8.2 W/97.2 %/84.1; KV260 DPU 1.10 ms/4.8 W/97.1 %/189.4; KV260 FINN 0.48 ms/3.9 W/96.9 %/534.2) với docstring *"reference comparative data reflecting empirical publications"*, và `__main__` in ra dưới nhãn **"Academic Benchmark Matrix"**. `tests/test_audio_pipeline.py` **assert trên chính các số đó**.
+**Trạng thái 2026-09-13: đã cách ly, hai mục vẫn mở.** Nguyên văn bản gốc được giữ bên dưới, vì
+`plan-v2.md` là lịch sử của quyết định; xoá một tuyên bố sai mà không để lại dấu vết thì người đến
+sau không biết nó sai ở đâu. Bản gốc viết ở `e816928`, khi ấy nó đúng.
 
-Đây là con đường ngắn nhất phá huỷ cả mục tiêu xuất bản lẫn uy tín cá nhân, và nó đang **xanh đèn trong CI**. Sửa bắt buộc:
+> `capstone/voice_edge_benchmark/benchmark_runner.py::build_default_benchmark_suite()` trả về **4 kết quả viết tay** (Orin Nano FP16 2.15 ms/8.8 W/97.4 %/52.8 FPS/W; Orin INT8 1.45 ms/8.2 W/97.2 %/84.1; KV260 DPU 1.10 ms/4.8 W/97.1 %/189.4; KV260 FINN 0.48 ms/3.9 W/96.9 %/534.2) với docstring *"reference comparative data reflecting empirical publications"*, và `__main__` in ra dưới nhãn **"Academic Benchmark Matrix"**. `tests/test_audio_pipeline.py` **assert trên chính các số đó**.
+>
+> Đây là con đường ngắn nhất phá huỷ cả mục tiêu xuất bản lẫn uy tín cá nhân, và nó đang **xanh đèn trong CI**. Sửa bắt buộc:
+
+Trạng thái thật của code, đọc tại `54e2537`, không suy luận từ tên hàm:
+
+| Mục | Yêu cầu | Trạng thái |
+|---|---|---|
+| 1 | Đổi tên hàm, docstring nêu rõ không đo | **Xong.** `synthetic_demo_fixture()` tại `benchmark_runner.py:88`; docstring `SYNTHETIC PLACEHOLDER, not measured, never cite` tại `:89` |
+| 2 | Trường `provenance`, mọi hàm xuất phải in nhãn | **Xong.** `Provenance = Literal["synthetic","measured"]` tại `:22`, mặc định `"synthetic"` tại `:46`; `generate_pareto_table()` mở đầu bằng `SYNTHETIC_BANNER` và thêm cột `Provenance` tại `:59-66`; `export_json()` giữ `provenance` từng hàng tại `:81` |
+| 3 | `__main__` không được in "Academic Benchmark Matrix" | **Xong, và chặt hơn yêu cầu.** `tests/test_audio_pipeline.py:52` assert chuỗi đó không còn xuất hiện, `:54` assert cả tên `build_default_benchmark_suite` cũng biến mất. `__main__` in `SYNTHETIC_BANNER` rồi nhãn `demo fixture` tại `:174-177` |
+| 4 | Test chỉ assert cấu trúc, thêm `pytest.mark.skipif` khi chưa có log đo | **Một nửa.** Chỉ assert cấu trúc: xong (`:31-35`, `:47`). `skipif`: `grep -rn skipif tests/` không trả về gì |
+| 5 | Gate từ chối ✅ nếu thiếu log thô tương ứng **có checksum** | **Cơ chế sai, không phải chưa có.** Gate tồn tại: `check_result_markers_have_logs()` tại `verify_integrity.py:101`, nhưng nó kiểm `results/` có rỗng hay không chứ không kiểm log *của chính hàng đó*, và `grep -rn -iE 'checksum' scripts/` trả về không. Theo dõi tại Issue #18 |
+
+Bốn hàng số bịa **vẫn nằm trong repo** tại `benchmark_runner.py:105-111` (`2.15 ms`, `8.8 W`,
+`97.4 %`). Chúng được gắn nhãn chứ không bị xoá, và đó là lựa chọn có chủ đích: fixture còn nuôi test
+cấu trúc. Cái bị cấm là trích số, nên `book/TOC.md` đã liệt `97.4 %` vào danh sách số không được phép
+xuất hiện trong sách.
+
+Câu "nó đang **xanh đèn trong CI**" giờ sai theo cách đáng đọc nhất: CI xanh không phải vì số liệu được
+xác minh, mà vì test assert sự **vắng mặt** của các tên cũ. Một lần xanh đèn chỉ là bằng chứng cho đúng
+điều mà test kiểm, và đó là lý do mục 5 phải sửa thành gate theo hàng.
+
 
 1. Đổi tên → `synthetic_demo_fixture()`, docstring nêu **rõ** "SYNTHETIC PLACEHOLDER — not measured, never cite".
 2. Thêm trường `provenance: Literal["synthetic","measured"]` vào `HardwareBenchmarkResult`; mọi hàm xuất (JSON, Pareto table) **phải in nhãn** theo trường này.
@@ -536,7 +560,7 @@ Mỗi artefact: repo công khai, tag, một bài viết ngắn mô tả *điều
 | Không BOM, không dev host, không an toàn phần cứng | §8.1, §8.2 |
 | XPE có thể bị dùng làm số đo | §8.3 — đo tại wall, báo chênh với ước lượng |
 | Thiếu `brevitas` dù TOC yêu cầu | §8.4 |
-| Benchmark bịa, test assert lên số bịa, CI xanh | §9.2 — cách ly + provenance field + gate |
+| Benchmark bịa, test assert lên số bịa, CI xanh | §9.2 — cách ly + provenance đã xong ở `4177260`; còn gate theo hàng và `skipif`, Issue #18 |
 | 5 vs 10 chương, file untracked, không test nào bắt được | §9.3 — 10 canonical + `test_plan_consistency.py` + `make gate` |
 | Prefix `R01-` không mở rộng được; source→note rối | §9.4 — `S<NNN>` + `claims_supported` |
 | Đánh số đụng nhau; "định lý" không chứng minh; thuật ngữ không mở rộng | §9.5 |
@@ -554,7 +578,7 @@ Mỗi artefact: repo công khai, tag, một bài viết ngắn mô tả *điều
 | "10–30 M tham số" cho Conformer | `plan.md` tự nêu | Paper đã công bố, chỉ rõ variant |
 | "10W–25W" của Orin | `plan.md` nêu; note R01 lại nói idle 3–7 W | Đo tại wall, có metadata |
 | 80–90 % DSP, 75–87 % BW, 50 % BW | Không dẫn xuất | Phép tính trong `docs/roofline/` hoặc xoá |
-| 4 hàng benchmark trong `capstone/` | **Số bịa** | Không có nguồn — phải cách ly (§9.2) |
+| 4 hàng benchmark trong `capstone/` | **Số bịa, đã cách ly và có nhãn** (§9.2, `4177260`) | Không có nguồn — vẫn cấm trích; gate đang sửa ở Issue #18 |
 
 ## PHỤ LỤC C — Đường bổ túc tiên quyết
 
