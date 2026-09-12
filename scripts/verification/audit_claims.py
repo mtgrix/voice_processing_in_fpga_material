@@ -15,6 +15,8 @@ Checks
     4. sourcing     a verified record needs a URL, a T1/T2 record needs a locator, and a
                     record hosted on a third-party mirror must say so in its notes.
     5. consistency  README summary counts match the JSON, and each record has exactly one
+    6. units        every record's unit is a registered term, and the registry holds:
+                    a canonical has a kind, and none folds kilobits in with kilobytes.
                     heading among the markdown files.
 """
 
@@ -40,12 +42,17 @@ from claims_lib import (
     RECORD_FIELDS,
     STATUSES,
     TIERS,
+    UNIT_KINDS,
+    UNIT_TERMS,
     arithmetic_clause,
     file_of,
     load_claims,
+    memory_side,
     numeric_tokens,
     parse_record_id,
     records,
+    spellings_for,
+    unit_canonical,
 )
 
 #: Hosts that are not the publisher of the document they serve. Pointing at one is
@@ -285,6 +292,71 @@ def check_headings(recs: list[dict[str, Any]], fails: list[str]) -> None:
             fails.append(f"consistency: heading {dup} appears {how_many} times")
 
 
+def check_units(recs: list[dict[str, Any]], fails: list[str]) -> int:
+    """Every record's unit must be a registered term, and the registry must not lie.
+
+    The first rule is the one Issue #25 exists for. Until now the unit field was free text
+    that no check read, so a wrong label sitting beside right arithmetic passed every gate
+    in the repository; relabelling V-01-13 from GB/s to banana changed nothing. The rest of
+    the function keeps the vocabulary itself honest, because a registry that drifts from the
+    data is a second unsourced list rather than a fix: canonicals need kinds, kinds need to
+    be one of the two named values, no canonical may fold a bit term together with a byte
+    term, and no term may stay registered once the last record using it is gone.
+
+    Returns the number of canonical terms actually in use.
+    """
+    used: set[str] = set()
+    seen: set[str] = set()
+    for rec in recs:
+        rid = str(rec.get("id"))
+        unit = str(rec.get("unit") or "")
+        seen.add(unit)
+        canonical = unit_canonical(unit)
+        if canonical is None:
+            lookalikes = sorted(u for u in UNIT_TERMS if u.lower() == unit.lower())
+            hint = f"; this name is registered as {lookalikes}" if lookalikes else ""
+            fails.append(
+                f"units: {rid} carries the unregistered unit {unit!r}{hint} -- add it to "
+                f"claims_lib.UNIT_TERMS with a canonical and a kind, or correct the record"
+            )
+            continue
+        used.add(canonical)
+    for spelling, canonical in sorted(UNIT_TERMS.items()):
+        if canonical not in UNIT_KINDS:
+            fails.append(
+                f"units: {spelling!r} folds to {canonical!r}, which has no kind -- a term whose"
+                f" dimension is unstated cannot be compared against anything, which is the gap"
+                f" this check exists to close"
+            )
+    for canonical in sorted(UNIT_KINDS):
+        kind = UNIT_KINDS[canonical]
+        if kind not in ("dimension", "descriptor"):
+            fails.append(
+                f"units: canonical {canonical!r} has kind {kind!r}, which is neither "
+                f"dimension nor descriptor"
+            )
+        spellings = spellings_for(canonical)
+        if not spellings:
+            fails.append(
+                f"units: canonical {canonical!r} is registered but no spelling folds to it"
+            )
+            continue
+        sides = {s for s in (memory_side(u) for u in spellings) if s is not None}
+        if len(sides) > 1:
+            fails.append(
+                f"units: canonical {canonical!r} folds the spellings {spellings} together "
+                f"across {sorted(sides)} -- bits and bytes are a factor of eight apart and "
+                f"may not share a term"
+            )
+    for spelling in sorted(UNIT_TERMS):
+        if spelling not in seen:
+            fails.append(
+                f"units: {spelling!r} is registered but no record uses it -- a term nobody "
+                f"depends on cannot be checked, and it lets a future wrong label pass"
+            )
+    return len(used)
+
+
 def main() -> int:
     """Run every check and report."""
     if not CLAIMS_PATH.exists():
@@ -297,6 +369,7 @@ def main() -> int:
     mirrors = check_sourcing(recs, fails)
     derived = check_traceability(recs, fails)
     statements = check_arithmetic(recs, fails)
+    unit_terms = check_units(recs, fails)
     check_readme(recs, fails)
     check_headings(recs, fails)
 
@@ -313,6 +386,9 @@ def main() -> int:
     )
     print(f"third-party mirrors     {len(mirrors)}")
     print(f"declared arithmetic     {derived} records, {statements} statements recomputed")
+    print(
+        f"unit vocabulary         {len(UNIT_TERMS)} spellings, " + f"{unit_terms} canonicals in use"
+    )
     if fails:
         print(f"\nFAIL: {len(fails)} problem(s)", file=sys.stderr)
         for line in fails:
