@@ -81,7 +81,7 @@ Trước khi chạm vào bất kỳ file RTL nào, người học phải **nghe 
 | Băng thông DRAM danh định | ⚠ GB/s | Datasheet + **đo thực** bằng STREAM-like benchmark |
 | DLA có hay không, mấy nhân | ⚠ | `nvpmodel -q`, `/proc/device-tree` |
 | JetPack / L4T / CUDA / TensorRT | ⠓ pin chính xác | `cat /etc/nv_tegra_release`, `nvcc --version`, `dpkg -l \| grep -i tensorrt` |
-| Chế độ nguồn khi đo | ⚠ chốt 1 `nvpmodel` + `jetson_clocks` | Ghi vào metadata mọi log |
+| Chế độ nguồn khi đo | **`MAXN`** — chủ repo chốt 2026-09-12, đóng C-07. Vẫn phải chốt 1 `nvpmodel` cụ thể + `jetson_clocks` | Ghi vào metadata mọi log. `MAXN_SUPER` (40W, rail 8V) vẫn là bằng chứng hợp lệ ở V-02-37…V-02-41 nhưng **không phải** mức sách tính toán |
 
 > **Quy tắc:** mọi con số hiệu năng trong sách/paper phải kèm `(SKU, nvpmodel, JetPack version, ambient)`. Không có 4 thành phần đó thì số không được phép xuất hiện.
 
@@ -94,7 +94,7 @@ Trước khi chạm vào bất kỳ file RTL nào, người học phải **nghe 
 | LUT / FF / DSP48E2 / BRAM36 / URAM288 | ⚠ từng ô | **DS891 datasheet + `report_utilization` sau tổng hợp** |
 | On-chip SRAM tổng | ⚠ **xem 3.3 — repo đang sai** | DS891, tính từ block count × dung lượng/block |
 | DDR loại/băng thông | ⚠ | DS891 + `ddr_test`/example design |
-| vào âm thanh bằng đường nào | ⚠ USB audio / UBB expansion / I2S-PDM qua PL | `ug1089` mục carrier card + `arecord -l` |
+| vào âm thanh bằng đường nào | **I2S/PDM qua carrier (PL)**, dạy tường minh cả phần carrier — chủ repo chốt 2026-09-12, giữ KV260. USB audio (PS) bị loại làm đường chính vì nó vòng qua PL, biến chương FPGA thành bài toán tính toán thuần không còn mic ở fabric | `ug1089` mục carrier card + `arecord -l` (⚠ chưa verify) |
 | Vivado / Vitis / Vitis AI / PetaLinux | ⠓ pin chính xác | `vivado -version`, `petalinux-version` |
 
 ### 3.3 Lỗi dung lượng nhớ on-chip — phải sửa trước khi dùng lại
@@ -145,7 +145,7 @@ Phải chốt, và phải tái lập được khi **không cắm micro**:
 |---|---|---|
 | Nguồn tín hiệu | File WAV nhúng trong repo (canonical) **và** micro thật (validation) | Mọi số so sánh được lấy từ WAV; micro chỉ dùng cho demo |
 | Micro | ⚠ loại, sample rate danh định, gain | Sai sample rate ⇒ lệch phổ ⇒ accuracy sai mà không ai biết |
-| Giao diện | USB audio (PS) / I2S-PDM qua UBB (PL) | Chọn PDM-qua-PL thì phải có CIC decimation trong RTL |
+| Giao diện | **I2S-PDM qua carrier (PL)** — chốt 2026-09-12. USB audio (PS) xuống hàng dự phòng | Đường đã chọn là PDM-qua-PL, nên **bắt buộc** có CIC decimation trong RTL: đây là lý do tầng thu âm trở thành nội dung FPGA, không phải lý do để đổi sang USB cho khỏe |
 | Clock | ⚠ master clock ở đâu, có CDC không | Đây là nguồn bug "chạy được trên sim, hỏng trên board" số 1 |
 | Determinism | Phát file WAV qua `sox`/loopback, **không** thu trực tiếp | Không có bước này thì không có run nào tái lập được |
 
@@ -156,11 +156,28 @@ Phải chốt, và phải tái lập được khi **không cắm micro**:
 | Chặng | Tác vụ | Mô hình ứng viên | Vì sao chọn |
 |---|---|---|---|
 | 4–6 | **KWS** (12–35 nhãn) | MatchboxNet / SpeechCommands1 v2 | Đủ nhỏ để vào hết BRAM ⇒ chứng minh được đường RTL + bit-exact trước khi mơ lớn |
-| 8–10 | **Streaming ASR** | Streaming Conformer đã công bố, có checkpoint mở | Có WER để so; có rightaway/future-context để vẽ đường accuracy-vs-latency |
+| 8–10 | **Streaming ASR** | **NeMo Conformer-Transducer `small`, loại streaming, checkpoint mở** — chốt 2026-09-12 | Có WER để so; có right-context để vẽ đường accuracy-vs-latency; NVIDIA có đường deploy trên Jetson nên baseline Orin không phải tự viết |
 
 **Sửa lỗi phân loại nghiêm trọng trong `plan.md`:** MatchboxNet `[R01-05]` được `plan.md` dùng làm chỗ dựa cho "Streaming ASR" ở §1, nhưng nó là **classifier 12–35 nhãn**, không phải ASR ⇒ **không có WER**. Mọi bảng metric phải nói rõ metric nào thuộc tác vụ nào (§5.3).
 
 Phải ghi tường minh: số lớp, `d_model`, số head, kernel size, số tham số, số MACs/frame, byte trọng số, byte activation — **tính ra**, không ước lượng. Đây là đầu vào của roofline ở §6.1.
+
+**Vì sao chọn model này (2026-09-12).** Tiêu chí chủ repo đưa ra là "model phổ biến nhất", áp dụng
+**trong lớp đã chốt ở bảng trên** chứ không phải trong mọi model ASR. Conformer-Transducer streaming
+của NeMo là recipe phổ biến nhất trong lớp đó mà có checkpoint mở.
+
+**Vì sao không phải Whisper.** Whisper nhiều khả năng là model ASR được dùng nhiều nhất tính chung,
+nhưng nó là mô hình cửa sổ 30 giây và non-causal. Chọn nó là đổi **lớp** model, đồng thời phá mất đồ
+thị accuracy-versus-latency mà §4.2 tồn tại để dạy. Nếu muốn Whisper thì đó là một quyết định kiến
+trúc mới, không phải việc điền vào chỗ trống.
+
+**Những con số chưa được phép viết thành số.** Số layer, `d_model`, số head, số tham số, MACs mỗi
+frame, byte trọng số ở INT8, byte activation mỗi frame — tất cả **phải fetch và ghi thành record**
+trước khi xuất hiện ở bất kỳ đâu, vì §4.2 yêu cầu tính ra chứ không ước lượng, và vì rule 1. Danh
+sách fetch cho agent khác: `docs/AGENT_FETCH_BRIEF_2026-09-12.md`.
+
+**Giả định vận hành của mọi phép tính trong §4.2 và §6.1:** Orin ở `MAXN`, theo quyết định đóng C-07
+ở `docs/verification/README.md`. ridge_point ở §6.1 vì thế là 490.2 OP/byte, không phải 764.7.
 
 ### 4.3 ★ Tầng giải mã — tầng bị bỏ quên
 
@@ -241,9 +258,16 @@ Với mô hình đã chốt ở §4.2, tính và ghi vào `docs/roofline/<model>
 ```
 I = MACs_per_frame × 2 / Bytes_moved_per_frame
 Bytes_moved = weights + activations + (I/O)
-ridge_point = Peak_MACs / Peak_BW        ← cả hai lấy từ §3, đã verify
+ridge_point = Peak_MACs / Peak_BW        ← cả hai lấy từ §3, đã verify, ở chế độ MAXN
 ```
 Rồi mới được phép kết luận memory-bound hay không. `plan.md` §1.1 kết luận mà không tính.
+
+**Giả định của mọi phép tính ở §6.1: Orin ở chế độ `MAXN`** — chủ repo chốt 2026-09-12, đóng
+C-07 (xem `docs/verification/README.md`). Hệ số ở mẫu vì thế là **490.2 OP/byte** của V-07-02,
+không phải 764.7 mà `MAXN_SUPER` cho ra. Hai tử số thì vẫn chưa có số: `MACs_per_frame` và
+`Bytes_moved_per_frame` của mô hình đã chốt ở §4.2 là mục P1-B…P1-D của
+`docs/AGENT_FETCH_BRIEF_2026-09-12.md`. Cho tới lúc đó §6.1 là **thủ tục**, không phải kết luận,
+và không dòng nào ở đây được viết thành khẳng định có số kèm theo.
 
 ### 6.2 ★ Đặc tả fixed-point theo từng tầng — `plan.md` có 0 chữ
 
@@ -361,9 +385,9 @@ Phải có một mục trả lời: **nạp một model mới mà không viết 
 |---|---|---|---|---|---|
 | Jetson Orin `<SKU>` | 1 | ⚠ | ⚠ | ⚠ | ⚠ SKU đuôi chữ cái |
 | Kria KV260 | 1 | ⚠ | ⚠ | ⚠ | ⚠ còn được bán? |
-| UBB carrier card (nếu cần I2S/PDM) | 1 | ⚠ | ⚠ | ⚠ | ⚠ **KV260 là kit Vision AI, audio không phải đường sẵn có** |
-| Micro / mic array | 1 | ⚠ | ⚠ | ⚠ | |
-| USB audio (phường dự phòng) | 1 | ⚠ | ⚠ | ⚠ | |
+| UBB carrier card, hoặc carrier khác có chân I2S/PDM | 1 | ⚠ | ⚠ | ⚠ | **Không còn "nếu cần"**: chủ repo chốt đường I2S/PDM qua PL ngày 2026-09-12, nên carrier là mục bắt buộc. ⚠ **KV260 là kit Vision AI, audio không phải đường sẵn có** — mua thiếu carrier là mua thiếu thứ để cắm mic |
+| Micro / mic array | 1 | ⚠ | ⚠ | ⚠ | ⚠ **phải là loại I2S hoặc PDM**, không phải mic USB: mic USB sẽ không đi qua PL và làm mất nội dung chương 4.1 |
+| USB audio (đường dự phòng) | 1 | ⚠ | ⚠ | ⚠ | Chỉ dùng để debug phần mềm và demo nhanh; mọi số liệu về tầng thu âm trong sách lấy từ đường PDM-qua-PL |
 | Nguồn đúng công suất | 1 | ⚠ | ⚠ | ⚠ | ⚠ quá dòng là hỏng board |
 | **Inline power meter / shunt + scope** | 1 | ⚠ | ⚠ | ⚠ | **bắt buộc — xem 8.3** |
 | ESD mat, dây, heatsink/fan | — | ⚠ | ⚠ | ⚠ | |
