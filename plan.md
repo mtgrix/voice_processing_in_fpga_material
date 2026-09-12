@@ -1,5 +1,7 @@
 ﻿# ĐỀ CƯƠNG NGHIÊN CỨU & HỌC TẬP: TĂNG TỐC VOICE AI TỪ GPU SANG FPGA
 
+> ⚠ **BẢN CŨ — ĐÃ ĐƯỢC THAY THẾ.** `plan-v2.md` là đề cương thẩm quyền, và 10 chương trong `book/` nay chiếu theo §7 của nó. File này giữ lại vì giá trị lịch sử và vì `plan-v2.md` dẫn lại lỗi của nó để giải thích quy tắc mới. **Đừng lấy số từ đây**: "4 MB" SRAM KV260 (§3) đã bị `V-01-11` phủ định, "10–30 M tham số" cho Conformer chưa từng được verify, và các claim % không có dẫn xuất — xem `plan-v2.md` §3.3 và §9.1.
+
 > **Mục tiêu dự án / Đề cương Sách (Monograph Spec):** Hệ thống hóa kiến thức và phương pháp luận để chuyển đổi các cấu trúc Voice AI (từ Keyword Spotting đến Streaming Conformer ASR) từ **NVIDIA Jetson Orin (GPU)** sang **FPGA (Kria / Zynq)**.
 > **Triết lý Sư phạm (Pedagogy):** Đi từ bản chất toán học/kiến trúc (The Why) đến giải pháp phần cứng (The How). Dựa trên nền tảng thiết kế luận lý số cơ bản (Arithmetic, SRAM, Parameterized Convolution) để mở rộng thành hệ thống gia tốc cấp độ nghiên cứu (Research-grade).
 

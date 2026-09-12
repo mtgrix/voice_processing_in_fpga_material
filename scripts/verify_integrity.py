@@ -41,9 +41,11 @@ def check_source_index() -> list[str]:
 
 
 #: Legacy chapter-scoped ids are grandfathered: book/chapter01.md and book/chapter02.md cite
-#: R01-03, R01-05 and R01-01 by that name, and the evidence protocol forbids an agent from
-#: editing book/. New sources therefore take the global S<NNN> form, and both are accepted so
-#: that the registry can grow without a rewrite that a human has not approved yet.
+#: R01-03, R01-05 and R01-01 by that name. They stayed unreworded because the evidence protocol
+#: of the time forbade an agent from editing book/; that rule was retired on 2026-09-12, but the
+#: grandfathering stands, because the registry itself still uses the R-prefixed ids. New sources
+#: therefore take the global S<NNN> form, and both are accepted so that the registry can grow
+#: without a rewrite that a human has not approved yet.
 SOURCE_ID_PATTERN = re.compile(r"^(?:R\d{2}-\d{2}|S\d{3})$")
 
 #: Rows in a status table that claim a result. A legend line defining a symbol is not a claim,

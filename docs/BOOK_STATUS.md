@@ -1,7 +1,7 @@
 # Tiến độ Soạn thảo & Nghiên cứu — Voice Edge AI (Book Status)
 
 > **Theo dõi tiến độ 10 chương chuyên khảo và các mục của bài báo khoa học.**
-> Cập nhật lần cuối: 2026-09-11
+> Cập nhật lần cuối: 2026-09-13
 
 ---
 
@@ -19,6 +19,23 @@
 | **08** | Tăng tốc Các Khối Tính toán Cốt lõi của Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_08 | Đã tạo khung |
 | **09** | Tích hợp Hệ thống SoC & Đồng thiết kế Phần cứng / Phần mềm | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_09 | Đã tạo khung |
 | **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
+
+---
+
+## 1.1 Trạng thái nội dung: khung sườn ĐÃ được sửa cho đúng đề cương
+
+Hai trạng thái khác nhau phải phân biệt rõ: chương **chưa viết** (các khối `TODO (Nội dung cần viết)`) và chương **đã viết sai đề cương**. Từ 2026-09-13, nhóm lỗi thứ hai đã được xử lý:
+
+- `book/TOC.md` giờ là xương sống 10 chương chiếu từ `plan-v2.md` §7 và đã được track. Trước đó nó là bản 5 chương thừa hưởng từ `plan.md`, và `tests/test_plan_consistency.py` phải để nó ở dạng xfail.
+- Số liệu nhớ on-chip ở Chương 04 đã thay bằng giá trị có trang datasheet (`V-01-11`); "4.5 MB" là số của `plan.md`.
+- Whisper đã bị rút khỏi Chương 08; model đích là NeMo streaming Conformer-Transducer `small`.
+- WER không còn là metric toàn dụng ở Chương 02, 07, 10 và ở `docs/BOOK_PEDAGOGY.md` (§5.3 cấm dùng lẫn).
+- Chương 05 thôi tuyên bố FINN/HLS là "vũ khí tối thượng"; gate chặng 5 đòi log tổng hợp thật.
+- Chương 06 dạy rõ đường âm thanh vào PL qua carrier, vì KV260 không có mic.
+
+**Chưa chốt, cần chủ repo:** `plan-v2.md` §7 gán artefact chặng 8–9 (KWS SoC trên board; Conformer overlay) khác với tiêu đề chương 08–09 hiện tại. Ghi chi tiết ở `book/TOC.md`, mục "Lệch ánh xạ chưa chốt".
+
+**Chưa làm:** toàn bộ văn xuôi của 10 chương, và bản tiếng Anh tương ứng. Không một ô số liệu nào trong bảng chương được đóng dấu hoàn thành — không có phần cứng để đo.
 
 ---
 
