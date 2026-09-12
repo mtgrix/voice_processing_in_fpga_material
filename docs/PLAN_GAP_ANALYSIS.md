@@ -278,6 +278,14 @@ the 5-vs-10 chapter drift between these two files and `README.md` / `docs/BOOK_S
 `plan.md` is unrecoverable if overwritten — which is why this audit writes `plan-v2.md` and leaves
 `plan.md` untouched.
 
+> **Partly resolved, 2026-09-13.** Both files named above are now tracked, `plan.md` carries a banner
+> naming `plan-v2.md` as its successor, and the drift is no longer invisible to CI:
+> `tests/test_plan_consistency.py` asserts the spine's chapter count and derives its headings from
+> `docs/BOOK_STATUS.md` rather than from a transcription. Branch `docs/book-align-plan-v2`, PR #13.
+> Added as a second record; the paragraph above still describes the repo as found on 2026-09-12. One
+> item there stays open — §7 assigns artefacts by stage while `docs/BOOK_STATUS.md` assigns titles by
+> chapter, and stages 8–9 do not describe chapters 08–09. See "Lệch ánh xạ chưa chốt" in `book/TOC.md`.
+
 ### PROCESS-3 — The GitHub process has never run
 
 `CLAUDE.md` mandates `Issue → Branch → Commits → PR → Validate → Merge`. Verified state:
