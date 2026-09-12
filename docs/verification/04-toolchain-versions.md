@@ -38,7 +38,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url | https://docs.amd.com/r/en-US/ug973-vivado-release-notes-install-license |
-| notes | Full Unified Vitis installer with multiple architectures requires >150-200 GB. URL is a university course mirror (hthreads.github.io) of a Xilinx document; replace with a docs.amd.com URL. |
+| notes | Full Unified Vitis installer with multiple architectures requires >150-200 GB. URL is a university course mirror (hthreads.github.io) of a Xilinx document. Vendor substitution was attempted on 2026-09-12 and is not possible for this revision: the revision-pinned vendor path xilinx.com/support/documents/sw_manuals/xilinx2024_1/ug973-vivado-release-notes-install-license.pdf returns HTTP 404, while the identical pattern for xilinx2022_2 serves a 2,885,302-byte PDF; docs.amd.com resolves this guide only to UG973 2026.1 (released 2026-06-23), which is a different release whose figures are not these; and adaptivesupport.amd.com answers HTTP 401. This mirror is therefore the only place these 2024.1 figures are readable. Either cite them as 'UG973, mirror copy of the 2024.1 guide' or read the 2026.1 disk table and record it as its own quantity -- do not point a 2024.1 value at a 2026.1 URL. |
 
 ### V-04-03 · Kv260 Dpu Architecture
 
