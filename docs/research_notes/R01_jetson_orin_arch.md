@@ -1,6 +1,6 @@
 # Research Note R01: NVIDIA Jetson Orin Architecture & Edge Audio Profiling
 
-- **Source ID**: `R01-01`, `R01-04`
+- **Source ID**: `R01-01`
 - **Topic**: NVIDIA Jetson Orin GPU Microarchitecture vs. Edge FPGA Baseline
 - **Date**: 2026-09-11
 
