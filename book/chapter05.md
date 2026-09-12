@@ -1,6 +1,6 @@
 # Chương 5: So sánh Các Phương pháp luận Tăng tốc trên FPGA
 
-> *Mục tiêu: Đánh giá và so sánh toàn diện 4 hướng tiếp cận phát triển mô hình AI trên FPGA: AMD Vitis AI DPU, FINN Streaming Dataflow, Vivado HLS và Custom RTL.*
+> *Mục tiêu: Xây dựng **thủ tục** so sánh 4 hướng tiếp cận phát triển mô hình AI trên FPGA — AMD Vitis AI DPU, FINN Streaming Dataflow, Vivado HLS và Custom RTL — trên cùng một model. Chương này dạy cách so sánh; nó không kết luận hộ số liệu, vì gate nghiệm thu của chặng 5 (`plan-v2.md` §7) đòi bốn hàng mà mỗi hàng phải có log tổng hợp thật.*
 
 ---
 
@@ -16,7 +16,7 @@
 <!-- 
 TODO:
 - Hướng 1: DPU (Deep Processing Unit - Overlay dựa trên tập lệnh nơ-ron).
-- Hướng 2: FINN (Khung luồng dữ liệu streaming chuyên cho mô hình lượng tử hóa sâu).
+- Hướng 2: FINN (Khung luồng dữ liệu streaming cho mô hình lượng tử hóa sâu, gốc là binarized NN inference). Cảnh báo nguồn: `R01-02` đăng ký FINN không phải là nguồn của lý thuyết lượng tử hoá affine — `plan-v2.md` §9.1 chỉ ra `plan.md` đã gán sai như vậy.
 - Hướng 3: High-Level Synthesis (C/C++ sang Verilog).
 - Hướng 4: Custom RTL (Thiết kế trực tiếp Verilog/SystemVerilog tối ưu hóa từng cổng logic).
 -->
@@ -31,7 +31,7 @@ TODO:
 <!-- 
 TODO:
 - Tại sao DPU phù hợp cho mô hình lớn có DDR access (ví dụ Conformer).
-- Tại sao FINN/HLS Dataflow là "vũ khí tối thượng" cho các mô hình KWS và Denoising siêu tiết kiệm điện.
+- Bốn hàng so sánh dựng sẵn, mỗi ô chờ số từ log tổng hợp thật. Không được tuyên bố FINN/HLS thắng trước khi có số: `plan-v2.md` §9.2 đã lần ra nguồn gốc của mấy con số "FINN nhanh nhất" — chúng là fixture viết tay, không phải phép đo.
 -->
 
 ---
