@@ -38,7 +38,7 @@
 | retrieved_utc | `2026-09-12T07:18:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged. |
+| notes | Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. |
 
 ### V-07-03 · Kria Kv260 Fpga Ridge Point
 
@@ -53,7 +53,7 @@
 | doc_id | `Derived from DS890 (V-01-09) and DS987 (V-01-13)` |
 | title | UltraScale Architecture Overview & Kria K26 SOM Data Sheet |
 | url | https://docs.amd.com/v/u/en-US/ds890-ultrascale-overview |
-| locator | Arithmetic derivation: 748.8 GOP/s / 19.2 GB/s = 39.0 OP/byte |
+| locator | Arithmetic derivation: 748.8 GOP/s / 19.2 GB/s = 39.0 OP/byte; 1497.6 / 19.2 = 78.0 |
 | quote | DSP Slices: 1,248 ... 4 GB 64-bit wide, 2400 Mb/s memory |
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |

@@ -86,18 +86,18 @@ for some constants S and Z. Equation (1) is our quantization scheme and the cons
 
 | Field | Value |
 |---|---|
-| status | `unresolved` |
+| status | `verified` |
 | quantity | `torch_round_tie_breaking_mode` |
-| value | `` |
-| unit | `n/a` |
-| conditions | `Needed to prove bit-exact parity between QAT software output and RTL` |
+| value | `round half to even` |
+| unit | `string` |
+| conditions | `torch.round() in the PyTorch documentation as published 2026-09-12 (version 2.14)` |
 | source_tier | `T2` |
-| doc_id | `PyTorch documentation` |
-| title | torch.round / torch.ao.quantization rounding behaviour |
-| url |  |
-| locator |  |
-| quote |  |
-| retrieved_utc | `2026-09-12T07:18:00Z` |
+| doc_id | `PyTorch 2.14 documentation` |
+| title | torch.round - PyTorch documentation |
+| url | https://docs.pytorch.org/docs/2.14/generated/torch.round.html |
+| locator | torch.round page, description paragraph |
+| quote | This function implements the "round half to even" to break ties when a number is equidistant from two integers (e.g. round(2.5) is 2) |
+| retrieved_utc | `2026-09-12T12:00:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | NOT SOURCED. The previous record asserted 'round-half-to-even' for PyTorch on the strength of a quote whose page could not be re-reached: docs.pytorch.org/docs/stable/generated/torch.ao.quantization.quantize_per_tensor.html returned HTTP 404 in this session, and no live PyTorch text was captured. Do not carry a tie-breaking rule into the book or into RTL until it is read from a live PyTorch page or from aten's own rounding implementation. Brevitas' default operator is evidenced in V-06-04; what is missing is the tie rule inherited from torch.round. |
+| notes | RESOLVED on the second pass. The first pass could not re-reach the page and therefore asserted nothing, which is why this record sat unresolved. Two fetch notes worth keeping: docs.pytorch.org/docs/stable/generated/torch.round.html returns only a 'Redirecting...' shell to a scripted fetcher, and the versioned URL above is what carries the text, so a checker reading the stable URL sees no claim to check. The quoted sentence is the tie rule Brevitas inherits (V-06-04) and that an RTL fixed-point pipeline usually does not implement, since adding (1 << (shift-1)) rounds half away from zero: three tie behaviours across one toolchain, which is the bit-exactness trap this record was opened for. |
