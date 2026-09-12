@@ -32,6 +32,14 @@ ml = [
     "onnxruntime>=1.17.0",
 ]
 
+[tool.setuptools]
+# Nothing in this repository is meant to be imported from site-packages. The chapters are
+# scripts run in place, pytest imports them by path, and book/ and docs/ are prose. Left to
+# itself, setuptools' flat-layout autodiscovery reads book/, capstone/ and chapter01..10/ as
+# top-level packages and refuses to build at all, which is what made `pip install -e .` fail.
+# The install exists to bring in the dependency and dev-extras set, not to ship a module.
+packages = []
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
