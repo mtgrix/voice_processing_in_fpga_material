@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -98,26 +99,106 @@ def check_source_claim_linkage() -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def check_result_markers_have_logs() -> list[str]:
-    """No table row may claim a completed result while results/ holds no raw log.
+#: Separator folding, so a row id and a log path can be matched without the gate knowing
+#: every spelling of every id: plan-v2 prescribes results/expNN/<timestamp>/ while the
+#: status tables name the same experiment exp_NN.
+ID_FOLD = re.compile("[^a-z0-9]")
 
-    plan-v2 section 9.2 item 5: a checkmark is a claim of measurement, and a book about
-    measurements is only worth as much as the logs behind its checkmarks.
+#: sha256sum writes "<digest>  <path>", with a leading "*" on the path in binary mode.
+DIGEST_FIELDS = 2
+
+
+def _fold(text: str) -> str:
+    """Lowercase and strip everything that is not a letter or a digit."""
+    return ID_FOLD.sub("", text.lower())
+
+
+def _claimed_rows(path: Path) -> list[tuple[int, str]]:
+    """Rows asserting a finished result, as (line number, row id from the first cell).
+
+    Any table row counts, not only rows whose id is bold -- the claim is the marker, not
+    the emphasis. A legend line that defines the symbol starts with a quote instead of a
+    pipe, which is what keeps the definition from reading as a claim.
+    """
+    found: list[tuple[int, str]] = []
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        stripped = line.strip()
+        if RESULT_MARKER not in stripped or not stripped.startswith("|"):
+            continue
+        cells = [cell.strip().strip("*").strip() for cell in stripped.strip("|").split("|")]
+        found.append((number, cells[0] if cells else ""))
+    return found
+
+
+def _digests(manifest: Path) -> dict[str, str]:
+    """Parse a checksum manifest into {slash-relative path: digest}; empty if absent."""
+    table: dict[str, str] = {}
+    if not manifest.is_file():
+        return table
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) == DIGEST_FIELDS:
+            table[parts[1].lstrip("*")] = parts[0]
+    return table
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def check_result_markers_have_logs() -> list[str]:
+    """No row may claim a finished result without its own checksummed raw log.
+
+    plan-v2 section 9.2 item 5, and Issue #18. Three distinct failures are caught: a
+    claim with no log, a claim vouched for by a log belonging to a different row, and a
+    claim whose log no longer matches the digest recorded for it. The middle one is what
+    the previous whole-directory test could not see -- one file anywhere in results/
+    satisfied it for every row at once -- and the third is what makes a checksum worth
+    computing rather than merely present.
+
+    Known limit, stated rather than hidden: correspondence is by folded substring, so a row
+    id of two digits -- a chapter number in BOOK_STATUS -- is matched by any path holding
+    those digits, a timestamp among them. Experiment ids are long enough for the fold to be
+    discriminating; bare chapter numbers are not. No such row carries the marker today, so
+    the limit is unexercised, and the way to keep it unexercised is to mark measurements,
+    not chapters.
     """
     errors: list[str] = []
     log_dir = ROOT / "results"
-    logs = sorted(p.name for p in log_dir.rglob("*") if p.is_file()) if log_dir.is_dir() else []
+    manifest = log_dir / "SHA256SUMS"
+    logs: list[Path] = []
+    if log_dir.is_dir():
+        logs = [p for p in sorted(log_dir.rglob("*")) if p.is_file() and p != manifest]
+    digests = _digests(manifest)
+
     for relative in ("docs/BOOK_STATUS.md", "docs/EXPERIMENT_STATUS.md"):
         path = ROOT / relative
         if not path.exists():
             errors.append(f"{relative} does not exist")
             continue
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if RESULT_MARKER in line and line.lstrip().startswith("| **"):
-                if not logs:
+        for number, row_id in _claimed_rows(path):
+            if not row_id:
+                errors.append(f"{relative}:{number} carries {RESULT_MARKER} but names no row id")
+                continue
+            folded = _fold(row_id)
+            vouching = [log for log in logs if folded in _fold(log.relative_to(ROOT).as_posix())]
+            if not vouching:
+                errors.append(
+                    f"{relative}:{number} claims {RESULT_MARKER} for {row_id}, but results/ "
+                    "holds no log naming that row"
+                )
+                continue
+            for log in vouching:
+                rel = log.relative_to(ROOT).as_posix()
+                if rel not in digests:
                     errors.append(
-                        f"{relative} marks a row as done with {RESULT_MARKER} but results/ "
-                        "contains no raw measurement log"
+                        f"{relative}:{number} vouches on {rel}, which results/SHA256SUMS does "
+                        "not list; an unchecksummed log is a claim, not evidence"
+                    )
+                elif digests[rel] != _sha256(log):
+                    errors.append(
+                        f"{relative}:{number} vouches on {rel}, whose bytes no longer match "
+                        "the digest in results/SHA256SUMS"
                     )
     return errors
 
