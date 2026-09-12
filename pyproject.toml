@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "From Jetson Orin to FPGA: An open-source executable monograph and research framework on edge voice AI hardware acceleration."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "GPL-3.0-or-later" }
+license = "GPL-3.0-or-later"  # PEP 639 SPDX string; the table form is unsupported for builds after 2027-02-18
 authors = [{ name = "Voice Edge AI Contributors" }]
 
 dependencies = [
