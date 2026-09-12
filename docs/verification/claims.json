@@ -1,6 +1,6 @@
 {
-  "version": "1.4.0",
-  "generated_utc": "2026-09-12T16:20:00Z",
+  "version": "1.5.0",
+  "generated_utc": "2026-09-12T15:55:00Z",
   "records": [
     {
       "id": "V-01-01",
@@ -1928,6 +1928,9 @@
     "fifth_pass_utc": "2026-09-12T16:20:00Z",
     "fifth_pass_conflicts_raised": [
       "C-07"
-    ]
+    ],
+    "decision_package_utc": "2026-09-12T15:55:00Z",
+    "c07_resolution": "Closed by the repository owner on 2026-09-12: the book computes at MAXN, not MAXN_SUPER. No record was altered, moved or deleted, per rule 6. The MAXN_SUPER records V-02-37 through V-02-41 remain verified T1 evidence of the second column of DS-10712-001_v1.7 and are citable as the upper profile. Consequence recorded here so the arithmetic cannot drift back: V-07-02's 490.2 OP/byte is the ridge point the book teaches.",
+    "rule7_retired": "Protocol rule 7, the ban on editing plan.md, plan-v2.md and book/, was retired by the owner on 2026-09-12. Rules 1, 2, 6 and 8 are unchanged and still bind this directory."
   }
 }
