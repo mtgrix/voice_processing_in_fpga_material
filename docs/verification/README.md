@@ -487,6 +487,10 @@ describing the value* mean what they claim, across the 96 records as they now st
   V-02-36's note already states the rule — a derived value is T2 because the document never prints it —
   and V-04-09 and V-04-12 follow it. Now all six agree. Tiers went from 58 T1 / 26 T2 to 55 T1 / 29 T2.
   No value changed, so no chapter loses support; three claims lose datasheet authority.
+  One of V-07-03's inputs then turned out not to be a printed figure either: the 300 MHz DSP clock is a
+  design assumption with no source, added to that record's `notes` on 2026-09-13 (Issue #16). The bullet's
+  claim that all three are arithmetic on printed figures therefore holds for five of its six inputs, and the
+  sentence above is left standing rather than rewritten, per rule 6.
 - **Three records had an empty `title`.** V-02-36, V-04-12 and V-04-13 rendered a heading with nothing
   but a document number to identify the source. Filled, and V-04-12's title now says it is a derivation.
 - **One document-identity conflict raised: C-06.** Ten records cite one URL under two revisions.
