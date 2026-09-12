@@ -249,7 +249,7 @@
 | value | `19.2` |
 | unit | `GB/s` |
 | conditions | `64-bit bus at 2400 MT/s: 64 bits * 2400 MT/s / 8 bits/byte = 19,200 MB/s` |
-| source_tier | `T1` |
+| source_tier | `T2` |
 | doc_id | `Derived from DS987 (v1.2)` |
 | title | Kria K26 SOM Data Sheet |
 | url | https://docs.amd.com/r/en-US/ds987-k26-som |
@@ -258,7 +258,7 @@
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Theoretical peak bandwidth is 19.2 GB/s. Actual achievable bandwidth depends on AXI port width, burst length, and DDRC scheduling. Value is arithmetic on the quoted bus width and data rate, not a printed datasheet figure.The 2400 Mb/s in DS987 is already the data rate (MT/s), so no factor of two applies here. That is the opposite of the NVIDIA LPDDR5 datasheets, which print the memory clock: see V-02-34. |
+| notes | Theoretical peak bandwidth is 19.2 GB/s. Actual achievable bandwidth depends on AXI port width, burst length, and DDRC scheduling. Value is arithmetic on the quoted bus width and data rate, not a printed datasheet figure.The 2400 Mb/s in DS987 is already the data rate (MT/s), so no factor of two applies here. That is the opposite of the NVIDIA LPDDR5 datasheets, which print the memory clock: see V-02-34. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from. |
 
 ### V-01-14 · Ddr Pl Ps Interconnect
 
