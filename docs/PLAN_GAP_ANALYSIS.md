@@ -90,6 +90,18 @@ and may reasonably assume the numbers are validated.
 **Fix:** `plan-v2.md` §9.2 (rename to `synthetic_demo_fixture()`, add a `provenance` field, make
 tests assert structure only, add an integrity gate that refuses ✅ without a raw log).
 
+**Status 2026-09-13 — true when written, partly closed since; the wording above is kept as the
+record.** Verified against the tree at `54e2537`: §9.2 items 1, 2 and 3 shipped in `4177260`
+("Enforce plan-v2 section 9 discipline checks (#9)"). The four fabricated rows were not deleted — they
+are labelled `synthetic` and still sit at `benchmark_runner.py:105-111`. Two halves stay open: §9.2
+item 4's `pytest.mark.skipif` does not exist anywhere in `tests/`, and §9.2 item 5's gate exists but
+tests whether `results/` is empty rather than whether *this row's* log exists, with no checksum
+anywhere in `scripts/`. Tracked as Issue #18.
+
+"CI currently certifies it" still describes the risk correctly, for a reason worth keeping: `make gate`
+is green because the tests assert the *absence* of the old names, so a green run is evidence about
+naming discipline and not about measurement. A silently updated gap analysis would have hidden that.
+
 ### BLOCKER-2 — No device selection on either side of the comparison
 
 "Jetson Orin" is a **product family** (Nano / Nano Super / NX / AGX 32 GB / AGX 64 GB) differing in
