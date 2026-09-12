@@ -231,7 +231,7 @@
 | conditions | `Standalone single core against ZU5EV/XCK26 totals from V-01-05 and V-01-07; no video pipeline` |
 | source_tier | `T2` |
 | doc_id | `Derived from V-04-10, V-04-11, V-01-05, V-01-07` |
-| title |  |
+| title | Derived: PG338 v4.1 core ladder against DS890 v4.10 ZU5EV limits |
 | url | https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization |
 | locator | PG338 v4.1 Tables 1-2 against DS890 v4.10 p.22 Table 23; arithmetic: 126 <= 144; 165 > 144; 64 <= 64; 68 > 64; 208 > 144; 60 <= 64 |
 | quote | B1600 \| 38418 \| 58831 \| 126 \| 326 ; B2304 \| 42127 \| 68829 \| 165 \| 438 ; B3136 \| 46260 \| 80079 \| 0 \| 64 \| 566 ; B4096 \| 51843 \| 98567 \| 0 \| 68 \| 710 ; Block RAM Blocks \| 128 \| 144 \| 312 ; UltraRAM Blocks \| 48 \| 64 \| 96 |
@@ -251,7 +251,7 @@
 | conditions | `Which DPUCZDX8G rung the KV260 factory PetaLinux image actually loads` |
 | source_tier | `T5` |
 | doc_id | `no primary source found` |
-| title |  |
+| title | No primary source found |
 | url |  |
 | locator |  |
 | quote |  |

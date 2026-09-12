@@ -1,6 +1,6 @@
 {
-  "version": "1.2.0",
-  "generated_utc": "2026-09-12T12:40:00Z",
+  "version": "1.3.0",
+  "generated_utc": "2026-09-12T15:05:00Z",
   "records": [
     {
       "id": "V-01-01",
@@ -225,7 +225,7 @@
       "value": "19.2",
       "unit": "GB/s",
       "conditions": "64-bit bus at 2400 MT/s: 64 bits * 2400 MT/s / 8 bits/byte = 19,200 MB/s",
-      "source_tier": "T1",
+      "source_tier": "T2",
       "doc_id": "Derived from DS987 (v1.2)",
       "title": "Kria K26 SOM Data Sheet",
       "url": "https://docs.amd.com/r/en-US/ds987-k26-som",
@@ -234,7 +234,7 @@
       "retrieved_utc": "2026-09-12T04:25:00Z",
       "access": "open",
       "corroborating_url": "",
-      "notes": "Theoretical peak bandwidth is 19.2 GB/s. Actual achievable bandwidth depends on AXI port width, burst length, and DDRC scheduling. Value is arithmetic on the quoted bus width and data rate, not a printed datasheet figure.The 2400 Mb/s in DS987 is already the data rate (MT/s), so no factor of two applies here. That is the opposite of the NVIDIA LPDDR5 datasheets, which print the memory clock: see V-02-34."
+      "notes": "Theoretical peak bandwidth is 19.2 GB/s. Actual achievable bandwidth depends on AXI port width, burst length, and DDRC scheduling. Value is arithmetic on the quoted bus width and data rate, not a printed datasheet figure.The 2400 Mb/s in DS987 is already the data rate (MT/s), so no factor of two applies here. That is the opposite of the NVIDIA LPDDR5 datasheets, which print the memory clock: see V-02-34. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from."
     },
     {
       "id": "V-01-14",
@@ -1055,7 +1055,7 @@
       "conditions": "Jetson Orin NX 16GB; no page of DS-10712-001_v1.0 prints a GPU-only TOPS figure",
       "source_tier": "T2",
       "doc_id": "Derived from DS-10712-001_v1.0 (V-02-16, V-02-17, V-02-30)",
-      "title": "",
+      "title": "NVIDIA Jetson Orin NX Series Data Sheet",
       "url": "https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf",
       "locator": "p.1 'AI Performance' and 'Deep Learning Accelerator'; arithmetic: 2 * 20 = 40; 100 - 40 = 60",
       "quote": "Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs ... ONX 16GB: 2x NVDLA | Maximum Operating Frequency: 614 MHz | 20 TOPS each (Sparse INT8)",
@@ -1361,7 +1361,7 @@
       "conditions": "Standalone single core against ZU5EV/XCK26 totals from V-01-05 and V-01-07; no video pipeline",
       "source_tier": "T2",
       "doc_id": "Derived from V-04-10, V-04-11, V-01-05, V-01-07",
-      "title": "",
+      "title": "Derived: PG338 v4.1 core ladder against DS890 v4.10 ZU5EV limits",
       "url": "https://docs.amd.com/r/en-US/pg338-dpu/Resource-Utilization",
       "locator": "PG338 v4.1 Tables 1-2 against DS890 v4.10 p.22 Table 23; arithmetic: 126 <= 144; 165 > 144; 64 <= 64; 68 > 64; 208 > 144; 60 <= 64",
       "quote": "B1600 | 38418 | 58831 | 126 | 326 ; B2304 | 42127 | 68829 | 165 | 438 ; B3136 | 46260 | 80079 | 0 | 64 | 566 ; B4096 | 51843 | 98567 | 0 | 68 | 710 ; Block RAM Blocks | 128 | 144 | 312 ; UltraRAM Blocks | 48 | 64 | 96",
@@ -1379,7 +1379,7 @@
       "conditions": "Which DPUCZDX8G rung the KV260 factory PetaLinux image actually loads",
       "source_tier": "T5",
       "doc_id": "no primary source found",
-      "title": "",
+      "title": "No primary source found",
       "url": "",
       "locator": "",
       "quote": "",
@@ -1665,7 +1665,7 @@
       "value": "490.2 (Dense INT8) / 980.4 (Sparse INT8)",
       "unit": "OP/byte",
       "conditions": "Jetson Orin NX 16GB: 50 TOPS dense / 100 TOPS sparse, 102 GB/s memory bandwidth",
-      "source_tier": "T1",
+      "source_tier": "T2",
       "doc_id": "Derived from DS-10712-001_v1.0 (V-02-16, V-02-18)",
       "title": "NVIDIA Jetson Orin NX Series Data Sheet",
       "url": "https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf",
@@ -1674,7 +1674,7 @@
       "retrieved_utc": "2026-09-12T07:18:00Z",
       "access": "open",
       "corroborating_url": "",
-      "notes": "Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README."
+      "notes": "Very high ridge point means edge GPU is heavily memory bandwidth bound for streaming batch=1 speech processing with low arithmetic intensity. Recomputed 2026-09-12 using the 102 GB/s the datasheet actually prints, replacing 102.4. Previous values 488.3 / 976.6 are superseded; the conclusion (Orin is heavily bandwidth-bound for batch=1 streaming speech) is unchanged.URL is a third-party mirror of the NVIDIA PDF rather than a vendor-hosted document; the quoted text was read out of that mirror copy on 2026-09-12. See 'Mirror URLs' in this directory's README. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from."
     },
     {
       "id": "V-07-03",
@@ -1683,7 +1683,7 @@
       "value": "39.0 - 78.0",
       "unit": "OP/byte",
       "conditions": "KV260 (1248 DSP48E2 @ 300 MHz): 748.8 GOP/s (1 MAC/DSP) or 1497.6 GOP/s (packed INT8), 19.2 GB/s DDR4",
-      "source_tier": "T1",
+      "source_tier": "T2",
       "doc_id": "Derived from DS890 (V-01-09) and DS987 (V-01-13)",
       "title": "UltraScale Architecture Overview & Kria K26 SOM Data Sheet",
       "url": "https://docs.amd.com/v/u/en-US/ds890-ultrascale-overview",
@@ -1692,7 +1692,7 @@
       "retrieved_utc": "2026-09-12T04:25:00Z",
       "access": "open",
       "corroborating_url": "",
-      "notes": "Ridge point is 6.2x to 12.5x lower than Orin NX, illustrating FPGA's advantage in streaming low-arithmetic-intensity workloads."
+      "notes": "Ridge point is 6.2x to 12.5x lower than Orin NX, illustrating FPGA's advantage in streaming low-arithmetic-intensity workloads. TIER CORRECTED 2026-09-12: was T1. The value is arithmetic on printed figures and is never printed itself, so it is tiered T2 like V-02-36, V-04-09 and V-04-12. Tier describes the evidence, not the quality of the source it was derived from."
     },
     {
       "id": "V-07-04",

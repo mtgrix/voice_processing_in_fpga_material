@@ -711,7 +711,7 @@
 | conditions | `Jetson Orin NX 16GB; no page of DS-10712-001_v1.0 prints a GPU-only TOPS figure` |
 | source_tier | `T2` |
 | doc_id | `Derived from DS-10712-001_v1.0 (V-02-16, V-02-17, V-02-30)` |
-| title |  |
+| title | NVIDIA Jetson Orin NX Series Data Sheet |
 | url | https://files.waveshare.com/wiki/common/Jetson_Orin_NX_DS-10712-001_v1.0.pdf |
 | locator | p.1 'AI Performance' and 'Deep Learning Accelerator'; arithmetic: 2 * 20 = 40; 100 - 40 = 60 |
 | quote | Jetson Orin NX 16GB: Up to 100 (Sparse) INT8 TOPs ... ONX 16GB: 2x NVDLA \| Maximum Operating Frequency: 614 MHz \| 20 TOPS each (Sparse INT8) |
