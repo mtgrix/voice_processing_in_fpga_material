@@ -113,7 +113,7 @@ Rules for the fields:
 
 ### 3.2 `claims.json`
 
-Same data, machine-readable, so it can be checked rather than read. Today `scripts/verification/audit_claims.py` checks the file against itself: field shape, id order, that every number in a `verified` value is printed in its own `quote`/`locator`/`doc_id` or derived by an `arithmetic:` clause it declares, and that mirror citations admit it. Checking each record against `docs/source_index.json` is still not implemented.
+Same data, machine-readable, so it can be checked rather than read. Today `scripts/verification/audit_claims.py` checks the file against itself: field shape, id order, that every number in a `verified` value is printed in its own `quote`/`locator`/`doc_id` or derived by an `arithmetic:` clause it declares, that mirror citations admit it, and that every `unit` spelling is a registered term -- the vocabulary lives in `claims_lib.UNIT_TERMS`, and a record that needs a new unit must add it there so the canonical and the kind are stated rather than assumed. Checking each record against `docs/source_index.json` is still not implemented, and so is any check that a registered unit is the right dimension for its value: 39 of the 64 dimensional records hold prose values, so that gate needs a schema split first (Issue #25).
 
 ```json
 {
