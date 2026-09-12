@@ -42,7 +42,7 @@ Mọi khái niệm kỹ thuật bắt buộc phải tuân theo đúng thứ tự
 
 1. **Trực giác (Intuition)** — Đây là cái gì? Tại sao nó phải tồn tại? Giải thích bản chất vật lý/kỹ thuật bằng ngôn từ trực quan, không dùng công thức phức tạp.
 2. **Cơ chế (Mechanism)** — Nó hoạt động ra sao bên trong? Sơ đồ luồng dữ liệu, công thức toán học, thuật toán, hoặc vi kiến trúc phần cứng kèm ví dụ từng bước.
-3. **Ứng dụng (Application)** — Hệ quả thực tế của nó là gì? Ảnh hưởng thế nào đến độ trễ (latency), năng lượng (Joules), hoặc tỷ lệ lỗi âm thanh (WER/PESQ) trên Jetson Orin hoặc FPGA.
+3. **Ứng dụng (Application)** — Hệ quả thực tế của nó là gì? Ảnh hưởng thế nào đến độ trễ (latency), năng lượng (Joules), hoặc chất lượng âm thanh **theo đúng metric của tác vụ đang xét** (KWS: accuracy/EER, ASR: WER/CER, tăng cường tiếng nói: PESQ/STOI — xem `plan-v2.md` §5.3) trên Jetson Orin hoặc FPGA.
 
 ---
 

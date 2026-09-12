@@ -15,7 +15,8 @@
 ## 8.1 Trực giác: Các Khối Tính toán Khắc nghiệt đối với Phần cứng FPGA
 <!-- 
 TODO:
-- Tích chập chuẩn rất thân thiện với DSP; tuy nhiên mô hình thoại hiện đại (MatchboxNet, Conformer, Whisper) dùng Depthwise Separable Convolutions và Self-Attention.
+- Tích chập chuẩn rất thân thiện với DSP; tuy nhiên hai model đích của sách — MatchboxNet cho KWS và **NVIDIA NeMo streaming Conformer-Transducer `small`** cho ASR (`plan-v2.md` §4.2, chốt 2026-09-12) — dùng Depthwise Separable Convolutions và Self-Attention.
+- Whisper KHÔNG thuộc danh sách này, dù nó là câu trả lời nhiều người sẽ đoán: cửa sổ 30 giây không nhân quả là một *lớp model* khác và sẽ phá đường cong accuracy-vs-latency mà chương này dạy. Lý do loại được ghi ở §4.2 để không ai âm thầm đưa nó quay lại.
 - Hàm Softmax yêu cầu lũy thừa $e^x$ và phép chia tổng $1/\sum$, rất tốn kém tài nguyên logic nếu không xấp xỉ khéo léo.
 -->
 

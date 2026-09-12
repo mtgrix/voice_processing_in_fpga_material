@@ -5,6 +5,6 @@
 ---
 
 ## 10.1 Principles of Fair Hardware Evaluation in Academic Research
-## 10.2 The Multi-Dimensional Metric Matrix: Latency, RTF, Joules/Frame, and WER
+## 10.2 The Multi-Dimensional Metric Matrix: Latency, RTF, Joules/Frame, and Task-Matched Quality
 ## 10.3 Constructing and Interpreting the Pareto Frontier
 ## 10.4 Structuring and Drafting a Paper for Top Hardware/Speech Conferences

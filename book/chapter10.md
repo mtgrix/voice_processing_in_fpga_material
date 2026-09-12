@@ -8,7 +8,8 @@
 > 
 > - **Biên tối ưu Pareto (Pareto Frontier)**: Tập hợp các điểm thiết kế mà không thể cải thiện bất kỳ chỉ số nào (ví dụ độ trễ) mà không làm suy giảm chỉ số khác (năng lượng hoặc độ chính xác).
 > - **Energy-Delay Product (EDP)**: $\text{EDP} = \text{Energy} \times \text{Delay}$ ($\text{J}\cdot\text{s}$), chỉ số đánh giá toàn diện tốc độ và độ tiết kiệm điện.
-> - **Tỷ lệ Lỗi Từ (Word Error Rate — WER)**: $\text{WER} = \frac{S + D + I}{N} \times 100\%$.
+> - **Tỷ lệ Lỗi Từ (Word Error Rate — WER)**: $\text{WER} = \frac{S + D + I}{N} \times 100\%$. **Chỉ dùng cho ASR.** KWS đo bằng accuracy/EER và FAR-FRR, tăng cường tiếng nói đo bằng PESQ/STOI/SI-SDR (`plan-v2.md` §5.3).
+- **Năng lượng-trễ tích (Energy-Delay Product)** đã nêu ở trên là trục đánh đổi, không phải là thay thế cho chất lượng: mỗi điểm Pareto phải mang metric đúng tác vụ của nó.
 
 ---
 
@@ -22,7 +23,7 @@ TODO:
 ## 10.2 Ma trận Chỉ số Đo lường Đa chiều (Multi-Dimensional Metric Matrix)
 <!-- 
 TODO:
-- Trục 1: Chất lượng âm học (WER, CER, PESQ, STOI).
+- Trục 1: Chất lượng âm học, theo đúng tác vụ: KWS = accuracy/EER, ASR = WER/CER, enhancement = PESQ/STOI/SI-SDR (§5.3).
 - Trục 2: Thời gian đáp ứng (Mean Latency, P90, P99 Tail Latency, RTF, Jitter).
 - Trục 3: Năng lượng (Active Power W, Energy per Frame mJ, TOPS/W, EDP).
 - Trục 4: Chi phí phần cứng (BOM cost, Silicon Area, LUT/DSP/BRAM utilization).
@@ -31,7 +32,7 @@ TODO:
 ## 10.3 Vẽ Đồ thị và Phân tích Biên Tối ưu Pareto Frontier
 <!-- 
 TODO:
-- Dựng biểu đồ Pareto 2D và 3D: Trục X (Latency), Trục Y (Energy per Frame), Kích thước điểm (Tỷ lệ lỗi WER/PESQ).
+- Dựng biểu đồ Pareto 2D và 3D: Trục X (Latency), Trục Y (Energy per Frame), Kích thước điểm (chất lượng theo metric đúng tác vụ, §5.3).
 - Xác định rõ vùng ưu thế áp đảo của FPGA (vùng thời gian thực streaming dưới 10ms, công suất dưới 5W).
 -->
 

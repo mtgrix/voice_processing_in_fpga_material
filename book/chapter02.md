@@ -38,7 +38,7 @@ TODO (Nội dung cần viết):
 ## 2.4 Bảng Chỉ số Điểm chuẩn Cơ sở (The Baseline Scorecard)
 <!-- 
 TODO (Nội dung cần viết):
-- Xây dựng bảng chuẩn: Độ trễ (ms), RTF, Công suất (W), Năng lượng (mJ/frame), Tỷ lệ lỗi (WER/PESQ).
+- Xây dựng bảng chuẩn: Độ trễ (ms), RTF, Công suất (W), Năng lượng (mJ/frame), và chất lượng theo ĐÚNG metric của tác vụ: KWS = accuracy/EER kèm FAR-FRR trên split speaker-independent, ASR = WER/CER, tăng cường tiếng nói = PESQ/STOI/SI-SDR. `plan-v2.md` §5.3 cấm dùng lẫn: một ô "97.4 %" không nói là accuracy hay 1−WER thì không được phép tồn tại.
 -->
 
 ---
