@@ -10,6 +10,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+#: The registry generator and the evidence helpers are modules, not a package, so the directory
+#: holding them goes on the search path the same way every other script here does it. mypy already
+#: knows about the directory (mypy_path in pyproject.toml); this is for run time.
+sys.path.insert(0, str(ROOT / "scripts" / "verification"))
+
+from build_source_index import INDEX_PATH, render, serialise  # noqa: E402
+from claims_lib import CLAIMS_PATH, load_claims  # noqa: E402
+
 
 def check_source_index() -> list[str]:
     errors = []
@@ -61,6 +69,11 @@ def check_source_claim_linkage() -> tuple[list[str], list[str]]:
     support at least one claim; that is a warning today, because the whitepaper, FINN and
     Conformer entries describe material no record has cited yet. Tightening it is a later step
     once those records exist, not a reason to leave the link unchecked now.
+
+    Read this as one half of a pair, with check_registry_coverage() below as the other. Everything
+    here is a property of the file as committed: whether an id is shaped correctly, whether a
+    listed record exists. Whether the registry reaches every document the records cite is derived
+    by the generator that owns that join.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -96,6 +109,57 @@ def check_source_claim_linkage() -> tuple[list[str], list[str]]:
             errors.append(f"Source {sid} claims_supported points at missing records {dangling}")
         if not supported:
             warnings.append(f"Source {sid} supports no verification record yet")
+    return errors, warnings
+
+
+def check_registry_coverage() -> tuple[list[str], list[str]]:
+    """Ask the registry generator whether its rendering covers the evidence set.
+
+    Issue #20 step 3 asked for this script to fail on a doc_id that resolves to no registry entry,
+    because the two files used to be checked independently and neither knew the other's identifier
+    space. It does fail, and the join is still derived exactly once: build_source_index.py is the
+    only code that knows how a registry is built out of claims.json, so this function calls that
+    code and reports its verdict. Re-matching the labels here would put two answers in the
+    repository able to disagree, which is the failure the issue was written about.
+
+    What this adds over 'make check-registry' is the committed file rather than the rendering:
+    serialise(render(...)) has to equal the bytes on disk, so a registry edited by hand fails here
+    even when its own numbers add up. Both run in the gate, so neither is load-bearing alone.
+
+    Returns errors plus warnings. The warning is one document whose records sit at different tiers,
+    which is legitimate -- the tier belongs to the claim being made, not to the paper -- but which
+    must not be compared across records without reading why.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    try:
+        doc = load_claims(CLAIMS_PATH)
+        on_disk = INDEX_PATH.read_text(encoding="utf-8") if INDEX_PATH.exists() else ""
+        legacy = json.loads(on_disk) if on_disk else {}
+        report = render(legacy, doc)
+    except Exception as e:
+        return [f"Registry coverage could not be computed: {e}"], warnings
+
+    for line in report.unmapped:
+        errors.append(f"A cited document resolves to no registry entry: {line}")
+    for line in report.stale:
+        errors.append(f"The registry answers a label no record uses: {line}")
+    for line in report.no_url:
+        errors.append(f"An unlocatable source holds up a claim: {line}")
+    for line in report.bad_exempt:
+        errors.append(f"An exempt doc_id does not match the record carrying it: {line}")
+    for line in report.tier_split:
+        warnings.append(f"Source {line}")
+    if serialise(report.document) != on_disk:
+        errors.append(
+            "docs/source_index.json is not what its spec renders, so it was probably edited by "
+            "hand; run: make render-registry"
+        )
+
+    print(
+        f"  registry coverage: {report.labels - report.exempt} of {report.labels} cited doc_id "
+        f"labels resolve to an entry; {report.exempt} name arithmetic or an absence and must not"
+    )
     return errors, warnings
 
 
@@ -239,10 +303,12 @@ def main() -> int:
     all_errors.extend(check_source_index())
     linkage_errors, linkage_warnings = check_source_claim_linkage()
     all_errors.extend(linkage_errors)
+    coverage_errors, coverage_warnings = check_registry_coverage()
+    all_errors.extend(coverage_errors)
     all_errors.extend(check_result_markers_have_logs())
     all_errors.extend(check_forbidden_markers())
 
-    for warning in linkage_warnings:
+    for warning in linkage_warnings + coverage_warnings:
         print(f"  note: {warning}")
 
     if all_errors:
