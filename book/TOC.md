@@ -133,3 +133,34 @@ viết lại §7, rồi xoá mục này. Ghi cả hai bản ghi theo đúng tinh
   đích phải **tính ra** từ checkpoint theo §4.2 — hiện vẫn là placeholder trỏ tới mục P1 của fetch brief.
 - **Bảng điểm kiểu "97.4 %"**: `plan-v2.md` §9.2 chỉ ra bốn dòng số viết tay trong
   `capstone/voice_edge_benchmark/benchmark_runner.py` và các lệnh assert của test trên chính chúng.
+
+---
+
+## Resolution of the mapping question, recorded 2026-09-13 (English, appended, not replacing)
+
+The two-reading table above stays exactly as it was written. This section is the
+second record, not an edit of the first, because the earlier note is itself
+evidence that the ambiguity existed and was deliberately left open.
+
+What changed: the repo owner delegated the choice. Instructing the agent to pick
+the chapter titles and the most common hardware, in these words --
+*"dùng ngôn ngữ ENG level B2; Title anh cho mày tự đặt, phần cứng chọn common nhất. Làm đi"* --
+settled the question by moving it out of the agent's hands and into his.
+
+Consequence applied to `book-en/`:
+
+* Chapters 8 and 9 take the titles of the `plan-v2.md` section 7 artefacts --
+  the keyword-spotting build and the streaming Conformer overlay. The §7 reading
+  is the canonical one for the spine.
+* The section stubs under those two chapters still follow the earlier mapping,
+  where chapter 8 held shared model primitives and chapter 9 held SoC
+  partitioning. They were left in place on purpose. Re-cutting an outline is
+  prose work, and a pipeline branch that quietly reorganises two chapters would
+  make it impossible to see what the move cost.
+* A scope note sits under each of the two H1 lines in `book-en/chapter08.md` and
+  `book-en/chapter09.md`, naming the mismatch. Readers meet the gap in the text,
+  not in a commit message.
+
+Still open, and unchanged by this decision: `plan-v2.md` section 3.1 carries the
+line *"chọn 1"* for the same mapping. That is the owner's to close. Section 7
+remains the authority on artefacts; nothing here overrides it.

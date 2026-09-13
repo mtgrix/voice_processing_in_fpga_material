@@ -1,10 +1,10 @@
-# Chapter 2: Jetson Orin Microarchitecture & Profiling Baseline
+# The Jetson Orin Baseline: Microarchitecture and Profiling
 
 > *Objective: Dissect the NVIDIA Jetson Orin SoC architecture (Ampere GPU, Tensor Cores, LPDDR5, DLA) and establish rigorous baseline measurement protocols (TensorRT, tegrastats).*
 
 ---
 
-> ### 📘 Minimal Mathematics / Prerequisites for this Chapter
+> ### Minimal Mathematics / Prerequisites for this Chapter
 > 
 > - **Energy per Frame**: $E_{\text{frame}} = P_{\text{avg}} \times \Delta t_{\text{latency}}$ ($\text{Joules}$ or $\text{mJ}$).
 > - **Real-Time Factor (RTF)**: $\text{RTF} = T_{\text{compute}} / T_{\text{audio}}$.

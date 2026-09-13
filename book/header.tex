@@ -1,0 +1,80 @@
+% header.tex — LaTeX preamble for the Voice Edge AI monograph.
+% Engine: lualatex (Unicode + fontspec). Included by Pandoc via --include-in-header.
+
+\usepackage{fontspec}
+
+% Glyph coverage. The manuscript is English B2, but the legacy Vietnamese
+% manuscript and the ★ / ⚠ markers used in plan-v2.md still need a route to a
+% glyph, so missing characters fall back instead of printing tofu boxes.
+\directlua{
+  luaotfload.add_fallback("symfallback", {
+    "Cambria Math:mode=node;",
+    "Segoe UI:mode=node;","Segoe UI Symbol:mode=node;",
+  })
+}
+\setmainfont{Times New Roman}[RawFeature={fallback=symfallback}]
+\setsansfont{Segoe UI}
+\setmonofont{Consolas}[Scale=0.85, RawFeature={fallback=symfallback}]
+
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage{unicode-math}
+\setmathfont{Cambria Math}
+
+% Tables break across pages instead of overflowing the text block.
+% Pandoc loads graphicx only when -V graphics is set; it is not set, and the
+% image-width cap below renews \includegraphics, so the package is named
+% here rather than inherited by accident.
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{booktabs}
+
+% Long code lines wrap rather than run past the margin.
+\usepackage{fvextra}
+% etoolbox is used directly below for \ifstrempty. fvextra happens to load it
+% today, but a chapter handler should not depend on a verbatim package for a
+% conditional it uses itself, so the dependency is named.
+\usepackage{etoolbox}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+% The brace characters in commandchars must be escaped. Written bare, an open
+% brace starts a group inside the argument, so the argument does not close where
+% it looks like it does and TeX keeps reading until the next blank line.
+
+% No image may clip: cap against both the text width and the page height.
+\makeatletter
+\def\maxwidth{%
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\def\maxheight{%
+  \ifdim\Gin@nat@height>0.82\textheight
+    0.82\textheight
+  \else
+    \Gin@nat@height
+  \fi
+}
+\makeatother
+\let\oldincludegraphics\includegraphics
+\renewcommand{\includegraphics}[2][]{%
+  \oldincludegraphics[#1,width=\maxwidth,height=\maxheight,keepaspectratio]{#2}}
+
+% Front matter headings are unnumbered, so Pandoc writes \chapter*{...} for them.
+% Pandoc writes the \addcontentsline for that form itself. This patch used to add
+% one too, which is why the first build with the correct {.unnumbered} class
+% printed every front-matter title twice in the contents; that half is gone. What
+% is left exists only for \markboth: the starred form sets no running header, so
+% without this a front-matter page keeps showing the previous chapter's title.
+\makeatletter
+\let\vpOldChapter\chapter
+\renewcommand\chapter{\@ifstar{\vpUnnumberedChapter}{\vpOldChapter}}
+\newcommand{\vpUnnumberedChapter}[2][]{%
+  \ifstrempty{#1}{\vpOldChapter*{#2}}{\vpOldChapter*[#1]{#2}}\markboth{#2}{#2}%
+}
+\makeatother
+
+% Keep log noise from wide tables down to real problems.
+\hbadness=10000
+\hfuzz=2pt

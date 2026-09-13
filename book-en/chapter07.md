@@ -1,4 +1,4 @@
-# Chapter 7: Hardware-Aware Quantization for Voice Models
+# Quantization That Respects the Hardware
 
 > *Objective: Master Post-Training Quantization (PTQ) and Quantization-Aware Training (QAT) to compress speech models without degrading task-matched quality: accuracy/EER for keyword spotting, WER/CER for ASR, PESQ/STOI for enhancement. plan-v2.md section 5.3 forbids mixing metrics across tasks.*
 

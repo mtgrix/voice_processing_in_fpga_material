@@ -1,4 +1,4 @@
-# Chapter 5: FPGA Acceleration Methodologies: DPU, HLS, FINN & RTL
+# Four Ways to Accelerate on an FPGA: DPU, HLS, FINN and RTL
 
 > *Objective: Comprehensively evaluate and compare four hardware implementation methodologies for neural acceleration on FPGAs.*
 

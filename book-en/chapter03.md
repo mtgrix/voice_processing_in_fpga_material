@@ -1,4 +1,4 @@
-# Chapter 3: The GPU Streaming Bottleneck at Batch=1
+# The Streaming Bottleneck: Why Batch=1 Stalls a GPU
 
 > *Objective: Analyze the root architectural causes behind GPU power inefficiency, memory bandwidth saturation, and latency jitter under continuous streaming audio.*
 
