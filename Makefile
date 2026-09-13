@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence gate clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence gate book book-check book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -15,6 +15,9 @@ help:
 	@echo "  make render-evidence   - Regenerate the record .md files from claims.json"
 	@echo "  make gate              - Run every check CI runs, in CI's order"
 	@echo "  make clean             - Clean temporary cache files"
+	@echo "  make book              - Build both monograph PDFs into dist/ (needs Pandoc and LuaLaTeX)"
+	@echo "  make book-check        - Run the PASS/FAIL/N-A gate against the built PDFs"
+	@echo "  make book-clean        - Remove built PDFs and page previews"
 
 test:
 	$(PYTHON) -m pytest
@@ -47,6 +50,16 @@ render-evidence:
 	$(PYTHON) scripts/verification/render_claims.py --write
 
 gate: lint format-check typecheck test verify verify-evidence check-render
+
+# The book targets are deliberately NOT part of gate, so CI does not run them: the# checks job installs Python only, and a TeX distribution costs hundreds of megabytes# for a job that does not otherwise need one. A green gate therefore does not mean a# buildable book. Run make book-check where Pandoc and LuaLaTeX exist. Issue #29.
+book:
+	bash scripts/build_book.sh
+
+book-check:
+	bash scripts/verify_book_pdf.sh
+
+book-clean:
+	rm -rf dist/voice-edge-fpga-book-*.pdf dist/preview dist/.verify
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache build dist

@@ -1,4 +1,4 @@
-# Chapter 6: Audio Preprocessing & DSP Hardware Acceleration
+# Audio Preprocessing in Hardware: I2S, Frame Buffering and the STFT
 
 > *Objective: Design and synthesize dedicated hardware IP cores for fixed-point FFT/STFT and Mel Filterbank extraction directly connected to digital microphone interfaces.*
 

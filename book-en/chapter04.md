@@ -1,4 +1,4 @@
-# Chapter 4: FPGA Microarchitecture for Edge AI
+# FPGA Microarchitecture for Edge AI: Logic, DSP, BRAM and Dataflow
 
 > *Objective: Explore FPGA hardware primitives (LUTs, Flip-Flops, DSP Slices, BRAM, UltraRAM, AXI-Stream) and spatial dataflow execution principles.*
 

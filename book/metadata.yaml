@@ -1,0 +1,37 @@
+# Pandoc metadata for the monograph. Consumed by scripts/build_book.sh via
+# --metadata-file, which turns each key into a Pandoc variable for the LaTeX
+# template. Keep this file free of prose: citeproc and the template read it, a
+# human does not.
+#
+# Issue #29 ported this from learning_journey/knowledge_graph_learning-journey.
+# Two deliberate departures from that reference are recorded in book/TOC.md and
+# in book/header.tex: chapter numbers are printed by the book class, and the
+# PDF gate has three outcomes rather than two.
+title: "Voice on the FPGA"
+subtitle: "Moving a Streaming Speech Model from Jetson Orin to Kria KV260"
+author: "The Voice Edge AI learning project"
+date: "2026"
+# en-GB rather than en-US: the manuscript was drafted en-GB and the difference is
+# cosmetic in LaTeX, so changing the tag would churn prose for no gain.
+lang: en-GB
+
+# citeproc only emits a reference section when the manuscript cites something.
+# book-en/ currently has zero [@key] markers, so the gate reports the
+# bibliography checks as N/A rather than PASS. See docs/BOOK_STATUS.md.
+bibliography: references.bib
+csl: ieee.csl
+link-citations: true
+reference-section-title: "References"
+
+toc: true
+toc-depth: 2
+
+documentclass: book
+classoption: [openany]
+
+# The book class prints the chapter number itself, so H1 text in the manuscript
+# carries a title and no number. Section headings are authored the other way
+# round: every stub in book-en/ is written "## 7.1 ...", so LaTeX must number
+# chapters and stop there, or each section prints its number twice.
+# numbersections is on by default; this lowers its secnumdepth to chapter level.
+secnumdepth: 1

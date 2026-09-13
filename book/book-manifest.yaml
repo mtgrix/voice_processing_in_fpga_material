@@ -1,0 +1,27 @@
+# book-manifest.yaml — ordered manuscript sources for the PDF build.
+# scripts/build_book.sh reads the `sources:` list; paths are relative to BOOK_DIR.
+#
+# The list is the reading order, so it also fixes chapter numbering: with
+# documentclass: book, Pandoc turns each level-1 heading into \chapter and the
+# book class numbers them in this order.
+#
+# book/ holds the legacy Vietnamese manuscript. AGENTS.md now makes English B2
+# canonical, so the built manuscript is book-en/. See Issue #29.
+
+book:
+  output_name: voice-edge-fpga-book
+
+sources:
+  - preface.md
+  - how-to-use.md
+  - chapter01.md
+  - chapter02.md
+  - chapter03.md
+  - chapter04.md
+  - chapter05.md
+  - chapter06.md
+  - chapter07.md
+  - chapter08.md
+  - chapter09.md
+  - chapter10.md
+  - open-questions.md

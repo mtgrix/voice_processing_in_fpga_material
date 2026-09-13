@@ -1,4 +1,4 @@
-# Chapter 10: Benchmarking Setup, Pareto Frontier & Paper Writing
+# Benchmarking, the Pareto Frontier, and Writing the Paper
 
 > *Objective: Establish a fair experimental evaluation framework comparing NVIDIA Jetson Orin with FPGA platforms, analyze the multi-objective Pareto Frontier, and structure an academic manuscript.*
 

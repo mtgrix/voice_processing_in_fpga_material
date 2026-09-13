@@ -1,10 +1,10 @@
-# Chapter 1: Voice Processing Pipelines & Real-Time Constraints
+# Voice Processing Pipelines and Real-Time Constraints
 
 > *Objective: Understand continuous streaming audio processing fundamentals, real-time physical latency constraints, and why edge voice applications inherently execute at batch size one ($batch=1$).*
 
 ---
 
-> ### 📘 Minimal Mathematics / Prerequisites for this Chapter
+> ### Minimal Mathematics / Prerequisites for this Chapter
 > 
 > - **Discrete Fourier Transform (DFT)**: Spectral decomposition from time to frequency domain.
 > - **Time-Frequency Uncertainty Principle (Heisenberg-Gabor)**: Temporal vs. spectral resolution trade-off.
