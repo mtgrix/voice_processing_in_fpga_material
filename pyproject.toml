@@ -64,6 +64,17 @@ strict = true
 explicit_package_bases = true
 mypy_path = [".", "scripts/verification"]
 
+[[tool.mypy.overrides]]
+# This script reads the built PDF, and PyMuPDF is only needed to build one, so CI
+# does not install it. Without the package mypy reports the import as missing; with
+# the package, PyMuPDF leaves some of its own definitions unannotated and strict mode
+# refuses the calls. Both facts belong to an optional dependency, not to this file, so
+# the codes are disabled here instead of being papered over with "type: ignore"
+# comments -- which were each wrong, and reported as unused, in whichever of the two
+# environments did not produce them. That is what failed CI on the first push.
+module = "scripts.extract_pdf_text"
+disable_error_code = ["import-not-found", "no-untyped-call"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests", "chapter01", "chapter02"]
 addopts = "-v --tb=short"

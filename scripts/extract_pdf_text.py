@@ -32,13 +32,13 @@ def main(argv: list[str]) -> int:
         )
         return 1
     try:
-        doc = pymupdf.open(src)  # type: ignore[no-untyped-call]
+        doc = pymupdf.open(src)
     except Exception as exc:  # noqa: BLE001 - report, do not traceback in a gate
         print(f"extract_pdf_text: cannot open {src}: {exc}", file=sys.stderr)
         return 1
     with open(dst, "w", encoding="utf-8", newline="\n") as out:
         for page_no in range(doc.page_count):
-            page = doc.load_page(page_no)  # type: ignore[no-untyped-call]
+            page = doc.load_page(page_no)
             out.write(f"\n=== PAGE {page_no + 1} ===\n")
             out.write(page.get_text())
     print(f"extract_pdf_text: {doc.page_count} pages -> {dst}")
