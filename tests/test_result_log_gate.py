@@ -202,19 +202,51 @@ class TestRealRepositoryState:
         """
         assert real_gate.check_result_markers_have_logs() == []
 
-    def test_results_holds_no_logs_yet(self) -> None:
-        log_dir = REPO_ROOT / "results"
-        files = (
-            sorted(p.name for p in log_dir.rglob("*") if p.is_file()) if log_dir.is_dir() else []
-        )
-        assert files == [], f"results/ now holds {files}; every checkmark row needs one of these"
+    def test_every_log_under_results_is_checksummed(self) -> None:
+        """Replaces the snapshot "results/ holds nothing", which could only ever be true once.
 
-    def test_no_status_row_carries_the_marker(self) -> None:
-        """Independent of the gate: the claim count itself, stated as a number."""
-        claimed = 0
-        for relative in (STATUS_DOC, BOOK_DOC):
-            text = (REPO_ROOT / relative).read_text(encoding="utf-8")
-            claimed += sum(
-                1 for line in text.splitlines() if CHECK in line and line.lstrip().startswith("|")
-            )
-        assert claimed == 0
+        Chapter 1's experiment was run on 2026-09-13, so the directory is no longer empty and
+        the old assertion was spent. What replaces it is permanent and stricter: every file
+        under results/ must be named by SHA256SUMS. That fails on an unchecksummed log even
+        while no row claims it, which the empty-directory test could never do.
+        """
+        log_dir = REPO_ROOT / "results"
+        manifest = log_dir / "SHA256SUMS"
+        assert manifest.is_file(), "results/SHA256SUMS is the index; without it no log is evidence"
+        listed = {
+            line.split("  ", 1)[1].strip()
+            for line in manifest.read_text(encoding="utf-8").splitlines()
+            if "  " in line
+        }
+        present = {
+            f.relative_to(REPO_ROOT).as_posix()
+            for f in sorted(log_dir.rglob("*"))
+            if f.is_file() and f != manifest
+        }
+        assert present, "results/ holds no log, so no row anywhere may carry the marker"
+        unlisted = sorted(present - listed)
+        assert not unlisted, f"logs with no digest recorded: {unlisted}"
+
+    def test_marker_rows_are_exactly_the_measured_ones(self) -> None:
+        """Replaces "no row carries the marker", which is now false.
+
+        Two invariants survive it. The number of claimed rows equals the number of rows with
+        captured evidence, stated as a count rather than left to the gate. And BOOK_STATUS
+        holds none at all, which turns the gate's documented limit into a test: correspondence
+        is by folded substring, so a two-digit chapter id is matched by any path holding those
+        digits, a timestamp among them. A checkmark in that table could be vouched for by an
+        unrelated log. Mark measurements, not chapters.
+        """
+        exp_rows = [
+            line
+            for line in (REPO_ROOT / STATUS_DOC).read_text(encoding="utf-8").splitlines()
+            if CHECK in line and line.lstrip().startswith("|")
+        ]
+        book_rows = [
+            line
+            for line in (REPO_ROOT / BOOK_DOC).read_text(encoding="utf-8").splitlines()
+            if CHECK in line and line.lstrip().startswith("|")
+        ]
+        assert not book_rows, f"BOOK_STATUS rows carry the marker: {book_rows}"
+        assert len(exp_rows) == 1, f"expected exactly one claimed experiment row, got {exp_rows}"
+        assert "exp_01" in exp_rows[0]
