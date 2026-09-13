@@ -1,15 +1,23 @@
-text eol=lf
+# Line endings are load bearing for the evidence set, not a style preference.
+# results/SHA256SUMS records the SHA-256 of each captured log exactly as it was
+# written, and check_result_markers_have_logs() in scripts/verification/ recomputes
+# the digest from the file on disk. Under core.autocrlf=true a Windows checkout
+# yields CRLF bytes, the digest stops matching, and the gate refuses a result marker
+# that the log properly backs. Storing text as LF in the repository is what makes a
+# recorded digest mean the same thing on two machines.
+#
+# Line 1 used to read "text eol=lf" with no pattern token, so git matched a file
+# literally named "text" and every real file stayed unspecified. Fixed as part of
+# Issue #33 by adding the "*" pattern.
+#
+# Working copies already on disk keep their existing bytes until they are next
+# checked out. Measured on the fix branch, not assumed: git normalises on read, so a
+# CRLF working copy still hashes to the unchanged LF blob and reports as unmodified.
+* text eol=lf
+
+# Redundant under the rule above. Kept so the categories whose bytes have a
+# contractual meaning are named explicitly rather than inferred from a wildcard.
 *.sh text eol=lf
 *.tex text eol=lf
 *.lua text eol=lf
-
-# Evidence digests are byte-exact: results/SHA256SUMS holds the SHA-256 of the log file as
-# written, and check_result_markers_have_logs() recomputes it from the file on disk. Under
-# core.autocrlf=true a Windows checkout gets CRLF bytes, the digest stops matching, and the
-# gate refuses a claim that is properly backed. Pin the evidence tree to LF.
-#
-# Scoped to results/ on purpose. The first line of this file was meant to be a blanket rule
-# but is missing its pattern token, so it currently applies to a file named "text"; fixing
-# that would flip every working copy in the repository to LF, which is a separate decision.
-# Tracked as its own Issue.
 results/** text eol=lf
