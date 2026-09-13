@@ -9,7 +9,13 @@
 #
 # Usage:
 #   bash scripts/build_book.sh
+#   bash scripts/build_book.sh --chapter 01      build chapter 1 alone
 #   BOOK_DIR=book bash scripts/build_book.sh     build the legacy Vietnamese manuscript
+#
+# The chapter mode exists because a ten-chapter PDF is not a reviewable answer to
+# "read me chapter 1" while nine of its chapters are still stubs (Issue #32). The
+# whole-book build stays the default and stays what `make book-check` runs, so the
+# gate that CI knows about is untouched by this mode.
 #
 # Why BOOK_DIR and not a LANG switch: AGENTS.md makes English B2 canonical, so the
 # default manuscript is book-en/. The old book/ tree is Vietnamese and will be
@@ -18,6 +24,27 @@
 # No Mermaid or TikZ pre-render step: the manuscript contains no figures, so there
 # is nothing for those stages to do. See Issue #29 before adding them back.
 set -euo pipefail
+
+# --chapter NN selects one chapter. Parsed before anything reads the manifest, so a
+# bad value fails at once rather than after a long build.
+CHAPTER=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --chapter|-c)
+      [ $# -ge 2 ] || { echo "build_book: $1 needs a value" >&2; exit 2; }
+      CHAPTER="$2"; shift 2 ;;
+    --chapter=*) CHAPTER="${1#--chapter=}"; shift ;;
+    *) echo "build_book: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+if [ -n "$CHAPTER" ]; then
+  case "$CHAPTER" in
+    ''|*[!0-9]*) echo "build_book: --chapter wants a number, got: $CHAPTER" >&2; exit 2 ;;
+  esac
+  # Normalise so 1 and 01 name the same file: the manuscript pads its chapter numbers,
+  # and the flag should not have to know that it does.
+  CHAPTER="$(printf '%02d' "$((10#$CHAPTER))")"
+fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$ROOT/build"
@@ -44,15 +71,24 @@ OUT_NAME="$(sed -n 's/^[[:space:]]*output_name:[[:space:]]*//p' "$MANIFEST" | he
 # The legacy tree keeps its own suffix so a Vietnamese build never overwrites the
 # canonical one by accident.
 if [ "$(basename "$BOOK_DIR")" = "book-en" ]; then OUT_PREFIX="$OUT_NAME"; else OUT_PREFIX="$OUT_NAME-$(basename "$BOOK_DIR")"; fi
+# A single chapter gets its own file name, so a chapter build can never overwrite the
+# whole-book build sitting in dist/ from an earlier run.
+[ -n "$CHAPTER" ] && OUT_PREFIX="$OUT_PREFIX-chapter$CHAPTER"
 
 # Read the ordered source list. Missing files are fatal: a silently skipped
 # chapter would produce a thinner PDF and still exit 0.
 SOURCES=()
-while IFS= read -r src; do
-  [ -n "$src" ] || continue
-  [ -f "$BOOK_DIR/$src" ] || { echo "build_book: manifest names a file that does not exist: $BOOK_DIR/$src" >&2; exit 1; }
-  SOURCES+=("$src")
-done < <(sed -n '/^sources:/,/^[^ ]/p' "$MANIFEST" | grep -oE '[A-Za-z0-9_.-]+[.]md$')
+if [ -n "$CHAPTER" ]; then
+  ONE="chapter$CHAPTER.md"
+  [ -f "$BOOK_DIR/$ONE" ] || { echo "build_book: no such chapter: $BOOK_DIR/$ONE" >&2; exit 1; }
+  SOURCES=("$ONE")
+else
+  while IFS= read -r src; do
+    [ -n "$src" ] || continue
+    [ -f "$BOOK_DIR/$src" ] || { echo "build_book: manifest names a file that does not exist: $BOOK_DIR/$src" >&2; exit 1; }
+    SOURCES+=("$src")
+  done < <(sed -n '/^sources:/,/^[^ ]/p' "$MANIFEST" | grep -oE '[A-Za-z0-9_.-]+[.]md$')
+fi
 [ "${#SOURCES[@]}" -gt 0 ] || { echo "build_book: manifest listed no sources" >&2; exit 1; }
 echo "build_book: manuscript dir  $BOOK_DIR"
 echo "build_book: ${#SOURCES[@]} sources, in order: ${SOURCES[*]}"

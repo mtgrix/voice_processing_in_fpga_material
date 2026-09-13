@@ -1,0 +1,16 @@
+{
+  "captured_utc": "20260913T020406Z",
+  "environment": {
+    "numpy": "2.5.2",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10"
+  },
+  "label": "streaming vs batch log-mel numerical agreement, FP32 host",
+  "returned_metrics": {
+    "mae": 0.0,
+    "num_frames": 98.0,
+    "sqnr_db": 134.47799682617188
+  },
+  "row_id": "exp_01",
+  "script": "chapter01/exp_01_streaming_audio_pipeline.py"
+}

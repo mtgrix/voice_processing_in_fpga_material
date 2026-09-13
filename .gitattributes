@@ -2,3 +2,14 @@ text eol=lf
 *.sh text eol=lf
 *.tex text eol=lf
 *.lua text eol=lf
+
+# Evidence digests are byte-exact: results/SHA256SUMS holds the SHA-256 of the log file as
+# written, and check_result_markers_have_logs() recomputes it from the file on disk. Under
+# core.autocrlf=true a Windows checkout gets CRLF bytes, the digest stops matching, and the
+# gate refuses a claim that is properly backed. Pin the evidence tree to LF.
+#
+# Scoped to results/ on purpose. The first line of this file was meant to be a blanket rule
+# but is missing its pattern token, so it currently applies to a file named "text"; fixing
+# that would flip every working copy in the repository to LF, which is a separate decision.
+# Tracked as its own Issue.
+results/** text eol=lf

@@ -9,7 +9,7 @@
 
 | Chương | Tên Chương | Bản thảo Tiếng Việt | Bản thảo Tiếng Anh | Thí nghiệm | Trạng thái |
 |:---:|---|:---:|:---:|:---:|:---:|
-| **01** | Kiến trúc Pipeline Xử lý Tiếng nói & Ràng buộc Thời gian thực | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_01 | Đã tạo khung |
+| **01** | Kiến trúc Pipeline Xử lý Tiếng nói & Ràng buộc Thời gian thực | 🚧 Khung sườn | Đã viết (11 trang PDF) | exp_01 đã chạy, có log | Đã soạn bản tiếng Anh |
 | **02** | Phân tích Vi kiến trúc & Đo kiểm Điểm chuẩn trên Jetson Orin | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_02 | Đã tạo khung |
 | **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_03 | Đã tạo khung |
 | **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
@@ -35,7 +35,7 @@ Hai trạng thái khác nhau phải phân biệt rõ: chương **chưa viết** 
 
 **Chưa chốt, cần chủ repo:** `plan-v2.md` §7 gán artefact chặng 8–9 (KWS SoC trên board; Conformer overlay) khác với tiêu đề chương 08–09 hiện tại. Ghi chi tiết ở `book/TOC.md`, mục "Lệch ánh xạ chưa chốt".
 
-**Chưa làm:** toàn bộ văn xuôi của 10 chương, và bản tiếng Anh tương ứng. Không một ô số liệu nào trong bảng chương được đóng dấu hoàn thành — không có phần cứng để đo.
+**Chưa làm:** văn xuôi của chương 2 đến chương 10, và bản tiếng Việt tương ứng của cả 10 chương. Chương 1 đã có văn xuôi tiếng Anh. Không một ô nào trong bảng chương được đóng dấu ✅: theo `scripts/verify_integrity.py`, dấu ✅ chỉ được đặt ở dòng có mã thí nghiệm đủ dài để khớp với log, còn mã chương hai chữ số thì không phân biệt được — nên tiến độ chương ghi bằng chữ, không ghi bằng dấu.
 
 ---
 

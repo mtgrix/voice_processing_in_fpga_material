@@ -15,11 +15,13 @@ end. Then sections build one argument. Most sections end in the same two places:
   small and runnable, or it is written as a procedure with its result cells left
   empty.
 
-The manuscript is a skeleton while its chapters are drafted, so two of those
-three are not in the text yet. As of 2026-09-13 no chapter body carries a record
-reference: the `V-xx-yy` form appears in this page and in the evidence file, not
-in the chapters. The ten `chapterNN/` directories do exist. The back matter names
-the count, and the build gate reports it rather than hiding it.
+The manuscript is a skeleton while its chapters are drafted, so most of it
+does not yet carry the first of those two. Chapter 1 does: as of 2026-09-13 it
+cites 15 record references in its body, and the other nine chapters cite none.
+A `V-xx-yy` reference is not a bibliography citation, and the book currently has
+none of those either, which is why the build gate reports its bibliography checks
+as N/A rather than as passed. The ten `chapterNN/` directories do exist. The back
+matter names the counts, and the build gate reports them rather than hiding them.
 
 ## Reading a record id
 

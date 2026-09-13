@@ -13,8 +13,9 @@ Trong xử lý âm thanh thời gian thực, dữ liệu không thể nạp theo
 - Host CPU / Python Simulation (sẽ chuyển đổi thành AXI-Stream Hardware IP Core trên FPGA trong Chương 6).
 
 ## 4. Dẫn xuất Toán học & Thuật toán
-- Phép biến đổi STFT với độ dài cửa sổ $N=400$, bước nhảy $H=160$, FFT kích thước $512$.
-- Ma trận chuyển đổi Mel $M \times (N/2 + 1)$ với $M=80$.
+- Phép biến đổi STFT: độ dài cửa sổ $L=400$ mẫu, bước nhảy $H=160$ mẫu, độ dài FFT $N=512$ (đệm 112 số không).
+- Ma trận chuyển đổi Mel $M \times (N/2 + 1) = 80 \times 257$ với $M=80$.
+- Hiệu đính ký hiệu: bản trước dùng $N=400$ cho cả cửa sổ lẫn FFT, nên công thức $M \times (N/2+1)$ cho ra 201 cột, trong khi mã thực thi tạo 257 cột. $N$ trong tài liệu này luôn là độ dài FFT.
 - Hàm nén: $S[m] = \ln(\max(E[m], 10^{-6}))$.
 
 ## 5. Tín hiệu Đầu vào & Đặc tả Dữ liệu
@@ -34,10 +35,32 @@ pytest chapter01/test_exp_01.py
 - So sánh đối chiếu trực tiếp ma trận điểm nổi giữa hàm tính toán streaming và hàm tính toán batch của NumPy.
 
 ## 9. Kết quả Thực nghiệm & Bằng chứng
-- [Chờ ghi nhận kết quả thực tế khi chạy trên môi trường thực nghiệm]
+Executed 2026-09-13 on a host (Python 3.12.10, NumPy 2.5.2, Windows 11). Raw output is at
+`results/exp01/20260913T020406Z/` — `stdout.log` plus `result.json`, both listed in
+`results/SHA256SUMS`. `scripts/capture_result.py` ran the script and wrote the files, so no
+number below was transcribed by hand.
+
+| Metric | Expected (§7) | Measured | Reading |
+| --- | --- | --- | --- |
+| Frames | — | 98 | One second of audio at $L=400$, $H=160$ |
+| MAE | $< 10^{-4}$ | $0.0$ | Bound satisfied |
+| SQNR | $> 50\text{ dB}$ | 134.48 dB | **Not a noise measurement** |
+| Element comparison | — | 0 of 7,840 differ | Streaming and batch arrays are bitwise identical |
+
+The SQNR figure is an artifact of a guard term, not a margin. The script computes
+$10\log_{10}\bigl(P_\text{signal}/(P_\text{error}+10^{-12})\bigr)$, and $P_\text{error}$ is
+exactly zero because the two arrays are identical, so the reported value equals
+$10\log_{10}(28.04136848449707/10^{-12})$ and reproduces to the last printed digit. A run that
+differed from its reference would report a different number for that reason alone. The $> 50$ dB
+expectation in §7 is therefore not tested by this run, and the honest statement is that the error
+was zero rather than small.
+
+What the run does establish is narrower: the ring-buffer path returns the same FP32 values as the
+batch path on this input. It says nothing about fixed point (§11, and chapter 6), and nothing
+about recognition accuracy, which needs a model and a dataset.
 
 ## 10. Đánh đổi Phần cứng - Phần mềm
-- Xử lý streaming giúp giảm độ trễ từ $1000\text{ ms}$ (chờ cả file) xuống chỉ còn $10\text{ ms}$ (độ trễ 1 khung), với chi phí quản lý đệm trạng thái vòng xoay (ring-buffer state).
+- Độ trễ không giảm từ $1000\text{ ms}$ xuống $10\text{ ms}$, như bản trước viết. Khung đầu tiên cần $25\text{ ms}$ âm thanh đi qua ($L/f_s = 400/16000$); sau đó một khung mới xuất hiện mỗi $10\text{ ms}$ ($H/f_s = 160/16000$). Con số $1000\text{ ms}$ là thời gian chờ hết một file dài một giây, nên nó phụ thuộc độ dài file chứ không phải một hằng số của phương pháp. Chi phí phải trả là bộ nhớ đệm trạng thái vòng xoay (ring-buffer state).
 
 ## 11. Giới hạn & Giả định
 - Sử dụng số thực dấu phẩy động 32-bit (FP32). Chương 6 sẽ chuyển đổi sang số dấu phẩy tĩnh (Fixed-Point) để tổng hợp phần cứng.

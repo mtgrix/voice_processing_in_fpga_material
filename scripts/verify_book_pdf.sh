@@ -31,6 +31,28 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# --chapter NN checks a single-chapter PDF built by scripts/build_book.sh --chapter NN.
+# The constant EXPECTED_TITLES below demands all thirteen front-matter and chapter
+# titles, which a one-chapter document cannot satisfy: that is why Issue #32 had to add
+# this mode instead of using the existing one. In chapter mode the expected headings are
+# read out of the single source file being built.
+CHAPTER=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --chapter|-c)
+      [ $# -ge 2 ] || { echo "verify_book_pdf: $1 needs a value" >&2; exit 2; }
+      CHAPTER="$2"; shift 2 ;;
+    --chapter=*) CHAPTER="${1#--chapter=}"; shift ;;
+    *) echo "verify_book_pdf: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+if [ -n "$CHAPTER" ]; then
+  case "$CHAPTER" in
+    ''|*[!0-9]*) echo "verify_book_pdf: --chapter wants a number, got: $CHAPTER" >&2; exit 2 ;;
+  esac
+  CHAPTER="$(printf '%02d' "$((10#$CHAPTER))")"
+fi
 DIST="$ROOT/dist"
 BOOK_DIR="${BOOK_DIR:-$ROOT/book-en}"
 SHARED_DIR="$ROOT/book"
@@ -39,6 +61,13 @@ SHARED_DIR="$ROOT/book"
 # (see book/metadata.yaml). These are matched as space-free substrings of the
 # extracted text: PDF extraction shifts and can drop spaces at some glyph
 # boundaries, so a full fixed string is a fragile test.
+#
+# For a whole-book build the list is the contract: it is what a reader opening the
+# volume expects to find, and it does not depend on the manuscript agreeing with
+# itself. For --chapter it cannot be used, so headings come out of the one file being
+# built, which makes the check "did what I wrote reach the page" and nothing stronger.
+# That is a weaker check, and recording that is the reason it may replace the strong one
+# in a review build but not in the release build.
 EXPECTED_TITLES=(
   "Preface"
   "How to Use This Book"
@@ -60,6 +89,20 @@ OUT_NAME="$(sed -n 's/^[[:space:]]*output_name:[[:space:]]*//p' "$SHARED_DIR/boo
 [ -n "$OUT_NAME" ] || { echo "verify_book_pdf: manifest has no output_name" >&2; exit 1; }
 if [ "$MANU" = "book-en" ]; then OUT_PREFIX="$OUT_NAME"; else OUT_PREFIX="$OUT_NAME-$MANU"; fi
 
+if [ -n "$CHAPTER" ]; then
+  CHAPTER_SRC="$BOOK_DIR/chapter$CHAPTER.md"
+  [ -f "$CHAPTER_SRC" ] || { echo "verify_book_pdf: no such chapter source: $CHAPTER_SRC" >&2; exit 1; }
+  OUT_PREFIX="$OUT_PREFIX-chapter$CHAPTER"
+  # H1 and H2 lines, minus the authoring attribute braces that Pandoc consumes and
+  # minus inline emphasis, which is what the printed heading actually contains.
+  EXPECTED_TITLES=()
+  HEADINGS="$(sed -nE 's/^#{1,2} +//p' "$CHAPTER_SRC" | sed -E 's/ *\{[^}]*\}$//; s/[*`]+//g' | sed -E 's/ +$//')"
+  while IFS= read -r heading; do
+    [ -n "$heading" ] && EXPECTED_TITLES+=("$heading")
+  done <<< "$HEADINGS"
+  [ "${#EXPECTED_TITLES[@]}" -gt 0 ] || { echo "verify_book_pdf: chapter $CHAPTER has no headings to look for" >&2; exit 1; }
+  echo "verify_book_pdf: chapter mode, ${#EXPECTED_TITLES[@]} headings read from $(basename "$CHAPTER_SRC")"
+fi
 PRINT="$DIST/$OUT_PREFIX-print.pdf"
 SCREEN="$DIST/$OUT_PREFIX-screen.pdf"
 WORK="$DIST/.verify"
@@ -199,7 +242,11 @@ fi
 # table of contents because of the missing dot, and checks 2 above could not see
 # it, since a substring match tolerates any suffix. Any brace of this shape in
 # the extracted text is markup the writer was supposed to consume.
-LEAK=$(grep -aoE '\{(unnumbered|[.][a-z-]+|[#][A-Za-z0-9_.-]+)\}' "$WORK/book.txt" | sort -u | tr '\n' ' ')
+# The HTML comment markers joined the pattern for the chapter build: every stub in this
+# manuscript sits under a drafting note in that form, Pandoc drops such comments on the
+# way to LaTeX, and a marker that reaches the page therefore means the notes are being
+# printed as prose.
+LEAK=$(grep -aoE '\{(unnumbered|[.][a-z-]+|[#][A-Za-z0-9_.-]+)\}|<!--|-->' "$WORK/book.txt" | sort -u | tr '\n' ' ')
 if [ -n "$LEAK" ]; then fail "authoring attribute syntax leaked into the PDF: $LEAK"
 else pass "no authoring attribute syntax leaked into the PDF"; fi
 
