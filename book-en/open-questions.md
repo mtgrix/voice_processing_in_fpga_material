@@ -75,8 +75,8 @@ generated, not as a mistake to average away.
 
 These are gaps in the machinery, and they are measurable right now, so they are
 stated as measured rather than estimated, and the count is reproducible: each row below is a
-`grep --count` of the named pattern over the named set, taken on 2026-09-13 on `main` after
-Issue #35's two records landed. Records and sources are read out of
+`grep --count` of the named pattern over the named set, taken on 2026-09-13 after
+Issue #42 made `book/references.bib` a rendering of the registry. Records and sources are read out of
 `docs/verification/claims.json`; references are occurrences of `V-` plus two digits, a hyphen,
 the next two digits, in `book-en/chapter*.md`, counting repeats, because a chapter that names
 the same record twice cited it twice.
@@ -86,7 +86,8 @@ the same record twice cited it twice.
 | Records in the evidence set | 103 |
 | Of those, `verified` | 96 |
 | Distinct sources the records cite | 41 |
-| Entries in `book/references.bib` | 5 |
+| Entries in `book/references.bib` | 30 |
+| Sources the registry answers a label for | 33 |
 | Citation markers written into the manuscript | 0 |
 | Record references appearing in a chapter body | 17 |
 | Figures of any kind | 0 |
@@ -94,15 +95,17 @@ the same record twice cited it twice.
 | Of those, sections still without prose | 34 |
 
 The middle rows are one story told twice, and the telling matters. Chapter 1
-now cites 15 records in its body, in the `V-xx-yy` form that points into
-`docs/verification/claims.json`. That is not a citation marker, which is the
+quotes 13 records in its body, 17 times over, in the `V-xx-yy` form that points
+into `docs/verification/claims.json`. That is not a citation marker, which is the
 at-sign-and-key form in square brackets, and the text still holds none of those.
-So a bibliography still cannot be printed: the five `.bib` entries that do exist
-share no identifier with the 41 sources the evidence set actually uses. The build
-gate therefore reports its bibliography checks as **N/A**, not as passed. A check
-that found nothing to check is not evidence of health, and a record reference is
-not a citation -- it names where a number was read, not a work in the list at the
-back.
+The identifier gap that used to sit behind that sentence is closed: the
+bibliography is now generated from the same 30 registry rows the evidence records
+resolve against, and a chapter cites one by its registry id, so a marker naming `S009`
+and the `doc_id` of the quote that established a number name the same document. What is
+left is the writing. The build gate therefore still reports its bibliography checks
+as **N/A**, not as passed, because a check that found nothing to check is not
+evidence of health -- and a record reference is not a citation: it names where a
+number was read, not a work in the list at the back.
 
 The same applies to figures. There is no diagram in this book, so no figure
 renderer is wired into the build. Adding Mermaid or TikZ stages before a figure
@@ -111,8 +114,8 @@ exists would produce a pipeline that tests itself.
 ## Order of work, if a reader wants to help
 
 1. Register the board decision, then fetch the datasheet page for that SKU.
-2. Write citations into the prose as claims are made, and reconcile the 41
-   sources against the 5 `.bib` entries.
+2. Write citations into the prose as claims are made. The reconciliation is done:
+   the entries are generated, so a citation is a registry id and nothing else.
 3. Draft prose under the 34 section stubs that remain, one chapter at a time.
 4. Draw the two figures that the roofline argument genuinely needs, then wire a
    renderer.

@@ -165,12 +165,10 @@ exactly. The mechanics that CI enforces, in the order that works:
    `claims_supported` list naming the records it carries. `verify_integrity.py` errors on a
    `claims_supported` id that does not exist. `R01-NN` ids are legacy; do not mint new ones.
 5. Bump `claims.json` `version` (minor) and set `generated_utc`.
-6. Run everything CI runs, before you open the PR:
-   `python -m pytest`, `python -m ruff check .`, `python -m ruff format --check .`,
-   `python -m mypy .`, `python scripts/verify_integrity.py`,
-   `python scripts/verification/audit_claims.py`,
-   `python scripts/verification/render_claims.py --check`.
-   There is no `make` binary on every machine; `make gate` is these seven commands.
+6. Run everything CI runs, before you open the PR. The list is the `gate` target in
+   `Makefile` -- read it rather than trusting a copy of it here, since this brief is a
+   snapshot and the target is what CI actually executes. Without a make binary, run
+   each prerequisite in order: `grep -m1 "^gate:" Makefile`.
 
 **Environment notes** that have already cost this repo time: use `python`, not `python3`; export
 `PYTHONIOENCODING=utf-8` or the Vietnamese text raises `UnicodeEncodeError` mid-run; the PDF library
