@@ -10,7 +10,7 @@ The topic of this repository is **Edge Voice AI Hardware Acceleration**: migrati
 
 ## Language Policy
 
-- **Book drafts** (`book/`, chapter skeletons, experiment READMEs): Write in **Vietnamese**. Keep technical terms in English on first occurrence: "lượng tử hóa thích ứng phần cứng (hardware-aware quantization)", "luồng dữ liệu không gian (spatial dataflow)".
+- **Book drafts** (`book/`, chapter skeletons, experiment READMEs): Write in English level b2
 - **English monograph / Paper drafts** (`book-en/`): Write in **English**.
 - **Code, tests, configs, docs/**: Write in **English**.
 - **Commit messages**: English, conventional commits format (`feat:`, `fix:`, `docs:`, `test:`, `perf:`).

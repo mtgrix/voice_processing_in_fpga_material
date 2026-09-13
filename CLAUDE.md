@@ -14,7 +14,7 @@ Build this repository as:
 For meaningful work, always follow:
 
 ```text
-Issue → Branch → Commits → PR → Validate → Merge
+Issue → Create new Branch → Commits on new branch → PR → Validate → Merge -> delete merged branch
 ```
 
 Rules:
@@ -47,9 +47,9 @@ For chapter or paper work, inspect corresponding research notes in `docs/researc
 
 ## Monograph & Paper Rules
 
-* Book prose: Vietnamese (canonical).
+* Book prose: English level b2 (canonical).
 * Paper drafts / English edition: English.
-* Keep English technical terms on first occurrence.
+* Keep English technical terms on first occurrence and explan when first meet in simple English.
 * Write original explanations, formal proofs, and code; do not copy sources.
 * All empirical claims must be traceable to registered sources or captured benchmark logs.
 * Follow `docs/BOOK_PEDAGOGY.md`.
@@ -75,3 +75,6 @@ python scripts/verification/render_claims.py --check  # markdown matches claims.
 ```
 
 Never report unverified results.
+
+# workflow & subagent spawn
+Always use ANTHROPIC_DEFAULT_SONNET_MODEL model for subagent.
