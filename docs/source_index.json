@@ -674,6 +674,142 @@
         "V-03-03"
       ],
       "notes": "Read from a distributor mirror (media.digikey.com) of the Digilent manual."
+    },
+    {
+      "id": "S026",
+      "doc_ids": [
+        "NeMo Conformer-Transducer Recipe Config"
+      ],
+      "title": "NeMo conformer_transducer_bpe.yaml",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/conformer_transducer_bpe.yaml",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "Conformer",
+        "Transducer",
+        "ASR recipe",
+        "streaming"
+      ],
+      "claims_supported": [
+        "V-05-12",
+        "V-05-13",
+        "V-05-14",
+        "V-05-15",
+        "V-05-16",
+        "V-05-17",
+        "V-05-18",
+        "V-05-19",
+        "V-05-20",
+        "V-05-21"
+      ],
+      "notes": "The training recipe, and the only place the four size variants of the model family are tabulated together. Cited at a pinned commit, because a recipe file moves and a record quoting line 11 of a moving file is true of one day's tree only. Its variant table overrides five fields and line 6 says so, which is what lets a Small model be read off the table plus the body."
+    },
+    {
+      "id": "S027",
+      "doc_ids": [
+        "NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config"
+      ],
+      "title": "NeMo conformer_transducer_bpe_streaming.yaml",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "Conformer",
+        "Transducer",
+        "cache-aware streaming",
+        "ASR recipe"
+      ],
+      "claims_supported": [
+        "V-05-22",
+        "V-05-23",
+        "V-05-24",
+        "V-05-25",
+        "V-05-26",
+        "V-05-27",
+        "V-05-28",
+        "V-05-29",
+        "V-05-30",
+        "V-05-31",
+        "V-05-32",
+        "V-05-33",
+        "V-05-34",
+        "V-05-35",
+        "V-05-36"
+      ],
+      "notes": "The streaming recipe, where the left and right context pair and the look-ahead formula are written down. The architecture fields of a streaming model are not the offline model's with a flag turned on: this file sets conv_norm_type to layer_norm where the offline recipe sets batch_norm, so the two are separate documents and separate registry rows."
+    },
+    {
+      "id": "S028",
+      "doc_ids": [
+        "NeMo Cache-Aware Streaming FastConformer-Transducer Recipe Config"
+      ],
+      "title": "NeMo fastconformer_transducer_bpe_streaming.yaml",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/25445927d77f0cf5ef897826fc99c22d9b2308ee/examples/asr/conf/fastconformer/cache_aware_streaming/fastconformer_transducer_bpe_streaming.yaml",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "FastConformer",
+        "Transducer",
+        "cache-aware streaming",
+        "ASR recipe"
+      ],
+      "claims_supported": [
+        "V-05-37",
+        "V-05-38",
+        "V-05-39",
+        "V-05-40",
+        "V-05-41",
+        "V-05-42",
+        "V-05-43",
+        "V-05-44",
+        "V-05-45",
+        "V-05-46",
+        "V-05-47"
+      ],
+      "notes": "The other streaming recipe in the family, and the one whose checkpoints carry a published accuracy-against-latency curve. Subsampling 8 rather than 4 and a 9-tap convolution module rather than 31 are what make its per-frame cost differ from S027's at equal width."
+    },
+    {
+      "id": "S029",
+      "doc_ids": [
+        "NeMo Conformer English Score Table"
+      ],
+      "title": "NeMo docs/source/asr/data/scores/en/conformer_en.csv",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/6f20e61e4d11ce4dafc0f037c3bad535e1ac3ea9/docs/source/asr/data/scores/en/conformer_en.csv",
+      "access": "open",
+      "type": "repository-documentation",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "LibriSpeech",
+        "word error rate",
+        "ASR results"
+      ],
+      "claims_supported": [
+        "V-05-48",
+        "V-05-49",
+        "V-05-50",
+        "V-05-51",
+        "V-05-52",
+        "V-05-53",
+        "V-05-54",
+        "V-05-55",
+        "V-05-56"
+      ],
+      "notes": "A project's own results table states what that project achieved, so it corroborates and does not establish, which is the rule the WeNet README row already records. Its value here is that it names the checkpoints and their look-ahead in milliseconds independently of the config files, so the look-ahead formula and the catalogue check each other."
     }
   ]
 }

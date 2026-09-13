@@ -5,7 +5,7 @@ hardware and model parameter questions in `plan-v2.md`.
 
 Five passes ran on 2026-09-12, and a sixth ran on 2026-09-13 against a question the book had
 asked about itself: chapter 1 printed a 16,000 Hz sampling rate and named no source for it.
-That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes.
+That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes. A seventh ran on 2026-09-14 for Issue #47: it read four NVIDIA NeMo ASR files at a pinned commit and added 46 records, and it is the first pass whose main effect was to contradict the set rather than extend it -- see [C-08](#c-08--which-conformer-this-book-is-porting).
 It also registered `kHz`, the first new unit term since the vocabulary was written down, and
 it left the weaker of the two records at tier T4 on purpose -- see its notes field. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
@@ -23,17 +23,20 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 103
-- **Verified:** 96
-- **Unresolved:** 4
+- **Total Records:** 149
+- **Verified:** 140
+- **Unresolved:** 6
 - **Conflict (records in `status: conflict`):** 3
-- **Conflicts registered:** 7 (C-01 … C-07; three of them concern repository text or record provenance
-  rather than a contested value, so they carry no `status: conflict` record — see
-  [Conflicts](#conflicts)). One is now closed: the owner decided C-07 on 2026-09-12 in favour
-  of `MAXN`. Closing it changed which operating point the book teaches, not what either record
+- **Conflicts registered:** 8 (C-01 … C-08; five of them — C-02, C-03, C-06, C-07 and C-08 — carry no
+  `status: conflict` record, because each concerns repository text, a document revision, or a choice
+  this directory cannot make rather than two records that cannot both be true — see
+  [Conflicts](#conflicts)). That list reads five where it once read three: the three were C-02, C-03 and
+  C-06, and C-07 turned out never to have carried a record either, so the count was re-derived from the
+  sections rather than incremented. One conflict is now closed: the owner decided C-07 on 2026-09-12 in
+  favour of `MAXN`. Closing it changed which operating point the book teaches, not what either record
   says, so no record was deleted or re-typed.
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.6.0, `generated_utc`
-  2026-09-13T10:43:23Z, includes an `audit` block describing the two value-level passes, the two
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.8.0, `generated_utc`
+  2026-09-13T22:01:28Z, includes an `audit` block describing the two value-level passes, the two
   provenance passes and the decision package that closed C-07)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
@@ -54,9 +57,11 @@ nine quotations, two page locators and two values. See
    support, disk footprint, Vitis AI DPU overlay architecture (DPUCZDX8G), the full PG338 resource
    ladders for both the Block RAM and UltraRAM variants, what of those ladders fits ZU5EV, and XPE
    accuracy caveats.
-5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 11 records. Model architectures (MatchboxNet
-   vs Streaming Conformer), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk
-   latency, and speaker-independent splits.
+5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 57 records. Model architectures
+   (MatchboxNet vs Streaming Conformer, and the four NVIDIA NeMo recipe and results files registered on
+   2026-09-14), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk latency and
+   look-ahead in milliseconds, published word error rates at five look-ahead points, and
+   speaker-independent splits.
 6. [`06-quantization-sources.md`](06-quantization-sources.md) — 5 records. Primary mathematical source
    for affine zero-point quantization (Jacob et al. CVPR 2018), integer multiply-shift requantization,
    the rounding operator Brevitas actually defaults to, the tie rule `torch.round` documents, and FINN
@@ -251,6 +256,45 @@ other number in a vendor page should be able to see why it differs.
 
 ---
 
+### C-08 · Which Conformer This Book Is Porting
+- Reading A: `V-05-04` — the WeNet LibriSpeech streaming Conformer recipe, `d_model=256`, 12 encoder
+  blocks, 4 heads, `cnn_kernel_size=15`. Registered 2026-09-12 from WeNet's own config file, tier T2.
+- Reading B: `V-05-12 … V-05-15` — NVIDIA NeMo's Conformer-Transducer recipe, whose variant table prints
+  its Small (14M) model at 176 hidden units, 4 heads, 16 encoder blocks and a 31-tap depthwise
+  convolution, against 512 units, 8 heads and 17 blocks for the Large it actually ships (`V-05-17 … V-05-19`).
+- Why neither reading is an error, and why this is still a conflict: they describe two different networks
+  published by two different projects, and each quotes the file that configures its own. What the
+  repository cannot hold without deciding is the *singular* claim. `plan-v2.md` names one Voice Edge
+  Benchmark ASR model, and the arithmetic that leans on it is per block: the cached key and value term is
+  2 × `d_model` values per frame per block, so the WeNet reading is 512, the streaming Large is 1,024 and
+  the NeMo Small is 352, and each is then carried by 12, 17 or 16 blocks. Issue #48 records that the
+  §6.7 buffer arithmetic omits that multiplier, which is exactly where a block-count disagreement bites.
+- The second half of the fork, and the reason a fetch could not close it: no source this directory
+  reached publishes a Conformer-Transducer checkpoint that is at once Small and streaming — `V-05-56`. The
+  Small row exists only offline (2.5 / 6.6 % test WER, `V-05-50`, `V-05-51`); the streaming recipes are
+  Large-only; and the cache-aware streaming *Fast*Conformer is where a published accuracy-against-latency
+  curve exists at all (`V-05-52 … V-05-55`: 7.0, 6.4, 5.7, 5.4 % test-other for 0, 80, 480 and 1,040 ms of
+  look-ahead).
+- What the same fetch settled while this stayed open: the convolution-module norm is `layer_norm` in both
+  streaming recipes (`V-05-26`, `V-05-41`) and `batch_norm` only in the offline one (`V-05-20`), which is
+  the first-party answer to the question "why BN not LN here"; and the attention model is `rel_pos` in
+  both the offline and the streaming Conformer (`V-05-21`, `V-05-27`), so relative-position encoding is in
+  the target rather than an optional extra.
+- Position of this directory: `V-05-04` is not overwritten. Per protocol rule 6 both readings stand as
+  records of their own sources, and all 46 records added on 2026-09-14 are additions, not corrections.
+- Resolution proposed: the repository owner picks the benchmark's ASR model from the two the evidence can
+  carry end to end — NeMo's offline Conformer-Transducer Small (16 blocks, 176 units, 4 heads, 31 taps,
+  about 14M parameters, 2.5 / 6.6 % WER, no look-ahead story to tell) or NeMo's cache-aware streaming
+  FastConformer-Transducer hybrid Large (17 blocks, 512 units, 8 heads, 9 taps, subsampling 8, [70, 13]
+  context, about 115M parameters, 2.3 / 5.5 % WER at 1,040 ms with the whole curve beside it). This is the
+  same fork Issue #46 asks about, and it is a choice rather than a search: P1 of the fetch brief cannot be
+  closed by fetching. Whichever is picked, chapters 8 and 9 draw that network and `plan-v2.md` names it.
+- Resolution status: `needs-human-decision`
+- Records in `status: conflict`: none, for the reason C-07 has none. Both records are true of the file
+  each quotes; it is the repository's single-model claim that is unresolved.
+
+---
+
 ## Unresolved Items
 
 1. **V-04-13 · KV260 shipped DPU core architecture**
@@ -287,6 +331,29 @@ other number in a vendor page should be able to see why it differs.
      speech accelerators on Google Speech Commands.
    - Reason unresolved: Deferred pending systematic survey across MLPerf Tiny and ACM FPGA/FCCM papers
      with matching benchmark conditions.
+
+5. **V-05-56 · NeMo streaming Conformer-Transducer Small checkpoint**
+   - Question: whether NVIDIA publishes a Conformer-Transducer checkpoint that is both the Small variant
+     and a streaming (cache-aware) model, with a published word error rate.
+   - Reason unresolved: the English score table carries no such row — its 27 data rows were all read, the
+     only `conformer_transducer` rows are offline, and every streaming row in it is a FastConformer hybrid.
+     The recipe directory has no streaming Small config. The HuggingFace catalogue could not settle it
+     either: an anonymous request for the small checkpoint's repository answers HTTP 401, so its absence
+     from a listing proves nothing in either direction (rule 8).
+   - To resolve: an authenticated fetch of `huggingface.co/api/models?author=nvidia`, or the owner's
+     decision in Issue #46 to re-cut the benchmark onto a model that does exist. What is at stake is the
+     spine's own phrase "small streaming Conformer", which currently has no published accuracy attached.
+
+6. **V-05-57 · Per-frame cost of the target encoder**
+   - Question: MACs per frame, INT8 weight bytes, and activation bytes per frame for the chosen encoder —
+     the three quantities `plan-v2.md` §4.2 says the chapters may print.
+   - Reason unresolved: no publisher prints them. They follow from the shapes registered as
+     `V-05-12 … V-05-47` only once a counted parameter breakdown exists, which needs the checkpoint itself
+     (HTTP 401 to an anonymous request) or a golden-model run over the recipe config. Recorded as one
+     record because the gap is one decision — what to run — not three searches.
+   - To resolve: run the NeMo recipe on whatever machine can reach the checkpoint and dump per-module
+     parameter and activation counts; until then chapters 8 and 9 may describe the datapath but must not
+     size it.
 
 Resolved by the second pass and removed from this list: **V-06-05 · `torch.round` tie-breaking mode**,
 now `verified` against the versioned PyTorch 2.14 URL. The first pass could not re-reach the page and so
