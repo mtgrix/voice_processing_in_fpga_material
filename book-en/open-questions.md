@@ -74,17 +74,21 @@ generated, not as a mistake to average away.
 ## What the book's own apparatus cannot check yet
 
 These are gaps in the machinery, and they are measurable right now, so they are
-stated as measured rather than estimated. Figures below were counted against
-`book/chapter01-prose` on 2026-09-13.
+stated as measured rather than estimated, and the count is reproducible: each row below is a
+`grep --count` of the named pattern over the named set, taken on 2026-09-13 on `main` after
+Issue #35's two records landed. Records and sources are read out of
+`docs/verification/claims.json`; references are occurrences of `V-` plus two digits, a hyphen,
+the next two digits, in `book-en/chapter*.md`, counting repeats, because a chapter that names
+the same record twice cited it twice.
 
 | Fact about this manuscript | Count |
 | --- | --- |
-| Records in the evidence set | 101 |
-| Of those, `verified` | 94 |
-| Distinct sources the records cite | 41 |
+| Records in the evidence set | 103 |
+| Of those, `verified` | 96 |
+| Distinct sources the records cite | 42 |
 | Entries in `book/references.bib` | 5 |
 | Citation markers written into the manuscript | 0 |
-| Record references appearing in a chapter body | 15 |
+| Record references appearing in a chapter body | 17 |
 | Figures of any kind | 0 |
 | Numbered section headings across the ten chapters | 39 |
 | Of those, sections still without prose | 34 |
@@ -94,7 +98,7 @@ now cites 15 records in its body, in the `V-xx-yy` form that points into
 `docs/verification/claims.json`. That is not a citation marker, which is the
 at-sign-and-key form in square brackets, and the text still holds none of those.
 So a bibliography still cannot be printed: the five `.bib` entries that do exist
-share no identifier with the 41 sources the evidence set actually uses. The build
+share no identifier with the 42 sources the evidence set actually uses. The build
 gate therefore reports its bibliography checks as **N/A**, not as passed. A check
 that found nothing to check is not evidence of health, and a record reference is
 not a citation -- it names where a number was read, not a work in the list at the
@@ -107,7 +111,7 @@ exists would produce a pipeline that tests itself.
 ## Order of work, if a reader wants to help
 
 1. Register the board decision, then fetch the datasheet page for that SKU.
-2. Write citations into the prose as claims are made, and reconcile the 41
+2. Write citations into the prose as claims are made, and reconcile the 42
    sources against the 5 `.bib` entries.
 3. Draft prose under the 34 section stubs that remain, one chapter at a time.
 4. Draw the two figures that the roofline argument genuinely needs, then wire a

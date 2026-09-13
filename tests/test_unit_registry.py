@@ -80,10 +80,16 @@ class TestRegistryMatchesTheEvidenceSet:
         assert fails == [], fails
         assert used > 0
 
-    def test_the_observed_vocabulary_is_45_spellings(self) -> None:
-        """A ratchet needs a number in it, or a future deletion reads as tidying."""
-        assert len(claims_lib.UNIT_TERMS) == 45
-        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 44
+    def test_the_observed_vocabulary_is_46_spellings(self) -> None:
+        """A ratchet needs a number in it, or a future deletion reads as tidying.
+
+        46 spellings over 45 canonicals as of 2026-09-13, when V-05-10 and V-05-11 registered
+        sample rates and needed a hertz term the set had never carried: `MHz` was present, and
+        `MHz` is not a spelling of kilohertz. The alias pair that makes 46 spellings fewer than
+        46 quantities is still `Sparse INT8 TOPS` / `sparse INT8 TOPS`, tested below.
+        """
+        assert len(claims_lib.UNIT_TERMS) == 46
+        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 45
 
     def test_every_canonical_has_a_kind(self) -> None:
         assert set(claims_lib.UNIT_TERMS.values()) <= set(claims_lib.UNIT_KINDS)
@@ -150,7 +156,7 @@ class TestRefusals:
     def test_a_registered_term_no_record_uses_is_refused(self) -> None:
         """Otherwise the list becomes a graveyard, and a graveyard lets wrong labels pass."""
         _used, fails = run([record("V-01-13", "GB/s")])
-        assert len([f for f in fails if "registered but no record uses it" in f]) == 44
+        assert len([f for f in fails if "registered but no record uses it" in f]) == 45
 
     def test_a_canonical_without_a_kind_is_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delitem(claims_lib.UNIT_KINDS, "watts")
