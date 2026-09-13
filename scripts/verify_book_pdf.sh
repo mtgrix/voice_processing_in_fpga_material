@@ -19,7 +19,7 @@
 #   3  a table of contents is present
 #   4  bibliography section and numeric entries (N/A while nothing is cited)
 #   5  no unresolved Pandoc citation markers like [@key]
-#   6  no leftover figure fences (N/A while there are no figures)
+#   6  figure sources, PDF captions and prose references agree in count
 #   7  no U+FFFD replacement characters, which would mean a missing glyph
 #   8  no agent-wrapper artifacts leaked into the text
 #   9  representative pages render to PNG for eyeballing
@@ -172,15 +172,45 @@ fi
 if grep -anE '\[@[A-Za-z0-9_-]+\]' "$WORK/book.txt"; then fail "unresolved [@key] citation markers in the PDF"
 else pass "no unresolved [@key] markers in the PDF"; fi
 
-# --- 6. figure leftovers --------------------------------------------------
+# --- 6. figures: counted in, captioned out, referenced from prose ---------
+# Both halves of this check were written when the manuscript held no figures, so the
+# branch that used to be reachable said only "nothing leaked". That is not the same
+# claim as "everything rendered": Pandoc can lose a float between the div and the page
+# and leave the text layer clean, because a dropped figure has no fence left to leak.
+# So the count of figure sources in the manuscript is now compared against the count of
+# numbered captions in the PDF. Acceptance 5 of Issue #36 is the other half: the prose
+# has to point at a figure rather than repeat its numbers, so every figure id has to
+# appear in a link somewhere in the manuscript, which is what the id loop below checks.
+#
+# A caption is found by its leading "Figure <n>:" because that colon is printed by the
+# float and by nothing else in the book -- a reference in prose is followed by a word.
+# The class numbers floats globally rather than per chapter, which is what lets 1..N be
+# the expected set of numbers without this script having to know the build order.
 FENCE_A='```mermaid'
 FENCE_B='```tikz'
 if grep -aqE "${FENCE_A}|${FENCE_B}|begin.tikzpicture" "$WORK/book.txt"; then
   fail "unrendered figure source leaked into the PDF"
-elif grep -aqE "${FENCE_A}|${FENCE_B}" "$BOOK_DIR"/*.md 2>/dev/null; then
-  pass "figure sources exist in the manuscript and none leaked as fences"
 else
-  na "figure checks: the manuscript contains no figures"
+  NFENCE=$(cat "$BOOK_DIR"/*.md 2>/dev/null | grep -acE '^[[:space:]]*```(tikz|mermaid)')
+  if [ "${NFENCE:-0}" -eq 0 ]; then
+    na "figure checks: the manuscript contains no figures"
+  else
+    CAPS=$(grep -aoE '^Figure [0-9]+:' "$WORK/book.txt" | grep -oE '[0-9]+' | sort -n -u | tr '\n' ' ')
+    NCAP=$(echo "$CAPS" | wc -w | tr -d '[:space:]')
+    WANT="$(seq -s ' ' 1 "$NFENCE") "
+    UNREF=""
+    for id in $(grep -haoE '^::: \{#fig-[A-Za-z0-9_-]+ \.figure\}' "$BOOK_DIR"/*.md | sed 's/.*#//; s/ .*//'); do
+      grep -aqF "(#${id})" "$BOOK_DIR"/*.md || UNREF="$UNREF $id"
+    done
+    if [ "$NCAP" -ne "$NFENCE" ] || [ "$CAPS" != "$WANT" ]; then
+      fail "$NFENCE figure source(s) in the manuscript, $NCAP caption(s) in the PDF"
+      echo "        expected caption numbers: $WANT  found in the PDF: ${CAPS}none"
+    elif [ -n "$UNREF" ]; then
+      fail "figure div(s) that no prose points at:$UNREF"
+    else
+      pass "figure checks: $NFENCE source(s) rendered as $NCAP caption(s), each referenced from prose"
+    fi
+  fi
 fi
 
 # --- 7. glyphs ------------------------------------------------------------
@@ -203,6 +233,13 @@ else
     p=$(( (PAGES * frac + 99) / 100 )); [ "$p" -lt 1 ] && p=1
     REPR="$REPR $p"
   done
+  # Acceptance 1 of Issue #36 is that a figure be visible, which no text-layer check can
+  # establish on its own. The pages carrying captions therefore join the quartile
+  # samples, rather than leaving it to luck whether the quartiles happened to hit them:
+  # in the 30-page build the samples are 8, 15, 23 and 30, and the two floats sit on 19
+  # and 20, so sampling alone would have rendered neither.
+  FIGPAGES=$(awk '/^=== PAGE /{pg=$3} /^Figure [0-9]+:/{print pg}' "$WORK/book.txt" | sort -nu)
+  REPR="$REPR $FIGPAGES"
   REPR="$(echo "$REPR" | tr ' ' '\n' | sort -nu)"
   for p in $REPR; do
     rm -f "$WORK"/pp-*.png

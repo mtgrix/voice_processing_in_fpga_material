@@ -21,8 +21,12 @@
 # default manuscript is book-en/. The old book/ tree is Vietnamese and will be
 # rewritten, not translated on demand, so what changes here is the directory.
 #
-# No Mermaid or TikZ pre-render step: the manuscript contains no figures, so there
-# is nothing for those stages to do. See Issue #29 before adding them back.
+# Figures need no pre-render step either, and that is not the old absence speaking:
+# scripts/filters/tikz_figures.lua turns a ```tikz fence into a TikZ picture during
+# the same pass that writes the TeX, so the picture is compiled by the LuaLaTeX below
+# rather than by a tool this script would have to install and keep in step. A Mermaid
+# fence has no such filter, and check 6 of scripts/verify_book_pdf.sh fails one if it
+# ever appears. Issue #36.
 set -euo pipefail
 
 # --chapter NN selects one chapter. Parsed before anything reads the manifest, so a
@@ -106,6 +110,7 @@ COMMON_ARGS=(
   --metadata-file "$SHARED_DIR/metadata.yaml"
   --include-in-header "$SHARED_DIR/header.tex"
   --pdf-engine=lualatex
+  --lua-filter "$ROOT/scripts/filters/tikz_figures.lua"
   --citeproc
   --bibliography "$SHARED_DIR/references.bib"
   --csl "$SHARED_DIR/ieee.csl"
