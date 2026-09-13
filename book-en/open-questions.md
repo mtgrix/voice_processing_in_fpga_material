@@ -75,11 +75,13 @@ generated, not as a mistake to average away.
 
 These are gaps in the machinery, and they are measurable right now, so they are
 stated as measured rather than estimated, and the count is reproducible: each row below is a
-`grep --count` of the named pattern over the named set, taken on 2026-09-13 after
-Issue #42 made `book/references.bib` a rendering of the registry. Records and sources are read out of
+`grep --count` of the named pattern over the named set, taken on 2026-09-14 after
+Issue #36 gave the book its first two figures. Records and sources are read out of
 `docs/verification/claims.json`; references are occurrences of `V-` plus two digits, a hyphen,
 the next two digits, in `book-en/chapter*.md`, counting repeats, because a chapter that names
-the same record twice cited it twice.
+the same record twice cited it twice. A fenced block is not a chapter body, so the 30 record
+ids printed on the two figures are counted out of that row. The row above it is what puts
+them back in view.
 
 | Fact about this manuscript | Count |
 | --- | --- |
@@ -89,14 +91,15 @@ the same record twice cited it twice.
 | Entries in `book/references.bib` | 30 |
 | Sources the registry answers a label for | 33 |
 | Citation markers written into the manuscript | 0 |
-| Record references appearing in a chapter body | 17 |
-| Figures of any kind | 0 |
+| Record references appearing in a chapter body | 24 |
+| Figures of any kind | 2 |
 | Numbered section headings across the ten chapters | 39 |
 | Of those, sections still without prose | 34 |
 
 The middle rows are one story told twice, and the telling matters. Chapter 1
 quotes 13 records in its body, 17 times over, in the `V-xx-yy` form that points
-into `docs/verification/claims.json`. That is not a citation marker, which is the
+into `docs/verification/claims.json`, and chapter 3 names 5 more, 7 times over, since its
+roofline argument gained two figures to point at. That is not a citation marker, which is the
 at-sign-and-key form in square brackets, and the text still holds none of those.
 The identifier gap that used to sit behind that sentence is closed: the
 bibliography is now generated from the same 30 registry rows the evidence records
@@ -107,9 +110,14 @@ as **N/A**, not as passed, because a check that found nothing to check is not
 evidence of health -- and a record reference is not a citation: it names where a
 number was read, not a work in the list at the back.
 
-The same applies to figures. There is no diagram in this book, so no figure
-renderer is wired into the build. Adding Mermaid or TikZ stages before a figure
-exists would produce a pipeline that tests itself.
+The figure row used to be the same kind of absence, and it is not one any more. Chapter 3
+holds two TikZ pictures, compiled by the same LuaLaTeX pass that writes the prose, through
+`scripts/filters/tikz_figures.lua`, so there is no pre-render stage for the build to keep in
+step. Mermaid still has no filter, and that is now a checked gap rather than an unchallenged
+one: a Mermaid fence counts as a figure source, would produce no caption, and check 6 of the
+build gate fails on the mismatch instead of reporting an absence. What the gate cannot check
+is whether a figure reads well, so the pages carrying captions are rendered into
+`dist/preview/` and looked at by a person.
 
 ## Order of work, if a reader wants to help
 
@@ -117,8 +125,11 @@ exists would produce a pipeline that tests itself.
 2. Write citations into the prose as claims are made. The reconciliation is done:
    the entries are generated, so a citation is a registry id and nothing else.
 3. Draft prose under the 34 section stubs that remain, one chapter at a time.
-4. Draw the two figures that the roofline argument genuinely needs, then wire a
-   renderer.
+4. Close the gaps the two figures made visible. `V-02-28`, the record for which Orin the
+   project buys, is still unresolved, which is why the Orin side is drawn as a band rather
+   than a line, and the KV260 corner rests on a 300 MHz clock that `V-07-03` assumes rather
+   than states. A measured arithmetic intensity for the Voice Edge Benchmark is the third
+   gap, and the workload stays off the plot until something records it.
 5. Run the experiments in `chapterNN/` on real hardware and fill the empty cells.
 
 Step 5 is the one this project cannot do alone, and it is the reason this chapter
