@@ -1,6 +1,6 @@
 {
-  "version": "1.6.0",
-  "generated_utc": "2026-09-13T10:43:23Z",
+  "version": "1.7.0",
+  "generated_utc": "2026-09-13T11:31:00Z",
   "records": [
     {
       "id": "V-01-01",
@@ -1630,15 +1630,15 @@
       "unit": "license",
       "conditions": "LibriSpeech ASR corpus (1000 hours)",
       "source_tier": "T3",
-      "doc_id": "ICASSP 2015 / OpenSLR 12",
-      "title": "LibriSpeech: An ASR corpus based on public domain audio books",
-      "url": "https://www.openslr.org/12/",
-      "locator": "OpenSLR 12 resource descriptor; Warden 2018 p.2 Section 3",
+      "doc_id": "arXiv:1804.03209",
+      "title": "Speech Commands: A Dataset for Limited-Vocabulary Speech Recognition",
+      "url": "https://arxiv.org/pdf/1804.03209.pdf",
+      "locator": "p.2, section 3, sentence introducing the LibriSpeech corpus (its reference [7])",
       "quote": "LibriSpeech[7] is a collection of 1,000 hours of read English speech, released under a Creative Commons BY 4.0 license",
       "retrieved_utc": "2026-09-12T04:25:00Z",
       "access": "open",
-      "corroborating_url": "https://arxiv.org/abs/1804.03209",
-      "notes": "Free for academic and commercial use with proper attribution."
+      "corroborating_url": "https://www.openslr.org/12/",
+      "notes": "Registered 2026-09-13 against the document the quote was actually read from. The value is Warden's characterisation of a third party's corpus, not the corpus's own licence page, so the tier describes the citing paper (T3) and the sentence remains secondary evidence about LibriSpeech. The authoritative statement is the OpenSLR 12 page, held by V-05-10 as T4; that page was fetched the same day for its sample-rate sentence and was not re-read for licence wording, so no quote is claimed from it here. Panayotov et al., ICASSP 2015 -- the primary description -- is still unretrieved: the IEEE page is paywalled and no arXiv copy exists, recorded in V-05-10's notes as well. Previously this record carried doc_id 'ICASSP 2015 / OpenSLR 12', a title naming the ICASSP paper, a url naming the corpus page and a quote from Warden: three fields, three documents."
     },
     {
       "id": "V-05-10",
@@ -1648,7 +1648,7 @@
       "unit": "kHz",
       "conditions": "LibriSpeech ASR corpus, complete set, read English speech from audiobooks",
       "source_tier": "T4",
-      "doc_id": "ICASSP 2015 / OpenSLR 12",
+      "doc_id": "OpenSLR 12",
       "title": "LibriSpeech ASR corpus",
       "url": "https://www.openslr.org/12/",
       "locator": "Openslr.org/12 resource page, corpus description, first sentence",
@@ -1656,7 +1656,7 @@
       "retrieved_utc": "2026-09-13T10:43:23Z",
       "access": "open",
       "corroborating_url": "",
-      "notes": "The number is the corpus's own storage rate as stated by its distribution page, not the input rate of any model. Tier T4 is admissible as corroboration only under docs/WEB_SEARCH_PROTOCOL.md section 2, so this record does not stand alone: the peer-reviewed description (Panayotov et al., ICASSP 2015) would upgrade it and was not reachable in this pass -- the IEEE page is paywalled and no arXiv copy exists. V-05-11 carries the same quantity from a T3 source for the other corpus the benchmark set uses, and the book's frontend parameter rests on that pair, not on this row alone."
+      "notes": "The number is the corpus's own storage rate as stated by its distribution page, not the input rate of any model. Tier T4 is admissible as corroboration only under docs/WEB_SEARCH_PROTOCOL.md section 2, so this record does not stand alone: the peer-reviewed description (Panayotov et al., ICASSP 2015) would upgrade it and was not reachable in this pass -- the IEEE page is paywalled and no arXiv copy exists. V-05-11 carries the same quantity from a T3 source for the other corpus the benchmark set uses, and the book's frontend parameter rests on that pair, not on this row alone. doc_id renamed from 'ICASSP 2015 / OpenSLR 12' on 2026-09-13: this record reads only the corpus page, and the conference name in the old id belonged to a different work -- see V-05-09, which now carries the Warden sentence it quoted."
     },
     {
       "id": "V-05-11",

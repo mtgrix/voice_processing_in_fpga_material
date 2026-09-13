@@ -1,7 +1,8 @@
 {
-  "version": "1.1.0",
-  "last_updated": "2026-09-12",
-  "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms.",
+  "version": "1.2.0",
+  "last_updated": "2026-09-13",
+  "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms. Every entry lists the doc_id labels it answers, in doc_ids.",
+  "doc_id_note": "doc_ids holds the doc_id strings that records in docs/verification/claims.json use to cite this work, and it is the join between the evidence set and the registry. One document may be cited by several labels, because a label is a spelling and not a source; the aliases are listed here rather than renamed in the records, so that no record lost its own history. The labels that name arithmetic or an absence are exempt, defined once by claims_lib.is_exempt and pinned by tests/test_source_registry.py.",
   "sources": [
     {
       "id": "R01-01",
@@ -19,7 +20,8 @@
         "LPDDR5",
         "nvpmodel"
       ],
-      "claims_supported": []
+      "claims_supported": [],
+      "doc_ids": []
     },
     {
       "id": "R01-02",
@@ -38,7 +40,11 @@
       ],
       "claims_supported": [
         "V-06-03"
-      ]
+      ],
+      "doc_ids": [
+        "ACM FPGA 2017 / arXiv:1612.07119"
+      ],
+      "notes": "Same work as the legacy FINN entry, which book/chapter01.md cites by its R01-02 id. The legacy id is kept and this row adds the doc_id alias that lets a record resolve to it."
     },
     {
       "id": "R01-03",
@@ -55,7 +61,8 @@
         "Depthwise Separable Convolution",
         "Streaming ASR"
       ],
-      "claims_supported": []
+      "claims_supported": [],
+      "doc_ids": []
     },
     {
       "id": "R01-04",
@@ -75,7 +82,11 @@
       "claims_supported": [
         "V-03-01",
         "V-03-02"
-      ]
+      ],
+      "doc_ids": [
+        "UG1089 (v1.4)"
+      ],
+      "notes": "Same work as the legacy KV260 user-guide entry, which carries the publication year."
     },
     {
       "id": "R01-05",
@@ -95,7 +106,535 @@
       "claims_supported": [
         "V-05-01",
         "V-05-02"
+      ],
+      "doc_ids": [
+        "Interspeech 2020 / arXiv:2004.08531"
+      ],
+      "notes": "Same work as the legacy MatchboxNet entry. The doc_id names both the venue and the preprint, which is one work with two urls and not two sources."
+    },
+    {
+      "id": "S001",
+      "doc_ids": [
+        "UG440 (v2022.1)"
+      ],
+      "title": "Xilinx Power Estimator User Guide",
+      "url": "https://www.xilinx.com/support/documents/sw_manuals/xilinx2022_1/ug440-xilinx-power-estimator.pdf",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-04-05"
+      ],
+      "notes": "Xilinx Power Estimator user guide. T2 under docs/WEB_SEARCH_PROTOCOL.md section 2: a tool reference, which describes what an estimate means rather than what a chip contains."
+    },
+    {
+      "id": "S002",
+      "doc_ids": [
+        "UG906 (v2022.2)"
+      ],
+      "title": "Vivado Design Suite User Guide: Design Analysis and Closure Techniques",
+      "url": "https://docs.amd.com/r/en-US/ug906-vivado-design-analysis/Report-Utilization",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-04-06"
+      ],
+      "notes": "Vivado Design Analysis and Closure Techniques. The page read is Report Utilization, where a synthesis report's terms are defined."
+    },
+    {
+      "id": "S003",
+      "doc_ids": [
+        "UG973 (v2019.1 / v2022.2)"
+      ],
+      "title": "Vivado Design Suite User Guide: Release Notes, Installation, and Licensing",
+      "url": "https://www.xilinx.com/support/documents/sw_manuals/xilinx2022_2/ug973-vivado-release-notes-install-license.pdf",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-04-01"
+      ],
+      "notes": "One label spanning two revisions; each record's locator names the revision it was read from. The Vivado ML Standard support table in V-04-01 is a statement about the tool licence a designer needs, not a licence of this document, so no licence field appears here."
+    },
+    {
+      "id": "S004",
+      "doc_ids": [
+        "VivadoGuide2024_1"
+      ],
+      "title": "Vivado 2024.1: Installation Guide",
+      "url": "https://hthreads.github.io/classes/embedded-systems/labs/assets/guides/VivadoGuide2024_1.pdf",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-04-02"
+      ],
+      "notes": "Not vendor-hosted. The recorded url is a university course mirror (hthreads.github.io) of the Xilinx installation guide, which is why the doc_id is a file name rather than a document number. The tier holds for the content, which is the vendor's own text; the copy is not authoritative, so a revision check has to go to the vendor."
+    },
+    {
+      "id": "S005",
+      "doc_ids": [
+        "DS890 (v4.10)",
+        "DS890 (v4.10) & DS891 (v1.9)",
+        "DS890 (v4.10) & DS986 (v1.3)"
+      ],
+      "title": "UltraScale Architecture and Product Data Sheet: Overview",
+      "url": "https://docs.amd.com/v/u/en-US/ds890-ultrascale-overview",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "Advanced Micro Devices, Inc.",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-01-03",
+        "V-01-04",
+        "V-01-05",
+        "V-01-06",
+        "V-01-07",
+        "V-01-08",
+        "V-01-09",
+        "V-01-11",
+        "V-01-15",
+        "V-01-16",
+        "V-01-17",
+        "V-01-19",
+        "V-01-20",
+        "V-01-21",
+        "V-01-22",
+        "V-01-23"
+      ],
+      "notes": "UltraScale Architecture Overview. The two compound labels each name a second datasheet, but in every one of those records the title, url and locator are DS890's, so DS891 was never read as a source of its own and is registered nowhere. That is a gap in the evidence set, and it is not papered over by an entry with no quote in it."
+    },
+    {
+      "id": "S006",
+      "doc_ids": [
+        "DS986 (v1.3)",
+        "DS986 (v1.1)"
+      ],
+      "title": "Kria KV260 Vision AI Starter Kit Data Sheet",
+      "url": "https://docs.amd.com/r/en-US/ds986-kv260-starter-kit/Product-Details",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "Advanced Micro Devices, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-01-02",
+        "V-01-18",
+        "V-03-05"
+      ],
+      "notes": "Two revisions of the KV260 datasheet, both read: V-03-05 quotes v1.1 and the others quote v1.3. One document, because a revision is an attribute rather than a second work. Read as HTML on docs.amd.com while sibling datasheets at the same host are recorded T1, so this entry keeps tiers_observed at T2 and the disagreement is reported rather than silently unified."
+    },
+    {
+      "id": "S007",
+      "doc_ids": [
+        "DS987 (v1.2)"
+      ],
+      "title": "Kria K26 SOM Data Sheet",
+      "url": "https://docs.amd.com/r/en-US/ds987-k26-som",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "Advanced Micro Devices, Inc.",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-01-01",
+        "V-01-10",
+        "V-01-12",
+        "V-01-14"
+      ],
+      "notes": "Kria K26 System-on-Module datasheet: the silicon under the KV260 carrier board."
+    },
+    {
+      "id": "S008",
+      "doc_ids": [
+        "PG338 (v4.1)",
+        "PG338 (v3.0)"
+      ],
+      "title": "DPUCZDX8G for Zynq UltraScale+ MPSoCs Product Guide (PG338)",
+      "url": "https://docs.amd.com/r/en-US/pg338-dpu",
+      "access": "open",
+      "type": "vendor-ip-guide",
+      "publisher": "Advanced Micro Devices, Inc.",
+      "tiers_observed": [
+        "T1",
+        "T2"
+      ],
+      "claims_supported": [
+        "V-04-03",
+        "V-04-04",
+        "V-04-07",
+        "V-04-08",
+        "V-04-10",
+        "V-04-11"
+      ],
+      "notes": "The title printed on the guide's own title page, which V-04-03 quotes. The docs.amd.com names the same document 'DPU for Convolutional Neural Network IP Product Guide' and four records carry that spelling instead. The revision alias carries weight: V-04-04 quotes a Table 11 that exists in v3.0 and not in v4.1, and was withdrawn as evidence on that fact (conflict C-04) rather than merged quietly into this entry."
+    },
+    {
+      "id": "S009",
+      "doc_ids": [
+        "DS-10662-001v1.8"
+      ],
+      "title": "NVIDIA Jetson AGX Orin Series Modules Data Sheet",
+      "url": "https://static.generation-robots.com/media/Jetson-AGX-Orin-Data-Sheet.pdf",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-02-20",
+        "V-02-21",
+        "V-02-22",
+        "V-02-23",
+        "V-02-24",
+        "V-02-25",
+        "V-02-26",
+        "V-02-27",
+        "V-02-31",
+        "V-02-32",
+        "V-02-33",
+        "V-02-35"
+      ],
+      "notes": "Jetson AGX Orin Series module datasheet, read from a third-party distributor mirror (generation-robots.com) rather than the vendor's own download."
+    },
+    {
+      "id": "S010",
+      "doc_ids": [
+        "DS-10712-001_v1.7"
+      ],
+      "title": "NVIDIA Jetson Orin NX Series Data Sheet",
+      "url": "https://developer.nvidia.com/downloads/jetson-orin-nx-module-series-data-sheet",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-02-12",
+        "V-02-13",
+        "V-02-14",
+        "V-02-15",
+        "V-02-16",
+        "V-02-17",
+        "V-02-18",
+        "V-02-19",
+        "V-02-30",
+        "V-02-37",
+        "V-02-38",
+        "V-02-39",
+        "V-02-40",
+        "V-02-41"
+      ],
+      "notes": "Jetson Orin NX Series module datasheet, vendor-hosted."
+    },
+    {
+      "id": "S011",
+      "doc_ids": [
+        "DS-11105-001_v1.1",
+        "DS-11105-001"
+      ],
+      "title": "NVIDIA Jetson Orin Nano Series Data Sheet",
+      "url": "https://connecttech.com/ftp/pdf/nvidia_jetson_orin_datasheet.pdf",
+      "access": "open",
+      "type": "vendor-datasheet",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T1"
+      ],
+      "claims_supported": [
+        "V-02-01",
+        "V-02-02",
+        "V-02-03",
+        "V-02-04",
+        "V-02-05",
+        "V-02-06",
+        "V-02-07",
+        "V-02-08",
+        "V-02-29",
+        "V-02-34"
+      ],
+      "notes": "Jetson Orin Nano Series module datasheet, read via a connecttech.com mirror. Two doc_id spellings are one PDF: V-02-06 records that it carries no revision number on its cover, so the v1.1 suffix is a reader's label and not a property of the file. Merged by alias rather than by renaming records, because renaming would destroy the note that says exactly that."
+    },
+    {
+      "id": "S012",
+      "doc_ids": [
+        "Jetson Linux Developer Guide (r36.4.4)"
+      ],
+      "title": "Jetson Linux Developer Guide: Platform Power and Performance",
+      "url": "https://docs.nvidia.com/jetson/archives/r36.4.4/DeveloperGuide/SD/PlatformPowerAndPerformance/JetsonOrinNanoSeriesJetsonOrinNxSeriesAndJetsonAgxOrinSeries.html",
+      "access": "open",
+      "type": "vendor-guide",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-02-11"
+      ],
+      "notes": "Platform Power and Performance page, where nvpmodel and the power-mode labels are defined."
+    },
+    {
+      "id": "S013",
+      "doc_ids": [
+        "Jetson Orin Nano DevKit User Guide (2025-2026)"
+      ],
+      "title": "Jetson Orin Nano Developer Kit - User Guide: Introduction",
+      "url": "https://docs.nvidia.com/jetson/orin-nano-devkit/user-guide/latest/index.html",
+      "access": "open",
+      "type": "vendor-guide",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-02-09",
+        "V-02-10"
+      ],
+      "notes": "The date range in the doc_id is the guide's own title-page stamp."
+    },
+    {
+      "id": "S014",
+      "doc_ids": [
+        "Brevitas master, read 2026-09-12"
+      ],
+      "title": "Brevitas source: brevitas.core.quant.int_base and brevitas.function.ops_ste",
+      "url": "https://github.com/Xilinx/brevitas/blob/master/src/brevitas/core/quant/int_base.py",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-06-04"
+      ],
+      "notes": "Not a published document: two module files in a repo at its master branch as of the date in the doc_id. The date is load-bearing because master moves, so one quoting this work is true of that day's tree and of no other."
+    },
+    {
+      "id": "S015",
+      "doc_ids": [
+        "WeNet LibriSpeech README"
+      ],
+      "title": "WeNet LibriSpeech Performance Record",
+      "url": "https://raw.githubusercontent.com/wenet-e2e/wenet/main/examples/librispeech/s0/README.md",
+      "access": "open",
+      "type": "repository-documentation",
+      "publisher": "The WeNet project",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-05-05",
+        "V-05-06"
+      ],
+      "notes": "A project's own README states what that project achieved, which is a claim by the party with an interest in it, so it corroborates and does not establish."
+    },
+    {
+      "id": "S016",
+      "doc_ids": [
+        "WeNet LibriSpeech Recipe Config"
+      ],
+      "title": "WeNet train_u2++_conformer.yaml",
+      "url": "https://raw.githubusercontent.com/wenet-e2e/wenet/main/examples/librispeech/s0/conf/train_u2++_conformer.yaml",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "The WeNet project",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-05-04"
+      ],
+      "notes": "The recipe's YAML config, where the frontend values of a published model are actually written down, as opposed to described."
+    },
+    {
+      "id": "S017",
+      "doc_ids": [
+        "WeNet Pretrained Models & Tutorial"
+      ],
+      "title": "Pretrained Models in WeNet: LibriSpeech U2++ Conformer",
+      "url": "https://raw.githubusercontent.com/wenet-e2e/wenet/main/docs/pretrained_models.md",
+      "access": "open",
+      "type": "repository-documentation",
+      "publisher": "The WeNet project",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-05-03"
       ]
+    },
+    {
+      "id": "S018",
+      "doc_ids": [
+        "PyTorch 2.14 documentation"
+      ],
+      "title": "torch.round - PyTorch documentation",
+      "url": "https://docs.pytorch.org/docs/2.14/generated/torch.round.html",
+      "access": "open",
+      "type": "software-documentation",
+      "publisher": "PyTorch Foundation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-06-05"
+      ],
+      "notes": "torch.round, which is the round-half-to-even rule chapter 6's quantizer inherits."
+    },
+    {
+      "id": "S019",
+      "doc_ids": [
+        "CVPR 2018 / arXiv:1712.05877"
+      ],
+      "title": "Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference",
+      "url": "https://arxiv.org/pdf/1712.05877.pdf",
+      "access": "open",
+      "type": "conference-paper",
+      "publisher": "IEEE / CVF",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2018,
+      "claims_supported": [
+        "V-06-01",
+        "V-06-02"
+      ],
+      "notes": "Jacob et al., Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference. Venue and year come from the doc_id label rather than from a quote, so they are recorded as an attribute of the work and not as evidence."
+    },
+    {
+      "id": "S020",
+      "doc_ids": [
+        "CACM April 2009"
+      ],
+      "title": "Roofline: An Insightful Visual Performance Model for Multicore Architectures",
+      "url": "https://dl.acm.org/doi/10.1145/1498765.1498785",
+      "access": "open",
+      "type": "journal-article",
+      "publisher": "Association for Computing Machinery",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2009,
+      "claims_supported": [
+        "V-07-01"
+      ],
+      "notes": "Williams, Waterman and Patterson, Roofline: An Insightful Visual Performance Model for Multicore Architectures. The figure chapter 3 draws is this paper's device. Venue and date are stated in the doc_id label rather than read off the fetched page."
+    },
+    {
+      "id": "S021",
+      "doc_ids": [
+        "arXiv:1804.03209"
+      ],
+      "title": "Speech Commands: A Dataset for Limited-Vocabulary Speech Recognition",
+      "url": "https://arxiv.org/pdf/1804.03209.pdf",
+      "access": "open",
+      "type": "preprint",
+      "publisher": "arXiv",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2018,
+      "claims_supported": [
+        "V-05-07",
+        "V-05-08",
+        "V-05-09",
+        "V-05-11"
+      ],
+      "notes": "Warden, Speech Commands: A Dataset for Limited-Vocabulary Speech Recognition. The year is read from the document's own arXiv stamp, which V-05-11 quotes. No authors field appears, because no recorded quote includes the author line. Both records carry licence statements, and both are about data rather than about this paper: V-05-07 says the Speech Commands corpus is CC BY 4.0, V-05-09 says LibriSpeech is too. The second is this paper describing somebody else's corpus, which is why this registry's licence field sits on the OpenSLR entry and not on this one."
+    },
+    {
+      "id": "S022",
+      "doc_ids": [
+        "OpenSLR 12"
+      ],
+      "title": "LibriSpeech ASR corpus",
+      "url": "https://www.openslr.org/12/",
+      "access": "open",
+      "type": "corpus-page",
+      "publisher": "OpenSLR",
+      "tiers_observed": [
+        "T4"
+      ],
+      "licence": "CC BY 4.0",
+      "claims_supported": [
+        "V-05-10"
+      ],
+      "notes": "The distribution page for LibriSpeech. T4: corroboration only, because a page that hands out a dataset is not a description of it. Its recorded quote names the 16 kHz storage rate and the preparers and says nothing about a licence, so the licence field above rests on V-05-09, a peer-reviewed paper about a third party's corpus, and not on this page. That makes it a second-hand licence attribution; the corpus's own terms page would replace it."
+    },
+    {
+      "id": "S023",
+      "doc_ids": [
+        "FCCM 2025 Artifact Evaluation Guidelines"
+      ],
+      "title": "Artifact Evaluation 2025 - The 33rd IEEE International Symposium on Field-Programmable Custom Computing Machines",
+      "url": "https://www.fccm.org/artifact-evaluation-2025/",
+      "access": "open",
+      "type": "conference-webpage",
+      "publisher": "IEEE CS TPDS / FCCM",
+      "tiers_observed": [
+        "T2"
+      ],
+      "year": 2025,
+      "claims_supported": [
+        "V-07-04"
+      ],
+      "notes": "What a reusable artifact has to contain, which is the standard chapter 10 writes against."
+    },
+    {
+      "id": "S024",
+      "doc_ids": [
+        "Digilent Product Catalog"
+      ],
+      "title": "Digilent Pmod I2S2: Stereo Audio Input and Output",
+      "url": "",
+      "access": "open",
+      "type": "product-catalogue",
+      "publisher": "Digilent, Inc.",
+      "tiers_observed": [
+        "T4"
+      ],
+      "claims_supported": [
+        "V-03-04"
+      ],
+      "notes": "No url is recorded, because V-03-04 is unresolved and its notes say a price page is corroborating only and never becomes a verified quantity. Registered so that the citation resolves and the absence stays visible: the entry rule in scripts/verify_integrity.py fails any registry entry with an empty url that supports a verified record, so an unlocatable source cannot quietly accumulate evidence."
+    },
+    {
+      "id": "S025",
+      "doc_ids": [
+        "Pmod I2S2 Reference Manual"
+      ],
+      "title": "Digilent Pmod I2S2 Reference Manual",
+      "url": "https://media.digikey.com/pdf/Data%20Sheets/Digilent%20PDFs/Pmod_I2S2_RM_Web.pdf",
+      "access": "open",
+      "type": "vendor-guide",
+      "publisher": "Digilent, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "claims_supported": [
+        "V-03-03"
+      ],
+      "notes": "Read from a distributor mirror (media.digikey.com) of the Digilent manual."
     }
   ]
 }
