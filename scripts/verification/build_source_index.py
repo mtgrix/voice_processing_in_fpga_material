@@ -504,6 +504,52 @@ SPEC: list[Entry] = [
         publisher="Digilent, Inc.",
         notes="Read from a distributor mirror (media.digikey.com) of the Digilent manual.",
     ),
+    Entry(
+        doc_id="NeMo Conformer-Transducer Recipe Config",
+        id="S026",
+        type="source-code",
+        publisher="NVIDIA Corporation",
+        topics=("Conformer", "Transducer", "ASR recipe", "streaming"),
+        notes="The training recipe, and the only place the four size variants of the model family "
+        "are tabulated together. Cited at a pinned commit, because a recipe file moves and a "
+        "record quoting line 11 of a moving file is true of one day's tree only. Its variant table "
+        "overrides five fields and line 6 says so, which is what lets a Small model be read off "
+        "the table plus the body.",
+    ),
+    Entry(
+        doc_id="NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config",
+        id="S027",
+        type="source-code",
+        publisher="NVIDIA Corporation",
+        topics=("Conformer", "Transducer", "cache-aware streaming", "ASR recipe"),
+        notes="The streaming recipe, where the left and right context pair and the look-ahead "
+        "formula are written down. The architecture fields of a streaming model are not the "
+        "offline model's with a flag turned on: this file sets conv_norm_type to layer_norm where "
+        "the offline recipe sets batch_norm, so the two are separate documents and separate "
+        "registry rows.",
+    ),
+    Entry(
+        doc_id="NeMo Cache-Aware Streaming FastConformer-Transducer Recipe Config",
+        id="S028",
+        type="source-code",
+        publisher="NVIDIA Corporation",
+        topics=("FastConformer", "Transducer", "cache-aware streaming", "ASR recipe"),
+        notes="The other streaming recipe in the family, and the one whose checkpoints carry a "
+        "published accuracy-against-latency curve. Subsampling 8 rather than 4 and a 9-tap "
+        "convolution module rather than 31 are what make its per-frame cost differ from S027's at "
+        "equal width.",
+    ),
+    Entry(
+        doc_id="NeMo Conformer English Score Table",
+        id="S029",
+        type="repository-documentation",
+        publisher="NVIDIA Corporation",
+        topics=("LibriSpeech", "word error rate", "ASR results"),
+        notes="A project's own results table states what that project achieved, so it corroborates "
+        "and does not establish, which is the rule the WeNet README row already records. Its value "
+        "here is that it names the checkpoints and their look-ahead in milliseconds independently "
+        "of the config files, so the look-ahead formula and the catalogue check each other.",
+    ),
 ]
 
 
