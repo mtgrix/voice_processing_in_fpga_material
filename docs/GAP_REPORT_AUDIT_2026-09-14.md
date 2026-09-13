@@ -24,10 +24,13 @@ source of answers.
 
 ## 1. Verdict table
 
-Nineteen claims, each with the file, line, or record that decides it. "Holds" means the repository
+Twenty claims, each with the file, line, or record that decides it. "Holds" means the repository
 agrees. "Contradicts" means a registered record says otherwise. "No evidence" means neither. Rows 17 to 19
 joined after the first draft: three attention claims this session had left out of the table, read in by the
-adversarial panel described in section 6.
+adversarial panel described in section 6. Rows 15 and 18 were then re-judged and row 20 added, once
+the panel's model-structure verdict arrived and this session re-read the registered config line by line: the
+evidence for the model's shape is better than "no evidence", and the normalization claim is the one the
+hardware primitives turn on.
 
 | # | The report states | Verdict | Decided by |
 |---|---|---|---|
@@ -45,11 +48,12 @@ adversarial panel described in section 6.
 | 12 | Rounding mismatches eat "80 % of debugging time" | **No evidence** | No record, no log in `results/`, and this project has not debugged anything yet |
 | 13 | After 64-plus rounding operations "the final output can differ by several percent" | **No evidence, and against the method** | `plan-v2.md` §6.2 states the qualitative risk and no magnitude; §6.3 makes the gate "0 mismatch trên toàn bộ vector" measured **per stage**, which is a procedure for preventing accumulation rather than quantifying it |
 | 14 | TensorRT fusion makes the chapter 3 roofline comparison unfair | **Category error** | `book-en/chapter03.md` lines 30–33: the figure plots machine ridge points, and the workload is deliberately left off the plot. Fusion changes a workload's memory traffic, not a machine's corner |
-| 15 | The Conformer block is FFN–attention–convolution–FFN with a half-scale residual on the two feed-forward halves | **No evidence either way, here** | The repository registers nothing about the Conformer block: no record cites the Conformer paper, and all four `streaming_conformer_*` records (`V-05-03` to `V-05-06`) describe a WeNet recipe |
-| 16 | Deliverable: a one-page "Model Reference Card" for the target model | **Good idea, blocked on a fetch** | `docs/AGENT_FETCH_BRIEF_2026-09-12.md` item P1, opened 2026-09-12 and never delivered, is exactly the card's input list |
+| 15 | The Conformer block is FFN–attention–convolution–FFN with a half-scale residual on the two feed-forward halves | **Right for the class, unregistered here** | The order and the half-scale check out against a fetched source: NeMo's `nemo/collections/asr/parts/submodules/conformer_modules.py` builds feed_forward1, self-attention, the convolution module, feed_forward2, scales the two feed-forward residuals by `fc_factor = 0.5`, and expands the convolution module as pointwise, GLU, depthwise, norm, Swish, pointwise. That source is not in this repository's registry, and the registry holds nothing on block structure at all: `docs/source_index.json` line 87 records of the Conformer paper that it is "Registered and uncited: chapter 1 explains the Conformer from its architecture, and no record yet quotes this paper for it", and its `claims_supported` is an empty list. So the claim is the first draft of a passage the book still has to write, with a citation the book does not yet have. The count and the norm belong to rows 8 and 20, not here |
+| 16 | Deliverable: a one-page "Model Reference Card" for the target model | **Good idea, blocked on a fetch** | `docs/AGENT_FETCH_BRIEF_2026-09-12.md` item P1, opened 2026-09-12 and never delivered, is exactly the card's input list. Filed as #47 |
 | 17 | "In streaming mode, frame i must NOT attend to future frames j>i. In hardware, this is a mask that forces certain attention scores to zero. You implement this as a comparator + mux in RTL." | **Contradicts, and it would break the book's own results** | `plan.md:75` says exactly this and `plan-v2.md:200` orders the sentence corrected, because the Conformer "vốn **có** future context". Chunked streaming forbids reading past the current *chunk*, not past the current *frame*: inside a chunk frames see each other both ways, and that look-ahead is the right context the project chose this model for (`plan-v2.md:159`) and means to plot against accuracy (`plan-v2.md:197`). On `V-05-05`'s numbers a 16-frame chunk gives its first frame 15 frames of right context, 600 ms. Masking `j>i` deletes it, and the 3.80 and 4.54 WERs of `V-05-06` would stop describing the device being built. The one `causal` in the evidence set is `causal: true` inside `V-05-04`, which flags the convolution. A mask is also not zeros: scores are summed, so an out-of-window key is absent from the buffer or given a large negative value before the softmax |
-| 18 | "The Conformer uses Transformer-XL style relative position ... Each term is a separate multiply-accumulate path in hardware" | **Unregistered** | Nothing in any tracked markdown or JSON file mentions relative attention, Transformer-XL or macaron FFN, searched case-insensitively. Probably true of the model class, and exactly the kind of statement that needs a record before it can be written: no record in `docs/verification/` cites the Conformer paper at all. Closed by fetch item P1 plus a paper pass, §5 |
+| 18 | "The Conformer uses Transformer-XL style relative position ... Each term is a separate multiply-accumulate path in hardware" | **Confirmed by the record, and unrecorded** | The repository's own registered config answers this, and neither the report nor this session had read it: line 17 of `S016`'s file sets `pos_enc_layer_type: 'rel_pos'` and line 18 sets `selfattention_layer_type: 'rel_selfattn'`, which is the relative-shifted attention of Transformer-XL by name. Those two lines sit inside the "Lines 4-18" range `V-05-04`'s locator claims and are absent from its quote, so the evidence was one fetch away and unregistered (#50). The hardware consequence the report draws is also real: relative position means an extra shift term per head and a second dot product per pair, not one QK path. What remains missing is the four-term decomposition itself, which belongs to the Conformer paper (`R01-03`), still uncited |
 | 19 | "your FPGA pipeline STALLS at softmax. You need to design around this — double-buffering, or the base-2 approximation (Ch.8.4)" | **Partly correct, and the named remedy answers a different problem** | The order rule holds: a row's denominator, and here its running maximum too, must finish before any value in that row is final. A reduction is not a stall, though — the accumulator is occupied once per element for the whole sum. The repository's own list of where idle cycles come from is `plan-v2.md` §6.6: FIFO sizing, who holds TREADY, measured II. And the block-wise answer the report presents as news is already the plan: `book/chapter08.md:34` asks for softmax "theo khối mà không cần lưu toàn bộ ma trận T x T". Base-2 piecewise conversion reduces the cost of the exponential, not the dependency on the sum |
+| 20 | The convolution module "BatchNorm → Swish", "why BN not LN here", and "LayerNorm vs. BatchNorm ... LN normalizes per-frame, BN normalizes per-channel. LN needs rsqrt." | **The distinction holds; the choice is wrong for the recorded model** | Per-frame against per-channel is a fair way to separate the two norms, and a reciprocal square root really is the expensive part of LayerNorm in fabric. The premise is not. The one Conformer configuration this repository registers sets `cnn_module_norm: 'layer_norm'`, with the recipe's own comment "using nn.LayerNorm makes model converge faster", at line 21 of `S016`'s file; `V-05-04`'s quote stops at line 20, so the record that decides the question does not contain its answer (#50). BatchNorm is what NeMo's convolution module defaults to, and no NeMo record exists (§4.1). Two consequences, both in the book's favour: a LayerNorm is data-dependent, so it folds into no neighbouring convolution and must be computed as itself, which is the unit `book-en/chapter08.md` already promises in section 8.4; and a BatchNorm, were one ever registered, would fold backwards into the causal depthwise taps as a per-channel affine, deleting a stage rather than adding one |
 
 ## 2. What the report contributes
 
@@ -93,17 +97,17 @@ explicitly fenced.
 
 ## 4. What the report cannot know about this repository
 
-Five defects, none of which the report sees, all of which sit underneath the material it proposes to
+Six defects, none of which the report sees, all of which sit underneath the material it proposes to
 write.
 
-**4.1 The spine and the registry name different models.** `plan-v2.md` §4.2 and `book/TOC.md` line 25 fix
+**4.1 The spine and the registry name different models** (filed as #47).** `plan-v2.md` §4.2 and `book/TOC.md` line 25 fix
 the ASR target as a **NVIDIA NeMo streaming Conformer-Transducer `small`** checkpoint. The evidence set
 contains nothing about that checkpoint: `V-05-03` registers a **WeNet** U2++ Conformer as the open
 checkpoint, and `V-05-04` to `V-05-06` give its hyperparameters, chunk latency and published WER. The
 fetch brief opened on 2026-09-12 to close this — item P1, five fields — has never been executed. Any
 chapter written from either reading is arithmetic on an unregistered model.
 
-**4.2 "The Voice Edge Benchmark" is one thing in the rules and two in the plan.** `CLAUDE.md` requires
+**4.2 "The Voice Edge Benchmark" is one thing in the rules and two in the plan** (filed as #46).** `CLAUDE.md` requires
 the **Voice Edge Benchmark** model to stay consistent across chapters, in the singular. `plan-v2.md`
 §4.2 assigns two different models to two different tasks: keyword spotting with MatchboxNet or
 SpeechCommands1 v2 at stages 4–6, streaming ASR with the NeMo Conformer at stages 8–10. The capstone
@@ -123,7 +127,7 @@ copied verbatim from `docs/BOOK_STATUS.md` so that no fifth source is created, a
 the other reading. A green gate is therefore not evidence that the spine agrees with itself. Report this
 as a gate gap, not as a content error: it is the same class as `docs/PLAN_GAP_ANALYSIS.md` PROCESS-1.
 
-**4.4 The plan's own buffer formula omits the block multiplier.** `plan-v2.md` §6.7 rewrites `plan.md`'s
+**4.4 The plan's own buffer formula omits the block multiplier** (filed as #48).** `plan-v2.md` §6.7 rewrites `plan.md`'s
 borrowed term "KV-Cache" as "Left-Context K/V Ring Buffer", gives the capacity as six factors, and closes
 "tính ra con số". Every one of those factors is per attention block, and each encoder block holds its own
 keys and its own values, so the capacity is that product times the number of blocks. At `V-05-04`'s twelve
@@ -131,7 +135,7 @@ blocks the omission is a factor of twelve, and the section written to stop a rea
 LLM analogy under-counts the same memory. The report inherited this rather than catching it, and any
 diagram that prints the buffer from §6.7 as written will be wrong by that factor.
 
-**4.5 The evidence set labels one tie rule the wrong way.** `docs/verification/README.md:86` tabulates the
+**4.5 The evidence set labels one tie rule the wrong way** (filed as #49).** `docs/verification/README.md:86` tabulates the
 hardware side of the rounding trap as "round half away from zero (`+ (1 << (shift-1))`)". Run the idiom on
 negatives, as §6 does: at `shift = 1` it sends `-0.5` to `0`, which is toward positive infinity. Away from
 zero would send `-0.5` to `-1`. Both readings agree on the positive half, which is why a table that only
@@ -143,16 +147,37 @@ are one edit plus a re-render, which is what `make render-evidence` is for. File
 is a claim, and a rendered file is a mirror, so fixing the markdown alone would put the render out of step
 with its own source.
 
+**4.6 The record that decides the model's shape bundles five quantities, and its quote walks past its own
+locator** (filed as #50). `V-05-04` carries five numbers in one field: its `value` reads
+`d_model=256, 12 encoder blocks, 4 heads, linear_units=2048, cnn_kernel=15` and its `unit` is the literal
+word `string`. `docs/WEB_SEARCH_PROTOCOL.md` rule 5 is "One record per quantity. Do not batch several
+numbers into one prose paragraph." A bundle cannot be re-checked field by field, cannot be contradicted in
+part, and cannot be looked up by one of its numbers. The locator is the other half of the defect. It says
+"Lines 4-18, encoder_conf". Read against the file at the registered URL, the quote contains `causal: true`
+and `use_dynamic_chunk: true`, which are lines 19 and 20, and it skips `activation_type: 'swish'`,
+`pos_enc_layer_type: 'rel_pos'` and `selfattention_layer_type: 'rel_selfattn'`, which are lines 16, 17 and
+18 and inside the stated range. A reader who cannot fetch decides what a record covers from its locator, so
+a quote that leaves its range makes the locator false in both directions at once: it claims ground the quote
+does not cover, and disclaims ground the quote does cover. Line 21, `cnn_module_norm: 'layer_norm'`, sits
+just outside and is the line rows 15, 18 and 20 turn on. The fix is to split `V-05-04` into per-quantity
+records with exact locators, quote the streaming and normalization lines, raise the version and re-render.
+The split supersedes a bundle that three rows of this table and `plan-v2.md` cite by number, so the old id
+has to stay resolvable rather than be edited into something else.
+
 ---
 
 ## 5. What happens next
 
 Three branches, in this order, each with its own issue.
 
-1. **This file.** Record the verdicts, so that the next session does not re-litigate them, and open issues
-   for §4.1 and §4.2. Two smaller issues come out of the same pass: the missing per-block multiplier in
-   §4.4, and the tie-direction label in §4.5, which is a one-line correction to a rendered file.
-2. **The fetch.** Execute P1: identify the NeMo streaming Conformer-Transducer `small` checkpoint, then
+1. **This file.** Record the verdicts, so that the next session does not re-litigate them. The five
+   defects in §4 that need their own fix are filed: **#47** for the model the spine names against the model
+   the registry holds, **#46** for the benchmark that is singular in the rules and double in the plan,
+   **#48** for the missing per-block multiplier, **#49** for the tie-direction label, **#50** for the
+   bundled record and its out-of-range quote. §4.3 is a gate gap and stays in this file until it is
+   written into a chapter.
+2. **The fetch** — #47. Execute P1: identify the NeMo streaming Conformer-Transducer `small` checkpoint,
+   then
    register layer count, `d_model`, heads, kernel size, parameter count, MACs per frame, INT8 weight
    bytes and activation bytes per frame as records with a quotation each. Where the registry's WeNet
    numbers disagree, `WEB_SEARCH_PROTOCOL.md` rule 6 applies: add the second record and raise a conflict,
@@ -168,7 +193,10 @@ Three branches, in this order, each with its own issue.
    reduction while the accumulator stays busy; and the requantization decision as a number line with the
    three tie behaviours drawn on it, negatives included, because that is where §4.5 lives. The buffer
    picture multiplies out per block and then by the block count, which is what keeps §4.4 from being
-   drawn again.
+   drawn again. The convolution module is drawn with a LayerNorm because the registered config sets
+   `cnn_module_norm: 'layer_norm'` at line 21 of `S016`'s file (#50), not because the report said
+   BatchNorm; and if the fetch returns a NeMo checkpoint that does default to BatchNorm, row 20's
+   fold-backwards note is what decides whether that stage exists in hardware at all.
 
 Fields the fetch does not deliver stay visibly empty in the prose, the way chapter 3's figures label what
 no record carries. A placeholder that admits it is a placeholder is the difference between an open number
@@ -205,20 +233,26 @@ the repository. The origin of the six-topic ranking, which is a conversation thi
 of; that is why claim 9 is judged against what the repo *does* order rather than against a baseline that
 cannot be shown. Whether some NeMo recipe does in fact publish 16 encoder blocks — the report's number
 may have a real provenance in a different model variant, and the fetch in step 2 is what will say. And
-every claim numbered 15 in the verdict table about the Conformer block's composition, which needs a fetched
-paper, not an audit.
+the four-term decomposition of relative self-attention, which needs the Conformer paper quoted rather than
+an audit; and the NeMo checkpoint's own field values, which no document in this repository has ever
+carried.
 
 **Provenance of this audit, stated plainly.** Two passes, independently. Pass one is the commands above,
 run in this session. Pass two is an adversarial panel, workflow run `wf_13cfa314-af5`: eight agents each
 assigned one load-bearing claim and told to refute it, with repository file and line citations required,
-plus five fetch angles and a refutation pass over anything a fetch returned. Seven of the eight audit
-verdicts had landed when this revision was written: `causal-mask`, `placement`, `ranking` and
-`roofline-fusion` came back wrong, `rounding-accumulate`, `buffer-formula` and `softmax-stall` came back
-partly correct, each at confidence `high`. Every one of the seven is reflected above, and rows 17, 19 and
-§4.4 exist because of it. Two places where the panel and this session part company, recorded rather than
+plus five fetch angles and a refutation pass over anything a fetch returned. All eight audit verdicts are
+reflected above. `causal-mask`, `placement`, `ranking` and `roofline-fusion` came back wrong,
+`rounding-accumulate`, `buffer-formula` and `softmax-stall` came back partly correct, and
+`model-structure` came back a split judgement, all eight at confidence `high`. Rows 17, 19 and §4.4 exist
+because of the panel; rows 15, 18 and 20 and §4.6 exist because its last verdict made this session open the
+registered config and read it line by line. Two places where the panel and this session part company, recorded rather than
 smoothed. The ranking agent wrote that attention "lives in Chapter 8", which is the stub reading; the
 spine the owner resolved on 2026-09-13 puts the streaming Conformer overlay in chapter 9
-(`book/TOC.md:139-166`), and row 10 and §5 follow the file. The buffer agent also read `V-01-11` as the
+(`book/TOC.md:139-166`), and row 10 and §5 follow the file. The model-structure agent also reported that
+`V-05-04`'s quote "truncates away" `cnn_module_norm` "although its locator claims Lines 4-18". Measured,
+that line is 21, so nothing was truncated from inside the stated range: the agent reached the right defect by
+the wrong route. The defect is not the missing line but a quote that reaches past its locator to lines 19
+and 20 while skipping lines 16 to 18, which is §4.6 and #50. The buffer agent also read `V-01-11` as the
 2.88 MiB row and `V-01-22` as its unit chain; both are true, and row 5 cites both because `V-01-11` carries
 status `conflict` while `V-01-22` carries the printed conversions. One infrastructure fact worth recording: the subagent model alias the owner maintains, `subagent`,
 fails at the transport with `API Error: 400 unknown provider for model subagent`, measured again here on
