@@ -75,7 +75,7 @@ generated, not as a mistake to average away.
 
 These are gaps in the machinery, and they are measurable right now, so they are
 stated as measured rather than estimated. Figures below were counted against
-`main` on 2026-09-13.
+`book/chapter01-prose` on 2026-09-13.
 
 | Fact about this manuscript | Count |
 | --- | --- |
@@ -84,16 +84,21 @@ stated as measured rather than estimated. Figures below were counted against
 | Distinct sources the records cite | 41 |
 | Entries in `book/references.bib` | 5 |
 | Citation markers written into the manuscript | 0 |
-| Record references appearing in a chapter body | 0 |
+| Record references appearing in a chapter body | 15 |
 | Figures of any kind | 0 |
-| Numbered section stubs across the ten chapters | 39 |
+| Numbered section headings across the ten chapters | 39 |
+| Of those, sections still without prose | 34 |
 
-The last four rows are the same story from different angles. A bibliography
-cannot be printed, because the text holds no citation marker at all -- the at-sign-and-key form in square brackets -- and the
-five `.bib` entries that do exist share no identifier with the 41 sources the
-evidence set actually uses. The build gate therefore reports its bibliography
-checks as **N/A**, not as passed: a check that found nothing to check is not
-evidence of health.
+The middle rows are one story told twice, and the telling matters. Chapter 1
+now cites 15 records in its body, in the `V-xx-yy` form that points into
+`docs/verification/claims.json`. That is not a citation marker, which is the
+at-sign-and-key form in square brackets, and the text still holds none of those.
+So a bibliography still cannot be printed: the five `.bib` entries that do exist
+share no identifier with the 41 sources the evidence set actually uses. The build
+gate therefore reports its bibliography checks as **N/A**, not as passed. A check
+that found nothing to check is not evidence of health, and a record reference is
+not a citation -- it names where a number was read, not a work in the list at the
+back.
 
 The same applies to figures. There is no diagram in this book, so no figure
 renderer is wired into the build. Adding Mermaid or TikZ stages before a figure
@@ -104,7 +109,7 @@ exists would produce a pipeline that tests itself.
 1. Register the board decision, then fetch the datasheet page for that SKU.
 2. Write citations into the prose as claims are made, and reconcile the 41
    sources against the 5 `.bib` entries.
-3. Draft prose under each of the 39 section stubs, one chapter at a time.
+3. Draft prose under the 34 section stubs that remain, one chapter at a time.
 4. Draw the two figures that the roofline argument genuinely needs, then wire a
    renderer.
 5. Run the experiments in `chapterNN/` on real hardware and fill the empty cells.

@@ -11,7 +11,7 @@
 
 | Mã Thí nghiệm | Chương | Tên Thí nghiệm | Nền tảng Phần cứng | Trạng thái | Mục tiêu Khảo sát |
 |:---:|:---:|---|:---:|:---:|---|
-| **exp_01** | 01 | `streaming_audio_pipeline` | Host / Python Simulation | 🚧 | Đệm trượt vòng, tính toán STFT và Mel filterbank trực tuyến |
+| **exp_01** | 01 | `streaming_audio_pipeline` | Host / Python Simulation | ✅ | Đệm trượt vòng, tính toán STFT và Mel filterbank trực tuyến |
 | **exp_02** | 02 | `jetson_orin_profiler` | NVIDIA Jetson Orin | 🚧 | Đo độ trễ TensorRT và công suất cảm biến INA3221 (`tegrastats`) |
 | **exp_03** | 03 | `batch_one_gpu_bottleneck` | Jetson Orin | 🚧 | Đo độ chiếm dụng SM, thời gian kernel launch và jitter |
 | **exp_04** | 04 | `fpga_dsp_bram_mapping` | AMD Xilinx UltraScale+ | 🚧 | Ước tính tài nguyên LUT, FF, DSP và dung lượng BRAM/URAM |
