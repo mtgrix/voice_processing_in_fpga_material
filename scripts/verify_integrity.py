@@ -135,8 +135,7 @@ def check_registry_coverage() -> tuple[list[str], list[str]]:
     try:
         doc = load_claims(CLAIMS_PATH)
         on_disk = INDEX_PATH.read_text(encoding="utf-8") if INDEX_PATH.exists() else ""
-        legacy = json.loads(on_disk) if on_disk else {}
-        report = render(legacy, doc)
+        report = render(doc)
     except Exception as e:
         return [f"Registry coverage could not be computed: {e}"], warnings
 

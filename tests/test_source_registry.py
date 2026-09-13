@@ -48,7 +48,7 @@ RECORDS: list[dict[str, Any]] = records(DOC)
 ON_DISK = registry.INDEX_PATH.read_text(encoding="utf-8")
 COMMITTED: dict[str, Any] = json.loads(ON_DISK)
 SOURCES: list[dict[str, Any]] = COMMITTED["sources"]
-REPORT = registry.render(COMMITTED, DOC)
+REPORT = registry.render(DOC)
 
 #: The nine records that cite no document, split by the reason each one gives. Counted on
 #: docs/verification/claims.json at version 1.7.0, 2026-09-13, after Issue #35.
