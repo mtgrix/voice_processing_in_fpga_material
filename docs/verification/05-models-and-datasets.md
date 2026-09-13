@@ -216,12 +216,12 @@ use_dynamic_chunk: true |
 | unit | `kHz` |
 | conditions | `Google Speech Commands dataset, 105,829 utterances of 35 words, one second or less each` |
 | source_tier | `T3` |
-| doc_id | `arXiv:1804.03209v1` |
+| doc_id | `arXiv:1804.03209` |
 | title | Speech Commands: A Dataset for Limited-Vocabulary Speech Recognition |
-| url | https://arxiv.org/pdf/1804.03209 |
+| url | https://arxiv.org/pdf/1804.03209.pdf |
 | locator | p.6, section 6 Properties |
 | quote | Each utterance is stored as a one-second (or less) WAVE format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate. |
 | retrieved_utc | `2026-09-13T10:43:23Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Read from the arXiv PDF, whose page 1 stamp is the identification used here; the publication venue was not verified from the fetched document, so doc_id names the arXiv id rather than a conference. The TensorFlow Datasets catalogue page for speech_commands was fetched on the same pass and does NOT state a sample rate -- it lists audio as int16 with an unbounded shape -- so the paper is the source and the catalogue is not cited for this. Same rate as V-05-10, which is why the frontend of chapter 1 can use 16,000 Hz for both models in the benchmark set. |
+| notes | Read from the same arXiv PDF that V-05-07 and V-05-08 cite; the copy examined carries the page-1 stamp arXiv:1804.03209v1 [cs.CL] 9 Apr 2018, and the revision is recorded here rather than in doc_id, because one document gets one identifier and a v1 suffix would have counted this paper as a second source. The publication venue was not verified from the fetched document. The TensorFlow Datasets catalogue page for speech_commands was fetched on the same pass and does NOT state a sample rate -- it lists audio as int16 with an unbounded shape -- so the paper is the source and the catalogue is not cited for this. Same rate as V-05-10, which is why the frontend of chapter 1 can use 16,000 Hz for both models in the benchmark set. |
