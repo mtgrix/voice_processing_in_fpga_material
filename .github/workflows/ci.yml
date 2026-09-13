@@ -31,6 +31,7 @@ jobs:
           pip install -e .[dev]
 
       # `make gate` order: lint, format-check, typecheck, test, verify,
-      # verify-evidence, check-render.
+      # verify-evidence, check-render, check-registry, check-bib. The Makefile's gate
+      # target is the authority; this comment is a convenience.
       - name: Run every repository check
         run: make gate

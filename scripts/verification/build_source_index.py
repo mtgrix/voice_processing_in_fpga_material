@@ -7,9 +7,10 @@ it lives in SPEC below. Which verification records rest on each document: that i
 the doc_id field of every record in claims.json, and it must never be typed by hand -- a hand-kept
 list of 103 records across 30 documents rots the first time a chapter adds one.
 
-So this script merges. It takes the five legacy R01-NN dictionaries out of the file on disk and
-keeps them verbatim apart from the derived doc_ids and claims_supported, and it rebuilds every
-S0NN entry from SPEC.
+So this file is the curated half in full, and every row of docs/source_index.json is built from
+it. The five legacy R01-NN rows are in SPEC too, which is what makes that sentence true: until
+Issue #42 they were lifted off the file being rendered and written back, so the registry was
+partly hand-maintained and an edit to one of those five rows showed no drift.
 
     --write   rewrite docs/source_index.json in place
     --check   exit non-zero if the file on disk differs from the rendering (default)
@@ -22,6 +23,16 @@ label sitting on a record that asserts a value (EXEMPT). 'make check-registry' r
 --check and fails on any of those, or on drift between docs/source_index.json and this rendering.
 scripts/verify_integrity.py asks this script the same question instead of answering it twice, so the
 join has one derivation in the repository.
+
+Curated and derived columns are different kinds of thing. Curated here: type, publisher, title,
+url, year, authors, authors_bibtex, pages, venue, bibtex_entry, licence, topics,
+research_note_path, notes. Derived from claims.json: doc_ids, claims_supported, access,
+tiers_observed. The rendering writes them in one fixed order, the order the S rows have always
+used, so that adding a column moves five rows in the diff rather than thirty. A title or url written
+in SPEC overrides the citing record's own field, and the five legacy rows do so deliberately --
+their curated spellings differ from what their records name (a different docs.amd.com form, an arXiv
+abstract rather than the same paper's pdf). Reconciling those pairs is Issue #40's work, not this
+file's.
 """
 
 from __future__ import annotations
@@ -57,7 +68,7 @@ NEW_ID_PATTERN = re.compile(r"^S\d{3}$")
 
 #: The schema this script emits. A new field is a new version, because the field is what tells a
 #: reader whether a citation resolves.
-REGISTRY_VERSION = "1.2.0"
+REGISTRY_VERSION = "1.3.0"
 
 #: Moved out of the JSON and into the script for the same reason the records moved into
 #: claims.json: a rendering that reads its own prose off disk cannot detect that prose being
@@ -92,15 +103,43 @@ class Entry:
     book/chapter01.md already cites them by.
     """
 
+    #: The doc_id label this row answers, plus any others in `aliases`.
     doc_id: str
+    #: What kind of document this is, from the vocabulary the tier protocol uses. Not a free field:
+    #: build_bibliography.py maps these to BibTeX entry types and refuses an unknown spelling.
     type: str
-    publisher: str
+    #: Who issued it. None for a paper whose registry row names people instead, which is the case
+    #: for the two legacy rows that predate the publisher column.
+    publisher: str | None = None
+    #: The registry id, in S<NNN> form. A row carrying `legacy_id` keeps its old id and leaves this
+    #: None, so the two are alternatives rather than a pair.
     id: str | None = None
     aliases: tuple[str, ...] = ()
+    #: Overrides the title on the citing record. Left None wherever the record's own title is right.
     title: str | None = None
+    url: str | None = None
+    #: For a reader: the abbreviated author line a citation shows.
     authors: str | None = None
+    #: For book/references.bib: the author field in BibTeX syntax, where "and" separates people and
+    #: double braces hold up a corporate name. Separate from `authors` because citeproc shortens a
+    #: ten-name list for print and a .bib that lost four of those names would be wrong.
+    authors_bibtex: str | None = None
     year: int | None = None
     licence: str | None = None
+    #: The page range, in BibTeX's en-dash form (65--74).
+    pages: str | None = None
+    #: Where the work appeared -- a journal, a proceedings, or an issuing body. What the .bib calls
+    #: that field depends on the entry type, so one column feeds journal, booktitle and
+    #: organization rather than three columns that must be kept consistent by hand.
+    venue: str | None = None
+    #: The BibTeX entry type where it should not be inferred from `type`. Set on the five legacy
+    #: rows, three of which the ported project cited as articles and one as a manual.
+    bibtex_entry: str | None = None
+    #: Subject labels. A claim about what a document covers, which is why no record can supply it.
+    topics: tuple[str, ...] = ()
+    #: The research note this document was worked through in. verify_integrity.py checks the file
+    #: exists; whether the note is about this document is Issue #40.
+    research_note_path: str | None = None
     legacy_id: str | None = None
     notes: str | None = None
 
@@ -110,6 +149,127 @@ class Entry:
 #: Where records disagree about the same work, the notes say so instead of the generator
 #: averaging the disagreement away.
 SPEC: list[Entry] = [
+    # The five rows that came from the ported project's R01-NN registry, and the only five whose
+    # registry id is not an S number. Their titles, urls and author lines are transcribed from
+    # docs/source_index.json and book/references.bib as they stood; their `type` is the one the
+    # other 25 rows use, which is the single value this patch re-decides.
+    Entry(
+        doc_id="R01-01",
+        legacy_id="R01-01",
+        type="vendor-whitepaper",
+        title="NVIDIA Jetson AGX Orin Architecture Whitepaper",
+        url="https://developer.nvidia.com/embedded/learn/jetson-agx-orin-architecture-whitepaper",
+        authors="NVIDIA Corporation",
+        authors_bibtex="{{NVIDIA Corporation}}",
+        venue="NVIDIA Technical Whitepapers",
+        bibtex_entry="article",
+        year=2022,
+        research_note_path="docs/research_notes/R01_jetson_orin_arch.md",
+        topics=(
+            "Jetson Orin",
+            "Ampere GPU",
+            "Tensor Cores",
+            "DLA",
+            "LPDDR5",
+            "nvpmodel",
+        ),
+        notes="Registered and uncited: no verification record names this whitepaper. The empty "
+        "doc_ids and claims_supported lists are that finding, not an omission.",
+    ),
+    Entry(
+        doc_id="ACM FPGA 2017 / arXiv:1612.07119",
+        legacy_id="R01-02",
+        type="conference-paper",
+        publisher="ACM",
+        title="FINN: A Framework for Fast, Scalable Binarized Neural Network Inference on FPGAs",
+        url="https://doi.org/10.1145/3020078.3021744",
+        authors="Yaman Umuroglu et al.",
+        authors_bibtex="Umuroglu, Yaman and Rasnayake, Nicholas J and Suda, Naveen and "
+        "Preusser, Thomas B and Fraser, Nicholas and Gambardella, Giulio and O'Brien, Matthew "
+        "and Liang, Yu and Leong, Philip HW and Blott, Michaela",
+        venue="Proceedings of the 2017 ACM/SIGDA International Symposium on Field-Programmable "
+        "Gate Arrays (FPGA)",
+        pages="65--74",
+        bibtex_entry="inproceedings",
+        year=2017,
+        research_note_path="docs/research_notes/R02_fpga_audio_streaming.md",
+        topics=(
+            "FINN",
+            "FPGA",
+            "Streaming Dataflow",
+            "Quantized Neural Networks",
+            "Initiation Interval",
+        ),
+        notes="Same work as the legacy FINN entry, which book/chapter01.md cites by its R01-02 id. "
+        "The legacy id is kept and this row adds the doc_id alias that lets a record resolve "
+        "to it.",
+    ),
+    Entry(
+        doc_id="R01-03",
+        legacy_id="R01-03",
+        type="conference-paper",
+        title="Conformer: Convolution-augmented Transformer for Speech Recognition",
+        url="https://arxiv.org/abs/2005.08100",
+        authors="Anmol Gulati et al.",
+        authors_bibtex="Gulati, Anmol and Qin, James and Chiu, Chung-Cheng and Parmar, Niki and "
+        "Zhang, Yu and Yu, Jiahui and Han, Wei and Wang, Shibo and Zhang, Zhengdong and Wu, "
+        "Yonghui and others",
+        venue="Proc. Interspeech 2020",
+        pages="5036--5040",
+        bibtex_entry="article",
+        year=2020,
+        research_note_path="docs/research_notes/R03_quantization_for_speech.md",
+        topics=(
+            "Conformer",
+            "Speech Recognition",
+            "Self-Attention",
+            "Depthwise Separable Convolution",
+            "Streaming ASR",
+        ),
+        notes="Registered and uncited: chapter 1 explains the Conformer from its architecture, and "
+        "no record yet quotes this paper for it.",
+    ),
+    Entry(
+        doc_id="UG1089 (v1.4)",
+        legacy_id="R01-04",
+        type="vendor-guide",
+        publisher="Advanced Micro Devices, Inc.",
+        title="AMD Xilinx Kria KV260 Vision AI Starter Kit User Guide",
+        url="https://docs.amd.com/v/u/en-US/ug1089-kv260-starter-kit",
+        authors="Advanced Micro Devices, Inc.",
+        authors_bibtex="{{Advanced Micro Devices, Inc.}}",
+        venue="AMD Xilinx",
+        bibtex_entry="manual",
+        year=2023,
+        research_note_path="docs/research_notes/R02_fpga_audio_streaming.md",
+        topics=("Kria KV260", "Zynq UltraScale+", "DPU", "AXI-Stream", "PYNQ"),
+        notes="Same work as the legacy KV260 user-guide entry, which carries the publication year.",
+    ),
+    Entry(
+        doc_id="Interspeech 2020 / arXiv:2004.08531",
+        legacy_id="R01-05",
+        type="conference-paper",
+        publisher="ISCA",
+        title="MatchboxNet: 1D Time-Channel Separable Convolutional Neural Network for Speech "
+        "Command Recognition",
+        url="https://arxiv.org/abs/2004.08531",
+        authors="Somshubra Majumdar et al.",
+        authors_bibtex="Majumdar, Somshubra and Ginsburg, Boris",
+        venue="Proc. Interspeech 2020",
+        pages="3356--3360",
+        bibtex_entry="article",
+        year=2020,
+        research_note_path="docs/research_notes/R03_quantization_for_speech.md",
+        topics=(
+            "Keyword Spotting",
+            "1D Convolution",
+            "Time-Channel Separable",
+            "Edge Voice",
+            "Low Footprint",
+        ),
+        notes="Same work as the legacy MatchboxNet entry. The doc_id names both the venue and the "
+        "preprint, which is one work with two urls and not two sources.",
+    ),
     Entry(
         doc_id="UG440 (v2022.1)",
         id="S001",
@@ -344,33 +504,6 @@ SPEC: list[Entry] = [
         publisher="Digilent, Inc.",
         notes="Read from a distributor mirror (media.digikey.com) of the Digilent manual.",
     ),
-    Entry(
-        doc_id="ACM FPGA 2017 / arXiv:1612.07119",
-        legacy_id="R01-02",
-        type="conference-paper",
-        publisher="ACM",
-        year=2017,
-        notes="Same work as the legacy FINN entry, which book/chapter01.md cites by its R01-02 id. "
-        "The legacy id is kept and this row adds the doc_id alias that lets a record resolve to "
-        "it.",
-    ),
-    Entry(
-        doc_id="UG1089 (v1.4)",
-        legacy_id="R01-04",
-        type="vendor-guide",
-        publisher="Advanced Micro Devices, Inc.",
-        year=2023,
-        notes="Same work as the legacy KV260 user-guide entry, which carries the publication year.",
-    ),
-    Entry(
-        doc_id="Interspeech 2020 / arXiv:2004.08531",
-        legacy_id="R01-05",
-        type="conference-paper",
-        publisher="ISCA",
-        year=2020,
-        notes="Same work as the legacy MatchboxNet entry. The doc_id names both the venue and the "
-        "preprint, which is one work with two urls and not two sources.",
-    ),
 ]
 
 
@@ -408,9 +541,8 @@ def first_title_or_url(groups: dict[str, list[dict[str, Any]]], doc_id: str, key
     return ""
 
 
-def render(legacy: dict[str, Any], doc: dict[str, Any]) -> Report:
+def render(doc: dict[str, Any]) -> Report:
     groups = group_by_doc_id(doc)
-    legacy_by_id = {str(s.get("id")): s for s in legacy.get("sources", [])}
     status_of = {str(r["id"]): str(r.get("status")) for r in records(doc)}
     out = Report(document={})
     out.labels = len(groups)
@@ -441,16 +573,20 @@ def render(legacy: dict[str, Any], doc: dict[str, Any]) -> Report:
 
     sources: list[dict[str, Any]] = []
     claimed_ids: set[str] = set()
-    used_legacy: set[str] = set()
 
     for entry in SPEC:
+        #: A row for a registered-but-uncited document puts its registry id in doc_id, as it has
+        #: no doc_id label of its own: no record quotes the document, so nothing named it. Treating
+        #: that id as a label would make STALE fire on a row whose whole point is that it is unused.
+        uncited = bool(entry.legacy_id) and entry.doc_id == entry.legacy_id
+        labels = entry.aliases if uncited else (entry.doc_id, *entry.aliases)
         key = entry.legacy_id or entry.doc_id
         ids: list[str] = []
         tiers: list[str] = []
         accesses: list[str] = []
         title = ""
         url = ""
-        for did in (entry.doc_id, *entry.aliases):
+        for did in labels:
             recs = groups.get(did)
             if not recs:
                 out.stale.append(f"{key}: spec cites doc_id {did!r}, which no record uses any more")
@@ -461,6 +597,7 @@ def render(legacy: dict[str, Any], doc: dict[str, Any]) -> Report:
             accesses.extend(str(r["access"]) for r in recs if r.get("access"))
             title = title or first_title_or_url(groups, did, "title")
             url = url or first_title_or_url(groups, did, "url")
+        url = entry.url or url
         supported = sorted(set(ids))
         observed = sorted(set(tiers))
         if len(observed) > 1:
@@ -475,49 +612,46 @@ def render(legacy: dict[str, Any], doc: dict[str, Any]) -> Report:
                     f"{key}: registered without a url yet supports statuses {statuses}"
                 )
 
-        if entry.legacy_id:
-            base = dict(legacy_by_id.get(entry.legacy_id) or {})
-            base["doc_ids"] = [entry.doc_id, *entry.aliases]
-            base["claims_supported"] = supported
-            if entry.notes:
-                base["notes"] = entry.notes
-            used_legacy.add(entry.legacy_id)
-            sources.append(base)
-            continue
-
-        if not entry.id or not NEW_ID_PATTERN.match(entry.id):
+        row_id = entry.id or entry.legacy_id
+        wanted = NEW_ID_PATTERN if entry.id else LEGACY_ID_PATTERN
+        if not row_id or not wanted.match(row_id):
             raise ValueError(
-                f"spec row for {entry.doc_id!r} needs an id in the S<NNN> form, got {entry.id!r}"
+                f"spec row for {entry.doc_id!r} needs an id matching {wanted.pattern!r}, "
+                f"got {row_id!r}"
             )
         row: dict[str, Any] = {
-            "id": entry.id,
-            "doc_ids": [entry.doc_id, *entry.aliases],
+            "id": row_id,
+            "doc_ids": list(labels),
             "title": entry.title or title or entry.doc_id,
             "url": url,
             "access": accesses[0] if len(set(accesses)) == 1 else sorted(set(accesses)),
             "type": entry.type,
-            "publisher": entry.publisher,
-            "tiers_observed": observed,
         }
-        if entry.year is not None:
-            row["year"] = entry.year
-        if entry.authors is not None:
-            row["authors"] = entry.authors
-        if entry.licence is not None:
-            row["licence"] = entry.licence
+        # Key order is the one the S rows have always been written in, with the five new columns
+        # placed beside their relatives rather than appended. A rendering that reordered the
+        # existing rows would put 25 unchanged sources in the diff, and the five rows that did
+        # change would be impossible to pick out of it.
+        if entry.publisher is not None:
+            row["publisher"] = entry.publisher
+        row["tiers_observed"] = observed
+        for name in (
+            "year",
+            "authors",
+            "authors_bibtex",
+            "licence",
+            "pages",
+            "venue",
+            "bibtex_entry",
+            "research_note_path",
+        ):
+            value = getattr(entry, name)
+            if value is not None:
+                row[name] = value
+        if entry.topics:
+            row["topics"] = list(entry.topics)
         row["claims_supported"] = supported
         if entry.notes:
             row["notes"] = entry.notes
-        sources.append(row)
-
-    # Legacy entries no record cites keep their shape, with an explicit empty doc_ids so that
-    # "checked, nothing cites it" is distinguishable from "not checked".
-    for sid, base in legacy_by_id.items():
-        if sid in used_legacy or not LEGACY_ID_PATTERN.match(sid):
-            continue
-        row = dict(base)
-        row["doc_ids"] = []
-        row.setdefault("claims_supported", [])
         sources.append(row)
 
     sources.sort(key=lambda s: str(s.get("id")))
@@ -548,8 +682,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     doc = load_claims(CLAIMS_PATH)
-    legacy = json.loads(INDEX_PATH.read_text(encoding="utf-8")) if INDEX_PATH.exists() else {}
-    out = render(legacy, doc)
+    out = render(doc)
     text = serialise(out.document)
     entries = len(out.document["sources"])
 

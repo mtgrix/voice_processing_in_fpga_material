@@ -1,16 +1,22 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "last_updated": "2026-09-13",
   "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms. Every entry lists the doc_id labels it answers, in doc_ids.",
   "doc_id_note": "doc_ids holds the doc_id strings that records in docs/verification/claims.json use to cite this work, and it is the join between the evidence set and the registry. One document may be cited by several labels, because a label is a spelling and not a source; the aliases are listed here rather than renamed in the records, so that no record lost its own history. The labels that name arithmetic or an absence are exempt, defined once by claims_lib.is_exempt and pinned by tests/test_source_registry.py.",
   "sources": [
     {
       "id": "R01-01",
+      "doc_ids": [],
       "title": "NVIDIA Jetson AGX Orin Architecture Whitepaper",
-      "authors": "NVIDIA Corporation",
-      "year": 2022,
-      "type": "Technical Whitepaper",
       "url": "https://developer.nvidia.com/embedded/learn/jetson-agx-orin-architecture-whitepaper",
+      "access": [],
+      "type": "vendor-whitepaper",
+      "tiers_observed": [],
+      "year": 2022,
+      "authors": "NVIDIA Corporation",
+      "authors_bibtex": "{{NVIDIA Corporation}}",
+      "venue": "NVIDIA Technical Whitepapers",
+      "bibtex_entry": "article",
       "research_note_path": "docs/research_notes/R01_jetson_orin_arch.md",
       "topics": [
         "Jetson Orin",
@@ -21,15 +27,27 @@
         "nvpmodel"
       ],
       "claims_supported": [],
-      "doc_ids": []
+      "notes": "Registered and uncited: no verification record names this whitepaper. The empty doc_ids and claims_supported lists are that finding, not an omission."
     },
     {
       "id": "R01-02",
+      "doc_ids": [
+        "ACM FPGA 2017 / arXiv:1612.07119"
+      ],
       "title": "FINN: A Framework for Fast, Scalable Binarized Neural Network Inference on FPGAs",
-      "authors": "Yaman Umuroglu et al.",
-      "year": 2017,
-      "type": "ACM FPGA Conference",
       "url": "https://doi.org/10.1145/3020078.3021744",
+      "access": "open",
+      "type": "conference-paper",
+      "publisher": "ACM",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2017,
+      "authors": "Yaman Umuroglu et al.",
+      "authors_bibtex": "Umuroglu, Yaman and Rasnayake, Nicholas J and Suda, Naveen and Preusser, Thomas B and Fraser, Nicholas and Gambardella, Giulio and O'Brien, Matthew and Liang, Yu and Leong, Philip HW and Blott, Michaela",
+      "pages": "65--74",
+      "venue": "Proceedings of the 2017 ACM/SIGDA International Symposium on Field-Programmable Gate Arrays (FPGA)",
+      "bibtex_entry": "inproceedings",
       "research_note_path": "docs/research_notes/R02_fpga_audio_streaming.md",
       "topics": [
         "FINN",
@@ -41,18 +59,22 @@
       "claims_supported": [
         "V-06-03"
       ],
-      "doc_ids": [
-        "ACM FPGA 2017 / arXiv:1612.07119"
-      ],
       "notes": "Same work as the legacy FINN entry, which book/chapter01.md cites by its R01-02 id. The legacy id is kept and this row adds the doc_id alias that lets a record resolve to it."
     },
     {
       "id": "R01-03",
+      "doc_ids": [],
       "title": "Conformer: Convolution-augmented Transformer for Speech Recognition",
-      "authors": "Anmol Gulati et al.",
-      "year": 2020,
-      "type": "Interspeech",
       "url": "https://arxiv.org/abs/2005.08100",
+      "access": [],
+      "type": "conference-paper",
+      "tiers_observed": [],
+      "year": 2020,
+      "authors": "Anmol Gulati et al.",
+      "authors_bibtex": "Gulati, Anmol and Qin, James and Chiu, Chung-Cheng and Parmar, Niki and Zhang, Yu and Yu, Jiahui and Han, Wei and Wang, Shibo and Zhang, Zhengdong and Wu, Yonghui and others",
+      "pages": "5036--5040",
+      "venue": "Proc. Interspeech 2020",
+      "bibtex_entry": "article",
       "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
       "topics": [
         "Conformer",
@@ -62,15 +84,26 @@
         "Streaming ASR"
       ],
       "claims_supported": [],
-      "doc_ids": []
+      "notes": "Registered and uncited: chapter 1 explains the Conformer from its architecture, and no record yet quotes this paper for it."
     },
     {
       "id": "R01-04",
+      "doc_ids": [
+        "UG1089 (v1.4)"
+      ],
       "title": "AMD Xilinx Kria KV260 Vision AI Starter Kit User Guide",
-      "authors": "Advanced Micro Devices, Inc.",
-      "year": 2023,
-      "type": "Hardware User Guide",
       "url": "https://docs.amd.com/v/u/en-US/ug1089-kv260-starter-kit",
+      "access": "open",
+      "type": "vendor-guide",
+      "publisher": "Advanced Micro Devices, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "year": 2023,
+      "authors": "Advanced Micro Devices, Inc.",
+      "authors_bibtex": "{{Advanced Micro Devices, Inc.}}",
+      "venue": "AMD Xilinx",
+      "bibtex_entry": "manual",
       "research_note_path": "docs/research_notes/R02_fpga_audio_streaming.md",
       "topics": [
         "Kria KV260",
@@ -83,18 +116,27 @@
         "V-03-01",
         "V-03-02"
       ],
-      "doc_ids": [
-        "UG1089 (v1.4)"
-      ],
       "notes": "Same work as the legacy KV260 user-guide entry, which carries the publication year."
     },
     {
       "id": "R01-05",
+      "doc_ids": [
+        "Interspeech 2020 / arXiv:2004.08531"
+      ],
       "title": "MatchboxNet: 1D Time-Channel Separable Convolutional Neural Network for Speech Command Recognition",
-      "authors": "Somshubra Majumdar et al.",
-      "year": 2020,
-      "type": "Interspeech",
       "url": "https://arxiv.org/abs/2004.08531",
+      "access": "open",
+      "type": "conference-paper",
+      "publisher": "ISCA",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2020,
+      "authors": "Somshubra Majumdar et al.",
+      "authors_bibtex": "Majumdar, Somshubra and Ginsburg, Boris",
+      "pages": "3356--3360",
+      "venue": "Proc. Interspeech 2020",
+      "bibtex_entry": "article",
       "research_note_path": "docs/research_notes/R03_quantization_for_speech.md",
       "topics": [
         "Keyword Spotting",
@@ -106,9 +148,6 @@
       "claims_supported": [
         "V-05-01",
         "V-05-02"
-      ],
-      "doc_ids": [
-        "Interspeech 2020 / arXiv:2004.08531"
       ],
       "notes": "Same work as the legacy MatchboxNet entry. The doc_id names both the venue and the preprint, which is one work with two urls and not two sources."
     },

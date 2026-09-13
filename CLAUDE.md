@@ -61,7 +61,9 @@ For chapter or paper work, inspect corresponding research notes in `docs/researc
 
 Before merge or completing a task, run the checks relevant to what you changed. `make gate`
 runs all of them, which is exactly what CI runs, so a green `make gate` locally means a green
-CI. There is no make binary on every machine; the individual commands are listed below.
+CI. There is no make binary on every machine; the `gate` target in `Makefile` lists the
+individual commands, and they are repeated below -- the target is authoritative if the
+two ever disagree.
 
 ```bash
 make gate                                  # everything, in one command
@@ -72,6 +74,8 @@ python -m mypy .                           # type hints
 python scripts/verify_integrity.py         # source registry and chapter claims
 python scripts/verification/audit_claims.py   # docs/verification evidence checks
 python scripts/verification/render_claims.py --check  # markdown matches claims.json
+python scripts/verification/build_source_index.py --check  # registry matches its spec
+python scripts/verification/build_bibliography.py --check  # .bib matches the registry
 ```
 
 Never report unverified results.

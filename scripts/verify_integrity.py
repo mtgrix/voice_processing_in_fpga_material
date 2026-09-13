@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -135,8 +136,7 @@ def check_registry_coverage() -> tuple[list[str], list[str]]:
     try:
         doc = load_claims(CLAIMS_PATH)
         on_disk = INDEX_PATH.read_text(encoding="utf-8") if INDEX_PATH.exists() else ""
-        legacy = json.loads(on_disk) if on_disk else {}
-        report = render(legacy, doc)
+        report = render(doc)
     except Exception as e:
         return [f"Registry coverage could not be computed: {e}"], warnings
 
@@ -297,6 +297,64 @@ def check_forbidden_markers() -> list[str]:
     return errors
 
 
+#: A Pandoc citation marker, in the only form a chapter should ever write it.
+CITATION_MARKER = re.compile(r"\[@[^\]]*\]")
+
+#: One `@token` inside such a marker. A key runs to the first space, comma, semicolon or bracket,
+#: which is also what makes a marker written with a doc_id rather than a registry id fail loudly:
+#: `[@UG440 (v2022.1)]` yields the token UG440, which is not a row id, instead of no token at all.
+CITATION_KEY = re.compile(r"@([^\s,;\]]+)")
+
+
+def _shown(path: Path) -> str:
+    """How to name a manuscript file in a message: relative to the repository when it is in it."""
+    return str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
+
+
+def check_citation_keys_resolve(manuscript_dirs: Sequence[Path] | None = None) -> list[str]:
+    """Every citation marker in the manuscript names a registry row.
+
+    book/references.bib is a rendering of docs/source_index.json keyed by registry id (Issue #42),
+    so "is a registry id" and "is a bibliography entry" are the same question. Answering it here
+    rather than in the PDF build is the point: CI installs Python and never runs pandoc, so a
+    chapter that invents `[@finn2017]` would reach main and sit there, silently dropping out of the
+    reference list, until someone built the book locally. scripts/verify_book_pdf.sh does catch an
+    unresolved marker in the rendered text; this catches it in the source, with the line it is on.
+
+    The manuscript is book-en/, which is what scripts/build_book.sh builds, plus the older book/
+    markdown it can be pointed at. Both read the same references.bib. A caller may pass other
+    directories, which is how the tests drive the failure path: a check that has only ever seen good
+    input is not known to work, only known to be quiet.
+    """
+    errors: list[str] = []
+    if not INDEX_PATH.exists():
+        return ["docs/source_index.json does not exist, so no citation key can be resolved"]
+    try:
+        registered = {
+            str(s.get("id")) for s in json.loads(INDEX_PATH.read_text(encoding="utf-8"))["sources"]
+        }
+    except (json.JSONDecodeError, KeyError, TypeError) as e:
+        return [f"Failed to read registry ids for citation checking: {e}"]
+
+    dirs = [ROOT / "book-en", ROOT / "book"] if manuscript_dirs is None else list(manuscript_dirs)
+    for directory in dirs:
+        for path in sorted(directory.glob("*.md")):
+            text = path.read_text(encoding="utf-8")
+            for number, line in enumerate(text.splitlines(), 1):
+                for marker in CITATION_MARKER.findall(line):
+                    keys = CITATION_KEY.findall(marker)
+                    if not keys:
+                        errors.append(f"{_shown(path)}:{number} has {marker!r} with no key in it")
+                    for key in keys:
+                        if key not in registered:
+                            errors.append(
+                                f"{_shown(path)}:{number} cites [@{key}], which is not a "
+                                "source id in docs/source_index.json; cite the registry row that "
+                                "answers the doc_id your record names"
+                            )
+    return errors
+
+
 def main() -> int:
     print("Verifying Voice Edge AI repository integrity...")
     all_errors = []
@@ -307,6 +365,7 @@ def main() -> int:
     all_errors.extend(coverage_errors)
     all_errors.extend(check_result_markers_have_logs())
     all_errors.extend(check_forbidden_markers())
+    all_errors.extend(check_citation_keys_resolve())
 
     for warning in linkage_warnings + coverage_warnings:
         print(f"  note: {warning}")
