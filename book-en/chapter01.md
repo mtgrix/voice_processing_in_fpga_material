@@ -89,9 +89,20 @@ intervals. The intervals follow from the **sampling rate**, which is how many nu
 taken per second. The reference frontend uses 16,000 samples per second, so one sample
 arrives every 62.5 microseconds and a 25 ms frame holds 400 of them. That rate is a **design
 parameter, not a fact about the world**: it is written in the `AudioConfig` defaults of the
-experiment, and no record in the evidence set sources it. It is a sensible choice because it
-is the rate the models of chapter 5 expect, but that claim belongs to those models, and the
-honest statement here is that the number is fixed in code rather than derived.
+experiment, and no measurement chose it. What was missing until now was any record of why
+16,000 rather than some other number, and two records close that gap. `V-05-11` reads the
+Speech Commands dataset paper, where each utterance is "stored as a one-second (or less) WAVE
+format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a
+16 KHz rate". `V-05-10` reads the LibriSpeech corpus page, which describes 1000 hours of
+16 kHz read English speech. Those two are not equally strong: the first is a paper, the second
+is the distribution page of the corpus it describes, and this project's own source hierarchy
+(`docs/WEB_SEARCH_PROTOCOL.md` section 2) ranks a page of that kind as corroborating rather
+than admissible on its own. So the justification here is the pair, and it is worth naming
+exactly what the pair supports. Both corpora that the chapter 5 models train on are stored at
+16,000 Hz, which is why a frontend that handed a model a different rate would be wrong before
+any hardware is chosen. That is a documented match, not a derived optimum, and the two are
+different claims. Nobody has swept the rate against recognition accuracy here, and the number
+in the config would not move if the sweep said it should.
 
 **Sliding ring buffer.** The pipeline inspects 400 samples at a time and moves forward by 160
 samples per step. A program that recomputes each frame from the original recording re-reads

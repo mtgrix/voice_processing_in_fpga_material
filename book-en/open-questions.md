@@ -74,17 +74,21 @@ generated, not as a mistake to average away.
 ## What the book's own apparatus cannot check yet
 
 These are gaps in the machinery, and they are measurable right now, so they are
-stated as measured rather than estimated. Figures below were counted against
-`book/chapter01-prose` on 2026-09-13.
+stated as measured rather than estimated, and the count is reproducible: each row below is a
+`grep --count` of the named pattern over the named set, taken on 2026-09-13 on `main` after
+Issue #35's two records landed. Records and sources are read out of
+`docs/verification/claims.json`; references are occurrences of `V-` plus two digits, a hyphen,
+the next two digits, in `book-en/chapter*.md`, counting repeats, because a chapter that names
+the same record twice cited it twice.
 
 | Fact about this manuscript | Count |
 | --- | --- |
-| Records in the evidence set | 101 |
-| Of those, `verified` | 94 |
+| Records in the evidence set | 103 |
+| Of those, `verified` | 96 |
 | Distinct sources the records cite | 41 |
 | Entries in `book/references.bib` | 5 |
 | Citation markers written into the manuscript | 0 |
-| Record references appearing in a chapter body | 15 |
+| Record references appearing in a chapter body | 17 |
 | Figures of any kind | 0 |
 | Numbered section headings across the ten chapters | 39 |
 | Of those, sections still without prose | 34 |

@@ -1,6 +1,6 @@
 {
-  "version": "1.5.0",
-  "generated_utc": "2026-09-12T15:55:00Z",
+  "version": "1.6.0",
+  "generated_utc": "2026-09-13T10:43:23Z",
   "records": [
     {
       "id": "V-01-01",
@@ -1639,6 +1639,42 @@
       "access": "open",
       "corroborating_url": "https://arxiv.org/abs/1804.03209",
       "notes": "Free for academic and commercial use with proper attribution."
+    },
+    {
+      "id": "V-05-10",
+      "status": "verified",
+      "quantity": "librispeech_audio_sample_rate",
+      "value": "16",
+      "unit": "kHz",
+      "conditions": "LibriSpeech ASR corpus, complete set, read English speech from audiobooks",
+      "source_tier": "T4",
+      "doc_id": "ICASSP 2015 / OpenSLR 12",
+      "title": "LibriSpeech ASR corpus",
+      "url": "https://www.openslr.org/12/",
+      "locator": "Openslr.org/12 resource page, corpus description, first sentence",
+      "quote": "LibriSpeech is a corpus of approximately 1000 hours of 16kHz read English speech, prepared by Vassil Panayotov with the assistance of Daniel Povey.",
+      "retrieved_utc": "2026-09-13T10:43:23Z",
+      "access": "open",
+      "corroborating_url": "",
+      "notes": "The number is the corpus's own storage rate as stated by its distribution page, not the input rate of any model. Tier T4 is admissible as corroboration only under docs/WEB_SEARCH_PROTOCOL.md section 2, so this record does not stand alone: the peer-reviewed description (Panayotov et al., ICASSP 2015) would upgrade it and was not reachable in this pass -- the IEEE page is paywalled and no arXiv copy exists. V-05-11 carries the same quantity from a T3 source for the other corpus the benchmark set uses, and the book's frontend parameter rests on that pair, not on this row alone."
+    },
+    {
+      "id": "V-05-11",
+      "status": "verified",
+      "quantity": "speech_commands_audio_sample_rate",
+      "value": "16",
+      "unit": "kHz",
+      "conditions": "Google Speech Commands dataset, 105,829 utterances of 35 words, one second or less each",
+      "source_tier": "T3",
+      "doc_id": "arXiv:1804.03209",
+      "title": "Speech Commands: A Dataset for Limited-Vocabulary Speech Recognition",
+      "url": "https://arxiv.org/pdf/1804.03209.pdf",
+      "locator": "p.6, section 6 Properties",
+      "quote": "Each utterance is stored as a one-second (or less) WAVE format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate.",
+      "retrieved_utc": "2026-09-13T10:43:23Z",
+      "access": "open",
+      "corroborating_url": "",
+      "notes": "Read from the same arXiv PDF that V-05-07 and V-05-08 cite; the copy examined carries the page-1 stamp arXiv:1804.03209v1 [cs.CL] 9 Apr 2018, and the revision is recorded here rather than in doc_id, because one document gets one identifier and a v1 suffix would have counted this paper as a second source. The publication venue was not verified from the fetched document. The TensorFlow Datasets catalogue page for speech_commands was fetched on the same pass and does NOT state a sample rate -- it lists audio as int16 with an unbounded shape -- so the paper is the source and the catalogue is not cited for this. Same rate as V-05-10, which is why the frontend of chapter 1 can use 16,000 Hz for both models in the benchmark set."
     },
     {
       "id": "V-06-01",

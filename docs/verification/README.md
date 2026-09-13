@@ -3,7 +3,11 @@
 This directory contains primary-source evidence collected per `docs/WEB_SEARCH_PROTOCOL.md` to resolve
 hardware and model parameter questions in `plan-v2.md`.
 
-Five passes ran on 2026-09-12. The initial pass wrote 71 records. The first review re-read every
+Five passes ran on 2026-09-12, and a sixth ran on 2026-09-13 against a question the book had
+asked about itself: chapter 1 printed a 16,000 Hz sampling rate and named no source for it.
+That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes.
+It also registered `kHz`, the first new unit term since the vocabulary was written down, and
+it left the weaker of the two records at tier T4 on purpose -- see its notes field. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
 The second pass went the other way: it re-read the underlying documents to settle what the first review
 had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. The third pass
@@ -19,8 +23,8 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 101
-- **Verified:** 94
+- **Total Records:** 103
+- **Verified:** 96
 - **Unresolved:** 4
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 7 (C-01 … C-07; three of them concern repository text or record provenance
@@ -28,8 +32,8 @@ nine quotations, two page locators and two values. See
   [Conflicts](#conflicts)). One is now closed: the owner decided C-07 on 2026-09-12 in favour
   of `MAXN`. Closing it changed which operating point the book teaches, not what either record
   says, so no record was deleted or re-typed.
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.5.0, `generated_utc`
-  2026-09-12T15:55:00Z, includes an `audit` block describing the two value-level passes, the two
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.6.0, `generated_utc`
+  2026-09-13T10:43:23Z, includes an `audit` block describing the two value-level passes, the two
   provenance passes and the decision package that closed C-07)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
@@ -50,7 +54,7 @@ nine quotations, two page locators and two values. See
    support, disk footprint, Vitis AI DPU overlay architecture (DPUCZDX8G), the full PG338 resource
    ladders for both the Block RAM and UltraRAM variants, what of those ladders fits ZU5EV, and XPE
    accuracy caveats.
-5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 9 records. Model architectures (MatchboxNet
+5. [`05-models-and-datasets.md`](05-models-and-datasets.md) — 11 records. Model architectures (MatchboxNet
    vs Streaming Conformer), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk
    latency, and speaker-independent splits.
 6. [`06-quantization-sources.md`](06-quantization-sources.md) — 5 records. Primary mathematical source
