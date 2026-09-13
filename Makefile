@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence gate book book-check book-clean clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry gate book book-check book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -13,6 +13,8 @@ help:
 	@echo "  make verify-evidence   - Audit docs/verification: every quote must be able to produce its value"
 	@echo "  make check-render      - Fail if the record .md files drift from claims.json"
 	@echo "  make render-evidence   - Regenerate the record .md files from claims.json"
+	@echo "  make check-registry    - Fail if docs/source_index.json drifts from its spec and claims.json"
+	@echo "  make render-registry   - Regenerate the source registry from its spec and claims.json"
 	@echo "  make gate              - Run every check CI runs, in CI's order"
 	@echo "  make clean             - Clean temporary cache files"
 	@echo "  make book              - Build both monograph PDFs into dist/ (needs Pandoc and LuaLaTeX)"
@@ -46,10 +48,19 @@ verify-evidence:
 check-render:
 	$(PYTHON) scripts/verification/render_claims.py --check
 
+# The registry is a rendering in the same sense the evidence markdown is: half of it is curated and
+# half is derived from claims.json, so the derived half cannot be allowed to drift by hand.
+# Issue #20. `render-registry` rewrites, this checks.
+check-registry:
+	$(PYTHON) scripts/verification/build_source_index.py --check
+
+render-registry:
+	$(PYTHON) scripts/verification/build_source_index.py --write
+
 render-evidence:
 	$(PYTHON) scripts/verification/render_claims.py --write
 
-gate: lint format-check typecheck test verify verify-evidence check-render
+gate: lint format-check typecheck test verify verify-evidence check-render check-registry
 
 # The book targets are deliberately NOT part of gate, so CI does not run them: the# checks job installs Python only, and a TeX distribution costs hundreds of megabytes# for a job that does not otherwise need one. A green gate therefore does not mean a# buildable book. Run make book-check where Pandoc and LuaLaTeX exist. Issue #29.
 book:

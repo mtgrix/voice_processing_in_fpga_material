@@ -16,6 +16,46 @@ ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE_DIR = ROOT / "docs" / "verification"
 CLAIMS_PATH = EVIDENCE_DIR / "claims.json"
 
+#: Which doc_id values name no document, so they can have no registry entry.
+#:
+#: This lives here rather than in the script that writes the registry because three readers need
+#: one answer: build_source_index.py, which must not demand an entry for them; the check beside it
+#: that pins what a record using one of these labels is allowed to assert; and
+#: tests/test_source_registry.py. A rule this narrow, duplicated across files, is where two halves
+#: of a check start disagreeing.
+#:
+#: Each pattern is a statement about the evidence set, not an escape hatch. They are listed in
+#: docs/verification/claims.json as of 2026-09-13, and what each one means is a fact about the
+#: records that carry it:
+#:
+#: Measured on the evidence set as it stands, eight of its forty-one doc_id labels are exempt, and
+#: they come from nine records:
+#:
+#:   'Derived from ...'         arithmetic. Six records, 2 through 4 labels each carrying one
+#:                              record. Every one verified, and every one naming the records or
+#:                              the datasheet figures it divided, multiplied or tabulated out of,
+#:                              so the citations exist two fields away. A computation is not a
+#:                              work somebody fetched.
+#:   'n/a'                      no value yet. Two records, V-02-28 and V-07-05, both unresolved
+#:                              with an empty value field. There is no document behind a question
+#:                              the project has not answered.
+#:   'no primary source found' searched, nothing found. One record, V-04-13, same shape. The
+#:                              absence is the finding, and it is what keeps the claim at T5.
+#:
+#: tests/test_source_registry.py pins all nine record ids, so a tenth exempt record is a
+#: deliberate edit to that list rather than a silent one.
+#:
+#: The three patterns are disjoint by construction, and build_source_index.py refuses to emit a
+#: registry over an evidence set where an exempt label sits on a record that carries a value.
+EXEMPT_PREFIXES = ("Derived from ",)
+EXACT_EXEMPT = ("n/a", "no primary source found")
+
+
+def is_exempt(doc_id: str) -> bool:
+    """True for a doc_id that names arithmetic or an absence rather than a document."""
+    return doc_id.startswith(EXEMPT_PREFIXES) or doc_id in EXACT_EXEMPT
+
+
 #: Fields every record must carry, in the order the renderer prints them. `id` is the
 #: twelfth plus one: it is the record key, and it leads each rendered block.
 RECORD_FIELDS: tuple[str, ...] = (
