@@ -16,6 +16,13 @@
 \setsansfont{Segoe UI}
 \setmonofont{Consolas}[Scale=0.85, RawFeature={fallback=symfallback}]
 
+% Figures are hand-written TikZ compiled by the same LuaLaTeX pass as the prose, so
+% there is no pre-render stage to keep in step. pgfplots is deliberately absent:
+% a roofline chart is two straight segments per machine, and plain TikZ has no
+% compatibility surface to get wrong. scripts/filters/tikz_figures.lua turns a
+% ```tikz fence into the picture environment. Issue #36.
+\usepackage{tikz}
+
 \usepackage{amssymb}
 \usepackage{pifont}
 \usepackage{unicode-math}
