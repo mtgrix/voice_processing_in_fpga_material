@@ -203,14 +203,13 @@ taken per second. The reference frontend uses 16,000 samples per second, so one 
 arrives every 62.5 microseconds and a 25 ms frame holds 400 of them. That rate is a **design
 parameter, not a fact about the world**: it is written in the `AudioConfig` defaults of the
 experiment, and no measurement chose it. What was missing until now was any record of why
-16,000 rather than some other number, and two records close that gap. `V-05-11` reads the
-Speech Commands dataset paper, where each utterance is "stored as a one-second (or less) WAVE
-format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a
-16 KHz rate". `V-05-10` reads the LibriSpeech corpus page, which describes 1000 hours of
-16 kHz read English speech. Those two are not equally strong: the first is a paper, the second
-is the distribution page of the corpus it describes, and this project's own source hierarchy
-(`docs/WEB_SEARCH_PROTOCOL.md` section 2) ranks a page of that kind as corroborating rather
-than admissible on its own. So the justification here is the pair, and it is worth naming
+16,000 rather than some other number, and two records close that gap. The Speech Commands dataset
+paper says each utterance is "stored as a one-second (or less) WAVE format file, with the sample
+data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate". The LibriSpeech corpus
+page describes 1000 hours of 16 kHz read English speech. Those two sources are not equally strong:
+the first is a paper, the second is the distribution page of the corpus it describes, and this
+project's own source hierarchy (`docs/WEB_SEARCH_PROTOCOL.md` section 2) ranks a page of that kind
+as corroborating rather than admissible on its own. So the justification here is the pair, and it is worth naming
 exactly what the pair supports. Both corpora that the chapter 5 models train on are stored at
 16,000 Hz, which is why a frontend that handed a model a different rate would be wrong before
 any hardware is chosen. That is a documented match, not a derived optimum, and the two are
@@ -275,6 +274,13 @@ when. And the 80 x 257 matrix of filter weights never changes: it is computed on
 sampling rate and the band limits, so in hardware it is a constant. That is why its
 *size* -- not its arithmetic -- is the interesting number, and why section 1.4 measures it
 against the memory a real chip has.
+
+**Traceability.** The records this section's rate argument rests on.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-11` | Speech Commands stores each utterance as linear 16-bit single-channel PCM at a 16 KHz rate |
+| `V-05-10` | LibriSpeech is 1000 hours of 16 kHz read English speech, on a corpus distribution page |
 
 
 ## 1.3 Mathematical Formulation: STFT and Mel Filterbank
