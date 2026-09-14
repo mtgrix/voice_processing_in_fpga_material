@@ -1,6 +1,6 @@
 {
   "version": "1.3.0",
-  "last_updated": "2026-09-13",
+  "last_updated": "2026-09-14",
   "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms. Every entry lists the doc_id labels it answers, in doc_ids.",
   "doc_id_note": "doc_ids holds the doc_id strings that records in docs/verification/claims.json use to cite this work, and it is the join between the evidence set and the registry. One document may be cited by several labels, because a label is a spelling and not a source; the aliases are listed here rather than renamed in the records, so that no record lost its own history. The labels that name arithmetic or an absence are exempt, defined once by claims_lib.is_exempt and pinned by tests/test_source_registry.py.",
   "sources": [
@@ -810,6 +810,139 @@
         "V-05-56"
       ],
       "notes": "A project's own results table states what that project achieved, so it corroborates and does not establish, which is the rule the WeNet README row already records. Its value here is that it names the checkpoints and their look-ahead in milliseconds independently of the config files, so the look-ahead formula and the catalogue check each other."
+    },
+    {
+      "id": "S030",
+      "doc_ids": [
+        "CUDA Programming Guide v13.4, Advanced Kernel Programming"
+      ],
+      "title": "CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming",
+      "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T1"
+      ],
+      "year": 2026,
+      "topics": [
+        "CUDA",
+        "SIMT",
+        "warp",
+        "streaming multiprocessor",
+        "memory latency"
+      ],
+      "claims_supported": [
+        "V-02-42",
+        "V-02-43",
+        "V-02-44",
+        "V-02-45",
+        "V-02-46"
+      ],
+      "notes": "The current CUDA Programming Guide, which replaced the legacy cuda-c-programming-guide that NVIDIA's own page says stopped being updated at CUDA 13.0. Five records sit on it, and all five are about the execution model rather than about the Orin: the width of a warp, what a divergent branch costs, what switching between warps costs, what bounds how many warps are resident, and what hides memory latency. That bound is deferred to the guide's Compute Capabilities tables and is not registered here, so chapter 3 reasons about lanes without naming a capacity."
+    },
+    {
+      "id": "S031",
+      "doc_ids": [
+        "CUDA Programming Guide v13.4, CUDA Graphs"
+      ],
+      "title": "CUDA Programming Guide v13.4, section 4.2 CUDA Graphs",
+      "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html",
+      "access": "open",
+      "type": "vendor-tool-guide",
+      "publisher": "NVIDIA Corporation",
+      "tiers_observed": [
+        "T1"
+      ],
+      "year": 2026,
+      "topics": [
+        "CUDA",
+        "CUDA Graphs",
+        "kernel launch",
+        "host overhead"
+      ],
+      "claims_supported": [
+        "V-02-47"
+      ],
+      "notes": "Read for one sentence: the host driver performs a setup sequence for every kernel it issues, and that cost can be a significant fraction of end-to-end time for a short kernel. The microsecond cost of a launch on the Orin is in no record here, and chapter 3.2 says so rather than repeating the figure that circulates in secondary notes. Both this page and S030 carry the navbar version v13.4 and the stamp 'Last updated on Sep 09, 2026', which is what the doc_id pins: a chapter quoted from a moving online guide is true of one version of it."
+    },
+    {
+      "id": "S032",
+      "doc_ids": [
+        "PyTorch Tutorials 2.14, Convolution/Batch Norm fuser"
+      ],
+      "title": "Building a Convolution/Batch Norm fuser with torch.compile — PyTorch Tutorials 2.14.0+cu130 documentation",
+      "url": "https://docs.pytorch.org/tutorials/intermediate/torch_compile_conv_bn_fuser.html",
+      "access": "open",
+      "type": "software-documentation",
+      "publisher": "PyTorch Foundation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "PyTorch",
+        "operator fusion",
+        "batch normalisation",
+        "torch.compile",
+        "inference"
+      ],
+      "claims_supported": [
+        "V-06-06",
+        "V-06-07",
+        "V-06-08"
+      ],
+      "notes": "Read for chapter 5's account of what a compiler does to a graph before hardware sees it. Three records sit on it: that folding a convolution and a batch norm needs no new operator and deletes the norm, that the pattern is reachable only because compilation captures the graph, and that the fold is legal in inference mode alone. The page carries no date of its own, so the doc_id pins the version its title prints, 2.14.0, the same version string the round-half-to-even record already relies on. The page is a worked example that says its code is copied from the repository, which is why V-06-09 cites the repository file for the arithmetic rather than trusting this prose."
+    },
+    {
+      "id": "S033",
+      "doc_ids": [
+        "PyTorch v2.10.0 source, torch/nn/utils/fusion.py"
+      ],
+      "title": "torch/nn/utils/fusion.py (PyTorch v2.10.0)",
+      "url": "https://raw.githubusercontent.com/pytorch/pytorch/v2.10.0/torch/nn/utils/fusion.py",
+      "access": "open",
+      "type": "source-code",
+      "publisher": "PyTorch Foundation",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "PyTorch",
+        "operator fusion",
+        "batch normalisation",
+        "source code"
+      ],
+      "claims_supported": [
+        "V-06-09"
+      ],
+      "notes": "The implementation behind the tutorial's prose, pinned to a release tag. The pin matters and is recorded rather than assumed: at this tag the eval-mode guard is an assert statement, while the development branch has rewritten the same check as a raise, with the identical message string. A chapter quoting the behaviour is safe across that rewrite; one quoting the statement form would not be."
+    },
+    {
+      "id": "S034",
+      "doc_ids": [
+        "Vitis AI Quantizer (vai_q_pytorch) documentation"
+      ],
+      "title": "Vitis AI Quantizer (vai_q_pytorch): Quant_Config.md",
+      "url": "https://raw.githubusercontent.com/Xilinx/Vitis-AI/77cb9e6ad6749de55cf6de8d4959b1cb4b27020e/src/vai_quantizer/vai_q_pytorch/doc/Quant_Config.md",
+      "access": "open",
+      "type": "repository-documentation",
+      "publisher": "Xilinx, Inc.",
+      "tiers_observed": [
+        "T2"
+      ],
+      "topics": [
+        "Vitis AI",
+        "quantization",
+        "calibration",
+        "DPU",
+        "configuration"
+      ],
+      "claims_supported": [
+        "V-06-10",
+        "V-06-11",
+        "V-06-12"
+      ],
+      "notes": "The configuration document of the quantizer that produces the DPU's integer graphs, read from the vendor repository at a commit rather than a branch. Three records come from it: the documented estimators for a scale, the option combinations the tool refuses outright, and the instruction that layer names can only be chosen after calibration has run. T2 for the reason docs/WEB_SEARCH_PROTOCOL.md section 2 gives for the other Vitis AI material: a tool reference, not a datasheet. The repository still publishes under the Xilinx organisation name, so that is the publisher recorded here even though the documents now carry AMD branding."
     }
   ]
 }

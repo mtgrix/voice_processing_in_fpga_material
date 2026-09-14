@@ -550,6 +550,92 @@ SPEC: list[Entry] = [
         "here is that it names the checkpoints and their look-ahead in milliseconds independently "
         "of the config files, so the look-ahead formula and the catalogue check each other.",
     ),
+    Entry(
+        doc_id="CUDA Programming Guide v13.4, Advanced Kernel Programming",
+        id="S030",
+        type="vendor-tool-guide",
+        publisher="NVIDIA Corporation",
+        url="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html",
+        year=2026,
+        topics=("CUDA", "SIMT", "warp", "streaming multiprocessor", "memory latency"),
+        notes="The current CUDA Programming Guide, which replaced the legacy "
+        "cuda-c-programming-guide that NVIDIA's own page says stopped being updated at CUDA 13.0. "
+        "Five records sit on it, and all five are about the execution model rather than about the "
+        "Orin: the width of a warp, what a divergent branch costs, what switching between warps "
+        "costs, what bounds how many warps are resident, and what hides memory latency. That bound "
+        "is deferred to the guide's Compute Capabilities tables and is not registered here, so "
+        "chapter 3 reasons about lanes without naming a capacity.",
+    ),
+    Entry(
+        doc_id="CUDA Programming Guide v13.4, CUDA Graphs",
+        id="S031",
+        type="vendor-tool-guide",
+        publisher="NVIDIA Corporation",
+        url="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html",
+        year=2026,
+        topics=("CUDA", "CUDA Graphs", "kernel launch", "host overhead"),
+        notes="Read for one sentence: the host driver performs a setup sequence for every kernel "
+        "it "
+        "issues, and that cost can be a significant fraction of end-to-end time for a short "
+        "kernel. "
+        "The microsecond cost of a launch on the Orin is in no record here, and chapter 3.2 says "
+        "so "
+        "rather than repeating the figure that circulates in secondary notes. Both this page and "
+        "S030 carry the navbar version v13.4 and the stamp 'Last updated on Sep 09, 2026', which "
+        "is "
+        "what the doc_id pins: a chapter quoted from a moving online guide is true of one version "
+        "of it.",
+    ),
+    Entry(
+        doc_id="PyTorch Tutorials 2.14, Convolution/Batch Norm fuser",
+        id="S032",
+        type="software-documentation",
+        publisher="PyTorch Foundation",
+        url="https://docs.pytorch.org/tutorials/intermediate/torch_compile_conv_bn_fuser.html",
+        topics=("PyTorch", "operator fusion", "batch normalisation", "torch.compile", "inference"),
+        notes="Read for chapter 5's account of what a compiler does to a graph before hardware "
+        "sees "
+        "it. Three records sit on it: that folding a convolution and a batch norm needs no new "
+        "operator and deletes the norm, that the pattern is reachable only because compilation "
+        "captures the graph, and that the fold is legal in inference mode alone. The page carries "
+        "no "
+        "date of its own, so the doc_id pins the version its title prints, 2.14.0, the same "
+        "version "
+        "string the round-half-to-even record already relies on. The page is a worked example that "
+        "says its code is copied from the repository, which is why V-06-09 cites the repository "
+        "file for the arithmetic rather than trusting this prose.",
+    ),
+    Entry(
+        doc_id="PyTorch v2.10.0 source, torch/nn/utils/fusion.py",
+        id="S033",
+        type="source-code",
+        publisher="PyTorch Foundation",
+        url="https://raw.githubusercontent.com/pytorch/pytorch/v2.10.0/torch/nn/utils/fusion.py",
+        topics=("PyTorch", "operator fusion", "batch normalisation", "source code"),
+        notes="The implementation behind the tutorial's prose, pinned to a release tag. The pin "
+        "matters and is recorded rather than assumed: at this tag the eval-mode guard is an assert "
+        "statement, while the development branch has rewritten the same check as a raise, with the "
+        "identical message string. A chapter quoting the behaviour is safe across that rewrite; "
+        "one "
+        "quoting the statement form would not be.",
+    ),
+    Entry(
+        doc_id="Vitis AI Quantizer (vai_q_pytorch) documentation",
+        id="S034",
+        type="repository-documentation",
+        publisher="Xilinx, Inc.",
+        url="https://raw.githubusercontent.com/Xilinx/Vitis-AI/77cb9e6ad6749de55cf6de8d4959b1cb4b27020e/src/vai_quantizer/vai_q_pytorch/doc/Quant_Config.md",
+        topics=("Vitis AI", "quantization", "calibration", "DPU", "configuration"),
+        notes="The configuration document of the quantizer that produces the DPU's integer graphs, "
+        "read from the vendor repository at a commit rather than a branch. Three records come from "
+        "it: the documented estimators for a scale, the option combinations the tool refuses "
+        "outright, and the instruction that layer names can only be chosen after calibration has "
+        "run. T2 for the reason docs/WEB_SEARCH_PROTOCOL.md section 2 gives for the other Vitis AI "
+        "material: a tool reference, not a datasheet. The repository still publishes under the "
+        "Xilinx organisation name, so that is the publisher recorded here even though the "
+        "documents "
+        "now carry AMD branding.",
+    ),
 ]
 
 

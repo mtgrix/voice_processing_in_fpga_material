@@ -819,3 +819,123 @@
 | access | `open` |
 | corroborating_url |  |
 | notes | New fact from the vendor v1.7 and the reason MAXN_SUPER is not free: a carrier that supplies 5V cannot reach the profile that makes the 157 TOPS figure of V-02-39 true. Relevant here because the plan's budget arithmetic assumes the module can be run at its datasheet ceiling. |
+
+### V-02-42 · Cuda Warp Size
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_warp_size` |
+| value | `32` |
+| unit | `threads per warp` |
+| conditions | `NVIDIA CUDA execution model as documented in CUDA 13.4. A property of the programming model rather than of any one device: the guide says sections 3.2.2.1 and 3.2.2.2 describe the architectural features of the SM that are common to all devices.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, Advanced Kernel Programming` |
+| title | CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html |
+| locator | Section 3.2.2.1 SIMT Execution Model; Section 3.2.2.2 Hardware Multithreading |
+| quote | Each SM creates, manages, schedules, and executes threads in groups of 32 parallel threads called warps. ... T is the number of threads per block, Wsize is the warp size, which is equal to 32 ... A thread block is partitioned into warps of 32 threads. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The number that lets chapter 3 say what an idle lane costs. Registered rather than borrowed from V-02-16's '32 Tensor Cores', which is a different quantity written with the same digits. The fetched page is the current guide: docs.nvidia.com also serves the legacy cuda-c-programming-guide, whose own banner says it stopped being updated at CUDA 13.0, so that page is not this record's source. |
+
+### V-02-43 · Cuda Warp Divergence Behaviour
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_warp_divergence_behaviour` |
+| value | `A warp issues one common instruction at a time, and on a divergent branch it executes each taken path with the lanes off that path disabled` |
+| unit | `string` |
+| conditions | `NVIDIA CUDA execution model as documented in CUDA 13.4. A property of the programming model rather than of any one device: the guide says sections 3.2.2.1 and 3.2.2.2 describe the architectural features of the SM that are common to all devices.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, Advanced Kernel Programming` |
+| title | CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html |
+| locator | Section 3.2.2.1 SIMT Execution Model |
+| quote | A warp executes one common instruction at a time, so full efficiency is realized when all 32 threads of a warp agree on their execution path. If threads of a warp diverge via a data-dependent conditional branch, the warp executes each branch path taken, disabling threads that are not on that path. Branch divergence occurs only within a warp; different warps execute independently regardless of whether they are executing common or disjoint code paths. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The mechanism behind chapter 3.1's claim that a small batch leaves lanes idle rather than merely spread thin. The guide frames it the same way two sentences later: 'For the purposes of correctness, the programmer can essentially ignore the SIMT behavior; however, substantial performance improvements can be realized by taking care that the code seldom requires threads in a warp to diverge.' Divergence is a performance property, not a bug, so the book teaches it as one. |
+
+### V-02-44 · Cuda Warp Switch Cost
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_warp_switch_cost` |
+| value | `Nothing: a warp's execution context stays on-chip for its lifetime, and each issue cycle a scheduler gives the cycle to whichever resident warp has threads ready` |
+| unit | `string` |
+| conditions | `NVIDIA CUDA execution model as documented in CUDA 13.4. A property of the programming model rather than of any one device: the guide says sections 3.2.2.1 and 3.2.2.2 describe the architectural features of the SM that are common to all devices.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, Advanced Kernel Programming` |
+| title | CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html |
+| locator | Section 3.2.2.2 Hardware Multithreading |
+| quote | The execution context (program counters, registers, etc.) for each warp processed by an SM is maintained on-chip throughout the warp’s lifetime. Therefore, switching between warps incurs no cost. At each instruction issue cycle, a warp scheduler selects a warp with threads ready to execute its next instruction (the active threads of the warp) and issues the instruction to those threads. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | This is the sentence that decides what an empty GPU cycle means. No switch penalty is being paid, so an idle issue cycle is a missing ready warp, and 'the GPU was busy' and 'the GPU had nothing eligible to issue' are different observations. The apostrophe in 'warp’s' is the vendor's typographic one, kept as printed. |
+
+### V-02-45 · Cuda Resident Warp Limits
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_resident_warp_limits` |
+| value | `How many blocks and warps an SM holds at once depends on the registers and shared memory the kernel uses and the SM has, on a maximum number of resident blocks and warps per SM, and on compute capability` |
+| unit | `string` |
+| conditions | `NVIDIA CUDA execution model as documented in CUDA 13.4. A property of the programming model rather than of any one device: the guide says sections 3.2.2.1 and 3.2.2.2 describe the architectural features of the SM that are common to all devices.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, Advanced Kernel Programming` |
+| title | CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html |
+| locator | Section 3.2.2.2 Hardware Multithreading |
+| quote | The number of blocks and warps that can reside and be processed concurrently on the SM for a given kernel depends on the amount of registers and shared memory used by the kernel, as well as the amount of registers and shared memory available on the SM. There are also a maximum number of resident blocks and warps per SM. These limits, as well the amount of registers and shared memory available on the SM, depend on the compute capability of the device and are specified in Compute Capabilities. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Recorded with its gap named in the same breath: the guide defers the per-SM maxima to its Compute Capabilities tables, and this book has not registered the Orin NX entry in them, so chapter 3 says the number of lanes a frame can employ is bounded and prints no bound. 'as well the amount' is the vendor's own dropped word, quoted as printed. |
+
+### V-02-46 · Cuda Latency Hiding Mechanism
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_latency_hiding_mechanism` |
+| value | `Memory latency is hidden by parallelism: the SM switches to another warp while a memory operation completes` |
+| unit | `string` |
+| conditions | `NVIDIA CUDA execution model as documented in CUDA 13.4. A property of the programming model rather than of any one device: the guide says sections 3.2.2.1 and 3.2.2.2 describe the architectural features of the SM that are common to all devices.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, Advanced Kernel Programming` |
+| title | CUDA Programming Guide v13.4, section 3.2 Advanced Kernel Programming |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/advanced-kernel-programming.html |
+| locator | Section 3.2.5 Asynchronous Data Copies |
+| quote | Traditional synchronous memory operations force threads to wait idle during data transfers. GPUs inherently hide memory latency through parallelism. That is, the SM switches to execute another warp while memory operations complete. Even with this latency hiding through parallelism, it is still possible for memory latency to be a bottleneck on both memory bandwidth utilization and compute resource efficiency. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Chapter 3's bandwidth argument and its occupancy argument are the same mechanism read twice, and this sentence names both consequences: bandwidth utilization and compute resource efficiency. A streaming encoder at batch one runs short of both at once, which is why the roofline figure and the lane-count argument in this chapter say different things about one workload. The American 'utilization' sits inside a quotation; the manuscript's own prose keeps British spelling. |
+
+### V-02-47 · Cuda Kernel Launch Overhead
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cuda_kernel_launch_overhead` |
+| value | `The host driver performs a setup sequence for every kernel it issues, and for a short kernel that overhead can be a significant fraction of the end-to-end time` |
+| unit | `string` |
+| conditions | `NVIDIA CUDA host runtime as documented in CUDA 13.4, section 4.2. A statement about what the driver does per launch, not a measurement of any launched system.` |
+| source_tier | `T1` |
+| doc_id | `CUDA Programming Guide v13.4, CUDA Graphs` |
+| title | CUDA Programming Guide v13.4, section 4.2 CUDA Graphs |
+| url | https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html |
+| locator | Section 4.2 CUDA Graphs, opening paragraphs |
+| quote | when you place a kernel into a stream, the host driver performs a sequence of operations in preparation for the execution of the kernel on the GPU. These operations, necessary for setting up and launching the kernel, are an overhead cost which must be paid for each kernel that is issued. For a GPU kernel with a short execution time, this overhead cost can be a significant fraction of the overall end-to-end execution time. By creating a CUDA graph that encompasses a workflow that will be launched many times, these overhead costs can be paid once for the entire graph during instantiation, and the graph itself can then be launched repeatedly with very little overhead. |
+| retrieved_utc | `2026-09-14T05:43:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | The qualitative half of chapter 3.2, and the reason the section can teach launch overhead without printing one: nothing in this record, and nothing on the fetched page, gives a cost in microseconds for the Orin or for any device. The appended sentence is the vendor's own answer, taken from the same two paragraphs, so the book may name CUDA Graphs as a mechanism for paying the setup once instead of per launch; the page adds elsewhere that instantiation 'takes a snapshot of the graph template, validates it, and performs much of the setup and initialization of work with the aim of minimizing what needs to be done at launch', which is the same claim with the moving part named. Neither sentence says what fraction of a streaming encoder's frame time the setup is. |

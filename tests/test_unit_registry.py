@@ -83,16 +83,19 @@ class TestRegistryMatchesTheEvidenceSet:
     def test_the_observed_vocabulary_is_53_spellings(self) -> None:
         """A ratchet needs a number in it, or a future deletion reads as tidying.
 
-        53 spellings over 52 canonicals as of 2026-09-14, when Issue #47 registered the NeMo ASR
-        recipes and the count terms they needed: the set carried `BRAM36 blocks` and `URAM288
-        blocks` for hardware cells, but no spelling for a block of a *network*, and no term at all
-        for a duration in seconds, only in milliseconds. Before that, 46 over 45 from 2026-09-13,
-        when V-05-10 and V-05-11 needed kilohertz and `MHz` is not a spelling of it. The alias pair
-        that makes the two counts differ by one is still `Sparse INT8 TOPS` / `sparse INT8 TOPS`,
-        tested below.
+        54 spellings over 53 canonicals as of 2026-09-14, when Issue #57 registered the CUDA
+        execution model for chapter 3 and needed a term for it: a warp is 32 *threads*, which is
+        none of the counts already in the set -- `attention heads` and `encoder blocks` count a
+        network, `DLA engines` and `transceivers` count silicon. Before that, 53 over 52 from the
+        same day, when Issue #47 registered the NeMo ASR recipes and the count terms they needed:
+        the set carried `BRAM36 blocks` and `URAM288 blocks` for hardware cells, but no spelling
+        for a block of a *network*, and no term at all for a duration in seconds, only in
+        milliseconds. Before that, 46 over 45 from 2026-09-13, when V-05-10 and V-05-11 needed
+        kilohertz and `MHz` is not a spelling of it. The alias pair that makes the two counts
+        differ by one is still `Sparse INT8 TOPS` / `sparse INT8 TOPS`, tested below.
         """
-        assert len(claims_lib.UNIT_TERMS) == 53
-        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 52
+        assert len(claims_lib.UNIT_TERMS) == 54
+        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 53
 
     def test_every_canonical_has_a_kind(self) -> None:
         assert set(claims_lib.UNIT_TERMS.values()) <= set(claims_lib.UNIT_KINDS)
@@ -159,7 +162,9 @@ class TestRefusals:
     def test_a_registered_term_no_record_uses_is_refused(self) -> None:
         """Otherwise the list becomes a graveyard, and a graveyard lets wrong labels pass."""
         _used, fails = run([record("V-01-13", "GB/s")])
-        assert len([f for f in fails if "registered but no record uses it" in f]) == 52
+        # One failure per unused *spelling*, not per canonical. Of the 54 spellings the
+        # vocabulary now holds, GB/s accounts for the single used one, so 53 go unclaimed.
+        assert len([f for f in fails if "registered but no record uses it" in f]) == 53
 
     def test_a_canonical_without_a_kind_is_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delitem(claims_lib.UNIT_KINDS, "watts")
