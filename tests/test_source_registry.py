@@ -51,7 +51,7 @@ SOURCES: list[dict[str, Any]] = COMMITTED["sources"]
 REPORT = registry.render(DOC)
 
 #: The ten records that cite no document, split by the reason each one gives. Counted on
-#: docs/verification/claims.json at version 1.8.0, 2026-09-14, after Issue #47. There were
+#: docs/verification/claims.json at version 1.9.0, 2026-09-14, after Issue #47. There were
 #: nine at 1.7.0; the tenth is V-05-57, whose three quantities no publisher prints, so it joins
 #: the searched-and-found-nothing family rather than the no-value-ones.
 DERIVATION_RECORDS = {"V-01-13", "V-02-36", "V-04-09", "V-04-12", "V-07-02", "V-07-03"}

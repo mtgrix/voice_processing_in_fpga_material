@@ -1,7 +1,7 @@
 """Report every number in the manuscript that no cited claim supports. Exit code 0 means clean.
 
 Why this exists
-    docs/verification/claims.json holds 149 records, each with a value, a unit and a quote, and the
+    docs/verification/claims.json holds 162 records, each with a value, a unit and a quote, and the
     manuscript cites those ids in prose. Nothing connected the two. A sentence could print a figure
     that was never fetched from anywhere and every gate in the repository would pass, because the
     gates check the shape of the registry (audit_claims.py) and the shape of the PDF

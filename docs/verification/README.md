@@ -5,7 +5,7 @@ hardware and model parameter questions in `plan-v2.md`.
 
 Five passes ran on 2026-09-12, and a sixth ran on 2026-09-13 against a question the book had
 asked about itself: chapter 1 printed a 16,000 Hz sampling rate and named no source for it.
-That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes. A seventh ran on 2026-09-14 for Issue #47: it read four NVIDIA NeMo ASR files at a pinned commit and added 46 records, and it is the first pass whose main effect was to contradict the set rather than extend it -- see [C-08](#c-08--which-conformer-this-book-is-porting).
+That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes. A seventh ran on 2026-09-14 for Issue #47: it read four NVIDIA NeMo ASR files at a pinned commit and added 46 records, and it is the first pass whose main effect was to contradict the set rather than extend it -- see [C-08](#c-08--which-conformer-this-book-is-porting). An eighth ran the same day for Issue #57: it read two pages of the current CUDA Programming Guide (v13.4, both stamped 2026-09-09) and added 6 records, `V-02-42` to `V-02-47`, so that chapter 3 could teach the execution model with citations instead of folklore. Two of its sentences settle what the rest of this directory has only been using: a warp is 32 threads wide, and switching between warps costs nothing. It registered `threads per warp`, the second new unit term, and it left two gaps open on purpose -- the microseconds a launch takes and the number of warps an Orin SM can hold -- because the guide gives neither and the record that would need them does not exist. A ninth ran the same day, also for Issue #57: it read three toolchain documents -- the convolution/batch-norm fuser tutorial (PyTorch Tutorials 2.14), the module behind it at release tag v2.10.0, and the Vitis AI quantizer's own configuration document at a pinned commit -- and added 7 records, `V-06-06` to `V-06-12`, so that chapter 5 could say what a compiler does to a graph and what a quantizer measures before it commits. Every one of the seven carries a string value, because what they establish is a behaviour and not a magnitude: nothing on those three pages sizes this book's model, and the chapter that cites them prints no number for that reason. It also left `generated_utc` and `version` on this file behind, which is why they are bumped with it: a registry whose newest record was read on 2026-09-14 cannot publish 2026-09-13 as its own date.
 It also registered `kHz`, the first new unit term since the vocabulary was written down, and
 it left the weaker of the two records at tier T4 on purpose -- see its notes field. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
@@ -23,8 +23,8 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 149
-- **Verified:** 140
+- **Total Records:** 162
+- **Verified:** 153
 - **Unresolved:** 6
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 8 (C-01 … C-08; five of them — C-02, C-03, C-06, C-07 and C-08 — carry no
@@ -35,8 +35,8 @@ nine quotations, two page locators and two values. See
   sections rather than incremented. One conflict is now closed: the owner decided C-07 on 2026-09-12 in
   favour of `MAXN`. Closing it changed which operating point the book teaches, not what either record
   says, so no record was deleted or re-typed.
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.8.0, `generated_utc`
-  2026-09-13T22:01:28Z, includes an `audit` block describing the two value-level passes, the two
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.9.0, `generated_utc`
+  2026-09-14T06:26:00Z, includes an `audit` block describing the two value-level passes, the two
   provenance passes and the decision package that closed C-07)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
@@ -47,10 +47,12 @@ nine quotations, two page locators and two values. See
    Kria KV260 (XCK26 / ZU5EV), clocking, on-chip SRAM capacity (BRAM, URAM, LUTRAM, PS OCM) and the tile
    sizes behind them, the DDR4 subsystem, and the GTH transceiver rate as it differs between device and
    package.
-2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 41 records. Jetson Orin per-SKU specification
+2. [`02-jetson-orin-skus.md`](02-jetson-orin-skus.md) — 47 records. Jetson Orin per-SKU specification
    matrix (Orin Nano 4GB/8GB/Super, Orin NX 8GB/16GB, AGX Orin 32GB/64GB, nvpmodel power modes), the
-   sparse-versus-dense TOPS pair for every SKU, the memory-clock convention, and how a module TOPS
-   figure decomposes into GPU plus DLA.
+   sparse-versus-dense TOPS pair for every SKU, the memory-clock convention, how a module TOPS figure
+   decomposes into GPU plus DLA, and the CUDA execution model chapter 3 reasons with: the width of a
+   warp, what a divergent branch and a warp switch cost, what bounds the warps resident on an SM, what
+   hides memory latency, and what the host driver pays per kernel launch.
 3. [`03-kv260-audio-path.md`](03-kv260-audio-path.md) — 5 records. Audio input evaluation for the KV260
    carrier card (PMOD I2S2 Digilent SKU 410-379 vs USB Audio).
 4. [`04-toolchain-versions.md`](04-toolchain-versions.md) — 13 records. Vivado ML Standard device
@@ -62,10 +64,15 @@ nine quotations, two page locators and two values. See
    2026-09-14), licenses (Speech Commands v2, LibriSpeech CC BY 4.0), streaming chunk latency and
    look-ahead in milliseconds, published word error rates at five look-ahead points, and
    speaker-independent splits.
-6. [`06-quantization-sources.md`](06-quantization-sources.md) — 5 records. Primary mathematical source
+6. [`06-quantization-sources.md`](06-quantization-sources.md) — 12 records. Primary mathematical source
    for affine zero-point quantization (Jacob et al. CVPR 2018), integer multiply-shift requantization,
    the rounding operator Brevitas actually defaults to, the tie rule `torch.round` documents, and FINN
-   framework scope clarification.
+   framework scope clarification. Since 2026-09-14 it also holds what a toolchain does before any
+   hardware sees the graph: that folding a convolution and a batch norm rewrites the weights and deletes
+   the norm, that the pattern is reachable only once compilation has captured the graph, that the fold is
+   legal in inference mode alone, and what the Vitis AI quantizer documents about calibration -- its five
+   scale estimators, the option combinations it refuses with an error, and the fact that layer names only
+   exist after a calibration run has emitted them.
 7. [`07-related-work.md`](07-related-work.md) — 5 records. Roofline model formulation (Williams et al.
    CACM 2009), Orin vs KV260 ridge points, and IEEE FCCM 2025 artifact evaluation requirements.
 
@@ -350,7 +357,9 @@ other number in a vendor page should be able to see why it differs.
    - Reason unresolved: no publisher prints them. They follow from the shapes registered as
      `V-05-12 … V-05-47` only once a counted parameter breakdown exists, which needs the checkpoint itself
      (HTTP 401 to an anonymous request) or a golden-model run over the recipe config. Recorded as one
-     record because the gap is one decision — what to run — not three searches.
+     record because the gap is one decision — what to run — not three searches. It now constrains
+   chapter 5 as well: section 5.4 argues that a fusion pass deletes a stage, and it can say which stage
+   and why without saying how many operations that saves.
    - To resolve: run the NeMo recipe on whatever machine can reach the checkpoint and dump per-module
      parameter and activation counts; until then chapters 8 and 9 may describe the datapath but must not
      size it.

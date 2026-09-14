@@ -5,7 +5,187 @@
 ---
 
 ## 3.1 The Mismatch Between Streaming Audio and SIMT Architecture
+
+**Intuition.** A GPU does not run many programs at once. It runs one instruction at a time across a
+wide group of lanes, and it keeps many such groups waiting in the wings, so that when one group stalls
+on memory another can be handed the next instruction. The group has a fixed width, and the machine
+consumes work a whole group at a time. Single instruction, multiple threads (SIMT) is the name of that
+shape: a *thread* is what the program sees as one lane, and the group of threads moving together is
+what the hardware schedules.
+
+A training batch fits that shape by construction. The same arithmetic applies to many independent
+inputs at once, every lane takes the same path, and the group is full. A streaming microphone fits it
+in one way only: it never stops. Each frame arrives on its own, and the batch dimension, the
+multiplier that made the machine's width easy to fill, is gone. The work has not gone with it. One
+frame of the Voice Edge Benchmark is a vector of channels wide, and a wide vector fills lanes. What
+the frame loses is the cheapest source of extra groups, which is the same thing the machine uses to
+cover a memory wait. So the mismatch is not that a frame is small arithmetic. It is that a frame
+leaves the machine with too little in flight to hide how long its memory takes.
+
+**Mechanism.** The group is a warp, and `V-02-42` fixes its width: a warp is 32 threads, each
+streaming multiprocessor (SM, the part of the GPU that owns both the arithmetic and the scheduling)
+creates, manages, schedules and executes threads in groups of that size, and a thread block is
+partitioned into warps of 32. A warp issues one common instruction at a time, so full efficiency needs
+all lanes of it on the same path. When a data-dependent branch splits a warp, the warp executes each
+taken path in turn with the lanes off that path disabled; one warp's disagreement does not spread,
+because different warps execute independently (`V-02-43`). Two costs follow. Work that does not
+divide into whole warps leaves the last group partly unused. Work whose lanes disagree pays for both
+paths.
+
+What the target offers against those two rules is a real size, and it is worth writing down rather
+than gesturing at. One frame's activation vector is 256 channels wide (`V-05-04`), which is
+8 warps' worth of lanes, calculated from those two records. Split the same vector over the encoder's 4 heads
+(`V-05-04`) and a head is 64 channels wide, calculated, which is 2 warps, calculated. A frame is
+therefore not a trickle. It is a handful of full groups for a general stage and a couple for one head
+of attention.
+
+Whether a handful is enough is the machine's question, not the model's, and the guide answers it with
+a list rather than a number: how many blocks and warps an SM holds at once depends on the registers
+and shared memory the kernel uses and the SM has, on a maximum number of resident blocks and warps per
+SM, and on the compute capability of the device (`V-02-45`). This book has registered no value for
+that maximum on the Orin, so the argument here stops at "bounded" and prints no bound.
+
+It matters because of what the machine does with the groups it holds. Memory latency is hidden by
+parallelism: the SM switches to execute another warp while memory operations complete (`V-02-46`).
+That switch is not itself a cost. The execution context of every warp stays on-chip for the warp's
+whole lifetime, so switching between warps incurs no cost, and at each instruction issue cycle a
+scheduler selects a warp with threads ready and issues to it (`V-02-44`). Read the two records
+together and they say what an empty cycle is. No switching penalty is being paid, so an idle issue
+cycle is a missing ready warp. "The GPU was busy" and "the GPU had nothing eligible to issue" are
+different observations, and a stream of single frames is the case that tells them apart.
+
+One qualification keeps this section honest about the model this book actually ports. A cache-aware
+streaming encoder is not fed one frame at a time. It consumes a chunk of 16 frames, which is 640 ms of
+audio at 40 ms per feature frame (`V-05-05`). Inside a chunk the machine has
+4,096 values per channel stack to work through, calculated, which is a batch in all but name. So a chunked design buys back the
+parallelism that streaming removed, and the price is not arithmetic but delay: 640 ms of audio must
+arrive before the encoder can answer any of it. That trade, and not a missing kernel flag, is what
+"batch one" means on this workload. Chapter 8 and chapter 9 take the chunk size as a design input for exactly
+that reason.
+
+**Hardware application.** The counts above are the whole of what a GPU is handed per step, and they
+are worth one table because everything in section 3.2 and chapter 9 is built from them.
+
+| What the machine is handed | Value | Where it comes from |
+| --- | --- | --- |
+| Channels in one frame's activation vector | 256 | `V-05-04` |
+| Whole warps that vector fills | 8 | calculated from `V-05-04` with `V-02-42` |
+| Frames in one chunk of the streaming encoder | 16 | `V-05-05` |
+| Channel values in one chunk, before the block loop | 4,096 | calculated from `V-05-04` with `V-05-05` |
+| Encoder blocks that repeat the same stages | 12 | `V-05-04` |
+| Memory bandwidth those reads compete for | 102 GB/s | `V-02-18` |
+
+Read the last row against the first five. The bandwidth is the shared resource, and the model's shape
+decides how many readers it has at once: a chunk of frames, twelve blocks deep, all reading weights
+that a previous chunk already touched. `V-05-57` is the record that says this book cannot yet turn
+that shape into bytes per frame, because no publisher prints a counted parameter breakdown for this
+encoder. So the table stops at counts of values, and the traffic is left to the board run.
+
+The fabric comparison is the reason this section is in a book about FPGAs, and it is narrower than it
+usually looks. A register-transfer level (RTL) datapath has no warps, so it has none of the two costs
+above: a stage is wired to the width its tensors have, no lane is left over because of a rounding
+rule, and a branch that only some channels take is a multiplexer rather than a wasted pass. What the
+fabric does not gain is the trick with the waiting. There is no pool of resident groups to switch to
+while a read is in flight, so a stall is a stall, and the only cures are a deeper buffer, an earlier
+prefetch, or a stage that is genuinely independent. Chapter 9 sizes that buffer. What the fabric pays
+instead of a scheduler is idleness by construction: a datapath built one frame wide is empty between
+chunks, and no arriving batch can fill it, because there is no batch left to arrive.
+
+> **Whose execution model this is, and what it does not size.** The five behaviour statements above
+> are the CUDA programming model as the vendor documents it in the guide version pinned in
+> `docs/source_index.json`, and that guide says the
+> sections they come from describe the features of the SM that are common to all devices, so none of
+> them is a claim about the Orin specifically. Three quantities this section would need to go further
+> are not in `docs/verification/claims.json`: the maximum number of warps resident on this device's
+> SM, the fraction of that capacity a streaming chunk reaches, and the bytes per frame in the last
+> paragraph, which `V-05-57` registers as an open gap. Each is a measurement, not a reading of a
+> datasheet, so it belongs to the board run in chapter 8 rather than to this argument.
+
 ## 3.2 Kernel Launch Overheads, Preemption, and Tail Jitter
+
+**Intuition.** Nothing on a GPU starts itself. Every kernel, which is one pass of one stage of the
+network over the data the program pointed it at, begins as a request the host processor makes on the
+device's behalf, and making the request is work in itself. A program that runs one long kernel pays
+that cost once and forgets it. A streaming program runs the whole stage list again for every chunk of
+audio it answers, forever, so a cost that never mattered in training becomes a fixed floor under each
+answer. That is launch overhead.
+
+Tail jitter is a different complaint about the same pipeline, and it needs the distinction stated
+before the mechanism, because the two words get used as one. Throughput says how many chunks an hour
+gets answered. Latency says how long one chunk waits. A system can hold its throughput and still miss
+a deadline, because a deadline belongs to one unlucky chunk and an average belongs to none. The
+project's own metric is the far end of the latency distribution rather than its middle, which
+chapter 8 defines and states a condition for; this section is about where the far end comes from.
+
+**Mechanism.** The vendor states the first half plainly. When a kernel is placed in a stream, the host
+driver performs a sequence of operations in preparation for its execution, and those operations are an
+overhead cost that must be paid for each kernel issued; for a kernel with a short execution time, that
+cost can be a significant fraction of the overall end-to-end time (`V-02-47`). Three things in that
+sentence are worth separating, because each one points at a different fix. The work is on the host, so
+a faster GPU does not remove it. It is per kernel, so it scales with how many stages the model
+compiles into, which is why `V-05-57` matters here: the number of kernels per frame for this encoder is
+a quantity this book has not measured. And it is charged to short kernels, which is the streaming case
+by construction.
+
+The same page names the answer, and it is worth a paragraph because a streaming encoder is the ideal
+customer for it. Overhead costs like these are what CUDA Graphs exists to avoid: a workflow that will
+be launched many times is captured once as a graph, and the costs are paid once for the whole graph
+during instantiation, after which the graph is launched repeatedly with very little overhead
+(`V-02-47`). A graph is a description of a fixed sequence of work, so it fits this design for one
+reason and strains on it for one. The reason it fits: the encoder's stage list is the same every
+chunk. The reason it strains: a chunked encoder does not always do the same *amount* of work, since a
+partial chunk at the end of an utterance and a full chunk in the middle are different shapes, and a
+graph is only worth instantiating if the shape recurs. `V-05-05` registers the recurrence, a chunk of
+16 frames, and nothing here registers how often the tail of an utterance breaks it.
+
+Now the tail. A chunk's latency is a sum: for each stage, a setup, a wait for its inputs, and its own
+execution. Section 3.1 showed that the waits are covered only when some other resident warp is ready,
+and that a stream of single frames is the case with the fewest of them, so the cover is thin and what
+is left is exposed latency, per stage, twelve blocks deep (`V-05-04` for the depth). Exposed waits are
+where a tail is made. Two more sources follow, and both are arithmetic rather than luck. A frame that
+slips past a chunk boundary is not answered a moment later; it is answered when the next chunk
+completes, because a chunked encoder cannot emit a decision before it has the chunk, so the penalty
+for a late sample is up to a whole chunk, 640 ms of audio at 40 ms per feature frame (`V-05-05`). And
+a kernel that arrives while the driver is still finishing the setup of the previous one queues, so a
+jitter in the host's own timing arrives at the output summed over the stages rather than
+averaged away.
+
+> **What "preemption" is doing in this heading, and what it is not.** The word came from the original
+> outline for this chapter, and no record in `docs/verification/claims.json` supports a description of
+> how this device arbitrates between competing work on one SM, or how long an interrupted kernel can
+> be held. Two sentences about hardware arbitration would be the most quotable lines in this section,
+> and they are exactly the two this book cannot source, so they are not written. What the section can
+> say stands on its own: a streaming encoder's per-frame cost is dominated by host-side setup and by
+> exposed waits, both of which are documented above, and any device-sharing effect is an addition to
+> that, whose size is unmeasured.
+
+**Hardware application.** On the Orin, the argument is about what to time. A stage's execution time is
+not a property of the model; it is a property of a compiled graph, a driver, and a machine that may
+have other things to do, so a benchmark that launches kernels one at a time from the host measures a
+question this project does not ask. Two consequences are testable on the board in chapter 8 without
+any new source: measure a frame, not a kernel, so the setup is inside the number; and measure the far
+end of the distribution over a long run, because a short run reports a tail that the hour-long run
+required by the project plan has not yet had the chance to produce.
+
+On the FPGA, the same three costs land elsewhere, and the mapping is the point. There is no launch: a
+compiled datapath is not issued per frame, so there is no host round trip on the critical path and no
+setup cost that recurs. The work that CUDA Graphs does at instantiation, the toolchain does at
+synthesis, once, and it is charged to the build machine rather than to the frame. A stage boundary is
+wiring, so the per-frame cost becomes the sum of stage latencies plus whatever a buffer has to absorb,
+which is why chapter 9 spends its time on a ring buffer rather than on a launch. What the fabric keeps
+is the part no architecture removes: the encoder is chunked, so a frame that arrives late is still
+answered late by up to a chunk, and that is a property of the model's contract with the audio clock,
+not of the silicon under it.
+
+> **Open questions this section leaves on purpose.** Four numbers would sharpen the argument above and
+> none of them exists in this repository's evidence set: the microseconds a kernel launch costs on the
+> Orin, the count of kernels one frame of the compiled encoder issues, the occupancy a streaming chunk
+> reaches against the SM's resident-warp maximum, and any measured far-percentile frame latency on
+> either board. The first three are a benchmark run away, and the last is chapter 8's deliverable.
+> Until then this section says what the driver does and what the machine does with waiting warps,
+> because those are on record, and it prints no cost, which is the difference between an architectural
+> argument and a number someone else repeated.
+
 ## 3.3 Roofline Analysis: Why Voice at Batch=1 is Memory-Bound
 
 A roofline answers one question with two lines. The horizontal axis is arithmetic

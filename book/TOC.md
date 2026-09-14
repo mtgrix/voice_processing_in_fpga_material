@@ -72,6 +72,15 @@ khối lượng công việc của cuốn sách này.
 **Nghiệm thu (chặng 5):** Bốn hàng, mỗi hàng có log tổng hợp thật. Chương này dạy **thủ tục so sánh**;
 nó không được kết luận hộ số liệu. Lưu ý nguồn: `R01-02` là framework cho binarized NN inference,
 không phải nguồn của lý thuyết lượng tử hoá affine (§9.1).
+**Mục 5.4, thêm 2026-09-14 theo Issue #57:** `book-en/chapter05.md` có văn xuôi thật đầu tiên, mục
+*What the Toolchain Decides Before the Hardware Sees the Model*. Hàng nghiệm thu ở trên đòi log tổng hợp
+cho bốn đường, tức là đã giả định sẵn graph đem tổng hợp là graph nào; 5.4 nói cái giả định đó thành lời.
+Điều nó dạy: một compiler pass không làm tầng chạy nhanh hơn, nó **xoá** tầng (`V-06-06`); tầng nào còn
+sống tuỳ vào một dòng trong file config chứ không tuỳ tên model (`V-05-20`, `V-05-26`, `V-05-41`); và
+scale của lượng tử hoá là đầu ra của một estimator được chọn, không phải một con số in trong checkpoint
+(`V-06-10` đến `V-06-12`). Ba lớp Intuition / Mechanism / Hardware application theo
+`docs/BOOK_PEDAGOGY.md`. Mục này không in một số đo nào, vì `V-05-57` vẫn chưa được lấp. 5.1, 5.2 và 5.3
+vẫn là tiêu đề rỗng.
 
 ## Chương 6: Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh
 
@@ -104,6 +113,31 @@ và FAR-FRR cho KWS, WER/CER cho ASR, PESQ/STOI/SI-SDR cho tăng cường tiến
 được.
 **Nghiệm thu (chặng 10):** Paper draft + artifact package + Pareto frontier, vượt checklist §8.4;
 người khác tái lập từ README. Bảng định vị liên quan công trình (§8.1) là mục bắt buộc.
+
+## Phụ lục A: Model Fundamentals — The Forward Pass in Hardware Terms
+
+**Vì sao file này tồn tại:** sách nói với kỹ sư phần cứng. Người đó biết DSP slice, BRAM và timing
+closure, và không có nghĩa vụ biết `d_model` là gì. Trước Issue #57, chương 8 và chương 9 gọi
+self-attention, depthwise convolution và LayerNorm bằng tên, xử lý chúng như kiến thức chung; ai không
+biết thì phải ra khỏi sách mới hiểu được một khái niệm mà chính sách vừa mượn. Phụ lục A trả đúng phần đó
+vào trong sách, và chỉ phần đó: forward pass, không gradient, không loss, không một dòng huấn luyện nào.
+
+**Trọng tâm:** A.1 một *step* và một *hidden width* là gì; A.2 một Conformer block gồm năm tầng, theo thứ
+tự nào; A.3 self-attention đọc quá khứ bằng cách nào và vì sao điểm của nó phải chia cho căn bậc hai của
+chiều; A.4 convolution theo thời gian rẻ hơn bao nhiêu, với phép tính cụ thể của depthwise và của
+time-channel separable; A.5 batch norm ở inference khác layer norm ở đâu khi viết thành datapath; A.6 từ
+một chiều số học tới một ngân sách byte.
+
+**Vì sao là phụ lục chứ không phải một chương nữa:** `plan-v2.md` §7 chốt xương sống mười chương, và
+`tests/test_plan_consistency.py` đếm đúng mười mục `## Chương` trong file này. File mở đầu bằng một khối
+`{=latex}` đặt `\appendix`, nên Pandoc in nó thành "Appendix A" thay vì "Chapter 11": mười chương vẫn là
+mười, không có chương thứ mười một, và phụ lục vẫn nằm trong reading order của
+`book/book-manifest.yaml`.
+
+**Nghiệm thu:** không chặng thí nghiệm nào gắn với phụ lục, nên nó không có hàng trong
+`docs/EXPERIMENT_STATUS.md`. Gate của nó là gate của bản thảo: `scan_numbers.py --strict` chạy sạch trên
+file, và hai figure của nó phải xuất hiện trong danh sách caption mà check 6 của
+`scripts/verify_book_pdf.sh` đếm được.
 
 ---
 
@@ -194,10 +228,14 @@ commit history is a change the reader does not see.
 | (no earlier stub) | 8.4, the stage-8 acceptance gate, which the spine states and no stub held |
 | (no earlier stub) | 9.1 the target and what about it is undecided, 9.2 one block as a datapath, 9.4 the left-context ring buffer, 9.6 look-ahead against accuracy |
 
-Figures: the manuscript carried two, both roofline plots in chapter 3. The re-cut adds seven, so
-`scripts/verify_book_pdf.sh` check 6 counts the nine figure sources in the manuscript, finds the numbered captions in the PDF,
-requires those numbers to be exactly 1 through 9, and requires a prose reference to every id. That is
-a real gate and it passes on this build. What it cannot do is tell whether a picture depicts what its
+Figures: the manuscript carried two, both roofline plots in chapter 3. The re-cut added seven, and
+Appendix A added two more, so the file now holds eleven figure sources: two in chapter 3, three in
+chapter 8, four in chapter 9, two in Appendix A. Check 6 does not hardcode that number. It counts the
+tikz and mermaid fences in the manuscript, then requires the PDF's numbered captions to be exactly 1
+through that count, with every id pointed at from prose -- so the appendix extended the requirement
+to 1 through 11 by itself. Had the expectation been a literal nine, the appendix would have failed the
+build instead of failing this paragraph, which is the difference between a gate and a note. That
+is a real gate and it passes on the whole-book build of 2026-09-14. What it cannot do is tell whether a picture depicts what its
 caption claims, and in `--chapter` mode its source count stays manuscript-wide while its captions come
 from one chapter's PDF -- both limits are recorded in Issue #54. Nothing has been asserted here about
 fit that was not measured: each picture's natural box was boxed and printed against the 156 mm text
