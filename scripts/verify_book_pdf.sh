@@ -177,38 +177,74 @@ else pass "no unresolved [@key] markers in the PDF"; fi
 # branch that used to be reachable said only "nothing leaked". That is not the same
 # claim as "everything rendered": Pandoc can lose a float between the div and the page
 # and leave the text layer clean, because a dropped figure has no fence left to leak.
-# So the count of figure sources in the manuscript is now compared against the count of
-# numbered captions in the PDF. Acceptance 5 of Issue #36 is the other half: the prose
-# has to point at a figure rather than repeat its numbers, so every figure id has to
-# appear in a link somewhere in the manuscript, which is what the id loop below checks.
+# So the count of figure sources is compared against the count of numbered captions in
+# the PDF. Acceptance 5 of Issue #36 is the other half: the prose has to point at a
+# figure rather than repeat its numbers, so every figure id has to appear in a link
+# somewhere in the manuscript, which is what the id loop below checks.
 #
 # A caption is found by its leading "Figure <n>:" because that colon is printed by the
 # float and by nothing else in the book -- a reference in prose is followed by a word.
-# The class numbers floats globally rather than per chapter, which is what lets 1..N be
-# the expected set of numbers without this script having to know the build order.
+#
+# Two quantities are being compared here, and they have to describe the same document.
+# The PDF under test is either the whole manuscript or one chapter, decided by
+# --chapter; the source count used to be decided by nothing, and always read every
+# chapter file. A figureless chapter therefore failed for the book's own figures, and a
+# chapter whose count happened to equal the manuscript total passed having checked
+# nothing. Both readings were wrong, and only one of them announced itself. Issue #54.
 FENCE_A='```mermaid'
 FENCE_B='```tikz'
 if grep -aqE "${FENCE_A}|${FENCE_B}|begin.tikzpicture" "$WORK/book.txt"; then
   fail "unrendered figure source leaked into the PDF"
 else
-  NFENCE=$(cat "$BOOK_DIR"/*.md 2>/dev/null | grep -acE '^[[:space:]]*```(tikz|mermaid)')
-  if [ "${NFENCE:-0}" -eq 0 ]; then
-    na "figure checks: the manuscript contains no figures"
+  if [ -n "$CHAPTER" ]; then
+    FENCE_FILES=("$CHAPTER_SRC")
+    SCOPE="chapter $CHAPTER"
+  else
+    FENCE_FILES=("$BOOK_DIR"/*.md)
+    SCOPE="the whole $MANU manuscript"
+  fi
+  NFENCE=$(cat "${FENCE_FILES[@]}" 2>/dev/null | grep -acE '^[[:space:]]*```(tikz|mermaid)')
+  # Unreferenced divs are a property of the manuscript, not of the PDF, so this loop stays
+  # global in both modes: a prose reference may legitimately sit in a different chapter from
+  # the div it points at, and narrowing the loop would report a book that points at nothing.
+  UNREF=""
+  for id in $(grep -haoE '^::: \{#fig-[A-Za-z0-9_-]+ \.figure\}' "$BOOK_DIR"/*.md | sed 's/.*#//; s/ .*//'); do
+    grep -aqF "(#${id})" "$BOOK_DIR"/*.md || UNREF="$UNREF $id"
+  done
+  if [ -n "$UNREF" ]; then
+    fail "figure div(s) that no prose points at:$UNREF"
+  elif [ "${NFENCE:-0}" -eq 0 ]; then
+    na "figure checks: $SCOPE contains no figure sources"
   else
     CAPS=$(grep -aoE '^Figure [0-9]+:' "$WORK/book.txt" | grep -oE '[0-9]+' | sort -n -u | tr '\n' ' ')
     NCAP=$(echo "$CAPS" | wc -w | tr -d '[:space:]')
-    WANT="$(seq -s ' ' 1 "$NFENCE") "
-    UNREF=""
-    for id in $(grep -haoE '^::: \{#fig-[A-Za-z0-9_-]+ \.figure\}' "$BOOK_DIR"/*.md | sed 's/.*#//; s/ .*//'); do
-      grep -aqF "(#${id})" "$BOOK_DIR"/*.md || UNREF="$UNREF $id"
-    done
-    if [ "$NCAP" -ne "$NFENCE" ] || [ "$CAPS" != "$WANT" ]; then
-      fail "$NFENCE figure source(s) in the manuscript, $NCAP caption(s) in the PDF"
-      echo "        expected caption numbers: $WANT  found in the PDF: ${CAPS}none"
-    elif [ -n "$UNREF" ]; then
-      fail "figure div(s) that no prose points at:$UNREF"
+    # The expected sequence is 1..N only for a whole-book build. LaTeX numbers floats from 1
+    # inside the document it is given, so a chapter-only PDF renumbers its own figures: the
+    # prose cites [Figure 8](#fig-kv-ring-buffer) while that document prints "Figure 3:".
+    # Asserting a sequence there would compare the chapter's local floats against a claim
+    # about the book's ordering, and the book's ordering is not in that file.
+    SEQ_CLAIM=1
+    [ -n "$CHAPTER" ] && SEQ_CLAIM=0
+    WANT=""
+    [ "$SEQ_CLAIM" -eq 1 ] && WANT="$(seq -s ' ' 1 "$NFENCE") "
+    # WANT stays empty when the sequence claim is off, so the guard below has to test SEQ_CLAIM
+    # before comparing: an empty expectation is not the same claim as "no captions", and on the
+    # first run of this fix that is exactly how chapter mode came back failing its own figures.
+    BAD=""
+    if [ "$NCAP" -ne "$NFENCE" ]; then
+      BAD="$NFENCE figure source(s) in $SCOPE, $NCAP caption(s) in the PDF"
+    elif [ "$SEQ_CLAIM" -eq 1 ] && [ "$CAPS" != "$WANT" ]; then
+      BAD="expected caption numbers: $WANT  found in the PDF: ${CAPS}none"
+    fi
+    if [ -n "$BAD" ]; then
+      fail "figure checks: $BAD"
     else
-      pass "figure checks: $NFENCE source(s) rendered as $NCAP caption(s), each referenced from prose"
+      pass "figure checks: $NFENCE source(s) in $SCOPE rendered as $NCAP caption(s), each referenced from prose"
+      if [ "$SEQ_CLAIM" -eq 0 ]; then
+        echo "        note: caption numbers above are local to this chapter document; the prose"
+        echo "        cites book-wide positions, so the two differ by design. Run the whole-book"
+        echo "        build to check the sequence, which is the only claim about figure order."
+      fi
     fi
   fi
 fi
@@ -236,8 +272,9 @@ else
   # Acceptance 1 of Issue #36 is that a figure be visible, which no text-layer check can
   # establish on its own. The pages carrying captions therefore join the quartile
   # samples, rather than leaving it to luck whether the quartiles happened to hit them:
-  # in the 30-page build the samples are 8, 15, 23 and 30, and the two floats sit on 19
-  # and 20, so sampling alone would have rendered neither.
+  # Measured on the current 48-page build: the quartile samples are pages 12, 24, 36 and 48,
+  # while the nine floats sit on pages 19, 20, 26, 27, 30, 37, 39, 40 and 44. The two sets do
+  # not intersect at all, so sampling alone would have rendered none of the figures.
   FIGPAGES=$(awk '/^=== PAGE /{pg=$3} /^Figure [0-9]+:/{print pg}' "$WORK/book.txt" | sort -nu)
   REPR="$REPR $FIGPAGES"
   REPR="$(echo "$REPR" | tr ' ' '\n' | sort -nu)"
@@ -259,16 +296,25 @@ fi
 # no trace of it, so check 7 stays green over a page with a hole in it. The
 # build log is the only place the fact survives. N/A when there is no log,
 # which is what a hand-run pandoc leaves behind.
+#
+# Two limits on what a clean log here licenses, both from Issue #54. It is now truncated at the
+# start of each build and named after the mode that wrote it, so it describes this document rather
+# than the concatenation of every build -- but it only describes this document's *failures*. Pandoc
+# forwards the engine's output only when the engine exits non-zero, so a successful build can raise
+# a warning here and leave nothing: absence of "Missing character" is not evidence that no glyph was
+# dropped. Check 7 of this script is the text-layer half of the same question, and the figure
+# legibility eyeball in check 9 is the rest.
 BUILD_LOG="$DIST/build.log"
+[ -n "$CHAPTER" ] && BUILD_LOG="$DIST/build-chapter$CHAPTER.log"
 if [ ! -f "$BUILD_LOG" ]; then
-  na "missing-glyph warnings: no dist/build.log (build with scripts/build_book.sh)"
+  na "missing-glyph warnings: no $(basename "$BUILD_LOG") in dist/ (build with scripts/build_book.sh)"
 else
   NG=$(grep -ac 'Missing character' "$BUILD_LOG" 2>/dev/null)
   NG="${NG:-0}"
   if [ "$NG" -eq 0 ]; then
-    pass "no missing-glyph warnings in the build log (both passes)"
+    pass "no missing-glyph warnings in $(basename "$BUILD_LOG") (both passes of this build)"
   else
-    fail "$NG missing-glyph warning(s) in dist/build.log: the PDF drops those characters"
+    fail "$NG missing-glyph warning(s) in $(basename "$BUILD_LOG"): the PDF drops those characters"
     grep -ao "There is no .\{0,32\}in font" "$BUILD_LOG" 2>/dev/null | sort -u | sed "s/^/        /" | head -5
   fi
 fi
