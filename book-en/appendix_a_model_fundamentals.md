@@ -245,7 +245,7 @@ refuses to look at -- is what chapter 9 measures.
 
 *Two of the three vectors must be remembered and one need not.* The query of a finished step is
 consumed the moment its scores exist; the key and the value are read by every later step that is allowed
-to look back, so they persist. That pair is the cache, and [Figure 12](#fig-appendix-attention) draws it
+to look back, so they persist. That pair is the cache, and [Figure 14](#fig-appendix-attention) draws it
 as a box for a reason: it is the only storage attention requires, its depth is the read set, and its
 width is the hidden total rather than the head count. Every later step's attention reads it, so it sits
 on the critical path of a stage that is already on the critical path of the block. Chapter 9 sizes it;
@@ -359,7 +359,7 @@ number of outputs but how many values must be within reach of a multiplier at on
 question before it is an arithmetic one.
 :::
 
-**Hardware application.** [Figure 13](#fig-appendix-dense-separable) sets the two shapes beside each other.
+**Hardware application.** [Figure 15](#fig-appendix-dense-separable) sets the two shapes beside each other.
 The arithmetic above is the whole reason a Conformer is buildable, and the two halves of the
 factorisation have different physical signatures.
 
