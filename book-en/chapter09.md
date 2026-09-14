@@ -102,6 +102,7 @@ and because it is where an expensive misreading lives.
 > **The formula.** $T_\text{step} = S_\text{feat} \times F_\text{sub}$
 >
 > **The variables.**
+>
 > - $T_\text{step}$ — the period of one encoder step: how often the block chain is handed a new
 >   frame to work on. Seconds, printed here in milliseconds.
 > - $S_\text{feat}$ — the stride between successive audio feature frames leaving the front end.
@@ -386,6 +387,7 @@ count.
 > $$N_\text{ring} = n_\text{blocks} \times T_\text{left} \times d_\text{model} \times 2 \times b$$
 >
 > **The variables.**
+>
 > - $N_\text{ring}$ — the capacity of the ring: how many stored numbers it must hold while the
 >   design runs. A count, with no unit. Times $b$, it is a byte count.
 > - $n_\text{blocks}$ — how many times the encoder block of section 9.2 repeats. A pure count,

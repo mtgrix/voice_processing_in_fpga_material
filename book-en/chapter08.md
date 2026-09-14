@@ -164,6 +164,7 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 > **The formula.** $R = (k - 1)\,d + 1$
 >
 > **The variables.**
+>
 > - $R$ — the reach: how many input steps one output depends on, counting the current step. A
 >   number of steps, so dimensionless until a step is given a duration.
 > - $k$ — the tap count: how many samples of the input the window reads. A count of taps.
@@ -234,6 +235,7 @@ expressions have the same value:
 > **The formula.** $\mathrm{softmax}(\mathbf{z})_i = \dfrac{e^{z_i}}{\sum_j e^{z_j}} = \dfrac{e^{z_i - m}}{\sum_j e^{z_j - m}}$, with $m = \max_j z_j$
 >
 > **The variables.**
+>
 > - $\mathbf{z}$ — one row of attention scores: one value per position the query may look at.
 >   Raw score units, unbounded in both directions before anything is done to them.
 > - $z_i$ — the score of one position $i$ in that row. Same units as $\mathbf{z}$.
@@ -268,6 +270,7 @@ expressions have the same value:
 > **The formula.** $e^{x} = 2^{\,x\log_2 e} = 2^{k}\cdot 2^{f}$, with $k = \lfloor x\log_2 e \rfloor$ and $f = x\log_2 e - k$
 >
 > **The variables.**
+>
 > - $x$ — one already-reduced score, the $z_i - m$ of the card above. A non-positive
 >   fixed-point number, so $x \le 0$ always, and $e^x$ lands in $(0,1]$.
 > - $\log_2 e$ — the constant $1.4426950408889634$, the change of base from $e$ to $2$. A pure
@@ -313,6 +316,7 @@ A reciprocal square root is the same trick with one snag:
 > **The formula.** $\dfrac{1}{\sqrt{y}} = 2^{-k/2}\cdot\dfrac{1}{\sqrt{f}}$, where $y = 2^{k}f$
 >
 > **The variables.**
+>
 > - $y$ — a LayerNorm variance plus the small constant added to keep its square root away from
 >   zero. A squared quantity in the units of the normalised channel values, and strictly positive
 >   because of that added constant.

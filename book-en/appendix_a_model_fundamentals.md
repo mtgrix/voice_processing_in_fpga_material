@@ -43,14 +43,44 @@ width is a bus width, and a count of lists is a memory depth.
 as the sequence $X = (x_1, \ldots, x_T)$, where $t$ indexes time and $T$ is how many steps one pass
 covers. Every stage this appendix describes has the same outer shape:
 
-$$f:\ \mathbb{R}^{T \times d_{\text{model}}} \ \longrightarrow\ \mathbb{R}^{T \times d_{\text{model}}}$$
-
-that is, a stage takes a width by a depth and returns the same width by the same depth. That invariance
-is not a detail. It is why the block can be repeated at all: any stage may follow any stage because all
-of them cut the tensor to the same size, and the depth of the network is therefore a config key rather
-than a design decision. Note also what is absent from the shape: a batch dimension. The pipeline runs at
-batch size one, because one microphone cannot gather more speakers to fill a group, and chapter 3 is
-about what that costs a graphics processing unit (GPU).
+> **The formula.** $f:\ \mathbb{R}^{T \times d_{\text{model}}} \longrightarrow \mathbb{R}^{T \times d_{\text{model}}}$
+>
+> **The variables.**
+>
+> - $f$ — one stage of the network, read as "a function that maps an input to an output". It is a
+>   placeholder for every stage this appendix describes, not one particular stage.
+> - $\mathbb{R}$ — the real numbers. The set every entry of the tensor is drawn from, which is a
+>   statement about the mathematics and not about the hardware: a real number is exactly what a
+>   fixed-point register is not.
+> - $T$ — how many steps one pass covers. A count of steps.
+> - $d_{\text{model}}$ — the hidden width: how many numbers describe one step. A count of numbers,
+>   called units in the records.
+> - $T \times d_{\text{model}}$ — the shape of the whole input: a rectangle of $T$ rows of
+>   $d_{\text{model}}$ entries. Two counts multiplied, not a measured quantity.
+> - $\longrightarrow$ — "maps to". The left shape goes in and the right shape comes out.
+>
+> **What it means.** A stage takes a width by a depth and returns the same width by the same depth.
+> That invariance is not a detail. It is why the block can be repeated at all: any stage may follow
+> any stage because all of them cut the tensor to the same size, and the depth of the network is
+> therefore a config key rather than a design decision. Note also what is absent from the shape: a
+> batch dimension. The pipeline runs at batch size one, because one microphone cannot gather more
+> speakers to fill a group, and chapter 3 is about what that costs a graphics processing unit (GPU).
+>
+> **What it costs.** Nothing by itself, and that is the useful reading: a shape equation prices
+> nothing until it is multiplied by a word width and a count of operations. What it does fix is the
+> geometry every cost is later counted over. A tensor $T$ by $d_{\text{model}}$ held in a fabric
+> costs $T \times d_{\text{model}}$ stored values times the bits each occupies, which is the
+> bytes rule at the end of this appendix, and a stage that preserves the shape can be chained without a
+> reshuffle between links -- no crossbar, no repacking, no buffer whose depth changes at the
+> boundary. The absence of a batch dimension is a cost too, in the other direction: the parallelism
+> a GPU would fill by processing many utterances at once is simply not available, so the only
+> parallelism left is inside one step.
+>
+> **What it does not say.** It does not say the stage is linear, or cheap, or the same stage twice --
+> two identical shapes can hide completely different arithmetic. And $\mathbb{R}$ does not say the
+> hardware computes in the reals: it does not, and chapter 7 is about what is lost when a real number
+> is replaced by a fixed-point one. Read as a promise about precision, this line is false; read as a
+> statement about shape, which is all it is offered for, it is exact.
 
 The hidden width is registered for three published recipes and the three do not agree. The small offline
 keyword model is 176 wide (`V-05-13`), the offline and streaming large models are 512 wide (`V-05-18`,
@@ -154,15 +184,82 @@ query $q_t$ that says what this step wants, a key $k_i$ that says what step $i$ 
 $v_i$ that is what step $i$ would hand over if it were read. The projections cut the width into $h$
 heads, and each head keeps its own $d_{\text{head}}$ units of each vector. Then, for the current step:
 
-$$s_{t,i} \;=\; \frac{q_t \cdot k_i}{\sqrt{d_{\text{head}}}} \qquad\text{over the steps } i \text{ the mask allows}$$
-
-$$\alpha_{t,i} \;=\; \frac{\exp(s_{t,i})}{\sum_j \exp(s_{t,j})} \qquad o_t \;=\; \sum_i \alpha_{t,i}\, v_i$$
-
-Read the three parts in order. A **score** $s_{t,i}$ is a dot product, so it is large when the query and
-the key point the same way. A **softmax** turns a list of scores into a list of positive weights that sum
-to one, which is why the denominator is there: it is what makes the second line an average rather than a
-sum. The **output** is then a weighted average of the values, and the head outputs are concatenated and
-passed through one more projection before leaving the stage.
+> **The formula.** $s_{t,i} \;=\; \dfrac{q_t \cdot k_i}{\sqrt{d_{\text{head}}}}$, taken over the steps $i$ the mask allows
+>
+> **The variables.**
+>
+> - $s_{t,i}$ — one score: how much step $t$ wants to read step $i$. A raw number with no unit and
+>   no fixed range, which is precisely the problem the divisor addresses.
+> - $q_t$ — the query of the current step: a vector $d_{\text{head}}$ entries long saying what this
+>   step is looking for. Entries are dimensionless activations.
+> - $k_i$ — the key of step $i$: a vector the same length, saying what step $i$ advertises that it
+>   holds. Same units as $q_t$.
+> - $\cdot$ — the dot product: multiply the two vectors entry by entry and add the $d_{\text{head}}$
+>   products up. It is large when the two point the same way and near zero when they do not.
+> - $d_{\text{head}}$ — the head width: how many entries each of $q$ and $k$ carries inside one
+>   head. A count of numbers.
+> - $\sqrt{d_{\text{head}}}$ — the square root of that count, used as a fixed divisor. A pure number.
+> - $i$ — the step being read; $t$ — the step doing the reading. Counts of steps.
+> - "the mask allows" — the subset of steps $i$ this step is permitted to look at, decided by
+>   position rather than by content, and drawn in [Figure 14](#fig-appendix-attention).
+>
+> **What it means.** A score is a similarity test with no threshold attached: multiply matching
+> entries and add, and a large sum means the query and the key point the same way. The divisor is
+> not decoration and it is not a convention. Two passages below this card carry the argument in
+> full -- why the divisor exists even though it looks like a wart, and what two candidate models
+> therefore want as constants -- and the short form of the first is that a wider head adds up more
+> products, which makes the score's spread grow, and the stage that consumes this number
+> exponentiates it.
+>
+> **What it costs.** The dot product is $d_{\text{head}}$ multiply-accumulates, one per entry, and
+> that is the whole price of the numerator. The divisor is the interesting part on a chip: it is a
+> multiply by a constant, because $d_{\text{head}}$ is known at compile time, and a constant
+> multiply whose value is a power of two is a bit shift that occupies no DSP slice at all. That is
+> why a head width that is a power of two is worth having, and why the choice of head count is a
+> hardware decision and not only a modelling one -- the consequence is worked out below.
+>
+> **What it does not say.** It does not say $s$ is a probability, a similarity between zero and one,
+> or comparable across heads, layers or models -- it is an unbounded dot product with a scale
+> correction. And the divisor does not make the score small; it makes its *spread* predictable,
+> which is a different claim and the only one the next stage actually needs.
+>
+> **The formula.** $\alpha_{t,i} \;=\; \dfrac{\exp(s_{t,i})}{\sum_j \exp(s_{t,j})}$, and then $o_t \;=\; \sum_i \alpha_{t,i}\, v_i$
+>
+> **The variables.**
+>
+> - $\exp(s_{t,i})$ — the exponential of one score: $e$ raised to it. Always positive, whatever the
+>   sign of the score, and it turns a difference of scores into a ratio.
+> - $\sum_j$ — the sum of those exponentials over every step $j$ the mask allows, including $i$
+>   itself. This is the denominator, and it is what makes the line an average rather than a sum.
+> - $\alpha_{t,i}$ — the softmax weight: step $t$'s share of attention going to step $i$. A
+>   dimensionless fraction in $[0,1]$, and the whole list of them over $i$ adds to exactly one.
+> - $v_i$ — the value of step $i$: the vector step $i$ hands over if it is read, $d_{\text{head}}$
+>   entries long.
+> - $o_t$ — the output for step $t$: a weighted average of the values, $d_{\text{head}}$ entries
+>   long.
+>
+> **What it means.** The softmax converts a list of unbounded scores into a list of positive shares
+> that sum to one, which is what attention needs: it cannot average values with weights that add up
+> to an arbitrary total, because then the output's scale would depend on how many steps were
+> readable. Exponentiating first does two jobs at once -- it forces every weight positive, and it
+> stretches differences so that a score slightly above the rest claims a disproportionate share.
+> Dividing by the sum of all the exponentials then normalises the shares to one. The output is the
+> weighted average those shares define, and the head outputs are concatenated and passed through one
+> more projection before leaving the stage.
+>
+> **What it costs.** One exponential per readable step, one sum, one division per step -- and
+> chapter 8 is where each of those three is built without a floating-point unit. The sum is a
+> reduction, so it cannot begin until every score in the row exists, which is the same ordering
+> constraint the max-subtraction there pays. The division is a reciprocal, and a reciprocal is
+> iterative unless it is tabulated. The storage is not free either: $\alpha_{t,i}$ must exist for
+> every allowed $i$ before the average can be taken, so the row of weights is as wide as the mask
+> is permissive.
+>
+> **What it does not say.** It does not say attention selected one step. Unless a score dominates by
+> a wide margin, the output is a genuine blend, and a reader who pictures a hard lookup has replaced
+> an average with a multiplexer. And the weights summing to one is a property of the arithmetic, not
+> a guarantee of interpretability: $\alpha_{t,i}$ being large says the dot product was large, which
+> is a statement about vectors this stage computed, not about which words "matter" to a human.
 
 **Why the divisor exists, since it looks like a wart.** A dot product of two vectors $d_{\text{head}}$
 units wide adds $d_{\text{head}}$ products together. Products of unrelated numbers have variances that
@@ -279,12 +376,62 @@ is, and the two factorisations below are two ways of making it smaller.
 **dense** convolution trains a separate filter for every output channel, and each of those filters reads
 every input channel, so one step costs
 
-$$\text{dense:} \quad k \cdot C \cdot C' \ \text{multiply-accumulates}$$
+> **The formula.** dense: $k \cdot C \cdot C'$ multiply-accumulates per step
+>
+> **The variables.**
+>
+> - $k$ — the tap count: how many time steps one filter reads. A count of steps.
+> - $C$ — the channels in: how many separate value streams one step carries. A count of channels.
+> - $C'$ — the channels out. A count of channels, equal to $C$ in the stages this book meets.
+> - "multiply-accumulates" — one multiply and one add fused into a single operation, which is what
+>   a DSP slice performs and what a MAC count is therefore counting. Operations, not bytes.
+>
+> **What it means.** A dense filter is a grid, and the product is that grid read off: each of the
+> $C'$ outputs needs its own filter, each of those filters reads all $C$ input channels, and each
+> reading spans $k$ taps. Three independent directions of work, multiplied. Nothing in the
+> expression says which of the three is expensive -- it says all three are, at once.
+>
+> **What it costs.** $k \cdot C \cdot C'$ multiply-accumulates per step, and every one of them
+> needs the input value at its own position, so the same input is re-read by every output that
+> touches it. The re-reads are the traffic, and traffic is what a line buffer exists to remove --
+> which is why this number is a floor on arithmetic and not a ceiling on what the stage actually
+> moves across the chip.
+>
+> **What it does not say.** It does not say the stage is slow, and it does not say the count is
+> reachable at the word width the design uses. It counts operations at one multiply each; a
+> fixed-point multiply that occupies a DSP slice for several pipeline stages, or a weight stream
+> that has to come off-chip, costs time this expression cannot see.
 
 A **depthwise** convolution drops the channel mixing entirely: each output channel gets one filter that
 reads exactly one input channel, so the whole layer over time costs
 
-$$\text{depthwise:} \quad k \cdot C$$
+> **The formula.** depthwise: $k \cdot C$ multiply-accumulates per step
+>
+> **The variables.**
+>
+> - $k$ — the tap count, the same quantity as in the dense formula above: how many time steps the
+>   filter reads. A count of steps.
+> - $C$ — the channels, which is both the count in and the count out, because a depthwise stage
+>   cannot change the width: channel $c$'s output is built only from channel $c$'s inputs. A count
+>   of channels.
+> - $k \cdot C$ — the product: one $k$-tap filter per channel, and no cross-channel terms.
+>   Operations per step.
+>
+> **What it means.** Removing $C'$ from the product is not a saving of one factor out of three; it
+> is a change of what the stage can express. A depthwise filter can look backwards in time and it
+> can treat each channel differently, but it cannot combine two channels into one output. That is
+> why it never appears alone: the mixing it dropped has to come back as a separate stage, and the
+> pair is what the next paragraph costs out.
+>
+> **What it costs.** $k \cdot C$ operations, and one filter per channel rather than one per output
+> channel, so the weight storage falls by the same factor the arithmetic does. What does not fall
+> is the reading: a $k$-tap window still needs $k$ steps of history within reach per channel, which
+> is the line buffer of chapter 8 and is a storage cost the operation count hides.
+>
+> **What it does not say.** It does not say the stage is cheaper than a dense one *and* does the
+> same job. It does a strictly narrower job, and comparing $k \cdot C$ against $k \cdot C \cdot C'$
+> without naming the mixing stage that has to be added back is the single most common misreading of
+> this line.
 
 A **pointwise** convolution is the opposite extreme: one tap, and it reads every channel to mix them, so
 per step it costs $C \cdot C'$. Putting the two together is the **time-channel separable** form: the time
@@ -401,10 +548,43 @@ and those two choices have very different costs on a chip.
 subtracts their mean, divides by their standard deviation, and then applies a learned scale and shift per
 channel:
 
-$$\hat{x}_{t,c} \;=\; \frac{x_{t,c} - \mu_t}{\sigma_t}\,\gamma_c + \beta_c$$
+> **The formula.** $\hat{x}_{t,c} \;=\; \frac{x_{t,c} - \mu_t}{\sigma_t}\,\gamma_c + \beta_c$
+>
+> **The variables.**
+>
+> - $\hat{x}_{t,c}$ — the normalised value of channel $c$ at step $t$: what leaves the stage. A
+>   dimensionless activation, by construction, because the subtraction and the division remove
+>   whatever units the input carried.
+> - $x_{t,c}$ — the same value before normalisation, straight out of the previous stage.
+> - $\mu_t$ — the mean of the $d_{\text{model}}$ values of step $t$ alone. Computed per step, at
+>   run time.
+> - $\sigma_t$ — the standard deviation of those same values: their spread about that mean. Also
+>   per step, also at run time, and the reason this stage contains a square root and a reciprocal.
+> - $\gamma_c$, $\beta_c$ — a learned scale and shift, one pair per channel, fixed once training
+>   ends. Weights, not statistics.
+> - $t$, $c$ — the step and the channel. Counts of each.
+>
+> **What it means.** Subtracting the mean and dividing by the spread moves every step's values onto
+> a common scale, so the next stage receives numbers whose size does not depend on how loud the
+> input was. The learned pair comes after, and it matters: normalising alone would force every
+> channel to the same scale, which throws away real information, so $\gamma_c$ and $\beta_c$ let
+> training put back whatever scale a channel actually wants. The order in the expression is the
+> order in the hardware -- reduce, divide, then multiply and add -- and only the last two of those
+> four operations are per-channel constants.
+>
+> **What it costs.** Two reductions over the full width per step, one for the mean and one for the
+> variance, and neither can finish until every channel of that step exists. Then one reciprocal
+> square root per step, which chapter 8 builds from a shift and a table, and then a pair of
+> constant multiplies per channel, which could have been folded into the preceding stage had they
+> been constants rather than per-channel weights. The reduction is the expensive part and it
+> is a *latency* cost, not an arithmetic one: a wide step is a deep adder tree.
+>
+> **What it does not say.** It does not say the stage is cheap because each line of it is
+> elementary. And it does not say which axis is normalised -- this one reduces across the channels
+> of one step, which is what makes it usable on a stream. The alternative in the next paragraph
+> reduces across steps and is computed offline, and the two are not interchangeable on a chip.
 
-The mean $\mu_t$ and the standard deviation $\sigma_t$ are computed from that one step, per step, and
-$\gamma_c$ and $\beta_c$ are weights -- one pair per channel. A batch normalisation instead collects its
+A batch normalisation instead collects its
 $\mu$ and $\sigma$ once, from the training data, and freezes them; at inference the two statistics are
 constants, so the stage reduces to a multiply and an add per channel with no reduction at all.
 
@@ -445,9 +625,40 @@ book is a bet about which of the two is worth keeping close to the arithmetic.
 
 **Mechanism.** The rule is one line:
 
-$$\text{bytes} \;=\; \frac{\text{elements} \times b}{8}$$
+> **The formula.** $\text{bytes} \;=\; \dfrac{\text{elements} \times b}{8}$
+>
+> **The variables.**
+>
+> - elements — how many values are being stored. A count, and the only term that comes from the
+>   architecture: a tensor's shape, a weight file, a row of activations.
+> - $b$ — the number of bits each stored value occupies. Bits per value. This is the word width,
+>   and it is a design decision, not a property of the model.
+> - $8$ — the number of bits in a byte. An exact constant, and the reason the division is a shift
+>   by three rather than a divide.
+> - bytes — the storage the pair implies. Bytes, and only comparable to a datasheet figure once the
+>   unit convention below is settled.
+>
+> **What it means.** A width is not a cost; a cost is a count of stored numbers times the width of
+> each. This is that sentence written once, and it is the point where the book's shape arguments
+> become checkable: every earlier section in this appendix produced a count of elements, and this
+> converts one into something a memory budget can absorb. The division by eight carries no
+> information -- it is a change of unit, from the bits the arithmetic works in to the bytes the
+> datasheets quote.
+>
+> **What it costs.** Nothing to compute, and everything to decide. The two terms are independent,
+> so the storage falls linearly in $b$: halving the word width halves the bytes at any element
+> count, which is the whole economic argument of chapter 7 stated as one line. On the device this
+> book targets the result is compared against tiles, not against a smooth budget, so a total that
+> lands one value over a tile boundary costs a whole tile more.
+>
+> **What it does not say.** It does not say the answer is the memory the design uses. It counts
+> payload only: no addressing, no banking, no padding to a port width, no double buffering, and no
+> copy that a runtime makes before the fabric sees the data. It also does not say which bytes are
+> resident at once -- weights and activations both use this formula and behave oppositely, which is
+> the distinction the intuition above is about. And a byte is not a bit: the unit convention below
+> exists because this project's sources have disagreed about exactly that.
 
-where $b$ is the number of bits per stored value. Before using it, a unit convention has to be chosen and
+Before using it, a unit convention has to be chosen and
 said out loud, because the datasheets in this project are not consistent and the registry has a record
 filed about exactly that. Here, $1\ \text{Kb} = 2^{10}\ \text{bits}$, $1\ \text{KiB} = 2^{10}\ \text{bytes}$,
 and a decimal $\text{kB}$ or $\text{MB}$ means a thousand or a million of the same; `V-01-23` registers
