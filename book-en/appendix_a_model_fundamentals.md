@@ -83,12 +83,13 @@ covers. Every stage this appendix describes has the same outer shape:
 > statement about shape, which is all it is offered for, it is exact.
 
 The hidden width is registered for three published recipes and the three do not agree. The small offline
-keyword model is 176 wide (`V-05-13`), the offline and streaming large models are 512 wide (`V-05-18`,
-`V-05-23`, `V-05-38`), and the other framework's recipe is 256 wide (`V-05-04`). The number of lists a
-stage sees is set before the block chain runs, by a `subsampling_factor` that collapses several feature
-frames into one encoder step; the two streaming recipes register that factor as 4 (`V-05-32`) and as 8
-(`V-05-42`). What one step is in seconds follows from those factors and from a stride no record states in
-this appendix's units, so chapter 9 does that conversion and this file does not.
+keyword model is 176 wide, the offline and streaming large models are 512 wide, and the other framework's
+recipe is 256 wide -- each one a config value read out of that recipe's own published definition. The
+number of lists a stage sees is set before the block chain runs, by a `subsampling_factor` that collapses
+several feature frames into one encoder step, and the two streaming recipes register that factor as four
+and as eight. Which record says what is the traceability table at the end of this section. What one step
+is in seconds follows from those factors and from a stride no record states in this appendix's units, so
+chapter 9 does that conversion and this file does not.
 
 | Symbol | What it is | What it is on a board |
 | --- | --- | --- |
@@ -102,8 +103,9 @@ this appendix's units, so chapter 9 does that conversion and this file does not.
 | $b$ | bits stored per number | the memory primitive a value lands in |
 
 **Hardware application.** A width that is a power of two and a width that is not are different objects
-in a datapath. At 512 units (`V-05-18`) the tensor is $2^9$ wide, so a head's offset inside a step is a
-shift and a mask, and one row is a whole number of aligned words. At 176 units (`V-05-13`) it is not, so
+in a datapath. At the large recipe's width of 512 units the tensor is $2^9$ wide, so a head's offset
+inside a step is a shift and a mask, and one row is a whole number of aligned words. At the small offline
+model's width of 176 units it is not, so
 cutting a step into head slices needs a divide by a non-power-of-two somewhere, and a designer either
 pays for that in an address generator or lays the memory out per head so the question never arises. This
 is the first instance of a pattern this book keeps meeting: a config value that looks like a size
@@ -112,6 +114,18 @@ difference turns out to be a *shape* difference, and shape decides what logic yo
 Nothing above becomes a byte count in this section, deliberately. How many bytes one step occupies is
 $d_{\text{model}}$ times $b$, and $b$ is not registered for any candidate model, so the rule is stated
 once at the end of this appendix rather than used early and wrongly.
+
+
+**Traceability.** The records this section's figures come from.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-13` | the small offline keyword model's hidden width is 176 |
+| `V-05-18`, `V-05-23`, `V-05-38` | the large recipes' hidden width is 512, read from three configs that agree |
+| `V-05-04` | the other framework's recipe in one line: hidden width 256, 12 blocks, 4 heads, feed-forward width 2048, kernel 15 |
+| `V-05-32` | a streaming recipe's `subsampling_factor` of 4 -- four feature frames per encoder step |
+| `V-05-42` | the other streaming recipe's `subsampling_factor` of 8, twice the collapse |
+
 
 ## A.2 One Block, Stage by Stage
 
@@ -209,11 +223,11 @@ counted.
 
 
 The two feed-forward halves are each narrower than a full one so that the pair costs what one full
-network costs: the width of a single half is the hidden width times an expansion factor of 4
-(`V-05-36`), and the other framework states its half-width as an absolute instead of as a ratio, 2048
-units at a hidden width of 256 (`V-05-04`). Then the block repeats. The registered repetition counts are
-16 (`V-05-12`), 17 (`V-05-17`, `V-05-22`, `V-05-37`) and 12 (`V-05-04`), and each repetition has its own
-copy of every weight, so the count multiplies both the work and the storage.
+network costs. One streaming recipe states the half-width as a ratio -- four times the hidden width --
+and the other framework states its as an absolute instead, 2048 units at a hidden width of 256. Then the
+block repeats. Three repetition counts are on record for the recipes this book reads: 16, 17 and 12, and
+each repetition has its own copy of every weight, so the count multiplies both the work and the
+storage.
 
 > **Whose order this is, and what is not on record.** The five-stage order, the half-and-half split of the
 > feed-forward, and the residual additions come from the architecture's published definition and from the
@@ -237,6 +251,17 @@ chapter 9 and chapter 10 spend their effort on. Two secondary consequences follo
 - A normalisation stage is a reduction: it reads a whole row before it can write any of it. That is the
   end of this appendix's treatment of it; section 8.3 carries the arithmetic of doing one without a
   floating-point unit.
+
+
+**Traceability.** The records this section's figures come from.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-36` | the streaming Conformer's feed-forward expansion factor is 4, a ratio against the hidden width rather than an absolute |
+| `V-05-04` | the other framework's absolute half-width of 2048 at a hidden width of 256, and its block count of 12 |
+| `V-05-12` | the small variant's block count of 16 |
+| `V-05-17`, `V-05-22`, `V-05-37` | the larger variant's block count of 17, confirmed across three configs |
+
 
 ## A.3 Self-Attention: Reading the Past Because You Decide To
 
@@ -481,13 +506,12 @@ mask is a second grid, the same shape as the scores, and the softmax runs across
 :::
 
 
-> **Traceability note.** The divisor is the standard scaled dot-product form and appears in both
-> frameworks' attention code. That the *head* width, not the full width, is what enters the divisor is
-> the point a config reading can miss: `n_heads` (`V-05-14`, `V-05-19`, `V-05-24`, `V-05-39`) changes the
-> constant without changing `d_model` (`V-05-13`, `V-05-18`, `V-05-23`, `V-05-38`), so raising the head
-> count at fixed width makes every head narrower and every divisor smaller. Doubling the head count also
-> leaves the total cached width exactly where it was, because the heads are slices of one row and not
-> additions to it.
+> **Which width the divisor uses.** The divisor is the standard scaled dot-product form and appears in
+> both frameworks' attention code. That the *head* width, not the full width, is what enters it is the
+> point a config reading can miss: the head count changes the constant without changing the hidden width,
+> so raising the head count at fixed width makes every head narrower and every divisor smaller. Doubling
+> the head count also leaves the total cached width exactly where it was, because the heads are slices of
+> one row and not additions to it.
 
 ::: {#fig-appendix-attention .figure}
 ```tikz
@@ -536,8 +560,9 @@ rather than a taste.
 allowed step, so the multiply-accumulates this stage performs grow with how much of the past the mask
 admits. In the offline reading of the model that is the whole utterance, and an accelerator sized for it
 is sized for a number that changes with the length of the speech. In the streaming readings the read set
-is bounded by configuration: a left context of 140 steps (`V-05-29`) for one candidate and 70 for the
-other (`V-05-43`), so the stage's work per step becomes a constant a designer can plan around. Buying a
+is bounded by configuration: each streaming recipe registers its own left context, and the two values on
+record are 140 steps and 70, so the stage's work per step becomes a constant a designer can plan around.
+Buying a
 fixed cost is exactly what the bound is for, and the price -- an accuracy penalty for the past the design
 refuses to look at -- is what chapter 9 measures.
 
@@ -548,7 +573,7 @@ as a box for a reason: it is the only storage attention requires, its depth is t
 width is the hidden total rather than the head count. Every later step's attention reads it, so it sits
 on the critical path of a stage that is already on the critical path of the block. Chapter 9 sizes it;
 this appendix leaves the arithmetic alone, because a depth in bytes needs a word width and none is
-registered for any candidate (`V-05-57`).
+registered for any candidate -- the registry carries that absence as an unresolved record.
 
 *A softmax is two reductions and a divide.* A maximum or a sum over the whole read set, then one divide
 per weight. Both are per-row operations whose length varies with the mask, and neither is a multiply-add
@@ -557,11 +582,30 @@ products is a poor fit for the tails of the stage. Section 8.3 is where this boo
 mismatch, and where the approximation choices get made.
 
 *Position has to reach the score somehow, and the way it does so decides whether a cache survives being
-slid.* Both recipes on record use a relative scheme (`V-05-21`, `V-05-27`), in which a step's position
+slid.* Both recipes on record configure a relative-position scheme rather than an absolute one, in
+which a step's position
 changes its scores only by how far it sits from the step doing the reading. That is the property which
 lets a rolling buffer keep meaning as new steps arrive: a distance does not change when older material
 leaves. How the distance is folded into a score is not quoted anywhere in this registry, so this
 appendix states what the scheme is for and does not present a sum as fact.
+
+
+**Traceability.** The records this section leans on. The two head-width quotients above are derived, and
+their operands are named in the sentence that computes them; everything else is a registered figure or a
+registered absence.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-13` | the small offline model's hidden width, 176 |
+| `V-05-14` | that model's head count, 4 -- a head width that is not a power of two |
+| `V-05-18` | the large recipes' hidden width, 512 |
+| `V-05-19`, `V-05-24`, `V-05-39` | head count 8 on three large configs -- a head width that is a power of two |
+| `V-05-23`, `V-05-38` | two further configs registering the same width of 512 |
+| `V-05-29` | one streaming candidate's left context, 140 encoder steps |
+| `V-05-43` | the other streaming candidate's left context, 70 encoder steps |
+| `V-05-21`, `V-05-27` | both recipes set relative-position attention, the second confirming it for the streaming model |
+| `V-05-57` | unresolved on purpose: no publisher prints a per-step word width, so no cache depth in bytes is derivable |
+
 
 ## A.4 Convolution Along Time: the Same Read, Done Cheaper
 
@@ -648,8 +692,8 @@ depthwise half falls to $9 \times 512 = 4{,}608$ while the mixing half does not 
 which is the lesson worth keeping: the factorisation does not make the
 stage cheap, it moves the cost. After the trick, the pointwise mix dominates, and it is the part of the
 layer that does not care about time at all. Three tap counts are on record for the recipes this book
-reads -- 31 (`V-05-25`), 15 (`V-05-04`) and 9 (`V-05-40`) -- and no registered source explains why a
-recipe chose one rather than another.
+reads: 31, 15 and 9, one per recipe, and no registered source explains why a recipe chose one rather than
+another.
 
 ::: {#fig-appendix-dense-separable .figure}
 ```tikz
@@ -714,8 +758,9 @@ factorisation have different physical signatures.
 A depthwise filter over time *is* a shift register with taps hanging off it, and it is the one part of
 the block a hardware reader will feel at home with: $k$ stored values per channel, one multiply-add per
 tap, and a stream that advances one step at a time. For a streaming model the taps must all reach
-backwards, and the recipe says so directly -- `conv_context_size: causal` (`V-05-25`), which that file's
-own comment reads as every tap behind the current step. A delay line with only backward taps can be
+backwards, and the streaming Conformer's config says so directly with its own key,
+`conv_context_size: causal`, whose file comment reads it as every tap behind the current step. A delay
+line with only backward taps can be
 built, filled and retired in place, which is why the convolution module can run ahead of attention
 instead of waiting on it.
 
@@ -735,6 +780,20 @@ reaches is exactly what chapter 3 argues about and chapter 10 measures, and no p
 registered for this workload. What the exercise is worth is the ratio, which does not depend on the
 gap: the factorisation cuts the stage's floor by about twenty-nine times, and a clock budget cannot
 be spent twice.
+
+
+**Traceability.** The records this section leans on. The cost figures in the arithmetic above are derived,
+and the sentence that derives them names the records supplying its operands; the rows below are the same
+records read as attributions.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-18` | the hidden width the worked cost example uses, 512 |
+| `V-05-25` | the streaming Conformer's depthwise kernel: 31 taps, declared causal in the same config |
+| `V-05-04` | the other framework's kernel of 15 taps at a hidden width of 256 |
+| `V-05-40` | the fast variant's kernel of 9 taps |
+| `V-01-09` | the fabric's 1,248 multiply-accumulate slices, the divisor every bound in this appendix uses |
+
 
 ## A.5 Keeping the Numbers in Range
 
@@ -789,17 +848,17 @@ A batch normalisation instead collects its
 $\mu$ and $\sigma$ once, from the training data, and freezes them; at inference the two statistics are
 constants, so the stage reduces to a multiply and an add per channel with no reduction at all.
 
-The two types are not interchangeable across the recipes this book reads. The offline large model's
-convolution module is registered as `conv_norm_type: 'batch_norm'` (`V-05-20`); the two streaming recipes
-in the same family are registered as `'layer_norm'` (`V-05-26`, `V-05-41`), and the other framework's
-config quotes here names neither. Which normalisation a block uses changes what its stages must compute,
-so the disagreement is a datapath difference and not a stylistic one.
+The two types are not interchangeable across the recipes this book reads. The `conv_norm_type` key of the
+offline large model's convolution module reads `batch_norm`; the same key in the two streaming recipes of
+that family reads `layer_norm`; and the other framework's config, quoted elsewhere in this appendix,
+names neither. Which normalisation a block uses changes what its stages must compute, so the disagreement
+is a datapath difference and not a stylistic one.
 
-> **Traceability note.** `V-05-20`, `V-05-26` and `V-05-41` register a config key's value, which is a
-> type name. Nothing in this registry records a measured cost for either choice on either device, and this
-> appendix therefore describes the two stages' arithmetic rather than pricing them. What can be said
-> without a measurement is that one of the two requires a reduction over the whole width at run time and
-> the other does not.
+> **What is not on record.** The three configs above register a key's value, which is a type name.
+> Nothing in this registry records a measured cost for either choice on either device, and this appendix
+> therefore describes the two stages' arithmetic rather than pricing them. What can be said without a
+> measurement is that one of the two requires a reduction over the whole width at run time and the other
+> does not.
 
 **Hardware application.** A batch normalisation at inference is a per-channel affine, and a per-channel
 affine can be folded into the weights of the stage that precedes it, in which case it disappears from the
@@ -807,14 +866,25 @@ run time entirely. That is why it is the cheap answer, and why it appears in an 
 utterance is available.
 
 A layer normalisation cannot be folded, because $\mu_t$ and $\sigma_t$ belong to the step being
-normalised. Concretely, the stage reads a whole row -- 512 values at the large width (`V-05-18`) -- and
-must finish summing it before any output value is valid, so it is a reduction tree on the critical path of
+normalised. Concretely, the stage reads a whole row -- 512 values at the width the large recipes register
+-- and must finish summing it before any output value is valid, so it is a reduction tree on the critical
+path of
 its stage rather than a pass that overlaps. Then it needs a reciprocal square root and a multiply per
 element, and on a device with no floating-point unit both the reciprocal and the square root are
 approximations with a word width and an error budget. That is the substance of section 8.3, which derives
 a power-of-two form for the same shape of problem in the softmax and is the chapter's hardest arithmetic. What
 this section was for is the reason that arithmetic matters at all: the model asked for a reduction and a
 divide, and the hardware has to answer with additions and shifts.
+
+
+**Traceability.** The records this section leans on.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-20` | the offline large model's convolution module normalises with BatchNorm |
+| `V-05-26`, `V-05-41` | both streaming configs of the same family normalise with LayerNorm |
+| `V-05-18` | the row a layer normalisation must reduce: the large recipes' width of 512 |
+
 
 ## A.6 From a Dimension to a Budget
 
@@ -862,29 +932,29 @@ book is a bet about which of the two is worth keeping close to the arithmetic.
 Before using it, a unit convention has to be chosen and
 said out loud, because the datasheets in this project are not consistent and the registry has a record
 filed about exactly that. Here, $1\ \text{Kb} = 2^{10}\ \text{bits}$, $1\ \text{KiB} = 2^{10}\ \text{bytes}$,
-and a decimal $\text{kB}$ or $\text{MB}$ means a thousand or a million of the same; `V-01-23` registers
-that the datasheet's Mb columns for this device are 1024-based, which is the reading every figure below
-uses. The same record exists to warn that two different totals were each defensible under some reading of
+and a decimal $\text{kB}$ or $\text{MB}$ means a thousand or a million of the same. The datasheet's Mb
+columns for this device are 1024-based, and that is the reading every figure below uses. The same record exists to warn that two different totals were each defensible under some reading of
 a unit, and a sentence that mixes the conventions is wrong by a factor no rounding can repair.
 
 The device's own on-chip storage, with each type named, is the following. The fabric holds 144 block
-random-access memory (BRAM) blocks and 64 UltraRAM (URAM) blocks (`V-01-05`, `V-01-07`), and `V-01-23`
-fixes one BRAM tile at 36 Kb and one URAM tile at 288 Kb. Their sum is 23,616 Kb, which `V-01-22` unrolls
-in full: 2,952 KiB, 3,022,848 bytes, 2.8828 MiB, or 3.02 MB in decimal units, and 3.13 MiB if the
-processing system's own 256 KB on-chip memory is counted as well. That total is **BRAM plus URAM
-together**, and the two types are not interchangeable in a design: BRAM on its own is registered as 5.1
-Mb (`V-01-06`), which is 0.6375 MiB computed from the registered figure by dividing by eight, and the
-datasheet also lists 3.5 Mb of distributed RAM (`V-01-16`) built from the same look-up tables that
+random-access memory (BRAM) blocks and 64 UltraRAM (URAM) blocks, one BRAM tile 36 Kb and one URAM tile
+288 Kb. Their sum is 23,616 Kb, unrolled in full by the datasheet's memory table: 2,952 KiB, 3,022,848
+bytes, 2.8828 MiB, or 3.02 MB in decimal units, and 3.13 MiB if the processing system's own 256 KB
+on-chip memory is counted as well. That total is **BRAM plus URAM together**, and the two types are not
+interchangeable in a design: BRAM on its own is 5.1 Mb, which is 0.6375 MiB computed from that figure by
+dividing by eight, and the datasheet also lists 3.5 Mb of distributed RAM built from the same look-up
+tables that
 implement the logic. Calling 2.8828 MiB a "BRAM budget" would be the same class of unit error this book
 already forbids for the four-megabyte figure in chapter 1, so both totals appear above with their types
 named.
 
 Now the model side. The three recipes whose sizes are published are the small offline keyword model at
-about 14 million parameters (`V-05-16`), the streaming Conformer at about 120 million (`V-05-33`) and the
-streaming FastConformer at about 115 million (`V-05-46`). At two bytes per weight -- half-precision, an
-assumption of this paragraph and not a record -- the small model's weights are 28 MB, a computed
-figure, and the two large models are 240 MB and 230 MB, computed the same way. Set those beside
-3.02 MB (`V-01-22`) and the conclusion is not close: the weights are roughly a hundred times the
+about 14 million parameters, the streaming Conformer at about 120 million and the streaming FastConformer
+at about 115 million -- one publisher's parameter count each. At two bytes per weight -- half-precision,
+an assumption of this paragraph and not a record -- the small model's weights are 28 MB, a computed
+figure, and the two large models are 240 MB and 230 MB, computed the same way. Set those beside the
+device's 3.02 MB of on-chip storage and the conclusion is not close: the weights are roughly a hundred
+times the
 fabric's entire on-chip storage, so no overlay in this book can hold the model, and the design questions
 in chapter 8 and chapter 9 -- what streams, what tiles, what stays, what gets re-read -- exist because of
 that ratio.
@@ -892,8 +962,9 @@ that ratio.
 > **What this appendix will not do, and why.** The counts above are storage for the whole model at a
 > precision nobody registered. What is missing is not a rounding but a category: no record in
 > `docs/verification/claims.json` gives multiply-accumulates per frame, integer (INT8) weight bytes,
-> or activation bytes per step for any candidate model, and `V-05-57` is filed as unresolved
-> on precisely those grounds. A budget in this book therefore stops where a record stops, and a table of
+> or activation bytes per step for any candidate model, and the registry carries that gap as an
+> unresolved record on precisely those grounds. A budget in this book therefore stops where a record
+> stops, and a table of
 > per-layer byte counts is not published until something measures or fetches one.
 
 Two further quantities that a reader might expect to find used here are also unregistered, and they are
@@ -913,3 +984,21 @@ and the sum can be divided by the fabric's 1,248 slices (`V-01-09`) to get a flo
 be written down from registered figures alone is any quantity in bytes, for weights beyond the assumption
 in this section, or for activations at all. That asymmetry -- arithmetic describable, storage not -- is
 the state of the evidence this book was written against, and every chapter's cost table inherits it.
+
+**Traceability.** The records this section leans on. Every byte product in the arithmetic above is
+derived, and each derivation names the registered figures it spends; the rows below are those records read
+as sources.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-01-23` | the datasheet's Mb columns for this device are 1024-based; one BRAM tile 36 Kb, one URAM tile 288 Kb |
+| `V-01-05` | the fabric holds 144 BRAM blocks |
+| `V-01-07` | the fabric holds 64 URAM blocks |
+| `V-01-22` | the storage total unrolled: 23,616 Kb, 2,952 KiB, 3,022,848 bytes, 2.8828 MiB, or 3.02 MB decimal, and 3.13 MiB with the 256 KB processing-system memory |
+| `V-01-06` | BRAM alone totals 5.1 Mb |
+| `V-01-16` | 3.5 Mb of distributed RAM, built from the same look-up tables as the logic |
+| `V-05-16` | the small offline keyword model at about 14 million parameters |
+| `V-05-33` | the streaming Conformer at about 120 million |
+| `V-05-46` | the streaming FastConformer at about 115 million |
+| `V-05-57` | unresolved on purpose: no publisher prints a word width, so no per-step byte count is derivable |
+| `V-01-09` | the fabric's 1,248 multiply-accumulate slices, the divisor that turns an arithmetic floor into clocks |
