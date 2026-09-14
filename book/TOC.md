@@ -164,3 +164,46 @@ Consequence applied to `book-en/`:
 Still open, and unchanged by this decision: `plan-v2.md` section 3.1 carries the
 line *"chọn 1"* for the same mapping. That is the owner's to close. Section 7
 remains the authority on artefacts; nothing here overrides it.
+
+
+---
+
+## The re-cut executed, recorded 2026-09-14 (English, appended, not replacing)
+
+The resolution above ended with a task left in the manuscript: _"Re-cutting an outline is prose
+work,"_ and it named `plan-v2.md` section 7 as the authority on artefacts. Issue #53 did that work on
+the branch `docs/chapter89-prose`. The section lists in `book-en/chapter08.md` and
+`book-en/chapter09.md` are now neither of the two readings tabulated above: they follow the stage
+artefacts, so chapter 8 is the keyword-spotting build and chapter 9 is the streaming Conformer
+overlay and its ring buffer. This section exists so the earlier reading can still be reconstructed.
+
+The scope note under each chapter's H1 says the same thing to the reader, in the book's voice. That
+is deliberate: `book/TOC.md` is maintainer documentation, and a change a reader can only see in the
+commit history is a change the reader does not see.
+
+| Subject, under the earlier reading | Where it is now |
+|---|---|
+| 8.1 Hardware challenges in modern acoustic architectures | 8.1, as the concrete question the heading was standing in for: this board ships with no audio input, so what does the path cost and which rate governs |
+| 8.2 Pipelined 1D depthwise separable convolutions on FPGA | 8.2, same subject, now argued from the line buffer rather than from the operator name |
+| 8.3 Streaming chunk-level self-attention engines | chapter 9, section 9.3. Attention is a property of the model chapter 9 builds, and chapter 8 builds a keyword spotter that has none |
+| 8.4 Hardware approximations for non-linearities: base-2 softmax and LayerNorm | 8.3 |
+| 9.1 Partitioning computational graphs across CPU and FPGA fabric | 9.5 |
+| 9.2 SoC architecture: interfacing PS and PL over AXI | 9.5, which is the same boundary seen from the fabric side |
+| 9.3 Software stack: PYNQ overlays, VART, low-latency Linux drivers | nowhere, and that is the finding. No record in `docs/verification/claims.json` covers a toolchain choice for this overlay, so 9.5 states the question and leaves it open to a board run rather than naming products |
+| 9.4 System-level power dissipation and thermal optimisation | chapter 10, whose metric matrix in 10.2 already carries energy per frame. A thermal section ahead of any measured joule would have been the gap report's error, not this book's |
+| (no earlier stub) | 8.4, the stage-8 acceptance gate, which the spine states and no stub held |
+| (no earlier stub) | 9.1 the target and what about it is undecided, 9.2 one block as a datapath, 9.4 the left-context ring buffer, 9.6 look-ahead against accuracy |
+
+Figures: the manuscript carried two, both roofline plots in chapter 3. The re-cut adds seven, so
+`scripts/verify_book_pdf.sh` check 6 now expects nine figure sources in the manuscript, nine rendered captions in the
+PDF, and a prose reference to each id. Two things it does not do are worth naming, because both are
+the reason a figure can still be wrong after the gate passes: it does not require the caption
+numbers to run 1 through 9 in reading order, and it cannot see whether a picture depicts what its
+caption says. Those belong to the session's figure checker and to a human reader, and Issue #53's
+follow-up proposes moving the checker into `scripts/verification/` so the first of the two stops
+being a habit.
+
+Still open after this, and not closed by it: `plan-v2.md` section 3.1's _"chọn 1"_ line, and conflict
+C-08 in `docs/verification/README.md`, which asks which streaming model the benchmark ports. Chapters
+8 and 9 were written to describe a datapath without settling either, and both say so where they say
+it. `V-05-57` remains the reason no byte figure appears in either chapter.
