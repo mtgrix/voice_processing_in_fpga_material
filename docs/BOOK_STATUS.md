@@ -16,8 +16,8 @@
 | **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_05 | Đã tạo khung |
 | **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_06 | Đã tạo khung |
 | **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_07 | Đã tạo khung |
-| **08** | Tăng tốc Các Khối Tính toán Cốt lõi của Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_08 | Đã tạo khung |
-| **09** | Tích hợp Hệ thống SoC & Đồng thiết kế Phần cứng / Phần mềm | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_09 | Đã tạo khung |
+| **08** | Kiến trúc Pipeline keyword-spotting trên board: từ micro đến quyết định | 🚧 Khung sườn | Đã soạn (10 trang PDF) | 🚧 exp_08 | Đã viết bản tiếng Anh, chưa đo |
+| **09** | Streaming Conformer overlay + Left-Context Ring Buffer | 🚧 Khung sườn | Đã soạn (14 trang PDF) | 🚧 exp_09 | Đã viết bản tiếng Anh, chưa đo |
 | **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
 
 ---
