@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers gate book book-check book-clean clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers check-figures gate book book-check book-figsize book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -19,10 +19,13 @@ help:
 	@echo "  make render-bib        - Regenerate the bibliography from the registry"
 	@echo "  make check-numbers     - Fail on a number no cited claim supports (see number_baseline.json)"
 	@echo "  make render-numbers    - Re-record the accepted numbers that lack a citation"
+	@echo "  make check-figures     - Fail if a prose Figure N disagrees with the number its float gets"
+	@echo "  make render-figures    - Rewrite prose figure numbers to the build order"
 	@echo "  make gate              - Run every check CI runs, in CI's order"
 	@echo "  make clean             - Clean temporary cache files"
 	@echo "  make book              - Build both monograph PDFs into dist/ (needs Pandoc and LuaLaTeX)"
 	@echo "  make book-check        - Run the PASS/FAIL/N-A gate against the built PDFs"
+	@echo "  make book-figsize      - Compile every TikZ figure alone; fail if one overflows the text block"
 	@echo "  make book-clean        - Remove built PDFs and page previews"
 
 test:
@@ -83,7 +86,18 @@ check-numbers:
 render-numbers:
 	$(PYTHON) scripts/verification/scan_numbers.py --write-baseline
 
-gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers
+# A prose citation has to print the number its float actually gets. That number is a function of
+# book-manifest.yaml order plus how many figure divs each file holds, so adding one diagram to the
+# preface silently invalidates every citation after it -- the defect verify_book_pdf.sh cannot see,
+# because a link with a wrong number still lands on the right figure. Pure text, so CI runs it.
+# Issue #62.
+check-figures:
+	$(PYTHON) scripts/verification/figure_numbers.py
+
+render-figures:
+	$(PYTHON) scripts/verification/figure_numbers.py --fix
+
+gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers check-figures
 
 # The book targets are deliberately NOT part of gate, so CI does not run them: the
 # checks job installs Python only, and a TeX distribution costs hundreds of megabytes
@@ -94,6 +108,13 @@ book:
 
 book-check:
 	bash scripts/verify_book_pdf.sh
+
+# The build never asks whether a TikZ float is wider than the text block, and an over-wide one
+# prints no error: header.tex sets hfuzz=2pt, which only mutes small overfull warnings. This
+# compiles each figure alone against the page the build really uses. Needs LuaLaTeX, so it is
+# not in gate -- run it before `make book`, whose full pass costs minutes.
+book-figsize:
+	$(PYTHON) scripts/verification/figprobe.py --all
 
 book-clean:
 	rm -rf dist/voice-edge-fpga-book-*.pdf dist/preview dist/.verify
