@@ -33,8 +33,9 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # --chapter NN checks a single-chapter PDF built by scripts/build_book.sh --chapter NN.
-# The constant EXPECTED_TITLES below demands all thirteen front-matter and chapter
-# titles, which a one-chapter document cannot satisfy: that is why Issue #32 had to add
+# The constant EXPECTED_TITLES below demands all fourteen front-matter, chapter and
+# appendix titles, which a one-chapter document cannot satisfy: that is why Issue #32
+# had to add
 # this mode instead of using the existing one. In chapter mode the expected headings are
 # read out of the single source file being built.
 CHAPTER=""
@@ -81,6 +82,7 @@ EXPECTED_TITLES=(
   "Keyword Spotting on the Board"
   "A Streaming Conformer Overlay"
   "Benchmarking, the Pareto Frontier"
+  "Model Fundamentals: The Forward Pass in Hardware Terms"
   "Open Questions and Open Numbers"
 )
 

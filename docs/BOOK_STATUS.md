@@ -11,14 +11,15 @@
 |:---:|---|:---:|:---:|:---:|:---:|
 | **01** | Kiến trúc Pipeline Xử lý Tiếng nói & Ràng buộc Thời gian thực | 🚧 Khung sườn | Đã viết (11 trang PDF) | exp_01 đã chạy, có log | Đã soạn bản tiếng Anh |
 | **02** | Phân tích Vi kiến trúc & Đo kiểm Điểm chuẩn trên Jetson Orin | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_02 | Đã tạo khung |
-| **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_03 | Đã tạo khung |
+| **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | Đã soạn 3.1–3.3; 3.4 còn trống | 🚧 exp_03 | Đã viết bản tiếng Anh, chưa đo |
 | **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
-| **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_05 | Đã tạo khung |
+| **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | Đã soạn 5.4; 5.1–5.3 còn trống | 🚧 exp_05 | Đã viết bản tiếng Anh, chưa đo |
 | **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_06 | Đã tạo khung |
 | **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_07 | Đã tạo khung |
 | **08** | Kiến trúc Pipeline keyword-spotting trên board: từ micro đến quyết định | 🚧 Khung sườn | Đã soạn (10 trang PDF) | 🚧 exp_08 | Đã viết bản tiếng Anh, chưa đo |
 | **09** | Streaming Conformer overlay + Left-Context Ring Buffer | 🚧 Khung sườn | Đã soạn (14 trang PDF) | 🚧 exp_09 | Đã viết bản tiếng Anh, chưa đo |
 | **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
+| **A** | Model Fundamentals: The Forward Pass in Hardware Terms (phụ lục, không gắn chặng thí nghiệm) | — | Đã soạn đủ A.1–A.6 | — | Đã viết bản tiếng Anh, chưa đo |
 
 ---
 
@@ -32,10 +33,16 @@ Hai trạng thái khác nhau phải phân biệt rõ: chương **chưa viết** 
 - WER không còn là metric toàn dụng ở Chương 02, 07, 10 và ở `docs/BOOK_PEDAGOGY.md` (§5.3 cấm dùng lẫn).
 - Chương 05 thôi tuyên bố FINN/HLS là "vũ khí tối thượng"; gate chặng 5 đòi log tổng hợp thật.
 - Chương 06 dạy rõ đường âm thanh vào PL qua carrier, vì KV260 không có mic.
+- Từ 2026-09-14 (Issue #57): mọi mục khái niệm viết mới hoặc viết lại phải xếp đủ ba lớp theo đúng thứ
+  tự — **Intuition** (không ký hiệu), **Mechanism** (số học forward pass), **Hardware application**
+  (byte, băng thông, BRAM/URAM, DSP slice, stall trên Orin hoặc KV260). Traceability chuyển vào
+  blockquote có lead-in đậm, không bỏ record nào, và một mục viết lại phải cite siêu tập V-id của mục nó
+  thay. Lý do ghi ở đây chứ không chỉ ở commit: người đọc của sách là kỹ sư phần cứng, không phải kỹ sư
+  học máy — xem mục "Phụ lục A" trong `book/TOC.md`.
 
 **Chưa chốt, cần chủ repo:** `plan-v2.md` §7 gán artefact chặng 8–9 (KWS SoC trên board; Conformer overlay) khác với tiêu đề chương 08–09 hiện tại. Ghi chi tiết ở `book/TOC.md`, mục "Lệch ánh xạ chưa chốt".
 
-**Chưa làm:** văn xuôi của chương 2 đến chương 10, và bản tiếng Việt tương ứng của cả 10 chương. Chương 1 đã có văn xuôi tiếng Anh. Không một ô nào trong bảng chương được đóng dấu ✅: theo `scripts/verify_integrity.py`, dấu ✅ chỉ được đặt ở dòng có mã thí nghiệm đủ dài để khớp với log, còn mã chương hai chữ số thì không phân biệt được — nên tiến độ chương ghi bằng chữ, không ghi bằng dấu.
+**Chưa làm:** văn xuôi tiếng Việt của cả mười chương. Bản tiếng Anh tính đến 2026-09-14: chương 1 và chương 9 có văn xuôi ở mọi mục; Phụ lục A có đủ sáu mục A.1–A.6; chương 3 thiếu 3.4; chương 5 mới có mục 5.4; chương 8 có 8.4 mỏng; chương 2, 4, 6, 7 và 10 vẫn là tiêu đề rỗng. Không một ô nào trong bảng chương được đóng dấu ✅: theo `scripts/verify_integrity.py`, dấu ✅ chỉ được đặt ở dòng có mã thí nghiệm đủ dài để khớp với log, còn mã chương hai chữ số thì không phân biệt được — nên tiến độ chương ghi bằng chữ, không ghi bằng dấu.
 
 ---
 

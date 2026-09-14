@@ -93,7 +93,18 @@ the rate at that stage, and they are why two rows of the table below carry no nu
 
 ## 8.2 A Depthwise Convolution Is a Line Buffer With Taps
 
-**The separable split is a hardware statement written as a network layer.** A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other.
+**Intuition.** A filter that runs along a stream of frames is the same object as a shift
+register with taps, and every hardware reader has built one. Hold the recent values of a single
+channel in a row of registers, multiply each register by a weight, add the products, and the
+result is that channel's filtered value for the newest frame. A trained network changes nothing
+about that shape. It picks the weights by training rather than by hand, and it runs a row like
+this for every channel at once. The question worth arguing about is what to do when the channels
+are also allowed to talk to one another, because that conversation is where the cost sits, and
+the answer the field settled on is to split it into two cheaper passes. The convolution section
+of Appendix A derives that split from the arithmetic of a filter; this section keeps the storage,
+the traffic and the containers, and it assumes the derivation has been read.
+
+**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other.
 
 **The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 4](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
 
@@ -156,7 +167,7 @@ $k$ is the tap count, $d$ is the dilation -- the spacing between taps, in steps 
 
 **The reference keyword network is the small case, and the record prints it as names.** MatchboxNet is a 1D time-channel separable convolutional network at $C = 64$ channels, and `V-05-01` prints three variants with their parameter counts: 77K for `3x1x64`, 93K for `3x2x64`, 140K for `6x2x64`. The name carries the depth and the width, so a reader sees the stack growing in the same record that prices it; `V-05-01` notes that counts of this size fit entirely into on-chip block RAM (BRAM -- on-chip storage) without off-chip access. `V-05-02` is the other half of the record: the model reports isolated word classification accuracy on 1-second clips from a closed set of 12 or 35 classes, not a word error rate (WER -- the fraction of transcribed words that are wrong). A design that quotes that accuracy is not quoting transcription.
 
-**The buffer lives in one of three containers, and the unit must travel with the number.** All figures are the device registered as `xczu5ev` / `XCK26`, from document DS890 page 22, Table 23.
+**Hardware application.** The buffer lives in one of three containers, and the unit must travel with the number. All figures are the device registered as `xczu5ev` / `XCK26`, from document DS890 page 22, Table 23.
 
 | Quantity | Value | Where it comes from |
 | --- | --- | --- |
@@ -174,12 +185,19 @@ Every value is quoted in the unit the record prints it in. `V-01-23` settles the
 
 ## 8.3 Softmax and LayerNorm Without a Floating-Point Unit
 
-Attention and normalisation ask for four things a CPU gives away: an exponential, a
-reciprocal, a sum and a square root. A fabric of multipliers, adders and storage can build
-all four, and building them is this section. The arithmetic decisions below are design, not
+**Intuition.** Two stages in every encoder block do work that a multiplier cannot do directly,
+and both of them are about proportions rather than about values. Attention ends with a row of raw
+scores, one per frame it was allowed to read, and that row has to become shares of a whole before
+it can weight anything: this is what a softmax is for, and it is why the operation contains a sum
+and a division. A normalising stage keeps each frame's channel values on a scale the next stage
+can use, which is why it contains a mean, a spread, and a reciprocal of a square root. The four
+operations this section has to build therefore follow from what the two stages are for: an
+exponential, a reciprocal, a sum and a square root. Appendix A defines both stages from the
+beginning; this section assumes the definitions and supplies the units. A fabric of multipliers,
+adders and storage can build all four, and building them is this section. The arithmetic decisions below are design, not
 result: no error, rate or resource figure appears here, because none has been measured.
 
-**Subtracting the row maximum is a correctness step.** In real arithmetic, these two
+**Mechanism.** Subtracting the row maximum is a correctness step. In real arithmetic, these two
 expressions have the same value:
 
 $$\mathrm{softmax}(\mathbf{z})_i = \frac{e^{z_i}}{\sum_j e^{z_j}} = \frac{e^{z_i - m}}{\sum_j e^{z_j - m}}, \qquad m = \max_j z_j$$
@@ -283,7 +301,7 @@ bar sits in both paths: a row maximum cannot be worked around, so neither varian
 the row through. What the base-2 column buys is the removal of the red, not of the dash.
 :::
 
-**LayerNorm stays in the datapath; a BatchNorm in its place would not.** BatchNorm's mean
+**Hardware application.** LayerNorm stays in the datapath; a BatchNorm in its place would not. BatchNorm's mean
 and variance are constants derived from the training data, so the whole stage is a per-channel
 multiply and add, and those compose into the weights and bias of the convolution before it.
 LayerNorm is data-dependent: the mean and variance it uses come from the frame in front of it,
