@@ -161,9 +161,40 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 
 **Reach is a two-term rule, and it is the only arithmetic this section needs.** *Mechanism.* A window reads the current step and reaches backwards for its history; how far it reaches and how often it moves are set by different knobs.
 
-$$R = (k - 1)\,d + 1, \qquad \text{one output every } s \text{ input steps}$$
-
-$k$ is the tap count, $d$ is the dilation -- the spacing between taps, in steps -- and $R$ is the reach, the number of input steps one output covers, including the current one. $s$ is the stride: consecutive outputs start $s$ input steps apart. With $d = 1$ the rule reproduces what the table prints: 31 taps reaching 30 steps back `V-05-25`, and the other candidate's 9 taps reaching 8 `V-05-40`. *Engineering consequence.* $R$ fixes the buffer's depth in steps, and $s$ fixes how fast its contents turn over, so a longer tap costs storage while a larger stride costs the same storage less often. *What it cannot tell the reader.* Not bytes, and not time. $R$ is in steps, and a step becomes a wall-clock interval only once the encoder's step period is registered; and $R$ says nothing about how many channels it must be copied across, which is where the storage actually goes. Dilation is left a symbol on purpose -- neither candidate's records register a value for it.
+> **The formula.** $R = (k - 1)\,d + 1$
+>
+> **The variables.**
+> - $R$ — the reach: how many input steps one output depends on, counting the current step. A
+>   number of steps, so dimensionless until a step is given a duration.
+> - $k$ — the tap count: how many samples of the input the window reads. A count of taps.
+> - $d$ — the dilation: the spacing between consecutive taps, in input steps. A count of steps.
+>   Left a symbol here on purpose, because neither candidate's records register a value for it.
+> - $1$ — the current step itself, which every window reads. A count, not a measured quantity.
+>
+> **What it means.** A window takes $k$ taps, and between the first tap and the last there are
+> $k - 1$ gaps, each $d$ steps wide, so the distance from the newest tap to the oldest is
+> $(k-1)d$ steps. Adding the current step back gives the total number of input steps the output
+> rests on. The subtraction and the addition are the same act seen twice: $k - 1$ counts gaps,
+> and $+1$ counts the step those gaps hang off. A separate sentence carries the stride, because
+> it is a different knob: consecutive outputs start $s$ input steps apart, and $s$ does not
+> appear in $R$ at all. With $d = 1$ the rule reproduces what the table prints -- 31 taps
+> reaching 30 steps back `V-05-25`, and the other candidate's 9 taps reaching 8 `V-05-40` --
+> which is the check that the formula is describing these recipes and not an invented one.
+>
+> **What it costs.** $R$ is the depth of the line buffer in steps, and $s$ is how fast its
+> contents turn over, so a longer tap costs storage while a larger stride costs the same storage
+> less often. In silicon the shifting part of that buffer is registers at the word level, and
+> the holding part is a BRAM or URAM tile or a few hundred words of LUTRAM, whichever the next
+> section's table picks. The formula itself is a multiply by a constant and an add; when $d$ is
+> a power of two the multiply is a shift, and when $k$ is fixed at compile time the whole
+> expression is one number resolved before the design is placed rather than arithmetic done per
+> step.
+>
+> **What it does not say.** Not bytes, and not time. $R$ is counted in steps, and a step becomes
+> a wall-clock interval only once the encoder's step period is registered, which chapter 9 does
+> and this chapter does not. And $R$ says nothing about how many channels the window must be
+> copied across, which is where the storage actually goes: reach is one dimension of a buffer
+> whose size needs three.
 
 **The reference keyword network is the small case, and the record prints it as names.** MatchboxNet is a 1D time-channel separable convolutional network at $C = 64$ channels, and `V-05-01` prints three variants with their parameter counts: 77K for `3x1x64`, 93K for `3x2x64`, 140K for `6x2x64`. The name carries the depth and the width, so a reader sees the stack growing in the same record that prices it; `V-05-01` notes that counts of this size fit entirely into on-chip block RAM (BRAM -- on-chip storage) without off-chip access. `V-05-02` is the other half of the record: the model reports isolated word classification accuracy on 1-second clips from a closed set of 12 or 35 classes, not a word error rate (WER -- the fraction of transcribed words that are wrong). A design that quotes that accuracy is not quoting transcription.
 
@@ -200,43 +231,121 @@ result: no error, rate or resource figure appears here, because none has been me
 **Mechanism.** Subtracting the row maximum is a correctness step. In real arithmetic, these two
 expressions have the same value:
 
-$$\mathrm{softmax}(\mathbf{z})_i = \frac{e^{z_i}}{\sum_j e^{z_j}} = \frac{e^{z_i - m}}{\sum_j e^{z_j - m}}, \qquad m = \max_j z_j$$
+> **The formula.** $\mathrm{softmax}(\mathbf{z})_i = \dfrac{e^{z_i}}{\sum_j e^{z_j}} = \dfrac{e^{z_i - m}}{\sum_j e^{z_j - m}}$, with $m = \max_j z_j$
+>
+> **The variables.**
+> - $\mathbf{z}$ — one row of attention scores: one value per position the query may look at.
+>   Raw score units, unbounded in both directions before anything is done to them.
+> - $z_i$ — the score of one position $i$ in that row. Same units as $\mathbf{z}$.
+> - $m$ — the largest value in the row, $\max_j z_j$. Same units as $\mathbf{z}$, and it is a
+>   value from the row, not a constant anybody chose.
+> - $i$, $j$ — indices of positions inside the row. Counts of positions.
+> - $\sum_j$ — the sum across the whole row: every position the mask allows, not just the one
+>   being weighted.
+> - $e^{x}$ — the exponential of $x$, the function this section exists to build without a unit.
+>
+> **What it means.** The two right-hand forms differ by a factor $e^{m}$ that cancels, so on a
+> calculator the subtraction shows no gain at all. The gain is in the interval, not the answer.
+> Every term of the reduced numerator and denominator now lies in $[0,1]$, so the largest value
+> either one can hold is exactly $1$: a fixed-point encoding whose range tops out there holds
+> both without a second thought. The unreduced form, exponentiating $z$ directly, cannot say
+> what its largest value will be before it has been computed -- and a hardware designer has to
+> size a register before runtime, not after.
+>
+> **What it costs.** The price is order. $m$ exists only after the last score of the row exists,
+> so the row must be held in a buffer and a reduction must finish before the first exponential
+> begins -- an adder-free tree of pairwise compares, which halves the list at every step. That
+> is a stall paid in storage and in serial depth: a row of $n$ scores needs $n$ registers or a
+> tile, and $\log_2 n$ levels of compare before any output can start. The blocking point is
+> drawn in [Figure 7](#fig-nonlinearity-approx), and both variants there pay it.
+>
+> **What it does not say.** It does not say the row fits. The buffer this identity requires is
+> as wide as the mask allows the row to grow, and chapter 9 is where that width is counted.
+> And the $[0,1]$ bound is a statement about the interval, not about precision: how many bits
+> below the binary point survive the shift into that interval is a word-width decision this
+> formula does not make for anyone.
 
-$\mathbf{z}$ is one row of attention scores -- one value per position the query may look at --
-$m$ is the largest of them, $i$ and $j$ index positions inside the row, and the sum in the
-denominator runs across the whole row. The two right-hand forms differ by a factor $e^{m}$
-that cancels, so a calculator shows no gain at all. The gain is in the interval, not the
-answer. Every term of the right-hand numerator and denominator now lies in $[0,1]$, so the
-largest value either one can hold is $1$: a fixed-point encoding whose range tops out at
-exactly that holds both without a second thought. The unreduced form, exponentiating $z$
-directly, cannot say what its largest value will be before it has been computed.
-
-The price is order. $m$ exists only after the last score of the row exists, so the row must
-be held in a buffer and a reduction must finish before the first exponential begins -- an
-adder-free tree of pairwise compares, which halves the list at every step. The blocking point
-is drawn in [Figure 7](#fig-nonlinearity-approx), and both variants there pay it.
-
-**Base 2 moves the cost from a unit to a multiply, a table and a shift.** The step down from
-the unreduced to the reduced softmax is not one an exponentiation unit makes.
-
-$$e^{x} = 2^{\,x\log_2 e} = 2^{k}\,\cdot\,2^{f}, \qquad k = \lfloor\, x\log_2 e \rfloor, \qquad f = x\log_2 e - k$$
-
-$x$ is an already-reduced score, a non-positive fixed-point number. The factor
-$\log_2 e$ is one constant multiply, performed in the fixed-point form `V-06-02` describes
-below. $k$ is an integer and $f$ is its fraction, in $[0,1)$. Two things follow: $2^{k}$ is a
-shift by $k$ places, and $2^{f}$ is not a function evaluation but a read, because $f$ has few
-significant bits and every one of them indexes a table written once at compile time.
+> **The formula.** $e^{x} = 2^{\,x\log_2 e} = 2^{k}\cdot 2^{f}$, with $k = \lfloor x\log_2 e \rfloor$ and $f = x\log_2 e - k$
+>
+> **The variables.**
+> - $x$ — one already-reduced score, the $z_i - m$ of the card above. A non-positive
+>   fixed-point number, so $x \le 0$ always, and $e^x$ lands in $(0,1]$.
+> - $\log_2 e$ — the constant $1.4426950408889634$, the change of base from $e$ to $2$. A pure
+>   number, and in a design it is a literal: a fixed-point approximation of it, one multiply by
+>   a value chosen at compile time.
+> - $x \log_2 e$ — the same exponent rewritten in base 2. Fixed-point, non-positive.
+> - $k$ — the integer part of that quantity, $\lfloor x\log_2 e \rfloor$: the floor, so the
+>   greatest integer not exceeding it. A signed integer count of doublings.
+> - $f$ — what the floor threw away, $x\log_2 e - k$. A fraction in $[0,1)$, and by
+>   construction it has fewer significant bits than $x$ did.
+> - $2^k$ — the integer-power term. $2^f$ — the fractional-power term, in $[1,2)$.
+>
+> **What it means.** Writing an exponent in base 2 is not a stylistic choice; it is the choice
+> that makes the integer part *be a bit position*. A fixed-point number is a bit pattern read as
+> $\text{integer}.\text{fraction}$, so taking its floor separates the two halves by cutting the
+> pattern at the binary point, and $2^k$ then means "place the value $k$ positions to the left or
+> right of where it is". That is what a barrel shifter is: a network of multiplexers that moves
+> bits by a variable amount and performs no arithmetic at all. The fraction cannot be handled
+> that way, because $2^{0.5}$ is not a bit position -- it is $\sqrt{2}$ -- so it goes to a table
+> instead, and the table is affordable only because $f$ has few significant bits left after the
+> floor took the rest. Each of those bits indexes one stored entry, written once at compile time
+> and never computed. The exponential therefore survives as one constant multiply, one read and
+> one shift, and the transcendental part of it lives in a memory somebody filled in at build time
+> rather than in a circuit that evaluates anything at run time.
+>
+> **What it costs.** A constant multiply for $\log_2 e$ -- one DSP slice, or wiring and no slice
+> at all if the literal is chosen as a sum of powers of two. A read-only memory of $2^b$ entries
+> where $b$ is the number of fraction bits kept, so the table's size is exponential in the very
+> precision it buys, and that trade is the whole design decision. One variable shift, which is a
+> shifter and not a multiplier. Whether a given $b$ fits a tile is arithmetic on the tile the
+> device register names and on the entry width this book does not choose, so no fit is claimed
+> here.
+>
+> **What it does not say.** It does not say the result is $e^x$. It says the result is what a
+> fixed-point $\log_2 e$ and a $b$-bit table return, and the error against the true exponential
+> is the sum of three approximations this formula deliberately hides: the literal, the truncation
+> of $f$, and the table's own entries. No record in this repository registers that error for any
+> candidate, so this book prints none -- and a designer who reads this card as exact arithmetic
+> has just made the mistake the card exists to prevent.
 
 A reciprocal square root is the same trick with one snag:
 
-$$\frac{1}{\sqrt{y}} = 2^{-k/2}\,\cdot\,\frac{1}{\sqrt{f}}, \qquad y = 2^{k}f$$
-
-$y$ is a LayerNorm variance plus the small constant added to keep its square root away from
-zero. A halved integer exponent is a shift, and the fraction again goes to a table. The snag
-is that $k$ need not be even: an odd $k$ leaves a factor $\sqrt{2}$ behind, and a plain shift
-drops it silently. The cheapest fix is an odd flag taken from the lowest bit of $k$ that
-selects a correction entry from the same table; a second table needs no flag at all. The
-softmax denominator reaches its reciprocal the same way.
+> **The formula.** $\dfrac{1}{\sqrt{y}} = 2^{-k/2}\cdot\dfrac{1}{\sqrt{f}}$, where $y = 2^{k}f$
+>
+> **The variables.**
+> - $y$ — a LayerNorm variance plus the small constant added to keep its square root away from
+>   zero. A squared quantity in the units of the normalised channel values, and strictly positive
+>   because of that added constant.
+> - $k$ — the exponent of $y$ when $y$ is written in base 2: the position of its leading bit
+>   relative to the binary point. A signed integer count of doublings.
+> - $f$ — the significand, the part of $y$ left after the exponent is taken out, so $f$ is in
+>   $[1,2)$. A fixed-point fraction, not the same $f$ as the exponential card above: there the
+>   remainder sat below the point, here it sits above it.
+> - $2^{-k/2}$ — the exponent half, which is the $\sqrt{\;}$ and the reciprocal both, applied to
+>   the power-of-two part. A shift.
+> - $1/\sqrt{f}$ — the significand half, which cannot be a shift because $f$ is not an integer.
+>   A table read.
+>
+> **What it means.** A square root divides exponents by two and a reciprocal negates them, so
+> taking $1/\sqrt{\;}$ of a base-2 number multiplies its exponent by $-1/2$ and leaves the
+> significand to be handled separately. The exponent half is wiring. The significand half is a
+> function of a value confined to $[1,2)$, which is exactly the interval a table covers cheaply:
+> few input bits, one stored output per combination of them.
+>
+> **What it costs.** One leading-one detector to find $k$, a shift by $-k/2$, and a read-only
+> memory indexed by the bits of $f$. No divider and no square-root unit, which is the point of
+> the identity: a divider would be iterative, would take a variable number of cycles, and would
+> have to be pipelined or hand-held. The softmax denominator reaches its reciprocal the same way.
+>
+> **What it does not say.** It does not say the shift is clean, and this is the snag the identity
+> hides. A halved integer exponent is a shift only when $k$ is even. An odd $k$ leaves a factor
+> $\sqrt{2}$ behind, and a plain shift drops it silently: the output comes back wrong by that
+> factor and nothing in the datapath reports it, because nothing downstream knows which parity
+> the shift assumed. The cheapest fix is an odd flag taken from
+> the lowest bit of $k$ that selects a correction entry from the same table; a second table needs
+> no flag at all. And the formula does not say what happens at $y = 0$, which is why the constant
+> added to the variance is load-bearing rather than tidy: without it, $k$ is undefined for the
+> degenerate case and the shift has no value to move.
 
 [Figure 7](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
 spends: the left one keeps a general exponentiation unit and a divider, and the right one
