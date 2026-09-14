@@ -116,7 +116,8 @@
     "V-02-12",
     "V-02-16",
     "V-02-21",
-    "V-02-35"
+    "V-02-35",
+    "V-02-42"
    ],
    "section_cites": [
     "V-05-10",
@@ -296,7 +297,12 @@
     "V-04-08",
     "V-04-11"
    ],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -310,16 +316,12 @@
     "V-05-08",
     "V-06-01"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "2.056",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -335,19 +337,12 @@
     "V-03-05",
     "V-05-04"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "6",
-   "class": "registered-not-cited-here",
-   "registered_by": [
-    "V-05-01",
-    "V-06-02"
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
    ],
-   "section_cites": [],
    "in_table_row": false
   },
   {
@@ -359,7 +354,12 @@
     "V-02-11",
     "V-02-19"
    ],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -368,7 +368,12 @@
    "number": "31.25",
    "class": "unregistered",
    "registered_by": [],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -380,37 +385,12 @@
     "V-02-38",
     "V-05-35"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "82",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "100",
-   "class": "registered-not-cited-here",
-   "registered_by": [
-    "V-02-30",
-    "V-02-36"
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "112",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [],
    "in_table_row": false
   },
   {
@@ -425,16 +405,12 @@
     "V-01-22",
     "V-05-04"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "257",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -443,32 +419,12 @@
    "number": "400",
    "class": "unregistered",
    "registered_by": [],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "512",
-   "class": "registered-not-cited-here",
-   "registered_by": [
-    "V-02-01",
-    "V-04-10",
-    "V-04-11",
-    "V-05-18",
-    "V-05-23",
-    "V-05-38"
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
    ],
-   "section_cites": [],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.3",
-   "number": "8,000",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [],
    "in_table_row": false
   },
   {
@@ -477,7 +433,12 @@
    "number": "16,000",
    "class": "unregistered",
    "registered_by": [],
-   "section_cites": [],
+   "section_cites": [
+    "V-01-09",
+    "V-02-09",
+    "V-05-10",
+    "V-05-11"
+   ],
    "in_table_row": false
   },
   {
@@ -768,7 +729,8 @@
     "V-02-12",
     "V-02-16",
     "V-02-21",
-    "V-02-35"
+    "V-02-35",
+    "V-02-42"
    ],
    "section_cites": [
     "V-01-03",
