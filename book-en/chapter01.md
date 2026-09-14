@@ -12,6 +12,119 @@
 
 ---
 
+## The whole machine, before any of its parts
+
+Every section that follows makes one argument: a streaming voice system is not a slow vision
+system, it is a different measurement problem. That argument is easier to follow with the machine
+already in view, so the view comes first. [Figure 2](#fig-ch1-pipeline-contract) is the version this
+book keeps returning to. Its stages carry the same names, in the same order, as the preface's map,
+and each box is labelled with the chapters that work inside it.
+
+Those labels are printed rather than described on purpose. The book's chapter order is a building
+order, not a viewing order: chapter 4 is about the fabric but chapter 4 comes after the front-end
+chapters because a reader needs a frame before a place to put it. A reader who loses the thread
+anywhere in the volume can therefore ask one question to get back, and the answer is under a box:
+**which stage is this?**
+
+::: {#fig-ch1-pipeline-contract .figure}
+```tikz
+% One frame's whole route, drawn as a set of contracts: what crosses each boundary, what state has
+% to survive between frames, and where the deadline bites. Stage names match the preface verbatim,
+% and so do the chapter labels under the boxes, so the two figures cannot drift apart.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  stg/.style={draw, align=center, inner sep=3pt, minimum width=1.75cm, minimum height=9mm},
+  mob/.style={stg, fill=black!7},
+  art/.style={text=black!62, align=center, inner sep=0pt, text width=1.85cm, font=\tiny},
+  own/.style={text=black!55, align=center, inner sep=0pt, text width=1.9cm, font=\tiny},
+  mem/.style={draw, densely dashed, rounded corners=1.5pt, align=center, inner sep=3pt,
+              text width=4.2cm, minimum height=6.5mm, text=black!75},
+  arr/.style={-{Stealth[length=1.8mm]}, semithick},
+  par/.style={-{Stealth[length=1.4mm]}, black!55, thin, densely dashed}]
+\node[stg] (s1) at (0,0) {Air and\\ microphone};
+\node[stg] (s2) at (2.15,0) {Sample\\ stream};
+\node[stg] (s3) at (4.3,0) {DSP\\ front end};
+\node[mob] (s4) at (6.45,0) {Model};
+\node[mob] (s5) at (8.6,0) {Fabric\\ logic};
+\node[mob] (s6) at (10.75,0) {Output\\ and latency};
+\draw[arr] (s1) -- node[art, midway, above=1.2mm] {samples} (s2);
+\draw[arr] (s2) -- node[art, midway, above=1.2mm] {a frame, then a hop} (s3);
+\draw[arr] (s3) -- node[art, midway, above=1.2mm] {a fixed feature vector} (s4);
+\draw[arr] (s4) -- node[art, midway, above=1.2mm] {activations} (s5);
+\draw[arr] (s5) -- node[art, midway, above=1.2mm] {a decision} (s6);
+\node[own, anchor=north] at ($(s1.south)+(0,-1.3mm)$) {ch. 6\\ ch. 8};
+\node[own, anchor=north] at ($(s2.south)+(0,-1.3mm)$) {ch. 4\\ ch. 8};
+\node[own, anchor=north] at ($(s3.south)+(0,-1.3mm)$) {ch. 1\\ ch. 6};
+\node[own, anchor=north] at ($(s4.south)+(0,-1.3mm)$) {App. A\\ ch. 7\\ ch. 9};
+\node[own, anchor=north] at ($(s5.south)+(0,-1.3mm)$) {ch. 4, 5\\ ch. 8};
+\node[own, anchor=north] at ($(s6.south)+(0,-1.3mm)$) {ch. 2, 3\\ ch. 10};
+\node[mem] (m1) at ($(s2.south)!0.5!(s3.south)+(0,-1.5cm)$)
+  {the sliding sample window\\ held between frames, moved by a hop};
+\node[mem] (m2) at ($(s4.south)!0.5!(s5.south)+(0,-1.5cm)$)
+  {the left context the model still needs\\ keys and values, block by block};
+\draw[par] (m1.north) -- ($(s2.south)!0.5!(s3.south)$);
+\draw[par] (m2.north) -- ($(s4.south)!0.5!(s5.south)$);
+\coordinate (dl) at ($(s3.north west)+(0,-3.2cm)$);
+\coordinate (dr) at ($(s6.north east)+(0,-3.2cm)$);
+\draw[black!55, thin] (dl) -- ++(0,-2.5mm) (dr) -- ++(0,-2.5mm)
+  ($(dl)+(0,-2.5mm)$) -- ($(dr)+(0,-2.5mm)$);
+\node[art, text width=6.6cm] at ($(dl)!0.5!(dr)+(0,-5.2mm)$)
+  {one frame period: the same deadline, at every stage, on both boards};
+\end{tikzpicture}
+```
+The two dashed boxes are the difference between this machine and the one a photograph comes from.
+A picture arrives complete and needs no memory of the last one; a frame arrives into a window that
+has to be kept, and a model that reads history has to keep that too, block after block, for as long
+as the board is powered. Carrying state between frames, and not the size of the arithmetic, is what
+separates the two designs -- which is why the sliding window of section 1.2 and the ring buffer of
+chapter 9 are one idea seen at two depths in the same chain.
+:::
+
+**What crosses each boundary.** Each stage hands the next one an object of a fixed shape, and a
+fixed shape is what makes a stage replaceable. That is the whole reason a move like the one in this
+book can be made one stage at a time instead of all at once.
+
+- **Air to samples.** A microphone and its encoder turn pressure into numbers at a steady rate. The
+  frontend used throughout this book works at the rate the corpora it trains against are stored at,
+  which is a documented match rather than a tuned optimum, and section 1.2 keeps the records.
+- **Samples to a frame.** Numbers arrive one at a time and analysis needs them in groups, so the
+  stream is cut into overlapping frames. The frame and the step between frames are the first two
+  deadlines any design inherits.
+- **A frame to features.** Frequencies, then a perceptual scale, then a logarithm. The front end's
+  job is to reduce a frame to a fixed-length list, and every choice in section 1.3 is about how much
+  of that reduction to do, and when.
+- **Features to scores.** A trained network reads the list and returns one number per thing it
+  recognises. This stage is arithmetic to this book and nothing more, which is what Appendix A is
+  for, and what chapter 7 is about when it decides how narrow that arithmetic may be.
+- **Scores to a decision.** A winner is chosen and reported. The question stops being what the
+  network computed and becomes how long after the sound the answer arrived.
+
+**What each stage owes the clock.** The chapters are in the diagram; what belongs in prose is what
+each stage has to promise about time, because that promise, and not accuracy, is what this book
+sizes a design against.
+
+- **Air and microphone** owes bits at the rate its encoder claims, forever, with no gap that has to
+  be explained later. chapter 8 starts on a board that cannot promise this.
+- **Sample stream** owes a frame that is complete by its own deadline, with no copy along the way
+  that can block. chapter 4 is where a blocking copy stops being invisible.
+- **DSP front end** owes a finished feature vector inside one frame period, because a front end that
+  runs long does not delay one frame, it delays every frame after it. chapter 1 does this arithmetic
+  and chapter 6 wires it.
+- **Model** owes a fixed count of reads and multiplies per frame, so that the stages after it can be
+  sized rather than guessed at. Appendix A counts them and chapter 7 decides their width.
+- **Fabric logic** owes a clock period that closes, and a design that finishes one frame per frame
+  at that period. chapter 4, chapter 5 and chapter 8 are about what that costs in cells.
+- **Output and latency** owes a measurement taken from the microphone rather than from the last
+  function call, because the two differ by everything upstream. chapter 2, chapter 3 and chapter 10
+  are about not reporting the shorter one.
+
+> **Traceability note.** This section prints one quantity, and that quantity is inherited rather
+> than chosen: the frontend works at 16 kHz because `V-05-11` registers the Speech Commands corpus's
+> storage rate as 16 kHz, and `V-05-10` registers LibriSpeech's as 16 kHz as well. Both records
+> describe how training audio is stored. Neither measures a frontend, and neither says 16 kHz is the
+> right bandwidth for keyword spotting, so this book cites the match as a constraint the data
+> imposes and not as a result anybody reached.
+
 ## 1.1 Intuition: Fundamental Divergence Between Computer Vision and Voice AI
 
 A photograph is a finished object. A sound is a process that has not finished yet.

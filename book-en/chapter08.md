@@ -30,7 +30,7 @@
 
 > **A passing number is speaker-independent, or it is nothing.** `V-05-08` records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy of `V-05-02` into a claim about unfamiliar voices. `V-05-07` registers the licence as Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
 
-[Figure 3](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
+[Figure 5](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
 
 ::: {#fig-kws-signal-path .figure}
 ```tikz
@@ -106,7 +106,7 @@ the traffic and the containers, and it assumes the derivation has been read.
 
 **Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other.
 
-**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 4](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
+**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 6](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
 
 ::: {#fig-depthwise-line-buffer .figure}
 ```tikz
@@ -214,7 +214,7 @@ directly, cannot say what its largest value will be before it has been computed.
 The price is order. $m$ exists only after the last score of the row exists, so the row must
 be held in a buffer and a reduction must finish before the first exponential begins -- an
 adder-free tree of pairwise compares, which halves the list at every step. The blocking point
-is drawn in Figure 5, and both variants there pay it.
+is drawn in [Figure 7](#fig-nonlinearity-approx), and both variants there pay it.
 
 **Base 2 moves the cost from a unit to a multiply, a table and a shift.** The step down from
 the unreduced to the reduced softmax is not one an exponentiation unit makes.
@@ -238,7 +238,7 @@ drops it silently. The cheapest fix is an odd flag taken from the lowest bit of 
 selects a correction entry from the same table; a second table needs no flag at all. The
 softmax denominator reaches its reciprocal the same way.
 
-[Figure 5](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
+[Figure 7](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
 spends: the left one keeps a general exponentiation unit and a divider, and the right one
 replaces them with a constant multiply, a small read-only memory and three shifts. The dashed
 bar in the middle of each path is the reduction that blocks the row.
