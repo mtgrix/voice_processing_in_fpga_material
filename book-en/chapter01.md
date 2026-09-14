@@ -118,12 +118,21 @@ sizes a design against.
   function call, because the two differ by everything upstream. chapter 2, chapter 3 and chapter 10
   are about not reporting the shorter one.
 
-> **Traceability note.** This section prints one quantity, and that quantity is inherited rather
-> than chosen: the frontend works at 16 kHz because `V-05-11` registers the Speech Commands corpus's
-> storage rate as 16 kHz, and `V-05-10` registers LibriSpeech's as 16 kHz as well. Both records
+> **One inherited quantity.** This section prints a single rate, and it is inherited rather than
+> chosen: the frontend works at 16 kHz because that is the storage rate both training corpora
+> register -- the Speech Commands paper for one, the LibriSpeech distribution page for the other. Both
 > describe how training audio is stored. Neither measures a frontend, and neither says 16 kHz is the
-> right bandwidth for keyword spotting, so this book cites the match as a constraint the data
-> imposes and not as a result anybody reached.
+> right bandwidth for keyword spotting, so this book cites the match as a constraint the data imposes
+> and not as a result anybody reached.
+
+
+**Traceability.** The records behind this section's one rate.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-11` | the Speech Commands storage rate, 16 kHz |
+| `V-05-10` | the LibriSpeech storage rate, 16 kHz |
+
 
 ## 1.1 Intuition: Fundamental Divergence Between Computer Vision and Voice AI
 
@@ -469,11 +478,11 @@ registered as `xczu5ev` / `XCK26`:
 | `V-01-09` | 1,248 DSP48E2 slices (the multiply-accumulate block of this chip family) |
 | `V-01-11`, `V-01-22` | 23,616 Kb of combined BRAM and URAM |
 
-Two of those are worth a note on how to read a datasheet. `V-01-06` prints "5.1 Mb", which is
-the datasheet's rounding of $144 \times 36 = 5{,}184$ kilobit. And `V-01-11` carries status
-`conflict`: 23,616 Kb is what multiplying the two block counts by their sizes gives, while the
-project's own plan document says "4 MB" and a research note says about 4.5 MB. `V-01-22`
-unrolls the whole chain -- 23,616 Kb = 2,952 KiB = 3,022,848 bytes = 2.8828 MiB = 3.02 MB in
+Two of those rows are worth a note on how to read a datasheet. The BRAM total is printed as
+"5.1 Mb", which is the datasheet's rounding of $144 \times 36 = 5{,}184$ kilobit. The combined
+capacity carries a `conflict` flag: 23,616 Kb is what multiplying the two block counts by their sizes
+gives, while the project's own plan document says "4 MB" and a research note says about 4.5 MB. The
+record that unrolls the whole chain -- 23,616 Kb = 2,952 KiB = 3,022,848 bytes = 2.8828 MiB = 3.02 MB in
 decimal units -- so the disagreement is partly a units disagreement, which is exactly the kind
 of thing a table of capacities hides. All readings stay in the record; none was averaged.
 
@@ -493,10 +502,10 @@ is the first thing a synthesis report will correct.
 
 ### The arithmetic is not where the argument is
 
-The Mel stage costs 20,560 MAC per frame, hence 2.056 million per second (`V-01-09` gives
-1,248 multiply-accumulate slices, so spread across all of them the stage would ask each slice
-for 1,647 MAC per second). On the Jetson side, record `V-02-09` prints 67 sparse INT8
-(8-bit integer) TOPS for an Orin Nano Super at up to 25 W (`V-02-11`), and `V-02-31` states
+The Mel stage costs 20,560 MAC per frame, hence 2.056 million per second (the fabric's 1,248
+multiply-accumulate slices, so spread across all of them the stage would ask each slice for 1,647 MAC
+per second). On the Jetson side, the registered rating is 67 sparse INT8 (8-bit integer) TOPS for an
+Orin Nano Super at up to the 25 W ceiling its power-mode record lists, and the sparsity record states
 that structured sparsity doubles throughput. Dividing the first by the second gives roughly 33
 dense INT8 TOPS, which is arithmetic in this book and is carried by no record. Against that,
 the frontend's rate is about sixteen million times smaller.
@@ -509,6 +518,17 @@ ways is a deadline that gets missed. Dedicated logic removes the sharing: the fr
 on time because it has its own wiring. Whether that argument survives contact with a real
 design is exactly the kind of question this book cannot answer without a board, so it is left
 open rather than closed with an estimate.
+
+
+**Traceability.** The Jetson records the division above spends. The 33 dense TOPS is arithmetic in
+this book, not a rating any record carries; the rows below are only its operands.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-02-09` | an Orin Nano Super rated 67 sparse INT8 (8-bit integer) TOPS |
+| `V-02-11` | its power modes, up to the 25 W ceiling the rating assumes |
+| `V-02-31` | structured sparsity doubles throughput -- the factor the division uses |
+
 
 ### What the experiment measured, and what its number really says
 
