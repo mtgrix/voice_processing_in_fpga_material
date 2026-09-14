@@ -22,6 +22,18 @@
 % compatibility surface to get wrong. scripts/filters/tikz_figures.lua turns a
 % ```tikz fence into the picture environment. Issue #36.
 \usepackage{tikz}
+% Three libraries, each because a chapter needs a construction the kernel lacks.
+% arrows.meta for Stealth tip sizes, which a signal-path diagram uses to tell a
+% 640-byte audio frame from a 320-byte Mel frame at one boundary; positioning so a
+% block diagram says right=of and inherits its geometry from the diagram instead of
+% from arithmetic the author has to re-do after every edit; calc for the $( ) coordinate
+% arithmetic that the signal-path diagram uses to place a rate label under a box and to put a
+% band's title at the midpoint of its own edge -- both of which are offsets from another node's
+% anchor, which TikZ cannot express without it. None of them ships separately: all three are part
+% of the same pgf distribution as tikz itself, so the concern that keeps pgfplots out -- a
+% compatibility surface a reader on another distribution must get right -- does not
+% reach this line. Issue #53.
+\usetikzlibrary{arrows.meta,positioning,calc}
 
 \usepackage{amssymb}
 \usepackage{pifont}
