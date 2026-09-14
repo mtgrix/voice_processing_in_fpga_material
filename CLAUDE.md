@@ -76,6 +76,7 @@ python scripts/verification/audit_claims.py   # docs/verification evidence check
 python scripts/verification/render_claims.py --check  # markdown matches claims.json
 python scripts/verification/build_source_index.py --check  # registry matches its spec
 python scripts/verification/build_bibliography.py --check  # .bib matches the registry
+python scripts/verification/scan_numbers.py --check  # every printed number traces to a claim its section cites
 ```
 
 Never report unverified results.

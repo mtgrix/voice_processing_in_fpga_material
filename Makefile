@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib gate book book-check book-clean clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers gate book book-check book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -17,6 +17,8 @@ help:
 	@echo "  make render-registry   - Regenerate the source registry from its spec and claims.json"
 	@echo "  make check-bib         - Fail if book/references.bib drifts from the registry"
 	@echo "  make render-bib        - Regenerate the bibliography from the registry"
+	@echo "  make check-numbers     - Fail on a number no cited claim supports (see number_baseline.json)"
+	@echo "  make render-numbers    - Re-record the accepted numbers that lack a citation"
 	@echo "  make gate              - Run every check CI runs, in CI's order"
 	@echo "  make clean             - Clean temporary cache files"
 	@echo "  make book              - Build both monograph PDFs into dist/ (needs Pandoc and LuaLaTeX)"
@@ -71,7 +73,17 @@ check-bib:
 render-bib:
 	$(PYTHON) scripts/verification/build_bibliography.py --write
 
-gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib
+# Every quantity the manuscript prints has to be reachable from a claim the same section cites.
+# Today's gaps are recorded in docs/verification/number_baseline.json, so this fails on a NEW unsourced
+# number instead of on the pile already in the book: the debt is named and counted, not excused. Use
+# --strict when finishing a chapter, which ignores the baseline. Issue #59.
+check-numbers:
+	$(PYTHON) scripts/verification/scan_numbers.py --check
+
+render-numbers:
+	$(PYTHON) scripts/verification/scan_numbers.py --write-baseline
+
+gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers
 
 # The book targets are deliberately NOT part of gate, so CI does not run them: the
 # checks job installs Python only, and a TeX distribution costs hundreds of megabytes
