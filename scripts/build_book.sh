@@ -59,6 +59,11 @@ MANIFEST="$SHARED_DIR/book-manifest.yaml"
 # Pandoc writes the TeX and LuaLaTeX writes the PDF, and both talk on stderr. A
 # glyph the chosen fonts do not contain is reported only there, and the PDF still
 # comes out, so the log is kept for check 10 of scripts/verify_book_pdf.sh.
+# Both pandoc passes append to it, and it is truncated once at the start of each build. It used to
+# be opened with the null command, : "$LOG_FILE", which creates nothing and truncates nothing, so
+# the file accumulated every build ever run: a stale Dimension too large from a chapter 3 build read
+# as a failure of the chapter 9 build then under test. Note that pandoc forwards the engine's output
+# only when the engine fails, so a short log is not the same as a clean build.
 LOG_FILE="$DIST/build.log"
 
 
@@ -78,6 +83,10 @@ if [ "$(basename "$BOOK_DIR")" = "book-en" ]; then OUT_PREFIX="$OUT_NAME"; else 
 # A single chapter gets its own file name, so a chapter build can never overwrite the
 # whole-book build sitting in dist/ from an earlier run.
 [ -n "$CHAPTER" ] && OUT_PREFIX="$OUT_PREFIX-chapter$CHAPTER"
+# The log follows the same rule as the PDF name. Check 10 of scripts/verify_book_pdf.sh reads it to
+# prove the fonts held up, and a single shared path would let it prove that about whichever build
+# happened to run last rather than about the document under test. Issue #54.
+if [ -n "$CHAPTER" ]; then LOG_FILE="$DIST/build-chapter$CHAPTER.log"; fi
 
 # Read the ordered source list. Missing files are fatal: a silently skipped
 # chapter would produce a thinner PDF and still exit 0.
@@ -127,7 +136,7 @@ COMMON_ARGS=(
 
 # Run from build/ so relative figure paths resolve against $BUILD.
 echo "build_book: rendering print PDF"
-: "$LOG_FILE"   # start each build with an empty log, then append both passes
+: > "$LOG_FILE"   # start each build with an empty log, then append both passes
 ( cd "$BUILD" && pandoc "${SOURCES[@]/#/$BOOK_DIR/}" \
     "${COMMON_ARGS[@]}" \
     --syntax-highlighting=none \
