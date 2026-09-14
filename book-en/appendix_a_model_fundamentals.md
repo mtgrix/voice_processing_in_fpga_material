@@ -134,6 +134,80 @@ representation than the last.
 | fourth | the other half of the feed-forward | across the width | the same factor `V-05-36` |
 | fifth | one normalisation over the sum | neither; it rescales | `conv_norm_type` names a type, not a size `V-05-26` |
 
+[Figure 14](#fig-appendix-block-reading) is that same block drawn for the direction each stage mixes,
+and for the storage a residual quietly asks for.
+
+::: {#fig-appendix-block-reading .figure}
+```tikz
+% The same block chapter 9 draws from the config side, read instead for what each stage
+% MIXES. Box shape is the encoding: a NARROW box works within one step, across its width;
+% a WIDE box reaches along time. Residuals are drawn as stored copies, because an add has
+% to hold the pre-stage value until the stage's output is ready.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  flow/.style={-{Stealth[length=2mm]}, semithick},
+  res/.style={-{Stealth[length=2mm]}, semithick, densely dashed},
+  addn/.style={draw, circle, inner sep=2.6pt},
+  keep/.style={draw, dashed, rounded corners=1pt, inner sep=2pt, font=\scriptsize},
+  narrow/.style={draw, rounded corners=1pt, align=center, inner sep=4pt,
+                 text width=3.0cm, minimum height=1.15cm},
+  wide/.style={draw, rounded corners=1pt, align=center, inner sep=4pt,
+               text width=8.2cm, minimum height=0.85cm},
+  mid/.style={draw, rounded corners=1pt, align=center, inner sep=4pt,
+              text width=5.6cm, minimum height=0.8cm},
+  t/.style={align=center}
+]
+\node[t] (in) at (0,0) {one encoder step in\\[1pt] {\itshape a row of $d_\text{model}$ numbers}};
+\node[narrow] (ff1) at (0,-1.35) {feed-forward, half one\\[1pt] {\itshape mixes across the width}};
+\node[addn] (a1) at (0,-2.5) {$+$};
+\node[wide] (att) at (0,-3.8) {multi-head attention\\[1pt] {\itshape mixes along time, at any allowed distance}};
+\node[addn] (a2) at (0,-4.9) {$+$};
+\node[wide] (conv) at (0,-6.2) {depthwise convolution\\[1pt] {\itshape mixes along time, at a fixed short reach}};
+\node[addn] (a3) at (0,-7.3) {$+$};
+\node[narrow] (ff2) at (0,-8.55) {feed-forward, half two\\[1pt] {\itshape mixes across the width}};
+\node[addn] (a4) at (0,-9.7) {$+$};
+\node[mid] (norm) at (0,-10.9) {one normalisation over the sum\\[1pt] {\itshape rescales; mixes neither}};
+\node[t] (out) at (0,-12.1) {to the next block};
+
+\draw[flow] (in) -- (ff1);
+\draw[flow] (ff1) -- (a1);
+\draw[flow] (a1) -- (att);
+\draw[flow] (att) -- (a2);
+\draw[flow] (a2) -- (conv);
+\draw[flow] (conv) -- (a3);
+\draw[flow] (a3) -- (ff2);
+\draw[flow] (ff2) -- (a4);
+\draw[flow] (a4) -- (norm);
+\draw[flow] (norm) -- (out);
+
+% Residuals on the right, each one a stored copy held across a single stage.
+\node[keep, anchor=west] (k1) at (4.9,-1.35) {keep};
+\node[keep, anchor=west] (k2) at (4.9,-3.8) {keep};
+\node[keep, anchor=west] (k3) at (4.9,-6.2) {keep};
+\node[keep, anchor=west] (k4) at (4.9,-8.55) {keep};
+\draw[res] (in.east)  -- (k1.west);  \draw[res] (k1.east) to[bend left=8] (a1.east);
+\draw[res] (a1.east)  -- (k2.west);  \draw[res] (k2.east) to[bend left=8] (a2.east);
+\draw[res] (a2.east)  -- (k3.west);  \draw[res] (k3.east) to[bend left=8] (a3.east);
+\draw[res] (a3.east)  -- (k4.west);  \draw[res] (k4.east) to[bend left=8] (a4.east);
+\node[anchor=west, align=left, text width=20mm] at (6.0,-5.0) {a dashed \textbf{keep} is a value the block must still hold when the stage's output is ready};
+
+% Direction legend, bottom left.
+\node[anchor=north west, align=left, text width=76mm] at (-6.3,-12.7)
+  {\textbf{Narrow box} $=$ one step, mixed across its own width. \textbf{Wide box} $=$
+   one step, reaching along the row of steps. The two feed-forward halves are narrow
+   because a step learns from its own numbers; attention and convolution are wide because
+   a step learns from other steps. This is the block read for what it mixes; chapter 9
+   draws the same block for what sizes it.};
+\end{tikzpicture}
+```
+A stage can mix in two directions only: along time, or across the width. The block spends two stages on
+each and one on neither, and the shape of every box here says which. The dashed keep-boxes are the point
+a config reading misses: a residual is not free, because the value it adds back has to survive the stage
+it jumped over, so four jumps per block are four claims on on-chip storage before a single weight is
+counted.
+:::
+
+
 The two feed-forward halves are each narrower than a full one so that the pair costs what one full
 network costs: the width of a single half is the hidden width times an expansion factor of 4
 (`V-05-36`), and the other framework states its half-width as an absolute instead of as a ratio, 2048
@@ -201,7 +275,7 @@ heads, and each head keeps its own $d_{\text{head}}$ units of each vector. Then,
 > - $\sqrt{d_{\text{head}}}$ — the square root of that count, used as a fixed divisor. A pure number.
 > - $i$ — the step being read; $t$ — the step doing the reading. Counts of steps.
 > - "the mask allows" — the subset of steps $i$ this step is permitted to look at, decided by
->   position rather than by content, and drawn in [Figure 14](#fig-appendix-attention).
+>   position rather than by content, and drawn in [Figure 17](#fig-appendix-attention).
 >
 > **What it means.** A score is a similarity test with no threshold attached: multiply matching
 > entries and add, and a large sum means the query and the key point the same way. The divisor is
@@ -261,6 +335,71 @@ heads, and each head keeps its own $d_{\text{head}}$ units of each vector. Then,
 > a guarantee of interpretability: $\alpha_{t,i}$ being large says the dot product was large, which
 > is a statement about vectors this stage computed, not about which words "matter" to a human.
 
+[Figure 15](#fig-appendix-softmax-shares) draws that same row three times, so the two jobs the exponential does and the normalising divide are visible as a change of shape rather than as a sentence.
+
+::: {#fig-appendix-softmax-shares .figure}
+```tikz
+\begin{tikzpicture}[
+  font=\scriptsize,
+  ax/.style={-{Stealth[length=1.6mm]}, line width=0.28pt},
+  dn/.style={fill=black!12, draw=black!45, line width=0.3pt},
+  up/.style={fill=black!32, draw=black!55, line width=0.3pt},
+  sh/.style={draw=black!55, line width=0.3pt},
+  ttl/.style={font=\scriptsize, anchor=north},
+  note/.style={font=\scriptsize, align=center, text width=34mm, anchor=north}
+]
+% One row of four scores, drawn three times. The four illustrative values are
+% (-2, -0.5, 0.5, 2): symmetric about zero, so the reader sees the sign die under
+% exp and one value run away. Heights are scaled by hand, not computed.
+% --- Panel 1: raw scores, a zero line, two bars below it ---
+\begin{scope}[xshift=0cm]
+  \draw[ax] (0,0) -- (3.4,0);
+  \draw[ax] (1.7,-1.5) -- (1.7,1.9);
+  \node[ttl] at (1.7,2.15) {raw scores};
+  \node[note] at (1.7,-1.75) {$z$ can be negative, and any size. Nothing here\\ sums to anything useful.};
+  \draw[black!40, densely dotted] (0,0) -- (3.4,0);
+  \draw[dn] (0.3,0) rectangle (0.8,-1.0);
+  \draw[dn] (1.15,0) rectangle (1.65,-0.25);
+  \draw[up] (1.75,0) rectangle (2.25,0.25);
+  \draw[up] (2.35,0) rectangle (2.85,1.0);
+\end{scope}
+% --- Panel 2: exponentiate, all positive, one dominates ---
+\begin{scope}[xshift=4.6cm]
+  \draw[ax] (0,0) -- (3.4,0);
+  \draw[ax] (1.7,-0.3) -- (1.7,1.9);
+  \node[ttl] at (1.7,2.15) {exponentiate $e^{z}$};
+  \node[note] at (1.7,-1.75) {every bar is now above zero, but the largest\\ has run away from the rest.};
+  \draw[black!40, densely dotted] (0,0) -- (3.4,0);
+  \draw[up] (0.3,0) rectangle (0.8,0.14);
+  \draw[up] (1.15,0) rectangle (1.65,0.38);
+  \draw[up] (1.75,0) rectangle (2.25,0.65);
+  \draw[up] (2.35,0) rectangle (2.85,1.7);
+\end{scope}
+% --- Panel 3: divide by the sum -> ONE stacked column of total height 1 ---
+\begin{scope}[xshift=9.2cm]
+  \draw[ax] (0,0) -- (3.4,0);
+  \node[ttl] at (1.7,2.15) {divide by the row sum};
+  \node[note] at (1.7,-1.75) {the four are stacked into one column exactly\\ one unit tall: shares, and they add to one.};
+  \draw[black!40, densely dotted] (0,0) -- (3.4,0);
+  % unit tick, so "one" is a height the reader can check
+  \draw[line width=0.3pt] (1.05,1.0) -- (1.2,1.0);
+  \node[anchor=east] at (1.02,1.0) {\scriptsize $1$};
+  % one column, split into four shares summing to 1: 0.05, 0.13, 0.22, 0.60
+  \draw[sh] (1.2,0.00) rectangle (2.2,0.05);
+  \draw[sh] (1.2,0.05) rectangle (2.2,0.18);
+  \draw[sh] (1.2,0.18) rectangle (2.2,0.40);
+  \draw[sh, fill=black!45] (1.2,0.40) rectangle (2.2,1.00);
+  \draw[<->, line width=0.28pt] (2.45,0) -- (2.45,1.0);
+  \node[anchor=west] at (2.52,0.5) {\scriptsize sum $=1$};
+\end{scope}
+\end{tikzpicture}
+```
+One row of four scores, drawn three times. Exponentiating does two jobs at once -- it forces every
+weight positive, and it stretches the gaps -- and dividing by the row's sum is what turns the result
+from a set of runaway numbers into shares that add to one. The four values are chosen to show the
+sign dying under $e^{z}$, not to be measured.
+:::
+
 **Why the divisor exists, since it looks like a wart.** A dot product of two vectors $d_{\text{head}}$
 units wide adds $d_{\text{head}}$ products together. Products of unrelated numbers have variances that
 add, so the spread of the sum grows like $\sqrt{d_{\text{head}}}$ while the spread of each input term
@@ -279,6 +418,68 @@ The consequence for two candidate models is concrete: at a hidden width of 512 u
 registered head count and nothing else. Two candidates therefore want two different constants, $1/\sqrt{64}$ and
 $1/\sqrt{44}$, and a design that hard-codes one cannot host the other without a change to a
 multiply-and-round stage.
+
+[Figure 16](#fig-appendix-score-matrix) lays the mask over the scores it deletes, so the two
+grids are visibly the same shape.
+
+::: {#fig-appendix-score-matrix .figure}
+```tikz
+% Two readings of the SAME 6x6 grid: rows are queries, columns are keys, every cell is
+% one dot product. Shaded = the mask keeps that cell. The mask has the same shape as the
+% scores and is chosen by position, never by value.
+\begin{tikzpicture}[
+  font=\scriptsize,
+  x=3.9mm, y=-3.9mm,
+  grid/.style={draw=black!70, line width=0.3pt},
+  ax/.style={font=\scriptsize, inner sep=1pt},
+  rowhl/.style={draw=black, line width=0.7pt},
+  arr/.style={-{Stealth[length=1.6mm]}, line width=0.3pt}
+]
+% ---------- panel A: causal ----------
+\begin{scope}
+  \foreach \r in {0,...,5} { \foreach \c in {0,...,5} {
+      \draw[grid] (\c,\r) rectangle (\c+1,\r+1); } }
+  \foreach \r in {0,...,5} { \foreach \c in {0,...,\r} {
+      \fill[black!45] (\c,\r) rectangle (\c+1,\r+1); } }
+  \draw[grid] (0,0) rectangle (6,6);
+  \foreach \i in {1,...,6} {
+    \node[ax, anchor=east] at (-0.15,\i-0.5) {$q_{\i}$};
+    \node[ax, anchor=south] at (\i-0.5,-0.1) {$k_{\i}$};
+  }
+  \node[ax, anchor=south west] at (0,-1.1) {causal mask};
+  \draw[rowhl] (0,5) rectangle (6,6);
+  \draw[arr] (6.25,5.5) -- (7.15,5.5);
+  \node[ax, anchor=west, text width=22mm] at (7.3,5.5) {one row at a time: its kept cells are exponentiated and divided by their own sum};
+\end{scope}
+% ---------- panel B: chunked ----------
+\begin{scope}[xshift=11.7cm]
+  \foreach \r in {0,...,5} { \foreach \c in {0,...,5} {
+      \draw[grid] (\c,\r) rectangle (\c+1,\r+1); } }
+  \foreach \r in {0,1} { \foreach \c in {0,1} {
+      \fill[black!45] (\c,\r) rectangle (\c+1,\r+1); } }
+  \foreach \r in {2,3} { \foreach \c in {0,...,3} {
+      \fill[black!45] (\c,\r) rectangle (\c+1,\r+1); } }
+  \foreach \r in {4,5} { \foreach \c in {2,...,5} {
+      \fill[black!45] (\c,\r) rectangle (\c+1,\r+1); } }
+  \draw[grid] (0,0) rectangle (6,6);
+  \foreach \i in {1,...,6} {
+    \node[ax, anchor=east] at (-0.15,\i-0.5) {$q_{\i}$};
+    \node[ax, anchor=south] at (\i-0.5,-0.1) {$k_{\i}$};
+  }
+  \node[ax, anchor=south west] at (0,-1.1) {chunked mask};
+  \draw[densely dashed, line width=0.5pt] (4,4) rectangle (6,6);
+  \node[ax, anchor=north, text width=30mm] at (3,6.15) {the dashed block is the current chunk, read in both directions};
+\end{scope}
+\end{tikzpicture}
+```
+The same six steps, scored the same way, under two masks. Nothing about the arithmetic changes between
+the panels; only which cells survive, and that is decided by position before a single score is computed.
+The causal mask deletes every future cell. The chunked mask keeps the future inside the block the design
+is already waiting for, and reaches back a fixed number of finished blocks. Chapter 9 sets these regimes
+against one another and measures what the deletion costs; this figure's point is prior and smaller: a
+mask is a second grid, the same shape as the scores, and the softmax runs across one row of it at a time.
+:::
+
 
 > **Traceability note.** The divisor is the standard scaled dot-product form and appears in both
 > frameworks' attention code. That the *head* width, not the full width, is what enters the divisor is
@@ -318,7 +519,7 @@ multiply-and-round stage.
 \draw[arr] (wavg.west) -- (out.east);
 \draw[darr] (cache.north) -- (wavg.south);
 \draw[darr] (cache.east) to[bend left=16] (score.south);
-\node[anchor=west, align=left, text width=44mm] at (-1.45,-3.7)
+\node[anchor=west, align=left, text width=37mm] at (-1.7,-3.7)
   {\textbf{Dashed} = storage the design must supply. \textbf{Solid} = arithmetic. The mask, not the
    softmax, is what bounds the read set; see chapter 9 for the streaming form of it.};
 \end{tikzpicture}
@@ -342,7 +543,7 @@ refuses to look at -- is what chapter 9 measures.
 
 *Two of the three vectors must be remembered and one need not.* The query of a finished step is
 consumed the moment its scores exist; the key and the value are read by every later step that is allowed
-to look back, so they persist. That pair is the cache, and [Figure 14](#fig-appendix-attention) draws it
+to look back, so they persist. That pair is the cache, and [Figure 17](#fig-appendix-attention) draws it
 as a box for a reason: it is the only storage attention requires, its depth is the read set, and its
 width is the hidden total rather than the head count. Every later step's attention reads it, so it sits
 on the critical path of a stage that is already on the critical path of the block. Chapter 9 sizes it;
@@ -506,7 +707,7 @@ number of outputs but how many values must be within reach of a multiplier at on
 question before it is an arithmetic one.
 :::
 
-**Hardware application.** [Figure 15](#fig-appendix-dense-separable) sets the two shapes beside each other.
+**Hardware application.** [Figure 18](#fig-appendix-dense-separable) sets the two shapes beside each other.
 The arithmetic above is the whole reason a Conformer is buildable, and the two halves of the
 factorisation have different physical signatures.
 
