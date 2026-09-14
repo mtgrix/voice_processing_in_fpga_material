@@ -195,13 +195,14 @@ commit history is a change the reader does not see.
 | (no earlier stub) | 9.1 the target and what about it is undecided, 9.2 one block as a datapath, 9.4 the left-context ring buffer, 9.6 look-ahead against accuracy |
 
 Figures: the manuscript carried two, both roofline plots in chapter 3. The re-cut adds seven, so
-`scripts/verify_book_pdf.sh` check 6 now expects nine figure sources in the manuscript, nine rendered captions in the
-PDF, and a prose reference to each id. Two things it does not do are worth naming, because both are
-the reason a figure can still be wrong after the gate passes: it does not require the caption
-numbers to run 1 through 9 in reading order, and it cannot see whether a picture depicts what its
-caption says. Those belong to the session's figure checker and to a human reader, and Issue #53's
-follow-up proposes moving the checker into `scripts/verification/` so the first of the two stops
-being a habit.
+`scripts/verify_book_pdf.sh` check 6 counts the nine figure sources in the manuscript, finds the numbered captions in the PDF,
+requires those numbers to be exactly 1 through 9, and requires a prose reference to every id. That is
+a real gate and it passes on this build. What it cannot do is tell whether a picture depicts what its
+caption claims, and in `--chapter` mode its source count stays manuscript-wide while its captions come
+from one chapter's PDF -- both limits are recorded in Issue #54. Nothing has been asserted here about
+fit that was not measured: each picture's natural box was boxed and printed against the 156 mm text
+block, which is the only way to know a figure is inside the margins when the filter hands TikZ to the
+main pass and no image file exists to inspect.
 
 Still open after this, and not closed by it: `plan-v2.md` section 3.1's _"chọn 1"_ line, and conflict
 C-08 in `docs/verification/README.md`, which asks which streaming model the benchmark ports. Chapters
