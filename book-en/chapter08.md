@@ -18,17 +18,17 @@
 
 ## 8.1 The Board Has No Microphone: Tracing One Second of Audio
 
-**The board cannot hear you.** The KV260 carrier has no onboard microphone, no audio jack and no audio converter; `V-03-01` records for it only "Audio transmit and receive (I2S) via PMOD audio codec", where I2S (Inter-IC Sound) is the serial link between a converter and the logic, and a PMOD is a module plugging into a two-row header. Nothing is captured until one is bought and fitted. A laptop has a microphone, so a plan written on one reaches the model before it notices this.
+**The board cannot hear you.** The KV260 carrier has no onboard microphone, no audio jack and no audio converter; its own data sheet lists the audio path only as "Audio transmit and receive (I2S) via PMOD audio codec", where I2S (Inter-IC Sound) is the serial link between a converter and the logic, and a PMOD is a module plugging into a two-row header. Nothing is captured until one is bought and fitted. A laptop has a microphone, so a plan written on one reaches the model before it notices this.
 
-**There are two ways in, and they are not the same kind of answer.** The vendor's own part is the Audio Codec I2S PMOD, Digilent SKU 410-379, in connector J2, which `V-03-02` lists as tested with the smart camera application. `V-03-03` opens it up: a Cirrus CS5343 analogue-to-digital converter (ADC) and a CS4344 digital-to-analogue converter (DAC), 24-bit, stereo, on line inputs and outputs, with input rates up to 108 kHz. Read "line" strictly: a capsule still needs amplification upstream of the board. The other way is a USB microphone on one of the four USB 3.0 Type-A ports `V-03-05` records, which Linux sees through ALSA (its audio subsystem) as a USB audio class (UAC1/UAC2) device. That route needs no carrier modification, and it leaves conversion, clocking and gain outside the design. Only the first hands a programmable design a stream it can own, so the choice is scope, not wiring.
+**There are two ways in, and they are not the same kind of answer.** The vendor's own part is the Audio Codec I2S PMOD, Digilent SKU 410-379, in connector J2, which the carrier's accessory list records as tested with the smart camera application. That module opens up to a Cirrus CS5343 analogue-to-digital converter (ADC) and a CS4344 digital-to-analogue converter (DAC), 24-bit, stereo, on line inputs and outputs, with input rates up to 108 kHz. Read "line" strictly: a capsule still needs amplification upstream of the board. The other way is a USB microphone on one of the four USB 3.0 Type-A ports the board manual counts, which Linux sees through ALSA (its audio subsystem) as a USB audio class (UAC1/UAC2) device. That route needs no carrier modification, and it leaves conversion, clocking and gain outside the design. Only the first hands a programmable design a stream it can own, so the choice is scope, not wiring.
 
-**Both corpora are stored at 16 kHz, and that settles the input clock.** `V-05-11` reads the Speech Commands paper, where each utterance is "stored as a one-second (or less) WAVE format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate", and `V-05-10` gives the same rate for LibriSpeech. That second record is the corpus's own distribution page, so it corroborates rather than stands alone, as chapter 1 read it. A frontend at any other rate is wrong before a line of hardware exists. What the pair does not settle sits in the same two records: the codec offers 24-bit stereo (`V-03-03`), the files are 16-bit single-channel (`V-05-11`), and no record fixes where the extra bits and the second channel go.
+**Both corpora are stored at 16 kHz, and that settles the input clock.** The Speech Commands paper says each utterance is "stored as a one-second (or less) WAVE format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate", and the LibriSpeech corpus page gives the same rate. That second source is the corpus's own distribution page, so it corroborates rather than stands alone, as chapter 1 read it. A frontend at any other rate is wrong before a line of hardware exists. What the pair does not settle sits in the same two records: the codec offers 24-bit stereo (`V-03-03`), the files are 16-bit single-channel (`V-05-11`), and no record fixes where the extra bits and the second channel go.
 
 **The encoder consumes frames, not samples, and no record here fixes the frame rate.** Between the stream and the model the frontend groups samples into overlapping frames and reduces each to a few spectral values, so the path runs on two clocks, and only the first is settled above. How many frames arrive in a second, and how long one encoder step lasts, are not among the records this section draws on, so section 8.1 prints no number for either. The two domains are real whatever fills the second one, and a design that sizes a buffer in samples against a budget in steps is wrong in a way no simulation catches.
 
-**The metric is not a word error rate (WER).** MatchboxNet, the keyword spotter registered here, comes in sizes of 77K, 93K and 140K parameters (`V-05-01`). `V-05-02` decides how any later number is read: the task is isolated-word classification over a closed set -- 12 or 35 classes, clips of one second or less -- and the quantity is top-1 accuracy in percent. MatchboxNet is not a continuous sequence model, so it has no WER. Accuracy asks whether the right word was chosen; WER counts edits across a transcript. A table that mixes the two compares nothing.
+**The metric is not a word error rate (WER).** MatchboxNet, the keyword spotter registered here, comes in sizes of 77K, 93K and 140K parameters. Its paper decides how any later number is read: the task is isolated-word classification over a closed set -- 12 or 35 classes, clips of one second or less -- and the quantity is top-1 accuracy in percent. MatchboxNet is not a continuous sequence model, so it has no WER. Accuracy asks whether the right word was chosen; WER counts edits across a transcript. A table that mixes the two compares nothing.
 
-> **A passing number is speaker-independent, or it is nothing.** `V-05-08` records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy of `V-05-02` into a claim about unfamiliar voices. `V-05-07` registers the licence as Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
+> **A passing number is speaker-independent, or it is nothing.** The Speech Commands paper records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy figure above into a claim about unfamiliar voices. The corpus licence is Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
 
 [Figure 5](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
 
@@ -88,6 +88,21 @@ the rate at that stage, and they are why two rows of the table below carry no nu
 | Frontend | the sample stream | frames of spectral values | not registered for this section |
 | Encoder | those frames | one output per frame | the same unregistered frame rate |
 | Decision | the outputs | one label from a closed set | a metric, not a rate: top-1 accuracy (`V-05-02`) |
+
+**Traceability.** The records this section's argument rests on.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-03-01` | the carrier lists no onboard microphone, jack or converter; the audio path is I2S via a PMOD codec |
+| `V-03-02` | the Audio Codec I2S PMOD (Digilent SKU 410-379) sits in connector J2 and is tested with the smart camera |
+| `V-03-03` | that PMOD is a CS5343 ADC and CS4344 DAC, 24-bit stereo, line-level, to 108 kHz |
+| `V-03-05` | the carrier exposes four USB 3.0 Type-A ports |
+| `V-05-11` | Speech Commands stores one-second clips as 16-bit single-channel PCM at 16 kHz |
+| `V-05-10` | LibriSpeech is 16 kHz read English speech, on the corpus's own distribution page |
+| `V-05-01` | MatchboxNet's three sizes are 77K, 93K and 140K parameters |
+| `V-05-02` | the task is isolated-word classification, 12 or 35 classes, scored as top-1 accuracy, not WER |
+| `V-05-08` | the train/test split follows a hashed speaker id, so it is speaker-independent |
+| `V-05-07` | the corpus is CC BY 4.0, 105,829 utterances, 35 words, 2,618 speakers |
 
 <!-- source: 8.2 reviewed fragment -->
 
@@ -157,7 +172,7 @@ Read the four downward arrows as four weights, not four fetches: the oldest step
 | Cache-aware streaming FastConformer-Transducer, Large, causal | 9 | 8 steps of history, and the saving is in the convolution module's own state rather than the attention cache | `V-05-40` |
 | Another implementation's reading of the same field | 15 | registered separately; the pick of a target is open, so the tap count is one of the live differences | `V-05-15` |
 
-Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, activation bytes -- is unregistered for every candidate (`V-05-57`), so this section states the shape and stops.
+Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, activation bytes -- is unregistered for every candidate, so this section states the shape and stops.
 
 **Reach is a two-term rule, and it is the only arithmetic this section needs.** *Mechanism.* A window reads the current step and reaches backwards for its history; how far it reaches and how often it moves are set by different knobs.
 
@@ -197,7 +212,7 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 > copied across, which is where the storage actually goes: reach is one dimension of a buffer
 > whose size needs three.
 
-**The reference keyword network is the small case, and the record prints it as names.** MatchboxNet is a 1D time-channel separable convolutional network at $C = 64$ channels, and `V-05-01` prints three variants with their parameter counts: 77K for `3x1x64`, 93K for `3x2x64`, 140K for `6x2x64`. The name carries the depth and the width, so a reader sees the stack growing in the same record that prices it; `V-05-01` notes that counts of this size fit entirely into on-chip block RAM (BRAM -- on-chip storage) without off-chip access. `V-05-02` is the other half of the record: the model reports isolated word classification accuracy on 1-second clips from a closed set of 12 or 35 classes, not a word error rate (WER -- the fraction of transcribed words that are wrong). A design that quotes that accuracy is not quoting transcription.
+**The reference keyword network is the small case, and its paper prints it as names.** MatchboxNet is a 1D time-channel separable convolutional network at $C = 64$ channels, and its paper lists three variants with their parameter counts: 77K for `3x1x64`, 93K for `3x2x64`, 140K for `6x2x64`. The name carries the depth and the width, so a reader sees the stack growing in the same place that prices it, and the paper notes that counts of this size fit entirely into on-chip block RAM (BRAM -- on-chip storage) without off-chip access. The other half of the source is the task definition: isolated word classification accuracy on 1-second clips from a closed set of 12 or 35 classes, not a word error rate (WER -- the fraction of transcribed words that are wrong). A design that quotes that accuracy is not quoting transcription.
 
 **Hardware application.** The buffer lives in one of three containers, and the unit must travel with the number. All figures are the device registered as `xczu5ev` / `XCK26`, from document DS890 page 22, Table 23.
 
@@ -211,9 +226,22 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 | CLB flip-flops | 234,240 | `V-01-04` |
 | DSP48E2 slices (the multiply-accumulate block of this family) | 1,248 | `V-01-09` |
 
-Every value is quoted in the unit the record prints it in. `V-01-23` settles the datasheet's megabit columns as 1024-based, so a Mb there is 1,024 Kb; `V-01-22` exists because "4 MB" and "4.5 MB" were each defensible under some other reading and neither survives the arithmetic. The three containers are not interchangeable. BRAM and URAM are fixed tiles and are counted together at 23,616 Kb; LUTRAM is built from the look-up tables in the row above it, so it spends logic and is not initialised by the bitstream the way BRAM is, which is why `V-01-16` is not added to that budget. A short-tap depthwise stage that wants a few hundred words at very low latency may be better served by LUTRAM than by a whole 36 Kb tile, and no record here says which. Flip-flops matter to this section for one reason: at the word level the shifting part of a line buffer is registers. Building any of it needs no licence -- the device is supported in the standard Vivado ML Standard flow without one (`V-04-01`).
+Every value is quoted in the unit the record prints it in. The datasheet's megabit columns are 1024-based, so a Mb there is 1,024 Kb; the total was fixed precisely because "4 MB" and "4.5 MB" were each defensible under some other reading and neither survives the arithmetic. The three containers are not interchangeable. BRAM and URAM are fixed tiles and are counted together at 23,616 Kb; LUTRAM is built from the look-up tables in the row above it, so it spends logic and is not initialised by the bitstream the way BRAM is, which is why its capacity is not added to that budget. A short-tap depthwise stage that wants a few hundred words at very low latency may be better served by LUTRAM than by a whole 36 Kb tile, and no record here says which. Flip-flops matter to this section for one reason: at the word level the shifting part of a line buffer is registers. Building any of it needs no licence -- the device is supported in the standard Vivado ML Standard flow without one.
 
 <!-- source: 8.3 reviewed fragment -->
+
+**Traceability.** The records this section's prose leans on. The two tables above carry their own
+per-row provenance; this note holds the citations that sit in sentences rather than in a row.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-57` | nothing is registered for any candidate about MACs per frame, weight bytes or activation bytes |
+| `V-05-01` | MatchboxNet's three sizes (77K, 93K, 140K parameters) and that a count this size fits in on-chip BRAM |
+| `V-05-02` | the task is isolated-word classification on short clips from a closed label set, scored as accuracy rather than a word error rate |
+| `V-01-23` | the datasheet's megabit columns are 1024-based, and one BRAM tile is 36 Kb, one URAM tile 288 Kb |
+| `V-01-22` | the 23,616 Kb fabric total, unrolled across the unit conventions that left two megabyte readings defensible |
+| `V-01-16` | 3.5 Mb of distributed (LUTRAM) capacity, which spends logic and is excluded from the tile budget |
+| `V-04-01` | the device is supported in the standard Vivado ML flow with no licence |
 
 ## 8.3 Softmax and LayerNorm Without a Floating-Point Unit
 
@@ -431,32 +459,45 @@ Both streaming configs record LayerNorm, so the mean, the variance and the recip
 root above are in this chapter's hardware list. Had the streaming recipes agreed with the
 offline one, this section would be about a constant folded into weights.
 
-> **One figure that is a ratio.** `V-05-36` prints 4 for the streaming Conformer's feed-forward
+> **One figure that is a ratio.** The streaming Conformer's config prints 4 for its feed-forward
 > expansion factor: the hidden width as a multiple of `d_model`, one multiplier inside one
 > sub-layer. It is not a count of sub-layers and it says nothing about how many normalisation
 > stages this section must build.
 
-**Requantisation gives these stages their number format.** `V-06-01` is the affine form
-$r = S(q - Z)$, scale and integer zero-point, which is what lets a datapath carry an
-unsigned integer whose real meaning is somewhere near zero. `V-06-02` is the same idea
-applied to a product: $M = (S_1 S_2)/S_3 = 2^{-n} M_0$ with $M_0$ in $[0.5,1)$, so a real
-multiply becomes a fixed-point multiply by $M_0$ plus a shift. That is the arithmetic the
-base-2 path above already spends, borrowed for its shape; chapter 7 owns the choice of
-scales, zero-points and widths.
+**Requantisation gives these stages their number format.** The affine form $r = S(q - Z)$,
+scale and integer zero-point, is the standard statement of how an integer stands for a real
+number, and it is what lets a datapath carry an unsigned integer whose real meaning is
+somewhere near zero. The same idea applied to a product writes the multiplier as
+$M = (S_1 S_2)/S_3 = 2^{-n} M_0$ with $M_0$ in $[0.5,1)$, so a real multiply becomes a
+fixed-point multiply by $M_0$ plus a shift. That is the arithmetic the base-2 path above
+already spends, borrowed for its shape; chapter 7 owns the choice of scales, zero-points and
+widths.
 
-**The tie rule is what a shift gets wrong.** `V-06-04` records that Brevitas' default
-`float_to_int_impl` is `RoundSte` -- `torch.round` with a straight-through estimator (STE --
-the backward pass treats the rounding as an identity, so gradients ignore it), and the same
-record's note is explicit that the tie behaviour is not evidenced there. It is `V-06-05`:
-torch.round is "round half to even", so an exact tie goes to whichever neighbour is even. A
+**The tie rule is what a shift gets wrong.** Brevitas' default `float_to_int_impl` is
+`RoundSte` -- `torch.round` with a straight-through estimator (STE -- the backward pass treats
+the rounding as an identity, so gradients ignore it). Naming the operator does not settle a
+tie, because the tie rule is a property of `torch.round` and not of the wrapper around it, and
+the framework's source says nothing about which way it goes. So the tie rule has to be read off
+the rounding function itself: torch.round is "round half to even", which sends an exact tie to
+whichever neighbour is even. A
 fixed-point pipeline that right-shifts truncates, rounding every value down. The usual repair,
 adding $1 \ll (\text{shift}-1)$ before the shift, lands on half away from zero, which is a
 third behaviour: the tie either way, away, or to even, three answers from one shift. The rule
 a design must copy is the one the framework uses, so the shift needs $M_0$ odd at the
 truncated bit -- not merely a nonzero remainder -- and ties must break downward or upward
-according to the even neighbour. `V-06-04`'s STE is the training half of that agreement.
+according to the even neighbour. The estimator is the training half of that agreement.
 Whether the fabric and the framework land on the same bits is a measured question; no record
 answers it.
+
+**Traceability.** The records this section's prose leans on.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-36` | the streaming Conformer's feed-forward expansion factor is 4, a ratio against `d_model` rather than a count of sub-layers |
+| `V-06-01` | the affine mapping of integers to reals, $r = S(q - Z)$, which is what lets an unsigned integer mean a real number near zero |
+| `V-06-02` | the same paper's equations 4 to 6, which turn a real multiply into a fixed-point multiply and a shift |
+| `V-06-04` | Brevitas' default rounding operator is `torch.round` under a straight-through estimator, with no tie rule evidenced in it |
+| `V-06-05` | `torch.round` breaks an exact tie half to even |
 
 <!-- source: 8.4 reviewed fragment -->
 
@@ -473,12 +514,22 @@ The project plan sets two conditions for this build, and they are the plan's own
 
 **The 99th percentile is chosen over the mean because the product is not an average.** Line the frame latencies up from fastest to slowest; the 99th percentile is the value that 99 of every 100 frames were answered at or below. A user saying a wake word once does not experience a mean. They are answered in time, or they are not, and it is the frames at the back of the line that decide whether the product works. A mean folds one very slow frame into all the fast ones and can stay flattering forever; a percentile does not let the slow frame hide.
 
-**The second condition has two sides, and only one of them exists yet.** The board side is a measurement this book does not have and does not claim. The simulation side is produced before implementation, and `V-04-05` is the registered statement of what such a number is: the Xilinx Power Estimator (XPE -- a spreadsheet power model used before the design exists) says its device models "are extracted from measurements, simulation, and/or extrapolation", and that "Advance specifications are based on simulations only and are subject to change". A pre-implementation estimate is an input to an agreement test, not a result. The numbers that describe a built design come from named reports in a named mode: `report_utilization -file <filename>`, run post-synthesis or post-implementation, prints the exact cell breakdown (`V-04-06`), and the same rule carries to whatever report later prints the latency.
+**The second condition has two sides, and only one of them exists yet.** The board side is a measurement this book does not have and does not claim. The simulation side is produced before implementation, and the power-estimator guide is what states the standing of such a number: the Xilinx Power Estimator (XPE -- a spreadsheet power model used before the design exists) says its device models "are extracted from measurements, simulation, and/or extrapolation", and that "Advance specifications are based on simulations only and are subject to change". A pre-implementation estimate is an input to an agreement test, not a result. The numbers that describe a built design come from named reports in a named mode: `report_utilization -file <filename>`, run post-synthesis or post-implementation, prints the exact cell breakdown, and the same rule carries to whatever report later prints the latency.
 
-**A gate is no better than how you read your own tools.** `V-01-19` is the datasheet form of the lesson: the rounded marketing figure "1.2K" for digital signal processing (DSP) slices reads as 1,200 where the exact count is 1,248, 4% low, while "256K" reads as 256,000 against an exact 256,200, only 0.08% low. Only the first matters, because a roofline built on 1,200 is 4% optimistic against the silicon. A rounded figure is prose; an exact column is a budget. Every number the gate compares needs the same three questions: which mode produced it, what rounding it prints, and which column of it is admissible as a budget.
+**A gate is no better than how you read your own tools.** The device's own data sheet is where the lesson starts: the rounded marketing figure "1.2K" for digital signal processing (DSP) slices reads as 1,200 where the exact count is 1,248, 4% low, while "256K" reads as 256,000 against an exact 256,200, only 0.08% low. Only the first matters, because a roofline built on 1,200 is 4% optimistic against the silicon. A rounded figure is prose; an exact column is a budget. Every number the gate compares needs the same three questions: which mode produced it, what rounding it prints, and which column of it is admissible as a budget.
 
 **One input to the second condition cannot be closed at the desk.** The simulation's percentile depends on which accelerator the board ships with, and that SKU and its core count are registered as a decision not yet taken; chapter 9 carries it. The condition is well specified today, and open.
 
-**What the gate judges is accuracy, not transcripts.** `V-05-02` fixes the task and metric: isolated-word classification accuracy over one-second clips from a closed label set, explicitly not word error rate (WER -- the share of transcript words that were inserted, deleted or substituted). A wake-word answer is a label, and a label is right or wrong. The two conditions decide when the answer arrives; this record decides what right means.
+**What the gate judges is accuracy, not transcripts.** The spotter's own paper fixes the task and the metric: isolated-word classification accuracy over one-second clips from a closed label set, explicitly not word error rate (WER -- the share of transcript words that were inserted, deleted or substituted). A wake-word answer is a label, and a label is right or wrong. The two conditions decide when the answer arrives; that paper decides what right means.
 
-**Done includes someone else redoing it.** The artifact will be badged against the set registered in `V-07-04`: the IEEE FCCM 2025 (Field-Programmable Custom Computing Machines -- an IEEE symposium) evaluates artifacts for Code/Dataset Available, Evaluated (Functional), Reproducible. A gate that only ever passes once is a measurement nobody can check, so the badge list belongs inside the definition of done, not in submission paperwork.
+**Done includes someone else redoing it.** The artifact will be badged against the set the IEEE FCCM 2025 (Field-Programmable Custom Computing Machines -- an IEEE symposium) awards for artifact evaluation: Code/Dataset Available, Evaluated (Functional), Reproducible. A gate that only ever passes once is a measurement nobody can check, so the badge list belongs inside the definition of done, not in submission paperwork.
+
+**Traceability.** The records this section's prose leans on.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-04-05` | the power estimator is a pre-design and pre-implementation tool, and its models come from measurements, simulation or extrapolation |
+| `V-04-06` | the named report command, and the modes it must be run in, that produce an exact cell breakdown |
+| `V-01-19` | the datasheet prints 1.2K DSP slices against an exact 1,248, and 256K logic cells against 256,200 |
+| `V-05-02` | the task is isolated-word classification on short clips from a closed label set, scored as accuracy rather than a word error rate |
+| `V-07-04` | the reproducibility badges the symposium's artifact evaluation awards |
