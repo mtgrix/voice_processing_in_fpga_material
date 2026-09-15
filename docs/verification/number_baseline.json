@@ -1233,6 +1233,793 @@
    "in_table_row": false
   },
   {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "2.0",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-01-01",
+    "V-01-09",
+    "V-01-10",
+    "V-02-17",
+    "V-02-21",
+    "V-02-25"
+   ],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": true
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "4.5",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "16",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-01",
+    "V-02-30",
+    "V-02-38",
+    "V-05-05",
+    "V-05-10",
+    "V-05-11"
+   ],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "18",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-01-08",
+    "V-04-11"
+   ],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "30.8",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "32",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-05",
+    "V-02-12",
+    "V-02-16",
+    "V-02-21",
+    "V-02-35",
+    "V-02-42"
+   ],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "number": "18,432",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-03",
+    "V-01-04",
+    "V-01-05",
+    "V-01-07",
+    "V-01-09",
+    "V-01-11",
+    "V-01-15",
+    "V-01-16",
+    "V-01-17",
+    "V-01-19",
+    "V-01-22",
+    "V-01-23",
+    "V-04-06",
+    "V-04-07",
+    "V-04-09"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "3",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-03-05",
+    "V-05-01"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "5",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "6",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-05-01",
+    "V-06-02"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "7",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-04",
+    "V-02-08",
+    "V-05-52"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "16",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-01",
+    "V-02-30",
+    "V-02-38",
+    "V-05-05",
+    "V-05-10",
+    "V-05-11"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "32",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-05",
+    "V-02-12",
+    "V-02-16",
+    "V-02-21",
+    "V-02-35",
+    "V-02-42"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "512",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-01",
+    "V-04-10",
+    "V-04-11",
+    "V-05-18",
+    "V-05-23",
+    "V-05-38"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "1,024",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-01-23",
+    "V-02-05",
+    "V-02-12",
+    "V-02-16",
+    "V-04-10",
+    "V-04-11"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "number": "1,248",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-01-09",
+    "V-01-15",
+    "V-01-19"
+   ],
+   "section_cites": [
+    "V-01-04"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "2.32",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "4.63",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "7.29",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "8",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-09",
+    "V-02-13",
+    "V-02-17",
+    "V-02-21",
+    "V-02-25",
+    "V-02-29"
+   ],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "37.60",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "56.9",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "68.36",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "75.20",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "95",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "100",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-02-30",
+    "V-02-36"
+   ],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "136.72",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "300",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "710",
+   "class": "registered-not-cited-here",
+   "registered_by": [
+    "V-04-07",
+    "V-04-08"
+   ],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "1,400",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "77,000",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "93,000",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.4",
+   "number": "140,000",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [
+    "V-01-09",
+    "V-01-11",
+    "V-01-12",
+    "V-01-13",
+    "V-01-14",
+    "V-01-22",
+    "V-04-01",
+    "V-04-09",
+    "V-04-10",
+    "V-04-11",
+    "V-04-12",
+    "V-04-13",
+    "V-05-01",
+    "V-05-16",
+    "V-07-03"
+   ],
+   "in_table_row": false
+  },
+  {
+   "file": "chapter04.md",
+   "section": "FPGA Microarchitecture for Edge AI: Logic, DSP, BRAM and Dataflow",
+   "number": "66",
+   "class": "unregistered",
+   "registered_by": [],
+   "section_cites": [],
+   "in_table_row": false
+  },
+  {
    "file": "chapter08.md",
    "section": "8.1",
    "number": "1",
