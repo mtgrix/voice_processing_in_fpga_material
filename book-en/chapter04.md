@@ -970,7 +970,64 @@ The whole memory ladder is short enough to print at once, and reading it is the 
 | B3136 | 208 | 64 | `V-04-10`, `V-04-11` |
 | B4096 | 255 | 68 | `V-04-10`, `V-04-11` |
 
-Three readings of that table, all of them arithmetic against the device's own populations. The block RAM
+::: {#fig-ch4-dpu-ladder .figure}
+```tikz
+% The same eight rows as geometry, so the two facts the prose reads off the table become lines a
+% reader checks with a ruler instead of re-deriving: the block RAM column crosses the device's 144
+% between B1600 and B2304, and the UltraRAM column does not climb with the rung name at all (B800
+% asks for 40 where the larger B1024 asks for 26). Tile counts are registered (V-04-10, V-04-11);
+% the ceilings are the device's own populations (V-01-05, V-01-07). Heights are value x 0.026 cm,
+% computed by hand: this figure has no axis arithmetic to get wrong.
+\begin{tikzpicture}[
+  font=\tiny,
+  bar/.style={inner sep=0pt, outer sep=0pt, anchor=south},
+  bcol/.style={bar, draw=black!70, fill=black!30},
+  ucol/.style={bar, draw=black!70, fill=white},
+  ceil/.style={draw=black!60, densely dashed},
+  tick/.style={text=black!70},
+  lab/.style={text=black!62, align=center, anchor=north}]
+  % ---- axes: baseline y=0; value axis in tiles, 0.026 cm per tile ----
+  \draw[->,black!70] (-0.15,0) -- (11.15,0);
+  \draw[->,black!70] (-0.15,0) -- (-0.15,6.95);
+  \node[tick, above left] at (-0.15,6.95) {tiles};
+  \foreach \v/\h in {0/0, 50/1.30, 100/2.60, 150/3.90, 200/5.20, 250/6.50}{
+    \draw[black!40] (-0.15,\h) -- (0.02,\h);
+    \node[tick, anchor=east] at (-0.22,\h) {\v};}
+  % ---- the two device ceilings, drawn as the fit test itself ----
+  \draw[ceil] (0,3.744) -- (10.9,3.744);
+  \node[tick, anchor=south west] at (10.95,3.744) {144 block RAM};
+  \draw[ceil] (0,1.664) -- (10.9,1.664);
+  \node[tick, anchor=south west] at (10.95,1.664) {64 UltraRAM};
+  % ---- eight rung groups; solid bar = block RAM, hollow bar = UltraRAM, both to one scale ----
+  \foreach \cx/\b/\bpx/\u/\upx/\nm in {
+      0.70/72/1.872/18/0.468/B512,  2.05/90/2.340/40/1.040/B800,
+      3.40/104/2.704/26/0.676/B1024, 4.75/121/3.146/44/1.144/B1152,
+      6.10/126/3.276/56/1.456/B1600, 7.45/165/4.290/60/1.560/B2304,
+      8.80/208/5.408/64/1.664/B3136, 10.15/255/6.630/68/1.768/B4096}{
+    \node[bcol, minimum width=0.50cm, minimum height=\bpx cm] at (\cx-0.29,0) {};
+    \node[ucol, minimum width=0.50cm, minimum height=\upx cm] at (\cx+0.29,0) {};
+    \node[tick, anchor=south] at (\cx-0.29,\bpx+0.03) {\b};
+    \node[tick, anchor=south, fill=white, inner sep=1.2pt] at (\cx+0.29,\upx+0.03) {\u};
+    \node[lab] at (\cx,-0.05) {\nm};}
+  % ---- the three readings, marked where they happen, in the open space above the bars ----
+  \draw[<->,black!72] (6.10,4.86) -- (7.45,4.86);
+  \node[tick, align=center, anchor=south] at (6.78,4.92) {the crossing:\ last fit, first stall};
+  \draw[<->,black!62] (2.34,1.040) -- (3.69,0.676);
+  \node[tick, align=center, anchor=north] at (3.02,-0.55) {a dip: the taller rung\ asks for less storage};
+  % ---- legend, top-left, inside the frame ----
+  \node[bcol, minimum width=0.42cm, minimum height=0.14cm, anchor=west] at (0.25,6.75) {};
+  \node[tick, anchor=west] at (0.78,6.75) {block RAM tiles};
+  \node[ucol, minimum width=0.42cm, minimum height=0.14cm, anchor=west] at (3.05,6.75) {};
+  \node[tick, anchor=west] at (3.58,6.75) {UltraRAM tiles};
+  \draw[ceil] (5.9,6.75) -- (6.32,6.75);
+  \node[tick, anchor=west] at (6.42,6.75) {this device's ceiling};
+\end{tikzpicture}
+```
+The vendor ladder drawn as fit rather than as rows: every rung's two tile counts against this device's two storage ceilings, so the crossing, the non-monotonic dip that forbids interpolation, and the one rung that fills its ceiling exactly are shapes on the page instead of arithmetic to redo. The counts are the table's, unchanged; nothing in the drawing adds a measurement.
+:::
+
+Three readings of that table, all of them arithmetic against the device's own populations; [Figure 17](#fig-ch4-dpu-ladder)
+draws the same rows as geometry, so the first and second of them can be checked with a ruler. The block RAM
 column climbs with the rung name and crosses this device's 144 tiles between B1600 and B2304, so 126
 tiles of 144 is the largest block RAM core that fits, derived as 87.5% of the fabric's shallow storage
 for one accelerator and leaving 18 tiles for everything else a voice design needs. The UltraRAM column
