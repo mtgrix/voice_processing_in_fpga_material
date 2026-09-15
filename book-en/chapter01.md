@@ -16,7 +16,7 @@
 
 Every section that follows makes one argument: a streaming voice system is not a slow vision
 system, it is a different measurement problem. That argument is easier to follow with the machine
-already in view, so the view comes first. [Figure 2](#fig-ch1-pipeline-contract) is the version this
+already in view, so the view comes first. [Figure 3](#fig-ch1-pipeline-contract) is the version this
 book keeps returning to. Its stages carry the same names, in the same order, as the preface's map,
 and each box is labelled with the chapters that work inside it.
 
@@ -471,7 +471,7 @@ the book. A frame is $L$ samples, which at $16{,}000$ samples per second is $25$
 is $H$ samples, which is $10$ ms. So the pipeline delivers one feature vector every $10$ ms, each
 computed from $25$ ms of audio, and consecutive deliveries share $15$ ms of that audio. That shared
 part is $240$ samples of a $400$-sample frame, which is $60\%$ of a frame, and
-[Figure 3](#fig-ch1-frames-window-overlap) draws the whole arrangement to scale.
+[Figure 4](#fig-ch1-frames-window-overlap) draws the whole arrangement to scale.
 
 ::: {#fig-ch1-frames-window-overlap .figure}
 ```tikz
@@ -900,8 +900,8 @@ side of the trade-off matters more for a voice model. A longer frame gives finer
 coarser timing, and whether a given keyword spotter gains or loses by that is a question about
 the model. It is answerable by measuring recognition accuracy and the equal error rate (EER --
 the threshold where false accepts and false rejects are equally common) at several values of
-$L$. Nobody has run that sweep here. [Figure 3](#fig-ch1-frames-window-overlap) and
-[Figure 4](#fig-ch1-mel-triangles) are the same decision drawn twice: a wider frame buys a finer
+$L$. Nobody has run that sweep here. [Figure 4](#fig-ch1-frames-window-overlap) and
+[Figure 5](#fig-ch1-mel-triangles) are the same decision drawn twice: a wider frame buys a finer
 bin grid and gives up the ability to say when something happened, and at the values this book uses
 the grid is still coarse enough that the lowest bands of the bank land on whole bins one at a time.
 

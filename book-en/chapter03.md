@@ -196,7 +196,7 @@ flat line once the work is dense enough to keep the compute units fed. The corne
 between them is the ridge point, and for this book it is always the same division: peak
 operations divided by peak bandwidth. `V-07-01` is the paper that introduced the plot.
 
-[Figure 5](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
+[Figure 6](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
 one pair of axes. Read the rising lines before the corners. Each is labelled with the
 bandwidth that fixes its height, the Orin's is the higher of the two, and so at any
 intensity left of both corners the GPU is faster in absolute terms, and nothing here says
@@ -211,12 +211,12 @@ Two things the figure does not say are worth naming. It does not say where the V
 Edge Benchmark sits on the horizontal axis: that number belongs to a compiled network
 and a chosen kernel, and no record in this book has it, so the workload is left off the
 plot rather than guessed at. It also does not resolve which Orin the project will
-measure against. [Figure 5](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
+measure against. [Figure 6](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
 reason, and the band between them is drawn as a question, not as a range.
 
-[Figure 6](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
+[Figure 7](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
 input behind that corner which is not a datasheet figure, which is why the FPGA corner of
-[Figure 5](#fig-ridge-point-comparison) is the softest number in it.
+[Figure 6](#fig-ridge-point-comparison) is the softest number in it.
 
 ::: {#fig-ridge-point-comparison .figure}
 ```tikz
@@ -429,7 +429,7 @@ dense SKUs while `V-02-28` stays unresolved.
 How much of the ridge-point gap is the clock. `V-07-03` states its KV260 figures at 300
 MHz, which is an assumption about a board this project has not measured, and its own note
 says what the same inputs give at 500 MHz. Both lines here are the division plotted as a
-single corner in [Figure 5](#fig-ridge-point-comparison), so [Figure 6](#fig-clock-sensitivity) answers one question only: does the gap survive the
+single corner in [Figure 6](#fig-ridge-point-comparison), so [Figure 7](#fig-clock-sensitivity) answers one question only: does the gap survive the
 assumption. It does. The FPGA ridge stays an order of magnitude below the
 Orin dense ridge across every clock this book has reason to name, and the gap closes only
 at the clock tagged at the right of the plot, which comes from arithmetic rather than
