@@ -30,8 +30,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
-      # `make gate` order: lint, format-check, typecheck, test, verify,
-      # verify-evidence, check-render, check-registry, check-bib. The Makefile's gate
-      # target is the authority; this comment is a convenience.
+      # The Makefile's `gate` target is the authority on which checks run and in what
+      # order -- it is the one place that cannot drift from itself, so no list is
+      # repeated here. A check added to `gate` runs in CI with no edit to this file.
       - name: Run every repository check
         run: make gate
