@@ -33,6 +33,9 @@
 
 ## 4.1 Spatial vs. Temporal Computing Paradigms
 
+*Where this sits in the chain: the* **Fabric logic** *stage -- what the fabric a design is wired into
+is built from, and what one unit of it costs. The Model stage above hands its arithmetic down here.*
+
 **Intuition.** A processor and a fabric do the same arithmetic in two physically different ways, and
 the difference is not speed. It is *where* the work lives. A central processing unit is one small
 machine that does many things one after another: it keeps a list of instructions in memory, reads the

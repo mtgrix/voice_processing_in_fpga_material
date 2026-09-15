@@ -15,11 +15,25 @@
 > without growing, the boundary between the processor and the fabric, and the accuracy that look-ahead
 > buys.*
 
+> ### Minimal Mathematics / Prerequisites for this Chapter
+>
+> - **A count as a product**: steps per frame, frames per second, and why multiplying the two gives a
+>   rate whose units have to be checked before the number is trusted.
+> - **Capacity as a product**: entries per block, blocks held, elements per entry -- the same shape of
+>   argument, sized in a different unit.
+> - **Powers of two**: why a depth or a width that lands on one costs differently from one that does
+>   not, and where that difference stops being free.
+> - **Headroom**: the gap between a value and the largest its container can hold, and why a ring buffer
+>   is full at capacity minus one rather than at capacity.
+
 ---
 
 <!-- source: 9.1 reviewed fragment -->
 
 ## 9.1 The Target, and What Is Still Undecided About It
+
+*Where this sits in the chain: the* **Model** *stage, drawn as wiring -- and the* **Fabric logic**
+*storage it shares a design with, because none of this encoder's memory lives anywhere else.*
 
 Everything in this chapter rests on one model, and that model is not chosen. The decision is the owner's, it is open, and it is load-bearing: a streaming Conformer Large and a streaming FastConformer Large want different cache shapes, different step periods and different widths of wire, so they produce different overlays. What follows says which parts of each are registered and which are not, and it keeps naming both options instead of averaging them into one.
 

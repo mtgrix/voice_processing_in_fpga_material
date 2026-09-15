@@ -12,11 +12,24 @@
 > the board can defend: the acquisition path, the convolution datapath, the non-linear arithmetic, and
 > the acceptance test that closes the stage.*
 
+> ### Minimal Mathematics / Prerequisites for this Chapter
+>
+> - **A count as a product**: taps, dilation and how far back one output reaches are multiplied, not
+>   added, and the difference is what sizes a buffer.
+> - **Powers of two**: why shifting replaces multiplying only when a factor lands exactly on one.
+> - **Logarithm base two as a depth**: the number of halvings a compare tree takes, which is a count
+>   of stages, not of items.
+> - **Floor and remainder**: how a fixed-point split into an exponent part and a fraction part is
+>   read back, and what rounding off that split costs.
+
 ---
 
 <!-- source: 8.1 reviewed fragment -->
 
 ## 8.1 The Board Has No Microphone: Tracing One Second of Audio
+
+*Where this sits in the chain: the* **Air and microphone** *stage, at its weakest point -- the board
+this book targets cannot supply the stage's one input.*
 
 **The board cannot hear you.** The KV260 carrier has no onboard microphone, no audio jack and no audio converter; its own data sheet lists the audio path only as "Audio transmit and receive (I2S) via PMOD audio codec", where I2S (Inter-IC Sound) is the serial link between a converter and the logic, and a PMOD is a module plugging into a two-row header. Nothing is captured until one is bought and fitted. A laptop has a microphone, so a plan written on one reaches the model before it notices this.
 
@@ -185,6 +198,9 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 > - $k$ — the tap count: how many samples of the input the window reads. A count of taps.
 > - $d$ — the dilation: the spacing between consecutive taps, in input steps. A count of steps.
 >   Left a symbol here on purpose, because neither candidate's records register a value for it.
+> - $s$ — the stride: how many input steps apart two consecutive outputs start. A count of steps,
+>   and deliberately not a term of $R$: it sets how often the buffer is read, never how deep it is.
+>   No record fixes its value for either candidate.
 > - $1$ — the current step itself, which every window reads. A count, not a measured quantity.
 >
 > **What it means.** A window takes $k$ taps, and between the first tap and the last there are
@@ -270,6 +286,10 @@ expressions have the same value:
 > - $m$ — the largest value in the row, $\max_j z_j$. Same units as $\mathbf{z}$, and it is a
 >   value from the row, not a constant anybody chose.
 > - $i$, $j$ — indices of positions inside the row. Counts of positions.
+> - $n$ — how many positions the row holds, counting only the ones the mask keeps. A count of
+>   positions, and the unit the holding buffer is sized in.
+> - $\log_2 n$ — how many times $n$ has to be halved to reach one: the number of levels a pairwise
+>   compare tree needs. A count of levels, not of positions.
 > - $\sum_j$ — the sum across the whole row: every position the mask allows, not just the one
 >   being weighted.
 > - $e^{x}$ — the exponential of $x$, the function this section exists to build without a unit.
