@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers check-figures gate book book-check book-figsize book-clean clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers check-figures render-figures check-figure-divs check-pairing gate book book-check book-figsize book-figcompile book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -21,10 +21,13 @@ help:
 	@echo "  make render-numbers    - Re-record the accepted numbers that lack a citation"
 	@echo "  make check-figures     - Fail if a prose Figure N disagrees with the number its float gets"
 	@echo "  make render-figures    - Rewrite prose figure numbers to the build order"
+	@echo "  make check-figure-divs - Fail on a malformed or unclosed TikZ figure div"
+	@echo "  make check-pairing     - Fail on a number beside a record that does not carry it"
 	@echo "  make gate              - Run every check CI runs, in CI's order"
 	@echo "  make clean             - Clean temporary cache files"
 	@echo "  make book              - Build both monograph PDFs into dist/ (needs Pandoc and LuaLaTeX)"
 	@echo "  make book-check        - Run the PASS/FAIL/N-A gate against the built PDFs"
+	@echo "  make book-figcompile   - Compile each TikZ figure alone; name the broken one"
 	@echo "  make book-figsize      - Compile every TikZ figure alone; fail if one overflows the text block"
 	@echo "  make book-clean        - Remove built PDFs and page previews"
 
@@ -97,7 +100,21 @@ check-figures:
 render-figures:
 	$(PYTHON) scripts/verification/figure_numbers.py --fix
 
-gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers check-figures
+# The figure divs have to hold exactly one outer picture, a caption, and the house three-colon form
+# that verify_book_pdf.sh check 6 greps for -- all claims the PDF verifier makes too, but only after
+# a two-minute build that names the assembled TeX line, not the chapter. These are the milliseconds
+# that make the minutes unnecessary. Pure text, so CI runs it. Issue #56.
+check-figure-divs:
+	$(PYTHON) scripts/verification/check_figures.py --check
+
+# scan_numbers asks whether a number is anywhere in the section's records; that budget is the right
+# answer for invention and the wrong one for mis-attribution -- 17 beside V-05-12 (value 16) passes
+# if 17 sits in any other record the section cites. This grades each number against the record
+# actually cited beside it, with the reviewed baseline as the sanctioned set. Pure text. Issue #56.
+check-pairing:
+	$(PYTHON) scripts/verification/check_pairing.py --check
+
+gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers check-figures check-figure-divs check-pairing
 
 # The book targets are deliberately NOT part of gate, so CI does not run them: the
 # checks job installs Python only, and a TeX distribution costs hundreds of megabytes
@@ -115,6 +132,12 @@ book-check:
 # not in gate -- run it before `make book`, whose full pass costs minutes.
 book-figsize:
 	$(PYTHON) scripts/verification/figprobe.py --all
+
+# Which figure is broken, in seconds, instead of an `l.1140` in a pandoc-assembled file: each
+# fence compiles alone against the book's real preamble. It reports compile only -- fit is
+# book-figsize above, and neither one says whether a picture depicts its caption. Issue #56.
+book-figcompile:
+	$(PYTHON) scripts/verification/compile_tikz.py --check
 
 book-clean:
 	rm -rf dist/voice-edge-fpga-book-*.pdf dist/preview dist/.verify
