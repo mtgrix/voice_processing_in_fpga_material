@@ -166,16 +166,14 @@ band performs, and the only thing that differs is *when the work is allowed to s
 ```
 The faint vertical lines are shared by both bands, so the two machines are read against the same
 periods. In the upper band the first four periods hold no computation at all -- the machine is waiting
-for a batch -- and when answers do come they come together, after which the band is empty until the
-next group fills. In the lower band each rectangle is one frame in one wired step for one period, the
-frames lie along diagonals, and because nothing is gathered an answer leaves on every period once the
-row has filled.
-
-What the figure is built to show is the *shape* of the output -- a burst against a stream -- and that
-shape does not depend on any timing this book has not measured. The one length drawn as a choice is the
-width of the compute box in the upper band. The rest is a fact about ordering, not about speed: the
-batched machine cannot answer before its batch has arrived, while the wired machine answers on the
-period after a frame enters.
+for a batch -- and when answers do come they come together, after which the band is empty until the next
+group fills; in the lower band each rectangle is one frame in one wired step for one period, the frames
+lie along diagonals, and because nothing is gathered an answer leaves on every period. What the figure
+is built to show is the *shape* of the output -- a burst against a stream -- and that shape does not
+depend on any timing this book has not measured. The one length drawn as a choice is the width of the
+compute box in the upper band; the rest is a fact about ordering, not about speed, which is that the
+batched machine cannot answer before its batch has arrived while the wired machine answers on the period
+after a frame enters.
 :::
 
 ## The journey of an audio frame

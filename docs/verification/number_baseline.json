@@ -992,7 +992,7 @@
     "V-02-11",
     "V-02-31"
    ],
-   "in_table_row": false
+   "in_table_row": true
   },
   {
    "file": "chapter01.md",
@@ -1081,48 +1081,6 @@
     "V-02-31"
    ],
    "in_table_row": true
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.4",
-   "number": "15,520",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [
-    "V-01-03",
-    "V-01-05",
-    "V-01-06",
-    "V-01-07",
-    "V-01-08",
-    "V-01-09",
-    "V-01-11",
-    "V-01-22",
-    "V-02-09",
-    "V-02-11",
-    "V-02-31"
-   ],
-   "in_table_row": false
-  },
-  {
-   "file": "chapter01.md",
-   "section": "1.4",
-   "number": "15,920",
-   "class": "unregistered",
-   "registered_by": [],
-   "section_cites": [
-    "V-01-03",
-    "V-01-05",
-    "V-01-06",
-    "V-01-07",
-    "V-01-08",
-    "V-01-09",
-    "V-01-11",
-    "V-01-22",
-    "V-02-09",
-    "V-02-11",
-    "V-02-31"
-   ],
-   "in_table_row": false
   },
   {
    "file": "chapter01.md",
