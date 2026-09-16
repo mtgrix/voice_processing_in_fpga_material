@@ -12,11 +12,24 @@
 > the board can defend: the acquisition path, the convolution datapath, the non-linear arithmetic, and
 > the acceptance test that closes the stage.*
 
+> ### Minimal Mathematics / Prerequisites for this Chapter
+>
+> - **A count as a product**: taps, dilation and how far back one output reaches are multiplied, not
+>   added, and the difference is what sizes a buffer.
+> - **Powers of two**: why shifting replaces multiplying only when a factor lands exactly on one.
+> - **Logarithm base two as a depth**: the number of halvings a compare tree takes, which is a count
+>   of stages, not of items.
+> - **Floor and remainder**: how a fixed-point split into an exponent part and a fraction part is
+>   read back, and what rounding off that split costs.
+
 ---
 
 <!-- source: 8.1 reviewed fragment -->
 
 ## 8.1 The Board Has No Microphone: Tracing One Second of Audio
+
+*Where this sits in the chain: the* **Air and microphone** *stage, at its weakest point -- the board
+this book targets cannot supply the stage's one input.*
 
 **The board cannot hear you.** The KV260 carrier has no onboard microphone, no audio jack and no audio converter; its own data sheet lists the audio path only as "Audio transmit and receive (I2S) via PMOD audio codec", where I2S (Inter-IC Sound) is the serial link between a converter and the logic, and a PMOD is a module plugging into a two-row header. Nothing is captured until one is bought and fitted. A laptop has a microphone, so a plan written on one reaches the model before it notices this.
 
@@ -30,7 +43,7 @@
 
 > **A passing number is speaker-independent, or it is nothing.** The Speech Commands paper records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy figure above into a claim about unfamiliar voices. The corpus licence is Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
 
-[Figure 17](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
+[Figure 19](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
 
 ::: {#fig-kws-signal-path .figure}
 ```tikz
@@ -119,9 +132,48 @@ the answer the field settled on is to split it into two cheaper passes. The conv
 of Appendix A derives that split from the arithmetic of a filter; this section keeps the storage,
 the traffic and the containers, and it assumes the derivation has been read.
 
-**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other.
+**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other. [Figure 20](#fig-dense-vs-depthwise) draws the two wirings side by side, so the ratio is a count of lines rather than a claim to take on trust.
 
-**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 18](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
+::: {#fig-dense-vs-depthwise .figure}
+```tikz
+% The comparison section 8.2's cost argument turns on, drawn rather than described: a dense filter
+% connects every input channel to every output channel, a depthwise pass connects each channel to
+% itself and to nothing else. Four channels are drawn on each side as a stand-in for any width -- the
+% figure is about which wires exist, not how many, and no channel count is claimed here.
+\begin{tikzpicture}[
+  font=\tiny,
+  dot/.style={circle, draw=black!70, fill=black!12, inner sep=1.6pt},
+  odot/.style={circle, draw=black!70, fill=black!45, inner sep=1.6pt},
+  wire/.style={black!45, line width=0.28pt},
+  lone/.style={black!70, line width=0.5pt},
+  tick/.style={text=black!70},
+  pcap/.style={text=black!62, align=center}]
+  % ---- panel A: the dense cross, every pair wired ----
+  \foreach \y in {0,1,2,3}{
+    \node[dot] (ai\y) at (0,\y*0.5){};
+    \node[odot] (ao\y) at (2.1,\y*0.5){};}
+  \foreach \i in {0,1,2,3}{\foreach \o in {0,1,2,3}{
+    \draw[wire] (ai\i) -- (ao\o);}}
+  \node[pcap, anchor=north] at (1.05,-0.42) {dense: every input channel\\meets every output channel};
+  \node[tick, anchor=south east] at (-0.12,1.5) {in};
+  \node[tick, anchor=south west] at (2.22,1.5) {out};
+  % ---- panel B: the depthwise diagonal, each channel to itself ----
+  \foreach \y in {0,1,2,3}{
+    \node[dot] (bi\y) at (4.2,\y*0.5){};
+    \node[odot] (bo\y) at (6.3,\y*0.5){};}
+  \foreach \i in {0,1,2,3}{\draw[lone] (bi\i) -- (bo\i);}
+  \node[pcap, anchor=north] at (5.25,-0.42) {depthwise: a weight belongs\\to exactly one channel};
+  \node[tick, anchor=south east] at (4.08,1.5) {in};
+  \node[tick, anchor=south west] at (6.42,1.5) {out};
+\end{tikzpicture}
+```
+The two passes beside each other, so the ratio the section argues about is a count of wires rather than
+a sentence: the dense panel is full because every pair is wired, and the depthwise panel is a matching
+because a weight there has one channel to serve. A machine built to keep weights still while activations
+stream past is efficient on the left panel and idle on the right one.
+:::
+
+**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 21](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
 
 ::: {#fig-depthwise-line-buffer .figure}
 ```tikz
@@ -185,6 +237,9 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 > - $k$ — the tap count: how many samples of the input the window reads. A count of taps.
 > - $d$ — the dilation: the spacing between consecutive taps, in input steps. A count of steps.
 >   Left a symbol here on purpose, because neither candidate's records register a value for it.
+> - $s$ — the stride: how many input steps apart two consecutive outputs start. A count of steps,
+>   and deliberately not a term of $R$: it sets how often the buffer is read, never how deep it is.
+>   No record fixes its value for either candidate.
 > - $1$ — the current step itself, which every window reads. A count, not a measured quantity.
 >
 > **What it means.** A window takes $k$ taps, and between the first tap and the last there are
@@ -200,8 +255,9 @@ Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, act
 > **What it costs.** $R$ is the depth of the line buffer in steps, and $s$ is how fast its
 > contents turn over, so a longer tap costs storage while a larger stride costs the same storage
 > less often. In silicon the shifting part of that buffer is registers at the word level, and
-> the holding part is a BRAM or URAM tile or a few hundred words of LUTRAM, whichever the next
-> section's table picks. The formula itself is a multiply by a constant and an add; when $d$ is
+> the holding part is a BRAM or URAM tile or a few hundred words of LUTRAM, whichever of the three
+> containers the capacity table later in this section prices -- though it lists what each holds, and
+> no record says which one a short-tap stage should be given. The formula itself is a multiply by a constant and an add; when $d$ is
 > a power of two the multiply is a shift, and when $k$ is fixed at compile time the whole
 > expression is one number resolved before the design is placed rather than arithmetic done per
 > step.
@@ -270,6 +326,10 @@ expressions have the same value:
 > - $m$ — the largest value in the row, $\max_j z_j$. Same units as $\mathbf{z}$, and it is a
 >   value from the row, not a constant anybody chose.
 > - $i$, $j$ — indices of positions inside the row. Counts of positions.
+> - $n$ — how many positions the row holds, counting only the ones the mask keeps. A count of
+>   positions, and the unit the holding buffer is sized in.
+> - $\log_2 n$ — how many times $n$ has to be halved to reach one: the number of levels a pairwise
+>   compare tree needs. A count of levels, not of positions.
 > - $\sum_j$ — the sum across the whole row: every position the mask allows, not just the one
 >   being weighted.
 > - $e^{x}$ — the exponential of $x$, the function this section exists to build without a unit.
@@ -287,7 +347,7 @@ expressions have the same value:
 > begins -- an adder-free tree of pairwise compares, which halves the list at every step. That
 > is a stall paid in storage and in serial depth: a row of $n$ scores needs $n$ registers or a
 > tile, and $\log_2 n$ levels of compare before any output can start. The blocking point is
-> drawn in [Figure 19](#fig-nonlinearity-approx), and both variants there pay it.
+> drawn in [Figure 22](#fig-nonlinearity-approx), and both variants there pay it.
 >
 > **What it does not say.** It does not say the row fits. The buffer this identity requires is
 > as wide as the mask allows the row to grow, and chapter 9 is where that width is counted.
@@ -301,15 +361,19 @@ expressions have the same value:
 >
 > - $x$ — one already-reduced score, the $z_i - m$ of the card above. A non-positive
 >   fixed-point number, so $x \le 0$ always, and $e^x$ lands in $(0,1]$.
-> - $\log_2 e$ — the constant $1.4426950408889634$, the change of base from $e$ to $2$. A pure
->   number, and in a design it is a literal: a fixed-point approximation of it, one multiply by
->   a value chosen at compile time.
+> - $\log_2 e$ — the change of base from $e$ to $2$, about $1.4427$. A pure number, and in a design
+>   it is a literal: a fixed-point approximation of it, one multiply by a value chosen at compile
+>   time. No record here fixes how many bits that literal keeps, so the constant is written to the
+>   four decimals the argument needs and not further.
 > - $x \log_2 e$ — the same exponent rewritten in base 2. Fixed-point, non-positive.
 > - $k$ — the integer part of that quantity, $\lfloor x\log_2 e \rfloor$: the floor, so the
 >   greatest integer not exceeding it. A signed integer count of doublings.
 > - $f$ — what the floor threw away, $x\log_2 e - k$. A fraction in $[0,1)$, and by
 >   construction it has fewer significant bits than $x$ did.
 > - $2^k$ — the integer-power term. $2^f$ — the fractional-power term, in $[1,2)$.
+> - $b$ — how many of $f$'s fraction bits a design keeps. A count of bits, and the lookup table
+>   sized in **What it costs** holds $2^b$ entries: the one knob that trades the exponential's
+>   accuracy for its storage.
 >
 > **What it means.** Writing an exponent in base 2 is not a stylistic choice; it is the choice
 > that makes the integer part *be a bit position*. A fixed-point number is a bit pattern read as
@@ -379,7 +443,7 @@ A reciprocal square root is the same trick with one snag:
 > added to the variance is load-bearing rather than tidy: without it, $k$ is undefined for the
 > degenerate case and the shift has no value to move.
 
-[Figure 19](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
+[Figure 22](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
 spends: the left one keeps a general exponentiation unit and a divider, and the right one
 replaces them with a constant multiply, a small read-only memory and three shifts. The dashed
 bar in the middle of each path is the reduction that blocks the row.

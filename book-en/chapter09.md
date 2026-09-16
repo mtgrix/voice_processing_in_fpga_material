@@ -15,11 +15,25 @@
 > without growing, the boundary between the processor and the fabric, and the accuracy that look-ahead
 > buys.*
 
+> ### Minimal Mathematics / Prerequisites for this Chapter
+>
+> - **A count as a product**: steps per frame, frames per second, and why multiplying the two gives a
+>   rate whose units have to be checked before the number is trusted.
+> - **Capacity as a product**: entries per block, blocks held, elements per entry -- the same shape of
+>   argument, sized in a different unit.
+> - **Powers of two**: why a depth or a width that lands on one costs differently from one that does
+>   not, and where that difference stops being free.
+> - **Headroom**: the gap between a value and the largest its container can hold, and why a ring buffer
+>   is full at capacity minus one rather than at capacity.
+
 ---
 
 <!-- source: 9.1 reviewed fragment -->
 
 ## 9.1 The Target, and What Is Still Undecided About It
+
+*Where this sits in the chain: the* **Model** *stage, drawn as wiring -- and the* **Fabric logic**
+*storage it shares a design with, because none of this encoder's memory lives anywhere else.*
 
 Everything in this chapter rests on one model, and that model is not chosen. The decision is the owner's, it is open, and it is load-bearing: a streaming Conformer Large and a streaming FastConformer Large want different cache shapes, different step periods and different widths of wire, so they produce different overlays. What follows says which parts of each are registered and which are not, and it keeps naming both options instead of averaging them into one.
 
@@ -139,7 +153,7 @@ be built as a shift register with the taps hanging off it.
 
 **An expansion factor is a ratio, and reading it as a stage count is a factor-of-four error.** One record prints the feed-forward expansion factor as 4, where the other framework's config prints the same stage's width outright as 2048 units, its own comment calling it the number of units of position-wise feed forward. Two files, two shapes of the same idea, so a reader has to know which one they are holding. Worse, the expansion factor 4 and the subsampling factor 4 are the same digit doing unrelated jobs: one widens a stage, the other collapses time. Take the first as four stages and every per-block total downstream grows by four, and a rounding chain carries that multiplier into the bit widths chosen after it.
 
-**What the registry does not tell you is the block's shape.** No record quoted here prints how many sub-layers sit inside one block, or in what order. Those come from the architecture's definition and from the code implementing it, which a config file has no reason to repeat. So [Figure 20](#fig-conformer-block) draws the sub-layers as the book's working assumption and says so in the picture: the keys inside the boxes are what a record prints, the wires joining them are not. Nothing in this section is a per-frame cost either, because none is registered.
+**What the registry does not tell you is the block's shape.** No record quoted here prints how many sub-layers sit inside one block, or in what order. Those come from the architecture's definition and from the code implementing it, which a config file has no reason to repeat. So [Figure 23](#fig-conformer-block) draws the sub-layers as the book's working assumption and says so in the picture: the keys inside the boxes are what a record prints, the wires joining them are not. Nothing in this section is a per-frame cost either, because none is registered.
 
 ::: {#fig-conformer-block .figure}
 ```tikz
@@ -222,9 +236,9 @@ and value machinery from the beginning; this section is about the boundary aroun
 
 **Position enters as a distance rather than as an index.** Both the offline large reading and the streaming one register `rel_pos`, which the registry identifies as the Transformer-XL scheme, and what it is for is this: a token's position changes a score only through how far it sits from the token being scored. That property is what lets a cached chunk keep meaning after newer chunks arrive. A score built from absolute indices is only correct while the indices in the cache are the ones the model saw during training, so a rolling buffer would have to be recomputed each time the buffer slides. A score built from distances stays correct at any wall-clock moment, because the distance between two frames is the same whether they are the first frames of an utterance or the last. How a relative score is composed from its terms is not quoted anywhere in this registry, so this section says what the scheme is for and does not present a sum as fact.
 
-**Hardware application.** The cached quantity scales with the hidden width, not with the head count. What the overlay keeps per cached step is a key vector and a value vector for each head, and each has the length of one head: the hidden width divided by the number of heads. At a hidden width of 512 units that is 64 per head with 8 heads, and 44 per head with 4 heads at a width of 176; the records that print those widths and counts are in the note below. Multiply a head slice by the head count to get a total per step and the answer is the hidden width again, so doubling the heads at fixed width leaves the cache exactly as large and makes every head narrower. The two keys move together in a config file and not at all in a budget, which is the point [Figure 22](#fig-head-slicing) draws.
+**Hardware application.** The cached quantity scales with the hidden width, not with the head count. What the overlay keeps per cached step is a key vector and a value vector for each head, and each has the length of one head: the hidden width divided by the number of heads. At a hidden width of 512 units that is 64 per head with 8 heads, and 44 per head with 4 heads at a width of 176; the records that print those widths and counts are in the note below. Multiply a head slice by the head count to get a total per step and the answer is the hidden width again, so doubling the heads at fixed width leaves the cache exactly as large and makes every head narrower. The two keys move together in a config file and not at all in a budget, which is the point [Figure 25](#fig-head-slicing) draws.
 
-**One contrast from the other framework, so the shape above is not mistaken for a convention.** The other recipe sets its chunk at 16 frames, which is 640 ms of audio at the same 40 ms per feature frame, and its encoder is 12 blocks of 256 units with 4 heads -- both printed by the single record the note below names for that row. A longer chunk is not a different attention regime. It is the same band with a wider current block, and it buys that width in exactly the currency chapter 8 counts. [Figure 21](#fig-attention-regimes) sets the three masks beside one another, on the same five frames, so the difference between them is a shape rather than a description.
+**One contrast from the other framework, so the shape above is not mistaken for a convention.** The other recipe sets its chunk at 16 frames, which is 640 ms of audio at the same 40 ms per feature frame, and its encoder is 12 blocks of 256 units with 4 heads -- both printed by the single record the note below names for that row. A longer chunk is not a different attention regime. It is the same band with a wider current block, and it buys that width in exactly the currency chapter 8 counts. [Figure 24](#fig-attention-regimes) sets the three masks beside one another, on the same five frames, so the difference between them is a shape rather than a description.
 
 ::: {#fig-attention-regimes .figure}
 ```tikz
@@ -430,7 +444,7 @@ written as a set rather than as one number. The book's spine names a model whose
 is registered and unresolved, so which of these counts is the design's is still the owner's decision.
 Dropping the factor is therefore not a rounding choice either: the true capacity is twelve to
 seventeen times the product the plan prints, and the reading a reader picks sets which.
-[Figure 23](#fig-ring-per-block) draws what that factor is, because the single ring of the picture
+[Figure 26](#fig-ring-per-block) draws what that factor is, because the single ring of the picture
 below cannot show it -- one ring turning, twelve to seventeen times over, each copy needing its own
 address space.
 
@@ -538,7 +552,7 @@ left context the recipe asked for. The subsampling factor of section 9.2 is the 
 the two units agree, and it belongs between them.
 
 **Hardware application.** The container is registered; the contents are not. The device the plan
-targets holds 144 block RAM (BRAM -- on-chip storage) blocks and 64 UltraRAM (URAM) blocks, with the
+targets holds 144 BRAM blocks and 64 URAM blocks, with the
 tile sizes fixed at 36 Kb and 288 Kb and the datasheet's Mb columns stated to be 1024-based, which is
 the reading behind its printed `UltraRAM (Mb): 18.0`. The four records that print those figures are
 named at the end of this section, because none of them converts into a claim about this ring. What
@@ -547,7 +561,7 @@ its own unit chain by the record that exists precisely to show that two differen
 defensible under some reading of a unit. No figure here is converted. What the block factor changes
 about the placement, and what it does not, is what the picture above this one is for.
 
-[Figure 24](#fig-kv-ring-buffer) is the object the section is named for.
+[Figure 27](#fig-kv-ring-buffer) is the object the section is named for.
 
 ::: {#fig-kv-ring-buffer .figure}
 ```tikz
@@ -598,13 +612,70 @@ Read the erased slot and the outer label together: nothing in this shape grows, 
 
 **The overlay does not own its memory.** The DDR4 memory controller (DDRC -- the logic that drives the external chips) sits on the processor system (PS -- the fixed ARM cores), and the programmable logic (PL -- the fabric an overlay configures) reaches DRAM only through the AXI ports between the two sides (AXI -- the on-chip interconnect protocol of this family). The data sheet places the controller on the PS; the record's own note on that description adds that no memory pins run from the fabric straight to the chips. The memory behind those ports is what the data sheet quotes verbatim, "4 GB 64-bit wide, 2400 Mb/s", and its theoretical peak of 19.2 GB/s is derived in this book's registry from that bus width and rate -- an arithmetic figure the source itself never prints. Achievable bandwidth sits below the peak, because the fabric shares the controller, and its quality-of-service priorities, with the processors. An accelerator's view of DRAM is therefore a second-order question on this board: the first-order fact is the sharing. The Jetson this fabric is being compared against is registered at 102 GB/s of memory bandwidth, and no sentence here should be allowed to hide that gap.
 
+::: {#fig-fabric-boundary .figure}
+```tikz
+% The topology section 9.5 argues from: the fabric and the memory it wants are on opposite sides of
+% one narrow bridge. Positions only -- no measurement is drawn that the prose does not already cite.
+% The DDRC and the DRAM sit on the PS; the PL reaches them only through the AXI ports, which is why
+% the overlay "does not own its memory". Both crossings go left to right: weights arrive, activations
+% arrive, and the fabric owns only what it is placed with.
+\begin{tikzpicture}[
+  font=\tiny,
+  side/.style={draw=black!55, rounded corners=2pt, inner sep=0pt},
+  blk/.style={draw=black!70, fill=black!6, rounded corners=1.5pt, align=center, inner sep=3pt,
+    text width=3.1cm},
+  hub/.style={draw=black!70, fill=black!16, rounded corners=1.5pt, align=center, inner sep=3pt},
+  tick/.style={text=black!70},
+  lab/.style={text=black!62, align=center, text width=3.5cm},
+  bulk/.style={-{Stealth[length=2.2mm]}, line width=0.9pt, black!75},
+  strm/.style={-{Stealth[length=1.9mm]}, densely dashed, black!68},
+  own/.style={-{Stealth[length=1.6mm]}, black!55}]
+  % ---- the two halves of the device, PS left, PL right, one gap between them ----
+  \node[side, minimum width=4.4cm, minimum height=4.6cm] (ps) at (0,0) {};
+  \node[side, minimum width=4.0cm, minimum height=4.6cm] (pl) at (8.6,0) {};
+  \node[tick, anchor=north] at ($(ps.north)+(0,-0.06)$) {processor system (PS)};
+  \node[tick, align=center, anchor=north] at ($(pl.north)+(0,-0.06)$) {programmable logic\\(PL -- the fabric)};
+  % ---- off-chip memory and its controller, both on the PS side ----
+  \node[blk] (dram) at ($(ps.north)+(0,-0.95)$) {external DDR4\\the model's weights};
+  \node[hub] (ddrc) at ($(ps.north)+(0,-2.15)$) {memory controller (DDRC)};
+  \node[blk] (arm) at ($(ps.north)+(0,-3.55)$) {ARM cores\\same model, in software};
+  \draw[own] (dram.south) -- (ddrc.north);
+  \draw[own] (ddrc) -- (arm);
+  % ---- the fabric's own storage, which it does own ----
+  \node[blk] (tiles) at ($(pl.north)+(0,-1.35)$) {BRAM / URAM tiles\\residence for one core};
+  \node[hub] (ovl) at ($(pl.north)+(0,-2.85)$) {the overlay (DPU)};
+  \draw[own] (tiles) -- (ovl);
+  % ---- the bridge: the AXI ports, drawn once and labelled once ----
+  \draw[black!45, densely dotted] (4.3,-2.3) -- (4.3,2.3);
+  \node[tick, anchor=south] at (4.3,2.32) {the AXI ports};
+  % ---- both crossings use the same bridge; they differ in frequency, not in direction, and the
+  % ---- prose registers no direction, so the arrows only show traffic that pays the shared path ----
+  \draw[bulk] (ddrc.east) -- node[lab, anchor=south] {weights: one bulk load, then residence} (ovl.west);
+  \draw[strm] ($(ddrc.east)+(0,-0.42)$) -- node[lab, anchor=north]
+    {activations: a new item every frame} ($(ovl.west)+(0,-0.42)$);
+  % ---- the comparison the section turns on ----
+  \node[lab, anchor=north] at ($(ps.south)+(0,-0.16)$) {everything the fabric reads\\lives behind the bridge};
+  \node[lab, anchor=north] at ($(pl.south)+(0,-0.16)$) {only the tiles it is\\placed with are its own};
+\end{tikzpicture}
+```
+The boundary as a picture rather than a paragraph: the memory controller and the DRAM that holds the
+weights both sit on the processor side, and the fabric reaches them only through the AXI ports, so the
+one heavy crossing is a bulk load made once and the light traffic is a stream that never stops. The
+drawing adds no measurement -- the two populations and the sharing it shows are the records section 9.5
+cites.
+:::
+
+
+[Figure 28](#fig-fabric-boundary) draws that sharing: the controller and the chips are on the far
+side of one bridge, and the fabric reaches them only across it.
+
 **The PS keeps one on-chip memory, and it is not fabric SRAM.** The data sheet prints 256 KB of on-chip memory (OCM -- storage fixed inside the device) with error-correcting codes, reachable from the PL over AXI; that row spans three device classes, so it is a family-level statement rather than a fact about this part alone. It is not fabric BRAM and it is not in the DPU's address space, so the registry keeps it out of any weight budget: latency-critical scratch, not model storage.
 
 **Weights cross in bulk; activations cross in a stream.** A weight set is the same bytes every frame, so a design that streamed them would pay the shared, contended path again for nothing; one bulk load, then residence in the tiles the ladder below counts, spends that path once. Activations are the opposite case: a new item every frame period, forever, which is why they want a streaming interface. The protocol is AXI4-Stream and chapter 4 owns it; this section only marks which traffic gets which shape. The bytes one frame puts on the wire are not registered, so no size is claimed here.
 
 **Four lanes at 12.5 Gb/s is the whole way out.** The silicon contains 16 GTH transceivers (serial lanes that move raw bits off the chip) rated 16.3 Gb/s at device level, but the SFVC784 and SFVE784 packages support up to 12.5 Gb/s, and the KV260's device -- an SFVC784 -- bonds out only 4 GTH lanes and no GTY. A link budget built on 16.3 Gb/s therefore describes a package the board does not have. That is the trap for a reader planning to hang an external accelerator off transceiver lanes; the outward input/output this kit actually carries is four USB 3.0 ports.
 
-**The vendor ladder is the honest picture of what a tool costs.** The overlay's intellectual property is the DPUCZDX8G deep learning processing unit (DPU). Its guide has already lost one table: an earlier edition printed B4096 at 37,266 LUTs, 249.5 Block RAM and 642 DSPs, none of which appears in the edition this book reads, so that record is withdrawn as evidence and kept for the conflict. The replacement is explicit about its board: B4096 on a ZCU102 costs 52,161 look-up tables (LUT -- the basic logic element), 98,249 registers, 255 Block RAM (BRAM -- 36-kilobit storage tiles) and 710 DSP slices (the multiply-accumulate blocks); the same core buffering its weight stream in UltraRAM (URAM) instead uses no BRAM and 68 URAM tiles. Against the 144 BRAM and 64 URAM tiles of the ZU5EV, B4096 as tabulated fits neither variant, and DSP is the one resource with headroom, 710 of the fabric's 1,248.
+**The vendor ladder is the honest picture of what a tool costs.** The overlay's intellectual property is the DPUCZDX8G deep learning processing unit (DPU). Its guide has already lost one table: an earlier edition printed B4096 at 37,266 LUTs, 249.5 Block RAM and 642 DSPs, none of which appears in the edition this book reads, so that record is withdrawn as evidence and kept for the conflict. The replacement is explicit about its board: B4096 on a ZCU102 costs 52,161 look-up tables (LUT -- the basic logic element), 98,249 registers, 255 BRAM tiles and 710 DSP slices (the multiply-accumulate blocks); the same core buffering its weight stream in URAM instead uses no BRAM and 68 URAM tiles. Against the 144 BRAM and 64 URAM tiles of the ZU5EV, B4096 as tabulated fits neither variant, and DSP is the one resource with headroom, 710 of the fabric's 1,248.
 
 | Rung | `V-04-10` BRAM tiles | `V-04-11` URAM tiles |
 | --- | --- | --- |
@@ -617,7 +688,11 @@ Read the erased slot and the outer label together: nothing in this shape grows, 
 | B3136 | 208 | 64 |
 | B4096 | 255 | 68 |
 
-The BRAM column climbs with the name; the URAM column does not -- B1024 uses 26 tiles where B800 uses 40 -- so no rung may be interpolated. Fitting the ladder to this device is derived arithmetic, stated as such: B1600 is the largest BRAM core that fits, 126 tiles of 144, and the largest URAM core, B3136, fills 64 of 64 exactly and leaves nothing for the rest of the design, which makes B2304 the practical ceiling; even B1600 takes 38,418 of 117,120 LUTs, about a third of the device for one core. Which rung the factory image actually loads is a registered non-answer: no primary source, community files disagree, and the source note says documents cannot settle it.
+The BRAM column climbs with the name; the URAM column does not -- B1024 uses 26 tiles where B800 uses 40
+-- so no rung may be interpolated. [Figure 18](#fig-ch4-dpu-ladder) draws those two columns against this
+device's two storage ceilings, so the crossing and the dip are geometry rather than arithmetic to redo; the
+drawing is chapter 4's, because that is where the tiles themselves are defined, and the counts are the table
+above unchanged. Fitting the ladder to this device is derived arithmetic, stated as such: B1600 is the largest BRAM core that fits, 126 tiles of 144, and the largest URAM core, B3136, fills 64 of 64 exactly and leaves nothing for the rest of the design, which makes B2304 the practical ceiling; even B1600 takes 38,418 of 117,120 LUTs, about a third of the device for one core. Which rung the factory image actually loads is a registered non-answer: no primary source, community files disagree, and the source note says documents cannot settle it.
 
 **A does-not-fit report is a valid outcome.** The plan's second acceptance condition allows a measured word error rate (WER -- the fraction of reference words a recognizer gets wrong) *or* a report that the design does not fit, with the arithmetic shown, and counts the report as a result. The ladder above is what such a report is written against: "B4096 does not fit ZU5EV" is not a failed project, it is the registered fit verdict for that pairing. One operating assumption stays open: the Jetson model the plan compares against is recorded as a project choice still unresolved.
 
@@ -650,7 +725,7 @@ derived; the sentence that uses each names it as derived, and the registered ope
 
 ## 9.6 Look-Ahead Is the Cheapest Accuracy on the Table
 
-**One vendor drew the curve this chapter asks for.** A streaming model can wait for more audio before it commits a word, and that wait is **look-ahead**: the model hears the end of a sound as part of what comes after it. NVIDIA's English score table publishes four checkpoints of one streaming FastConformer family at four amounts of that future, all read on the test-other split of the English LibriSpeech corpus. Word error rate (WER -- the share of reference words the system gets wrong) falls as the wait grows: 7.0 per cent with none of it, 6.4 at a short 80 ms wait, 5.7 at 480 ms, and 5.4 at the full 1040 ms. [Figure 25](#fig-lookahead-accuracy) puts the four on axes, and the traceability table at this section's end names the record behind each point.
+**One vendor drew the curve this chapter asks for.** A streaming model can wait for more audio before it commits a word, and that wait is **look-ahead**: the model hears the end of a sound as part of what comes after it. NVIDIA's English score table publishes four checkpoints of one streaming FastConformer family at four amounts of that future, all read on the test-other split of the English LibriSpeech corpus. Word error rate (WER -- the share of reference words the system gets wrong) falls as the wait grows: 7.0 per cent with none of it, 6.4 at a short 80 ms wait, 5.7 at 480 ms, and 5.4 at the full 1040 ms. [Figure 29](#fig-lookahead-accuracy) puts the four on axes, and the traceability table at this section's end names the record behind each point.
 
 ::: {#fig-lookahead-accuracy .figure}
 ```tikz
@@ -702,7 +777,7 @@ derived; the sentence that uses each names it as derived, and the registered ope
 The only accuracy-against-latency curve a publisher draws for this family, which is why the design question is where to sit on it. Read from the left: the first published step is the steepest thing there is, the open circle is the table's second value for the far setting, and the dashed line belongs to a smaller model, so it marks a size mismatch rather than a ceiling.
 :::
 
-**The knob is an integer, not a feeling.** Each streaming recipe publishes a pair, `att_context_size: [left, right]`, and the right element is how many attention steps of future audio the model is allowed to see: 27 for the cache-aware streaming Conformer, 13 for the cache-aware streaming FastConformer. A step is a fixed slice of time, because the encoder subsamples the feature stream: a 0.01 s feature stride times a factor of four is 40 ms per step, and the same stride times a factor of eight is 80 ms. Multiplying gives the wait, and both products land on numbers the records print themselves: 27 steps of 40 ms is the 1080 ms published for the Conformer, and 13 steps of 80 ms is the 1040 ms published for the FastConformer. That second product is the right end of [Figure 25](#fig-lookahead-accuracy), and 13 is the first entry of a list on the same config line, `[[70,13],[70,6],[70,1],[70,0]]`, whose remaining entries are the other three points. The curve is one list read four times, not four architectures. Each figure above is a registered operand or a product of them; the table at this section's end names the record for each.
+**The knob is an integer, not a feeling.** Each streaming recipe publishes a pair, `att_context_size: [left, right]`, and the right element is how many attention steps of future audio the model is allowed to see: 27 for the cache-aware streaming Conformer, 13 for the cache-aware streaming FastConformer. A step is a fixed slice of time, because the encoder subsamples the feature stream: a 0.01 s feature stride times a factor of four is 40 ms per step, and the same stride times a factor of eight is 80 ms. Multiplying gives the wait, and both products land on numbers the records print themselves: 27 steps of 40 ms is the 1080 ms published for the Conformer, and 13 steps of 80 ms is the 1040 ms published for the FastConformer. That second product is the right end of [Figure 29](#fig-lookahead-accuracy), and 13 is the first entry of a list on the same config line, `[[70,13],[70,6],[70,1],[70,0]]`, whose remaining entries are the other three points. The curve is one list read four times, not four architectures. Each figure above is a registered operand or a product of them; the table at this section's end names the record for each.
 
 | Quantity | Value | Where it comes from |
 | --- | --- | --- |
@@ -714,7 +789,7 @@ The only accuracy-against-latency curve a publisher draws for this family, which
 
 **Left context is a second knob, and the two recipes do not trade it.** The two recipes spend different numbers of steps and land on the same span of the past: derived from the two recipes' registered left contexts, both are 5600 ms of audio. One is a slower encoder holding fewer steps, the other a faster encoder holding more. Note too that the pair is not free of each other: the streaming Conformer's own record notes that in the mode its config uses, the left element must divide by the right element plus one, and 140 / (27 + 1) is 5 exactly. Buying future audio can therefore cost past audio, and no registered source prices that second trade.
 
-**The shape is the argument.** The publisher's note on the far point of the curve prices the whole run at 1.6 points of error, and [Figure 25](#fig-lookahead-accuracy) shows where those points are earned: nearly all of the slope sits inside the first step, and the two published settings beyond 480 ms differ by less than the first two do while being many times further apart on the axis. So the design question is placement, not completion. The far end of the curve is not a goal; it is a second of waiting, which is a large thing to ask of a system whose frontend was given a frame deadline in single-digit milliseconds.
+**The shape is the argument.** The publisher's note on the far point of the curve prices the whole run at 1.6 points of error, and [Figure 29](#fig-lookahead-accuracy) shows where those points are earned: nearly all of the slope sits inside the first step, and the two published settings beyond 480 ms differ by less than the first two do while being many times further apart on the axis. So the design question is placement, not completion. The far end of the curve is not a goal; it is a second of waiting, which is a large thing to ask of a system whose frontend was given a frame deadline in single-digit milliseconds.
 
 **Mark what the curve cannot carry.** It is one family, in English, on one corpus, at one size: about 115 million parameters for the streaming FastConformer, against about 120 million for the other streaming large recipe. The clean-split counterpart of the same family at its longest setting prints 2.3 per cent while its test-other cell prints 5.5, and the offline row the streaming model is asked to approach prints 2.5 and 6.6 -- but that offline pair belongs to the Small variant at about 14 million, so it is not size-matched, and the streaming row is the lower of the two on both columns. There is no offline large row registered here, so the ceiling this comparison wants is missing rather than won. Two smaller limits: only the test-other column is filled for the four curve points, so the curve cannot be drawn on the clean split at all, and the same operating point carries both 5.4 and 5.5 per cent, which sets the reading precision of this table. A WeNet streaming row prints 3.80 and 4.54 per cent under its two decoding modes, on test-clean at a chunk of 16 frames, which is 640 ms: a different column, a different framework, and a comparison between documents, not a controlled experiment.
 
