@@ -61,10 +61,14 @@ TEXT: str = bibliography.BIB_PATH.read_text(encoding="utf-8")
 ENTRY_PATTERN = re.compile(r"^@(\w+)\{([^,]+),\n((?: .*\n)*)\}", re.MULTILINE)
 FIELD_PATTERN = re.compile(r"^  (\w+) += +(.+),$", re.MULTILINE)
 
-#: The four rows whose documents the evidence set quotes with no author in any captured quote.
-#: Pinned as a set, like the registry pins its exemptions: a fifth authorless row means either a new
+#: The five rows whose documents the evidence set quotes with no author in any captured quote.
+#: Pinned as a set, like the registry pins its exemptions: a sixth authorless row means either a new
 #: source was registered without an author, or a quote started naming people. Either is a decision.
-AUTHORLESS = {"S019", "S020", "S021", "S023"}
+#: S037 joined on 2026-09-17: ConfASR is quoted only from the R04 note's verbatim transcription of
+#: the paper's table and Results section, which names no author line, and the registry row pins the
+#: RWTH publication record rather than transcribing people. S035 and S036 carry explicit
+#: author lines.
+AUTHORLESS = {"S019", "S020", "S021", "S023", "S037"}
 
 
 def entries() -> list[tuple[str, str, dict[str, str]]]:

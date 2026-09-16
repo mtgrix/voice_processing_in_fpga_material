@@ -636,6 +636,65 @@ SPEC: list[Entry] = [
         "documents "
         "now carry AMD branding.",
     ),
+    Entry(
+        doc_id="Proceedings of the IEEE 105(12) / arXiv:1703.09039",
+        id="S035",
+        type="journal-article",
+        publisher="IEEE",
+        url="https://ieeexplore.ieee.org/document/8114708",
+        authors="Vivienne Sze et al.",
+        authors_bibtex="Sze, Vivienne and Chen, Yu-Hsin and Yang, Tien-Ju and Emer, Joel",
+        venue="Proceedings of the IEEE",
+        pages="2295--2329",
+        bibtex_entry="article",
+        year=2017,
+        research_note_path="docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+        topics=("DNN accelerator", "dataflow", "weight stationary", "row stationary", "energy"),
+        notes="Sze, Chen, Yang and Emer, Efficient Processing of Deep Neural Networks: A Tutorial "
+        "and Survey. Chapter 3's dataflow taxonomy and its energy ladder are this paper's, so the "
+        "doc_id carries both the journal issue and the arXiv stamp. The R04 transcription prints "
+        "the taxonomy as WS / IS / OS; the survey itself tabulates WS / OS / No-Local-Reuse / "
+        "Row-Stationary, and the book keeps the claim to the triad R04 actually quotes.",
+    ),
+    Entry(
+        doc_id="ICML 2021 / arXiv:2101.01321",
+        id="S036",
+        type="conference-paper",
+        publisher="PMLR",
+        url="https://arxiv.org/abs/2101.01321",
+        authors="Sehoon Kim et al.",
+        authors_bibtex="Kim, Sehoon and Gholami, Amir and Yao, Zhewei and Mahoney, Michael W and "
+        "Keutzer, Kurt",
+        venue="Proceedings of the 38th International Conference on Machine Learning",
+        pages="5506--5518",
+        bibtex_entry="inproceedings",
+        year=2021,
+        research_note_path="docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+        topics=("BERT", "integer arithmetic", "softmax", "transformer", "quantization"),
+        notes="I-BERT: Integer-only BERT Quantization. The arXiv id 2101.01321 was verified via "
+        "the arXiv API against the title; the archive's copy in docs/papers is a different "
+        "paper (arXiv 2101.01304, secret sharing) and is superseded. The PMLR record is "
+        "pages 5506-5518 in volume 139, confirmed by extracting every kim21x entry from the "
+        "volume page. Chapter 7's integer-only softmax path is this paper's.",
+    ),
+    Entry(
+        doc_id="ASP-DAC 2026 (ConfASR)",
+        id="S037",
+        type="conference-paper",
+        publisher="IEEE / ACM",
+        url="https://doi.org/10.18154/RWTH-2026-01243",
+        venue="Proceedings of the 2026 Asia and South Pacific Design Automation Conference",
+        bibtex_entry="inproceedings",
+        year=2026,
+        research_note_path="docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+        topics=("Conformer", "streaming ASR", "silicon", "FDSOI", "ring buffer"),
+        notes="ConfASR: A Dedicated Conformer Block Accelerator for Streaming Automatic Speech "
+        "Recognition. The paper itself is not public as a PDF; every ConfASR number chapter 9 "
+        "teaches is quoted from research note R04 section 3.2, which transcribes the paper's "
+        "Table 1 and Results section verbatim, and the registry row is pinned to the RWTH "
+        "publication record that carries the bibliographic identity. No page range is recorded "
+        "because none of the records quote one.",
+    ),
 ]
 
 

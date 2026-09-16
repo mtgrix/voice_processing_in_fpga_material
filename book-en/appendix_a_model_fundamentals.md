@@ -148,7 +148,7 @@ representation than the last.
 | fourth | the other half of the feed-forward | across the width | the same factor `V-05-36` |
 | fifth | one normalisation over the sum | neither; it rescales | `conv_norm_type` names a type, not a size `V-05-26` |
 
-[Figure 30](#fig-appendix-block-reading) is that same block drawn for the direction each stage mixes,
+[Figure 33](#fig-appendix-block-reading) is that same block drawn for the direction each stage mixes,
 and for the storage a residual quietly asks for.
 
 ::: {#fig-appendix-block-reading .figure}
@@ -300,7 +300,7 @@ heads, and each head keeps its own $d_{\text{head}}$ units of each vector. Then,
 > - $\sqrt{d_{\text{head}}}$ — the square root of that count, used as a fixed divisor. A pure number.
 > - $i$ — the step being read; $t$ — the step doing the reading. Counts of steps.
 > - "the mask allows" — the subset of steps $i$ this step is permitted to look at, decided by
->   position rather than by content, and drawn in [Figure 33](#fig-appendix-attention).
+>   position rather than by content, and drawn in [Figure 36](#fig-appendix-attention).
 >
 > **What it means.** A score is a similarity test with no threshold attached: multiply matching
 > entries and add, and a large sum means the query and the key point the same way. The divisor is
@@ -360,7 +360,7 @@ heads, and each head keeps its own $d_{\text{head}}$ units of each vector. Then,
 > a guarantee of interpretability: $\alpha_{t,i}$ being large says the dot product was large, which
 > is a statement about vectors this stage computed, not about which words "matter" to a human.
 
-[Figure 31](#fig-appendix-softmax-shares) draws that same row three times, so the two jobs the exponential does and the normalising divide are visible as a change of shape rather than as a sentence.
+[Figure 34](#fig-appendix-softmax-shares) draws that same row three times, so the two jobs the exponential does and the normalising divide are visible as a change of shape rather than as a sentence.
 
 ::: {#fig-appendix-softmax-shares .figure}
 ```tikz
@@ -444,7 +444,7 @@ registered head count and nothing else. Two candidates therefore want two differ
 $1/\sqrt{44}$, and a design that hard-codes one cannot host the other without a change to a
 multiply-and-round stage.
 
-[Figure 32](#fig-appendix-score-matrix) lays the mask over the scores it deletes, so the two
+[Figure 35](#fig-appendix-score-matrix) lays the mask over the scores it deletes, so the two
 grids are visibly the same shape.
 
 ::: {#fig-appendix-score-matrix .figure}
@@ -568,7 +568,7 @@ refuses to look at -- is what chapter 9 measures.
 
 *Two of the three vectors must be remembered and one need not.* The query of a finished step is
 consumed the moment its scores exist; the key and the value are read by every later step that is allowed
-to look back, so they persist. That pair is the cache, and [Figure 33](#fig-appendix-attention) draws it
+to look back, so they persist. That pair is the cache, and [Figure 36](#fig-appendix-attention) draws it
 as a box for a reason: it is the only storage attention requires, its depth is the read set, and its
 width is the hidden total rather than the head count. Every later step's attention reads it, so it sits
 on the critical path of a stage that is already on the critical path of the block. Chapter 9 sizes it;
@@ -751,7 +751,7 @@ number of outputs but how many values must be within reach of a multiplier at on
 question before it is an arithmetic one.
 :::
 
-**Hardware application.** [Figure 34](#fig-appendix-dense-separable) sets the two shapes beside each other.
+**Hardware application.** [Figure 37](#fig-appendix-dense-separable) sets the two shapes beside each other.
 The arithmetic above is the whole reason a Conformer is buildable, and the two halves of the
 factorisation have different physical signatures.
 
@@ -876,6 +876,15 @@ a power-of-two form for the same shape of problem in the softmax and is the chap
 this section was for is the reason that arithmetic matters at all: the model asked for a reduction and a
 divide, and the hardware has to answer with additions and shifts.
 
+The base-two polynomial above is not a chapter 7 curiosity, because both normalising shapes in this
+appendix ask for the same exponential. The softmax of section 3 of appendix A exponentiates a row of
+scores before it divides by their sum, and the layer normalisation derived just above needs a
+reciprocal square root that is another transcendental in fixed-point clothing. The integer-only path
+is the same one in all three places: split the exponent at the binary point so the integer half
+becomes a shift, and hand the fraction to the second-order polynomial with coefficients $0.6958$ and
+$0.2250$. Section 8.3 is where that arithmetic is derived for the softmax's normalising shape, and
+the coefficients above are what it inherits.
+
 
 **Traceability.** The records this section leans on.
 
@@ -884,6 +893,7 @@ divide, and the hardware has to answer with additions and shifts.
 | `V-05-20` | the offline large model's convolution module normalises with BatchNorm |
 | `V-05-26`, `V-05-41` | both streaming configs of the same family normalise with LayerNorm |
 | `V-05-18` | the row a layer normalisation must reduce: the large recipes' width of 512 |
+| `V-07-14` | the two coefficients of the base-two polynomial the same integer-only path uses on the softmax |
 
 
 ## A.6 From a Dimension to a Budget

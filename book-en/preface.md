@@ -290,6 +290,40 @@ which is why the front-end chapters come before the fabric chapter even though t
 destination. The map above keeps the two straight, and its stage labels are printed rather than
 described so that the order of the book and the order of the machine cannot drift apart.
 
+**The first tier is a wake-word listener.** It is the only part of the pipeline that never switches off: one always-listening microphone path, whose whole job is to answer a single question -- is anyone speaking. It does not decide what was said, it does not transcribe, and it does not even keep the audio; it opens the gate for the tier above it. Because it owns every second of the day, its budget is set by patience rather than by speed, so it has to be tiny: well under one milliwatt, and a few tens of thousands of parameters at most.
+
+**The second tier is a keyword spotter.** This is the board-level design the migration chapters build end to end: an acoustic model of under a hundred thousand parameters that listens for a closed vocabulary and decides which word from that set was said. It runs only after the first tier has already reported a voice, which is a small share of any hour -- call it about five per cent -- and while it runs it draws a few tens of milliwatts.
+
+**The third tier is the transcriber.** This is the streaming recogniser family the book actually ports, and it is the expensive one: hundreds of milliwatts while it works, because it has to keep its own history somewhere and read it back on every step. But it works for the smallest fraction of the time of all three tiers, well under five per cent, so its share of the average bill is tens of milliwatts rather than hundreds.
+
+**The arithmetic, said plainly.** Those three budgets are this book's own planning estimates, derived from the records the later chapters cite rather than read off a bench; no record cited anywhere in these pages says a build on this board will hit any of them. They are printed so that a reader can disagree with each one separately, and so that a later measurement has something to be measured against. The tiers exist at all because an always-on pipeline pays for its silence: a machine that keeps a transcriber awake to hear nothing spends the whole budget on the nothing.
+
+[Figure 3](#fig-tier-power-staircase) puts the three budgets in one picture, and the picture is the argument.
+
+::: {#fig-tier-power-staircase .figure}
+```tikz
+% A staircase of three tiers: each step is as wide as the share of time its tier runs,
+% and as tall as that tier's operating power. The first tier spans the whole width
+% because it never sleeps; the third is the narrow slice at the right, where the
+% transcriber earns its keep. Heights are this book's planning estimates.
+\begin{tikzpicture}[
+  every node/.style={font=\scriptsize, align=center, text width=24mm},
+]
+\draw[->] (0,0) -- (8.8,0) node[below=3pt] {share of the time the tier runs};
+\draw[->] (0,0) -- (0,4.1) node[left=3pt, align=center] {operating\\power};
+
+\draw[fill=black!8]  (0,0)     rectangle (8.0,1.0);
+\draw[fill=black!18] (3.4,1.0) rectangle (6.6,2.2);
+\draw[fill=black!30] (5.8,2.2) rectangle (7.6,3.3);
+
+\node at (4.0,0.5)  {wake-word listener\\ well under 1 mW\\ all of the time};
+\node at (5.0,1.6)  {keyword spotter\\ a few tens of mW\\ about 5\% of the time};
+\node at (6.7,2.75) {transcriber\\ hundreds of mW\\ well under 5\% of the time};
+\end{tikzpicture}
+```
+The three tiers drawn as a power staircase. The wake-word listener is on for all of the time and costs the least; the transcriber costs the most and runs for the smallest share of it, so the wide low step sets the bill and the narrow high one does not.
+:::
+
 ## What this book is, and what it is not
 
 It is not a report of results. The project has no board on a bench. There is no latency table here that

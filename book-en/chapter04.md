@@ -75,7 +75,7 @@ measured in milliseconds, and until it finishes the chip is not yet the machine 
 In exchange, a stage that needs no memory read contains no memory read, a datapath of a given width
 costs that width, and every stage can accept its own item on the same clock edge.
 
-[Figure 12](#fig-spatial-vs-temporal) draws the exchange: the same four-layer sequence, on the same
+[Figure 14](#fig-spatial-vs-temporal) draws the exchange: the same four-layer sequence, on the same
 amount of silicon, both ways. On the left one block of hardware is reused four times, so four time
 slots are occupied and no slot holds two layers. On the right four different blocks hold four
 different layers at once and a single item leaves the column after one pass -- but each block is
@@ -165,6 +165,16 @@ period -- are named as absent rather than estimated.
 | `V-01-15` | the device column those counts belong to, printed in full: LUTs, flip-flops, memory blocks and DSP slices together |
 | `V-01-01` | the part the budget belongs to, marked on the module rather than inferred from a board name |
 | `V-04-01` | building any of it needs no licence: the device is supported in the standard Vivado ML Standard flow |
+
+**From dataflow to fabric.** Chapter 3 met the three dataflow families and the one thing each of them
+parks in its processing elements: weights, input activations, or running sums. What this book has not
+yet answered is what those processing elements are made of, because the answer decides which family a
+given model can actually afford. A stationarity strategy is a claim about where data lives, and the
+next section walks the three kinds of place a KV260 fabric can hold data in: the look-up tables that
+build logic and small memories, the DSP slices that do the arithmetic, and the block RAM that holds
+everything else. Each one is a stationarity decision waiting to be made, and each one reappears when
+the book ports the streaming recogniser in chapter 9.
+
 ## 4.2 FPGA Hardware Primitives: CLBs, DSP48E2, and SRAM Blocks
 
 **Intuition.** A fabric is not a list of components. It is a large population of identical, generic
@@ -283,7 +293,7 @@ separately -- and why their ratio is a design constraint worth computing before 
 > utilisation report is where the truth about any one design lives, and the command that produces it
 > is registered in this section's table -- it is the only place a real per-design number comes from.
 
-[Figure 13](#fig-ch4-lut-truth-table) is the two halves of that argument drawn together: the left panel
+[Figure 15](#fig-ch4-lut-truth-table) is the two halves of that argument drawn together: the left panel
 shows a function becoming contents, the right shows what a design then has to fit into.
 
 ::: {#fig-ch4-lut-truth-table .figure}
@@ -397,7 +407,7 @@ property of the design so much as a property of how many slices it was allowed t
 > next subsection counts, and a design whose arithmetic units outnumber its ability to feed them is
 > waiting on data rather than computing. That is the roofline of chapter 3 seen from the inside.
 
-[Figure 14](#fig-ch4-mac-pipeline) draws the one distinction in that card that changes a throughput
+[Figure 16](#fig-ch4-mac-pipeline) draws the one distinction in that card that changes a throughput
 number: whether the slice waits for its own answer before taking new work.
 
 ::: {#fig-ch4-mac-pipeline .figure}
@@ -502,7 +512,7 @@ decides what a design fits into.
 mistake this repository actually made. The registry keeps that quantity as a *conflict* precisely
 because two different totals -- "about 4 MB" and "about 4.5 MB" -- were each defensible from a datasheet
 row until somebody did the division, and neither survives it. The record that states it correctly
-exists to make the unit travel with the number, and both are named in the table below. [Figure 15](#fig-ch4-tile-geometry)
+exists to make the unit travel with the number, and both are named in the table below. [Figure 17](#fig-ch4-tile-geometry)
 draws the same fact as geometry, because "3.02 MB, mostly in the deep tiles" is a shape: two grids of
 containers, one cell eight times the other by area, and the design has to pick.
 
@@ -595,7 +605,7 @@ ready, the channel feeding it holds its item, so that stage cannot accept a new 
 holds, and so on to the source. The condition is called back-pressure, and a pipeline under
 back-pressure is doing nothing while continuing to burn its clock.
 
-[Figure 16](#fig-ch4-stream-handshake) draws the rule and its two failure modes on one time axis. Read
+[Figure 18](#fig-ch4-stream-handshake) draws the rule and its two failure modes on one time axis. Read
 the item labelled $D$ first: it is offered at cycle 3, held for two cycles because the destination
 dropped TREADY, and transferred at cycle 5 -- and it occupies three cycles of the payload band because
 holding an item and losing an item are different things, which is the entire value of the protocol.
@@ -746,7 +756,7 @@ rest of it is the finding.
 | Record | What it establishes here |
 | --- | --- |
 | `V-01-04` | 234,240 flip-flops, the denominator of the register cost, and the only registered population the wire card touches |
-| -- | no record: the protocol specification itself, the definitions of TVALID and TREADY, every level and interval in [Figure 16](#fig-ch4-stream-handshake), any channel width, and any streaming bandwidth -- the interface is this book's working definition, retrieved from no source
+| -- | no record: the protocol specification itself, the definitions of TVALID and TREADY, every level and interval in [Figure 18](#fig-ch4-stream-handshake), any channel width, and any streaming bandwidth -- the interface is this book's working definition, retrieved from no source
 
 ---
 
@@ -812,7 +822,7 @@ unit traps live.
 > board, registered rung by rung, from which the fit against this device is derived arithmetic and is
 > labelled as such in the table below.
 
-[Figure 17](#fig-ch4-residency) puts all eight quantities on one axis, because the interesting thing is
+[Figure 19](#fig-ch4-residency) puts all eight quantities on one axis, because the interesting thing is
 not the per-centages -- it is that one bar crosses the fabric's line and the other six do not come
 close to it.
 
@@ -1028,7 +1038,7 @@ The whole memory ladder is short enough to print at once, and reading it is the 
 The vendor ladder drawn as fit rather than as rows: every rung's two tile counts against this device's two storage ceilings, so the crossing, the non-monotonic dip that forbids interpolation, and the one rung that fills its ceiling exactly are shapes on the page instead of arithmetic to redo. The counts are the table's, unchanged; nothing in the drawing adds a measurement.
 :::
 
-Three readings of that table, all of them arithmetic against the device's own populations; [Figure 18](#fig-ch4-dpu-ladder)
+Three readings of that table, all of them arithmetic against the device's own populations; [Figure 20](#fig-ch4-dpu-ladder)
 draws the same rows as geometry, so the first and second of them can be checked with a ruler. The block RAM
 column climbs with the rung name and crosses this device's 144 tiles between B1600 and B2304, so 126
 tiles of 144 is the largest block RAM core that fits, derived as 87.5% of the fabric's shallow storage

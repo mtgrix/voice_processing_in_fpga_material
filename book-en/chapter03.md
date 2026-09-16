@@ -153,7 +153,7 @@ multiprocessor actually spends on that stage's instructions. A chunk's total is 
 stage, over twelve blocks of them (`V-05-04` for the depth). Section 3.1 showed that the waits are covered only when some other resident warp is ready,
 and that a stream of single frames is the case with the fewest of them, so the cover is thin and what
 is left is exposed latency, per stage, twelve blocks deep (`V-05-04` for the depth). Exposed waits are
-where a tail is made. Two more sources follow, and both are arithmetic rather than luck; [Figure 9](#fig-chunk-boundary)
+where a tail is made. Two more sources follow, and both are arithmetic rather than luck; [Figure 10](#fig-chunk-boundary)
 draws the first of them as a distance. A frame that
 slips past a chunk boundary is not answered a moment later; it is answered when the next chunk
 completes, because a chunked encoder cannot emit a decision before it has the chunk, so the penalty
@@ -283,7 +283,7 @@ operations divided by peak bandwidth. `V-07-01` is the paper that introduced the
 > the corner is the same point on both boards -- the two dense corners are drawn apart for exactly
 > that reason -- nor does a lower $R$ mean a faster machine, only one that saturates sooner.
 
-[Figure 10](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
+[Figure 11](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
 one pair of axes. Read the rising lines before the corners. Each is labelled with the
 bandwidth that fixes its height, the Orin's is the higher of the two, and so at any
 intensity left of both corners the GPU is faster in absolute terms, and nothing here says
@@ -298,12 +298,12 @@ Two things the figure does not say are worth naming. It does not say where the V
 Edge Benchmark sits on the horizontal axis: that number belongs to a compiled network
 and a chosen kernel, and no record in this book has it, so the workload is left off the
 plot rather than guessed at. It also does not resolve which Orin the project will
-measure against. [Figure 10](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
+measure against. [Figure 11](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
 reason, and the band between them is drawn as a question, not as a range.
 
-[Figure 11](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
+[Figure 12](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
 input behind that corner which is not a datasheet figure, which is why the FPGA corner of
-[Figure 10](#fig-ridge-point-comparison) is the softest number in it.
+[Figure 11](#fig-ridge-point-comparison) is the softest number in it.
 
 ::: {#fig-ridge-point-comparison .figure}
 ```tikz
@@ -516,7 +516,7 @@ dense SKUs while `V-02-28` stays unresolved.
 How much of the ridge-point gap is the clock. `V-07-03` states its KV260 figures at 300
 MHz, which is an assumption about a board this project has not measured, and its own note
 says what the same inputs give at 500 MHz. Both lines here are the division plotted as a
-single corner in [Figure 10](#fig-ridge-point-comparison), so [Figure 11](#fig-clock-sensitivity) answers one question only: does the gap survive the
+single corner in [Figure 11](#fig-ridge-point-comparison), so [Figure 12](#fig-clock-sensitivity) answers one question only: does the gap survive the
 assumption. It does. The FPGA ridge stays an order of magnitude below the
 Orin dense ridge across every clock this book has reason to name, and the gap closes only
 at the clock tagged at the right of the plot, which comes from arithmetic rather than
@@ -524,3 +524,95 @@ from a record, and which no record says the part runs at.
 :::
 
 ## 3.4 Motivation for Spatial Hardware Computing on FPGAs
+
+
+**Intuition.** Section 3.3 ended at a corner: the KV260 reaches its own compute ceiling at a low arithmetic intensity, and an Orin reaches its at a higher one. That is a statement about *waiting*, and waiting is a symptom. This section looks at the cause, which is a quantity the roofline does not plot at all, namely energy.
+
+The short version is that arithmetic on a number is cheap and moving the same number is not. A neural network accelerator is therefore budgeted by its traffic before it is budgeted by its arithmetic. How many times each weight, each activation and each partial sum has to be fetched, carried across the chip, and written back is what decides the energy of one inference, and the multiply-accumulate that all of that traffic exists to serve is a small item in that account. A spatial architecture is the name for a class of machines that admits this and then does something about it: rather than hiding the wait behind a scheduler, it changes where each operand lives so that the traffic does not have to happen. The roofline said the FPGA saturates early; this section says what a designer arranges so that saturating early costs less than it sounds.
+
+The register for the energy argument is a survey of efficient neural-network processing, and its one sentence on the subject is the whole foundation of this section:
+
+> "Memory accesses are significantly more energy-consuming than arithmetic operations. Accessing off-chip DRAM consumes about 200x more energy than an ALU operation (e.g., 32-bit DRAM read consumes ~640 pJ versus ~3.7 pJ for 32-bit floating-point add, and ~1.1 pJ for 32-bit SRAM read)."
+
+Read the bracket as a ladder with three rungs, and note that every word on it is the same width, so the three figures are comparable. At the top rung, reading one 32-bit word from off-chip DRAM costs about 640 pJ. That is the trip a number takes when it leaves the memory chips on the board, crosses the package pins, and arrives in the accelerator. At the bottom rung, reading one 32-bit word from on-chip SRAM, which is the memory banked next to the compute on the die itself, costs about 1.1 pJ. Between them sits the arithmetic: one 32-bit floating-point add costs about 3.7 pJ. The headline ratio the survey prints is the top rung against the arithmetic, at about 200 times, and the honest reading of it is not that memory is slower but that a fetch from off-chip is the most expensive single thing a layer does, and a design that repeats it for every operand of every multiply-accumulate pays that price on purpose.
+
+Two qualifications keep the ladder usable. It is a set of figures for a process generation and a memory hierarchy that the survey describes in general, not measurements of the KV260 or the Orin, and this book has not measured either board's access energy, so the ladder is used here as an ordering of costs, which is robust, and not as a budget, which would be a fabrication. The ordering is all the argument needs: off-chip fetch is the expensive rung, on-chip storage is cheap, and arithmetic is cheap.
+
+**Mechanism.** If the expensive act is carrying an operand, then the design lever is deciding which operand stays put. A processing element (PE) is one multiply-accumulate site in a spatial array, and it has a small register file (RF) of its own, local storage that costs the cheap rung to read. A dataflow is the naming convention for which operand a machine parks in that local storage and which ones it makes travel. The survey names three families, and their definitions are quoted here in full because the distinction between them is a distinction about traffic, and paraphrase tends to blur it.
+
+> "The goal of the weight stationary (WS) dataflow is to minimize the energy consumption of reading weights. In a WS dataflow, weights are read from DRAM or the global buffer into the register file (RF) of each processing element (PE) and kept there for as many MAC operations as possible. Input activations and partial sums must move through the spatial array and global buffer."
+
+In a weight-stationary design, the parked operand is the weight. Each PE loads its weight once, holds it in its own register file, and multiplies it by a stream of arriving activations. What travels is therefore the input activation, which flows through the array from PE to PE, and the partial sum, which accumulates as it goes and must be handed back through the global buffer, the on-chip buffer that sits between the array and DRAM. This pays off when a weight is reused many times, because the one expensive fetch is amortised across many multiply-accumulates.
+
+> "The goal of the input stationary (IS) dataflow is to minimize the energy consumption of reading input activations from memory. In an IS dataflow, input activations are kept in the RF of each PE, while weights and partial sums are moved through the PEs."
+
+Here the parked operand is the input activation. Each PE holds one activation value and multiplies it by a parade of weights that travel through the array, and the partial sum still travels. The trade is the mirror image of the previous one: it pays when an activation is reused against many weights, which is the situation in a layer whose output channels are many and whose input is a small vector.
+
+> "The goal of the output stationary (OS) dataflow is to minimize the energy consumption of reading and writing partial sums. Accumulation is performed locally within the RF of each PE until the final output activation is calculated."
+
+In an output-stationary design, the parked operand is the partial sum, the running total of a dot product. The PE that owns an output accumulates into its own register file and writes nothing back until the sum is finished, so the operand that never has to leave the chip is the one that would otherwise have been read and written once per accumulated term. Weights and activations travel instead, which is a real cost and not a free one; the family bets that the partial sum is the operand with the most traffic, because it is touched repeatedly within a single dot product, and that parking it saves more than parking a weight or an activation would.
+
+The three definitions agree about the arithmetic and disagree only about which operand is allowed to be expensive. [Figure 13](#fig-sze-dataflows) draws all three on the same grid so that the disagreement is the only thing visible.
+
+::: {#fig-sze-dataflows .figure}
+```tikz
+% Three two-by-two PE arrays, one per dataflow family. In each array the operand the
+% family parks in the PE register file is drawn with a double border, and the operands
+% that must travel are drawn as light arrows through the array and down to the global
+% buffer. The three grids are identical on purpose: only the parked operand differs.
+\begin{tikzpicture}[
+  pe/.style={draw, minimum width=13mm, minimum height=11mm, font=\scriptsize},
+  stay/.style={draw, double, double distance=1pt, fill=black!10, font=\scriptsize,
+    inner sep=1.5pt},
+  buf/.style={draw=black!50, fill=black!4, font=\scriptsize, inner sep=3pt,
+    rounded corners=1.5pt},
+  arr/.style={-{Stealth[length=1.8mm]}, black!55, thick},
+  t/.style={font=\scriptsize, inner sep=1pt},
+  ttl/.style={font=\small, align=center},
+]
+\foreach \g/\name/\anch/\row/\col/\down in {%
+  0/{Weight-Stationary}/W/I/Psum/Psum,
+  1/{Input-Stationary}/I/W/Psum/Psum,
+  2/{Output-Stationary}/O/W/I/output} {
+  \begin{scope}[xshift=\g*4.6cm]
+    \node[ttl] at (0.75,2.5) {\name};
+    \node[buf] (b) at (0.75,-1.05) {global buffer};
+    \foreach \x in {0,1} \foreach \y in {0,1} {
+      \node[pe] (p\x\y) at (\x*1.5,\y*1.4) {};
+      \node[stay] at (\x*1.5,\y*1.4) {\anch};
+    }
+    \draw[arr] (p00.east) -- (p10.west);
+    \draw[arr] (p01.east) -- (p11.west);
+    \node[t, anchor=south] at (0.75,0.08) {\row};
+    \node[t, anchor=south] at (0.75,1.48) {\row};
+    \draw[arr] (p00.north) -- (p01.south);
+    \draw[arr] (p10.north) -- (p11.south);
+    \node[t, anchor=east] at (-0.08,0.7) {\col};
+    \node[t, anchor=west] at (1.58,0.7) {\col};
+    \draw[arr] (0.75,-0.5) -- (b.north);
+    \node[t, anchor=west] at (0.85,-0.78) {\down};
+  \end{scope}
+}
+\end{tikzpicture}
+```
+The three families on one identical grid of processing elements, so that what differs is only which operand each parks. Each large square is one processing element, and the small box with the double border inside it is the operand held in that element's register file: the weight, the input activation, or the partial sum. The light arrows are the operands that must travel, labelled as they move; W is a weight, I an input activation, and Psum a partial sum. The box under each array is the global buffer, and the arrow down to it is the operand that has to cross it. Weight-stationary and input-stationary both send the partial sum home through the buffer; output-stationary is the one family that writes back only the finished output activation.
+:::
+
+**Hardware application.** Which family serves this book's workload is a design question, and the honest answer is that it leans one way for a reason the records support and is unresolved for everything beyond that reason.
+
+A streaming inference at batch one is a poor fit for weight-stationary, and the reason is the reuse the family needs. Each weight in a streaming layer is multiplied into a small number of activations per frame, because there is no batch to multiply it into, so the expensive fetch of that weight is amortised across few uses. The operand whose traffic dominates in this regime is the partial sum, which is touched once per accumulated term inside every dot product and would have to cross the array and the buffer on every one of those touches if it were not parked. So the designs this book develops sit at the output-stationary end of the family, and the survey's definition of that family is what makes the choice legible rather than habitual.
+
+That is an inclination, not a measurement, and its edges are worth naming. The survey's taxonomy describes spatial accelerators as a class; no record in this repository says which dataflow the KV260's toolchain actually emits for a given layer, and a real compiled design usually mixes families across its stages, so a single label for the whole network would be an overclaim even after a board run. What parking the partial sum does *not* buy is the one thing section 3.3 already showed the FPGA cannot avoid: the design still has to be fed from DRAM at the rate its bandwidth allows, and the corner on that roofline moves down, not away. Chapter 4 turns to the primitives that make the choice concrete, because a parked operand is only useful once there is a multiply-accumulate structure to park it in.
+
+> **What this section is not claiming.** The energy ladder is quoted from a survey of accelerator design, and its figures describe the memory hierarchy that survey analyses; they are not measurements of the KV260, of the Orin, or of any board this project has run, and this book prints no access energy of its own. The three dataflow definitions are quoted verbatim and describe families of architecture, not the AMD toolchain's output for a specific layer; which family any compiled stage of the Voice Edge Benchmark realises is an open question that chapter 8's board work would have to answer, and the choice argued for above is a design lean reasoned from the workload's shape, not a result.
+
+**Traceability.** The records behind the ladder and the three definitions quoted above.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-07-06` | the three rungs of the energy ladder: 640 pJ for an off-chip DRAM read, 3.7 pJ for a floating-point add, 1.1 pJ for an on-chip SRAM read, all in pJ |
+| `V-07-07` | the about 200 times ratio of an off-chip DRAM access to an arithmetic operation |
+| `V-07-26` | that every word in that ladder is 32-bit, so the three rungs are comparable as widths |
+| `V-07-08` | the weight-stationary definition, quoted verbatim above |
+| `V-07-09` | the input-stationary definition, quoted verbatim above |
+| `V-07-10` | the output-stationary definition, quoted verbatim above |
