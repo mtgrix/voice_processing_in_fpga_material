@@ -1,10 +1,13 @@
 # The Streaming Bottleneck: Why Batch=1 Stalls a GPU
 
-> *Objective: Analyze the root architectural causes behind GPU power inefficiency, memory bandwidth saturation, and latency jitter under continuous streaming audio.*
+> *Objective: Analyze the root architectural causes behind the two ways a graphics processor misbehaves on continuous streaming audio -- memory bandwidth saturation when the work is too thin to fill it, and latency jitter when the waits are exposed. Power is not analyzed here; chapter 7 measures it.*
 
 ---
 
 ## 3.1 The Mismatch Between Streaming Audio and SIMT Architecture
+
+*Where this sits in the chain: the* **Output and latency** *stage -- this chapter asks why the answer arrives*
+*late, or in bursts, when the arithmetic itself is small enough to fit anywhere.*
 
 **Intuition.** A GPU does not run many programs at once. It runs one instruction at a time across a
 wide group of lanes, and it keeps many such groups waiting in the wings, so that when one group stalls
@@ -33,11 +36,14 @@ divide into whole warps leaves the last group partly unused. Work whose lanes di
 paths.
 
 What the target offers against those two rules is a real size, and it is worth writing down rather
-than gesturing at. One frame's activation vector is 256 channels wide (`V-05-04`), which is
-8 warps' worth of lanes, calculated from those two records. Split the same vector over the encoder's 4 heads
-(`V-05-04`) and a head is 64 channels wide, calculated, which is 2 warps, calculated. A frame is
-therefore not a trickle. It is a handful of full groups for a general stage and a couple for one head
-of attention.
+than gesturing at. One frame's activation vector is 256 channels wide (`V-05-04`). Divide that width
+by the 32 lanes a warp issues together (`V-02-42`) leaves 8 whole warps, derived from those two
+records. Split the same vector over the encoder's 4 heads (`V-05-04`) and the same division leaves a
+head 64 channels wide and 2 warps, derived the same way.
+A frame is therefore not a trickle: it is eight full groups for a general stage and two for one head of
+attention. Eight and two are both whole numbers, so nothing here is wasted on a partial last warp --
+what is thin is not the fill of one instruction but the number of independent groups the machine can
+hold ready to cover a memory wait.
 
 Whether a handful is enough is the machine's question, not the model's, and the guide answers it with
 a list rather than a number: how many blocks and warps an SM holds at once depends on the registers
@@ -57,7 +63,8 @@ different observations, and a stream of single frames is the case that tells the
 One qualification keeps this section honest about the model this book actually ports. A cache-aware
 streaming encoder is not fed one frame at a time. It consumes a chunk of 16 frames, which is 640 ms of
 audio at 40 ms per feature frame (`V-05-05`). Inside a chunk the machine has
-4,096 values per channel stack to work through, calculated, which is a batch in all but name. So a chunked design buys back the
+4,096 values per channel to work through, derived as the 256 channels of one frame (`V-05-04`) times
+the 16 frames of one chunk (`V-05-05`) -- a batch in all but name. So a chunked design buys back the
 parallelism that streaming removed, and the price is not arithmetic but delay: 640 ms of audio must
 arrive before the encoder can answer any of it. That trade, and not a missing kernel flag, is what
 "batch one" means on this workload. Chapter 8 and chapter 9 take the chunk size as a design input for exactly
@@ -138,17 +145,70 @@ partial chunk at the end of an utterance and a full chunk in the middle are diff
 graph is only worth instantiating if the shape recurs. `V-05-05` registers the recurrence, a chunk of
 16 frames, and nothing here registers how often the tail of an utterance breaks it.
 
-Now the tail. A chunk's latency is a sum: for each stage, a setup, a wait for its inputs, and its own
-execution. Section 3.1 showed that the waits are covered only when some other resident warp is ready,
+Now the tail. A chunk's latency is a sum over the stages it passes through, and the three terms are
+different physical things. The first is the driver's setup: the host work that happens before the
+kernel runs at all. The second is a wait -- the time the stage's inputs are not yet readable, which is
+covered only if another resident warp is ready to issue. The third is execution: the cycles the
+multiprocessor actually spends on that stage's instructions. A chunk's total is the three added stage by
+stage, over twelve blocks of them (`V-05-04` for the depth). Section 3.1 showed that the waits are covered only when some other resident warp is ready,
 and that a stream of single frames is the case with the fewest of them, so the cover is thin and what
 is left is exposed latency, per stage, twelve blocks deep (`V-05-04` for the depth). Exposed waits are
-where a tail is made. Two more sources follow, and both are arithmetic rather than luck. A frame that
+where a tail is made. Two more sources follow, and both are arithmetic rather than luck; [Figure 9](#fig-chunk-boundary)
+draws the first of them as a distance. A frame that
 slips past a chunk boundary is not answered a moment later; it is answered when the next chunk
 completes, because a chunked encoder cannot emit a decision before it has the chunk, so the penalty
 for a late sample is up to a whole chunk, 640 ms of audio at 40 ms per feature frame (`V-05-05`). And
 a kernel that arrives while the driver is still finishing the setup of the previous one queues, so a
 jitter in the host's own timing arrives at the output summed over the stages rather than
 averaged away.
+
+::: {#fig-chunk-boundary .figure}
+```tikz
+% The shape behind the sentence "the penalty for a late sample is up to a whole chunk". One frame
+% period is drawn 0.62cm wide, so the 16-frame chunk is exactly 16 of those widths and the two waits
+% are horizontal distances a reader can compare with a ruler. No value is added that section 3.2 does
+% not already print from `V-05-05`; every span below is a dimension line with drop guides.
+\begin{tikzpicture}[
+  font=\tiny,
+  tick/.style={text=black!70},
+  lab/.style={text=black!62, align=center},
+  arr/.style={-{Stealth[length=1.8mm]}, black!70},
+  dim/.style={<->, black!68},
+  guide/.style={black!40},
+  band/.style={draw=black!55, fill=black!6, inner sep=0pt}]
+  % ---- the arrival rail: sixteen frames on the input's own clock ----
+  \draw[arr] (-0.25,2.05) -- (11.05,2.05);
+  \foreach \i in {0,...,15}{
+    \draw[black!62] ({\i*0.62+0.31},1.87) -- ({\i*0.62+0.31},2.23);}
+  \node[tick, anchor=south west] at (-0.02,2.30) {a frame arrives every 40 ms};
+  % ---- the window that has to fill before anything can be answered ----
+  \node[band, minimum width=9.92cm, minimum height=0.72cm, anchor=south west] at (0,1.02) {};
+  \node[lab] at (4.96,1.38) {one chunk: 16 frames, 640 ms of audio};
+  % ---- the boundary: the instant the whole window is answered at once ----
+  \draw[densely dotted, black!65] (9.92,0.30) -- (9.92,2.42);
+  \node[tick, anchor=west, align=left, text width=1.55cm] at (10.02,1.16) {all sixteen answered at
+    once, on one boundary};
+  % ---- the two waits, as dimension lines under the band ----
+  \draw[guide] (0.31,0.96) -- (0.31,0.60);
+  \draw[guide] (9.61,0.96) -- (9.61,0.60);
+  \draw[dim] (0.31,0.66) -- (9.55,0.66);
+  \node[tick, anchor=north] at (4.93,0.60) {the first frame in the window waits the whole 640 ms};
+  \draw[dim] (9.61,0.30) -- (9.86,0.30);
+  \node[tick, anchor=west] at (10.02,0.24) {the last waits a moment};
+  % ---- the comparison the section turns on: two rates on one ruler ----
+  \draw[guide] (0.93,-0.06) -- (0.93,-0.44);
+  \draw[dim] (0.31,-0.38) -- (0.87,-0.38);
+  \node[tick, anchor=north] at (0.62,-0.44) {40 ms};
+  \draw[dim] (0.31,-0.94) -- (9.86,-0.94);
+  \node[tick, anchor=north] at (5.08,-1.00) {sixteen of them, and none answered before the last one lands};
+\end{tikzpicture}
+```
+The chunk as a shape rather than a number: the arrival rate and the answer rate on one ruler, so the
+wait a frame inherits is a horizontal distance and one period sits sixteen times inside the window it
+has to fill. Both spans are the same record's two figures, and the drawing adds no measurement to
+them.
+:::
+
 
 > **What "preemption" is doing in this heading, and what it is not.** The word came from the original
 > outline for this chapter, and no record in `docs/verification/claims.json` supports a description of
@@ -196,7 +256,34 @@ flat line once the work is dense enough to keep the compute units fed. The corne
 between them is the ridge point, and for this book it is always the same division: peak
 operations divided by peak bandwidth. `V-07-01` is the paper that introduced the plot.
 
-[Figure 9](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
+> **The formula.** $R = \dfrac{P_{\text{ops}}}{P_{\text{bw}}}$
+>
+> **The variables.**
+> - $R$ — the ridge point: the arithmetic intensity, in operations per byte, where the machine stops
+>   waiting for memory and starts waiting for the compute units. A rate ratio, not a time and not a
+>   count of anything.
+> - $P_{\text{ops}}$ — the peak operation rate the machine can sustain, in operations per second. For
+>   the two boards this is the dense compute ceiling the figure's flat line is drawn at.
+> - $P_{\text{bw}}$ — the peak memory bandwidth, in bytes per second: the height of the rising line.
+>
+> **What it means.** Dividing a rate of operations by a rate of bytes leaves operations per byte,
+> which is the one axis a workload can be placed on and a machine's two lines can be read against.
+> The corner is where the two ceilings agree on a single number, so it is a ratio of the datasheet's
+> two headline figures and nothing else -- which is why both boards' corners can be drawn from the
+> records `V-07-02` and `V-07-03` without a measurement of this project's own.
+>
+> **What it costs.** Nothing to compute: $R$ is arithmetic on two numbers a datasheet already prints,
+> done once when the figure is drawn. The cost it *names* is the machine's -- to sit right of the
+> corner a design must be fed $P_{\text{ops}}$ worth of work for every byte of state, and a
+> bandwidth-light accelerator reaches its own corner at a far lower intensity, which is the whole
+> argument for the smaller part.
+>
+> **What it does not say.** It does not say where the Voice Edge Benchmark sits relative to $R$: that
+> depends on a compiled network and a chosen kernel, and no record here has it. It also does not say
+> the corner is the same point on both boards -- the two dense corners are drawn apart for exactly
+> that reason -- nor does a lower $R$ mean a faster machine, only one that saturates sooner.
+
+[Figure 10](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on
 one pair of axes. Read the rising lines before the corners. Each is labelled with the
 bandwidth that fixes its height, the Orin's is the higher of the two, and so at any
 intensity left of both corners the GPU is faster in absolute terms, and nothing here says
@@ -211,12 +298,12 @@ Two things the figure does not say are worth naming. It does not say where the V
 Edge Benchmark sits on the horizontal axis: that number belongs to a compiled network
 and a chosen kernel, and no record in this book has it, so the workload is left off the
 plot rather than guessed at. It also does not resolve which Orin the project will
-measure against. [Figure 9](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
+measure against. [Figure 10](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that
 reason, and the band between them is drawn as a question, not as a range.
 
-[Figure 10](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
+[Figure 11](#fig-clock-sensitivity) belongs to the FPGA corner alone. It varies the one
 input behind that corner which is not a datasheet figure, which is why the FPGA corner of
-[Figure 9](#fig-ridge-point-comparison) is the softest number in it.
+[Figure 10](#fig-ridge-point-comparison) is the softest number in it.
 
 ::: {#fig-ridge-point-comparison .figure}
 ```tikz
@@ -429,7 +516,7 @@ dense SKUs while `V-02-28` stays unresolved.
 How much of the ridge-point gap is the clock. `V-07-03` states its KV260 figures at 300
 MHz, which is an assumption about a board this project has not measured, and its own note
 says what the same inputs give at 500 MHz. Both lines here are the division plotted as a
-single corner in [Figure 9](#fig-ridge-point-comparison), so [Figure 10](#fig-clock-sensitivity) answers one question only: does the gap survive the
+single corner in [Figure 10](#fig-ridge-point-comparison), so [Figure 11](#fig-clock-sensitivity) answers one question only: does the gap survive the
 assumption. It does. The FPGA ridge stays an order of magnitude below the
 Orin dense ridge across every clock this book has reason to name, and the gap closes only
 at the clock tagged at the right of the plot, which comes from arithmetic rather than
