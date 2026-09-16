@@ -528,14 +528,50 @@ offline one, this section would be about a constant folded into weights.
 > sub-layer. It is not a count of sub-layers and it says nothing about how many normalisation
 > stages this section must build.
 
-**Requantisation gives these stages their number format.** The affine form $r = S(q - Z)$,
-scale and integer zero-point, is the standard statement of how an integer stands for a real
-number, and it is what lets a datapath carry an unsigned integer whose real meaning is
-somewhere near zero. The same idea applied to a product writes the multiplier as
-$M = (S_1 S_2)/S_3 = 2^{-n} M_0$ with $M_0$ in $[0.5,1)$, so a real multiply becomes a
-fixed-point multiply by $M_0$ plus a shift. That is the arithmetic the base-2 path above
-already spends, borrowed for its shape; chapter 7 owns the choice of scales, zero-points and
-widths.
+**Requantisation gives these stages their number format.** An integer stands for a real
+number by an affine map, and a product of two such integers is put back into an integer
+format by one multiplier. Both are one idea applied twice, so one card carries both forms.
+
+> **The formula.** An integer stands for a real number by an affine map, $r = S(q - Z)$
+> (V-06-01), and a product of two integers is requantised by the multiplier
+> $M = \dfrac{S_1 S_2}{S_3} = 2^{-p} M_0$ (V-06-02), with $M_0$ in $[0.5, 1)$: the real
+> multiply becomes a fixed-point multiply by $M_0$ followed by a shift of $p$ places.
+>
+> **The variables.**
+>
+> - $r$ — the real number a stored integer stands for. Units of the quantity being carried.
+> - $S$ — the scale: how much one integer step counts in real units. A positive real.
+> - $q$ — the stored integer, the quantity the datapath actually carries. Integer units.
+> - $Z$ — the zero-point: the integer whose real value is zero, which is what lets a narrow
+>   unsigned integer mean a real number near zero. Integer units.
+> - $S_1$, $S_2$, $S_3$ — the scales of the first operand, the second operand and the
+>   output. The paper fixes the first operand as the weights and the second as the
+>   activations (V-06-02), so $S_1$ is the weight scale and $S_2$ the activation scale.
+> - $M$ — the requantisation multiplier, a ratio of three scales. It is a constant: the
+>   number the datapath multiplies by, not the multiplier unit that performs the multiply.
+> - $p$ — the shift count, the non-negative integer in the $2^{-p}$ factor. The paper writes
+>   $n$; renamed here because $n$ already means a softmax row length earlier in this section.
+> - $M_0$ — the mantissa, the part of $M$ in $[0.5, 1)$ a fixed-point multiplier can carry.
+>   The paper's example word lengths are int16 and int32 (V-06-02).
+>
+> **What it means.** The affine form is what lets a datapath carry an unsigned integer whose
+> real meaning is somewhere near zero: the zero-point says which integer means zero, and the
+> scale says what each step is worth. The multiplier form is the same idea applied to a
+> product: because $M = S_1 S_2 / S_3$ and $M = 2^{-p} M_0$, forming the product, scaling it
+> and requantising it collapse into one fixed-point multiply by $M_0$ and one shift of
+> $p$ places. That is the arithmetic the base-2 path above already spends, borrowed for its
+> shape.
+>
+> **What it costs.** The multiplier is only as accurate as the word length that carries it:
+> at int32 the integer nearest to $2^{31} M_0$ is always at least $2^{30}$ -- at least
+> $30$ bits of relative accuracy (V-06-02). The fabric cost of that multiply and shift is
+> not registered.
+>
+> **What it does not say.** It does not say what the three scales are worth: the formula
+> relates them but nothing here chooses them, and the choice is what determines the word
+> widths. It does not say which operand is which, either: the paper fixes the first operand
+> as the weights and the second as the activations, so swapping that reading swaps $S_1$ and
+> $S_2$ and changes every $M$ this section will spend.
 
 **The tie rule is what a shift gets wrong.** Brevitas' default `float_to_int_impl` is
 `RoundSte` -- `torch.round` with a straight-through estimator (STE -- the backward pass treats
@@ -544,9 +580,16 @@ tie, because the tie rule is a property of `torch.round` and not of the wrapper 
 the framework's source says nothing about which way it goes. So the tie rule has to be read off
 the rounding function itself: torch.round is "round half to even", which sends an exact tie to
 whichever neighbour is even. A
-fixed-point pipeline that right-shifts truncates, rounding every value down. The usual repair,
-adding $1 \ll (\text{shift}-1)$ before the shift, lands on half away from zero, which is a
-third behaviour: the tie either way, away, or to even, three answers from one shift. The rule
+fixed-point pipeline that right-shifts truncates, rounding every value down, so the tie of a
+right shift becomes the lower neighbour. The usual repair adds half a least-significant bit
+before the shift: a $1$ at the top of the tail the shift drops, written $1 \ll (\text{shift}-1)$
+where $\text{shift}$ is the number of places dropped. That repair has a definite direction,
+and it is not away from zero: at $\text{shift} = 1$ the idiom maps $-3 \to -1$, $-1 \to 0$,
+$1 \to 1$ and $3 \to 2$, so a half-way value rises toward positive infinity on both sides of
+zero -- the label "half away from zero" fits the positive ties, the negative ones rise to the
+larger (less negative) neighbour instead. Three tie behaviours from one shift, then:
+truncation rounds down, the add-one repair rounds toward $+\infty$, and round-to-even sends
+a tie to whichever neighbour is even. The rule
 a design must copy is the one the framework uses, so the shift needs $M_0$ odd at the
 truncated bit -- not merely a nonzero remainder -- and ties must break downward or upward
 according to the even neighbour. The estimator is the training half of that agreement.

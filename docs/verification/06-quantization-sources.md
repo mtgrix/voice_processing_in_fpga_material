@@ -30,17 +30,17 @@ for some constants S and Z. Equation (1) is our quantization scheme and the cons
 | quantity | `integer_multiply_shift_requantization_source` |
 | value | `Jacob et al., CVPR 2018 (Equations 4-6)` |
 | unit | `citation` |
-| conditions | `M = (S1*S2)/S3 = 2^(-n) * M_0, M_0 in [0.5, 1)` |
+| conditions | `M = (S1*S2)/S3 = 2^(-n) * M_0, M_0 in [0.5, 1); the paper's q1 is the weights and q2 the activations` |
 | source_tier | `T3` |
 | doc_id | `CVPR 2018 / arXiv:1712.05877` |
 | title | Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference |
 | url | https://arxiv.org/pdf/1712.05877.pdf |
-| locator | p.3, Section 2.2 'Integer-arithmetic-only matrix multiplication', Equations (4)-(6) |
-| quote | where the multiplier M is defined as M := S1*S2 / S3 ... In other words, the multiplication by M can be implemented as a fixed-point multiplication by M0, followed by a bit-shift to account for 2^(-n). |
+| locator | p.3, Section 2.2 'Integer-arithmetic-only matrix multiplication', Equations (4)-(6); Section 2.4, operand roles |
+| quote | where the multiplier M is defined as M := S1*S2 / S3 ... In other words, the multiplication by M can be implemented as a fixed-point multiplication by M0, followed by a bit-shift to account for 2^(-n). ... The normalized multiplier M0 now lends itself well to being expressed as a fixed-point multiplier (e.g. int16 or int32 depending on hardware capability). For example, if int32 is used, the integer representing M0 is the int32 value nearest to 2^31 M0. Since M0 >= 0.5, this value is always at least 2^30 and will therefore always have at least 30 bits of relative accuracy. ... We take the q1 matrix to be the weights, and the q2 matrix to be the activations. |
 | retrieved_utc | `2026-09-12T04:25:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | Allows full integer-only matrix multiplication and requantization without any floating-point hardware. |
+| notes | Allows full integer-only matrix multiplication and requantization without any floating-point hardware. Extended 2026-09-17: quote now also carries the fixed-point word-length guidance (int16/int32, 2^31 nearest, >= 2^30, 30 bits of relative accuracy) and the Section 2.4 operand roles, so chapter 8's requantisation card (S1 weight scale, S2 activation scale, M0 word length) stays traceable to this record. |
 
 ### V-06-03 · Finn Framework Scope
 
@@ -100,7 +100,7 @@ for some constants S and Z. Equation (1) is our quantization scheme and the cons
 | retrieved_utc | `2026-09-12T12:00:00Z` |
 | access | `open` |
 | corroborating_url |  |
-| notes | RESOLVED on the second pass. The first pass could not re-reach the page and therefore asserted nothing, which is why this record sat unresolved. Two fetch notes worth keeping: docs.pytorch.org/docs/stable/generated/torch.round.html returns only a 'Redirecting...' shell to a scripted fetcher, and the versioned URL above is what carries the text, so a checker reading the stable URL sees no claim to check. The quoted sentence is the tie rule Brevitas inherits (V-06-04) and that an RTL fixed-point pipeline usually does not implement, since adding (1 << (shift-1)) rounds half away from zero: three tie behaviours across one toolchain, which is the bit-exactness trap this record was opened for. |
+| notes | RESOLVED on the second pass. The first pass could not re-reach the page and therefore asserted nothing, which is why this record sat unresolved. Two fetch notes worth keeping: docs.pytorch.org/docs/stable/generated/torch.round.html returns only a 'Redirecting...' shell to a scripted fetcher, and the versioned URL above is what carries the text, so a checker reading the stable URL sees no claim to check. The quoted sentence is the tie rule Brevitas inherits (V-06-04) and that an RTL fixed-point pipeline usually does not implement, since adding (1 << (shift-1)) rounds ties toward positive infinity (at shift = 1 it maps -3 to -1, -1 to 0, 1 to 1 and 3 to 2): three tie behaviours across one toolchain, which is the bit-exactness trap this record was opened for. |
 
 ### V-06-06 · Conv Bn Fusion Rewrites Preceding Weights
 
