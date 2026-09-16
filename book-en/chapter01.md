@@ -16,7 +16,7 @@
 
 Every section that follows makes one argument: a streaming voice system is not a slow vision
 system, it is a different measurement problem. That argument is easier to follow with the machine
-already in view, so the view comes first. [Figure 3](#fig-ch1-pipeline-contract) is the version this
+already in view, so the view comes first. [Figure 4](#fig-ch1-pipeline-contract) is the version this
 book keeps returning to. Its stages carry the same names, in the same order, as the preface's map,
 and each box is labelled with the chapters that work inside it.
 
@@ -224,7 +224,7 @@ arithmetic cannot proceed without, and the problems are not a matter of taste.
   happened to be loudest, so each energy is replaced by its **logarithm**.
 
 All six live inside the box labelled "DSP front end" in
-[Figure 3](#fig-ch1-pipeline-contract), which draws the whole machine at one frame's worth of time and
+[Figure 4](#fig-ch1-pipeline-contract), which draws the whole machine at one frame's worth of time and
 marks the two places a design has to remember something between frames -- the first of them being the
 buffer that the second stage of this list is about.
 
@@ -257,7 +257,7 @@ counters that move around a fixed circle. Nothing moves; only the reading order 
 difference between a loop and a counter is one of the clearest examples of what porting to an
 FPGA actually buys.
 
-[Figure 4](#fig-ch1-ring-buffer) draws that difference, because it is the one claim in this section
+[Figure 5](#fig-ch1-ring-buffer) draws that difference, because it is the one claim in this section
 that a reader cannot check from the prose -- "a loop" and "two counters" look like two ways of saying
 the same thing until the two pictures are side by side.
 
@@ -352,7 +352,7 @@ multiply the frame by a **window function** that fades both ends toward zero bef
 analysis is taken. The reference implementation uses the Hamming window across the 400
 samples of the buffer. The cost is that the ends of the frame contribute little, which makes the
 frequency response wider -- and "wider" is a claim with a number attached to it, not a mood. Section
-1.3 prices it: [Figure 8](#fig-ch1-window-cost) draws the frame before and after the fade and shows
+1.3 prices it: [Figure 9](#fig-ch1-window-cost) draws the frame before and after the fade and shows
 what each one does to a single tone.
 
 **Short-Time Fourier Transform (STFT).** One DFT (Discrete Fourier Transform -- the sum that
@@ -588,7 +588,7 @@ the book. A frame is $L$ samples, which at $16{,}000$ samples per second is $25$
 is $H$ samples, which is $10$ ms. So the pipeline delivers one feature vector every $10$ ms, each
 computed from $25$ ms of audio, and consecutive deliveries share $15$ ms of that audio. That shared
 part is $240$ samples of a $400$-sample frame, which is $60\%$ of a frame, and
-[Figure 5](#fig-ch1-frames-window-overlap) draws the whole arrangement to scale.
+[Figure 6](#fig-ch1-frames-window-overlap) draws the whole arrangement to scale.
 
 ::: {#fig-ch1-frames-window-overlap .figure}
 ```tikz
@@ -802,7 +802,7 @@ that scale.
 > measurements produces a silent band.
 
 The compression the card describes is easiest to see as a curve rather than as a sentence about
-logarithms. [Figure 6](#fig-ch1-mel-curve) plots the function itself, with equal steps marked on the
+logarithms. [Figure 7](#fig-ch1-mel-curve) plots the function itself, with equal steps marked on the
 mel axis and dropped through to the hertz axis they select.
 
 ::: {#fig-ch1-mel-curve .figure}
@@ -1118,8 +1118,8 @@ side of the trade-off matters more for a voice model. A longer frame gives finer
 coarser timing, and whether a given keyword spotter gains or loses by that is a question about
 the model. It is answerable by measuring recognition accuracy and the equal error rate (EER --
 the threshold where false accepts and false rejects are equally common) at several values of
-$L$. Nobody has run that sweep here. [Figure 5](#fig-ch1-frames-window-overlap) and
-[Figure 7](#fig-ch1-mel-triangles) are the same decision drawn twice: a wider frame buys a finer
+$L$. Nobody has run that sweep here. [Figure 6](#fig-ch1-frames-window-overlap) and
+[Figure 8](#fig-ch1-mel-triangles) are the same decision drawn twice: a wider frame buys a finer
 bin grid and gives up the ability to say when something happened, and at the values this book uses
 the grid is still coarse enough that the lowest bands of the bank land on whole bins one at a time.
 
@@ -1127,7 +1127,7 @@ The other half of the trade-off is not about $L$ at all, and it is the half the 
 owes a number. Holding the frame length fixed, the shape of the frame's ends decides how wide every
 tone comes out and how much of the neighbouring bins' energy lands on it.
 
-[Figure 8](#fig-ch1-window-cost) prices it, because the sentence above says the fade makes
+[Figure 9](#fig-ch1-window-cost) prices it, because the sentence above says the fade makes
 the response "wider" and nobody can tell from that word how much wider, or what the widening is
 buying. It draws one frame of a $250$ Hz tone twice -- once as a bare cut leaves it, once as the
 Hamming window leaves it -- and beside each, what a single tone becomes under that choice.

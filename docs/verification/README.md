@@ -7,7 +7,7 @@ Five passes ran on 2026-09-12, and a sixth ran on 2026-09-13 against a question 
 asked about itself: chapter 1 printed a 16,000 Hz sampling rate and named no source for it.
 That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes. A seventh ran on 2026-09-14 for Issue #47: it read four NVIDIA NeMo ASR files at a pinned commit and added 46 records, and it is the first pass whose main effect was to contradict the set rather than extend it -- see [C-08](#c-08--which-conformer-this-book-is-porting). An eighth ran the same day for Issue #57: it read two pages of the current CUDA Programming Guide (v13.4, both stamped 2026-09-09) and added 6 records, `V-02-42` to `V-02-47`, so that chapter 3 could teach the execution model with citations instead of folklore. Two of its sentences settle what the rest of this directory has only been using: a warp is 32 threads wide, and switching between warps costs nothing. It registered `threads per warp`, the second new unit term, and it left two gaps open on purpose -- the microseconds a launch takes and the number of warps an Orin SM can hold -- because the guide gives neither and the record that would need them does not exist. A ninth ran the same day, also for Issue #57: it read three toolchain documents -- the convolution/batch-norm fuser tutorial (PyTorch Tutorials 2.14), the module behind it at release tag v2.10.0, and the Vitis AI quantizer's own configuration document at a pinned commit -- and added 7 records, `V-06-06` to `V-06-12`, so that chapter 5 could say what a compiler does to a graph and what a quantizer measures before it commits. Every one of the seven carries a string value, because what they establish is a behaviour and not a magnitude: nothing on those three pages sizes this book's model, and the chapter that cites them prints no number for that reason. It also left `generated_utc` and `version` on this file behind, which is why they are bumped with it: a registry whose newest record was read on 2026-09-14 cannot publish 2026-09-13 as its own date.
 It also registered `kHz`, the first new unit term since the vocabulary was written down, and
-it left the weaker of the two records at tier T4 on purpose -- see its notes field. The initial pass wrote 71 records. The first review re-read every
+it left the weaker of the two records at tier T4 on purpose -- see its notes field. A tenth pass ran on 2026-09-17 for the four SOTA pillars the monograph's English edition was about to teach: it read research note R04 against the papers catalogue and added 21 records, `V-07-06` to `V-07-26`, so that chapters 3, 7 and 9 could cite the Sze dataflow taxonomy (WS/IS/OS and the 640 / 3.7 / 1.1 pJ energy ladder), the I-BERT integer-only softmax decomposition, and the ConfASR silicon run (22 nm FDSOI, 250 MHz, 359 mW, 1.19 mm2, >900x real-time, >4x latency, 16x power) each to a registered source. Its identifier work is worth recording: the archived Kim2021 PDF in `docs/papers` turned out to be a different paper (arXiv 2101.01304, secret sharing), and the I-BERT record set was pointed at the corrected arXiv 2101.01321 / PMLR v139 kim21d (pages 5506-5518) instead. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
 The second pass went the other way: it re-read the underlying documents to settle what the first review
 had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. The third pass
@@ -23,8 +23,8 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 162
-- **Verified:** 153
+- **Total Records:** 183
+- **Verified:** 174
 - **Unresolved:** 6
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 8 (C-01 … C-08; five of them — C-02, C-03, C-06, C-07 and C-08 — carry no
@@ -35,9 +35,10 @@ nine quotations, two page locators and two values. See
   sections rather than incremented. One conflict is now closed: the owner decided C-07 on 2026-09-12 in
   favour of `MAXN`. Closing it changed which operating point the book teaches, not what either record
   says, so no record was deleted or re-typed.
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.9.0, `generated_utc`
-  2026-09-14T06:26:00Z, includes an `audit` block describing the two value-level passes, the two
-  provenance passes and the decision package that closed C-07)
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.10.0, `generated_utc`
+  2026-09-17T06:00:00Z, includes an `audit` block describing the two value-level passes, the two
+  provenance passes, the decision package that closed C-07, and the tenth pass that registered the four
+  SOTA pillars)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
 
@@ -73,8 +74,12 @@ nine quotations, two page locators and two values. See
    legal in inference mode alone, and what the Vitis AI quantizer documents about calibration -- its five
    scale estimators, the option combinations it refuses with an error, and the fact that layer names only
    exist after a calibration run has emitted them.
-7. [`07-related-work.md`](07-related-work.md) — 5 records. Roofline model formulation (Williams et al.
-   CACM 2009), Orin vs KV260 ridge points, and IEEE FCCM 2025 artifact evaluation requirements.
+7. [`07-related-work.md`](07-related-work.md) — 26 records. Roofline model formulation (Williams et al.
+   CACM 2009), Orin vs KV260 ridge points, IEEE FCCM 2025 artifact evaluation requirements — and, since
+   2026-09-17, the four SOTA pillars the monograph teaches: the Sze dataflow taxonomy (WS/IS/OS) with the
+   off-chip/on-chip energy ladder, the I-BERT integer-only softmax path (base-2 exponent, integer/fraction
+   decomposition, bit-shift, second-order polynomial), and the ConfASR silicon run and its three
+   architectural mechanisms.
 
 ---
 

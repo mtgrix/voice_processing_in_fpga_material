@@ -1,6 +1,6 @@
 {
   "version": "1.3.0",
-  "last_updated": "2026-09-14",
+  "last_updated": "2026-09-17",
   "id_scheme": "New sources: global S<NNN>, never carrying a chapter number, because a chapter is an attribute of a source and not its identity. The five legacy R01-NN ids are retained: book/chapter01.md and book/chapter02.md cite them by name and docs/SOURCES.md lists them, so renumbering is a human edit to prose, not a mechanical one. scripts/verify_integrity.py accepts exactly these two forms. Every entry lists the doc_id labels it answers, in doc_ids.",
   "doc_id_note": "doc_ids holds the doc_id strings that records in docs/verification/claims.json use to cite this work, and it is the join between the evidence set and the registry. One document may be cited by several labels, because a label is a spelling and not a source; the aliases are listed here rather than renamed in the records, so that no record lost its own history. The labels that name arithmetic or an absence are exempt, defined once by claims_lib.is_exempt and pinned by tests/test_source_registry.py.",
   "sources": [
@@ -943,6 +943,117 @@
         "V-06-12"
       ],
       "notes": "The configuration document of the quantizer that produces the DPU's integer graphs, read from the vendor repository at a commit rather than a branch. Three records come from it: the documented estimators for a scale, the option combinations the tool refuses outright, and the instruction that layer names can only be chosen after calibration has run. T2 for the reason docs/WEB_SEARCH_PROTOCOL.md section 2 gives for the other Vitis AI material: a tool reference, not a datasheet. The repository still publishes under the Xilinx organisation name, so that is the publisher recorded here even though the documents now carry AMD branding."
+    },
+    {
+      "id": "S035",
+      "doc_ids": [
+        "Proceedings of the IEEE 105(12) / arXiv:1703.09039"
+      ],
+      "title": "Efficient Processing of Deep Neural Networks: A Tutorial and Survey",
+      "url": "https://ieeexplore.ieee.org/document/8114708",
+      "access": "open",
+      "type": "journal-article",
+      "publisher": "IEEE",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2017,
+      "authors": "Vivienne Sze et al.",
+      "authors_bibtex": "Sze, Vivienne and Chen, Yu-Hsin and Yang, Tien-Ju and Emer, Joel",
+      "pages": "2295--2329",
+      "venue": "Proceedings of the IEEE",
+      "bibtex_entry": "article",
+      "research_note_path": "docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+      "topics": [
+        "DNN accelerator",
+        "dataflow",
+        "weight stationary",
+        "row stationary",
+        "energy"
+      ],
+      "claims_supported": [
+        "V-07-06",
+        "V-07-07",
+        "V-07-08",
+        "V-07-09",
+        "V-07-10",
+        "V-07-26"
+      ],
+      "notes": "Sze, Chen, Yang and Emer, Efficient Processing of Deep Neural Networks: A Tutorial and Survey. Chapter 3's dataflow taxonomy and its energy ladder are this paper's, so the doc_id carries both the journal issue and the arXiv stamp. The R04 transcription prints the taxonomy as WS / IS / OS; the survey itself tabulates WS / OS / No-Local-Reuse / Row-Stationary, and the book keeps the claim to the triad R04 actually quotes."
+    },
+    {
+      "id": "S036",
+      "doc_ids": [
+        "ICML 2021 / arXiv:2101.01321"
+      ],
+      "title": "I-BERT: Integer-only BERT Quantization",
+      "url": "https://arxiv.org/abs/2101.01321",
+      "access": "open",
+      "type": "conference-paper",
+      "publisher": "PMLR",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2021,
+      "authors": "Sehoon Kim et al.",
+      "authors_bibtex": "Kim, Sehoon and Gholami, Amir and Yao, Zhewei and Mahoney, Michael W and Keutzer, Kurt",
+      "pages": "5506--5518",
+      "venue": "Proceedings of the 38th International Conference on Machine Learning",
+      "bibtex_entry": "inproceedings",
+      "research_note_path": "docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+      "topics": [
+        "BERT",
+        "integer arithmetic",
+        "softmax",
+        "transformer",
+        "quantization"
+      ],
+      "claims_supported": [
+        "V-07-11",
+        "V-07-12",
+        "V-07-13",
+        "V-07-14",
+        "V-07-15"
+      ],
+      "notes": "I-BERT: Integer-only BERT Quantization. The arXiv id 2101.01321 was verified via the arXiv API against the title; the archive's copy in docs/papers is a different paper (arXiv 2101.01304, secret sharing) and is superseded. The PMLR record is pages 5506-5518 in volume 139, confirmed by extracting every kim21x entry from the volume page. Chapter 7's integer-only softmax path is this paper's."
+    },
+    {
+      "id": "S037",
+      "doc_ids": [
+        "ASP-DAC 2026 (ConfASR)"
+      ],
+      "title": "ConfASR: A Dedicated Conformer Block Accelerator for Streaming Automatic Speech Recognition",
+      "url": "https://doi.org/10.18154/RWTH-2026-01243",
+      "access": "open",
+      "type": "conference-paper",
+      "publisher": "IEEE / ACM",
+      "tiers_observed": [
+        "T3"
+      ],
+      "year": 2026,
+      "venue": "Proceedings of the 2026 Asia and South Pacific Design Automation Conference",
+      "bibtex_entry": "inproceedings",
+      "research_note_path": "docs/research_notes/R04_sota_speech_hardware_acceleration.md",
+      "topics": [
+        "Conformer",
+        "streaming ASR",
+        "silicon",
+        "FDSOI",
+        "ring buffer"
+      ],
+      "claims_supported": [
+        "V-07-16",
+        "V-07-17",
+        "V-07-18",
+        "V-07-19",
+        "V-07-20",
+        "V-07-21",
+        "V-07-22",
+        "V-07-23",
+        "V-07-24",
+        "V-07-25"
+      ],
+      "notes": "ConfASR: A Dedicated Conformer Block Accelerator for Streaming Automatic Speech Recognition. The paper itself is not public as a PDF; every ConfASR number chapter 9 teaches is quoted from research note R04 section 3.2, which transcribes the paper's Table 1 and Results section verbatim, and the registry row is pinned to the RWTH publication record that carries the bibliographic identity. No page range is recorded because none of the records quote one."
     }
   ]
 }
