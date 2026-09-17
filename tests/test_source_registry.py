@@ -50,11 +50,22 @@ COMMITTED: dict[str, Any] = json.loads(ON_DISK)
 SOURCES: list[dict[str, Any]] = COMMITTED["sources"]
 REPORT = registry.render(DOC)
 
-#: The ten records that cite no document, split by the reason each one gives. Counted on
-#: docs/verification/claims.json at version 1.9.0, 2026-09-14, after Issue #47. There were
-#: nine at 1.7.0; the tenth is V-05-57, whose three quantities no publisher prints, so it joins
-#: the searched-and-found-nothing family rather than the no-value-ones.
-DERIVATION_RECORDS = {"V-01-13", "V-02-36", "V-04-09", "V-04-12", "V-07-02", "V-07-03"}
+#: The thirteen records that cite no document, split by the reason each one gives. Counted on
+#: docs/verification/claims.json at version 1.12.0, 2026-09-17, after the chapter 6 audio DSP
+#: pass. There were ten at 1.9.0; the three new ones are V-06-15, V-06-16 and V-06-17, whose
+#: frame/hop/FFT sizes are this book's own arithmetic on the NeMo config, so they join the
+#: derived-from family and name that config as their input.
+DERIVATION_RECORDS = {
+    "V-01-13",
+    "V-02-36",
+    "V-04-09",
+    "V-04-12",
+    "V-06-15",
+    "V-06-16",
+    "V-06-17",
+    "V-07-02",
+    "V-07-03",
+}
 NO_VALUE_RECORDS = {"V-02-28", "V-07-05"}
 SEARCHED_EMPTY_RECORDS = {"V-04-13", "V-05-57"}
 
@@ -116,7 +127,7 @@ class TestExemption:
     """The exempt labels stay few, and stay attached to records that need no source."""
 
     def test_exempt_label_count_is_pinned(self) -> None:
-        assert REPORT.exempt == 8, f"the registry now has {REPORT.exempt} exempt labels, not 8"
+        assert REPORT.exempt == 10, f"the registry now has {REPORT.exempt} exempt labels, not 10"
 
     def test_families_are_the_three_described(self) -> None:
         derived = {
