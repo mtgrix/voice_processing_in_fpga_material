@@ -1,7 +1,7 @@
 # Tiến độ Soạn thảo & Nghiên cứu — Voice Edge AI (Book Status)
 
 > **Theo dõi tiến độ 10 chương chuyên khảo và các mục của bài báo khoa học.**
-> Cập nhật lần cuối: 2026-09-17
+> Cập nhật lần cuối: 2026-09-18
 
 ---
 
@@ -15,7 +15,7 @@
 | **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
 | **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | Đã soạn 5.4; 5.1–5.3 còn trống | 🚧 exp_05 | Đã viết bản tiếng Anh, chưa đo |
 | **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | Đã soạn (16 trang PDF) | 🚧 exp_06 | Đã viết bản tiếng Anh, chưa đo |
-| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_07 | Đã tạo khung |
+| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | Đã viết (20 trang PDF) | 🚧 exp_07 | Đã viết bản tiếng Anh, chưa đo |
 | **08** | Kiến trúc Pipeline keyword-spotting trên board: từ micro đến quyết định | 🚧 Khung sườn | Đã soạn (10 trang PDF) | 🚧 exp_08 | Đã viết bản tiếng Anh, chưa đo |
 | **09** | Streaming Conformer overlay + Left-Context Ring Buffer | 🚧 Khung sườn | Đã soạn (14 trang PDF) | 🚧 exp_09 | Đã viết bản tiếng Anh, chưa đo |
 | **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
