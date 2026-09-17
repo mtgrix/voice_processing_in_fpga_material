@@ -876,14 +876,17 @@ a power-of-two form for the same shape of problem in the softmax and is the chap
 this section was for is the reason that arithmetic matters at all: the model asked for a reduction and a
 divide, and the hardware has to answer with additions and shifts.
 
-The base-two polynomial above is not a chapter 7 curiosity, because both normalising shapes in this
-appendix ask for the same exponential. The softmax of section 3 of appendix A exponentiates a row of
-scores before it divides by their sum, and the layer normalisation derived just above needs a
-reciprocal square root that is another transcendental in fixed-point clothing. The integer-only path
-is the same one in all three places: split the exponent at the binary point so the integer half
-becomes a shift, and hand the fraction to the second-order polynomial with coefficients $0.6958$ and
-$0.2250$. Section 8.3 is where that arithmetic is derived for the softmax's normalising shape, and
-the coefficients above are what it inherits.
+The integer-only exponential is not a chapter 7 curiosity, because both normalising shapes in this
+appendix ask for the same exponential. The softmax exponentiates a row of scores before it divides by
+their sum, and the layer normalisation derived just above needs a reciprocal square root that is
+another transcendental in fixed-point clothing. The path chapter 7 reads out of the record works in
+three steps: bound the exponent from above by subtracting the row maximum, split what is left into
+whole steps of $\ln 2$ plus a remainder shorter than one step, and let the whole steps become a right
+shift while a second-order polynomial carries the remainder. The polynomial is
+$L(p) = 0.3585\,(p + 1.353)^{2} + 0.344$ on the interval $(-\ln 2, 0]$, and its worst case is smaller
+than the quantisation error of the eight-bit word it feeds, so the approximation disappears into a
+budget the number format already pays. Section 8.3 is where the normalising shape gets its own
+derivation, and the polynomial above is what that section inherits.
 
 
 **Traceability.** The records this section leans on.
@@ -893,7 +896,7 @@ the coefficients above are what it inherits.
 | `V-05-20` | the offline large model's convolution module normalises with BatchNorm |
 | `V-05-26`, `V-05-41` | both streaming configs of the same family normalise with LayerNorm |
 | `V-05-18` | the row a layer normalisation must reduce: the large recipes' width of 512 |
-| `V-07-14` | the two coefficients of the base-two polynomial the same integer-only path uses on the softmax |
+| `V-07-14` | the assembled integer exponential i-exp(x̃) := L(p) >> z that the same integer-only path uses on the softmax |
 
 
 ## A.6 From a Dimension to a Budget

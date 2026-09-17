@@ -12,20 +12,16 @@ This directory stores the official, full-text open-access PDF manuscripts of fou
 - **Authors**: Vivienne Sze, Yu-Hsin Chen, Tien-Ju Yang, Joel S. Emer
 - **Venue**: *Proceedings of the IEEE*, 2017
 - **DOI**: `10.1109/JPROC.2017.2761740` (arXiv: `1703.09039`)
-- **Key Concepts**: Weight-Stationary vs. Input-Stationary vs. Output-Stationary; DRAM energy penalty (~200x vs ALU).
+- **Key Concepts**: Weight-Stationary / Output-Stationary / No Local Reuse / Row Stationary dataflow taxonomy; the normalised memory-hierarchy energy ladder of Figure 22 (DRAM 200x the arithmetic reference, global buffer 6x, register file 2x).
 
 ---
 
 ### 2. Integer-Only Non-Linear Quantization (UC Berkeley)
 - **Filename**: [`Kim2021_IBERT_Integer_Only_Quantization.pdf`](./Kim2021_IBERT_Integer_Only_Quantization.pdf)
-- **Title**: *I-BERT: Numerical-Friendly Integer-Only BERT Quantization*
+- **Title**: *I-BERT: Integer-only BERT Quantization*
 - **Authors**: Sehoon Kim, Amir Gholami, Zhewei Yao, Michael W. Mahoney, Kurt Keutzer
 - **Venue**: *ICML 2021* (arXiv: `2101.01321`, PMLR v139 `kim21d`, pp. 5506–5518)
-- **⚠️ Misbound PDF**: the archived file at the filename above is **not** this paper. It is
-  *Constant-Round Private Function Evaluation with Linear Complexity* (arXiv: `2101.01304`, secret
-  sharing). The correct full text is not archived here; fetch it from `https://arxiv.org/abs/2101.01321`
-  or the PMLR page before citing the paper from this directory.
-- **Key Concepts**: Base-2 Exponential Softmax ($e^x = 2^{x \log_2 e}$); bit-shift and second-order polynomial approximation.
+- **Key Concepts**: integer-only softmax; the `ln 2` decomposition of a non-positive exponent into a right shift and a remainder shorter than `ln 2`; the second-order polynomial fit on `(−ln 2, 0]`; no lookup tables.
 
 ---
 
@@ -58,4 +54,4 @@ This directory stores the official, full-text open-access PDF manuscripts of fou
 
 ---
 
-*Note: ConfASR (Wabnitz et al., ASP-DAC 2026, RWTH Aachen) is indexed via its primary record in `docs/research_notes/R04_sota_speech_hardware_acceleration.md` (DOI: `10.18154/RWTH-2026-01243`).*
+*Note: ConfASR (Wabnitz et al., ASP-DAC 2026, RWTH Aachen) is indexed via its primary record in `docs/research_notes/R04_sota_speech_hardware_acceleration.md` (DOI: `10.1109/ASP-DAC66049.2026.11420567`). No open-access full text is archived: the abstract sentences this repository quotes were retrieved from the publisher's metadata through Crossref and Semantic Scholar.*

@@ -7,7 +7,9 @@ Five passes ran on 2026-09-12, and a sixth ran on 2026-09-13 against a question 
 asked about itself: chapter 1 printed a 16,000 Hz sampling rate and named no source for it.
 That pass added `V-05-10` and `V-05-11`, so the set grew 71 -> 103 records across six passes. A seventh ran on 2026-09-14 for Issue #47: it read four NVIDIA NeMo ASR files at a pinned commit and added 46 records, and it is the first pass whose main effect was to contradict the set rather than extend it -- see [C-08](#c-08--which-conformer-this-book-is-porting). An eighth ran the same day for Issue #57: it read two pages of the current CUDA Programming Guide (v13.4, both stamped 2026-09-09) and added 6 records, `V-02-42` to `V-02-47`, so that chapter 3 could teach the execution model with citations instead of folklore. Two of its sentences settle what the rest of this directory has only been using: a warp is 32 threads wide, and switching between warps costs nothing. It registered `threads per warp`, the second new unit term, and it left two gaps open on purpose -- the microseconds a launch takes and the number of warps an Orin SM can hold -- because the guide gives neither and the record that would need them does not exist. A ninth ran the same day, also for Issue #57: it read three toolchain documents -- the convolution/batch-norm fuser tutorial (PyTorch Tutorials 2.14), the module behind it at release tag v2.10.0, and the Vitis AI quantizer's own configuration document at a pinned commit -- and added 7 records, `V-06-06` to `V-06-12`, so that chapter 5 could say what a compiler does to a graph and what a quantizer measures before it commits. Every one of the seven carries a string value, because what they establish is a behaviour and not a magnitude: nothing on those three pages sizes this book's model, and the chapter that cites them prints no number for that reason. It also left `generated_utc` and `version` on this file behind, which is why they are bumped with it: a registry whose newest record was read on 2026-09-14 cannot publish 2026-09-13 as its own date.
 It also registered `kHz`, the first new unit term since the vocabulary was written down, and
-it left the weaker of the two records at tier T4 on purpose -- see its notes field. A tenth pass ran on 2026-09-17 for the four SOTA pillars the monograph's English edition was about to teach: it read research note R04 against the papers catalogue and added 21 records, `V-07-06` to `V-07-26`, so that chapters 3, 7 and 9 could cite the Sze dataflow taxonomy (WS/IS/OS and the 640 / 3.7 / 1.1 pJ energy ladder), the I-BERT integer-only softmax decomposition, and the ConfASR silicon run (22 nm FDSOI, 250 MHz, 359 mW, 1.19 mm2, >900x real-time, >4x latency, 16x power) each to a registered source. Its identifier work is worth recording: the archived Kim2021 PDF in `docs/papers` turned out to be a different paper (arXiv 2101.01304, secret sharing), and the I-BERT record set was pointed at the corrected arXiv 2101.01321 / PMLR v139 kim21d (pages 5506-5518) instead. The initial pass wrote 71 records. The first review re-read every
+it left the weaker of the two records at tier T4 on purpose -- see its notes field. A tenth pass ran on 2026-09-17 for the four SOTA pillars the monograph's English edition was about to teach: it read research note R04 against the papers catalogue and added 21 records, `V-07-06` to `V-07-26`, so that chapters 3, 7 and 9 could cite a registered source for each pillar. Its identifier work stands, and is worth recording: the archived Kim2021 PDF in `docs/papers` turned out to be a different paper (arXiv 2101.01304, secret sharing), and the I-BERT record set was pointed at the corrected arXiv 2101.01321 / PMLR v139 kim21d (pages 5506-5518) instead.
+
+An eleventh pass ran the same day, after those pillars had been merged, and it is a correction rather than an addition -- the largest this directory has had to make. Two of the four pillars carried content their sources do not contain. The Sze set taught an absolute access-energy ladder in picojoules, 640 / 3.7 / 1.1, and a dataflow family called Input-Stationary; the survey prints no absolute access energy at all, its Figure 22 is a normalised ratio against an arithmetic reference, and of the four families it defines that is not one. The I-BERT set taught the exponential decomposition as a base-2 change of bounds carrying two fitted coefficients; the paper splits the exponent into whole steps of `ln 2` and a remainder shorter than one step, fits a polynomial with entirely different coefficients on that remainder, and contains neither the base-2 form nor those numbers. Both sets were re-filed against the sources this repository actually holds, the fabricated constructions were withdrawn from the chapter prose, and the ConfASR pillar was reduced to the abstract sentences genuinely available to it -- which is why one of its three claimed mechanisms is now registered as unresolved rather than quoted. The pass rewrote 21 records and added three, so the totals below moved even though no source was added or removed: the two the pass found were the I-BERT error budget, `V-07-27`, and the survey's own row-stationary comparison, `V-07-28`, and the third, `V-07-29`, gives the fourth dataflow definition the record its three siblings already had. One finding from that pass is worth keeping, because it is the kind of error that runs the other way. The Sze set's 200-to-1000 processing-element count looked fabricated when the survey was searched as text, and it is not: Figure 22 prints the range as a label, `NoC: 200 - 1000 PEs`, in a figure whose numbers its sentences never repeat, so a text-only reading of that PDF reports them missing. The charge that matters survived the same sweep -- the string `640` occurs zero times in the survey -- which is why the ladder was withdrawn and the range was not. The initial pass wrote 71 records. The first review re-read every
 `verified` record against its own `quote` field and corrected 28, added 7, and raised a fourth conflict.
 The second pass went the other way: it re-read the underlying documents to settle what the first review
 had left asserted rather than evidenced, added 18 records, and raised a fifth conflict. The third pass
@@ -23,9 +25,9 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 183
-- **Verified:** 174
-- **Unresolved:** 6
+- **Total Records:** 186
+- **Verified:** 176
+- **Unresolved:** 7
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 8 (C-01 … C-08; five of them — C-02, C-03, C-06, C-07 and C-08 — carry no
   `status: conflict` record, because each concerns repository text, a document revision, or a choice
@@ -35,10 +37,11 @@ nine quotations, two page locators and two values. See
   sections rather than incremented. One conflict is now closed: the owner decided C-07 on 2026-09-12 in
   favour of `MAXN`. Closing it changed which operating point the book teaches, not what either record
   says, so no record was deleted or re-typed.
-- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.10.0, `generated_utc`
-  2026-09-17T06:00:00Z, includes an `audit` block describing the two value-level passes, the two
-  provenance passes, the decision package that closed C-07, and the tenth pass that registered the four
-  SOTA pillars)
+- **Machine-readable claims:** [`claims.json`](claims.json) (`version` 1.12.0, `generated_utc`
+  2026-09-17T15:20:00Z, includes an `audit` block describing the two value-level passes, the two
+  provenance passes, the decision package that closed C-07, the tenth pass that registered the four
+  SOTA pillars, and the eleventh pass that corrected two of them
+  against their sources)
 - **Checks:** `make verify-evidence` runs the auditor over this directory;
   `make render-evidence` regenerates the seven record files from `claims.json`.
 

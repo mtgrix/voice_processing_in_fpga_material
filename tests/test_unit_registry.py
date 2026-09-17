@@ -7,7 +7,7 @@ relabelling V-01-13 from `GB/s` to `banana` leaves every gate green: the arithme
 recomputes, because no check compares the label to a thing.
 
 These tests load the real modules rather than restating their rules, and they assert both
-directions -- the vocabulary must accept all 53 spellings the evidence set now uses,
+directions -- the vocabulary must accept every spelling the evidence set now uses,
 and it must refuse one it has never seen. A registry that only ever accepts is a list.
 
 The interesting refusal is the one a normaliser would have caused. Folding case turns
@@ -80,14 +80,17 @@ class TestRegistryMatchesTheEvidenceSet:
         assert fails == [], fails
         assert used > 0
 
-    def test_the_observed_vocabulary_is_53_spellings(self) -> None:
+    def test_the_observed_vocabulary_is_57_spellings(self) -> None:
         """A ratchet needs a number in it, or a future deletion reads as tidying.
 
-        58 spellings over 57 canonicals as of 2026-09-17, when the four SOTA pillars were
-        registered and needed the units chapter 3, 7 and 9 teach: `pJ` for the DRAM/ALU/SRAM
-        energy ladder, `mW` for the ConfASR operating power, `nm` for its process node, and
-        `mm2` (ASCII, because the record vocabulary forbids the superscript-two spelling) for
-        its die area. Before that, 54 over 53 from 2026-09-14, when Issue #57 registered the
+        57 spellings over 56 canonicals as of 2026-09-17, when Issue #85 withdrew the picojoule
+        ladder from the Sze records and `pJ` lost its last user: a spelling no record depends on is
+        a term nobody can check, which is the failure the unused-term test below exists to catch, so
+        the vocabulary gave it up rather than keep it as a graveyard entry. Before that, 58 over 57
+        from the same day, when the four SOTA pillars were registered and needed the units chapters
+        3, 7 and 9 teach: `mW` for the ConfASR operating power, `nm` for its process node, and `mm2`
+        (ASCII, because the record vocabulary forbids the superscript-two spelling) for its die
+        area. Before that, 54 over 53 from 2026-09-14, when Issue #57 registered the
         CUDA execution model for chapter 3 and needed a term for it: a warp is 32 *threads*,
         which is none of the counts already in the set -- `attention heads` and `encoder blocks`
         count a network, `DLA engines` and `transceivers` count silicon. Before that, 53 over
@@ -99,8 +102,8 @@ class TestRegistryMatchesTheEvidenceSet:
         makes the two counts differ by one is still `Sparse INT8 TOPS` / `sparse INT8 TOPS`,
         tested below.
         """
-        assert len(claims_lib.UNIT_TERMS) == 58
-        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 57
+        assert len(claims_lib.UNIT_TERMS) == 57
+        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 56
 
     def test_every_canonical_has_a_kind(self) -> None:
         assert set(claims_lib.UNIT_TERMS.values()) <= set(claims_lib.UNIT_KINDS)
@@ -167,9 +170,9 @@ class TestRefusals:
     def test_a_registered_term_no_record_uses_is_refused(self) -> None:
         """Otherwise the list becomes a graveyard, and a graveyard lets wrong labels pass."""
         _used, fails = run([record("V-01-13", "GB/s")])
-        # One failure per unused *spelling*, not per canonical. Of the 58 spellings the
-        # vocabulary now holds, GB/s accounts for the single used one, so 57 go unclaimed.
-        assert len([f for f in fails if "registered but no record uses it" in f]) == 57
+        # One failure per unused *spelling*, not per canonical. Of the 57 spellings the
+        # vocabulary now holds, GB/s accounts for the single used one, so 56 go unclaimed.
+        assert len([f for f in fails if "registered but no record uses it" in f]) == 56
 
     def test_a_canonical_without_a_kind_is_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delitem(claims_lib.UNIT_KINDS, "watts")

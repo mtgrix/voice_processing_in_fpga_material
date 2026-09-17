@@ -681,19 +681,25 @@ SPEC: list[Entry] = [
         doc_id="ASP-DAC 2026 (ConfASR)",
         id="S037",
         type="conference-paper",
-        publisher="IEEE / ACM",
-        url="https://doi.org/10.18154/RWTH-2026-01243",
-        venue="Proceedings of the 2026 Asia and South Pacific Design Automation Conference",
+        publisher="IEEE",
+        url="https://doi.org/10.1109/ASP-DAC66049.2026.11420567",
+        venue="2026 31st Asia and South Pacific Design Automation Conference (ASP-DAC)",
         bibtex_entry="inproceedings",
         year=2026,
+        authors="Malte Wabnitz and Max Nilovic and Finn Scholz and Dominik Friedrich and "
+        "Christian Lanius and Jie Lou and Tobias Gemmeke",
+        pages="147--153",
         research_note_path="docs/research_notes/R04_sota_speech_hardware_acceleration.md",
         topics=("Conformer", "streaming ASR", "silicon", "FDSOI", "ring buffer"),
-        notes="ConfASR: A Dedicated Conformer Block Accelerator for Streaming Automatic Speech "
-        "Recognition. The paper itself is not public as a PDF; every ConfASR number chapter 9 "
-        "teaches is quoted from research note R04 section 3.2, which transcribes the paper's "
-        "Table 1 and Results section verbatim, and the registry row is pinned to the RWTH "
-        "publication record that carries the bibliographic identity. No page range is recorded "
-        "because none of the records quote one.",
+        notes="ConfASR: A Conformer Block Accelerator for Speech Recognition Optimized for Edge "
+        "Devices. No open-access full text exists: the title, venue, page range and DOI above were "
+        "verified against Crossref and Semantic Scholar on 2026-09-17 (Issue #85), which corrected "
+        "a title, a venue and a DOI that did not belong to this paper. Every ConfASR sentence "
+        "chapter 9 quotes is a sentence of the abstract, retrieved from the publisher's metadata, "
+        "and is transcribed in full in research note R04 section 3.2. One record on this label, "
+        "V-07-25, is unresolved: a claim about dedicated left-context buffering that the previous "
+        "pass attributed to this paper could not be found in any available text, so chapter 9 now "
+        "presents the ring buffer as this book's own design.",
     ),
 ]
 

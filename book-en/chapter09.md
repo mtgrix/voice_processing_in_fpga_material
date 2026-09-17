@@ -214,29 +214,25 @@ One block, stage by stage, with the addition points where a block's input is ret
 
 ### 9.2.1 The Silicon Record: ConfASR
 
-Everything this chapter has drawn as wires has been built, taped out and measured by somebody else -- a dedicated Conformer-block accelerator from RWTH Aachen University, presented at a design-automation conference. It is not a study of a related network, and not a survey of accelerators in general: it takes the block family this book ports, and it puts that family into silicon. For a chapter that has so far reasoned from config files and from arithmetic, that changes the standing of every shape on the page. The datapath sketched in this section, and the buffer drawn in section 9.4, exist as measured hardware in the record, and the book's own unmeasured design can now be read against them rather than against nothing.
+Everything this chapter has drawn as wires has been built, taped out and measured by somebody else: ConfASR, a Conformer-block accelerator from RWTH Aachen University, presented at a design-automation conference. It is not a study of a related network, and not a survey of accelerators in general. It takes the block family this book ports, and it puts that family into silicon. For a chapter that has so far reasoned from config files and from arithmetic, that changes the standing of every shape on the page. The datapath sketched in this section, and the buffer drawn in section 9.4, exist as measured hardware in the record, and the book's own unmeasured design can now be read against them rather than against nothing.
 
-> "ConfASR is the first dedicated hardware accelerator optimized specifically for Conformer block inference in Automatic Speech Recognition (ASR) on edge devices. The architecture accommodates both transformer-based multi-head self-attention and conformer-specific depthwise-separable convolution, along with learned relative positional encoding."
+One thing about this section's evidence has to be said before it is used, and the rest of the section depends on saying it. No full text of this paper is available to this project. What is available is the record's abstract, retrieved from the publisher's metadata, and it is short enough to quote in full against the mechanisms it names:
 
-Three architectural mechanisms carry the record, and each one lands on a decision this book has already made or still owes.
+> "We propose a hardware-friendly normalization, shared scaling factors for non-linear functions, and an efficient dataflow with a shared MAC array that keeps all activations on chip."
+
+That one sentence names two mechanisms, and each one lands on a decision this book has already made or still owes. It does not name a third, and the third thing this section would like to claim is handled at the end of this subsection as the unresolved question it is rather than pressed into service as a third quote.
 
 **Mechanism one: keep the activations on-chip.**
 
-> "A unified Multiply-Accumulate (MAC) dataflow array maintaining intermediate activation residency on-chip, minimizing external DRAM traffic."
+The clause that carries this one is the last: one MAC array, shared across the block's stages, sized so that all the activations stay on chip. This is the chapter 3 dataflow taxonomy made into silicon, with the decision taken one level above the processing element. Rather than parking one operand at each element, the array itself is shared between a block's operations, and the intermediate activations that would otherwise travel to DRAM never leave the die. The reason is memory traffic and not arithmetic -- which is the same argument this chapter makes for keeping a block's stages on chip instead of running them as separate passes over memory.
 
-This is the chapter 3 dataflow taxonomy made into silicon: a single array shaped for multiply-accumulate work, where the intermediate results of one block stay on the die instead of being written out and read back. The reason is memory traffic, not arithmetic -- external DRAM access costs energy and latency that on-chip residency avoids.
+**Mechanism two: buy the non-linear stages with shared scaling.**
 
-**Mechanism two: buy the non-linear stages with base-2 arithmetic.**
+The first two clauses of the same sentence are this one: a normalisation the hardware can afford, and scaling factors shared across the non-linear functions rather than one per function. That is the integer-only path section 7.5 reads out of I-BERT and that section 8.3 derives for this book's own design, and it is why the plan uses fixed-point scaling at those stages. "Shared" is the load-bearing word. A scaling factor per function costs a multiplier and a width decision each, and sharing them is what makes a block's worth of non-linear stages affordable at all.
 
-> "Hardware-friendly normalization and shared scaling factors for non-linear operations, eliminating floating-point transcendental overheads."
+**The third thing this section would like to claim, and cannot.**
 
-The record replaces the expensive non-linear parts with normalisation friendly to hardware and with scaling factors shared across operations. That is the same base-2 idea that section 7.5 and section 8.3 teach, and it is the reason the book's own plan uses fixed-point scaling instead of a floating-point transcendental at those stages.
-
-**Mechanism three: cache the left context in dedicated hardware.**
-
-> "Dedicated hardware buffering for chunk-based causal attention left-context caching."
-
-This one is the direct hit. A streaming Conformer must carry the keys and values of its left context forward from chunk to chunk, and the record builds a dedicated buffer for exactly that. [Figure 30](#fig-kv-ring-buffer) is this book's version of the same object: the ring buffer holds the left-context keys and values for the attention of the current chunk, writes the new entries in as each chunk arrives, and overwrites the oldest rather than shifting anything. Dedicated hardware buffering and a ring buffer are two answers to one requirement -- the past must be stored somewhere fast -- and the record is the proof that the requirement is real and that someone chose to spend fabric on it.
+A streaming Conformer has to carry the keys and values of its left context forward from chunk to chunk, so a dedicated buffer for that past is exactly the object this chapter would like to find in silicon. The record does not name one. The available abstract mentions on-chip activation residency and shared scaling factors, and stops there; a claim that this accelerator builds a left-context cache could not be traced to any text this project can reach, so the record for it is registered as unresolved and this section does not attribute it. [Figure 30](#fig-kv-ring-buffer) is therefore this book's own design for that requirement and not a reproduction of the record's: the ring buffer holds the left-context keys and values for the attention of the current chunk, writes the new entries in as each chunk arrives, and overwrites the oldest rather than shifting anything. The requirement is real, and section 9.3 derives it from the model. Who else has spent fabric on it is a question this repository cannot answer yet.
 
 The record's silicon figures and this book's registered fabric figures sit side by side below. Every row that prints a ConfASR number carries its record id in that row, and the book's column prints only the values the registry holds for its own target.
 
@@ -253,14 +249,18 @@ The record's silicon figures and this book's registered fabric figures sit side 
 | Latency vs prior ASR hardware | greater than 4x | no registered value | `V-07-21` |
 | Power vs existing edge platforms | 16x | no registered value | `V-07-22` |
 
-What the record changes is the standing of the plan, not its numbers. The three mechanisms above are proven in silicon, running at the record's clock in the record's process and burning its operating power over its core die area -- all four figures carried by the traceability rows below. That is the difference between a datapath this book has argued for and one that has been measured. Two of the mechanisms are decisions this book has already reached for its own reasons: on-chip activation residency follows from chapter 3's dataflow argument, and hardware-friendly normalisation with shared scaling factors is the base-2 method that section 7.5 and section 8.3 teach. The third is the buffer section 9.4 draws.
+What the record changes is the standing of the plan, not its numbers. Both of the mechanisms this section can attribute are proven in silicon, running at the record's clock in the record's process and burning its operating power over its core die area -- all four figures carried by the traceability rows below. That is the difference between a datapath this book has argued for and one that has been measured. And both are decisions this book has already reached for its own reasons: on-chip activation residency follows from chapter 3's dataflow argument, and hardware-friendly normalisation with shared scaling factors is the method that section 7.5 and section 8.3 teach. The left-context buffer is not part of that count. It is this book's own answer to a requirement the model imposes, drawn in section 9.4, and the record's silence on it leaves it exactly as unmeasured as it was before this section began.
 
 What the record does not buy is a prediction for this build. ConfASR is a dedicated die in a fully-depleted silicon-on-insulator process, while the KV260 is programmable fabric whose resources are quoted above; those are different ways to make a circuit, and a dedicated die spends no silicon on rerouting. The book's own column holds no registered clock, power, area or process figure, so no frequency and no watt for this build is printed here. The record's headroom and reduction figures are claims about that accelerator's measurements against the baselines it compared itself to, and each is supported in its row above; they are not forecasts of what a KV260 overlay would reach, and this book has measured none of them. The record also reports no fabric figure -- no look-up tables and no DSP slices -- so the two columns cannot be joined into one comparison of efficiency.
 
 > **Traceability note.** The comparison table above carries its own per-row citations. This note
-> holds the ConfASR records behind the table's left column and the three mechanism quotes, all
-> transcribed verbatim from research note R04, section 3.2, which transcribes the paper's results
-> table and architecture description.
+> holds the ConfASR records behind the table's left column and the one mechanism quote the prose
+> attributes to the record. No full text of this paper is available to this project: that quote is a
+> sentence of the abstract, retrieved from the publisher's metadata, and it is transcribed in full in
+> research note R04, section 3.2. Two of the three mechanism quotes an earlier revision of this
+> section attributed to the paper were paraphrases, and the third was not in any source this
+> repository holds; R04, section 3.2, records that correction, and the third mechanism's record is
+> registered as unresolved rather than re-quoted.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -271,9 +271,9 @@ What the record does not buy is a prediction for this build. ConfASR is a dedica
 | `V-07-20` | the streaming headroom multiplier, given by the record as a lower bound against real-time streaming |
 | `V-07-21` | the latency reduction multiplier, given by the record as a lower bound against previous streaming ASR hardware solutions |
 | `V-07-22` | the power reduction multiplier, claimed by the record in real-time streaming mode against existing edge platforms |
-| `V-07-23` | a unified multiply-accumulate dataflow array maintaining intermediate activation residency on-chip, quoted as the first architectural mechanism |
-| `V-07-24` | hardware-friendly normalisation with shared scaling factors, quoted as the second architectural mechanism |
-| `V-07-25` | chunk-based causal attention left-context caching on dedicated hardware, quoted as the third architectural mechanism |
+| `V-07-23` | the abstract's efficient dataflow with a shared MAC array keeping all activations on chip, the clause mechanism one rests on |
+| `V-07-24` | the abstract's hardware-friendly normalisation and its shared scaling factors for non-linear functions, the clauses mechanism two rests on |
+| `V-07-25` | registered unresolved: no text available to this project supports a claim that the accelerator buffers chunk-based causal attention left context, which is why this section attributes no such mechanism to it |
 
 <!-- source: 9.3 hand -->
 

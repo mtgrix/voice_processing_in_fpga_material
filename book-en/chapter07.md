@@ -44,214 +44,241 @@ networks that chapter 8 and chapter 9 actually build onto the board.
 
 **Intuition.** Every stage in a quantized pipeline can be made of integer multiplies, integer adds and
 shifts, except one. The softmax ends in an exponential, and the exponential is the part that resists
-integer hardware: it is transcendental, its intermediate values overflow a fixed-point word long
-before its answer does, and the usual software answer is a floating-point call to a library the FPGA
-does not have. The literature this section reads does not accept that exception. It rewrites the same
-function so that the transcendental part disappears into a bit position and a short polynomial, and a
-quantized pipeline then stays integer end to end with no lookup table of any size. The record states
-the move plainly:
+integer hardware: it is transcendental, its input is unbounded, and its intermediate values overflow a
+fixed-point word long before its answer does. The usual software answer is a floating-point call to a
+library the FPGA does not have. The literature this section reads does not accept that exception. Its
+observation is that a softmax input can be made non-positive, and that a non-positive exponent splits
+into an integer count and a short remainder, and that the integer half of that split is a bit position
+rather than a computation. Only the short remainder needs an approximation, and a second-order
+polynomial is enough for it. The record states the difficulty it is working around:
 
-> "Calculating the exponential function $e^x$ directly with integer arithmetic is notoriously
-> difficult due to overflow and precision loss. We reformulate $e^x$ by converting the natural base
-> $e$ into base 2: exp(x) = 2^(x * log2(e))"
+> "Approximating the Softmax layer with integer arithmetic is quite challenging, as the exponential
+> function used in Softmax is unbounded and changes rapidly."
 
 **Mechanism.** The path is four steps, and the first three of them are exact -- only the last one
 approximates anything.
 
-Change the base of the exponential first:
+Make the input non-positive first, by subtracting the row's maximum:
 
-> **The formula.** $\exp(x) \;=\; 2^{\,x \log_2 e}$
+> **The formula.** $\mathrm{Softmax}(x)_i \;=\; \dfrac{\exp(x_i - x_{\max})}{\sum_{j} \exp(x_j - x_{\max})}, \qquad x_{\max} = \max_i x_i$
 >
 > **The variables.**
 >
-> - $x$ — one input value to the exponential: a single score after the row's maximum has been
->   subtracted, so $x \le 0$ and the answer lies in $(0,1]$. A fixed-point number, in this book's
->   design.
-> - $\log_2 e$ — the change of base from $e$ to $2$: the single constant that converts a
->   natural-base exponent into a base-two one, about $1.4427$. A pure number, and a compile-time
->   literal in hardware rather than something a design computes.
-> - $x \log_2 e$ — the same exponent, now expressed in base two. Call it $z$.
+> - $x_i$ — one score in the row the softmax is normalising. A signed fixed-point number, and before
+>   this step its range is unbounded, which is the whole problem.
+> - $x_{\max}$ — the largest score in the row. Found by one comparison pass over the row, and the
+>   only thing this step needs to know about the input as a whole.
+> - $\tilde{x}_i := x_i - x_{\max}$ — the shifted score. Non-positive by construction, and that is
+>   the entire point of the step.
 >
-> **What it means.** The exponential is unchanged in value; only the base it is written in changes.
-> Writing it in base two is what makes the rest of the path possible, because a power of two is a
-> bit position, and a bit position is something a shift can reach. Nothing has been made integer
-> yet -- $x \log_2 e$ is still a fraction -- but the function is now in the shape integer hardware
-> can act on.
+> **What it means.** Softmax is invariant under a common shift of every input, so subtracting the
+> same maximum from the whole row does not change the answer at all; it changes only what the
+> exponential has to accept. Every input to the exponential is now less than or equal to zero, so
+> every exponential lies in $(0,1]$, and the function has gone from unbounded to bounded without an
+> approximation being made. The record states the move and its consequence:
 >
-> **What it costs.** One constant multiply by $\log_2 e$, which is one DSP48E2 slice or, if the
-> literal is chosen as a sum of powers of two, wiring alone. The book's own estimate, not a
+> > "First, we subtract the maximum value from the input to the exponential for numerical stability.
+> > Note that now all the inputs to the exponential function, i.e., x̃i = xi − xmax, become
+> > non-positive."
+>
+> **What it costs.** One comparison per element to find the maximum and one subtract per element to
+> apply it. Comparisons and subtracts are look-up-table work on the fabric, and neither needs a DSP
+> slice. The book's own estimate, not a registered figure.
+>
+> **What it does not say.** It does not say the shifted values are small. A strongly negative score
+> becomes a strongly negative $\tilde{x}$, whose exponential is close to zero, and whether that value
+> survives the fixed-point word is a width decision this card does not make. The step bounds the top
+> of the range and leaves the bottom exactly where it was, which is why the next card has to cut the
+> bottom into pieces.
+
+Split the non-positive input into an integer count and a short remainder:
+
+> **The formula.** $\tilde{x} \;=\; (-\ln 2)\,z \;+\; p, \qquad z \in \mathbb{Z}_{\ge 0}, \qquad p \in (-\ln 2, 0]$
+>
+> **The variables.**
+>
+> - $\tilde{x}$ — the shifted score from the card above. Non-positive, which is the precondition the
+>   decomposition needs.
+> - $z$ — the quotient: how many whole steps of $\ln 2$ fit into $-\tilde{x}$. A non-negative
+>   integer, and in fixed point it is the output of a floor, which is a wiring choice.
+> - $p$ — the remainder, $\tilde{x} + z \ln 2$, lying in the half-open interval $(-\ln 2, 0]$. The
+>   only part of the input that is not an integer, and the only part the next card has to
+>   approximate.
+> - $\ln 2$ — the natural logarithm of two, irrational. Both this step and the reconstruction below
+>   use it, so the design holds it as a compile-time literal.
+>
+> **What it means.** Any non-positive real number can be written as so many steps of $-\ln 2$ plus a
+> remainder that is shorter than one step. The split is exact, and it separates the exponential into
+> two pieces with completely different characters: the integer $z$, which the next card turns into a
+> bit position, and the remainder $p$, which never leaves an interval less than $\ln 2$ wide. The
+> record states the decomposition:
+>
+> > "We can decompose any non-positive real number x̃ as x̃ = (−ln 2)z + p, where the quotient z is a
+> > non-negative integer and the remainder p is a real number in (−ln 2, 0]."
+>
+> **What it costs.** One multiply by the reciprocal of $\ln 2$, one floor, and one multiply-add to
+> recover $p$. With a quantised $\ln 2$ literal the whole step is two DSP48E2 slices and some wiring,
+> and the floor costs nothing because it is the binary point itself. The book's own estimate, not a
 > registered figure.
 >
-> **What it does not say.** It does not say the multiply is free of error. $\log_2 e$ is irrational,
-> so any fixed-point literal of it is an approximation, and the width that literal is given is a
-> design decision this card does not make. It also says nothing about $x$'s own range: the
-> subtraction of the row maximum in section 8.3 is what keeps that range safe, and without it this
-> step overflows for exactly the reason the record above names.
+> **What it does not say.** It does not say the split survives fixed point unscathed. The two
+> literals this step uses, $\ln 2$ and its reciprocal, are both irrational, so any fixed-point
+> encoding of either is an approximation, and how many bits each one is given is a design decision
+> this card inherits rather than settles.
 
-Split the base-two exponent into its integer and its fraction:
+Now take the two halves separately. The integer half is a power of two, and a power of two is exact:
 
-> **The formula.** $z \;=\; x \log_2 e, \qquad z = q + p, \qquad q = \lfloor z \rfloor, \qquad p = z - q$
+> **The formula.** $\exp(\tilde{x}) \;=\; 2^{-z}\,\exp(p) \;=\; \exp(p) \;\gg\; z$
 >
 > **The variables.**
 >
-> - $z$ — the base-two exponent from the card above. A signed fixed-point number, non-positive when
->   $x$ is.
-> - $q$ — the integer part of $z$, taken by the floor: the greatest integer not exceeding $z$. A
->   signed count of doublings or halvings, and in a fixed-point word it is simply the bits above the
->   binary point, read as an integer.
-> - $p$ — the fractional part, $z - q$. A value in $[0,1)$ by construction, and the only part of the
->   exponent that is not a bit position.
-> - $\lfloor \cdot \rfloor$ — the floor function, which rounds towards minus infinity. On the chip
->   this is not a rounding operation at all: it is selecting which wires to read, because the split
->   already exists in the bit pattern.
->
-> **What it means.** A fixed-point number is an integer part and a fraction part sitting side by side
-> in one word, separated by the binary point. Splitting $z$ at that point separates the two halves of
-> the problem, and the two halves are solved by two completely different kinds of circuit: the
-> integer part by wiring, the fraction part by arithmetic. The record states the split exactly:
->
-> > "Let z = x * log2(e). We decompose z into its integer component q and fractional component p in
-> > in $[0, 1)$: z = q + p, where q = floor(z), p = z - q"
->
-> **What it costs.** The floor costs zero DSP48E2 slices and zero block RAM, because it is a wiring
-> choice and not a computation: route the bits above the binary point to one output and the bits
-> below it to another. The book's own estimate, not a registered figure.
->
-> **What it does not say.** It does not say the split is lossless in the sense that matters. The
-> floor throws away no information -- $q$ and $p$ together are exactly $z$ -- but $p$ carries fewer
-> significant bits than $z$ did below the binary point only if the word was wide enough to hold them.
-> How many bits $p$ keeps is the word-width decision the next card inherits, and this card does not
-> settle it.
-
-Now take the two halves separately. The integer part is a power of two, and a power of two is exact:
-
-> **The formula.** $2^{z} \;=\; 2^{q}\cdot 2^{p}, \qquad 2^{q} \;=\; \texttt{1 << q}$
->
-> **The variables.**
->
-> - $q$ — the integer part from the card above. A signed integer, and here it is a shift amount: how
->   many places a bit is moved.
-> - $p$ — the fractional part, in $[0,1)$. Handed to the next card, not used here.
-> - $2^{q}$ — two raised to an integer power. A single bit set at position $q$, which is a bit
->   pattern and not a computed value.
-> - $\texttt{1 << q}$ — the left-shift operator of a hardware description language: place the value
->   one at bit position $q$. Negative $q$ means shift right, which is the same network run the other
->   way.
-> - $2^{p}$ — the fractional-power term, in $[1,2)$. This card produces it as an output of the split;
->   the card below has to build it.
+> - $z$ — the count from the card above. A non-negative integer, and here it is a shift amount: how
+>   many bit positions the value moves.
+> - $\exp(p)$ — the exponential of the remainder, a value in $(2^{-1}, 1]$. This card receives it as
+>   the output of the split; the card below has to build it.
+> - $\gg$ — the right-shift operator, written as it appears in the record. On the fabric this is a
+>   barrel shifter: a network of multiplexers that moves a bit pattern by a variable amount and
+>   performs no arithmetic.
+> - $2^{-z}$ — two to a non-negative integer power. A single bit set at a position, which is a bit
+>   pattern and not a computed value, and which is why the count never has to be exponentiated.
 >
 > **What it means.** This is the step that removes a transcendental function by reinterpreting bits.
-> Two to an integer power is not calculated; it is a wiring connection, so the entire integer half of
-> the exponent costs no arithmetic at all. The record states it as a hardware fact:
+> Dividing by two $z$ times is not calculated; it is a wiring connection, so the integer half of the
+> exponential costs no arithmetic at all. Only the remainder survives as work, and the remainder is
+> confined to an interval shorter than $\ln 2$. The record states the identity and then draws the
+> conclusion that makes the whole path viable:
 >
-> > "Here, 2^q can be computed exactly using a simple hardware bit-shift operation: 1 << q. The term
-> > 2^p for p in $[0, 1)$ is approximated with a second-order polynomial using integer multiplication
-> > and addition"
+> > "Then, the exponential of x̃ can be written as: exp(x̃) = 2−z exp(p) = exp(p)>>z, where >> is the
+> > bit shifting operation. As a result, we only need to approximate the exponential function in the
+> > compact interval of p ∈ (−ln 2, 0]."
 >
-> The word "exactly" is doing real work in that sentence, and it is the only place in the path where
-> the claim is exactness rather than approximation.
+> The word to notice is "only". The interval that remains is less than $\ln 2$ wide, and that
+> narrowness is what a second-order polynomial can hit.
 >
-> **What it costs.** A barrel shifter, which is a network of multiplexers that moves a bit pattern by
-> a variable amount and performs no arithmetic. On the KV260's programmable logic that is look-up
-> tables and nothing else: zero DSP48E2 slices, zero block RAM. The book's own estimate, not a
-> registered figure.
+> **What it costs.** A barrel shifter on the programmable logic, which is look-up tables and nothing
+> else: zero DSP48E2 slices and zero block RAM. The book's own estimate, not a registered figure.
 >
-> **What it does not say.** It does not say the shift is free of precision loss. A left shift into
-> bits the word does not have throws information away, and a right shift out of the word drops bits
-> below the resolution the design keeps. Sizing the result word is the designer's job, and a barrel
-> shifter that shifts a narrow word by a wide amount returns a wrong answer with no error flag.
+> **What it does not say.** It does not say the shift is free of precision loss. A right shift moves
+> bits out of the word, and a large $z$ shifts the small exponential away entirely. That is the
+> numerically correct answer -- the value is negligible next to the row's maximum -- but only if the
+> word is wide enough at the low end to keep the smallest value the softmax needs to distinguish. A
+> barrel shifter that shifts a narrow word by a wide amount returns a wrong answer with no error
+> flag.
 
-The fraction is the only place an approximation enters, and a short polynomial is enough for it:
+The remainder is the only place an approximation enters, and a short polynomial is enough for it:
 
-> **The formula.** $2^{p} \;\approx\; 1 \;+\; 0.6958\,p \;+\; 0.2250\,p^{2}, \qquad p \in [0,1)$
+> **The formula.** $L(p) \;=\; 0.3585\,(p + 1.353)^{2} \;+\; 0.344 \;\approx\; \exp(p), \qquad p \in (-\ln 2, 0]$
 >
 > **The variables.**
 >
-> - $p$ — the fractional part from two cards above, in $[0,1)$. The polynomial's only input, and a
+> - $p$ — the remainder from two cards above, in $(-\ln 2, 0]$. The polynomial's only input, and a
 >   fixed-point value whose bit width is the design's one accuracy knob.
-> - $0.6958$ — the linear coefficient, a constant fitted so the parabola tracks $2^{p}$ across the
->   unit interval. A compile-time literal, stored in the design.
-> - $0.2250$ — the quadratic coefficient, the curvature that makes the approximation second-order
->   rather than a straight line. Also a compile-time literal.
-> - $1$ — the value at $p = 0$, which the polynomial matches exactly because $2^{0} = 1$.
-> - $p^{2}$ — the squared input, computed by one integer multiply of $p$ by itself.
+> - $0.3585$ — the quadratic coefficient, the curvature that makes the approximation second-order
+>   rather than a straight line. A compile-time literal, stored in the design.
+> - $1.353$ — the centre shift, which moves the parabola's vertex left of the interval's midpoint so
+>   the curve tracks $\exp(p)$ where it is steepest. Also a compile-time literal.
+> - $0.344$ — the constant offset, which sets the value at the top of the interval; the polynomial
+>   matches $\exp(0) = 1$ closely without being pinned to it.
+> - $(p + 1.353)^{2}$ — the squared term, computed by one integer multiply of the shifted input by
+>   itself.
 >
-> **What it means.** On $[0,1)$ the function $2^{p}$ rises smoothly from one to two, and a parabola
-> through that curve is close enough that a quantized network does not detect the difference. Two
-> integer multiplies and two adds replace a table lookup or a floating-point call, and both
-> operations are what the fabric is built for. The record gives the coefficients and the form:
+> **What it means.** On $(-\ln 2, 0]$ the exponential rises smoothly over a range of less than two,
+> and a parabola through that curve is close enough that a quantized network does not detect the
+> difference. Two integer multiplies and two adds replace a table lookup or a floating-point call,
+> and both operations are what the fabric is built for. The record gives the method the fit used,
+> which matters more than the coefficients themselves, because the method is what a designer
+> re-runs for a different interval or a different width:
 >
-> > "The term 2^p for p in $[0, 1)$ is approximated with a second-order polynomial using integer
-> > multiplication and addition: 2^p approx 1 + 0.6958 p + 0.2250 p^2"
+> > "We use a second-order polynomial to approximate the exponential function in this range. To find
+> > the coefficients of the polynomial, we minimize the L2 distance from exponential function in the
+> > interval of (−ln 2, 0]."
+>
+> Substituting that polynomial into the identity above is the whole function, and the record names
+> the result:
+>
+> > "Substituting the exponential term in Eq. 12 with this polynomial results in i-exp: i-exp(x̃) :=
+> > L(p)>>z where z = ⌊−x̃/ ln 2⌋ and p = x̃ + z ln 2. This can be calculated with integer
+> > arithmetic."
 >
 > **What it costs.** Two DSP48E2 slices for the two multiplies and no block RAM, because nothing is
 > stored. The book's own estimate, not a registered figure.
 >
-> **What it does not say.** It does not say the polynomial equals $2^{p}$. It says a fitted parabola
-> is within some tolerance of it across the unit interval, and that tolerance, as a number, is not
-> registered anywhere in this repository -- so this book prints no error figure and a designer who
-> treats the approximation as exact has made the mistake the card exists to prevent. The
-> approximation is also only as good as the fixed-point literals $0.6958$ and $0.2250$ are wide, and
-> the card says nothing about how many bits each one is given.
+> **What it does not say.** It does not say the polynomial equals $\exp(p)$, and unlike the previous
+> edition of this section it does not have to leave the tolerance to the imagination: the record
+> registers it. The largest gap between the polynomial and the true exponential is 0.0019, and the
+> quantization that eight bits introduce over a unit interval is 0.0039, one part in 256, so the
+> approximation's worst case is smaller than the error of the number format it feeds. That is the
+> strongest thing a fitted polynomial in a quantised network can claim, and the record says the error
+> "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
+> only as accurate as the width each one is given, and this card does not set those widths.
 
-The four steps assemble into one datapath, and [Figure 21](#fig-base2-softmax-datapath) draws it as a
+The four steps assemble into one datapath, and [Figure 21](#fig-integer-softmax-datapath) draws it as a
 chain with one branch in it.
 
-::: {#fig-base2-softmax-datapath .figure}
+::: {#fig-integer-softmax-datapath .figure}
 ```tikz
-% The integer-only exponential as a chain: scale by log2 e, split at the binary point, then two
-% branches -- a shift on the integer part, a second-order polynomial on the fraction -- rejoining
-% at one multiplier.
+% The integer-only exponential as a chain: subtract the row maximum, decompose what is left in
+% units of ln 2, then two branches -- the integer count z becomes a shift amount, the remainder p
+% becomes a second-order polynomial -- rejoining at one right shift.
+% The box width and the gap before the final shift are tuned to the text block. header.tex sets
+% hfuzz=2pt, so an over-wide float prints no error: the build stays quiet and the picture runs into
+% the margin. A wider version of this chain measured 465pt against a 444pt text block, which
+% figprobe reports and the full build does not.
 \begin{tikzpicture}[
-  node distance=6mm,
+  node distance=5mm,
   box/.style={draw, align=center, inner sep=3pt, font=\scriptsize, text width=16mm, minimum height=10mm},
   arr/.style={-{Stealth[length=1.8mm]}, thick},
 ]
 \node[box] (x) {$x$};
-\node[box, right=of x] (mul) {$\times\;\log_2 e$};
-\node[box, right=of mul] (split) {split at binary point};
-\node[box, above right=3mm and 5mm of split] (shift) {shift $1 \ll q$};
-\node[box, below right=3mm and 5mm of split] (poly) {$1 + 0.6958\,p + 0.2250\,p^2$};
-\node[box, right=of shift, text width=12mm] (prod) {multiply};
-\node[box, right=of prod] (out) {$2^{\,x\log_2 e}$};
-\draw[arr] (x) -- (mul);
-\draw[arr] (mul) -- (split);
-\draw[arr] (split) -- (shift) node[midway, above, font=\scriptsize, inner sep=1pt] {$q$};
-\draw[arr] (split) -- (poly) node[midway, below, font=\scriptsize, inner sep=1pt] {$p$};
-\draw[arr] (poly) -| (prod);
-\draw[arr] (shift) -- (prod);
-\draw[arr] (prod) -- (out);
+\node[box, right=of x] (sub) {subtract $x_{\max}$};
+\node[box, right=of sub] (dec) {decompose in $\ln 2$};
+\node[box, above right=2mm and 5mm of dec] (zbox) {count $z$};
+\node[box, below right=2mm and 5mm of dec] (poly) {polynomial $L(p)$};
+\node[box, right=14mm of poly] (shift) {shift right by $z$};
+\node[box, right=of shift] (out) {i-exp$(\tilde{x})$};
+\draw[arr] (x) -- (sub);
+\draw[arr] (sub) -- (dec);
+\draw[arr] (dec) -- (zbox) node[midway, above, font=\scriptsize, inner sep=1pt] {$z$};
+\draw[arr] (dec) -- (poly) node[midway, below, font=\scriptsize, inner sep=1pt] {$p$};
+\draw[arr] (poly) -- (shift);
+\draw[arr] (zbox) -| (shift.north);
+\draw[arr] (shift) -- (out);
 \end{tikzpicture}
 ```
-The integer-only exponential of section 7.5: one constant multiply, a split that is wiring, a shift that costs no arithmetic, and a two-multiply polynomial on the fraction.
+The integer-only exponential of section 7.5: one subtract that bounds the input, a decomposition that is mostly wiring, a two-multiply polynomial on the short remainder, and one right shift that costs no arithmetic. Only the polynomial box approximates anything; the shift is exact.
 :::
 
-**Application.** This shape suits the KV260 for a reason the record states directly: the whole path
-"replaces transcendental floating-point computation with integer arithmetic and bit-shifts, without
-requiring large lookup tables." Every operation the datapath names is native to the fabric. Shifts and
-integer multiplies are what the programmable logic is built out of, a constant multiply by $\log_2 e$
-is one slice or wiring, and the absence of a lookup table is the property that matters on a device
-whose block RAM is the scarcest resource in the design -- the memory a table would occupy is memory
-the buffers of chapter 9 can use instead. The polynomial's two multiplies are ordinary DSP48E2 work,
-and they are the same kind of work the convolution datapath of section 8.2 already schedules.
+**Application.** This shape suits the KV260 for a reason the record states directly: the path avoids
+look up tables and "strive[s] for a pure arithmetic based approximation." Every operation the datapath
+names is native to the fabric. Shifts and integer multiplies are what the programmable logic is built
+out of, a constant multiply by $\ln 2$ or its reciprocal is one slice or wiring, and the absence of a
+lookup table is the property that matters on a device whose block RAM is the scarcest resource in the
+design -- the memory a table would occupy is memory the buffers of chapter 9 can use instead. The
+polynomial's two multiplies are ordinary DSP48E2 work, and they are the same kind of work the
+convolution datapath of section 8.2 already schedules.
 
-What this does not buy is an error budget. Whether the approximation is accurate enough for a given
-model is a numerical question, and it is a question this book does not settle: no record here
-registers the polynomial's error against the true $2^{p}$, so this section prints no tolerance and
-claims none. A design that adopts the path must measure the effect on its own task metric -- accuracy,
-EER or WER, whichever the model in question is judged by -- and that measurement belongs to the
-acceptance gate of section 8.4, not to this card. The path also does not make the softmax's
-*normalising* divide integer; section 8.3 is where this book derives a power-of-two form for that
-shape, and the two arguments are separate.
+The record is also careful about what is new here. A variant of this decomposition was used in the
+Itanium 2, and the paper's one-line description of it ends "but with a look up table for evaluating
+exp(p)." So the shift idea is not novel; what this path contributes is the removal of the table, which
+is the part that makes it fit a small FPGA rather than a server processor.
+
+What this does not buy is a normalising divide. The softmax still ends in a division by a row sum, and
+that sum is not a power of two just because the exponential now is. Section 8.3 is where this book
+derives a power-of-two form for that normalising shape, and the two arguments are separate: the
+exponential card above replaces a transcendental, the normalisation card replaces a divide, and a
+design that adopts one has not thereby got the other. What the path also does not do is certify itself
+for a given model. The error budget is registered and favourable, but whether it is *enough* is a task
+question, and that measurement belongs to the acceptance gate of section 8.4, not to this card.
 
 **Traceability.** The records this section leans on. The resource counts in the equation cards above
 are the book's own estimates, not registered figures, and are printed as words for that reason;
-everything else is a registered claim or a registered absence.
+everything else is a registered claim.
 
 | Record | What it establishes here |
 | --- | --- |
-| `V-07-11` | the base-2 reformulation of the exponential, exp(x) = 2^(x * log2(e)) |
-| `V-07-12` | the split of the exponent into an integer part and a fraction, z = q + p |
-| `V-07-13` | that the integer power is exact as a hardware bit-shift, 2^q = 1 << q |
-| `V-07-14` | the two coefficients of the second-order polynomial, 0.6958 and 0.2250 |
-| `V-07-15` | that the path needs no large lookup tables, only integer arithmetic and shifts |
+| `V-07-11` | the challenge statement, the maximum subtraction, and the ln-2 decomposition x̃ = (−ln 2)z + p |
+| `V-07-12` | the shift identity exp(x̃) = 2^(−z) exp(p) = exp(p) >> z, and the interval (−ln 2, 0] it leaves |
+| `V-07-13` | the polynomial L(p) = 0.3585(p + 1.353)² + 0.344 and the L2 fit that produced it |
+| `V-07-14` | the assembled i-exp(x̃) := L(p) >> z, with z = ⌊−x̃/ln 2⌋ and p = x̃ + z ln 2 |
+| `V-07-15` | that the path avoids look up tables and is pure arithmetic |
+| `V-07-27` | the error budget: largest gap 0.0019 against the 0.0039 eight-bit quantisation introduces |
