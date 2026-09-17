@@ -208,6 +208,42 @@ single most useful quantity in this section.
 > that side at all. And it does not say the growth number is a registered measurement of this design; it
 > is a derived arithmetic quantity, stated for the reader to check against the formula above.
 
+**The width is visible in the code, and it is the whole interface.** The growth bound is not a
+number to believe: it is a line of RTL, and the line is where a learner sees that the register
+width is *computed*, not chosen. One integrator stage, in the width the card above derives:
+
+```systemverilog
+module cic_integrator
+#(parameter int N_STAGES = 3,   // integrator-comb pairs
+  parameter int DECIM    = 64,  // decimation ratio M
+  parameter int DIN_W    = 1)   // one-bit PDM input
+ (input  logic                  clk,
+  input  logic                  rst_n,
+  input  logic signed [DIN_W-1:0] din,
+  output logic signed [B_MAX-1:0]  dout);
+
+  // Hogenauer growth bound, as a localparam: the synthesiser sizes the register.
+  localparam int B_MAX = DIN_W + N_STAGES*$ceil($log2(DECIM));
+
+  logic signed [B_MAX-1:0] acc;   // y[n-1]
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n)  acc <= '0;
+    else         acc <= acc + din;   // y[n] = y[n-1] + x[n]
+  end
+  assign dout = acc;
+endmodule
+```
+
+Two things to read out of it. The `localparam` is the formula from the card, so the register width
+and the bound cannot drift apart in an edit: change `DECIM` and the accumulator widens by itself, which
+is the difference between a derived width and a magic number. And the add is an ordinary `+` on signed
+operands of that width, which is the whole cost claim of the section in one line -- an integrator is
+one adder and one register, and the comb that follows it is a subtractor and a delay, so there is no
+multiplier anywhere in this filter. The width `B_MAX` evaluates to the nineteen bits the card derived
+for the section's choices, and the one-bit input is widened to it by the signed extension the port
+already declares, not by padding logic the designer must remember to add.
+
 **Application.** The section's whole case is the two paths beside each other. The I2S path hands the
 frame buffer complete 16 kHz samples as they arrive, with no arithmetic of its own, only clock-domain
 care. The PDM path must decimate, and the CIC does it with adders, with a width that is derived,
@@ -368,28 +404,40 @@ nine of them.
 
 ::: {#fig-ch6-r2sdf-stage .figure}
 ```tikz
-% One R2SDF stage: delay line on the lower path, butterfly, twiddle multiply.
+% One R2SDF stage, after He & Torkelson: a 2:1 switch, a butterfly whose sum output
+% recirculates through the delay line in the feedback path, and a twiddle multiply on
+% the difference output. The delay line is *in the loop*, not beside it: that feedback
+% is what the "single-path delay feedback" name describes.
 \begin{tikzpicture}[
-  node distance=7mm,
+  node distance=9mm,
   blk/.style={draw, align=center, inner sep=3pt, font=\scriptsize,
-              text width=17mm, minimum height=11mm},
+              text width=19mm, minimum height=12mm},
   lbl/.style={font=\scriptsize, align=center, inner sep=1pt},
   arr/.style={-{Stealth[length=1.8mm]}, thick},
+  fb/.style={-{Stealth[length=1.8mm]}, thick, dashed},
 ]
-\node[blk] (dly) {delay line};
-\node[blk, right=of dly] (bf) {butterfly};
+\node[blk] (sw) {switch\\(2:1 MUX)};
+\node[blk, right=of sw] (bf) {butterfly};
 \node[blk, right=of bf] (tw) {twiddle $\times$};
-\draw[arr] (dly) -- (bf);
-\draw[arr] (bf) -- (tw);
-\node[lbl, above=1pt of dly.north] {upper path};
-\node[lbl, below=1pt of dly.south] {lower path waits};
-\node[lbl, below=1pt of bf.south] {sum and difference};
+\node[blk, below=16mm of bf] (dly) {delay line\\$N/2^{k}$};
+\coordinate[left=10mm of sw] (in);
+\coordinate[right=10mm of tw] (outd);
+\draw[arr] (in) -- (sw) node[lbl, midway, above] {input};
+\draw[arr] (sw) -- (bf) node[lbl, midway, above] {selected};
+\draw[arr] (bf) -- (tw) node[lbl, midway, above] {difference};
+\draw[arr] (tw) -- (outd) node[lbl, midway, above] {to next stage};
+\draw[arr] (bf.south) -- node[lbl, right=1pt] {sum} (dly.north);
+\draw[fb] (dly.west) -| node[lbl, below, pos=0.25] {recirculated sample} (sw.south);
+\node[lbl, below=1pt of sw.south, yshift=-1mm] {toggles every $N/2^{k}$};
 \node[lbl, below=1pt of tw.south] {table constant};
 \end{tikzpicture}
 ```
-One R2SDF stage. The lower path waits in the delay line while the upper path streams past, so
-the pair each butterfly needs arrives together; the butterfly forms the sum and the difference
-and the twiddle multiply scales one of them by a table constant.
+One R2SDF stage. The switch toggles every $N/2^{k}$ samples, so the delay line first loads and then
+empties: while it loads, the input is stored; while it empties, each stored sample is the butterfly's
+second operand and the current input is the first. The butterfly's sum output recirculates through
+the delay line in the feedback path, which is the loop the architecture is named for, and only the
+difference output leaves the stage through the twiddle multiply. The feedback wire is dashed because
+it carries a different sample than the forward path, not a different clock.
 :::
 
 ::: {#fig-ch6-r2sdf-pipeline .figure}
@@ -432,6 +480,35 @@ scaling. Whether to scale at every stage or only where overflow threatens is the
 decision, and it is the first quantity chapter 7 will measure rather than assume: the signal-to-noise
 ratio of the fixed-point spectrum against the floating-point golden the experiment protocol of section 6.6
 defines.
+
+**The twiddle multiply is where the DSP bill is decided, and it has two shapes.** *Mechanism.* A
+twiddle factor is a complex number on the unit circle, and multiplying one complex number by another
+costs real multiplies. The direct form follows the algebra: $(a + jb)(c + jd) = (ac - bd) +
+j(ad + bc)$, which is four real multiplies and two real adds. Every butterfly in this chapter's
+nine-stage pipeline does one of these, so a radix-$2$ stage that computes the whole spectrum spends
+its multiplies here and nowhere else. That is the honest count and the reason a 512-point transform is
+not a small design: nine stages of butterflies, each carrying a complex multiply.
+
+The Gauss rearrangement, which the field calls the three-multiplier form, trades one multiply for two
+extra adds by observing that $ac$ and $bd$ are already computed and $ad + bc$ can be reached from
+$(a + b)(c + d) = ac + ad + bc + bd$: form that third product, subtract the two you have, and the
+imaginary part appears. The bookkeeping is
+
+$$\text{Re} = p_1 - p_2,\qquad \text{Im} = p_3 - p_1 - p_2,\qquad p_1 = ac,\ p_2 = bd,\ p_3 = (a+b)(c+d),$$
+
+which is three multiplies and three adds against the direct form's four multiplies and two adds.
+On a DSP48E2 slice the trade reads one way and on LUT fabric another: a slice is a multiply-accumulate
+whose adder is already there and already paid for, so the two extra adds are nearly free and a
+three-multiplier complex multiply costs three slices where the direct form costs four -- a
+$25\%$ slice saving on the pipeline's dominant arithmetic, computed as the difference the counts
+imply. On LUT fabric the same saving is weaker, because an adder built from lookup tables is not free,
+and the three-multiplier form's longer combinational depth costs the clock period that chapter 4's
+slice is there to protect. The choice is therefore not "Gauss is better"; it is "Gauss is better where
+the adder is already in the slice," and on this device's DSP48E2 that condition holds.
+
+What the saving does *not* change is the table: the twiddle factors are constants either way, so the
+storage bill is the same, and the chapter's scaling discipline is the same, because the width growth
+through a complex multiply does not depend on how many real multiplies implement it.
 
 > **The formula.**
 > $$X[k] = \sum_{n=0}^{N-1} x[n]\, W_{N}^{kn}, \qquad W_{N} = e^{-j 2\pi / N}$$
@@ -616,10 +693,30 @@ word width the downstream features read; each stage is one cycle per band per fe
 > entry count implies, and what does that say about the minimum word width the Mel energy must carry
 > for the table to be fully addressed?
 >
+> **(d) The same engine on a clock.** Suppose the MAC engine of part (b) runs at a fabric clock of
+> $100$ MHz and commits one MAC per cycle per DSP slice. How many clock cycles does one feature vector
+> consume, what is the execution period of one feature vector, and what fraction of one slice's time is
+> occupied, computed as the ratio of the execution period to the frame period the hop rate implies?
+> Then state how many feature vectors a single slice could sustain in principle, and why the answer is
+> not the design's real limit.
+>
 > **Answers.** (a) $80 \times 10 = 800$ MACs per feature vector. (b) $800 \times 100 = 80{,}000$ MACs
 > per second -- a very modest number for modern fabric. (c) $\log_{2}(256) = 8$, so the index needs $8$
 > bits, meaning the Mel energy must be at least $8$ bits wide for every table entry to be addressable; a
 > wider energy value gives the interpolator more bits to work with.
+>
+> (d) $800$ cycles per feature vector at $100$ MHz is a period of $800 \times 10\ \text{ns} = 8\ \mu\text{s}$, computed as the product the cycle count and the clock period imply. The frame period
+> is $160$ samples at $16$ kHz, which is $10$ ms, so one slice is occupied $8\ \mu\text{s}$ out of every
+> $10$ ms: a duty cycle of $0.08\%$, computed as the ratio of the two periods. One slice could in
+> principle sustain $10\ \text{ms} / 8\ \mu\text{s} = 1250$ feature vectors per period, against the
+> $100$ the front end actually produces. That margin is not the design's real limit, for two reasons:
+> the Mel engine must also wait on the $257$-bin spectrum the FFT stage delivers before any of its MACs
+> can start, so the latency budget is set upstream of the arithmetic count, and a slice that is
+> $99.92\%$ idle on this task is only idle if nothing else is scheduled onto it -- the same silicon
+> runs the log table lookup, the requantizer, or the next chapter's convolutions in the cycles this
+> stage leaves free. The honest reading of the number is that the Mel filterbank is arithmetically tiny
+> and the design's constraints are elsewhere: in memory bandwidth for the table, in the FFT's
+> throughput, and in the fixed-point widths part (c) sized.
 
 **Application.** The section's deliverable is a three-stage datapath that reduces $257$ fixed-point
 spectrum bins to 80 fixed-point features per hop, and the cost is three small arithmetic blocks plus
@@ -643,6 +740,8 @@ Section 6.6 provides that protocol and states what the numbers will be before th
 | `V-06-14` | the transform produces $257$ bins, fixing the matrix width |
 | `V-06-01` | integer requantization weights (Jacob et al., 2018) follow the standard linear scaling |
 | `V-06-02` | the same formulation, corroborating the requantization weights |
+| `V-05-10` | the corpus stores speech at 16 kHz, the rate the exercise's frame period divides by |
+| `V-06-16` | the hop is 160 samples, which fixes the $10$ ms frame period the duty cycle divides |
 | `V-01-22` | the board's on-chip memory total, against which the log LUT is a small allocation |
 
 <!-- source: 6.5 draft fragment -->
@@ -710,7 +809,7 @@ and the comparison is bit-exact between the fixed-point and the floating-point o
 frames.
 
 > **The formula.**
-> $$\text{SQNR}_{\text{dB}} = 10 \log_{10}\!\left(\frac{\sum_{f=1}^{F} \|\mathbf{e}_f\|^{2}}{\sum_{f=1}^{F} \|\mathbf{y}_f\|^{2}}\right)$$
+> $$\text{SQNR}_{\text{dB}} = 10 \log_{10}\!\left(\frac{\sum_{f=1}^{F} \|\mathbf{y}_f\|^{2}}{\sum_{f=1}^{F} \|\mathbf{e}_f\|^{2}}\right)$$
 >
 > **The variables.**
 > - $\text{SQNR}_{\text{dB}}$ -- the signal-to-quantization-noise ratio in decibels. A negative number
@@ -721,8 +820,8 @@ frames.
 >   FP32 golden and the fixed-point output for the same frame. The experiment's core quantity.
 > - $F$ -- the total number of frames compared, one per hop period in the corpus.
 >
-> **What it means.** The numerator is the total error power across all frames; the denominator is the
-> total signal power. The ratio measures how many bits of the fixed-point output are meaningful: every
+> **What it means.** The numerator is the total signal power across all frames; the denominator is the
+> total error power. The ratio measures how many bits of the fixed-point output are meaningful: every
 > $6$ dB of SQNR is approximately one bit of precision above the noise floor. A high SQNR means the
 > fixed-point output is very close to the FP32 golden; a low SQNR means the fixed-point arithmetic is
 > losing information that the downstream network would otherwise see.
