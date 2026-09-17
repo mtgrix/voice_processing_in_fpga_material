@@ -2913,7 +2913,7 @@
       "source_tier": "T2",
       "title": "NeMo conformer_transducer_bpe_streaming.yaml",
       "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml",
-      "locator": "Derived from V-06-15 frame length; arithmetic derivation: next_pow2(400) = 512, confirmed by V-06-14 n_fft",
+      "locator": "Derived from V-06-15 frame length; arithmetic derivation: 400 + 112 = 512",
       "quote": "n_fft: 512",
       "retrieved_utc": "2026-09-13T21:32:56Z",
       "access": "open"
@@ -2957,6 +2957,7 @@
     {
       "id": "V-07-01",
       "status": "verified",
+      "quantity": "roofline_model_primary_citation",
       "value": "Williams, Waterman, Patterson, CACM April 2009",
       "unit": "citation",
       "conditions": "Communications of the ACM, Vol. 52, No. 4, pp. 65-76, DOI: 10.1145/1498765.1498785",

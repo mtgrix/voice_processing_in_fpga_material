@@ -1,11 +1,11 @@
 # Verification Records: 07 Related Work
 
-### V-07-01 · V-07-01
+### V-07-01 · Roofline Model Primary Citation
 
 | Field | Value |
 |---|---|
 | status | `verified` |
-| quantity | `` |
+| quantity | `roofline_model_primary_citation` |
 | value | `Williams, Waterman, Patterson, CACM April 2009` |
 | unit | `citation` |
 | conditions | `Communications of the ACM, Vol. 52, No. 4, pp. 65-76, DOI: 10.1145/1498765.1498785` |

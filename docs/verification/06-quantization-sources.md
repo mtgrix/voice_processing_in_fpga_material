@@ -335,7 +335,7 @@ for some constants S and Z. Equation (1) is our quantization scheme and the cons
 | doc_id | `Derived from NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config` |
 | title | NeMo conformer_transducer_bpe_streaming.yaml |
 | url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
-| locator | Derived from V-06-15 frame length; arithmetic derivation: next_pow2(400) = 512, confirmed by V-06-14 n_fft |
+| locator | Derived from V-06-15 frame length; arithmetic derivation: 400 + 112 = 512 |
 | quote | n_fft: 512 |
 | retrieved_utc | `2026-09-13T21:32:56Z` |
 | access | `open` |

@@ -212,7 +212,7 @@ The remainder is the only place an approximation enters, and a short polynomial 
 > "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
 > only as accurate as the width each one is given, and this card does not set those widths.
 
-The four steps assemble into one datapath, and [Figure 21](#fig-integer-softmax-datapath) draws it as a
+The four steps assemble into one datapath, and [Figure 26](#fig-integer-softmax-datapath) draws it as a
 chain with one branch in it.
 
 ::: {#fig-integer-softmax-datapath .figure}
