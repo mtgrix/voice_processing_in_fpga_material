@@ -701,6 +701,43 @@ SPEC: list[Entry] = [
         "pass attributed to this paper could not be found in any available text, so chapter 9 now "
         "presents the ring buffer as this book's own design.",
     ),
+    # Chapter 6 sources: audio ingestion and DSP front-end.
+    Entry(
+        doc_id="IEEE TASSP 1981",
+        id="S038",
+        type="journal-article",
+        publisher="IEEE",
+        url="https://doi.org/10.1109/TASSP.1981.1163535",
+        venue="IEEE Transactions on Acoustics, Speech, and Signal Processing",
+        bibtex_entry="article",
+        year=1981,
+        authors="E. Hogenauer",
+        authors_bibtex="Hogenauer, E.",
+        pages="155--162",
+        research_note_path=None,
+        topics=("CIC", "decimation", "interpolation", "digital filters", "Hogenauer"),
+        notes="An Economical Class of Digital Filters for Decimation and Interpolation. "
+        "Establishes the closed-form register-width and CIC-section-count design procedure "
+        "used in section 6.1 when a PDM bit-stream must be decimated inside the PL fabric.",
+    ),
+    Entry(
+        doc_id="IPPS 1996 (R2SDF FFT)",
+        id="S039",
+        type="conference-paper",
+        publisher="IEEE",
+        url="https://doi.org/10.1109/IPPS.1996.508145",
+        venue="Proceedings of International Parallel Processing Symposium (IPPS-96), Honolulu",
+        bibtex_entry="inproceedings",
+        year=1996,
+        authors="Shousheng He and M. Torkelson",
+        authors_bibtex="He, Shousheng and Torkelson, M.",
+        pages="766--770",
+        research_note_path=None,
+        topics=("FFT", "radix-2", "R2SDF", "pipeline", "single-path delay feedback"),
+        notes="A New Approach to Pipeline FFT Processor. Proposes the R2SDF "
+        "(radix-2 single-path delay feedback) microarchitecture for streaming FFT on "
+        "FPGAs, referenced in section 6.3 as the fixed-point transform engine template.",
+    ),
 ]
 
 

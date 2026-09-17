@@ -241,3 +241,143 @@ for some constants S and Z. Equation (1) is our quantization scheme and the cons
 | access | `open` |
 | corroborating_url |  |
 | notes | The sharpest available evidence that the compiled graph, not the framework graph, is the object of the work: the tool cannot point at a layer by name until it has produced the quantized model, and it tells the user to read the names out of a generated file. Chapter 5.4 uses it for the sentence about why an operator count taken before the tool ran describes a model nobody deploys. |
+
+### V-06-13 · Nemo Streaming Conformer Feature Window Size
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `nemo_streaming_conformer_feature_window_size` |
+| value | `0.025` |
+| unit | `seconds` |
+| conditions | `the mel front end of cache-aware streaming Conformer-Transducer recipe config `conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml`, with window_stride 0.01 at line 70, features 80 at line 72 and n_fft 512 at line 73` |
+| source_tier | `T2` |
+| doc_id | `NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config` |
+| title | NeMo conformer_transducer_bpe_streaming.yaml |
+| url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
+| locator | Line 69, model.preprocessor.window_size |
+| quote |     window_size: 0.025 |
+| retrieved_utc | `2026-09-13T21:32:56Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Twenty-five milliseconds, the Hamming/Hann window length that maps to 400 samples at 16 kHz. V-05-31 registers the companion stride 0.01 s; together the two values fix the frame/hop pair (400/160 samples) used throughout chapter 6. |
+
+### V-06-14 · Nemo Streaming Conformer Frontend N Fft
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `nemo_streaming_conformer_frontend_n_fft` |
+| value | `512` |
+| unit | `FFT points` |
+| conditions | `the mel front end of cache-aware streaming Conformer-Transducer recipe config, with window_size 0.025 at line 69, window_stride 0.01 at line 70 and features 80 at line 72` |
+| source_tier | `T2` |
+| doc_id | `NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config` |
+| title | NeMo conformer_transducer_bpe_streaming.yaml |
+| url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
+| locator | Line 73, model.preprocessor.n_fft |
+| quote |     n_fft: 512 |
+| retrieved_utc | `2026-09-13T21:32:56Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | 512-point FFT, the transform size that produces 257 frequency bins for 80 Mel bands. The frame is only 400 samples long, so the remaining 112 input slots are zero-padded. |
+
+### V-06-15 · Audio Frame Length Samples
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `audio_frame_length_samples` |
+| value | `400` |
+| unit | `samples` |
+| conditions | `derived from NeMo config: window_size 0.025 s (V-06-13) multiplied by sample rate 16,000 Hz (V-05-10/V-05-11)` |
+| source_tier | `T2` |
+| doc_id | `Derived from NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config and OpenSLR 12` |
+| title | NeMo conformer_transducer_bpe_streaming.yaml |
+| url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
+| locator | Derived from V-06-13 window_size and V-05-10 sample rate; arithmetic derivation: 0.025 * 16000 = 400 |
+| quote | window_size: 0.025 |
+| retrieved_utc | `2026-09-13T21:32:56Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | arithmetic derivation: 0.025 * 16,000 = 400 |
+
+### V-06-16 · Audio Hop Size Samples
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `audio_hop_size_samples` |
+| value | `160` |
+| unit | `samples` |
+| conditions | `derived from NeMo config: window_stride 0.01 s (V-05-31) multiplied by sample rate 16,000 Hz (V-05-10/V-05-11)` |
+| source_tier | `T2` |
+| doc_id | `Derived from NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config and OpenSLR 12` |
+| title | NeMo conformer_transducer_bpe_streaming.yaml |
+| url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
+| locator | Derived from V-05-31 window_stride and V-05-10 sample rate; arithmetic derivation: 0.01 * 16000 = 160 |
+| quote | window_stride: 0.01 |
+| retrieved_utc | `2026-09-13T21:32:56Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | arithmetic derivation: 0.01 * 16,000 = 160 |
+
+### V-06-17 · Fft Size From Frame
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `fft_size_from_frame` |
+| value | `512` |
+| unit | `FFT points` |
+| conditions | `derived: smallest power of two not less than frame length 400 (V-06-15); matches NeMo config n_fft 512 (V-06-14)` |
+| source_tier | `T2` |
+| doc_id | `Derived from NeMo Cache-Aware Streaming Conformer-Transducer Recipe Config` |
+| title | NeMo conformer_transducer_bpe_streaming.yaml |
+| url | https://raw.githubusercontent.com/NVIDIA-NeMo/Speech/75e441d6919834c68b206092bf22f4ae102f0264/examples/asr/conf/conformer/cache_aware_streaming/conformer_transducer_bpe_streaming.yaml |
+| locator | Derived from V-06-15 frame length; arithmetic derivation: next_pow2(400) = 512, confirmed by V-06-14 n_fft |
+| quote | n_fft: 512 |
+| retrieved_utc | `2026-09-13T21:32:56Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | arithmetic derivation: next_pow2(400) = 512 |
+
+### V-06-18 · Cic Hogenauer 1981 Source
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `cic_hogenauer_1981_source` |
+| value | `Hogenauer, IEEE TASSP vol 29 no 2 pp 155-162, 1981` |
+| unit | `citation` |
+| conditions | `primary source for CIC decimation filter theory and the closed-form register-width formula used in section 6.1` |
+| source_tier | `T3` |
+| doc_id | `IEEE TASSP 1981` |
+| title | An Economical Class of Digital Filters for Decimation and Interpolation |
+| url | https://doi.org/10.1109/TASSP.1981.1163535 |
+| locator | pp 155-162 |
+| quote | An Economical Class of Digital Filters for Decimation and Interpolation |
+| retrieved_utc | `2026-09-17T00:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Registered for chapter 6 CIC decimation derivation (section 6.1). Verified via Crossref; no open-access preprint exists. |
+
+### V-06-19 · R2Sdf Fft He Torkelson 1996 Source
+
+| Field | Value |
+|---|---|
+| status | `verified` |
+| quantity | `r2sdf_fft_he_torkelson_1996_source` |
+| value | `He & Torkelson, IPPS-96 pp 766-770, 1996` |
+| unit | `citation` |
+| conditions | `primary source for the R2SDF (radix-2 single-path delay feedback) pipeline FFT microarchitecture used in section 6.3` |
+| source_tier | `T3` |
+| doc_id | `IPPS 1996 (R2SDF FFT)` |
+| title | A New Approach to Pipeline FFT Processor |
+| url | https://doi.org/10.1109/IPPS.1996.508145 |
+| locator | pp 766-770 |
+| quote | A New Approach to Pipeline FFT Processor |
+| retrieved_utc | `2026-09-17T00:00:00Z` |
+| access | `open` |
+| corroborating_url |  |
+| notes | Registered for chapter 6 fixed-point FFT microarchitecture derivation (section 6.3). Verified via Crossref; DOI 10.1109/IPPS.1996.508119 is an unrelated genetic-algorithms paper. |

@@ -25,8 +25,8 @@ nine quotations, two page locators and two values. See
 
 ## Summary
 
-- **Total Records:** 186
-- **Verified:** 176
+- **Total Records:** 193
+- **Verified:** 183
 - **Unresolved:** 7
 - **Conflict (records in `status: conflict`):** 3
 - **Conflicts registered:** 8 (C-01 … C-08; five of them — C-02, C-03, C-06, C-07 and C-08 — carry no

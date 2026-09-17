@@ -102,8 +102,8 @@ class TestRegistryMatchesTheEvidenceSet:
         makes the two counts differ by one is still `Sparse INT8 TOPS` / `sparse INT8 TOPS`,
         tested below.
         """
-        assert len(claims_lib.UNIT_TERMS) == 57
-        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 56
+        assert len(claims_lib.UNIT_TERMS) == 59
+        assert len({c for c in claims_lib.UNIT_TERMS.values()}) == 58
 
     def test_every_canonical_has_a_kind(self) -> None:
         assert set(claims_lib.UNIT_TERMS.values()) <= set(claims_lib.UNIT_KINDS)
@@ -170,9 +170,9 @@ class TestRefusals:
     def test_a_registered_term_no_record_uses_is_refused(self) -> None:
         """Otherwise the list becomes a graveyard, and a graveyard lets wrong labels pass."""
         _used, fails = run([record("V-01-13", "GB/s")])
-        # One failure per unused *spelling*, not per canonical. Of the 57 spellings the
-        # vocabulary now holds, GB/s accounts for the single used one, so 56 go unclaimed.
-        assert len([f for f in fails if "registered but no record uses it" in f]) == 56
+        # One failure per unused *spelling*, not per canonical. Of the 59 spellings the
+        # vocabulary now holds, GB/s accounts for the single used one, so 58 go unclaimed.
+        assert len([f for f in fails if "registered but no record uses it" in f]) == 58
 
     def test_a_canonical_without_a_kind_is_refused(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delitem(claims_lib.UNIT_KINDS, "watts")
