@@ -530,29 +530,63 @@ from a record, and which no record says the part runs at.
 
 The short version is that arithmetic on a number is cheap and moving the same number is not. A neural network accelerator is therefore budgeted by its traffic before it is budgeted by its arithmetic. How many times each weight, each activation and each partial sum has to be fetched, carried across the chip, and written back is what decides the energy of one inference, and the multiply-accumulate that all of that traffic exists to serve is a small item in that account. A spatial architecture is the name for a class of machines that admits this and then does something about it: rather than hiding the wait behind a scheduler, it changes where each operand lives so that the traffic does not have to happen. The roofline said the FPGA saturates early; this section says what a designer arranges so that saturating early costs less than it sounds.
 
-The register for the energy argument is a survey of efficient neural-network processing, and its one sentence on the subject is the whole foundation of this section:
+The register for the energy argument is a survey of efficient neural-network processing, and its
+treatment of the subject is a figure rather than a table of measurements. Reading that figure right
+matters for everything after it, because it is *normalised*: the arithmetic is the reference and every
+level of the memory hierarchy is quoted against it.
 
-> "Memory accesses are significantly more energy-consuming than arithmetic operations. Accessing off-chip DRAM consumes about 200x more energy than an ALU operation (e.g., 32-bit DRAM read consumes ~640 pJ versus ~3.7 pJ for 32-bit floating-point add, and ~1.1 pJ for 32-bit SRAM read)."
+> "Normalized Energy Cost 200× 6× 2× 1× 1× (Reference)"
 
-Read the bracket as a ladder with three rungs, and note that every word on it is the same width, so the three figures are comparable. At the top rung, reading one 32-bit word from off-chip DRAM costs about 640 pJ. That is the trip a number takes when it leaves the memory chips on the board, crosses the package pins, and arrives in the accelerator. At the bottom rung, reading one 32-bit word from on-chip SRAM, which is the memory banked next to the compute on the die itself, costs about 1.1 pJ. Between them sits the arithmetic: one 32-bit floating-point add costs about 3.7 pJ. The headline ratio the survey prints is the top rung against the arithmetic, at about 200 times, and the honest reading of it is not that memory is slower but that a fetch from off-chip is the most expensive single thing a layer does, and a design that repeats it for every operand of every multiply-accumulate pays that price on purpose.
+Read the bracket as a ladder with four rungs, where the bottom rung is the arithmetic itself and every
+other rung is a fetch. Reading one word from off-chip DRAM costs 200 times what operating on it costs.
+Fetching it from the global buffer, the large on-chip memory that sits between the array and DRAM, costs
+six times. Fetching it from the register file inside a processing element costs twice. The survey is
+blunt about the size of that gap, and about what kind of statement it is:
 
-Two qualifications keep the ladder usable. It is a set of figures for a process generation and a memory hierarchy that the survey describes in general, not measurements of the KV260 or the Orin, and this book has not measured either board's access energy, so the ladder is used here as an ordering of costs, which is robust, and not as a budget, which would be a fabrication. The ordering is all the argument needs: off-chip fetch is the expensive rung, on-chip storage is cheap, and arithmetic is cheap.
+> "fetching the data from the RF or neighbor PEs is going to cost 1 or 2 orders of magnitude lower
+> energy than from DRAM"
 
-**Mechanism.** If the expensive act is carrying an operand, then the design lever is deciding which operand stays put. A processing element (PE) is one multiply-accumulate site in a spatial array, and it has a small register file (RF) of its own, local storage that costs the cheap rung to read. A dataflow is the naming convention for which operand a machine parks in that local storage and which ones it makes travel. The survey names three families, and their definitions are quoted here in full because the distinction between them is a distinction about traffic, and paraphrase tends to blur it.
+> "DRAM can store gigabytes of data, but consumes two orders of magnitude higher energy per access
+> than a small on-chip memory of a few kilobytes"
 
-> "The goal of the weight stationary (WS) dataflow is to minimize the energy consumption of reading weights. In a WS dataflow, weights are read from DRAM or the global buffer into the register file (RF) of each processing element (PE) and kept there for as many MAC operations as possible. Input activations and partial sums must move through the spatial array and global buffer."
+The ladder comes with the sizes of the levels it compares: a register file of 0.5 to 1.0 kB inside each
+processing element, a global buffer of 100 to 500 kB shared by the array, and a network on chip of 200
+to 1000 processing elements. Those three ranges are what make the ratios concrete rather than
+aspirational, and they are the sizes the survey's own dataflow evaluation uses.
 
-In a weight-stationary design, the parked operand is the weight. Each PE loads its weight once, holds it in its own register file, and multiplies it by a stream of arriving activations. What travels is therefore the input activation, which flows through the array from PE to PE, and the partial sum, which accumulates as it goes and must be handed back through the global buffer, the on-chip buffer that sits between the array and DRAM. This pays off when a weight is reused many times, because the one expensive fetch is amortised across many multiply-accumulates.
+Two qualifications keep the ladder usable. It is normalised, not absolute: the survey prints no access
+energy in picojoules anywhere in this argument, so neither does this book, and a designer who quotes the
+200 as though it were a measurement of some particular board has misread the figure. It is also a
+property of a class of memory hierarchies rather than of the KV260 or the Orin, and this book has not
+measured either board's access energy, so the ladder is used here as an ordering of costs, which is
+robust, and not as a budget, which would be a fabrication. The ordering is all the argument needs:
+off-chip fetch is the expensive rung, on-chip storage is cheap, and arithmetic is cheap.
 
-> "The goal of the input stationary (IS) dataflow is to minimize the energy consumption of reading input activations from memory. In an IS dataflow, input activations are kept in the RF of each PE, while weights and partial sums are moved through the PEs."
+**Mechanism.** If the expensive act is carrying an operand, then the design lever is deciding which operand stays put. A processing element (PE) is one multiply-accumulate site in a spatial array, and it has a small register file (RF) of its own, local storage that costs the cheap rung to read. A dataflow is the naming convention for which operand a machine parks in that local storage and which ones it makes travel. The survey names four families, and their definitions are quoted here in full because the distinction between them is a distinction about traffic, and paraphrase tends to blur it.
 
-Here the parked operand is the input activation. Each PE holds one activation value and multiplies it by a parade of weights that travel through the array, and the partial sum still travels. The trade is the mirror image of the previous one: it pays when an activation is reused against many weights, which is the situation in a layer whose output channels are many and whose input is a small vector.
+> "The weight stationary dataflow is designed to minimize the energy consumption of reading weights by maximizing the accesses of weights from the register file (RF) at the PE. Each weight is read from DRAM into the RF of each PE and stays stationary for further accesses."
 
-> "The goal of the output stationary (OS) dataflow is to minimize the energy consumption of reading and writing partial sums. Accumulation is performed locally within the RF of each PE until the final output activation is calculated."
+In a weight-stationary design, the parked operand is the weight. Each PE loads its weight once, holds it in its own register file, and multiplies it by a stream of arriving activations. What travels is therefore the input activation, which is broadcast across the array, and the partial sum, which accumulates as it goes and must be handed back through the global buffer. This pays off when a weight is reused many times, because the one expensive fetch is amortised across many multiply-accumulates.
+
+> "The output stationary dataflow is designed to minimize the energy consumption of reading and writing the partial sums. It keeps the accumulation of partial sums for the same output activation value local in the RF."
 
 In an output-stationary design, the parked operand is the partial sum, the running total of a dot product. The PE that owns an output accumulates into its own register file and writes nothing back until the sum is finished, so the operand that never has to leave the chip is the one that would otherwise have been read and written once per accumulated term. Weights and activations travel instead, which is a real cost and not a free one; the family bets that the partial sum is the operand with the most traffic, because it is touched repeatedly within a single dot product, and that parking it saves more than parking a weight or an activation would.
 
-The three definitions agree about the arithmetic and disagree only about which operand is allowed to be expensive. [Figure 13](#fig-sze-dataflows) draws all three on the same grid so that the disagreement is the only thing visible.
+The third family is not a choice of *which* operand to park, and reading it as though it were is the mistake that makes the taxonomy look smaller than it is. It is the refusal to park anything:
+
+> "While small register files are efficient in terms of energy (pJ/bit), they are inefficient in terms of area. In order to maximize the storage capacity, and minimize the off-chip memory bandwidth, no local storage is allocated to the PE and instead all that area is allocated to the global buffer to increase its capacity. The no local reuse dataflow differs from the previous dataflows in that nothing stays stationary inside the PE array."
+
+No-local-reuse turns the register file's area into buffer capacity instead. Every weight, activation and partial sum travels, and the design buys bandwidth with silicon: the global buffer is larger than in either stationary family, so more data stays on chip even though none of it sits still. The survey is candid about what that costs, reporting that most of this family's accesses come from that larger buffer, whose own access energy is well above the register file's, so the overall energy stays fairly high.
+
+The fourth family is the one the survey's own evaluation crowns, and it is worth quoting because it changes how the first three should be read:
+
+> "A row stationary dataflow is proposed in [...], which aims to maximize the reuse and accumulation at the RF level for all types of data (weights, pixels, partial sums) for the overall energy efficiency. This differs from WS or OS dataflows, which optimize for only weights and partial sums, respectively."
+
+The numeral in that sentence is the survey's own reference marker, elided here rather than printed. It points to Eyeriss, the spatial architecture the survey credits with the row-stationary design, and that work is not registered in this repository's source index, so the book names it in words instead of leaving a bracketed numeral that no source in this book can resolve.
+
+Row-stationary parks nothing in particular; it optimises all the operand types at once rather than betting on one. In the survey's own comparison, held at equal area and equal processing-element count, this family uses 1.4 to 2.5 times lower energy than the others, which is the clearest available statement that betting on a single operand is a trade and not a free lunch.
+
+The four definitions agree about the arithmetic and disagree about which operand, if any, is allowed to be cheap to reach. [Figure 13](#fig-sze-dataflows) draws three of them on the same grid so that the disagreement is the only thing visible.
 
 ::: {#fig-sze-dataflows .figure}
 ```tikz
@@ -566,14 +600,18 @@ The three definitions agree about the arithmetic and disagree only about which o
     inner sep=1.5pt},
   buf/.style={draw=black!50, fill=black!4, font=\scriptsize, inner sep=3pt,
     rounded corners=1.5pt},
+  bigbuf/.style={draw=black!50, fill=black!12, font=\scriptsize, inner sep=3pt,
+    rounded corners=1.5pt, minimum width=30mm, minimum height=8mm},
   arr/.style={-{Stealth[length=1.8mm]}, black!55, thick},
   t/.style={font=\scriptsize, inner sep=1pt},
   ttl/.style={font=\small, align=center},
 ]
+% Weight-stationary and output-stationary park one operand each, drawn with a double border.
+% No local reuse parks nothing, so its PEs are empty and its buffer is drawn larger and
+% darker, because that family gives the register file's area to the global buffer instead.
 \foreach \g/\name/\anch/\row/\col/\down in {%
-  0/{Weight-Stationary}/W/I/Psum/Psum,
-  1/{Input-Stationary}/I/W/Psum/Psum,
-  2/{Output-Stationary}/O/W/I/output} {
+  0/{Weight-Stationary}/W/{Act}/{Psum}/{Psum},
+  1/{Output-Stationary}/{Psum}/{Weight}/{Act}/{output}} {
   \begin{scope}[xshift=\g*4.6cm]
     \node[ttl] at (0.75,2.5) {\name};
     \node[buf] (b) at (0.75,-1.05) {global buffer};
@@ -593,26 +631,49 @@ The three definitions agree about the arithmetic and disagree only about which o
     \node[t, anchor=west] at (0.85,-0.78) {\down};
   \end{scope}
 }
+\begin{scope}[xshift=2*4.6cm]
+  \node[ttl] at (0.75,2.5) {No Local Reuse};
+  \node[bigbuf] (b) at (0.75,-1.05) {global buffer (enlarged)};
+  \foreach \x in {0,1} \foreach \y in {0,1} {
+    \node[pe] (q\x\y) at (\x*1.5,\y*1.4) {};
+  }
+  \draw[arr] (q00.east) -- (q10.west);
+  \draw[arr] (q01.east) -- (q11.west);
+  \node[t, anchor=south] at (0.75,0.08) {Act};
+  \node[t, anchor=south] at (0.75,1.48) {Act};
+  \draw[arr] (q00.north) -- (q01.south);
+  \draw[arr] (q10.north) -- (q11.south);
+  \node[t, anchor=east] at (-0.08,0.7) {Weight};
+  \node[t, anchor=west] at (1.58,0.7) {Weight};
+  \draw[arr] (0.45,-0.42) -- (0.45,-0.68);
+  \node[t, anchor=east] at (0.38,-0.55) {Psum};
+  \draw[arr] (1.05,-0.68) -- (1.05,-0.42);
+  \node[t, anchor=west] at (1.12,-0.55) {Act, Weight};
+\end{scope}
 \end{tikzpicture}
 ```
-The three families on one identical grid of processing elements, so that what differs is only which operand each parks. Each large square is one processing element, and the small box with the double border inside it is the operand held in that element's register file: the weight, the input activation, or the partial sum. The light arrows are the operands that must travel, labelled as they move; W is a weight, I an input activation, and Psum a partial sum. The box under each array is the global buffer, and the arrow down to it is the operand that has to cross it. Weight-stationary and input-stationary both send the partial sum home through the buffer; output-stationary is the one family that writes back only the finished output activation.
+Three families on one identical grid of processing elements, so that what differs is only what each does with its local storage. Each large square is one processing element, and the small box with the double border inside it is the operand held in that element's register file: the weight in weight-stationary, the partial sum in output-stationary. The light arrows are the operands that must travel, labelled as they move; Act is an input activation, Weight a filter weight, Psum a partial sum. The box under each array is the global buffer, and the arrow down to it is the operand that has to cross it. The two stationary families disagree over which operand stays put, and both still send something home through the buffer. The third grid, no local reuse, is the family that parks nothing: its processing elements are empty, and its buffer is drawn larger and darker because the register file's area has been spent on buffer capacity instead. Its two arrows at the bottom are the exchange that results, a partial sum written back and activations and weights refetched, on every step.
 :::
 
 **Hardware application.** Which family serves this book's workload is a design question, and the honest answer is that it leans one way for a reason the records support and is unresolved for everything beyond that reason.
 
 A streaming inference at batch one is a poor fit for weight-stationary, and the reason is the reuse the family needs. Each weight in a streaming layer is multiplied into a small number of activations per frame, because there is no batch to multiply it into, so the expensive fetch of that weight is amortised across few uses. The operand whose traffic dominates in this regime is the partial sum, which is touched once per accumulated term inside every dot product and would have to cross the array and the buffer on every one of those touches if it were not parked. So the designs this book develops sit at the output-stationary end of the family, and the survey's definition of that family is what makes the choice legible rather than habitual.
 
+One thing about that lean is worth stating plainly: it is not the choice the survey's own evaluation makes. Held at equal area and equal processing-element count, row-stationary is the family that survey measures as lowest energy, and a design that parks the partial sum gives up part of what row-stationary gains in exchange for a datapath a single-board toolchain can actually schedule. The book takes that exchange deliberately and names it as a trade; it does not claim the parked partial sum is optimal.
+
 That is an inclination, not a measurement, and its edges are worth naming. The survey's taxonomy describes spatial accelerators as a class; no record in this repository says which dataflow the KV260's toolchain actually emits for a given layer, and a real compiled design usually mixes families across its stages, so a single label for the whole network would be an overclaim even after a board run. What parking the partial sum does *not* buy is the one thing section 3.3 already showed the FPGA cannot avoid: the design still has to be fed from DRAM at the rate its bandwidth allows, and the corner on that roofline moves down, not away. Chapter 4 turns to the primitives that make the choice concrete, because a parked operand is only useful once there is a multiply-accumulate structure to park it in.
 
-> **What this section is not claiming.** The energy ladder is quoted from a survey of accelerator design, and its figures describe the memory hierarchy that survey analyses; they are not measurements of the KV260, of the Orin, or of any board this project has run, and this book prints no access energy of its own. The three dataflow definitions are quoted verbatim and describe families of architecture, not the AMD toolchain's output for a specific layer; which family any compiled stage of the Voice Edge Benchmark realises is an open question that chapter 8's board work would have to answer, and the choice argued for above is a design lean reasoned from the workload's shape, not a result.
+> **What this section is not claiming.** The energy ladder is quoted from a survey of accelerator design, and its ratios describe the memory hierarchy that survey analyses; they are not measurements of the KV260, of the Orin, or of any board this project has run, and this book prints no access energy of its own, in picojoules or in any other absolute unit. The four dataflow definitions are quoted verbatim and describe families of architecture, not the AMD toolchain's output for a specific layer; which family any compiled stage of the Voice Edge Benchmark realises is an open question that chapter 8's board work would have to answer, and the choice argued for above is a design lean reasoned from the workload's shape, not a result.
 
-**Traceability.** The records behind the ladder and the three definitions quoted above.
+**Traceability.** The records behind the ladder and the four definitions quoted above.
 
 | Record | What it establishes here |
 | --- | --- |
-| `V-07-06` | the three rungs of the energy ladder: 640 pJ for an off-chip DRAM read, 3.7 pJ for a floating-point add, 1.1 pJ for an on-chip SRAM read, all in pJ |
-| `V-07-07` | the about 200 times ratio of an off-chip DRAM access to an arithmetic operation |
-| `V-07-26` | that every word in that ladder is 32-bit, so the three rungs are comparable as widths |
+| `V-07-06` | the normalised energy ladder as its source prints it: 200 times the arithmetic cost to read from off-chip DRAM, 6 times from the global buffer, 2 times from the register file |
+| `V-07-07` | the survey's own wording for that gap: a DRAM access costs two orders of magnitude more energy than an on-chip memory of a few kilobytes |
+| `V-07-26` | the sizes the ladder compares: a 0.5 to 1.0 kB register file per processing element, a 100 to 500 kB global buffer, and a network on chip of 200 to 1000 processing elements |
 | `V-07-08` | the weight-stationary definition, quoted verbatim above |
-| `V-07-09` | the input-stationary definition, quoted verbatim above |
+| `V-07-09` | the no-local-reuse definition, quoted verbatim above |
 | `V-07-10` | the output-stationary definition, quoted verbatim above |
+| `V-07-28` | the row-stationary result quoted above: 1.4 to 2.5 times lower energy than the other dataflows at equal area and equal processing-element count |
+| `V-07-29` | the row-stationary definition, quoted verbatim above, and the survey's attribution of that design to an earlier work |

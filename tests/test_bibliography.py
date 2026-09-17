@@ -175,7 +175,7 @@ class TestTitlesAreProtectedFromTheStyle:
 
 
 class TestAuthorDerivation:
-    def test_authorless_rows_are_the_known_four(self) -> None:
+    def test_authorless_rows_are_the_known_five(self) -> None:
         missing = {key for _, key, fields in entries() if "author" not in fields}
         assert missing == AUTHORLESS, f"the set of authorless entries changed: {missing}"
 
