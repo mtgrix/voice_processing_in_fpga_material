@@ -45,7 +45,7 @@ Keyword spotting is the second tier of this book's three-tier cascade: the wake-
 
 > **A passing number is speaker-independent, or it is nothing.** The Speech Commands paper records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy figure above into a claim about unfamiliar voices. The corpus licence is Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
 
-[Figure 27](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
+[Figure 28](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
 
 ::: {#fig-kws-signal-path .figure}
 ```tikz
@@ -134,7 +134,7 @@ the answer the field settled on is to split it into two cheaper passes. The conv
 of Appendix A derives that split from the arithmetic of a filter; this section keeps the storage,
 the traffic and the containers, and it assumes the derivation has been read.
 
-**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other. [Figure 28](#fig-dense-vs-depthwise) draws the two wirings side by side, so the ratio is a count of lines rather than a claim to take on trust.
+**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other. [Figure 29](#fig-dense-vs-depthwise) draws the two wirings side by side, so the ratio is a count of lines rather than a claim to take on trust.
 
 ::: {#fig-dense-vs-depthwise .figure}
 ```tikz
@@ -175,7 +175,7 @@ because a weight there has one channel to serve. A machine built to keep weights
 stream past is efficient on the left panel and idle on the right one.
 :::
 
-**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 29](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
+**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 30](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
 
 ::: {#fig-depthwise-line-buffer .figure}
 ```tikz
@@ -349,7 +349,7 @@ expressions have the same value:
 > begins -- an adder-free tree of pairwise compares, which halves the list at every step. That
 > is a stall paid in storage and in serial depth: a row of $n$ scores needs $n$ registers or a
 > tile, and $\log_2 n$ levels of compare before any output can start. The blocking point is
-> drawn in [Figure 30](#fig-nonlinearity-approx), and both variants there pay it.
+> drawn in [Figure 31](#fig-nonlinearity-approx), and both variants there pay it.
 >
 > **What it does not say.** It does not say the row fits. The buffer this identity requires is
 > as wide as the mask allows the row to grow, and chapter 9 is where that width is counted.
@@ -445,7 +445,7 @@ A reciprocal square root is the same trick with one snag:
 > added to the variance is load-bearing rather than tidy: without it, $k$ is undefined for the
 > degenerate case and the shift has no value to move.
 
-[Figure 30](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
+[Figure 31](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
 spends: the left one keeps a general exponentiation unit and a divider, and the right one
 replaces them with a constant multiply, a small read-only memory and three shifts. The dashed
 bar in the middle of each path is the reduction that blocks the row.
