@@ -18,7 +18,7 @@ This starvation of the SIMT model at batch size one is the single most important
 
 To understand the constraints placed on this execution model, it is necessary to perform a warp occupancy arithmetic worked example. Suppose we have an SM that can hold a maximum of 32 resident blocks and one thousand and twenty-four resident threads. Since a warp is 32 threads, one thousand and twenty-four threads means 32 resident warps. A resident warp is a warp whose execution context is currently held in the on-chip registers of the SM, making it eligible to be selected by the warp scheduler with zero context-switching overhead. However, the maximum number of resident warps is almost never the number actually achieved in practice. The achieved occupancy is bounded by three hardware limits: registers per thread, shared memory per block, and threads per block. 
 
-Consider a hypothetical kernel processing our audio stream. Assume the SM has sixty-five thousand five hundred and thirty-six registers available. If our kernel requires one hundred and twenty-eight registers per thread, each warp of 32 threads demands four thousand and ninety-six registers. Dividing the total SM registers by the per-warp requirement gives $65536 / 4096 = sixteen$ warps. The hardware maximum was 32 warps, but register pressure has strictly bounded the occupancy to sixteen warps. Now consider shared memory. Assume the SM has sixty-four kilobytes of shared memory. If the programmer designates sixteen kilobytes of shared memory per thread block, the SM can hold at most four blocks. If each block is configured to contain just two warps (sixty-four threads), the SM will hold $four \times two = eight$ resident warps. The register pressure allowed sixteen, the hard limit allowed 32, but the shared memory footprint has squeezed the pipeline down to a mere eight resident warps. This worked example is why maximizing occupancy is a delicate balancing act of kernel design parameters, and why simply "running on a GPU" does not guarantee massive parallelism. 
+Consider a hypothetical kernel processing our audio stream. Assume the SM has sixty-five thousand five hundred and thirty-six registers available. If our kernel requires one hundred and twenty-eight registers per thread, each warp of 32 threads demands four thousand and ninety-six registers. Dividing the total SM registers by the per-warp requirement gives 565536 / 4096 = sixteen5 warps. The hardware maximum was 32 warps, but register pressure has strictly bounded the occupancy to sixteen warps. Now consider shared memory. Assume the SM has sixty-four kilobytes of shared memory. If the programmer designates sixteen kilobytes of shared memory per thread block, the SM can hold at most four blocks. If each block is configured to contain just two warps (sixty-four threads), the SM will hold 5four \times two = eight5 resident warps. The register pressure allowed sixteen, the hard limit allowed 32, but the shared memory footprint has squeezed the pipeline down to a mere eight resident warps. This worked example is why maximizing occupancy is a delicate balancing act of kernel design parameters, and why simply "running on a GPU" does not guarantee massive parallelism. 
 
 What the target offers against those rules is a real size, and it is worth writing down rather than gesturing at. One frame's activation vector is 256 channels wide. Divide that width by the 32 lanes a warp issues together leaves eight whole warps. Split the same vector over the encoder's four heads and the same division leaves a head sixty-four channels wide and two warps. A frame is therefore not a trickle: it is eight full groups for a general stage and two for one head of attention. Eight and two are both whole numbers, so nothing here is wasted on a partial last warp -- what is thin is not the fill of one instruction but the number of independent groups the machine can hold ready to cover a memory wait.
 
@@ -114,14 +114,14 @@ Tail jitter is a different complaint about the same pipeline, and it needs the d
 
 To formalize this cost, we introduce a timing model for the worst-case frame latency. It is an accumulation of setup delays, wait periods, and actual execution times.
 
-> **The formula.** $$L_{\text{frame}} = \sum_{k=1}^{K} \bigl(t_{\text{setup},k} + t_{\text{wait},k} + t_{\text{exec},k}\bigr)$$
+> **The formula.** 55L_{\text{frame}} = \sum_{k=1}^{K} \bigl(t_{\text{setup},k} + t_{\text{wait},k} + t_{\text{exec},k}\bigr)55
 >
 > **The variables.**
-> - $L_{\text{frame}}$ — the total latency to process one frame, in microseconds.
-> - $K$ — the total number of kernels launched to process the frame, a dimensionless count.
-> - $t_{\text{setup},k}$ — the host driver setup time to launch kernel $k$, in microseconds.
-> - $t_{\text{wait},k}$ — the time kernel $k$ sits in the queue or waits for memory, unhidden by other warps, in microseconds.
-> - $t_{\text{exec},k}$ — the active execution time the multiprocessor spends on kernel $k$, in microseconds.
+> - 5L_{\text{frame}}5 — the total latency to process one frame, in microseconds.
+> - 5K5 — the total number of kernels launched to process the frame, a dimensionless count.
+> - 5t_{\text{setup},k}5 — the host driver setup time to launch kernel 5k5, in microseconds.
+> - 5t_{\text{wait},k}5 — the time kernel 5k5 sits in the queue or waits for memory, unhidden by other warps, in microseconds.
+> - 5t_{\text{exec},k}5 — the active execution time the multiprocessor spends on kernel 5k5, in microseconds.
 >
 > **What it means.** The latency of a frame is not simply the sum of its mathematical operations. It is the sum over every compiled stage of the time it took the host to ask for the math, the time the device spent waiting to start the math, and the time the device actually did the math. For small kernels, the setup and wait terms dominate the execution term.
 >
@@ -135,7 +135,7 @@ CUDA Graphs operates in three distinct phases, each moving a piece of overhead o
 
 A graph is a description of a fixed sequence of work, so it fits this design for one reason and strains on it for one. The reason it fits: the encoder's stage list is the same every chunk. The reason it strains: a chunked encoder does not always do the same *amount* of work, since a partial chunk at the end of an utterance and a full chunk in the middle are different shapes, and a graph is only worth instantiating if the shape recurs. The recurrence is a chunk of sixteen frames, and nothing here registers how often the tail of an utterance breaks it.
 
-Beyond CUDA Graphs, the deep learning compiler itself provides a second defense: kernel fusion. A framework like TensorRT does not strictly launch one kernel per mathematical layer. It analyzes the network graph and aggressively fuses consecutive operations—such as a matrix multiplication followed by an activation function and a residual addition—into a single monolithic kernel. Fusion directly reduces $K$ in our equation. Fewer kernels mean fewer round-trips to the host, fewer setups, and less data written to and re-read from global memory. When kernel fusion and CUDA Graphs are applied together, the overhead floor drops significantly, though it never reaches zero.
+Beyond CUDA Graphs, the deep learning compiler itself provides a second defense: kernel fusion. A framework like TensorRT does not strictly launch one kernel per mathematical layer. It analyzes the network graph and aggressively fuses consecutive operations—such as a matrix multiplication followed by an activation function and a residual addition—into a single monolithic kernel. Fusion directly reduces 5K5 in our equation. Fewer kernels mean fewer round-trips to the host, fewer setups, and less data written to and re-read from global memory. When kernel fusion and CUDA Graphs are applied together, the overhead floor drops significantly, though it never reaches zero.
 
 Now the tail. A chunk's latency is a sum over the stages it passes through, and the three terms are different physical things, mapped exactly to the equation card above. Section 3.1 showed that the waits are covered only when some other resident warp is ready, and that a stream of single frames is the case with the fewest of them, so the cover is thin and what is left is exposed latency, per stage, twelve blocks deep. Exposed waits are where a tail is made. Two more sources follow, and both are arithmetic rather than luck; [Figure 11](#fig-chunk-boundary) draws the first of them as a distance. A frame that slips past a chunk boundary is not answered a moment later; it is answered when the next chunk completes, because a chunked encoder cannot emit a decision before it has the chunk, so the penalty for a late sample is up to a whole chunk, 640 ms of audio at 40 ms per feature frame. And a kernel that arrives while the driver is still finishing the setup of the previous one queues, so a jitter in the host's own timing arrives at the output summed over the stages rather than averaged away.
 
@@ -187,7 +187,7 @@ The chunk as a shape rather than a number: the arrival rate and the answer rate 
 
 **Hardware application.** On the Orin, the argument is about what to time. A stage's execution time is not a property of the model; it is a property of a compiled graph, a driver, and a machine that may have other things to do, so a benchmark that launches kernels one at a time from the host measures a question this project does not ask. Two consequences are testable on the board in chapter eight without any new source: measure a frame, not a kernel, so the setup is inside the number; and measure the far end of the distribution over a long run, because a short run reports a tail that the hour-long run required by the project plan has not yet had the chance to produce.
 
-On the FPGA, the same three costs land elsewhere, and the mapping is the entire point of the spatial accelerator thesis. There is no $K$ variable, no host round-trip, and no launch overhead per frame. An FPGA replaces $K$ temporal kernel launches with $K$ spatial, hardwired stages laid out physically on the fabric. The host setup cost, the CUDA Graph instantiation, the kernel fusion analysis—all of this is paid precisely once, by the synthesis toolchain on the developer's workstation, not by the processor during inference. A stage boundary on an FPGA is simply physical wiring connecting one block's output register to the next block's input register. The per-frame cost becomes the sum of the pipeline stage latencies plus whatever depth the synchronization buffers must absorb. This is why chapter 9 spends its time on a ring buffer rather than on a driver call. What the fabric keeps is the part no architecture removes: the encoder is chunked, so a frame that arrives late is still answered late by up to a chunk, and that is a property of the model's contract with the audio clock, not of the silicon under it.
+On the FPGA, the same three costs land elsewhere, and the mapping is the entire point of the spatial accelerator thesis. There is no 5K5 variable, no host round-trip, and no launch overhead per frame. An FPGA replaces 5K5 temporal kernel launches with 5K5 spatial, hardwired stages laid out physically on the fabric. The host setup cost, the CUDA Graph instantiation, the kernel fusion analysis—all of this is paid precisely once, by the synthesis toolchain on the developer's workstation, not by the processor during inference. A stage boundary on an FPGA is simply physical wiring connecting one block's output register to the next block's input register. The per-frame cost becomes the sum of the pipeline stage latencies plus whatever depth the synchronization buffers must absorb. This is why chapter 9 spends its time on a ring buffer rather than on a driver call. What the fabric keeps is the part no architecture removes: the encoder is chunked, so a frame that arrives late is still answered late by up to a chunk, and that is a property of the model's contract with the audio clock, not of the silicon under it.
 
 > **Open questions this section leaves on purpose.** Four numbers would sharpen the argument above and none of them exists in this repository's evidence set: the microseconds a kernel launch costs on the Orin, the count of kernels one frame of the compiled encoder issues, the occupancy a streaming chunk reaches against the SM's resident-warp maximum, and any measured far-percentile frame latency on either board. The first three are a benchmark run away, and the last is chapter eight's deliverable. Until then this section says what the driver does and what the machine does with waiting warps, because those are on record, and it prints no cost, which is the difference between an architectural argument and a number someone else repeated.
 
@@ -208,26 +208,26 @@ A roofline answers one question with two lines. The horizontal axis is arithmeti
 
 **Mechanism.** The ridge point separates the two regimes.
 
-> **The formula.** $$R = \dfrac{P_{\text{ops}}}{P_{\text{bw}}}$$
+> **The formula.** 55R = \dfrac{P_{\text{ops}}}{P_{\text{bw}}}55
 >
 > **The variables.**
-> - $R$ — the ridge point: the arithmetic intensity, in operations per byte, where the machine stops waiting for memory and starts waiting for the compute units. A rate ratio, not a time and not a count of anything.
-> - $P_{\text{ops}}$ — the peak operation rate the machine can sustain, in operations per second. For the two boards this is the dense compute ceiling the figure's flat line is drawn at.
-> - $P_{\text{bw}}$ — the peak memory bandwidth, in bytes per second: the height of the rising line.
+> - 5R5 — the ridge point: the arithmetic intensity, in operations per byte, where the machine stops waiting for memory and starts waiting for the compute units. A rate ratio, not a time and not a count of anything.
+> - 5P_{\text{ops}}5 — the peak operation rate the machine can sustain, in operations per second. For the two boards this is the dense compute ceiling the figure's flat line is drawn at.
+> - 5P_{\text{bw}}5 — the peak memory bandwidth, in bytes per second: the height of the rising line.
 >
 > **What it means.** Dividing a rate of operations by a rate of bytes leaves operations per byte, which is the one axis a workload can be placed on and a machine's two lines can be read against. The corner is where the two ceilings agree on a single number, so it is a ratio of the datasheet's two headline figures and nothing else -- which is why both boards' corners can be drawn without a measurement of this project's own.
 >
-> **What it costs.** Nothing to compute: $R$ is arithmetic on two numbers a datasheet already prints, done once when the figure is drawn. The cost it *names* is the machine's -- to sit right of the corner a design must be fed $P_{\text{ops}}$ worth of work for every byte of state, and a bandwidth-light accelerator reaches its own corner at a far lower intensity, which is the whole argument for the smaller part.
+> **What it costs.** Nothing to compute: 5R5 is arithmetic on two numbers a datasheet already prints, done once when the figure is drawn. The cost it *names* is the machine's -- to sit right of the corner a design must be fed 5P_{\text{ops}}5 worth of work for every byte of state, and a bandwidth-light accelerator reaches its own corner at a far lower intensity, which is the whole argument for the smaller part.
 >
-> **What it does not say.** It does not say where the Voice Edge Benchmark sits relative to $R$: that depends on a compiled network and a chosen kernel, and no record here has it. It also does not say the corner is the same point on both boards -- the two dense corners are drawn apart for exactly that reason -- nor does a lower $R$ mean a faster machine, only one that saturates sooner.
+> **What it does not say.** It does not say where the Voice Edge Benchmark sits relative to 5R5: that depends on a compiled network and a chosen kernel, and no record here has it. It also does not say the corner is the same point on both boards -- the two dense corners are drawn apart for exactly that reason -- nor does a lower 5R5 mean a faster machine, only one that saturates sooner.
 
 **Hardware application.** [Figure 12](#fig-ridge-point-comparison) puts the Kria KV260 and two Jetson Orin models on one pair of axes. For a reader who has never seen a roofline, here is how to walk through the lines. First, look at the rising diagonals on the left. These are the memory bandwidth ceilings. Any algorithm that sits far to the left (low arithmetic intensity) will hit this slanted roof and be unable to go higher, meaning its throughput is entirely dictated by how fast it can load bytes, regardless of how many trillion operations the ALU is capable of. Next, follow the lines to the right until they hit the horizontal plateaus. These plateaus are the absolute compute ceilings. If an algorithm is far to the right (high arithmetic intensity), it performs so many operations per loaded byte that it easily outpaces the memory wall and is limited solely by the number of multipliers on the chip.
 
 Read the rising lines before the corners. Each is labelled with the bandwidth that fixes its height, the Orin's is the higher of the two, and so at any intensity left of both corners the GPU is faster in absolute terms, and nothing here says the FPGA saves this project anything. 
 
-The numerical gap analysis reveals the exact size of the architectural difference. The Orin NX dense ridge sits at approximately $ OP/byte. The KV260 dense ridge sits at approximately $ OP/byte. That is a $12.6$-fold difference. The physical meaning of this gap is profound: for any streaming workload whose intensity falls below $ OP/byte, the FPGA has already reached its maximum possible compute utilization and is compute-bound, working as hard as its silicon permits. At that exact same intensity, the Orin is still deep in the memory-bound slope, starved for data, wasting the vast majority of its massive ALU array while waiting for memory. The smaller, bandwidth-light accelerator can be *used* where a large one sits idle. That is the whole argument of this chapter, and the arithmetic label in the figure is all of it.
+The numerical gap analysis reveals the exact size of the architectural difference. The Orin NX dense ridge sits at approximately 5 OP/byte. The KV260 dense ridge sits at approximately 5 OP/byte. That is a 512.65-fold difference. The physical meaning of this gap is profound: for any streaming workload whose intensity falls below 5 OP/byte, the FPGA has already reached its maximum possible compute utilization and is compute-bound, working as hard as its silicon permits. At that exact same intensity, the Orin is still deep in the memory-bound slope, starved for data, wasting the vast majority of its massive ALU array while waiting for memory. The smaller, bandwidth-light accelerator can be *used* where a large one sits idle. That is the whole argument of this chapter, and the arithmetic label in the figure is all of it.
 
-Where does the Voice Edge Benchmark sit? We cannot place an exact point because we do not have a registered parameter breakdown (a known gap). However, we can bound it qualitatively. A streaming Conformer at batch size one, reading a $-dimensional vector to compute four heads of attention at INT8 precision, does very little work per fetched weight. It loads a matrix from memory, multiplies it by a single vector, and throws the matrix away. This is essentially a matrix-vector multiplication, which inherently possesses an arithmetic intensity close to one OP/byte. Even with aggressive layer fusion, the intensity remains far below $ OP/byte. Thus, the workload sits far to the left of the plot, firmly in the memory-bound regime for both architectures.
+Where does the Voice Edge Benchmark sit? We cannot place an exact point because we do not have a registered parameter breakdown (a known gap). However, we can bound it qualitatively. A streaming Conformer at batch size one, reading a 5-dimensional vector to compute four heads of attention at INT8 precision, does very little work per fetched weight. It loads a matrix from memory, multiplies it by a single vector, and throws the matrix away. This is essentially a matrix-vector multiplication, which inherently possesses an arithmetic intensity close to one OP/byte. Even with aggressive layer fusion, the intensity remains far below 5 OP/byte. Thus, the workload sits far to the left of the plot, firmly in the memory-bound regime for both architectures.
 
 Two things the figure does not say are worth naming. It does not say where the Voice Edge Benchmark sits on the horizontal axis: that number belongs to a compiled network and a chosen kernel, and no record in this book has it, so the workload is left off the plot rather than guessed at. It also does not resolve which Orin the project will measure against. [Figure 12](#fig-ridge-point-comparison) prints its two dense corners as two separate numbers for that reason, and the band between them is drawn as a question, not as a range.
 
@@ -262,7 +262,7 @@ Two things the figure does not say are worth naming. It does not say where the V
 \pgfmathsetmacro{\pkNssparse}{67}             % V-02-09, Sparse INT8 TOPS
 \pgfmathsetmacro{\pkNsdense}{\pkNssparse/2}   % arithmetic on V-02-31's 2x, TOPS
 \pgfmathsetmacro{\pkKvone}{1248*2*0.3/1000}   % V-01-09 slices, V-07-03 clock, TOPS
-\pgfmathsetmacro{\pkKvpacked}{1248*four*0.3/1000}% the packed INT8 reading of V-07-03
+\pgfmathsetmacro{\pkKvpacked}{1248*4*0.3/1000}% the packed INT8 reading of V-07-03
 \pgfmathsetmacro{\gopKvone}{\pkKvone*1000}     % V-07-03 states its peaks in GOP/s, so
 \pgfmathsetmacro{\gopKvpacked}{\pkKvpacked*1000}% both labels are printed from the TOPS
 % The four Orin corners and the two FPGA corners: peak divided by bandwidth.
@@ -375,7 +375,7 @@ The ridge points of the two sides. A rising line is one machine's memory bandwid
 \pgfmathsetmacro{\pkNxdense}{50}                 % V-07-02, TOPS
 \pgfmathsetmacro{\bwOrin}{102}                   % V-02-10, GB/s
 \pgfmathsetmacro{\rdNxdense}{\pkNxdense/\bwOrin*1000}
-\pgfmathsetmacro{\fAssume}{three hundred}                  % the clock V-07-03's figures assume
+\pgfmathsetmacro{\fAssume}{300}                  % the clock V-07-03's figures assume
 \pgfmathsetmacro{\fAlt}{500}                     % the clock its note offers
 \pgfmathsetmacro{\ridgeAssume}{\slopenone*\fAssume}
 \pgfmathsetmacro{\ridgeAlt}{\slopenone*\fAlt}
@@ -397,7 +397,7 @@ The ridge points of the two sides. A rising line is one machine's memory bandwid
 \node[t, below] at (2000,0) {2000};
 \node[t, left] at (0,100) {100};
 \node[t, left] at (0,200) {200};
-\node[t, left] at (0,three hundred) {three hundred};
+\node[t, left] at (0,300) {300};
 \node[t, left] at (0,400) {400};
 \node[t, left] at (0,500) {500};
 \node[below=16pt, font=\small] at (\xmax/2,0) {DSP clock, MHz};
@@ -412,7 +412,7 @@ The ridge points of the two sides. A rising line is one machine's memory bandwid
   {KV260 dense ridge: V-01-09 and V-01-13, and the packed reading of V-07-03 above it};
 
 % The two clocks, and the ratio to the Orin corner that each implies.
-\foreach \c/\lab in {three hundred/assumed, 500/alternative} {
+\foreach \c/\lab in {300/assumed, 500/alternative} {
   % One ridge per clock, computed once: printnumber takes a number, not an
   % expression, and the two coordinates want the same value.
   \pgfmathsetmacro{\ridgeAtC}{\slopenone*\c}
@@ -425,7 +425,7 @@ The ridge points of the two sides. A rising line is one machine's memory bandwid
 \node[circle, inner sep=1.3pt, draw, black] at (\fCross,\rdNxdense) {};
 \node[t, anchor=south west, text width=4.6cm, align=left] at (120,350)
   {Ratio to the Orin dense ridge:\penalty0\\
-  \hspace*{1.5em}\pgfmathprintnumber[fixed,precision=1]{\gapAssume}x at three hundred MHz,\penalty0\\
+  \hspace*{1.5em}\pgfmathprintnumber[fixed,precision=1]{\gapAssume}x at 300 MHz,\penalty0\\
   \hspace*{1.5em}\pgfmathprintnumber[fixed,precision=1]{\gapAlt}x at 500 MHz.};
 \node[t, anchor=north west, text width=3.0cm, align=left] at (\fCross+sixteen,\rdNxdense-10)
   {packed meets the ridge at
@@ -442,7 +442,7 @@ How much of the ridge-point gap is the clock. Both lines here are the division p
 | --- | --- |
 | `V-07-01` | the roofline model introduction, plotting operations per second against arithmetic intensity |
 | `V-07-02` | Orin NX MAXN peak rates and memory bandwidth |
-| `V-07-03` | KV260 peak rates, assuming three hundred MHz clock |
+| `V-07-03` | KV260 peak rates, assuming 300 MHz clock |
 | `V-02-31` | the 2x sparsity factor, used to compute dense equivalents |
 | `V-02-28` | unresolved SKU gap |
 | `V-01-09` | KV260 DSP slice count, 1248 |
@@ -505,7 +505,7 @@ The four definitions agree about the arithmetic and disagree about which operand
   pe/.style={draw, minimum width=13mm, minimum height=11mm, font=\scriptsize},
   stay/.style={draw, double, double distance=1pt, fill=black!10, font=\scriptsize,
     inner sep=1.5pt},
-  buf/.style={draw=black!50, fill=black!four, font=\scriptsize, inner sep=3pt,
+  buf/.style={draw=black!50, fill=black!4, font=\scriptsize, inner sep=3pt,
     rounded corners=1.5pt},
   bigbuf/.style={draw=black!50, fill=black!12, font=\scriptsize, inner sep=3pt,
     rounded corners=1.5pt, minimum width=30mm, minimum height=8mm},
@@ -595,7 +595,7 @@ First, the SIMT execution model starves when fed a single frame at a time. A GPU
 
 Second, temporal kernel launch overhead creates a fixed floor under every frame. On a GPU, every functional layer of the network requires a host round-trip to set up and launch the kernel. For a streaming network that repeats its stages indefinitely, this overhead accumulates rapidly. While CUDA Graphs and layer fusion can push this floor down, they cannot eliminate it. An FPGA removes this cost entirely by replacing temporal launches with physical, hardwired spatial stages.
 
-Third, the roofline analysis confirms that edge voice inference operates deep in the memory-bound regime. The ridge point of the KV260 sits at $ OP/byte, and the Orin NX dense ridge sits at $ OP/byte. At batch size one, the arithmetic intensity of a matrix-vector product is near one OP/byte. Both machines are therefore waiting for memory, but the FPGA reaches its compute ceiling at an order of magnitude lower intensity, making its smaller pool of multipliers vastly more efficient for this specific shape of work.
+Third, the roofline analysis confirms that edge voice inference operates deep in the memory-bound regime. The ridge point of the KV260 sits at 5 OP/byte, and the Orin NX dense ridge sits at 5 OP/byte. At batch size one, the arithmetic intensity of a matrix-vector product is near one OP/byte. Both machines are therefore waiting for memory, but the FPGA reaches its compute ceiling at an order of magnitude lower intensity, making its smaller pool of multipliers vastly more efficient for this specific shape of work.
 
 Fourth, a spatial architecture leverages output-stationary dataflows to mitigate this exact traffic. In a regime where weights are fetched once per frame and discarded without reuse, weight-stationary designs buy nothing. Parking the partial sum in the local register file is the only way to intercept the operand that is actually reused temporally, keeping the heaviest traffic entirely off the network-on-chip.
 
@@ -604,37 +604,37 @@ What this chapter has *not* proven is any measured latency. The timing models an
 ## 3.6 Exercises: four problems that tie the concepts to the metal
 
 > **Exercise Three-One (Pencil) -- Ridge point calculation and ratio.**
-> The ridge point is the arithmetic intensity where a machine stops waiting for memory and starts waiting for compute units. Compute the dense INT8 ridge point for the Orin NX and the KV260 using the following inputs: the Orin NX has a peak memory bandwidth of $102$ GB/s and a peak compute of $50$ TOPS. The KV260 has a peak memory bandwidth of $19.2$ GB/s. For the KV260's compute, assume $1{,}two hundred and forty-eight$ DSP slices operating at $three hundred$ MHz, where each slice can perform $2$ operations per cycle in packed INT8 mode. (a) Compute the KV260's peak compute in GOP/s. (b) Compute the ridge point for both boards in operations per byte. (c) Compute the ratio of the Orin NX ridge point to the KV260 ridge point and interpret what that ratio means for a bandwidth-starved workload.
+> The ridge point is the arithmetic intensity where a machine stops waiting for memory and starts waiting for compute units. Compute the dense INT8 ridge point for the Orin NX and the KV260 using the following inputs: the Orin NX has a peak memory bandwidth of 51025 GB/s and a peak compute of 5505 TOPS. The KV260 has a peak memory bandwidth of 519.25 GB/s. For the KV260's compute, assume 51{,}2485 DSP slices operating at 53005 MHz, where each slice can perform 525 operations per cycle in packed INT8 mode. (a) Compute the KV260's peak compute in GOP/s. (b) Compute the ridge point for both boards in operations per byte. (c) Compute the ratio of the Orin NX ridge point to the KV260 ridge point and interpret what that ratio means for a bandwidth-starved workload.
 >
 > **Solution.**
-> (a) The KV260 peak compute is $1248 \text{ slices} \times two \text{ ops/cycle} \times three hundred \text{ MHz} = 748{,}800 \text{ MOP/s}$, which is $748.8$ GOP/s, computed as the product of slices, operations per cycle, and clock frequency.
-> (b) The Orin NX ridge point is $50 \text{ TOPS} / 102 \text{ GB/s} = 50{,}000 \text{ GOP/s} / 102 \text{ GB/s} \approx 490.2$ operations per byte, computed as peak compute divided by peak bandwidth. The KV260 ridge point is $748.8 \text{ GOP/s} / 19.2 \text{ GB/s} = 39$ operations per byte, computed identically.
-> (c) The ratio is $490.2 / $ \approx 12.6$, computed as the quotient of the two ridge points. This means the Orin NX requires $12.6$ times more arithmetic intensity than the FPGA to reach its maximum compute efficiency. For a workload like streaming inference that sits at very low intensity, the GPU will waste the vast majority of its massive ALU array waiting for memory, while the FPGA will saturate its smaller array much sooner.
+> (a) The KV260 peak compute is 51248 \text{ slices} \times two \text{ ops/cycle} \times 300 \text{ MHz} = 748{,}800 \text{ MOP/s}5, which is 5748.85 GOP/s, computed as the product of slices, operations per cycle, and clock frequency.
+> (b) The Orin NX ridge point is 550 \text{ TOPS} / 102 \text{ GB/s} = 50{,}000 \text{ GOP/s} / 102 \text{ GB/s} \approx 490.25 operations per byte, computed as peak compute divided by peak bandwidth. The KV260 ridge point is 5748.8 \text{ GOP/s} / 19.2 \text{ GB/s} = 395 operations per byte, computed identically.
+> (c) The ratio is 5490.2 / 5 \approx 12.65, computed as the quotient of the two ridge points. This means the Orin NX requires 512.65 times more arithmetic intensity than the FPGA to reach its maximum compute efficiency. For a workload like streaming inference that sits at very low intensity, the GPU will waste the vast majority of its massive ALU array waiting for memory, while the FPGA will saturate its smaller array much sooner.
 
-> **Exercise Three-Two (Analysis) -- The fraction of a frame spent launching.**
-> Consider a hypothetical streaming Conformer with $ blocks, consuming audio in chunks of $ frames per chunk, with $ channels. Suppose each encoder block compiles to four sub-layers, and each sub-layer requires $ un-fused kernel launches. (a) How many total kernel launches does the host driver execute to process one chunk? (b) Assume a hypothetical host driver overhead of $five$ microseconds per kernel launch (note: this is a hypothetical value for the exercise, not a registered measurement). What is the total launch overhead per chunk in microseconds? (c) One frame period is $40$ milliseconds. What fraction of a single $40$ ms frame period is consumed *solely* by the host setup overhead for the entire chunk?
+> **Exercise 3.2 (Analysis) -- The fraction of a frame spent launching.**
+> Consider a hypothetical streaming Conformer with 12 blocks, consuming audio in chunks of 16 frames per chunk, with 256 channels. Suppose each encoder block compiles to 4 sub-layers, and each sub-layer requires 3 un-fused kernel launches. (a) How many total kernel launches does the host driver execute to process one chunk? (b) Assume a hypothetical host driver overhead of 5five5 microseconds per kernel launch (note: this is a hypothetical value for the exercise, not a registered measurement). What is the total launch overhead per chunk in microseconds? (c) One frame period is 5405 milliseconds. What fraction of a single 5405 ms frame period is consumed *solely* by the host setup overhead for the entire chunk?
 >
 > **Solution.**
-> (a) The total launches per chunk is $12 \text{ blocks} \times four \text{ sub-layers/block} \times $ \text{ kernels/sub-layer} = one hundred and forty-four$ launches per chunk, computed as the product of the depth and the kernels per block.
-> (b) The total launch overhead is $one hundred and forty-four \text{ launches} \times five \ \mu\text{s/launch} = 720 \ \mu\text{s}$, computed as the product of the launch count and the hypothetical per-launch overhead.
-> (c) The frame period is $40 \text{ ms}$, which is $40{,}000 \ \mu\text{s}$. The fraction consumed by launch overhead is $720 / 40{,}000 = 0.018$, or $1.8\%$, computed as the total overhead divided by the frame period. While $1.8\%$ seems small, this is pure overhead spent on the CPU before a single flop of arithmetic is executed on the GPU, and it is a fixed floor that cannot be optimized away by a faster GPU architecture.
+> (a) The total launches per chunk is 512 \text{ blocks} \times four \text{ sub-layers/block} \times 3 \text{ kernels/sub-layer} = 1445 launches per chunk, computed as the product of the depth and the kernels per block.
+> (b) The total launch overhead is 5144 \text{ launches} \times 5 \ \mu\text{s/launch} = 720 \ \mu\text{s}5, computed as the product of the launch count and the hypothetical per-launch overhead.
+> (c) The frame period is 540 \text{ ms}5, which is 540{,}000 \ \mu\text{s}5. The fraction consumed by launch overhead is 5720 / 40{,}000 = 0.0185, or 51.8\%5, computed as the total overhead divided by the frame period. While 51.8\%5 seems small, this is pure overhead spent on the CPU before a single flop of arithmetic is executed on the GPU, and it is a fixed floor that cannot be optimized away by a faster GPU architecture.
 
-> **Exercise Three-Three (Design) -- Capture and replay in CUDA Graphs.**
-> CUDA Graphs reduces the launch overhead floor by capturing a sequence of kernel launches once and replaying the instantiated graph many times. (a) Describe the capture, instantiate, and launch phases for $ full, identical chunks of audio. (b) Name one structural reason why CUDA Graphs strains on a continuous voice stream, specifically concerning the final, partial chunk of an utterance.
+> **Exercise 3.3 (Design) -- Capture and replay in CUDA Graphs.**
+> CUDA Graphs reduces the launch overhead floor by capturing a sequence of kernel launches once and replaying the instantiated graph many times. (a) Describe the capture, instantiate, and launch phases for 5 full, identical chunks of audio. (b) Name one structural reason why CUDA Graphs strains on a continuous voice stream, specifically concerning the final, partial chunk of an utterance.
 >
 > **Solution.**
-> (a) For $ full chunks:
-> - Chunk one (Capture & Instantiate): The host driver records the one hundred and forty-four kernel launches into a directed acyclic graph without executing them. The runtime then instantiates this graph into an executable format, allocating memory and validating dependencies. This phase pays the heavy setup overhead.
+> (a) For 5 full chunks:
+> - Chunk one (Capture & Instantiate): The host driver records the 144 kernel launches into a directed acyclic graph without executing them. The runtime then instantiates this graph into an executable format, allocating memory and validating dependencies. This phase pays the heavy setup overhead.
 > - Chunk one (Launch): The instantiated graph is submitted to the GPU in a single command and executed.
 > - Chunk two (Launch): The identical, already-instantiated graph is submitted again in a single command. The setup overhead is bypassed.
-> - Chunk $ (Launch): The graph is submitted a third time in a single command.
-> (b) CUDA Graphs strains on a continuous stream because a captured graph requires a perfectly fixed execution topology. If an utterance ends and leaves a partial chunk of, say, $ frames instead of sixteen, the data shape changes. The instantiated graph for $ frames cannot accept $ frames. The system must either pad the partial chunk with silence (wasting compute), fall back to slow individual kernel launches, or pay the heavy instantiation cost again to capture a new seven-frame graph.
+> - Chunk 5 (Launch): The graph is submitted a third time in a single command.
+> (b) CUDA Graphs strains on a continuous stream because a captured graph requires a perfectly fixed execution topology. If an utterance ends and leaves a partial chunk of, say, 5 frames instead of sixteen, the data shape changes. The instantiated graph for 5 frames cannot accept 5 frames. The system must either pad the partial chunk with silence (wasting compute), fall back to slow individual kernel launches, or pay the heavy instantiation cost again to capture a new seven-frame graph.
 
-> **Exercise Three-Four (Compare) -- Weight reuse at batch size one.**
-> The Sze survey normalizes energy costs as: arithmetic = $1\times$, register file (RF) = $2\times$, off-chip DRAM = $200\times$. Consider a weight-stationary dataflow where a weight is read from DRAM into the RF, and then multiplied by input activations. (a) At batch size one, with $256$ input channels, how many times is a single fetched weight reused in the RF to compute a dot product before it is discarded? (b) At batch size $32$, how many times is that same weight reused? (c) Explain why batch size one heavily erodes the energy advantage of a weight-stationary dataflow.
+> **Exercise 3.4 (Compare) -- Weight reuse at batch size one.**
+> The Sze survey normalizes energy costs as: arithmetic = 51\times5, register file (RF) = 52\times5, off-chip DRAM = 5200\times5. Consider a weight-stationary dataflow where a weight is read from DRAM into the RF, and then multiplied by input activations. (a) At batch size one, with 52565 input channels, how many times is a single fetched weight reused in the RF to compute a dot product before it is discarded? (b) At batch size 5325, how many times is that same weight reused? (c) Explain why batch size one heavily erodes the energy advantage of a weight-stationary dataflow.
 >
 > **Solution.**
-> (a) At batch size one, a dense layer weight is multiplied exactly once by the single arriving activation vector. Therefore, the weight has $0$ reuses in the RF; it is fetched from DRAM, multiplied once, and immediately overwritten by the next weight.
-> (b) At batch size $32$, the identical weight is multiplied by $32$ independent activation vectors. It is fetched from DRAM once, parked in the RF, and reused $31$ times for the subsequent batch elements.
-> (c) A weight-stationary dataflow saves energy by amortizing the massive $200\times$ DRAM fetch cost across many $2\times$ RF reads. At batch size one, there is no amortization. Every weight fetched incurs the full $200\times$ penalty for a single $1\times$ arithmetic operation. The dataflow parks a weight that is never actually stationary, completely eroding the intended energy advantage and shifting the dominant traffic cost to the un-parked partial sums.
+> (a) At batch size one, a dense layer weight is multiplied exactly once by the single arriving activation vector. Therefore, the weight has 505 reuses in the RF; it is fetched from DRAM, multiplied once, and immediately overwritten by the next weight.
+> (b) At batch size 5325, the identical weight is multiplied by 5325 independent activation vectors. It is fetched from DRAM once, parked in the RF, and reused 5315 times for the subsequent batch elements.
+> (c) A weight-stationary dataflow saves energy by amortizing the massive 5200\times5 DRAM fetch cost across many 52\times5 RF reads. At batch size one, there is no amortization. Every weight fetched incurs the full 5200\times5 penalty for a single 51\times5 arithmetic operation. The dataflow parks a weight that is never actually stationary, completely eroding the intended energy advantage and shifting the dominant traffic cost to the un-parked partial sums.
 
