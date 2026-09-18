@@ -146,6 +146,36 @@ task's own metric, and nothing in this section changes that: accuracy for a spot
 error rate for a recogniser, perceptual scores for an enhancer. A design that trades a generic
 signal-to-noise figure against those gates is measuring the wrong thing, and this chapter does not.
 
+**How the front end spreads the noise: SQNR across log-Mel bands.**
+
+The crest factor spent the width on the waveform, but the model does not multiply the waveform. The front end of chapter 6 compresses the spectrum before the model sees it: the energy the mel filterbank sums is converted to ten times its common logarithm, so each feature is a reading in decibels. A logarithm turns a multiplicative range into an additive one. In the linear domain a loud band can sit one thousand times above a quiet one, a span of thirty decibels, computed as ten times the common logarithm of one thousand, and a step that reaches the loudest value is far too coarse to resolve the quietest. After the log the same span is thirty decibels, and a fixed step represents the same number of decibels everywhere along it. That is the good news of the front end, and also the trap: the floor becomes uniform in decibels, but the signal that stands above the floor is not.
+
+The mechanism is a derivative. Let the linear energy of mel band $b$, as the front end measures it after the filterbank sum, be $P_{b}$, and let the fixed-point path carry a step $\delta$ in that linear domain. The reading the model multiplies is $y_{b} = 10 \log_{10} P_{b}$, and a linear error of one step perturbs the reading by the derivative of the mapping at the band's own level:
+
+> **The formula.** $y_{b} \;=\; 10\,\log_{10} P_{b}, \qquad \Delta y_{b} \;\approx\; \dfrac{10}{\ln 10}\, \dfrac{\delta}{P_{b}}$
+>
+> **The variables.**
+>
+> - $P_{b}$ — the linear energy of mel band $b$ as the front end measures it, after the filterbank sum.
+> - $y_{b}$ — the reading in decibels that the model actually multiplies.
+> - $\delta$ — the quantization step of the linear path: the smallest change in $P_{b}$ the fixed-point front end can represent.
+> - $\Delta y_{b}$ — the resulting error in the reading, in decibels.
+>
+> **What it means.** A logarithm is a per-band derivative machine. The change in the reading equals the derivative of the mapping at the band's own level multiplied by the change in the level, and the derivative falls as the level rises: it is ten over the natural logarithm of ten, divided by the band's linear energy. The same absolute step therefore becomes a large decibel error on a quiet band and a small one on a loud band; the band error is inversely proportional to the band's linear level, derived from the derivative of the logarithmic mapping.
+>
+> **What it costs.** The quiet bands pay in the currency section 7.1 set. Their margin below the loudest band is exactly the factor by which the step's decibel error is amplified: a band ten decibels below the loudest hears the step enlarged ten times, computed as ten raised to the quotient of ten by ten, and a band forty decibels below hears it enlarged ten thousand times, computed by the same rule. The floor does not move; the signal it lands on is what shrinks.
+>
+> **What it does not say.** It does not say the model's own quantizer lives in the linear domain. If the quantizer works after the log, which is where the front end delivers the reading, the step is already a step in decibels and the same absolute error lands on every band; the quiet band's difficulty is then the small signal above the floor rather than an amplified step. Both readings follow from the same derivative, seen from the two sides of the logarithm, and the close of this block takes the log-domain view because that is the arithmetic the model performs.
+
+The unit deserves one plain sentence, because the whole argument lives in it. A decibel is a ratio stated on a logarithmic scale, and a log-Mel reading is a number of decibels, so a step in the reading is a step in decibels wherever it lands. The model's INT8 grid is therefore uniform in decibels too: each cell of the grid covers the same number of decibels on every band, and the resolution a band gets is equal to every other band's rather than proportional to its loudness. That equality is the front end's purpose, the compression the intuition of the section promised: the logarithmic map is what lets one grid serve a dynamic range no fixed-point linear scale could hold in eight bits. What the map cannot do is enlarge the quiet band's content; it can only make the floor uniform. The uniform floor is the price, and the derivation above is the receipt: every band's margin is measured from the same floor, so the band that sits far down the ladder starts that much closer to the noise, whatever the grid's step is.
+
+The eighty mel bands the front end runs across, registered as `V-05-35`, each bring their own linear level to the log, and speech does not fill them evenly. The voiced parts spend their energy at the low mel indices, where the vowels live; the high-mel bands carry the fricatives, the breaths and the word endings, the content section 7.1's crest-factor estimate already flagged as the quietest meaningful parts of the utterance. For those bands the reading is small while the floor is the same absolute number of decibels below every reading the range touches, so the band's own margin above the floor is smaller by exactly how far the band sits below the top of the range. That is the crest factor replayed at one band: the loudest band pays the wave-form's peak-to-average swing, and every quieter band pays its own swing on top, band by band, down the eighty-band ladder the front end delivers. Averaging the noise over the frame helps as little here as it did in the intuition of the section: the loud low-mel bands dominate the mean, and a model can lose the quiet high-mel content and still pass a mean-squared-error check on the features at large.
+
+The ladder's bottom is where the book's own figures make the problem concrete. The energy ladder of the section's Application prices an off-chip access at two hundred times an arithmetic operation, and the ridge point that separates memory-bound from compute-bound designs is where the extra width shows up first: a feature that must survive the memory budget pays for every bit it carries across that ridge. Quantizing the quiet band is therefore not cosmetic, because on the batch-one streaming shape every hop is a fresh trip across the ridge, and the quietest band's margin is the one that decides whether the quantization error is a lost phoneme or merely a presence in the noise floor. A design that treats the loud and quiet bands as one population inherits the loudest band's step for the whole eighty-band ladder, including the bands that needed the finest steps most. That is the sentence section 7.2 exists to answer, and the close of this block states it plainly.
+
+The practical reading is the one that surprises. INT8 at the quietest band is not INT8 at the utterance as a whole, because one eight-bit grid covers all eighty mel bands `V-05-35` and the grid is a single range. Calibration chooses where that range sits, and the estimator is where the choice becomes concrete. A maximum-minimum range that must also hold the loudest transient the stream has made stretches the decibel step, and the stretch is paid first by the bands with the least margin: the quiet high-mel bands whose content sits a short distance above the floor have the most to lose from a step that grows to protect a peak the task never reads. The estimator that protects them is the one that refuses to let the loud tail own the step, clipping it so the range is set by the level the task actually uses, or choosing the clipping point that keeps the most signal. That is section 7.2's estimator menu in one sentence: the choice between stretching the step to include the tail and clipping the tail to protect the band is the choice this chapter hands to calibration. This section fixed the floor; the next one chooses where the clipper sits.
+
+
 **Traceability.** The records this section leans on. The speech statistics -- the crest factor, the
 dynamic range, the fricative level -- are the book's own estimates, not registered figures, and are
 printed as words for that reason; the energy ladder and the ridge points are registered claims.
@@ -157,6 +187,7 @@ printed as words for that reason; the energy ladder and the ridge points are reg
 | `V-07-26` | the sizes of the register file, global buffer and network a dataflow engine works in |
 | `V-07-02` | the Orin NX ridge point, the reference the GPU side is measured against |
 | `V-07-03` | the KV260 ridge point, the memory-bound regime this chapter's savings target |
+| `V-05-35` | the eighty mel bands the log-Mel analysis runs across |
 
 ---
 
@@ -288,6 +319,84 @@ executes one INT8 layout for everything. The FPGA's version of the choice is geo
 already pairs wide with narrow for free, and the 1,248 slices give the design room to spend
 correction logic where calibration says it is needed rather than where the data type forces it.
 
+**The four estimators, derived.**
+
+The menu the section above named is a set of answers to one question: where does the range end? Every estimator is a rule for picking a clipping point, and the step, the noise floor and the section 7.1 currency all follow from that one choice. The registered tool exposes the four rules together with the rounding modes and the batch-combination statistics (`V-06-10`); what the menu does not say is which rule protects what, so each estimator below is derived before it is priced.
+
+> **The formula.** $\Delta \;=\; \dfrac{r_{\max} - r_{\min}}{2^{b} - 1}$
+>
+> **The variables.**
+>
+> - $r_{\max}, r_{\min}$ — the largest and smallest values the calibration set produces.
+> - $b$ — the word width in bits.
+> - $\Delta$ — the resulting step, the width of one quantization cell.
+>
+> **What it means.** Minimum-maximum calibration fits the data exactly: nothing observed is clipped, and the step is simply the observed range split into $2^{b} - 1$ pieces. It is the honest baseline the other estimators measure themselves against, and it is deliberately free of assumptions about what the next sample will do.
+>
+> **What it costs.** The defect is the range itself. Calibration data is a sample, and a stream of speech carries outliers the task never needs, so the observed extrema can stretch the range; a stretched range fattens every step, and the fattening is paid, in section 7.1's currency, by every value the range was stretched to hold. One distant sample can buy a coarser grid for the entire tensor.
+>
+> **What it does not say.** It does not say the extrema of a calibration set are informative; it says they are exhaustive of that set. The derivative of the decibel mapping of section 7.1 applies the same verdict to the loudest band: a range held open to protect a peak the task never reads is a step paid for across the quiet bands.
+
+> **The formula.** $\Delta_{p} \;=\; \dfrac{r_{p} - r_{\min}}{2^{b} - 1} \;=\; \Delta\, \dfrac{r_{p} - r_{\min}}{r_{\max} - r_{\min}}$
+>
+> **The variables.**
+>
+> - $p$ — the percentile that owns the clip, the fraction of the calibration distribution kept below the clipping point.
+> - $r_{p}$ — the value of the calibration distribution at that percentile.
+> - $\Delta_{p}$ — the step when the range is cut at $r_{p}$.
+>
+> **What it means.** Percentile calibration clips a tail and re-derives the step from the range that remains. The reduction factor is the derived quotient: the new step is the old step times the share of the range the kept portion occupies. In the usual setting the tool clips above the ninety-nine point nine nine percentile, so the step is set by the range nearly all speech actually uses, and the extreme values that pass the clip saturate, which is the point.
+>
+> **What it costs.** The clipped tail is surrendered deliberately, and the surrender is the price that buys the finer step. The estimator is a trade, not a free lunch: saturation at the top of the range is exactly the overload error the next card names, and the quiet-band protection of section 7.1 is bought by spending it.
+>
+> **What it does not say.** It does not say the percentile is derived from the task. A percentile protects most of the data; it is a statistical statement, and whether the part of the distribution that carries the task's errors sits inside the kept range is a question the estimator does not ask.
+
+> **The formula.** $\mathcal{E}(c) \;=\; \dfrac{\Delta(c)^{2}}{12} \, \Pr(|x| \le c) \;+\; \operatorname{\mathbb{E}}\big[\, (|x| - c)^{2} \;\mathbf{1}_{|x| > c} \,\big]$
+>
+> **The variables.**
+>
+> - $c$ — the clipping point, the edge of the representable range.
+> - $\Delta(c)$ — the step when the range ends at $c$.
+> - $x$ — the value being quantized.
+> - $\mathcal{E}(c)$ — the expected squared error the estimator minimises.
+>
+> **What it means.** Mean-squared-error calibration writes down both costs of a clip and finds the point that balances them. The first term is the granular error: the step-squared-over-twelve variance of section 7.1, paid only by the values that survive the clip. The second term is the overload error: the values that fall outside pay the square of how far the clip pushed them, and the expectation counts how often that happens. Tighten the clip and the granular term shrinks while the overload grows; loosen it and the trade runs the other way. The minimum sits where the two slopes cross, a derived trade rather than a heuristic. The entropy, or KL, estimator is the information-theoretic version of the same balance: it chooses the clipping point that moves the least information, measured as the divergence between the empirical distribution and the quantized one.
+>
+> **What it costs.** The two information-faithful estimators carry the sharpest restriction in the registered menu: the tool refuses them for asymmetric quantization (`V-06-11`). Choosing entropy or MSE decides the symmetry too, and with it the zero-point arithmetic of the cross-term card: a designer who wants the information-optimal step must take the symmetric range that keeps the correction tree out of the datapath.
+>
+> **What it does not say.** It does not say the balancing point is the task's point. The expected squared error is a proxy for the recogniser's own gate, and section 7.1's closing verdict applies: an estimator that minimises a generic error against a task metric is measuring the wrong thing unless the two coincide.
+
+**The convolution-batch-norm fold, proved.**
+
+The section above described the fold; the algebra is one line of collecting terms. In evaluation mode the normalization is an affine map of the convolution's output: each channel $k$ is scaled by its own $\gamma_{k}$ over the square root of its registered variance plus the stabilization term, and shifted by $\beta_{k}$. Substituting the convolution's output, the two affine maps compose into one:
+
+> **The formula.** $\hat{y}_{k} \;=\; \sum_{j} W'_{k,j}\, a_{j} + b'_{k}, \qquad W'_{k,j} \;=\; \dfrac{\gamma_{k}}{\sqrt{\sigma_{k}^{2} + \varepsilon}}\, W_{k,j}, \qquad b'_{k} \;=\; \dfrac{\gamma_{k}}{\sqrt{\sigma_{k}^{2} + \varepsilon}}\big(b_{k} - \mu_{k}\big) + \beta_{k}$
+>
+> **The variables.**
+>
+> - $W_{k,j}$ — the convolution kernel entry for output channel $k$ and input channel $j$.
+> - $a_{j}$ — the input activation on channel $j$.
+> - $b_{k}$ — the convolution bias on channel $k$.
+> - $\gamma_{k}, \beta_{k}$ — the normalization's per-channel scale and shift.
+> - $\mu_{k}, \sigma_{k}^{2}$ — the running mean and variance the normalization uses in evaluation mode.
+> - $\varepsilon$ — the stabilisation constant added to the variance before the square root.
+> - $W'_{k,j}, b'_{k}$ — the folded kernel and bias, the only quantities the deployed graph stores.
+>
+> **What it means.** A convolution followed by an affine map is still a convolution. The folded kernel is the old kernel rescaled per channel by the normalization's own scale, and the folded bias is the old bias rescaled, pulled toward the running mean and pushed by the shift. Every symbol is defined because the fold is a substitution, not a new operation: the derived line is the convolution's output written into the normalization's formula and collected by channel. Computed on a per-channel scale, this is exactly what the record guards (`V-06-09`): an implementation that asserts evaluation mode, refuses a batch norm without running buffers, and rewrites the weight tensor by a per-channel scale.
+>
+> **What it costs.** One rewrite of the kernel and bias, performed once before calibration. Inference pays nothing: the normalization pass is deleted from the graph, the state the record registers (`V-06-06`), so the streaming hop of section 7.1 never rides a separate normalization layer. The price is paid in the rewrite itself, and that is why calibration must run after the fold: a quantizer measures a range, a range is a property of a layer, and the layers that exist after the fold are the ones the deployed graph multiplies.
+>
+> **What it does not say.** It does not say the fold preserves training behavior. The running statistics make it an evaluation-mode rewrite only, which is the point of the registered guard, and a fold applied with batch statistics would not be the same map. It also does not say the fold and the quantizer commute: quantize the folded kernel, because it is what the design stores.
+
+**Why the thirty-bit bound holds.**
+
+The existing requantization card registered the answer; the derivation is three lines. Let $m$ be the integer nearest to $2^{31} M_{0}$, the fixed-point representation the card chooses, with the normalized mantissa $M_{0}$ in the half-open interval $\big[\tfrac{1}{2}, 1\big)$. Because the mantissa never drops below one half, $2^{31} M_{0}$ is never below $2^{30}$: the stored integer always carries a magnitude of at least two to the thirtieth, and its most significant bit is always set. Rounding to the nearest integer leaves the stored constant $m / 2^{31}$ within one half of a unit in the last place of the true mantissa, which is a relative error of at most one over two to the thirty-first when measured against the smallest admissible mantissa, computed as the half-unit error divided by the mantissa's lower bound, about one part in two billion. "At least thirty bits of relative accuracy" is exactly this: the leading bit is always set, so the remaining thirty bits of the thirty-one-bit word are all significant, whatever the mantissa does inside its interval. The record registers the bound (`V-06-02`); the derivation is the section's own.
+
+**The slice's half of the argument.**
+
+The multiplier is asymmetric, twenty-seven bits across by eighteen, and the choice the Application above stated makes the asymmetry useful: a symmetric INT8 weight sits inside the narrow operand with room to spare, while the wide operand absorbs the activation's growth across the reduction without ever spilling. Symmetry does the deeper work. With the weight zero point forced to zero, the expensive case of the cross-term card never enters the datapath: the live row-sum of activations is not computed, because there is no weight zero point to multiply it by, and the correction logic the one thousand two hundred and forty-eight slices (`V-01-09`) can afford is not consumed by arithmetic the data type forced. The slice prices the two halves of the cross-term card in silicon: the multiply is native, the zero-point correction is an extra adder tree, and symmetric weights simply refuse to build the tree. An asymmetric activation range remains perfectly comfortable, because its single zero point folds into the bias before the design starts; the pairing the section recommends, symmetric weights with affine activations, is precisely the pairing the slice's asymmetry wants, which is why the sentence this block sits under is a hardware sentence and not a style preference. The estimator that calibrates the pair matters for the same reason the fold does: the range the estimator picks becomes the step, and the step is what the slice multiplies.
+
+
 **Traceability.** The records this section leans on. The arithmetic derivations -- the cross-term
 expansion and the requantization normalization -- are the section's own work from registered forms,
 and the resource counts in the cards are the book's own estimates; every other figure is a registered
@@ -415,6 +524,166 @@ which is the book's own estimate, not a registered figure. The registered cost i
 default conversion is round-half-to-even wrapped from PyTorch, so the default golden model and the
 default RTL disagree on ties unless someone re-pins the rule.
 
+**Why the identity proxy is the wrong derivative between the steps.**
+
+The card above passes the gradient of a straight line through a function that is not one. The quantizer the forward pass computes is a staircase. Along each tread, the width of one step, the true derivative is exactly zero, because the output does not move when the input does. At each riser it is neither zero nor finite: the output jumps one whole step in no distance. Written as a derivative, the staircase's slope is a train of infinitely thin spikes at the step boundaries, halfway between the step centres, and zero everywhere else. The straight-through estimator replaces that train with the constant one across the clamped range: true where the loss is smooth, false exactly where the quantizer is doing its work.
+
+**The bias is a function of position inside the step.** Averaged over one step the proxy is right: across a run of width $S$ the staircase climbs by exactly $S$, so its mean slope is one, and the estimator is unbiased in that mean. What it cannot see is the local slope. Let $f$ be where a value sits inside its own step, $f = x/S - \lfloor x/S \rfloor$, running from zero at a left edge to one at the right. Only an update that carries $f$ past a boundary moves the quantized value at all. A weight resting at mid-step, $f = \tfrac12$, can be nudged half a step either way with the fabric's output unchanged; a weight resting against a boundary flips a whole step on the smallest push. The update the optimizer believes it made and the update the fabric delivers therefore disagree by an amount proportional to the weight's distance from the nearest boundary, and the disagreement is largest where the optimizer is most confident: at mid-step, the position the proxy treats as the most ordinary place to be. Training on that mismatch writes a systematic pressure that drifts weights through boundaries as though the loss crossed them smoothly.
+
+**The clamp is the one place the proxy tells the truth.** Outside $q_{\min}$ and $q_{\max}$ the two agree exactly, and for the same reason: beyond the range the quantizer is constant in its input, so its true derivative is zero, and the clamp hands back zero too. There the identity is not an approximation. That agreement is the mechanism the card above credits for keeping the model inside the range. An element driven past an edge receives no gradient at all, so no update pulls it back, and the saturation zone becomes a region the training signal cannot reach. The optimizer's only way to stop losing elements to it is to keep the mass of the distribution inside the representable interval, which is how a range chosen once, before training, ends up respected by the model rather than merely imposed on it.
+
+**Why a learned scale repairs the frozen boundary.** The defect the critique isolates is that the boundaries do not move. With $S$ fixed, every weight's $f$ is fixed by the data, and no gradient reaches the boundary positions to move them where the loss wants them; the optimizer can only push weights across boundaries it did not choose. That is the repair a learned step size makes. Making $S$ trainable turns the boundary positions into parameters, and the LSQ card above shows the derivative of the loss with respect to $S$ is available through the very rounding that blocks every other gradient, so the placement of the steps becomes something the task negotiates instead of a constant handed down by a histogram. A learned scale is not a different estimator; it is this one with the quantity the critique identifies as frozen made free.
+
+**The requantizer as a pipeline, with saturation at the end.** The boundary between two quantized layers is where the multiplier of section 7.2 applies: one constant multiply and one shift convert one layer's output scale into the next layer's input scale. The module below is that boundary as hardware. It multiplies a signed accumulator by the normalized mantissa $M = 2^{-n} M_0$, drops $n$ bits with the round-half-to-even rule, then clamps. Three register stages sit between those steps, the multiply owning one, the shift and round the next, the saturation the last, so the element takes a new sample every cycle instead of stretching one long combinational path across the fabric's clock. It speaks AXI4-Stream: the `tvalid`/`tready` handshake that pairs a producer with a consumer, and `tlast` marking a frame's final sample, which is what lets it drop into the FIFO-based streaming datapath of chapter 9 with no wrapper.
+
+```systemverilog
+// ---------------------------------------------------------------------------
+// requant_axis -- a pipelined fixed-point requantizer on an AXI4-Stream port.
+// Per sample: multiply by the normalized mantissa M0 of the requantization
+// multiplier M = 2^-SHIFT * M0 (section 7.2); drop SHIFT bits with the
+// round-half-to-even rule, the same rule the round_half_even module above
+// implements; then saturate into the output word instead of wrapping.
+// One register stage owns each step, so the element is pipelined.
+// ---------------------------------------------------------------------------
+module requant_axis #(
+  parameter int W_IN  = 32,          // accumulator width, signed
+  parameter int W_M0  = 32,          // width of the M0 literal
+  parameter int SHIFT = 12,          // n: how many bits are dropped (wiring)
+  parameter int W_OUT = 8,           // output word, signed
+  // M0 lies in [1/2, 1); scaled by 2^31 as a signed literal its range is
+  // [2^30, 2^31), and this default is the lower edge of that interval.
+  parameter logic signed [W_M0-1:0] M0 = 32'sh4000_0000
+)(
+  input  logic                    clk,
+  input  logic                    rst_n,
+  input  logic                    s_axis_tvalid,   // slave: values arrive here
+  output logic                    s_axis_tready,
+  input  logic signed [W_IN-1:0]  s_axis_tdata,
+  input  logic                    s_axis_tlast,    // the frame's final sample
+  output logic                    m_axis_tvalid,   // master: results leave here
+  input  logic                    m_axis_tready,
+  output logic signed [W_OUT-1:0] m_axis_tdata,
+  output logic                    m_axis_tlast
+);
+  localparam int WP = W_IN + W_M0;   // width of the full product
+  localparam int WK = WP - SHIFT;    // width kept once the shift is applied
+  localparam logic signed [WK:0] OUT_MAX = (1 <<< (W_OUT-1)) - 1;  // range for
+  localparam logic signed [WK:0] OUT_MIN = -(1 <<< (W_OUT-1));     // the clamp
+
+  // The three stages advance together: a sample enters only when the output
+  // register can take one, the backpressure a chapter 9 FIFO applies.
+  logic out_ready;
+  assign out_ready     = m_axis_tready | ~m_axis_tvalid;
+  assign s_axis_tready = out_ready;
+
+  // ---- stage 1: multiply, then register -----------------------------------
+  logic signed [WP-1:0] product, prod_q;
+  logic                 v1_q, l1_q;
+  assign product = s_axis_tdata * M0;   // one native DSP48E2 multiply
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      prod_q <= '0;
+      v1_q   <= 1'b0;
+      l1_q   <= 1'b0;
+    end else if (out_ready) begin
+      prod_q <= product;
+      v1_q   <= s_axis_tvalid;
+      l1_q   <= s_axis_tlast;
+    end
+  end
+
+  // ---- stage 2: shift and round, then register ----------------------------
+  // The dropped part of prod_q is its SHIFT low bits: guard says it reaches
+  // half a step, sticky says it goes past. Round up when it is past half a
+  // step, or exactly half and the kept value is odd -- round half to even.
+  logic guard, sticky, up;
+  logic signed [WK:0] shifted, rounded, rnd_q;
+  logic               v2_q, l2_q;
+  assign guard   = prod_q[SHIFT-1];
+  assign sticky  = (prod_q[SHIFT-2:0] != '0);
+  assign up      = guard & (sticky | prod_q[SHIFT]);
+  assign shifted = prod_q >>> SHIFT;    // arithmetic shift preserves the sign
+  assign rounded = shifted + up;        // the tie rule, as in round_half_even
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      rnd_q <= '0;
+      v2_q  <= 1'b0;
+      l2_q  <= 1'b0;
+    end else if (out_ready) begin
+      rnd_q <= rounded;
+      v2_q  <= v1_q;
+      l2_q  <= l1_q;
+    end
+  end
+
+  // ---- stage 3: saturate, then register -----------------------------------
+  logic signed [WK:0] saturated;
+  assign saturated = (rnd_q > OUT_MAX) ? OUT_MAX :
+                     (rnd_q < OUT_MIN) ? OUT_MIN : rnd_q;
+
+  always_ff @(posedge clk) begin
+    if (!rst_n) begin
+      m_axis_tdata  <= '0;
+      m_axis_tvalid <= 1'b0;
+      m_axis_tlast  <= 1'b0;
+    end else if (out_ready) begin
+      m_axis_tdata  <= saturated[W_OUT-1:0];   // clamped into the output word
+      m_axis_tvalid <= v2_q;
+      m_axis_tlast  <= l2_q;
+    end
+  end
+endmodule
+```
+
+[Figure 29](#fig-ch7-requantizer-datapath) draws the module above as a flow: one constant multiply by the normalized mantissa, one shift that drops the low bits with the round-half-to-even rule, one saturation into the output word, and a register stage between each step.
+
+::: {#fig-ch7-requantizer-datapath .figure}
+```tikz
+% One pipelined requantizer stage: multiply by the mantissa, shift with the
+% round-half-to-even rule, saturate. Each step owns a register stage, so the
+% element takes one new sample per cycle on the AXI4-Stream handshake.
+\begin{tikzpicture}[
+  node distance=6mm,
+  stg/.style={draw, align=center, inner sep=2pt, font=\scriptsize,
+              text width=15mm, minimum height=11mm},
+  reg/.style={draw, fill=black!6, align=center, inner sep=2pt, font=\scriptsize,
+              text width=6mm, minimum height=9mm},
+  lbl/.style={font=\scriptsize, align=center, inner sep=1pt},
+  arr/.style={-{Stealth[length=1.8mm]}, thick},
+  hs/.style={-{Stealth[length=1.6mm]}, thick, gray},
+]
+\node[stg] (mul) {multiply by $M$};
+\node[reg, right=of mul] (r1) {reg};
+\node[stg, right=of r1] (shf) {shift $n$\\round-even};
+\node[reg, right=of shf] (r2) {reg};
+\node[stg, right=of r2] (sat) {saturate};
+\node[reg, right=of sat] (r3) {reg};
+\draw[arr] (mul) -- (r1);
+\draw[arr] (r1) -- (shf);
+\draw[arr] (shf) -- (r2);
+\draw[arr] (r2) -- (sat);
+\draw[arr] (sat) -- (r3);
+\node[lbl, below=0.5mm of r1.south] {clamp};
+\node[lbl, below=0.5mm of r2.south] {round};
+\node[lbl, below=0.5mm of r3.south] {sat};
+\node[lbl, left=2mm of mul.west] {accumulator in};
+\node[lbl, right=2mm of r3.east] {requantized out};
+% The handshake, under the datapath.
+\coordinate[below=9mm of mul.south] (h1);
+\coordinate[below=9mm of r3.south] (h2);
+\draw[hs] (h1) -- (h2) node[lbl, midway, below] {tvalid / tready, tlast on the frame's last sample};
+\end{tikzpicture}
+```
+The chain runs left to right: multiply, register, shift and round, register, saturate, register. Registers between the steps are what let the element take a new sample every cycle; without them the multiply-to-saturate path would be one long combinational chain, and the clock would have to be slowed to fit it. The handshake beneath the datapath is the AXI4-Stream port: the `tvalid`/`tready` pair couples the element to its producer and consumer, and `tlast` marks the frame's final sample.
+:::
+
+**Why saturation and not wrap.** Two's complement arithmetic carries no overflow flag. When a result leaves the representable range it wraps, the largest positive value becoming the most negative, and nothing reports it. For a weight that is merely wrong; for a score about to enter a softmax it is worse. The softmax of section 7.5 subtracts the row maximum, so a wrapped score that was the largest in its row becomes the smallest, the subtraction inverts, and the whole row's attention mass moves to a different position. The error is large, silent, and structured: not like noise a calibration might average away, but like a decision. Saturation replaces the wrap with the nearest representable value, which is bounded, preserves the row's ordering, and fails in a direction a downstream stage can still reason about.
+
+**The tie rule, and why the test vectors are the payload.** The rounding stage is the same rule the `round_half_even` module above implements, bit for bit: a guard bit that says the dropped part reaches half a step, a sticky bit that says it goes past, and a round up when the dropped part is past half, or exactly half and the kept value is odd. Holding the two modules on one rule is not tidiness. The training flow's registered default wraps PyTorch's round (`V-06-04`), and PyTorch's round breaks ties toward the even value (`V-06-05`); a fabric module that breaks them any other way agrees with its golden model on every sample except the ties, and passes any corpus that never lands on one. So the section closes where it began: the tie vectors, a value whose dropped bits are exactly half a step, and their negatives, are what a test bench exists to carry, because every other sample passes for free.
+
+
 **Traceability.** The records this section leans on; the fabric costs in the cards are the book's own
 estimates, not registered figures.
 
@@ -473,7 +742,7 @@ width. The feed-forward products are four times the attention products, computed
 the two feed-forward networks' combined matrix sizes by the four attention projections' combined
 sizes, which is exactly four to one for any model that follows the expansion.
 
-The width budget then follows the sensitivity, not the arithmetic order, and [Figure 26](#fig-ch7-mixed-precision-map) collects the census:
+The width budget then follows the sensitivity, not the arithmetic order, and [Figure 30](#fig-ch7-mixed-precision-map) collects the census:
 
 ::: {#fig-ch7-mixed-precision-map .figure}
 ```tikz
@@ -538,6 +807,38 @@ choices: a shared MAC array that keeps all activations on chip, and hardware-fri
 in which the non-linear functions share block-wide scaling factors. The second choice is this
 section's argument in silicon: precision is organized per block, with scales shared across the block's
 non-linear stages, rather than per tensor as a GPU data path would impose.
+
+**The trace without the matrix: the Hutchinson estimator, derived.**
+
+The card above measures sensitivity by the trace of the layer Hessian, and the trace looks like it should cost the whole matrix. It does not, and the trick is a one-line identity: a random probe vector whose distribution has identity covariance contracts the Hessian to its trace in expectation. Draw each probe entry independently from a distribution with zero mean and unit variance, the registered options being the Rademacher choice, plus or minus one with equal probability, or the standard Gaussian, and the expected quadratic form is the trace itself. The Monte Carlo estimator then averages a small number of probes:
+
+> **The formula.** $\mathrm{Tr}\big(\mathbf{H}_{i}\big) \;=\; \mathbb{E}_{z}\!\big[\, z^{\top} \mathbf{H}_{i}\, z \,\big] \;=\; \lim_{m \to \infty} \frac{1}{m} \sum_{h=1}^{m} z_{h}^{\top} \mathbf{H}_{i}\, z_{h}$
+>
+> **The variables.**
+>
+> - $\mathbf{H}_{i}$ — the Hessian of the task loss with respect to layer $i$'s weights, the matrix the section's card above introduces.
+> - $z$ — a random probe vector whose entries are independent with mean zero and unit variance, so the probe's covariance is the identity matrix.
+> - $z_{h}$ — the $h$-th draw of the probe; $m$ — the number of draws.
+> - $\mathbb{E}_{z}$ — the expectation over the probe distribution; $\mathrm{Tr}$ — the trace.
+>
+> **What it means.** The identity is the exchange of expectation and trace: the quadratic form is the trace of the Hessian times the probe's outer product, the expectation of the outer product is the identity because the probe's covariance is, and the trace of the Hessian against the identity is the trace of the Hessian. Derived in that one line, the trace becomes the expectation of a scalar each probe computes. The finite sum is the estimator: the average over $m$ draws converges to the trace as the probe count grows, and a small count gives a noisy but usable reading.
+>
+> **What it costs.** Each probe is one Hessian-vector product, not one Hessian. The product $\mathbf{H}_{i} z$ is the derivative of the gradient along the direction $z$, computed by a second backward pass, the double backprop the section's card above mentions: differentiate the already-computed gradient once more, along the probe direction, and the vector comes out without ever materializing the matrix. The full Hessian, whose size is the square of the layer's weight count, is the thing that is not computed, because nothing in the estimator needs it. No registered figure sits behind the trace; the estimator is the section's own arithmetic, and the cost is in passes, not in the matrix.
+>
+> **What it does not say.** It does not say a small probe count gives the exact trace. The Monte Carlo average carries variance that falls like one over the probe count, and the error like one over its square root, so the estimator is a budget choice, not a closed form. It also does not say the sensitivity is static: the quantization-aware retraining of section 7.3 reshapes the Hessian, which is why the estimator and the retraining belong together.
+
+Why only the trace is needed, and why the vector product is the right unit of work, is the same fact twice. The second-order term of the section's card, half the trace times the perturbation energy, treats the perturbation per layer: the energy $\|\mathbf{e}_{i}\|^{2}$ is a scalar, and no direction inside the layer's weight space ever enters the term. Contracting the Hessian against an isotropic energy throws away all off-diagonal curvature, because nothing in the term is aligned with any eigenvector; the trace is the only contract the term can sign. The Hessian-vector product is the natural unit of work for the same reason: it is the list of second derivatives along one direction, one vector the size of the layer's weights, and the trace of the whole matrix is the average of such products over random directions. The estimator prices the sensitivity the budget needs — one scalar per layer, ranked against the other layers — and the full matrix, which the budget never asked for, is never built.
+
+The estimator's own arithmetic deserves one plain sentence, because the probe choice is the part a budget can actually see. The variance of the estimate falls like one over the probe count, as the card's closing disclaimer stated, and the constant in front of that fall depends on the distribution the probes are drawn from. The Rademacher probe, plus or minus one, keeps every draw bounded, so no single probe can dominate the average and one unlucky direction cannot fabricate a fragile layer out of the noise; the Gaussian probe concentrates the estimate a shade tighter on a smooth loss surface but lets a rare large draw spend the whole average. For a ranking that only has to separate three tolerance classes, the two choices agree, and the bounded probe is the safer one, because its worst draw is known before the first pass. The probe count, in turn, is a budget line like any other in this chapter: a few more passes shrink the error of the ranking, and the census below is robust to exactly that difference, because it places entire word-width classes apart rather than layers within a few percent of one another. The estimator is a spending decision dressed as a formula, which is why it belongs in a chapter about what quantization buys.
+
+**The census, read as per-block sensitivity.**
+
+Read the census through the estimator, and the assignment stops looking like a set of taste calls. The feed-forward networks hold the four-to-one share of the block's multiply work, the quotient the section above computed, and their products feed a residual addition rather than a probability or a scale; a perturbation in a feed-forward weight changes a partial sum that later stages dilute, so the trace spends there: the coarsest step lands on the weights whose error the residual path absorbs, and the width that is cheapest in fabric buys the widest step on the weights the loss bends least. The attention stage and its softmax keep INT8 because a probability is the most fragile output in the block; a perturbation there is the one the second-order term does not dilute, and the integer softmax of section 7.5, a registered sequence of arithmetic steps (`V-07-11` through `V-07-15`), is what lets that stage stay at eight bits without a floating-point exponent. The normalization keeps INT16 because its output is a scale: a tired denominator multiplies every element that follows, its error propagates with the block's full swing, and that is the trace's worst case by the section's own reasoning, not by habit.
+
+The block, not the tensor, is the unit the estimator and the silicon agree on. The registered finding the section above cites already organized precision this way: hardware-friendly normalization in which the non-linear functions share block-wide scaling factors (`V-07-24`), the block as the budgeting unit rather than the per-tensor granularity a GPU data path imposes. The shared MAC dataflow (`V-07-23`) is the fabric side of the same decision: one array serves the block's widths, because the multiplier the section 7.2 mapping priced, twenty-seven bits across by eighteen, fits a narrow INT4 or INT8 weight against a wide operand that grows with the activation, at no extra cost. The ranking from the estimator and the structure from the silicon study land on the same statement: sensitivity is priced per block, the narrowest words on the GEMM-heavy feed-forward that owns the multiply work, the eight-bit paths on the probability, the widest words where a denominator divides. The chapter's argument is one sentence when the estimator and the census are read together: the network bends where the products are diluted, the block works where the geometry is per-block, and both said the same thing before the silicon confirmed it.
+
+The per-block reading and the per-block silicon are the same claim at two scales. The estimator hands back one scalar per block, a single number the budget can rank against its neighbours, and the registered normalization the study credits shares block-wide scaling factors across the block's non-linear stages; one side of that pairing says sensitivity is a property of the block, the other says the arithmetic is organized that way too. The shared MAC dataflow closes the loop, because a precision plan per block is only meaningful if the hardware multiplies the block's words without repacking them, and the shared array is precisely the repacking-free datapath. That is the sentence this chapter opened with, back at the section 7.1 ladder: quantization is a budget, the budget in a block-structured model is per block, and the estimator and the fabricated study agree on where the block boundaries sit. Neither alone would be enough, which is why the section keeps both: the estimator says where the error lives, and the silicon study says the fabric can be built to match.
+
 
 **Traceability.** The records this section leans on. The census arithmetic -- the four-to-one ratio,
 the weight counts and the bandwidths -- is computed from the registered model geometry in this table;
@@ -743,7 +1044,7 @@ The remainder is the only place an approximation enters, and a short polynomial 
 > "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
 > only as accurate as the width each one is given, and this card does not set those widths.
 
-The four steps assemble into one datapath, and [Figure 27](#fig-integer-softmax-datapath) draws it as a
+The four steps assemble into one datapath, and [Figure 31](#fig-integer-softmax-datapath) draws it as a
 chain with one branch in it.
 
 ::: {#fig-integer-softmax-datapath .figure}
