@@ -637,6 +637,48 @@ module requant_axis #(
 endmodule
 ```
 
+[Figure 29](#fig-ch7-requantizer-datapath) draws the module above as a flow: one constant multiply by the normalized mantissa, one shift that drops the low bits with the round-half-to-even rule, one saturation into the output word, and a register stage between each step.
+
+::: {#fig-ch7-requantizer-datapath .figure}
+```tikz
+% One pipelined requantizer stage: multiply by the mantissa, shift with the
+% round-half-to-even rule, saturate. Each step owns a register stage, so the
+% element takes one new sample per cycle on the AXI4-Stream handshake.
+\begin{tikzpicture}[
+  node distance=6mm,
+  stg/.style={draw, align=center, inner sep=2pt, font=\scriptsize,
+              text width=15mm, minimum height=11mm},
+  reg/.style={draw, fill=black!6, align=center, inner sep=2pt, font=\scriptsize,
+              text width=6mm, minimum height=9mm},
+  lbl/.style={font=\scriptsize, align=center, inner sep=1pt},
+  arr/.style={-{Stealth[length=1.8mm]}, thick},
+  hs/.style={-{Stealth[length=1.6mm]}, thick, gray},
+]
+\node[stg] (mul) {multiply by $M$};
+\node[reg, right=of mul] (r1) {reg};
+\node[stg, right=of r1] (shf) {shift $n$\\round-even};
+\node[reg, right=of shf] (r2) {reg};
+\node[stg, right=of r2] (sat) {saturate};
+\node[reg, right=of sat] (r3) {reg};
+\draw[arr] (mul) -- (r1);
+\draw[arr] (r1) -- (shf);
+\draw[arr] (shf) -- (r2);
+\draw[arr] (r2) -- (sat);
+\draw[arr] (sat) -- (r3);
+\node[lbl, below=0.5mm of r1.south] {clamp};
+\node[lbl, below=0.5mm of r2.south] {round};
+\node[lbl, below=0.5mm of r3.south] {sat};
+\node[lbl, left=2mm of mul.west] {accumulator in};
+\node[lbl, right=2mm of r3.east] {requantized out};
+% The handshake, under the datapath.
+\coordinate[below=9mm of mul.south] (h1);
+\coordinate[below=9mm of r3.south] (h2);
+\draw[hs] (h1) -- (h2) node[lbl, midway, below] {tvalid / tready, tlast on the frame's last sample};
+\end{tikzpicture}
+```
+The chain runs left to right: multiply, register, shift and round, register, saturate, register. Registers between the steps are what let the element take a new sample every cycle; without them the multiply-to-saturate path would be one long combinational chain, and the clock would have to be slowed to fit it. The handshake beneath the datapath is the AXI4-Stream port: the `tvalid`/`tready` pair couples the element to its producer and consumer, and `tlast` marks the frame's final sample.
+:::
+
 **Why saturation and not wrap.** Two's complement arithmetic carries no overflow flag. When a result leaves the representable range it wraps, the largest positive value becoming the most negative, and nothing reports it. For a weight that is merely wrong; for a score about to enter a softmax it is worse. The softmax of section 7.5 subtracts the row maximum, so a wrapped score that was the largest in its row becomes the smallest, the subtraction inverts, and the whole row's attention mass moves to a different position. The error is large, silent, and structured: not like noise a calibration might average away, but like a decision. Saturation replaces the wrap with the nearest representable value, which is bounded, preserves the row's ordering, and fails in a direction a downstream stage can still reason about.
 
 **The tie rule, and why the test vectors are the payload.** The rounding stage is the same rule the `round_half_even` module above implements, bit for bit: a guard bit that says the dropped part reaches half a step, a sticky bit that says it goes past, and a round up when the dropped part is past half, or exactly half and the kept value is odd. Holding the two modules on one rule is not tidiness. The training flow's registered default wraps PyTorch's round (`V-06-04`), and PyTorch's round breaks ties toward the even value (`V-06-05`); a fabric module that breaks them any other way agrees with its golden model on every sample except the ties, and passes any corpus that never lands on one. So the section closes where it began: the tie vectors, a value whose dropped bits are exactly half a step, and their negatives, are what a test bench exists to carry, because every other sample passes for free.
@@ -700,7 +742,7 @@ width. The feed-forward products are four times the attention products, computed
 the two feed-forward networks' combined matrix sizes by the four attention projections' combined
 sizes, which is exactly four to one for any model that follows the expansion.
 
-The width budget then follows the sensitivity, not the arithmetic order, and [Figure 26](#fig-ch7-mixed-precision-map) collects the census:
+The width budget then follows the sensitivity, not the arithmetic order, and [Figure 30](#fig-ch7-mixed-precision-map) collects the census:
 
 ::: {#fig-ch7-mixed-precision-map .figure}
 ```tikz
@@ -1002,7 +1044,7 @@ The remainder is the only place an approximation enters, and a short polynomial 
 > "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
 > only as accurate as the width each one is given, and this card does not set those widths.
 
-The four steps assemble into one datapath, and [Figure 27](#fig-integer-softmax-datapath) draws it as a
+The four steps assemble into one datapath, and [Figure 31](#fig-integer-softmax-datapath) draws it as a
 chain with one branch in it.
 
 ::: {#fig-integer-softmax-datapath .figure}
