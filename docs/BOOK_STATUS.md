@@ -13,9 +13,9 @@
 | **02** | Phân tích Vi kiến trúc & Đo kiểm Điểm chuẩn trên Jetson Orin | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_02 | Đã tạo khung |
 | **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | Đã soạn 3.1–3.3; 3.4 còn trống | 🚧 exp_03 | Đã viết bản tiếng Anh, chưa đo |
 | **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
-| **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | Đã soạn 5.4; 5.1–5.3 còn trống | 🚧 exp_05 | Đã viết bản tiếng Anh, chưa đo |
+| **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | Đã soạn đủ 5.1–5.3, 5.5, 5.6; giữ nguyên 5.4 | 🚧 exp_05 | Đã viết bản tiếng Anh, chưa đo |
 | **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | Đã soạn (16 trang PDF) | 🚧 exp_06 | Đã viết bản tiếng Anh, chưa đo |
-| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | Đã viết (20 trang PDF) | 🚧 exp_07 | Đã viết bản tiếng Anh, chưa đo |
+| **07** | Khoa học Lượng tử hóa Thích ứng Phần cứng cho Mô hình Thoại | 🚧 Khung sườn | Đã soạn đủ 7.1–7.4, 7.6; giữ nguyên 7.5 | 🚧 exp_07 | Đã viết bản tiếng Anh, chưa đo |
 | **08** | Kiến trúc Pipeline keyword-spotting trên board: từ micro đến quyết định | 🚧 Khung sườn | Đã soạn (10 trang PDF) | 🚧 exp_08 | Đã viết bản tiếng Anh, chưa đo |
 | **09** | Streaming Conformer overlay + Left-Context Ring Buffer | 🚧 Khung sườn | Đã soạn (14 trang PDF) | 🚧 exp_09 | Đã viết bản tiếng Anh, chưa đo |
 | **10** | Thiết lập Thực nghiệm Đo kiểm, Đánh giá Pareto & Viết Bài báo Khoa học | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_10 | Đã tạo khung |
@@ -42,7 +42,7 @@ Hai trạng thái khác nhau phải phân biệt rõ: chương **chưa viết** 
 
 **Chưa chốt, cần chủ repo:** `plan-v2.md` §7 gán artefact chặng 8–9 (KWS SoC trên board; Conformer overlay) khác với tiêu đề chương 08–09 hiện tại. Ghi chi tiết ở `book/TOC.md`, mục "Lệch ánh xạ chưa chốt".
 
-**Chưa làm:** văn xuôi tiếng Việt của cả mười chương. Bản tiếng Anh tính đến 2026-09-14: chương 1 và chương 9 có văn xuôi ở mọi mục; Phụ lục A có đủ sáu mục A.1–A.6; chương 3 thiếu 3.4; chương 5 mới có mục 5.4; chương 8 có 8.4 mỏng; chương 2, 4, 6, 7 và 10 vẫn là tiêu đề rỗng. Không một ô nào trong bảng chương được đóng dấu ✅: theo `scripts/verify_integrity.py`, dấu ✅ chỉ được đặt ở dòng có mã thí nghiệm đủ dài để khớp với log, còn mã chương hai chữ số thì không phân biệt được — nên tiến độ chương ghi bằng chữ, không ghi bằng dấu.
+**Chưa làm:** văn xuôi tiếng Việt của cả mười chương. Bản tiếng Anh tính đến 2026-09-18: chương 1 và chương 9 có văn xuôi ở mọi mục; Phụ lục A có đủ sáu mục A.1–A.6; chương 3 thiếu 3.4; chương 5 đã soạn đủ 5.1–5.6; chương 8 có 8.4 mỏng; chương 6 đã soạn 16 trang; chương 7 đã soạn đủ 7.1–7.6; chương 2, 4 và 10 vẫn là tiêu đề rỗng. Không một ô nào trong bảng chương được đóng dấu ✅: theo `scripts/verify_integrity.py`, dấu ✅ chỉ được đặt ở dòng có mã thí nghiệm đủ dài để khớp với log, còn mã chương hai chữ số thì không phân biệt được — nên tiến độ chương ghi bằng chữ, không ghi bằng dấu.
 
 ---
 
