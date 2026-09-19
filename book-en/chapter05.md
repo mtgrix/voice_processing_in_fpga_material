@@ -10,7 +10,7 @@ A model that trains on a workstation is a graph of multiply-accumulate operation
 
 The four paths are the vendor's deep learning processor, high-level synthesis, the FINN toolchain, and register transfer level design, usually called the DPU, HLS, FINN, and RTL. They form a natural ordering from the most prebuilt to the least: the DPU is an engine the vendor has already drawn, HLS is a compiler that draws the hardware from your description of its behaviour, FINN is a toolchain that specialises a model into a small custom datapath, and RTL is the hardware drawn by hand. The ordering is one of control: how much of the eventual circuit the designer holds in their own hands. It is also one of productivity, the axis section 5.2 will price, and the four paths are best read as a spectrum rather than a menu, because a real design can sit on more than one of them at once. Whatever the path, the object every path must serve is the same: a single utterance arriving as a stream of short hops, each hop one one-hundredth of a second long (`V-05-31`), so the datapath must be ready to accept a new slice of audio at that rhythm without ever being caught unprepared. The comparison is deliberately static: this section fixes the board, the model and the workload, and varies only the path, because a comparison that changed two things at once would teach nothing. The question asked of each path is the same one — what does the datapath look like, and what did it cost to obtain?
 
-[Figure 21](#fig-ch5-four-paths) draws that spectrum: from the most prebuilt on the left, where the vendor has made the decisions, to the most hand-drawn on the right, where the designer makes every one. The arrow under the row is the ordering axis, and each path's subtitle names what it actually is: an engine, a compiler, a toolchain, or the designer's own modules.
+[Figure 22](#fig-ch5-four-paths) draws that spectrum: from the most prebuilt on the left, where the vendor has made the decisions, to the most hand-drawn on the right, where the designer makes every one. The arrow under the row is the ordering axis, and each path's subtitle names what it actually is: an engine, a compiler, a toolchain, or the designer's own modules.
 
 ::: {#fig-ch5-four-paths .figure}
 ```tikz
@@ -149,7 +149,7 @@ Put the three together and the axis has a hierarchy: FINN spends almost nothing,
 | Kria KV260 | 39.0–78.0 operations per byte | `V-07-03` |
 | Jetson Orin NX | about 490.2 operations per byte | `V-07-02` |
 
-[Figure 22](#fig-ch5-roofline) puts those two ridge points on the roof they belong to: the rising line is the memory ceiling, where the sustainable rate grows with arithmetic intensity until the machine's ability to fetch bytes is spent, and the flat line is the compute ceiling, where adding intensity cannot add rate. The ridge point is where the two meet, and the two positions marked on the intensity axis are the digits the table above carries.
+[Figure 23](#fig-ch5-roofline) puts those two ridge points on the roof they belong to: the rising line is the memory ceiling, where the sustainable rate grows with arithmetic intensity until the machine's ability to fetch bytes is spent, and the flat line is the compute ceiling, where adding intensity cannot add rate. The ridge point is where the two meet, and the two positions marked on the intensity axis are the digits the table above carries.
 
 ::: {#fig-ch5-roofline .figure}
 ```tikz
@@ -221,7 +221,7 @@ Inside each frame the front end does two fixed pieces of work. It first runs a f
 
 **The hybrid thesis.** The design this book describes is a hybrid: three different owners, each taking the part of the workload that suits it. The signal front end of chapter 6 — the windowing, the transform, the mel filter bank and the logarithm — lives on the programmable logic, where a fixed, regular pipeline of registers and arithmetic units is exactly the kind of computation the fabric is built for. The neural core — the part that turns the eighty mel values into a label or a stream of text — is one of the four paths of section 5.1, and the rules below pick which one. The host SoC, the general-purpose processor that sits beside the fabric on the same chip, keeps the streaming context — the state the model must remember across hops. The hybrid thesis is that this division of labour costs less than any single-owner design: the regular part goes to the machine that excels at regular work, the model part goes to the path whose owner the designer actually chooses, and the bookkeeping goes to a processor whose job is bookkeeping.
 
-[Figure 23](#fig-ch5-hybrid) draws that division of labour as the three owners and the object that crosses between them: the fabric front end feeds the chosen neural core eighty mel values every hop, and the host SoC keeps the streaming context off that line, because the context is state, not datapath.
+[Figure 24](#fig-ch5-hybrid) draws that division of labour as the three owners and the object that crosses between them: the fabric front end feeds the chosen neural core eighty mel values every hop, and the host SoC keeps the streaming context off that line, because the context is state, not datapath.
 
 ::: {#fig-ch5-hybrid .figure}
 ```tikz

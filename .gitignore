@@ -65,3 +65,4 @@ Thumbs.db
 # Agent tool scratch
 .playwright-mcp/
 .remember/
+scratch/

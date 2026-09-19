@@ -637,7 +637,7 @@ module requant_axis #(
 endmodule
 ```
 
-[Figure 29](#fig-ch7-requantizer-datapath) draws the module above as a flow: one constant multiply by the normalized mantissa, one shift that drops the low bits with the round-half-to-even rule, one saturation into the output word, and a register stage between each step.
+[Figure 30](#fig-ch7-requantizer-datapath) draws the module above as a flow: one constant multiply by the normalized mantissa, one shift that drops the low bits with the round-half-to-even rule, one saturation into the output word, and a register stage between each step.
 
 ::: {#fig-ch7-requantizer-datapath .figure}
 ```tikz
@@ -742,7 +742,7 @@ width. The feed-forward products are four times the attention products, computed
 the two feed-forward networks' combined matrix sizes by the four attention projections' combined
 sizes, which is exactly four to one for any model that follows the expansion.
 
-The width budget then follows the sensitivity, not the arithmetic order, and [Figure 30](#fig-ch7-mixed-precision-map) collects the census:
+The width budget then follows the sensitivity, not the arithmetic order, and [Figure 31](#fig-ch7-mixed-precision-map) collects the census:
 
 ::: {#fig-ch7-mixed-precision-map .figure}
 ```tikz
@@ -1044,7 +1044,7 @@ The remainder is the only place an approximation enters, and a short polynomial 
 > "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
 > only as accurate as the width each one is given, and this card does not set those widths.
 
-The four steps assemble into one datapath, and [Figure 31](#fig-integer-softmax-datapath) draws it as a
+The four steps assemble into one datapath, and [Figure 32](#fig-integer-softmax-datapath) draws it as a
 chain with one branch in it.
 
 ::: {#fig-integer-softmax-datapath .figure}

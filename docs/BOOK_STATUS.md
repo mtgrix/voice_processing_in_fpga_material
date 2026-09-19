@@ -11,7 +11,7 @@
 |:---:|---|:---:|:---:|:---:|:---:|
 | **01** | Kiến trúc Pipeline Xử lý Tiếng nói & Ràng buộc Thời gian thực | 🚧 Khung sườn | Đã viết (11 trang PDF) | exp_01 đã chạy, có log | Đã soạn bản tiếng Anh |
 | **02** | Phân tích Vi kiến trúc & Đo kiểm Điểm chuẩn trên Jetson Orin | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_02 | Đã tạo khung |
-| **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | Đã soạn 3.1–3.3; 3.4 còn trống | 🚧 exp_03 | Đã viết bản tiếng Anh, chưa đo |
+| **03** | Điểm nghẽn Xử lý Luồng (Streaming) trên Kiến trúc GPU | 🚧 Khung sườn | Đã soạn đầy đủ 3.1–3.6 | 🚧 exp_03 | Đã viết bản tiếng Anh, chưa đo |
 | **04** | Vi kiến trúc FPGA: Logic Slices, DSP, BRAM/URAM & Luồng Dữ liệu | 🚧 Khung sườn | 🚧 Khung sườn | 🚧 exp_04 | Đã tạo khung |
 | **05** | So sánh Các Phương pháp luận Tăng tốc trên FPGA: DPU, HLS, FINN & RTL | 🚧 Khung sườn | Đã soạn đủ 5.1–5.3, 5.5, 5.6; giữ nguyên 5.4 | 🚧 exp_05 | Đã viết bản tiếng Anh, chưa đo |
 | **06** | Tăng tốc Phần cứng cho Tầng Tiền xử lý Tín hiệu Âm thanh | 🚧 Khung sườn | Đã soạn (16 trang PDF) | 🚧 exp_06 | Đã viết bản tiếng Anh, chưa đo |
