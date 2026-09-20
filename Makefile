@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers check-figures render-figures check-figure-divs check-pairing gate book book-check book-figsize book-figcompile book-clean clean
+.PHONY: help test lint format format-check typecheck verify verify-evidence check-render render-evidence check-registry render-registry check-bib render-bib check-numbers render-numbers check-prose render-prose check-figures render-figures check-figure-divs check-pairing gate book book-check book-figsize book-figcompile book-clean clean
 
 help:
 	@echo "Available commands:"
@@ -19,6 +19,8 @@ help:
 	@echo "  make render-bib        - Regenerate the bibliography from the registry"
 	@echo "  make check-numbers     - Fail on a number no cited claim supports (see number_baseline.json)"
 	@echo "  make render-numbers    - Re-record the accepted numbers that lack a citation"
+	@echo "  make check-prose       - Fail on a V-code, audit phrase, or spelled-out quantity in prose (see prose_baseline.json)"
+	@echo "  make render-prose      - Re-record today's prose violations as reviewed debt"
 	@echo "  make check-figures     - Fail if a prose Figure N disagrees with the number its float gets"
 	@echo "  make render-figures    - Rewrite prose figure numbers to the build order"
 	@echo "  make check-figure-divs - Fail on a malformed or unclosed TikZ figure div"
@@ -89,6 +91,16 @@ check-numbers:
 render-numbers:
 	$(PYTHON) scripts/verification/scan_numbers.py --write-baseline
 
+# BOOK_PEDAGOGY §8 bans V-codes, audit phrases, and spelled-out quantities from prose. The
+# prose cage checks that ban; today's violations are recorded in
+# docs/verification/prose_baseline.json, so the gate fails on a NEW infraction instead of on the
+# pile already in the book. --strict ignores the baseline when finishing a chapter. Issue #99.
+check-prose:
+	$(PYTHON) scripts/verification/prose_cage.py --check
+
+render-prose:
+	$(PYTHON) scripts/verification/prose_cage.py --write-baseline
+
 # A prose citation has to print the number its float actually gets. That number is a function of
 # book-manifest.yaml order plus how many figure divs each file holds, so adding one diagram to the
 # preface silently invalidates every citation after it -- the defect verify_book_pdf.sh cannot see,
@@ -114,7 +126,7 @@ check-figure-divs:
 check-pairing:
 	$(PYTHON) scripts/verification/check_pairing.py --check
 
-gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers check-figures check-figure-divs check-pairing
+gate: lint format-check typecheck test verify verify-evidence check-render check-registry check-bib check-numbers check-prose check-figures check-figure-divs check-pairing
 
 # The book targets are deliberately NOT part of gate, so CI does not run them: the
 # checks job installs Python only, and a TeX distribution costs hundreds of megabytes
