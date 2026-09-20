@@ -76,3 +76,7 @@ When processing instructions, the agent MUST strictly adhere to the 5-phase cogn
 - Full autonomy is enabled for this project: terminal commands, file edits/reads, and testing run proactively without unnecessary confirmations.
 - Proactively verify changes using tests and linters before reporting back.
 
+
+## Pedagogy Harness
+
+When writing or revising book prose (`book-en/`, `book/`), follow [.agents/rules/pedagogy_harness.md](.agents/rules/pedagogy_harness.md) in addition to the structure rules in `docs/BOOK_PEDAGOGY.md`. The harness rules are the voice layer: invisible scaffolding (no `V-xx-yy` or audit meta-language in prose, no numbers spelled out), the four-beat cadence, accessible mathematics, and the pre-merge five-question checklist. `make check-prose` enforces the mechanical parts.

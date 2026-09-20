@@ -1,0 +1,2409 @@
+{
+ "version": "1.0.0",
+ "note": "Prose violations in the manuscript held the day the prose cage went live: V-xx-yy ids in sentences, measured quantities spelled out as words, and audit meta-language. This is debt, not permission -- see scripts/verification/prose_cage.py for what --check and --strict do with it. A chapter that fixes its prose shrinks this file; run --write-baseline only after the fix, never to make the debt disappear.",
+ "entries": [
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.1 What Travels Through the Model",
+   "key": "audit-language:which record says",
+   "kind": "audit-language",
+   "match": "which record says",
+   "value": null,
+   "hint": "the evidence machinery is talking; say what it shows"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "audit-language:unresolved record",
+   "kind": "audit-language",
+   "match": "unresolved record",
+   "value": null,
+   "hint": "say what is unknown about the hardware, not about the records"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "prose-v:V-05-13",
+   "kind": "prose-v",
+   "match": "V-05-13",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "prose-v:V-05-14",
+   "kind": "prose-v",
+   "match": "V-05-14",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "prose-v:V-05-18",
+   "kind": "prose-v",
+   "match": "V-05-18",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "prose-v:V-05-19",
+   "kind": "prose-v",
+   "match": "V-05-19",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.3 Self-Attention: Reading the Past Because You Decide To",
+   "key": "word-number:thirty",
+   "kind": "word-number",
+   "match": "thirty",
+   "value": 30.0,
+   "hint": "\"thirty\" is 30; write the quantity as digits"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "prose-v:V-01-09",
+   "kind": "prose-v",
+   "match": "V-01-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "prose-v:V-05-18",
+   "kind": "prose-v",
+   "match": "V-05-18",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "prose-v:V-05-25",
+   "kind": "prose-v",
+   "match": "V-05-25",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "prose-v:V-05-40",
+   "kind": "prose-v",
+   "match": "V-05-40",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.4 Convolution Along Time: the Same Read, Done Cheaper",
+   "key": "word-number:twenty nine",
+   "kind": "word-number",
+   "match": "twenty nine",
+   "value": 29.0,
+   "hint": "\"twenty nine\" is 29; write the quantity as digits"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.5 Keeping the Numbers in Range",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.6 From a Dimension to a Budget",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.6 From a Dimension to a Budget",
+   "key": "audit-language:unresolved record",
+   "kind": "audit-language",
+   "match": "unresolved record",
+   "value": null,
+   "hint": "say what is unknown about the hardware, not about the records"
+  },
+  {
+   "file": "appendix_a_model_fundamentals.md",
+   "section": "A.6 From a Dimension to a Budget",
+   "key": "prose-v:V-01-09",
+   "kind": "prose-v",
+   "match": "V-01-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.2",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.2",
+   "key": "word-number:two hundred and fifty seven",
+   "kind": "word-number",
+   "match": "two hundred and fifty seven",
+   "value": 257.0,
+   "hint": "\"two hundred and fifty seven\" is 257; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "word-number:eighteen",
+   "kind": "word-number",
+   "match": "eighteen",
+   "value": 18.0,
+   "hint": "\"eighteen\" is 18; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "word-number:fifty seven",
+   "kind": "word-number",
+   "match": "fifty seven",
+   "value": 57.0,
+   "hint": "\"fifty seven\" is 57; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.3",
+   "key": "word-number:two hundred and",
+   "kind": "word-number",
+   "match": "two hundred and",
+   "value": 200.0,
+   "hint": "\"two hundred and\" is 200; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.4",
+   "key": "word-number:eight million",
+   "kind": "word-number",
+   "match": "eight million",
+   "value": 8000000.0,
+   "hint": "\"eight million\" is 8e+06; write the quantity as digits"
+  },
+  {
+   "file": "chapter01.md",
+   "section": "1.4",
+   "key": "word-number:sixteen million",
+   "kind": "word-number",
+   "match": "sixteen million",
+   "value": 16000000.0,
+   "hint": "\"sixteen million\" is 1.6e+07; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "audit-language:the records say",
+   "kind": "audit-language",
+   "match": "the records say",
+   "value": null,
+   "hint": "the evidence machinery is talking; say what it shows"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:four thousand and ninety six",
+   "kind": "word-number",
+   "match": "four thousand and ninety six",
+   "value": 4096.0,
+   "hint": "\"four thousand and ninety six\" is 4096; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:one hundred and twenty eight",
+   "kind": "word-number",
+   "match": "one hundred and twenty eight",
+   "value": 128.0,
+   "hint": "\"one hundred and twenty eight\" is 128; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:one thousand and twenty four",
+   "kind": "word-number",
+   "match": "one thousand and twenty four",
+   "value": 1024.0,
+   "hint": "\"one thousand and twenty four\" is 1024; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:sixty five thousand five hundred and thirty six",
+   "kind": "word-number",
+   "match": "sixty five thousand five hundred and thirty six",
+   "value": 65536.0,
+   "hint": "\"sixty five thousand five hundred and thirty six\" is 65536; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:sixty four",
+   "kind": "word-number",
+   "match": "sixty four",
+   "value": 64.0,
+   "hint": "\"sixty four\" is 64; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.1",
+   "key": "word-number:thirty two",
+   "kind": "word-number",
+   "match": "thirty two",
+   "value": 32.0,
+   "hint": "\"thirty two\" is 32; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.2",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter03.md",
+   "section": "3.6",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.1",
+   "key": "audit-language:no record in this registry",
+   "kind": "audit-language",
+   "match": "no record in this registry",
+   "value": null,
+   "hint": "a gap in evidence is a sentence about the subject, not about the registry"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.1",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "key": "word-number:sixty four",
+   "kind": "word-number",
+   "match": "sixty four",
+   "value": 64.0,
+   "hint": "\"sixty four\" is 64; write the quantity as digits"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.2",
+   "key": "word-number:thirty two six",
+   "kind": "word-number",
+   "match": "thirty two six",
+   "value": 38.0,
+   "hint": "\"thirty two six\" is 38; write the quantity as digits"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "key": "audit-language:no record in this registry",
+   "kind": "audit-language",
+   "match": "no record in this registry",
+   "value": null,
+   "hint": "a gap in evidence is a sentence about the subject, not about the registry"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "4.3",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "chapter04.md",
+   "section": "FPGA Microarchitecture for Edge AI: Logic, DSP, BRAM and Dataflow",
+   "key": "audit-language:unsourced",
+   "kind": "audit-language",
+   "match": "unsourced",
+   "value": null,
+   "hint": "say what the evidence fails to say, in one plain sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-01-05",
+   "kind": "prose-v",
+   "match": "V-01-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-01-07",
+   "kind": "prose-v",
+   "match": "V-01-07",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-01-09",
+   "kind": "prose-v",
+   "match": "V-01-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-01-11",
+   "kind": "prose-v",
+   "match": "V-01-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-04-03",
+   "kind": "prose-v",
+   "match": "V-04-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-04-09",
+   "kind": "prose-v",
+   "match": "V-04-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-04-10",
+   "kind": "prose-v",
+   "match": "V-04-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-04-11",
+   "kind": "prose-v",
+   "match": "V-04-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-04-12",
+   "kind": "prose-v",
+   "match": "V-04-12",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-05-01",
+   "kind": "prose-v",
+   "match": "V-05-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "prose-v:V-06-03",
+   "kind": "prose-v",
+   "match": "V-06-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:eighteen",
+   "kind": "word-number",
+   "match": "eighteen",
+   "value": 18.0,
+   "hint": "\"eighteen\" is 18; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:eleven point six",
+   "kind": "word-number",
+   "match": "eleven point six",
+   "value": 11.6,
+   "hint": "\"eleven point six\" is 11.6; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:eleven point three five",
+   "kind": "word-number",
+   "match": "eleven point three five",
+   "value": 11.35,
+   "hint": "\"eleven point three five\" is 11.35; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:eleven thousand six hundred and twenty five",
+   "kind": "word-number",
+   "match": "eleven thousand six hundred and twenty five",
+   "value": 11625.0,
+   "hint": "\"eleven thousand six hundred and twenty five\" is 11625; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:ninety three thousand",
+   "kind": "word-number",
+   "match": "ninety three thousand",
+   "value": 93000.0,
+   "hint": "\"ninety three thousand\" is 93000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one hundred and forty four",
+   "kind": "word-number",
+   "match": "one hundred and forty four",
+   "value": 144.0,
+   "hint": "\"one hundred and forty four\" is 144; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one hundred and twenty six",
+   "kind": "word-number",
+   "match": "one hundred and twenty six",
+   "value": 126.0,
+   "hint": "\"one hundred and twenty six\" is 126; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one hundredth",
+   "kind": "word-number",
+   "match": "one hundredth",
+   "value": 0.01,
+   "hint": "\"one hundredth\" is 0.01; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one one hundredth",
+   "kind": "word-number",
+   "match": "one one hundredth",
+   "value": 0.01,
+   "hint": "\"one one hundredth\" is 0.01; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one thousand and twenty four",
+   "kind": "word-number",
+   "match": "one thousand and twenty four",
+   "value": 1024.0,
+   "hint": "\"one thousand and twenty four\" is 1024; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:one thousand two hundred and forty eight",
+   "kind": "word-number",
+   "match": "one thousand two hundred and forty eight",
+   "value": 1248.0,
+   "hint": "\"one thousand two hundred and forty eight\" is 1248; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:sixty eight",
+   "kind": "word-number",
+   "match": "sixty eight",
+   "value": 68.0,
+   "hint": "\"sixty eight\" is 68; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:sixty four",
+   "kind": "word-number",
+   "match": "sixty four",
+   "value": 64.0,
+   "hint": "\"sixty four\" is 64; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:twenty three thousand six hundred and sixteen",
+   "kind": "word-number",
+   "match": "twenty three thousand six hundred and sixteen",
+   "value": 23616.0,
+   "hint": "\"twenty three thousand six hundred and sixteen\" is 23616; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.1",
+   "key": "word-number:two hundred and fifty five",
+   "kind": "word-number",
+   "match": "two hundred and fifty five",
+   "value": 255.0,
+   "hint": "\"two hundred and fifty five\" is 255; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-01-05",
+   "kind": "prose-v",
+   "match": "V-01-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-01-07",
+   "kind": "prose-v",
+   "match": "V-01-07",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-01-13",
+   "kind": "prose-v",
+   "match": "V-01-13",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-04-10",
+   "kind": "prose-v",
+   "match": "V-04-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-04-11",
+   "kind": "prose-v",
+   "match": "V-04-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-04-12",
+   "kind": "prose-v",
+   "match": "V-04-12",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-05-01",
+   "kind": "prose-v",
+   "match": "V-05-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-07-02",
+   "kind": "prose-v",
+   "match": "V-07-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-07-03",
+   "kind": "prose-v",
+   "match": "V-07-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "prose-v:V-07-06",
+   "kind": "prose-v",
+   "match": "V-07-06",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:four hundred and ninety",
+   "kind": "word-number",
+   "match": "four hundred and ninety",
+   "value": 490.0,
+   "hint": "\"four hundred and ninety\" is 490; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:nineteen point two",
+   "kind": "word-number",
+   "match": "nineteen point two",
+   "value": 19.2,
+   "hint": "\"nineteen point two\" is 19.2; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:ninety three thousand",
+   "kind": "word-number",
+   "match": "ninety three thousand",
+   "value": 93000.0,
+   "hint": "\"ninety three thousand\" is 93000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:one hundred and forty four",
+   "kind": "word-number",
+   "match": "one hundred and forty four",
+   "value": 144.0,
+   "hint": "\"one hundred and forty four\" is 144; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:one hundred and twenty six",
+   "kind": "word-number",
+   "match": "one hundred and twenty six",
+   "value": 126.0,
+   "hint": "\"one hundred and twenty six\" is 126; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:one hundredth",
+   "kind": "word-number",
+   "match": "one hundredth",
+   "value": 0.01,
+   "hint": "\"one hundredth\" is 0.01; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:one thousandth",
+   "kind": "word-number",
+   "match": "one thousandth",
+   "value": 0.001,
+   "hint": "\"one thousandth\" is 0.001; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:seventy eight",
+   "kind": "word-number",
+   "match": "seventy eight",
+   "value": 78.0,
+   "hint": "\"seventy eight\" is 78; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:sixty eight",
+   "kind": "word-number",
+   "match": "sixty eight",
+   "value": 68.0,
+   "hint": "\"sixty eight\" is 68; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:sixty four",
+   "kind": "word-number",
+   "match": "sixty four",
+   "value": 64.0,
+   "hint": "\"sixty four\" is 64; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:thirty nine",
+   "kind": "word-number",
+   "match": "thirty nine",
+   "value": 39.0,
+   "hint": "\"thirty nine\" is 39; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:two hundred",
+   "kind": "word-number",
+   "match": "two hundred",
+   "value": 200.0,
+   "hint": "\"two hundred\" is 200; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.2",
+   "key": "word-number:two hundred and fifty five",
+   "kind": "word-number",
+   "match": "two hundred and fifty five",
+   "value": 255.0,
+   "hint": "\"two hundred and fifty five\" is 255; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-04-12",
+   "kind": "prose-v",
+   "match": "V-04-12",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-01",
+   "kind": "prose-v",
+   "match": "V-05-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-05",
+   "kind": "prose-v",
+   "match": "V-05-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-10",
+   "kind": "prose-v",
+   "match": "V-05-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-11",
+   "kind": "prose-v",
+   "match": "V-05-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-05-35",
+   "kind": "prose-v",
+   "match": "V-05-35",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-06-14",
+   "kind": "prose-v",
+   "match": "V-06-14",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-06-15",
+   "kind": "prose-v",
+   "match": "V-06-15",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-06-16",
+   "kind": "prose-v",
+   "match": "V-06-16",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "prose-v:V-06-17",
+   "kind": "prose-v",
+   "match": "V-06-17",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:five hundred and twelve",
+   "kind": "word-number",
+   "match": "five hundred and twelve",
+   "value": 512.0,
+   "hint": "\"five hundred and twelve\" is 512; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:forty",
+   "kind": "word-number",
+   "match": "forty",
+   "value": 40.0,
+   "hint": "\"forty\" is 40; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:four hundred",
+   "kind": "word-number",
+   "match": "four hundred",
+   "value": 400.0,
+   "hint": "\"four hundred\" is 400; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:ninety three thousand",
+   "kind": "word-number",
+   "match": "ninety three thousand",
+   "value": 93000.0,
+   "hint": "\"ninety three thousand\" is 93000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:one hundred and sixty",
+   "kind": "word-number",
+   "match": "one hundred and sixty",
+   "value": 160.0,
+   "hint": "\"one hundred and sixty\" is 160; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:one hundred and twelve",
+   "kind": "word-number",
+   "match": "one hundred and twelve",
+   "value": 112.0,
+   "hint": "\"one hundred and twelve\" is 112; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:six hundred and forty",
+   "kind": "word-number",
+   "match": "six hundred and forty",
+   "value": 640.0,
+   "hint": "\"six hundred and forty\" is 640; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:sixteen thousand",
+   "kind": "word-number",
+   "match": "sixteen thousand",
+   "value": 16000.0,
+   "hint": "\"sixteen thousand\" is 16000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.3",
+   "key": "word-number:twenty five",
+   "kind": "word-number",
+   "match": "twenty five",
+   "value": 25.0,
+   "hint": "\"twenty five\" is 25; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-04-03",
+   "kind": "prose-v",
+   "match": "V-04-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-05-20",
+   "kind": "prose-v",
+   "match": "V-05-20",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-05-26",
+   "kind": "prose-v",
+   "match": "V-05-26",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-05-41",
+   "kind": "prose-v",
+   "match": "V-05-41",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-05-57",
+   "kind": "prose-v",
+   "match": "V-05-57",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-02",
+   "kind": "prose-v",
+   "match": "V-06-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-03",
+   "kind": "prose-v",
+   "match": "V-06-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-06",
+   "kind": "prose-v",
+   "match": "V-06-06",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-07",
+   "kind": "prose-v",
+   "match": "V-06-07",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-08",
+   "kind": "prose-v",
+   "match": "V-06-08",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-09",
+   "kind": "prose-v",
+   "match": "V-06-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-10",
+   "kind": "prose-v",
+   "match": "V-06-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-11",
+   "kind": "prose-v",
+   "match": "V-06-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.4",
+   "key": "prose-v:V-06-12",
+   "kind": "prose-v",
+   "match": "V-06-12",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-01-05",
+   "kind": "prose-v",
+   "match": "V-01-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-01-07",
+   "kind": "prose-v",
+   "match": "V-01-07",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-01-09",
+   "kind": "prose-v",
+   "match": "V-01-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-01-11",
+   "kind": "prose-v",
+   "match": "V-01-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-04-09",
+   "kind": "prose-v",
+   "match": "V-04-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-04-10",
+   "kind": "prose-v",
+   "match": "V-04-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-04-11",
+   "kind": "prose-v",
+   "match": "V-04-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-04-12",
+   "kind": "prose-v",
+   "match": "V-04-12",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-05-01",
+   "kind": "prose-v",
+   "match": "V-05-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-05-05",
+   "kind": "prose-v",
+   "match": "V-05-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-05-10",
+   "kind": "prose-v",
+   "match": "V-05-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-06-14",
+   "kind": "prose-v",
+   "match": "V-06-14",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-06-15",
+   "kind": "prose-v",
+   "match": "V-06-15",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "prose-v:V-06-16",
+   "kind": "prose-v",
+   "match": "V-06-16",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:fifteen",
+   "kind": "word-number",
+   "match": "fifteen",
+   "value": 15.0,
+   "hint": "\"fifteen\" is 15; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:five hundred and twelve",
+   "kind": "word-number",
+   "match": "five hundred and twelve",
+   "value": 512.0,
+   "hint": "\"five hundred and twelve\" is 512; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:forty",
+   "kind": "word-number",
+   "match": "forty",
+   "value": 40.0,
+   "hint": "\"forty\" is 40; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:four hundred",
+   "kind": "word-number",
+   "match": "four hundred",
+   "value": 400.0,
+   "hint": "\"four hundred\" is 400; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:four tenths",
+   "kind": "word-number",
+   "match": "four tenths",
+   "value": 0.4,
+   "hint": "\"four tenths\" is 0.4; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:ninety three",
+   "kind": "word-number",
+   "match": "ninety three",
+   "value": 93.0,
+   "hint": "\"ninety three\" is 93; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:ninety three thousand",
+   "kind": "word-number",
+   "match": "ninety three thousand",
+   "value": 93000.0,
+   "hint": "\"ninety three thousand\" is 93000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one hundred and forty four",
+   "kind": "word-number",
+   "match": "one hundred and forty four",
+   "value": 144.0,
+   "hint": "\"one hundred and forty four\" is 144; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one hundred and sixty",
+   "kind": "word-number",
+   "match": "one hundred and sixty",
+   "value": 160.0,
+   "hint": "\"one hundred and sixty\" is 160; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one one hundredth",
+   "kind": "word-number",
+   "match": "one one hundredth",
+   "value": 0.01,
+   "hint": "\"one one hundredth\" is 0.01; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one thousand",
+   "kind": "word-number",
+   "match": "one thousand",
+   "value": 1000.0,
+   "hint": "\"one thousand\" is 1000; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one thousand and twenty four",
+   "kind": "word-number",
+   "match": "one thousand and twenty four",
+   "value": 1024.0,
+   "hint": "\"one thousand and twenty four\" is 1024; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:one thousand two hundred and forty eight",
+   "kind": "word-number",
+   "match": "one thousand two hundred and forty eight",
+   "value": 1248.0,
+   "hint": "\"one thousand two hundred and forty eight\" is 1248; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:six hundred and forty",
+   "kind": "word-number",
+   "match": "six hundred and forty",
+   "value": 640.0,
+   "hint": "\"six hundred and forty\" is 640; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:sixty four",
+   "kind": "word-number",
+   "match": "sixty four",
+   "value": 64.0,
+   "hint": "\"sixty four\" is 64; write the quantity as digits"
+  },
+  {
+   "file": "chapter05.md",
+   "section": "5.5",
+   "key": "word-number:twenty five",
+   "kind": "word-number",
+   "match": "twenty five",
+   "value": 25.0,
+   "hint": "\"twenty five\" is 25; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-01-22",
+   "kind": "prose-v",
+   "match": "V-01-22",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-03-02",
+   "kind": "prose-v",
+   "match": "V-03-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-03-03",
+   "kind": "prose-v",
+   "match": "V-03-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-05-10",
+   "kind": "prose-v",
+   "match": "V-05-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-05-11",
+   "kind": "prose-v",
+   "match": "V-05-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "prose-v:V-06-18",
+   "kind": "prose-v",
+   "match": "V-06-18",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.1",
+   "key": "word-number:nineteen",
+   "kind": "word-number",
+   "match": "nineteen",
+   "value": 19.0,
+   "hint": "\"nineteen\" is 19; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-06-13",
+   "kind": "prose-v",
+   "match": "V-06-13",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-06-14",
+   "kind": "prose-v",
+   "match": "V-06-14",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-06-15",
+   "kind": "prose-v",
+   "match": "V-06-15",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-06-16",
+   "kind": "prose-v",
+   "match": "V-06-16",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.2",
+   "key": "prose-v:V-06-17",
+   "kind": "prose-v",
+   "match": "V-06-17",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.3",
+   "key": "prose-v:V-06-19",
+   "kind": "prose-v",
+   "match": "V-06-19",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.4",
+   "key": "prose-v:V-01-22",
+   "kind": "prose-v",
+   "match": "V-01-22",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.4",
+   "key": "prose-v:V-05-35",
+   "kind": "prose-v",
+   "match": "V-05-35",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.4",
+   "key": "prose-v:V-06-01",
+   "kind": "prose-v",
+   "match": "V-06-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.4",
+   "key": "prose-v:V-06-02",
+   "kind": "prose-v",
+   "match": "V-06-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.4",
+   "key": "word-number:one hundred",
+   "kind": "word-number",
+   "match": "one hundred",
+   "value": 100.0,
+   "hint": "\"one hundred\" is 100; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.5",
+   "key": "prose-v:V-05-31",
+   "kind": "prose-v",
+   "match": "V-05-31",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.5",
+   "key": "prose-v:V-05-35",
+   "kind": "prose-v",
+   "match": "V-05-35",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.5",
+   "key": "prose-v:V-06-16",
+   "kind": "prose-v",
+   "match": "V-06-16",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.5",
+   "key": "word-number:one hundred",
+   "kind": "word-number",
+   "match": "one hundred",
+   "value": 100.0,
+   "hint": "\"one hundred\" is 100; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "6.6",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "Summary",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter06.md",
+   "section": "The same reduction, rebuilt as something you would have to wire",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "prose-v:V-05-35",
+   "kind": "prose-v",
+   "match": "V-05-35",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:eighteen",
+   "kind": "word-number",
+   "match": "eighteen",
+   "value": 18.0,
+   "hint": "\"eighteen\" is 18; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:forty",
+   "kind": "word-number",
+   "match": "forty",
+   "value": 40.0,
+   "hint": "\"forty\" is 40; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:four hundred",
+   "kind": "word-number",
+   "match": "four hundred",
+   "value": 400.0,
+   "hint": "\"four hundred\" is 400; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:ninety",
+   "kind": "word-number",
+   "match": "ninety",
+   "value": 90.0,
+   "hint": "\"ninety\" is 90; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:one thousand",
+   "kind": "word-number",
+   "match": "one thousand",
+   "value": 1000.0,
+   "hint": "\"one thousand\" is 1000; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:one thousand and",
+   "kind": "word-number",
+   "match": "one thousand and",
+   "value": 1000.0,
+   "hint": "\"one thousand and\" is 1000; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:seventy eight",
+   "kind": "word-number",
+   "match": "seventy eight",
+   "value": 78.0,
+   "hint": "\"seventy eight\" is 78; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:ten thousand",
+   "kind": "word-number",
+   "match": "ten thousand",
+   "value": 10000.0,
+   "hint": "\"ten thousand\" is 10000; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:thirty",
+   "kind": "word-number",
+   "match": "thirty",
+   "value": 30.0,
+   "hint": "\"thirty\" is 30; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:thirty nine",
+   "kind": "word-number",
+   "match": "thirty nine",
+   "value": 39.0,
+   "hint": "\"thirty nine\" is 39; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.1",
+   "key": "word-number:two hundred",
+   "kind": "word-number",
+   "match": "two hundred",
+   "value": 200.0,
+   "hint": "\"two hundred\" is 200; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-01-09",
+   "kind": "prose-v",
+   "match": "V-01-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-06-02",
+   "kind": "prose-v",
+   "match": "V-06-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-06-06",
+   "kind": "prose-v",
+   "match": "V-06-06",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-06-09",
+   "kind": "prose-v",
+   "match": "V-06-09",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-06-10",
+   "kind": "prose-v",
+   "match": "V-06-10",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "prose-v:V-06-11",
+   "kind": "prose-v",
+   "match": "V-06-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:eighteen",
+   "kind": "word-number",
+   "match": "eighteen",
+   "value": 18.0,
+   "hint": "\"eighteen\" is 18; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:ninety nine point nine nine",
+   "kind": "word-number",
+   "match": "ninety nine point nine nine",
+   "value": 99.99,
+   "hint": "\"ninety nine point nine nine\" is 99.99; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:one thousand two hundred and forty eight",
+   "kind": "word-number",
+   "match": "one thousand two hundred and forty eight",
+   "value": 1248.0,
+   "hint": "\"one thousand two hundred and forty eight\" is 1248; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:one twenty seven",
+   "kind": "word-number",
+   "match": "one twenty seven",
+   "value": 28.0,
+   "hint": "\"one twenty seven\" is 28; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:thirty",
+   "kind": "word-number",
+   "match": "thirty",
+   "value": 30.0,
+   "hint": "\"thirty\" is 30; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:thirty one",
+   "kind": "word-number",
+   "match": "thirty one",
+   "value": 31.0,
+   "hint": "\"thirty one\" is 31; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:thirty two",
+   "kind": "word-number",
+   "match": "thirty two",
+   "value": 32.0,
+   "hint": "\"thirty two\" is 32; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:twenty seven",
+   "kind": "word-number",
+   "match": "twenty seven",
+   "value": 27.0,
+   "hint": "\"twenty seven\" is 27; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.2",
+   "key": "word-number:two billion",
+   "kind": "word-number",
+   "match": "two billion",
+   "value": 2000000000.0,
+   "hint": "\"two billion\" is 2e+09; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.3",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.3",
+   "key": "prose-v:V-06-04",
+   "kind": "prose-v",
+   "match": "V-06-04",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.3",
+   "key": "prose-v:V-06-05",
+   "kind": "prose-v",
+   "match": "V-06-05",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "prose-v:V-07-11",
+   "kind": "prose-v",
+   "match": "V-07-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "prose-v:V-07-15",
+   "kind": "prose-v",
+   "match": "V-07-15",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "prose-v:V-07-23",
+   "kind": "prose-v",
+   "match": "V-07-23",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "prose-v:V-07-24",
+   "kind": "prose-v",
+   "match": "V-07-24",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "word-number:eighteen",
+   "kind": "word-number",
+   "match": "eighteen",
+   "value": 18.0,
+   "hint": "\"eighteen\" is 18; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "word-number:nine hundred",
+   "kind": "word-number",
+   "match": "nine hundred",
+   "value": 900.0,
+   "hint": "\"nine hundred\" is 900; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "word-number:thirty one",
+   "kind": "word-number",
+   "match": "thirty one",
+   "value": 31.0,
+   "hint": "\"thirty one\" is 31; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.4",
+   "key": "word-number:twenty seven",
+   "kind": "word-number",
+   "match": "twenty seven",
+   "value": 27.0,
+   "hint": "\"twenty seven\" is 27; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.5",
+   "key": "audit-language:registered figure",
+   "kind": "audit-language",
+   "match": "registered figure",
+   "value": null,
+   "hint": "a number in prose does not need its provenance as an adjective"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.5",
+   "key": "audit-language:the record says",
+   "kind": "audit-language",
+   "match": "the record says",
+   "value": null,
+   "hint": "the evidence machinery is talking; say what it shows"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.5",
+   "key": "audit-language:the record states",
+   "kind": "audit-language",
+   "match": "the record states",
+   "value": null,
+   "hint": "the evidence machinery is talking; say what it shows"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "7.6",
+   "key": "word-number:one hundred and forty four",
+   "kind": "word-number",
+   "match": "one hundred and forty four",
+   "value": 144.0,
+   "hint": "\"one hundred and forty four\" is 144; write the quantity as digits"
+  },
+  {
+   "file": "chapter07.md",
+   "section": "The cheapest coin in the whole machine, and what it buys wrong",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.1",
+   "key": "prose-v:V-03-03",
+   "kind": "prose-v",
+   "match": "V-03-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.1",
+   "key": "prose-v:V-05-11",
+   "kind": "prose-v",
+   "match": "V-05-11",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.2",
+   "key": "prose-v:V-05-25",
+   "kind": "prose-v",
+   "match": "V-05-25",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.2",
+   "key": "prose-v:V-05-40",
+   "kind": "prose-v",
+   "match": "V-05-40",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.3",
+   "key": "prose-v:V-06-01",
+   "kind": "prose-v",
+   "match": "V-06-01",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter08.md",
+   "section": "8.3",
+   "key": "prose-v:V-06-02",
+   "kind": "prose-v",
+   "match": "V-06-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.1",
+   "key": "audit-language:records column",
+   "kind": "audit-language",
+   "match": "records column",
+   "value": null,
+   "hint": "point readers at the table if it helps; do not narrate its columns"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.1",
+   "key": "audit-language:registered gap",
+   "kind": "audit-language",
+   "match": "registered gap",
+   "value": null,
+   "hint": "a gap is a gap; do not grant it rank in the record system"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.1",
+   "key": "audit-language:which reading",
+   "kind": "audit-language",
+   "match": "which reading",
+   "value": null,
+   "hint": "compare readings in reader terms, not by pointing at the machinery"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.3",
+   "key": "audit-language:this registry",
+   "kind": "audit-language",
+   "match": "this registry",
+   "value": null,
+   "hint": "the reader is studying the signal path, not the evidence files"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.3",
+   "key": "word-number:one hundred forty",
+   "kind": "word-number",
+   "match": "one hundred forty",
+   "value": 140.0,
+   "hint": "\"one hundred forty\" is 140; write the quantity as digits"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.3",
+   "key": "word-number:seventy",
+   "kind": "word-number",
+   "match": "seventy",
+   "value": 70.0,
+   "hint": "\"seventy\" is 70; write the quantity as digits"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.3",
+   "key": "word-number:thirteen",
+   "kind": "word-number",
+   "match": "thirteen",
+   "value": 13.0,
+   "hint": "\"thirteen\" is 13; write the quantity as digits"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.3",
+   "key": "word-number:twenty seven",
+   "kind": "word-number",
+   "match": "twenty seven",
+   "value": 27.0,
+   "hint": "\"twenty seven\" is 27; write the quantity as digits"
+  },
+  {
+   "file": "chapter09.md",
+   "section": "9.4",
+   "key": "word-number:seventeen",
+   "kind": "word-number",
+   "match": "seventeen",
+   "value": 17.0,
+   "hint": "\"seventeen\" is 17; write the quantity as digits"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "Numbers the project cannot produce yet",
+   "key": "prose-v:V-07-03",
+   "kind": "prose-v",
+   "match": "V-07-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "Order of work, if a reader wants to help",
+   "key": "prose-v:V-02-28",
+   "kind": "prose-v",
+   "match": "V-02-28",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "Order of work, if a reader wants to help",
+   "key": "prose-v:V-07-03",
+   "kind": "prose-v",
+   "match": "V-07-03",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "Records that disagree with themselves",
+   "key": "prose-v:V-02-33",
+   "kind": "prose-v",
+   "match": "V-02-33",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "The one that changes other answers",
+   "key": "prose-v:V-02-28",
+   "kind": "prose-v",
+   "match": "V-02-28",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "open-questions.md",
+   "section": "The one that changes other answers",
+   "key": "prose-v:V-07-02",
+   "kind": "prose-v",
+   "match": "V-07-02",
+   "value": null,
+   "hint": "record ids belong in this section's Traceability table, never in a sentence"
+  },
+  {
+   "file": "preface.md",
+   "section": "How this book cuts the problem",
+   "key": "word-number:eighty",
+   "kind": "word-number",
+   "match": "eighty",
+   "value": 80.0,
+   "hint": "\"eighty\" is 80; write the quantity as digits"
+  },
+  {
+   "file": "preface.md",
+   "section": "How this book cuts the problem",
+   "key": "word-number:sixteen",
+   "kind": "word-number",
+   "match": "sixteen",
+   "value": 16.0,
+   "hint": "\"sixteen\" is 16; write the quantity as digits"
+  },
+  {
+   "file": "preface.md",
+   "section": "The machine that waits",
+   "key": "word-number:seventy",
+   "kind": "word-number",
+   "match": "seventy",
+   "value": 70.0,
+   "hint": "\"seventy\" is 70; write the quantity as digits"
+  }
+ ]
+}

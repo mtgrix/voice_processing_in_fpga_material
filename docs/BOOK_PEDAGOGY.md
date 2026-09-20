@@ -138,6 +138,12 @@ cắt đôi mệnh đề mà người đọc đang theo.
   trong mục không còn hồ sơ nào cùng phạm vi.
 * Một claim dẫn xuất vẫn phải ghi rõ là dẫn xuất, và nêu tên các hồ sơ là số hạng.
 * Một chữ số trần trong văn bản luôn bị đọc là một đại lượng. `scan_numbers.py` bắt cả `1.` của danh sách đánh số lẫn `| **1 Air and microphone** |` của một bảng, và nó chỉ miễn cho "chapter 4" ở dạng số ít -- "chapters 4, 5 and 8" không khớp mẫu, nên hai số sau vẫn bị tính. Vì vậy: danh sách tầng viết bằng gạch đầu dòng, tên tầng đứng một mình không số, nhiều chương thì nhắc lại mỗi lần một chương, và số tầng chỉ xuất hiện trong fence `tikz` -- vùng đã được miễn. Thứ tự của sáu tầng do chính thứ tự dòng trong danh sách giữ.
+* Ba điều cấm của mục này được máy giữ chứ không phải lời hứa. `scripts/verification/prose_cage.py`
+  khiến gate đỏ nếu một `V-xx-yy` nằm trên dòng văn xuôi (kể cả trong backticks), nếu một câu văn xuôi
+  chứa cụm từ kiểm toán kiểu "the records say" hay "registered gap", hoặc nếu một số đo viết bằng chữ
+  (thay vì chữ số) xuất hiện trên dòng văn xuôi. Số 12 về xuống được phép viết bằng chữ theo quy ước
+  tiếng Anh; từ 13 trở lên là chữ số. Nợ hiện tại ghi trong `docs/verification/prose_baseline.json` --
+  chương nào sửa càng làm baseline đó co lại.
 
 ---
 

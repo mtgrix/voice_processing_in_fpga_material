@@ -398,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
         shown = fresh if (args.check and not args.strict) else findings
         for rec in shown:
             hint = (
-                "  (registered by " + ", ".join(rec["registered_elsewhere"]) + ", not cited here)"
+                "  (registered by "
+                + ", ".join(rec["registered_elsewhere"])
+                + "; cite it in this section's Traceability table)"
                 if rec["registered_elsewhere"]
                 else "  (no registered value anywhere equals this)"
             )

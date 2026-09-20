@@ -77,6 +77,7 @@ python scripts/verification/render_claims.py --check  # markdown matches claims.
 python scripts/verification/build_source_index.py --check  # registry matches its spec
 python scripts/verification/build_bibliography.py --check  # .bib matches the registry
 python scripts/verification/scan_numbers.py --check  # every printed number traces to a claim its section cites
+python scripts/verification/prose_cage.py --check  # prose is free of V-codes, audit phrases, and spelled-out quantities
 python scripts/verification/figure_numbers.py  # every prose "Figure N" is the number that float gets
 ```
 
