@@ -7,7 +7,7 @@
 ## The cheapest coin in the whole machine, and what it buys wrong
 
 Somewhere between the model that trains and the model that runs, the numbers get smaller. A weight or
-an activation that a training framework stores in sixteen bits can be squeezed to eight, or four, or
+an activation that a training framework stores in 16 bits can be squeezed to eight, or four, or
 fewer, and almost everything the FPGA is being brought in for improves when it does: a narrower number
 is fewer wires to route, less memory to hold it, and less energy to move it across that memory, which
 chapter 3 established is where the real cost lives. This chapter is about that squeeze and about the one
@@ -83,8 +83,7 @@ variance of that error is one twelfth of the step squared:
 > **What it means.** Rounding error under a fine uniform quantizer spreads evenly across one step,
 > and the variance of that spread is a twelfth of the step squared. Doubling the width halves the
 > step, and halving the step cuts the noise power by a quarter -- about six decibels, in the view the
-> next card takes. The formula is the book's own derivation from the uniform-quantizer model, not a
-> registered figure.
+> next card takes. The formula is the book's own derivation from the uniform-quantizer model.
 >
 > **What it costs.** Nothing to compute, because this is a variance, not a circuit. What it does is
 > fix the currency of the chapter: the noise floor is set by the step, the step is set by the range
@@ -98,7 +97,7 @@ variance of that error is one twelfth of the step squared:
 The useful measure is how far a real speech sample sits above that floor. The familiar law for a
 full-scale sinusoid gives about six decibels per bit plus a small constant, but speech is not a
 sinusoid: it swings from peak to average, and the ratio between the two -- the crest factor, which the
-book estimates at twelve to eighteen decibels for conversational speech -- spends part of every width
+book estimates at 12 to 18 dB for conversational speech -- spends part of every width
 before the quantizer has done anything:
 
 > **The formula.** $\mathrm{SQNR}_{\text{speech}} \;\approx\; 6.02\, b \;+\; 1.76 \;-\; 10 \log_{10}(\mathrm{PAR})$
@@ -108,19 +107,19 @@ before the quantizer has done anything:
 > - $b$ — the width in bits.
 > - $6.02$ — the decibels gained per bit, the slope of the ideal uniform quantizer.
 > - $1.76$ — the constant the ideal sinusoid model adds on top.
-> - $\mathrm{PAR}$ — the peak-to-average ratio of the utterance, the crest factor. Twelve to
->   eighteen decibels for conversational speech: the book's own estimate, not a registered figure.
+> - $\mathrm{PAR}$ — the peak-to-average ratio of the utterance, the crest factor. 12 to
+>   18 dB for conversational speech: the book's own estimate.
 >
 > **What it means.** Each extra bit buys about six decibels of floor, and speech's own swing from
-> peak to average spends part of that before the quantizer does anything. A component that sits forty
-> decibels below full scale -- the energy a fricative carries, again the book's own estimate -- then
+> peak to average spends part of that before the quantizer does anything. A component that sits 40
+> dB below full scale -- the energy a fricative carries, again the book's own estimate -- then
 > sees a floor that much closer. The quiet content is protected not by the average signal level but
 > by the width left after the crest factor is paid, which is why the first question of any
 > quantization budget is this one: how many decibels does the quietest meaningful part need?
 >
 > **What it costs.** Choosing $b$ pays in every currency the fabric charges: one bit is one wire per
 > value, one cell per stored value, one lane per arithmetic unit. The speech statistics in this card
-> are estimates, not registered figures, and the traceability table at the end of the section marks
+> are the book's own estimates, and the traceability table at the end of the section marks
 > the records the rest of the argument leans on.
 >
 > **What it does not say.** It does not say the signal-to-quantization-noise ratio is the task
@@ -130,14 +129,14 @@ before the quantizer has done anything:
 > compresses the dynamic range before the model sees the features, so a layer fed compressed inputs
 > meets a different noise trade than one fed raw spectral energy.
 
-**Application.** The consequence is memory traffic, and the records give the ladder. An arithmetic
+**Application.** The consequence is memory traffic, and the energy ladder sets the prices. An arithmetic
 operation on the kinds of accelerators this book studies costs one unit of energy, moving a value into
-on-chip memory costs more than that, and moving it off-chip costs two hundred times the arithmetic
-figure -- a gap the record registers as two orders of magnitude. A narrower word is worth
+on-chip memory costs more than that, and moving it off-chip costs 200 times the arithmetic
+figure -- a gap of two orders of magnitude. A narrower word is worth
 proportionally more the farther the number travels, which is why quantization earns its keep on an
 FPGA: the fabric's ridge point, the compute density below which a design is memory-bound, sits
-between thirty-nine and seventy-eight operations per byte on the KV260 and at roughly four hundred
-and ninety on the Orin NX. The KV260 side of the book's comparison therefore lives or dies on how many
+an order of magnitude nearer the origin than the GPU's, as the ridge table in section 7.1
+records. The KV260 side of the book's comparison therefore lives or dies on how many
 bytes a model moves, and every bit a quantization scheme removes from the weight stream is a byte that
 never crosses that ridge.
 
@@ -148,7 +147,7 @@ signal-to-noise figure against those gates is measuring the wrong thing, and thi
 
 **How the front end spreads the noise: SQNR across log-Mel bands.**
 
-The crest factor spent the width on the waveform, but the model does not multiply the waveform. The front end of chapter 6 compresses the spectrum before the model sees it: the energy the mel filterbank sums is converted to ten times its common logarithm, so each feature is a reading in decibels. A logarithm turns a multiplicative range into an additive one. In the linear domain a loud band can sit one thousand times above a quiet one, a span of thirty decibels, computed as ten times the common logarithm of one thousand, and a step that reaches the loudest value is far too coarse to resolve the quietest. After the log the same span is thirty decibels, and a fixed step represents the same number of decibels everywhere along it. That is the good news of the front end, and also the trap: the floor becomes uniform in decibels, but the signal that stands above the floor is not.
+The crest factor spent the width on the waveform, but the model does not multiply the waveform. The front end of chapter 6 compresses the spectrum before the model sees it: the energy the mel filterbank sums is converted to ten times its common logarithm, so each feature is a reading in decibels. A logarithm turns a multiplicative range into an additive one. In the linear domain a loud band can sit 1,000 times above a quiet one, a span of 30 dB, computed as ten times the common logarithm of 1,000, and a step that reaches the loudest value is far too coarse to resolve the quietest. After the log the same span is 30 dB, and a fixed step represents the same number of decibels everywhere along it. That is the good news of the front end, and also the trap: the floor becomes uniform in decibels, but the signal that stands above the floor is not.
 
 The mechanism is a derivative. Let the linear energy of mel band $b$, as the front end measures it after the filterbank sum, be $P_{b}$, and let the fixed-point path carry a step $\delta$ in that linear domain. The reading the model multiplies is $y_{b} = 10 \log_{10} P_{b}$, and a linear error of one step perturbs the reading by the derivative of the mapping at the band's own level:
 
@@ -163,22 +162,21 @@ The mechanism is a derivative. Let the linear energy of mel band $b$, as the fro
 >
 > **What it means.** A logarithm is a per-band derivative machine. The change in the reading equals the derivative of the mapping at the band's own level multiplied by the change in the level, and the derivative falls as the level rises: it is ten over the natural logarithm of ten, divided by the band's linear energy. The same absolute step therefore becomes a large decibel error on a quiet band and a small one on a loud band; the band error is inversely proportional to the band's linear level, derived from the derivative of the logarithmic mapping.
 >
-> **What it costs.** The quiet bands pay in the currency section 7.1 set. Their margin below the loudest band is exactly the factor by which the step's decibel error is amplified: a band ten decibels below the loudest hears the step enlarged ten times, computed as ten raised to the quotient of ten by ten, and a band forty decibels below hears it enlarged ten thousand times, computed by the same rule. The floor does not move; the signal it lands on is what shrinks.
+> **What it costs.** The quiet bands pay in the currency section 7.1 set. Their margin below the loudest band is exactly the factor by which the step's decibel error is amplified: a band ten decibels below the loudest hears the step enlarged ten times, computed as ten raised to the quotient of ten by ten, and a band 40 dB below hears it enlarged 10,000 times, computed by the same rule. The floor does not move; the signal it lands on is what shrinks.
 >
 > **What it does not say.** It does not say the model's own quantizer lives in the linear domain. If the quantizer works after the log, which is where the front end delivers the reading, the step is already a step in decibels and the same absolute error lands on every band; the quiet band's difficulty is then the small signal above the floor rather than an amplified step. Both readings follow from the same derivative, seen from the two sides of the logarithm, and the close of this block takes the log-domain view because that is the arithmetic the model performs.
 
 The unit deserves one plain sentence, because the whole argument lives in it. A decibel is a ratio stated on a logarithmic scale, and a log-Mel reading is a number of decibels, so a step in the reading is a step in decibels wherever it lands. The model's INT8 grid is therefore uniform in decibels too: each cell of the grid covers the same number of decibels on every band, and the resolution a band gets is equal to every other band's rather than proportional to its loudness. That equality is the front end's purpose, the compression the intuition of the section promised: the logarithmic map is what lets one grid serve a dynamic range no fixed-point linear scale could hold in eight bits. What the map cannot do is enlarge the quiet band's content; it can only make the floor uniform. The uniform floor is the price, and the derivation above is the receipt: every band's margin is measured from the same floor, so the band that sits far down the ladder starts that much closer to the noise, whatever the grid's step is.
 
-The eighty mel bands the front end runs across, registered as `V-05-35`, each bring their own linear level to the log, and speech does not fill them evenly. The voiced parts spend their energy at the low mel indices, where the vowels live; the high-mel bands carry the fricatives, the breaths and the word endings, the content section 7.1's crest-factor estimate already flagged as the quietest meaningful parts of the utterance. For those bands the reading is small while the floor is the same absolute number of decibels below every reading the range touches, so the band's own margin above the floor is smaller by exactly how far the band sits below the top of the range. That is the crest factor replayed at one band: the loudest band pays the wave-form's peak-to-average swing, and every quieter band pays its own swing on top, band by band, down the eighty-band ladder the front end delivers. Averaging the noise over the frame helps as little here as it did in the intuition of the section: the loud low-mel bands dominate the mean, and a model can lose the quiet high-mel content and still pass a mean-squared-error check on the features at large.
+The 80 mel bands the front end runs across each bring their own linear level to the log, and speech does not fill them evenly. The voiced parts spend their energy at the low mel indices, where the vowels live; the high-mel bands carry the fricatives, the breaths and the word endings, the content section 7.1's crest-factor estimate already flagged as the quietest meaningful parts of the utterance. For those bands the reading is small while the floor is the same absolute number of decibels below every reading the range touches, so the band's own margin above the floor is smaller by exactly how far the band sits below the top of the range. That is the crest factor replayed at one band: the loudest band pays the wave-form's peak-to-average swing, and every quieter band pays its own swing on top, band by band, down the 80-band ladder the front end delivers. Averaging the noise over the frame helps as little here as it did in the intuition of the section: the loud low-mel bands dominate the mean, and a model can lose the quiet high-mel content and still pass a mean-squared-error check on the features at large.
 
-The ladder's bottom is where the book's own figures make the problem concrete. The energy ladder of the section's Application prices an off-chip access at two hundred times an arithmetic operation, and the ridge point that separates memory-bound from compute-bound designs is where the extra width shows up first: a feature that must survive the memory budget pays for every bit it carries across that ridge. Quantizing the quiet band is therefore not cosmetic, because on the batch-one streaming shape every hop is a fresh trip across the ridge, and the quietest band's margin is the one that decides whether the quantization error is a lost phoneme or merely a presence in the noise floor. A design that treats the loud and quiet bands as one population inherits the loudest band's step for the whole eighty-band ladder, including the bands that needed the finest steps most. That is the sentence section 7.2 exists to answer, and the close of this block states it plainly.
+The ladder's bottom is where the book's own figures make the problem concrete. The energy ladder of the section's Application prices an off-chip access at 200 times an arithmetic operation, and the ridge point that separates memory-bound from compute-bound designs is where the extra width shows up first: a feature that must survive the memory budget pays for every bit it carries across that ridge. Quantizing the quiet band is therefore not cosmetic, because on the batch-one streaming shape every hop is a fresh trip across the ridge, and the quietest band's margin is the one that decides whether the quantization error is a lost phoneme or merely a presence in the noise floor. A design that treats the loud and quiet bands as one population inherits the loudest band's step for the whole 80-band ladder, including the bands that needed the finest steps most. That is the sentence section 7.2 exists to answer, and the close of this block states it plainly.
 
-The practical reading is the one that surprises. INT8 at the quietest band is not INT8 at the utterance as a whole, because one eight-bit grid covers all eighty mel bands `V-05-35` and the grid is a single range. Calibration chooses where that range sits, and the estimator is where the choice becomes concrete. A maximum-minimum range that must also hold the loudest transient the stream has made stretches the decibel step, and the stretch is paid first by the bands with the least margin: the quiet high-mel bands whose content sits a short distance above the floor have the most to lose from a step that grows to protect a peak the task never reads. The estimator that protects them is the one that refuses to let the loud tail own the step, clipping it so the range is set by the level the task actually uses, or choosing the clipping point that keeps the most signal. That is section 7.2's estimator menu in one sentence: the choice between stretching the step to include the tail and clipping the tail to protect the band is the choice this chapter hands to calibration. This section fixed the floor; the next one chooses where the clipper sits.
+The practical reading is the one that surprises. INT8 at the quietest band is not INT8 at the utterance as a whole, because one eight-bit grid covers all 80 mel bands and the grid is a single range. Calibration chooses where that range sits, and the estimator is where the choice becomes concrete. A maximum-minimum range that must also hold the loudest transient the stream has made stretches the decibel step, and the stretch is paid first by the bands with the least margin: the quiet high-mel bands whose content sits a short distance above the floor have the most to lose from a step that grows to protect a peak the task never reads. The estimator that protects them is the one that refuses to let the loud tail own the step, clipping it so the range is set by the level the task actually uses, or choosing the clipping point that keeps the most signal. That is section 7.2's estimator menu in one sentence: the choice between stretching the step to include the tail and clipping the tail to protect the band is the choice this chapter hands to calibration. This section fixed the floor; the next one chooses where the clipper sits.
 
 
 **Traceability.** The records this section leans on. The speech statistics -- the crest factor, the
-dynamic range, the fricative level -- are the book's own estimates, not registered figures, and are
-printed as words for that reason; the energy ladder and the ridge points are registered claims.
+dynamic range, the fricative level -- are the book's own estimates; the energy ladder and the ridge points are the registered claims.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -250,14 +248,13 @@ numbers and the affine shifts interact:
 > before the design starts. The expensive case is an asymmetric weight, $Z_{w} \neq 0$: the term
 > $Z_{w} \sum_{k} q^{(a)}_{k}$ needs a live sum of each activation row, a second reduction inside the
 > datapath. That asymmetry -- weights are static, activations stream -- is why this section pushes
-> weights toward symmetric. The expansion is the section's own derivation from the registered affine
-> form, not a separate registered figure.
+> weights toward symmetric. The expansion is the section's own derivation from the affine
+> form.
 >
 > **What it costs.** An asymmetric weight zero point buys a second adder tree and a correction
 > multiply per output; the symmetric path buys none of it. On the KV260 the price lands in look-up
 > tables and routing rather than in the DSP slices themselves, because the board's 1,248 slices do
-> the same multiply either way; the extra tree lives beside them in logic. The book's own estimate,
-> not a registered figure.
+> the same multiply either way; the extra tree lives beside them in logic. The book's own estimate.
 >
 > **What it does not say.** It does not say asymmetric activations are unaffordable -- they are the
 > common case, and a single $Z_{a}$ folds into bias. It says the *weight* zero point is the expensive
@@ -299,12 +296,12 @@ constant and one shift:
 >   remember how many halvings.
 >
 > **What it means.** Three scale changes collapse into one multiplier. Storing $M_{0}$ as a signed
-> thirty-two-bit integer, with a scale that puts $2^{31} M_{0}$ at least $2^{30}$, keeps at least thirty bits
-> of relative accuracy -- which is what the record registers. The shift $n$ is wiring; the constant
+> 32-bit integer, with a scale that puts $2^{31} M_{0}$ at least $2^{30}$, keeps at least 30 bits
+> of relative accuracy -- the figure the recipe documents. The shift $n$ is wiring; the constant
 > multiply is one lane of DSP work.
 >
 > **What it costs.** One integer multiply and one shift per value at each layer boundary, two pieces
-> of the fabric's native vocabulary. The book's own estimate, not a registered figure.
+> of the fabric's native vocabulary. The book's own estimate.
 >
 > **What it does not say.** It does not say $M_{0}$ always falls out normalized. The formula is the
 > recipe the record gives, and a design that skips the normalization pays with a wider multiply. It
@@ -312,7 +309,7 @@ constant and one shift:
 
 **Application.** The step before any of this is useful is the statement "weights symmetric,
 activations affine", and the DSP48E2 makes the choice stick. The slice's multiplier is asymmetric in
-its own way -- one wide operand and one narrow one, twenty-seven bits across by eighteen -- and a
+its own way -- one wide operand and one narrow one, 27 bits across by 18 -- and a
 symmetric INT8 weight fits the narrow side exactly, leaving the wide side for the activation's
 intermediate growth. On the Orin NX the same choice is made by the toolchain, and the tensor core
 executes one INT8 layout for everything. The FPGA's version of the choice is geometric: each slice
@@ -321,7 +318,7 @@ correction logic where calibration says it is needed rather than where the data 
 
 **The four estimators, derived.**
 
-The menu the section above named is a set of answers to one question: where does the range end? Every estimator is a rule for picking a clipping point, and the step, the noise floor and the section 7.1 currency all follow from that one choice. The registered tool exposes the four rules together with the rounding modes and the batch-combination statistics (`V-06-10`); what the menu does not say is which rule protects what, so each estimator below is derived before it is priced.
+The menu the section above named is a set of answers to one question: where does the range end? Every estimator is a rule for picking a clipping point, and the step, the noise floor and the section 7.1 currency all follow from that one choice. The tool exposes the four rules together with the rounding modes and the batch-combination statistics; what the menu does not say is which rule protects what, so each estimator below is derived before it is priced.
 
 > **The formula.** $\Delta \;=\; \dfrac{r_{\max} - r_{\min}}{2^{b} - 1}$
 >
@@ -345,7 +342,7 @@ The menu the section above named is a set of answers to one question: where does
 > - $r_{p}$ — the value of the calibration distribution at that percentile.
 > - $\Delta_{p}$ — the step when the range is cut at $r_{p}$.
 >
-> **What it means.** Percentile calibration clips a tail and re-derives the step from the range that remains. The reduction factor is the derived quotient: the new step is the old step times the share of the range the kept portion occupies. In the usual setting the tool clips above the ninety-nine point nine nine percentile, so the step is set by the range nearly all speech actually uses, and the extreme values that pass the clip saturate, which is the point.
+> **What it means.** Percentile calibration clips a tail and re-derives the step from the range that remains. The reduction factor is the derived quotient: the new step is the old step times the share of the range the kept portion occupies. In the usual setting the tool clips above the 99.99th percentile, so the step is set by the range nearly all speech actually uses, and the extreme values that pass the clip saturate, which is the point.
 >
 > **What it costs.** The clipped tail is surrendered deliberately, and the surrender is the price that buys the finer step. The estimator is a trade, not a free lunch: saturation at the top of the range is exactly the overload error the next card names, and the quiet-band protection of section 7.1 is bought by spending it.
 >
@@ -362,7 +359,7 @@ The menu the section above named is a set of answers to one question: where does
 >
 > **What it means.** Mean-squared-error calibration writes down both costs of a clip and finds the point that balances them. The first term is the granular error: the step-squared-over-twelve variance of section 7.1, paid only by the values that survive the clip. The second term is the overload error: the values that fall outside pay the square of how far the clip pushed them, and the expectation counts how often that happens. Tighten the clip and the granular term shrinks while the overload grows; loosen it and the trade runs the other way. The minimum sits where the two slopes cross, a derived trade rather than a heuristic. The entropy, or KL, estimator is the information-theoretic version of the same balance: it chooses the clipping point that moves the least information, measured as the divergence between the empirical distribution and the quantized one.
 >
-> **What it costs.** The two information-faithful estimators carry the sharpest restriction in the registered menu: the tool refuses them for asymmetric quantization (`V-06-11`). Choosing entropy or MSE decides the symmetry too, and with it the zero-point arithmetic of the cross-term card: a designer who wants the information-optimal step must take the symmetric range that keeps the correction tree out of the datapath.
+> **What it costs.** The two information-faithful estimators carry the sharpest restriction in the documented menu: the tool refuses them for asymmetric quantization. Choosing entropy or MSE decides the symmetry too, and with it the zero-point arithmetic of the cross-term card: a designer who wants the information-optimal step must take the symmetric range that keeps the correction tree out of the datapath.
 >
 > **What it does not say.** It does not say the balancing point is the task's point. The expected squared error is a proxy for the recogniser's own gate, and section 7.1's closing verdict applies: an estimator that minimises a generic error against a task metric is measuring the wrong thing unless the two coincide.
 
@@ -382,19 +379,19 @@ The section above described the fold; the algebra is one line of collecting term
 > - $\varepsilon$ — the stabilisation constant added to the variance before the square root.
 > - $W'_{k,j}, b'_{k}$ — the folded kernel and bias, the only quantities the deployed graph stores.
 >
-> **What it means.** A convolution followed by an affine map is still a convolution. The folded kernel is the old kernel rescaled per channel by the normalization's own scale, and the folded bias is the old bias rescaled, pulled toward the running mean and pushed by the shift. Every symbol is defined because the fold is a substitution, not a new operation: the derived line is the convolution's output written into the normalization's formula and collected by channel. Computed on a per-channel scale, this is exactly what the record guards (`V-06-09`): an implementation that asserts evaluation mode, refuses a batch norm without running buffers, and rewrites the weight tensor by a per-channel scale.
+> **What it means.** A convolution followed by an affine map is still a convolution. The folded kernel is the old kernel rescaled per channel by the normalization's own scale, and the folded bias is the old bias rescaled, pulled toward the running mean and pushed by the shift. Every symbol is defined because the fold is a substitution, not a new operation: the derived line is the convolution's output written into the normalization's formula and collected by channel. Computed on a per-channel scale, this is exactly what the implementation guards: an implementation that asserts evaluation mode, refuses a batch norm without running buffers, and rewrites the weight tensor by a per-channel scale.
 >
-> **What it costs.** One rewrite of the kernel and bias, performed once before calibration. Inference pays nothing: the normalization pass is deleted from the graph, the state the record registers (`V-06-06`), so the streaming hop of section 7.1 never rides a separate normalization layer. The price is paid in the rewrite itself, and that is why calibration must run after the fold: a quantizer measures a range, a range is a property of a layer, and the layers that exist after the fold are the ones the deployed graph multiplies.
+> **What it costs.** One rewrite of the kernel and bias, performed once before calibration. Inference pays nothing: the normalization pass is deleted from the graph, so the streaming hop of section 7.1 never rides a separate normalization layer. The price is paid in the rewrite itself, and that is why calibration must run after the fold: a quantizer measures a range, a range is a property of a layer, and the layers that exist after the fold are the ones the deployed graph multiplies.
 >
 > **What it does not say.** It does not say the fold preserves training behavior. The running statistics make it an evaluation-mode rewrite only, which is the point of the registered guard, and a fold applied with batch statistics would not be the same map. It also does not say the fold and the quantizer commute: quantize the folded kernel, because it is what the design stores.
 
-**Why the thirty-bit bound holds.**
+**Why the 30-bit bound holds.**
 
-The existing requantization card registered the answer; the derivation is three lines. Let $m$ be the integer nearest to $2^{31} M_{0}$, the fixed-point representation the card chooses, with the normalized mantissa $M_{0}$ in the half-open interval $\big[\tfrac{1}{2}, 1\big)$. Because the mantissa never drops below one half, $2^{31} M_{0}$ is never below $2^{30}$: the stored integer always carries a magnitude of at least two to the thirtieth, and its most significant bit is always set. Rounding to the nearest integer leaves the stored constant $m / 2^{31}$ within one half of a unit in the last place of the true mantissa, which is a relative error of at most one over two to the thirty-first when measured against the smallest admissible mantissa, computed as the half-unit error divided by the mantissa's lower bound, about one part in two billion. "At least thirty bits of relative accuracy" is exactly this: the leading bit is always set, so the remaining thirty bits of the thirty-one-bit word are all significant, whatever the mantissa does inside its interval. The record registers the bound (`V-06-02`); the derivation is the section's own.
+The existing requantization card gave the answer; the derivation is three lines. Let $m$ be the integer nearest to $2^{31} M_{0}$, the fixed-point representation the card chooses, with the normalized mantissa $M_{0}$ in the half-open interval $\big[\tfrac{1}{2}, 1\big)$. Because the mantissa never drops below one half, $2^{31} M_{0}$ is never below $2^{30}$: the stored integer always carries a magnitude of at least $2^{30}$, and its most significant bit is always set. Rounding to the nearest integer leaves the stored constant $m / 2^{31}$ within one half of a unit in the last place of the true mantissa, which is a relative error of at most $2^{-31}$ when measured against the smallest admissible mantissa, computed as the half-unit error divided by the mantissa's lower bound, about one part in $2 \times 10^{9}$. "At least 30 bits of relative accuracy" is exactly this: the leading bit is always set, so the remaining 30 bits of the 31-bit word are all significant, whatever the mantissa does inside its interval. The derivation is the section's own.
 
 **The slice's half of the argument.**
 
-The multiplier is asymmetric, twenty-seven bits across by eighteen, and the choice the Application above stated makes the asymmetry useful: a symmetric INT8 weight sits inside the narrow operand with room to spare, while the wide operand absorbs the activation's growth across the reduction without ever spilling. Symmetry does the deeper work. With the weight zero point forced to zero, the expensive case of the cross-term card never enters the datapath: the live row-sum of activations is not computed, because there is no weight zero point to multiply it by, and the correction logic the one thousand two hundred and forty-eight slices (`V-01-09`) can afford is not consumed by arithmetic the data type forced. The slice prices the two halves of the cross-term card in silicon: the multiply is native, the zero-point correction is an extra adder tree, and symmetric weights simply refuse to build the tree. An asymmetric activation range remains perfectly comfortable, because its single zero point folds into the bias before the design starts; the pairing the section recommends, symmetric weights with affine activations, is precisely the pairing the slice's asymmetry wants, which is why the sentence this block sits under is a hardware sentence and not a style preference. The estimator that calibrates the pair matters for the same reason the fold does: the range the estimator picks becomes the step, and the step is what the slice multiplies.
+The multiplier is asymmetric, 27 bits across by 18, and the choice the Application above stated makes the asymmetry useful: a symmetric INT8 weight sits inside the narrow operand with room to spare, while the wide operand absorbs the activation's growth across the reduction without ever spilling. Symmetry does the deeper work. With the weight zero point forced to zero, the expensive case of the cross-term card never enters the datapath: the live row-sum of activations is not computed, because there is no weight zero point to multiply it by, and the correction logic the 1,248 slices can afford is not consumed by arithmetic the data type forced. The slice prices the two halves of the cross-term card in silicon: the multiply is native, the zero-point correction is an extra adder tree, and symmetric weights simply refuse to build the tree. An asymmetric activation range remains perfectly comfortable, because its single zero point folds into the bias before the design starts; the pairing the section recommends, symmetric weights with affine activations, is precisely the pairing the slice's asymmetry wants, which is why the sentence this block sits under is a hardware sentence and not a style preference. The estimator that calibrates the pair matters for the same reason the fold does: the range the estimator picks becomes the step, and the step is what the slice multiplies.
 
 
 **Traceability.** The records this section leans on. The arithmetic derivations -- the cross-term
@@ -520,7 +517,7 @@ round-half-to-even, because $14$ is even.
 and when the test bench includes the tie vectors -- a value whose dropped bits are exactly half a
 step. A golden model and a fabric that disagree only on ties pass any corpus that misses the boundary
 and still diverge in production. On the KV260 each rounding site costs two logic gates and one adder,
-which is the book's own estimate, not a registered figure. The registered cost is documentation: the
+which is the book's own estimate. The cost that is recorded is documentation: the
 default conversion is round-half-to-even wrapped from PyTorch, so the default golden model and the
 default RTL disagree on ties unless someone re-pins the rule.
 
@@ -681,11 +678,11 @@ The chain runs left to right: multiply, register, shift and round, register, sat
 
 **Why saturation and not wrap.** Two's complement arithmetic carries no overflow flag. When a result leaves the representable range it wraps, the largest positive value becoming the most negative, and nothing reports it. For a weight that is merely wrong; for a score about to enter a softmax it is worse. The softmax of section 7.5 subtracts the row maximum, so a wrapped score that was the largest in its row becomes the smallest, the subtraction inverts, and the whole row's attention mass moves to a different position. The error is large, silent, and structured: not like noise a calibration might average away, but like a decision. Saturation replaces the wrap with the nearest representable value, which is bounded, preserves the row's ordering, and fails in a direction a downstream stage can still reason about.
 
-**The tie rule, and why the test vectors are the payload.** The rounding stage is the same rule the `round_half_even` module above implements, bit for bit: a guard bit that says the dropped part reaches half a step, a sticky bit that says it goes past, and a round up when the dropped part is past half, or exactly half and the kept value is odd. Holding the two modules on one rule is not tidiness. The training flow's registered default wraps PyTorch's round (`V-06-04`), and PyTorch's round breaks ties toward the even value (`V-06-05`); a fabric module that breaks them any other way agrees with its golden model on every sample except the ties, and passes any corpus that never lands on one. So the section closes where it began: the tie vectors, a value whose dropped bits are exactly half a step, and their negatives, are what a test bench exists to carry, because every other sample passes for free.
+**The tie rule, and why the test vectors are the payload.** The rounding stage is the same rule the `round_half_even` module above implements, bit for bit: a guard bit that says the dropped part reaches half a step, a sticky bit that says it goes past, and a round up when the dropped part is past half, or exactly half and the kept value is odd. Holding the two modules on one rule is not tidiness. The training flow's default wraps PyTorch's round, and PyTorch's round breaks ties toward the even value; a fabric module that breaks them any other way agrees with its golden model on every sample except the ties, and passes any corpus that never lands on one. So the section closes where it began: the tie vectors, a value whose dropped bits are exactly half a step, and their negatives, are what a test bench exists to carry, because every other sample passes for free.
 
 
 **Traceability.** The records this section leans on; the fabric costs in the cards are the book's own
-estimates, not registered figures.
+estimates.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -721,7 +718,7 @@ half the trace of that Hessian times the perturbation's energy:
 > the loss more for the same rounding error, so it deserves more width; a layer with a small trace can
 > be narrowed almost for free. Hessian-aware width selection, the HAWQ line of work, is exactly this:
 > rank the layers by trace, spend the bits there. The card is the book's own formulation of the
-> standard second-order result; no registered figure sits behind the trace itself.
+> standard second-order result; the trace itself is the section's own.
 >
 > **What it costs.** A full Hessian per layer is far too expensive to compute for a real model, so
 > practical schemes estimate the trace, and the proxies are where the method's own error enters. On
@@ -733,8 +730,8 @@ half the trace of that Hessian times the perturbation's energy:
 > reshapes it, which is why section 7.3 and this section belong together.
 
 The book's own model, the streaming Conformer that chapter 9 builds, fixes the layer census this
-section can price. The registered geometry: sixteen encoder layers, a model width
-$d_{\text{model}} = 176$, four attention heads, a depthwise kernel of thirty-one taps, and a
+section can price. The geometry: 16 encoder layers, a model width
+$d_{\text{model}} = 176$, four attention heads, a depthwise kernel of 31 taps, and a
 feed-forward expansion of four, so the feed-forward width is $d_{\text{ff}} = 4 \times 176 = 704$.
 The block's multiply work divides unevenly. Each block runs two feed-forward networks of two matrix
 products each, at the expanded width, and one attention stage of four projections at the unexpanded
@@ -801,8 +798,8 @@ which is a large slice of the KV260's registered 23,616 kilobits of on-chip SRAM
 halves. Fewer bytes across the ladder of section 7.1 is exactly where the energy is.
 
 The direction has silicon behind it. A registered study of a streaming Conformer ASIC at 22 nm runs
-the encoder at 250 MHz on 359 mW, reports a nine-hundred-fold streaming-throughput advantage, a
-four-fold latency cut and a sixteen-fold power cut against its GPU reference, and credits two
+the encoder at 250 MHz on 359 mW, reports a 900-fold streaming-throughput advantage, a
+four-fold latency cut and a 16-fold power cut against its GPU reference, and credits two
 choices: a shared MAC array that keeps all activations on chip, and hardware-friendly normalization
 in which the non-linear functions share block-wide scaling factors. The second choice is this
 section's argument in silicon: precision is organized per block, with scales shared across the block's
@@ -823,7 +820,7 @@ The card above measures sensitivity by the trace of the layer Hessian, and the t
 >
 > **What it means.** The identity is the exchange of expectation and trace: the quadratic form is the trace of the Hessian times the probe's outer product, the expectation of the outer product is the identity because the probe's covariance is, and the trace of the Hessian against the identity is the trace of the Hessian. Derived in that one line, the trace becomes the expectation of a scalar each probe computes. The finite sum is the estimator: the average over $m$ draws converges to the trace as the probe count grows, and a small count gives a noisy but usable reading.
 >
-> **What it costs.** Each probe is one Hessian-vector product, not one Hessian. The product $\mathbf{H}_{i} z$ is the derivative of the gradient along the direction $z$, computed by a second backward pass, the double backprop the section's card above mentions: differentiate the already-computed gradient once more, along the probe direction, and the vector comes out without ever materializing the matrix. The full Hessian, whose size is the square of the layer's weight count, is the thing that is not computed, because nothing in the estimator needs it. No registered figure sits behind the trace; the estimator is the section's own arithmetic, and the cost is in passes, not in the matrix.
+> **What it costs.** Each probe is one Hessian-vector product, not one Hessian. The product $\mathbf{H}_{i} z$ is the derivative of the gradient along the direction $z$, computed by a second backward pass, the double backprop the section's card above mentions: differentiate the already-computed gradient once more, along the probe direction, and the vector comes out without ever materializing the matrix. The full Hessian, whose size is the square of the layer's weight count, is the thing that is not computed, because nothing in the estimator needs it. No record sits behind the trace; the estimator is the section's own arithmetic, and the cost is in passes, not in the matrix.
 >
 > **What it does not say.** It does not say a small probe count gives the exact trace. The Monte Carlo average carries variance that falls like one over the probe count, and the error like one over its square root, so the estimator is a budget choice, not a closed form. It also does not say the sensitivity is static: the quantization-aware retraining of section 7.3 reshapes the Hessian, which is why the estimator and the retraining belong together.
 
@@ -833,9 +830,9 @@ The estimator's own arithmetic deserves one plain sentence, because the probe ch
 
 **The census, read as per-block sensitivity.**
 
-Read the census through the estimator, and the assignment stops looking like a set of taste calls. The feed-forward networks hold the four-to-one share of the block's multiply work, the quotient the section above computed, and their products feed a residual addition rather than a probability or a scale; a perturbation in a feed-forward weight changes a partial sum that later stages dilute, so the trace spends there: the coarsest step lands on the weights whose error the residual path absorbs, and the width that is cheapest in fabric buys the widest step on the weights the loss bends least. The attention stage and its softmax keep INT8 because a probability is the most fragile output in the block; a perturbation there is the one the second-order term does not dilute, and the integer softmax of section 7.5, a registered sequence of arithmetic steps (`V-07-11` through `V-07-15`), is what lets that stage stay at eight bits without a floating-point exponent. The normalization keeps INT16 because its output is a scale: a tired denominator multiplies every element that follows, its error propagates with the block's full swing, and that is the trace's worst case by the section's own reasoning, not by habit.
+Read the census through the estimator, and the assignment stops looking like a set of taste calls. The feed-forward networks hold the four-to-one share of the block's multiply work, the quotient the section above computed, and their products feed a residual addition rather than a probability or a scale; a perturbation in a feed-forward weight changes a partial sum that later stages dilute, so the trace spends there: the coarsest step lands on the weights whose error the residual path absorbs, and the width that is cheapest in fabric buys the widest step on the weights the loss bends least. The attention stage and its softmax keep INT8 because a probability is the most fragile output in the block; a perturbation there is the one the second-order term does not dilute, and the integer softmax of section 7.5, a sequence of arithmetic steps the section's traceability table lists, is what lets that stage stay at eight bits without a floating-point exponent. The normalization keeps INT16 because its output is a scale: a tired denominator multiplies every element that follows, its error propagates with the block's full swing, and that is the trace's worst case by the section's own reasoning, not by habit.
 
-The block, not the tensor, is the unit the estimator and the silicon agree on. The registered finding the section above cites already organized precision this way: hardware-friendly normalization in which the non-linear functions share block-wide scaling factors (`V-07-24`), the block as the budgeting unit rather than the per-tensor granularity a GPU data path imposes. The shared MAC dataflow (`V-07-23`) is the fabric side of the same decision: one array serves the block's widths, because the multiplier the section 7.2 mapping priced, twenty-seven bits across by eighteen, fits a narrow INT4 or INT8 weight against a wide operand that grows with the activation, at no extra cost. The ranking from the estimator and the structure from the silicon study land on the same statement: sensitivity is priced per block, the narrowest words on the GEMM-heavy feed-forward that owns the multiply work, the eight-bit paths on the probability, the widest words where a denominator divides. The chapter's argument is one sentence when the estimator and the census are read together: the network bends where the products are diluted, the block works where the geometry is per-block, and both said the same thing before the silicon confirmed it.
+The block, not the tensor, is the unit the estimator and the silicon agree on. The finding the section above cites already organized precision this way: hardware-friendly normalization in which the non-linear functions share block-wide scaling factors, the block as the budgeting unit rather than the per-tensor granularity a GPU data path imposes. The shared MAC dataflow is the fabric side of the same decision: one array serves the block's widths, because the multiplier the section 7.2 mapping priced, 27 bits across by 18, fits a narrow INT4 or INT8 weight against a wide operand that grows with the activation, at no extra cost. The ranking from the estimator and the structure from the silicon study land on the same statement: sensitivity is priced per block, the narrowest words on the GEMM-heavy feed-forward that owns the multiply work, the eight-bit paths on the probability, the widest words where a denominator divides. The chapter's argument is one sentence when the estimator and the census are read together: the network bends where the products are diluted, the block works where the geometry is per-block, and both said the same thing before the silicon confirmed it.
 
 The per-block reading and the per-block silicon are the same claim at two scales. The estimator hands back one scalar per block, a single number the budget can rank against its neighbours, and the registered normalization the study credits shares block-wide scaling factors across the block's non-linear stages; one side of that pairing says sensitivity is a property of the block, the other says the arithmetic is organized that way too. The shared MAC dataflow closes the loop, because a precision plan per block is only meaningful if the hardware multiplies the block's words without repacking them, and the shared array is precisely the repacking-free datapath. That is the sentence this chapter opened with, back at the section 7.1 ladder: quantization is a budget, the budget in a block-structured model is per block, and the estimator and the fabricated study agree on where the block boundaries sit. Neither alone would be enough, which is why the section keeps both: the estimator says where the error lives, and the silicon study says the fabric can be built to match.
 
@@ -882,7 +879,7 @@ library the FPGA does not have. The literature this section reads does not accep
 observation is that a softmax input can be made non-positive, and that a non-positive exponent splits
 into an integer count and a short remainder, and that the integer half of that split is a bit position
 rather than a computation. Only the short remainder needs an approximation, and a second-order
-polynomial is enough for it. The record states the difficulty it is working around:
+polynomial is enough for it. The difficulty it works around is this:
 
 > "Approximating the Softmax layer with integer arithmetic is quite challenging, as the exponential
 > function used in Softmax is unbounded and changes rapidly."
@@ -907,7 +904,7 @@ Make the input non-positive first, by subtracting the row's maximum:
 > same maximum from the whole row does not change the answer at all; it changes only what the
 > exponential has to accept. Every input to the exponential is now less than or equal to zero, so
 > every exponential lies in $(0,1]$, and the function has gone from unbounded to bounded without an
-> approximation being made. The record states the move and its consequence:
+> approximation being made. Here is the move and its consequence:
 >
 > > "First, we subtract the maximum value from the input to the exponential for numerical stability.
 > > Note that now all the inputs to the exponential function, i.e., x̃i = xi − xmax, become
@@ -915,7 +912,7 @@ Make the input non-positive first, by subtracting the row's maximum:
 >
 > **What it costs.** One comparison per element to find the maximum and one subtract per element to
 > apply it. Comparisons and subtracts are look-up-table work on the fabric, and neither needs a DSP
-> slice. The book's own estimate, not a registered figure.
+> slice. The book's own estimate.
 >
 > **What it does not say.** It does not say the shifted values are small. A strongly negative score
 > becomes a strongly negative $\tilde{x}$, whose exponential is close to zero, and whether that value
@@ -951,7 +948,7 @@ Split the non-positive input into an integer count and a short remainder:
 > **What it costs.** One multiply by the reciprocal of $\ln 2$, one floor, and one multiply-add to
 > recover $p$. With a quantised $\ln 2$ literal the whole step is two DSP48E2 slices and some wiring,
 > and the floor costs nothing because it is the binary point itself. The book's own estimate, not a
-> registered figure.
+> the book's own estimate.
 >
 > **What it does not say.** It does not say the split survives fixed point unscathed. The two
 > literals this step uses, $\ln 2$ and its reciprocal, are both irrational, so any fixed-point
@@ -977,7 +974,7 @@ Now take the two halves separately. The integer half is a power of two, and a po
 > **What it means.** This is the step that removes a transcendental function by reinterpreting bits.
 > Dividing by two $z$ times is not calculated; it is a wiring connection, so the integer half of the
 > exponential costs no arithmetic at all. Only the remainder survives as work, and the remainder is
-> confined to an interval shorter than $\ln 2$. The record states the identity and then draws the
+> confined to an interval shorter than $\ln 2$. The identity is this, and the card then draws the
 > conclusion that makes the whole path viable:
 >
 > > "Then, the exponential of x̃ can be written as: exp(x̃) = 2−z exp(p) = exp(p)>>z, where >> is the
@@ -988,7 +985,7 @@ Now take the two halves separately. The integer half is a power of two, and a po
 > narrowness is what a second-order polynomial can hit.
 >
 > **What it costs.** A barrel shifter on the programmable logic, which is look-up tables and nothing
-> else: zero DSP48E2 slices and zero block RAM. The book's own estimate, not a registered figure.
+> else: zero DSP48E2 slices and zero block RAM. The book's own estimate.
 >
 > **What it does not say.** It does not say the shift is free of precision loss. A right shift moves
 > bits out of the word, and a large $z$ shifts the small exponential away entirely. That is the
@@ -1033,14 +1030,14 @@ The remainder is the only place an approximation enters, and a short polynomial 
 > > arithmetic."
 >
 > **What it costs.** Two DSP48E2 slices for the two multiplies and no block RAM, because nothing is
-> stored. The book's own estimate, not a registered figure.
+> stored. The book's own estimate.
 >
 > **What it does not say.** It does not say the polynomial equals $\exp(p)$, and unlike the previous
 > edition of this section it does not have to leave the tolerance to the imagination: the record
 > registers it. The largest gap between the polynomial and the true exponential is 0.0019, and the
 > quantization that eight bits introduce over a unit interval is 0.0039, one part in 256, so the
 > approximation's worst case is smaller than the error of the number format it feeds. That is the
-> strongest thing a fitted polynomial in a quantised network can claim, and the record says the error
+> strongest thing a fitted polynomial in a quantised network can claim, and the error
 > "can be subsumed into the quantization error." The three literals 0.3585, 1.353 and 0.344 are also
 > only as accurate as the width each one is given, and this card does not set those widths.
 
@@ -1080,7 +1077,7 @@ chain with one branch in it.
 The integer-only exponential of section 7.5: one subtract that bounds the input, a decomposition that is mostly wiring, a two-multiply polynomial on the short remainder, and one right shift that costs no arithmetic. Only the polynomial box approximates anything; the shift is exact.
 :::
 
-**Application.** This shape suits the KV260 for a reason the record states directly: the path avoids
+**Application.** This shape suits the KV260 for a direct reason: the path avoids
 look up tables and "strive[s] for a pure arithmetic based approximation." Every operation the datapath
 names is native to the fabric. Shifts and integer multiplies are what the programmable logic is built
 out of, a constant multiply by $\ln 2$ or its reciprocal is one slice or wiring, and the absence of a
@@ -1103,7 +1100,7 @@ for a given model. The error budget is registered and favourable, but whether it
 question, and that measurement belongs to the acceptance gate of section 8.4, not to this card.
 
 **Traceability.** The records this section leans on. The resource counts in the equation cards above
-are the book's own estimates, not registered figures, and are printed as words for that reason;
+are the book's own estimates;
 everything else is a registered claim.
 
 | Record | What it establishes here |
@@ -1192,7 +1189,7 @@ everything else is a registered claim.
 > by $19.2$ GB/s, and the INT4 stream is $0.27\%$ of it. (d) A $36$-kilobit tile is $4{,}608$ bytes,
 > so the INT8 set takes $1{,}048{,}576 / 4{,}608 \approx 227.6$ tiles, rounded up to $228$, and the
 > INT4 set takes $113.9$, rounded up to $114$, computed as the quotient of each byte count by the
-> tile capacity. The consequence is the section's: the BRAM array alone, one hundred and forty-four
+> tile capacity. The consequence is the section's: the BRAM array alone, 144
 > tiles on the KV260, cannot hold the INT8 set, which therefore lives in URAM or streams from DDR4,
 > where the bandwidth math above says it is cheap; INT4 fits the array with room to spare.
 
