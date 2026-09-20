@@ -86,7 +86,7 @@ book can be made one stage at a time instead of all at once.
 
 - **Air to samples.** A microphone and its encoder turn pressure into numbers at a steady rate. The
   frontend used throughout this book works at the rate the corpora it trains against are stored at,
-  which is a documented match rather than a tuned optimum, and section 1.2 keeps the records.
+  which is a match the data imposes rather than a number anyone tuned, and section 1.2 shows why.
 - **Samples to a frame.** Numbers arrive one at a time and analysis needs them in groups, so the
   stream is cut into overlapping frames. The frame and the step between frames are the first two
   deadlines any design inherits.
@@ -122,11 +122,11 @@ sizes a design against.
 > chosen: the frontend works at 16 kHz because that is the storage rate both training corpora
 > register -- the Speech Commands paper for one, the LibriSpeech distribution page for the other. Both
 > describe how training audio is stored. Neither measures a frontend, and neither says 16 kHz is the
-> right bandwidth for keyword spotting, so this book cites the match as a constraint the data imposes
+> right bandwidth for keyword spotting, so this book treats the match as a constraint the data imposes
 > and not as a result anybody reached.
 
 
-**Traceability.** The records behind this section's one rate.
+**Traceability.** The rows below give this section's one rate, and both corpora agree on it.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -218,8 +218,8 @@ arithmetic cannot proceed without, and the problems are not a matter of taste.
   are made to **overlap** and the analysis is taken **once per frame** rather than once per hop.
 - One faded frame still has to be turned into pitch content, which is the question the **STFT**
   answers, $N$ times over for $N$ candidate rates.
-- Two hundred and fifty-seven separate answers is more than a keyword spotter can use, and they are
-  spaced evenly in hertz where hearing is not, so they are collapsed into eighty **Mel bands**.
+- 257 separate answers is more than a keyword spotter can use, and they are
+  spaced evenly in hertz where hearing is not, so they are collapsed into 80 **Mel bands**.
 - Band energies span decades and a later stage that adds them would be dominated by whichever band
   happened to be loudest, so each energy is replaced by its **logarithm**.
 
@@ -233,17 +233,16 @@ intervals. The intervals follow from the **sampling rate**, which is how many nu
 taken per second. The reference frontend uses 16,000 samples per second, so one sample
 arrives every 62.5 microseconds and a 25 ms frame holds 400 of them. That rate is a **design
 parameter, not a fact about the world**: it is written in the `AudioConfig` defaults of the
-experiment, and no measurement chose it. What was missing until now was any record of why
-16,000 rather than some other number, and two records close that gap. The Speech Commands dataset
+experiment, and no measurement chose it. Until now, nothing written down said why
+16,000 rather than some other number, and two published sources close that gap. The Speech Commands dataset
 paper says each utterance is "stored as a one-second (or less) WAVE format file, with the sample
 data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate". The LibriSpeech corpus
 page describes 1000 hours of 16 kHz read English speech. Those two sources are not equally strong:
-the first is a paper, the second is the distribution page of the corpus it describes, and this
-project's own source hierarchy (`docs/WEB_SEARCH_PROTOCOL.md` section 2) ranks a page of that kind
-as corroborating rather than admissible on its own. So the justification here is the pair, and it is worth naming
+the first is a paper, the second is the distribution page of the corpus it describes, so the
+justification here is the pair together, and it is worth naming
 exactly what the pair supports. Both corpora that the chapter 5 models train on are stored at
 16,000 Hz, which is why a frontend that handed a model a different rate would be wrong before
-any hardware is chosen. That is a documented match, not a derived optimum, and the two are
+any hardware is chosen. That is a match the data itself reports, not an optimum anyone derived, and the two are
 different claims. Nobody has swept the rate against recognition accuracy here, and the number
 in the config would not move if the sweep said it should.
 
@@ -395,7 +394,7 @@ sampling rate and the band limits, so in hardware it is a constant. That is why 
 *size* -- not its arithmetic -- is the interesting number, and why section 1.4 measures it
 against the memory a real chip has.
 
-**Traceability.** The records this section's rate argument rests on.
+**Traceability.** The rows below give the two rates this section's argument rests on.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -431,10 +430,9 @@ $f_{\max} = 8{,}000\ \text{Hz}$.
 > repository has varied them, so this book cannot say any of them is optimal. The rate is the one
 > exception worth repeating: 16 kHz is inherited from the rate at which both training corpora store
 > audio, which makes it a constraint the data imposes rather than a choice this project made, and
-> section 1.2 keeps those records. Every quantity printed below is derived from this block by
-> arithmetic the text shows in full. That is deliberate: the evidence registry holds records about
-> the two platforms and about the training data, and no record of a frontend's own geometry, so a
-> number here that is not traceable to a record is traceable to this block instead, and says so.
+> section 1.2 shows why. Nothing here is a figure measured off a running frontend. Every quantity
+> printed below is derived from this block by arithmetic the text shows in full, and a number this
+> book has not measured is carried by this block instead, and the text says so.
 
 ### A probe wave, before any formula
 
@@ -571,17 +569,16 @@ and fading is multiplication.
 > **What it costs.** $w$ never changes, so in hardware it is a read-only table of $L$ constants and a
 > multiplier per lane -- or one multiplier reused $L$ times per frame, which is the usual choice
 > because it trades area for latency and this stage has $10$ ms to answer. It has no state to carry
-> between frames and it makes no decisions. A registered figure for this stage's share of either
-> platform is not available: the resource records in this book's evidence set describe whole
-> accelerators and named processor blocks, not a multiplier bank of this size, so what the honest cost
-> here is, is the shape.
+> between frames and it makes no decisions. A measured figure for this stage's share of either
+> platform does not exist: the published resource totals describe whole accelerators and named
+> processor blocks, not a multiplier bank of this size, so the honest cost to state here is its
+> shape.
 >
 > **What it does not say.** It does not say the fade is harmless. Multiplying by $w$ lowers the
 > amplitude near both ends, which changes the answer every later stage gives, and changes it
 > differently for a low tone than for a high one. Whether that change is acceptable to a recognition
-> model is a question about the model: no formula can settle it, and no measurement against a model
-> is registered in this repository. This book states the mechanism and reports nothing about its
-> price in accuracy.
+> model is a question about the model: no formula can settle it, and no measurement against a
+> model exists. The card prices the mechanism, not the accuracy the fade buys.
 
 The two durations inside those variables are named once here because they recur everywhere else in
 the book. A frame is $L$ samples, which at $16{,}000$ samples per second is $25$ ms of audio; a hop
@@ -691,7 +688,7 @@ to ask it that way, and this is where that construction is written down.
 > from $400$ to $512$ means any hardware holding a frame holds the padded length, not the physical
 > one. And the output is complex, so a design that keeps every bin in full stores two numbers per bin
 > even though the next stage throws one of them away. No measured cost for this stage on either
-> platform is registered in this book's evidence set.
+> platform exists.
 >
 > **What it does not say.** It does not say a large result proves a tone is present. A frame of padded
 > silence, a click, a breath, and a tone sitting just off bin $k$'s rate all produce sums, and the
@@ -744,8 +741,8 @@ live with it.
 > parts are already in hand, and no extra storage: the output is half the size of the input because a
 > real number replaces a pair. The square root that the magnitude notation implies is deliberately
 > never computed, because this stage squares instead -- so a design needs no root here, which matters
-> because a square root is the kind of non-linear step that has no fixed cost per cycle. A registered
-> measurement of this stage on either platform does not exist in this book's evidence set.
+> because a square root is the kind of non-linear step that has no fixed cost per cycle. A measured
+> figure for this stage on either platform does not exist.
 >
 > **What it does not say.** It does not say the result is a power in any physical sense. $P_\ell[k]$
 > is in sample units squared: the microphone's sensitivity, the recording gain, and any normalisation
@@ -788,8 +785,8 @@ that scale.
 > **What it costs.** This function is evaluated during setup, once, at $M+2$ frequencies, and its
 > result is folded into a table of constants. At run time the stage costs no logarithm at all, which
 > is the entire reason for doing it this way: a non-linear function has no fixed cost per cycle and so
-> has no place in a data path that must answer every $10$ ms. A registered figure for the setup cost is
-> not available, and it would not matter if it were, since setup runs once per experiment rather than
+> has no place in a data path that must answer every $10$ ms. A measured figure for the setup cost does not
+> exist, and it would not matter if it did, since setup runs once per experiment rather than
 > once per frame.
 >
 > **What it does not say.** It does not say the Mel scale is correct for keyword spotting. It describes
@@ -932,8 +929,8 @@ of the power spectrum under its own triangle.
 > $M$ dot products of length $257$, and once the triangles are set up nothing about it depends on the
 > audio at all. That is what makes this the most replaceable stage in the frontend.
 >
-> **What it costs.** The full matrix has $M$ by $257$ entries: eighty rows of two hundred and
-> fifty-seven weights each, so $80 \times 257 = 20{,}560$ multiply-accumulate operations per frame --
+> **What it costs.** The full matrix has $M$ by $257$ entries: 80 rows of 257
+> weights each, so $80 \times 257 = 20{,}560$ multiply-accumulate operations per frame --
 > one multiplication and one addition fused into a single step -- if every entry is performed. The
 > per-second figure is that count times how often a frame appears. One frame is produced per hop, a hop
 > is $H / f_s = 160 / 16{,}000 = 10$ ms of audio, so the stage runs $100$ times a second and the
@@ -942,7 +939,7 @@ of the power spectrum under its own triangle.
 > most of the matrix is zero, and a design that skips zeros spends nothing on them: the matrix
 > computed at these parameters has 20,560 entries and only 425 of them are non-zero, which is 98%
 > of the stage skippable, and derived from the code rather than measured on any hardware. The same
-> arithmetic spread over the fabric's registered multiply-accumulator count gives each slice about
+> arithmetic spread over the fabric's multiply-accumulator count gives each slice about
 > 1,647 operations per second, computed by dividing the per-second figure above by 1,248, which is a
 > way of noticing that $100$ frames per second is a very light load for that many of them -- not a
 > claim that anyone has built that design. And on the Jetson side the count is a bandwidth problem
@@ -950,15 +947,15 @@ of the power spectrum under its own triangle.
 > much of this matrix can sit where it reads fast, not whether the multiplies fit. None of these
 > figures is a measured cost of an implementation.
 >
-> **What it does not say.** Nothing here says $80$ is the right number of bands. Eighty is what
+> **What it does not say.** Nothing here says $80$ is the right number of bands. 80 is what
 > `AudioConfig` declares; fewer bands lose spectral detail and cost less storage, more do the reverse,
 > and where the balance lies is a question about the model that consumes the features, which is
 > chapter 5's subject. No run in this repository has varied $M$. The formula also hides something the
 > figure below is drawn to show: because every point's bin index is rounded *down* to a whole bin, and
 > adjacent bins are only $31.25$ Hz apart, the bands at the bottom of the range cannot be
 > distinguished from each other at that resolution. Run over this book's own parameters, the stage
-> produces one band that covers no bin at all, eighteen bands that cover exactly one, and a widest band
-> covering sixteen. So "80 bands" counts the rows of a matrix; it does not claim $80$ independent
+> produces one band that covers no bin at all, 18 bands that cover exactly one, and a widest band
+> covering 16. So "80 bands" counts the rows of a matrix; it does not claim $80$ independent
 > measurements. In particular, the band that covers nothing returns zero energy for every input, which
 > is a permanent fact about the feature vector rather than a fact about the audio.
 
@@ -1050,8 +1047,8 @@ of the power spectrum under its own triangle.
 
 \end{tikzpicture}
 ```
-The eighty triangles at their computed positions, against hertz rather than against mels, because
-that is the axis on which the spacing visibly grows. Panel (a) draws six of the eighty, with faint
+The 80 triangles at their computed positions, against hertz rather than against mels, because
+that is the axis on which the spacing visibly grows. Panel (a) draws six of the 80, with faint
 lines marking whole bins; panel (b) draws the ten lowest bins and the one bin each of the ten lowest
 bands reads. Band $2$ is red because its triangle straddles a bin boundary and reads nothing at all.
 :::
@@ -1089,7 +1086,7 @@ so each band is replaced by the logarithm of its energy, and a floor keeps that 
 > table or a polynomial rather than a multiply -- or hold energies in a number format whose exponent
 > field already *is* a logarithm. That fork is chapter 6's subject, and which side is cheaper depends
 > on the number format chosen there, which is why this card cannot price it. On the GPU side the stage
-> is memory-bound and small next to the model; no measured cost is registered. The comparison itself
+> is memory-bound and small next to the model; no measured cost exists. The comparison itself
 > is a comparator and a multiplexer, about as close to free as anything in this pipeline gets.
 >
 > **What it does not say.** This floor needs caution twice, and this book needs both. First,
@@ -1233,11 +1230,11 @@ buys back roughly $30$ dB of the energy that the cut would have scattered, which
 sidebar names, priced on the two axes it is actually paid on.
 :::
 
-**Traceability.** The records behind this section. The frame, hop, transform length and band count
-are parameters declared in the experiment file rather than measurements, so they are not in this
-table, and every quantity this section prints that is not one of those parameters is arithmetic on
-them, shown in full where it is used. What the records below supply are the two rates that turn a
-sample count into milliseconds, and the two hardware quantities that the cost paragraphs divide by.
+**Traceability.** The rows below give the two rates that turn a sample count into milliseconds,
+and the two hardware quantities that the cost paragraphs divide by. The frame, hop, transform
+length and band count are parameters declared in the experiment file rather than measurements, so
+they are not in this table, and every quantity this section prints that is not one of those
+parameters is arithmetic on them, shown in full where it is used.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -1284,9 +1281,8 @@ shorter than $L$, and the two answers, dropping it or padding it, are not equiva
 
 ### Memory, against containers that are documented
 
-The FPGA figures below are device capacities, each from a record in the evidence set, taken
-from Advanced Micro Devices document DS890 (v4.10), page 22, Table 23, for the device
-registered as `xczu5ev` / `XCK26`:
+The FPGA figures below are device capacities, printed in Advanced Micro Devices document DS890
+(v4.10), page 22, Table 23, for the device named `xczu5ev` / `XCK26`:
 
 | Record | Capacity |
 | --- | --- |
@@ -1299,10 +1295,9 @@ registered as `xczu5ev` / `XCK26`:
 Two of those rows are worth a note on how to read a datasheet. The BRAM total is printed as
 "5.1 Mb", which is the datasheet's rounding of $144 \times 36 = 5{,}184$ kilobit. The combined
 capacity carries a `conflict` flag: 23,616 Kb is what multiplying the two block counts by their sizes
-gives, while the project's own plan document says "4 MB" and a research note says about 4.5 MB. The
-record that unrolls the whole chain -- 23,616 Kb = 2,952 KiB = 3,022,848 bytes = 2.8828 MiB = 3.02 MB in
-decimal units -- so the disagreement is partly a units disagreement, which is exactly the kind
-of thing a table of capacities hides. All readings stay in the record; none was averaged.
+gives, while the project's own plan document says "4 MB" and a research note says about 4.5 MB. Unrolled to a single unit, that capacity is 23,616 Kb = 2,952 KiB = 3,022,848 bytes = 2.8828 MiB =
+3.02 MB in decimal units, so the disagreement is partly a units disagreement, which is exactly the kind
+of thing a table of capacities hides. Every number stays as printed; none was averaged.
 
 Now the two things the frontend actually needs to store, both in 32-bit floating point (FP32):
 
@@ -1313,7 +1308,7 @@ Now the two things the frontend actually needs to store, both in 32-bit floating
 
 Both right-hand columns are derived arithmetic: each percentage is the item's byte size divided by
 the container's byte size, so the first row is $1{,}600 / 4{,}608 = 34.7\%$ and the second is
-$82{,}240 / 663{,}552 = 12.4\%$. One derived number over one recorded number, in that order. Read them for what they are. They say that the frontend's data is small against the
+$82{,}240 / 663{,}552 = 12.4\%$. One derived number over one printed number, in that order. Read them for what they are. They say that the frontend's data is small against the
 storage a device of this class contains. They do **not** say the design would occupy that much
 of a device, because nothing here has been described in a hardware language, let alone
 synthesised. A percentage of a container is not a percentage of a design, and the difference
@@ -1323,15 +1318,15 @@ is the first thing a synthesis report will correct.
 
 The Mel stage costs 20,560 MAC per frame, hence 2.056 million per second (the fabric's 1,248
 multiply-accumulate slices, so spread across all of them the stage would ask each slice for 1,647 MAC
-per second). On the Jetson side, the registered rating is 67 sparse INT8 (8-bit integer) TOPS for an
-Orin Nano Super at up to the 25 W ceiling its power-mode record lists, and the sparsity record states
-that structured sparsity doubles throughput. Dividing the first by the second gives roughly 33
-dense INT8 TOPS, which is arithmetic in this book and is carried by no record. Against that, the
+per second). On the Jetson side, the rated figure is 67 sparse INT8 (8-bit integer) TOPS for an
+Orin Nano Super at up to the 25 W ceiling its power-mode table lists, and structured sparsity doubles
+throughput. Dividing the first by the second gives roughly 33
+dense INT8 TOPS, which is arithmetic on those two numbers, not a rating any datasheet prints. Against that, the
 frontend asks for $2.056$ million operations a second, so the ratio is
-$3.3 \times 10^{13} / 2.056 \times 10^{6} \approx 1.6 \times 10^{7}$: about sixteen million, with one
+$3.3 \times 10^{13} / 2.056 \times 10^{6} \approx 1.6 \times 10^{7}$: about 16 million, with one
 multiply-accumulate counted as one operation. Count it as the two operations it literally is -- a
 multiply and an add -- and the stage asks for $4.112$ million a second and the factor halves to about
-eight million. The two readings disagree by a factor of two and the gap they are measuring is in the
+8 million. The two counts disagree by a factor of two and the gap they are measuring is in the
 millions, so nothing in the argument below turns on which one is taken.
 
 So the case for moving a voice frontend into programmable logic is not a peak-throughput case,
@@ -1344,8 +1339,8 @@ design is exactly the kind of question this book cannot answer without a board, 
 open rather than closed with an estimate.
 
 
-**Traceability.** The Jetson records the division above spends. The 33 dense TOPS is arithmetic in
-this book, not a rating any record carries; the rows below are only its operands.
+**Traceability.** The rows below are the Jetson numbers the division above spends. The 33 dense
+TOPS is arithmetic in this book, not a rating any datasheet prints; the rows are only its operands.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -1379,8 +1374,8 @@ effect that section 1.3 warned about, arriving in a table rather than in prose.
 
 What the run does establish is narrower and more useful. Feeding a ring buffer 160 samples at
 a time reaches the same numbers as reading the whole recording at once, on this input, in this
-precision, to the last bit. That is a correctness result about the streaming rewrite. It is
-not evidence about fixed-point arithmetic, about hardware, or about accuracy of any model, and
+precision, to the last bit. That is a correctness result about the streaming rewrite. It
+says nothing about fixed-point arithmetic, about hardware, or about accuracy of any model, and
 the last two of those are where this chapter's real difficulty is.
 
 Two things follow. The comparison proves the buffer logic, not the number format, because both
