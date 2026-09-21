@@ -172,19 +172,24 @@ def grade_file(
     # Comments are blanked before anything else, exactly as scan_numbers does it: an authoring note
     # like "the gate of Issue #59" is prose for the next editor, not a reader-facing claim, and its
     # digits would otherwise be graded as measurements. Newlines are preserved so line numbers stay
-    # the ones a reader finds in the file.
-    text = COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), path.read_text(encoding="utf-8"))
+    # the ones a reader finds in the file. Claim ids, however, are read from the raw (pre-blanking)
+    # lines, the same channel scan_numbers allows: an id may ride inside an HTML comment at the
+    # start of a Source-cell row so the PDF hides it but the row keeps its citation. Numbers inside
+    # comments stay blanked and are never graded here.
+    raw = path.read_text(encoding="utf-8")
+    text = COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), raw)
+    raw_lines = raw.split("\n")
     hard = 0
     notes = 0
     cited_all: set[str] = set()
     print(f"=== {path.name}")
     for sec in split_sections(text):
         section = str(sec["heading"])
-        body = "\n".join(line for _, line, _ in sec["lines"])
+        body = "\n".join(raw_lines[lineno - 1] for lineno, _, _ in sec["lines"])
         sec_ids = {m.group(0) for m in CLAIM_ID.finditer(body)}
         cited_all |= sec_ids
         lines = sec["lines"]
-        paras = paragraphs([line for _, line, _ in lines])
+        paras = paragraphs([raw_lines[lineno - 1] for lineno, _, _ in lines])
         for idx, (lineno, line, kind) in enumerate(lines):
             if kind == "heading":
                 continue  # a heading's number is a position in the book, not a measurement
@@ -199,7 +204,9 @@ def grade_file(
                 # A citation is graded where it is printed, not by the paragraph's inheritance:
                 # pids exists so a number on an uncited line borrows its paragraph's records, but
                 # a dangling id reported that way would fire once per line in the paragraph.
-                line_ids = {m.group(0) for m in CLAIM_ID.finditer(text_bit)}
+                # The line's ids come from the raw line: a Source cell may hide its id inside an
+                # HTML comment, and that id scopes the row exactly as a visible backtick id did.
+                line_ids = {m.group(0) for m in CLAIM_ID.finditer(raw_lines[lineno - 1])}
                 for rid in sorted(line_ids):
                     if rid not in by:
                         print(f"  FAIL  {path.name}:{lineno} [{section}] cites {rid}, not a record")
