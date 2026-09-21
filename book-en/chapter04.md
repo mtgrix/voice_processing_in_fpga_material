@@ -6,7 +6,8 @@
 > in this project actually contains. Two rules shape it. First, every hardware claim about *this*
 > part traces to a registered record; where a low-level figure is named only in a device guide this
 > project could not retrieve, the prose says "no record" rather than repeating a number from memory,
-> because an unsourced figure that reads like a datasheet value is the failure mode this book exists
+> because a figure that reads like a datasheet value, with no source behind it, is the failure mode
+> this book exists
 > to avoid. Second, nothing here is a synthesis result. No design has been placed, routed or timed,
 > so every throughput figure in this chapter is arithmetic on a device count, never a measurement.
 > The chapters that would pay for a measurement -- chapter 5 on toolchains, chapter 6 on the audio
@@ -152,8 +153,8 @@ temporal machine's per-item delay contains a scheduler, a memory round trip, and
 already in flight. For a system whose front end has a frame deadline in single-digit milliseconds,
 "no queue" is not a small convenience; it is the difference between a bounded and an unbounded worst
 case. What this section cannot give is the clock period itself, because a synthesised design's achieved
-frequency is a placement result and no record in this registry holds one -- chapter 3's ridge point has
-to assume a clock for exactly this reason.
+frequency is a placement result and no measurement of one exists for this device -- chapter 3's ridge
+point has to assume a clock for exactly this reason.
 
 **Traceability.** The records this section leans on. Each quantity it prints is a registered device
 count; the two figures that would need a measurement -- a build's wall-clock and a synthesised clock
@@ -228,8 +229,8 @@ designer writes, LUTs are what the silicon actually contains.
 >   the power because a table's rows are chosen one wire at a time.
 >
 > **What it means.** Each input wire doubles the number of distinct situations the table can be
-> confronted with, so wires compound multiplicatively rather than adding up. Four inputs give sixteen
-> rows; five give thirty-two; six give sixty-four. The doubling is why the size of a logic cell is
+> confronted with, so wires compound multiplicatively rather than adding up. Four inputs give $2^4 = 16$
+> rows; five give $2^5 = 32$; six give $2^6 = 64$. The doubling is why the size of a logic cell is
 > quoted as an input count: going from five inputs to six does not add one row, it adds as many rows as
 > the whole previous table had. It is also why the relationship is a ceiling on what one cell can
 > express -- a function of seven variables needs two of these tables and something to combine their
@@ -275,7 +276,7 @@ separately -- and why their ratio is a design constraint worth computing before 
 > hands out flip-flops at twice the rate it hands out tables, so a design that needs more than two
 > held bits per logic table will run out of flip-flops first and a design that needs fewer will run out
 > of tables first. That is a usable pre-flight check on a datapath, because a pipeline register is
-> usually the cheap part: a 16-bit sample travelling down a datapath costs sixteen flip-flops and no
+> usually the cheap part: a 16-bit sample travelling down a datapath costs 16 flip-flops and no
 > table at all, while the logic that decides what to do with it costs tables and few registers.
 >
 > **What it costs.** Nothing by itself; it prices a *shape*. Concretely, in this device's terms: a
@@ -285,10 +286,11 @@ separately -- and why their ratio is a design constraint worth computing before 
 > dividing the registered flip-flop count by 48, and well above the 1,248 arithmetic slices that
 > the same datasheet column registers as the real ceiling. The registers are not the constraint. The multipliers are.
 >
-> **What it does not say.** Not the packing. The datasheet counts cells, not the groups they are
-> arranged into, and the guide that would name this family's group size is unregistered -- so this
-> book never prints a logic-slice count. Any such figure would be the LUT total divided by an input
-> count this registry does not hold, and a derived number inherits the missing premise. Nor does the ratio say a design *can* use all of both:
+> **What it does not say.** Not the packing, and not how the cells are grouped. The datasheet counts
+> cells; the device guide that would name how many sit in one group this project could not retrieve,
+> so this book never prints a logic-slice count. Any such figure would be the LUT total divided by an
+> input count that no retrievable source states, and a derived number inherits a missing premise.
+> Nor does the ratio say a design *can* use all of both:
 > placement is a packing problem, a table and a register in the same group share wiring, and a
 > utilisation report is where the truth about any one design lives, and the command that produces it
 > is registered in this section's table -- it is the only place a real per-design number comes from.
@@ -573,8 +575,9 @@ accelerator on another board, and it is cited as that.
 
 **Intuition.** Section 4.1 established that a fabric design is several machines working at once, and
 once they are separate machines they can disagree about timing. One stage produces a Mel frame every
-$H$ samples of audio; the next consumes one per encoder step; the one after that may stall for a
-hundred cycles while a division resolves. A datapath that assumes all its stages are always ready is a
+hop, the frame stride of chapter 1's front end; the next consumes one per encoder step; the one after
+that may stall for a hundred cycles while a division resolves. A datapath that assumes all its stages
+are always ready is a
 datapath that silently loses data the first time they are not. So between every pair of blocks the
 design needs an agreement, and the agreement has to answer one question in one clock: *may this item
 be handed over now?*
@@ -583,8 +586,8 @@ The answer this book's designs use is the streaming interface of the family name
 AXI4-Stream (the on-chip point-to-point streaming protocol of this vendor's interconnect), whose rule
 fits on two lines and costs two wires per channel. It is described here as the book's own working
 definition, because the specification that formally defines it is an Arm document this project could
-not retrieve: **no record in this registry backs the timing rules of this subsection**, and nothing in
-it should be read as a quotation.
+not retrieve: **the timing rules of this subsection come from no retrieved source**, and nothing in
+them should be read as a quotation.
 
 **Mechanism.** A streaming channel carries a payload on one set of wires and two control signals
 beside it, and all three are sampled on the same clock edge.
@@ -722,8 +725,9 @@ about a streaming design follows from the fact that no one may assume anything b
 > the source must accumulate 32 samples before its first valid edge, which is a buffer and a delay --
 > so the payload width is a latency decision disguised as a bus decision.
 >
-> **What it costs.** Nothing registered, which is the point of printing it. No record in this registry
-> states a channel width, a per-channel overhead, or a clock for any design. What the card can be read
+> **What it costs.** Nothing this project could price, and that is the point of printing it. No source
+> this project could retrieve states a channel width, a per-channel overhead, or a clock for any
+> design. What the card can be read
 > against is the fabric's own totals: $W$ payload bits need $W$ registers to be held across an edge at
 > each end of the link, so a 512-bit channel registered at both ends is 1,024 flip-flops of the 234,240
 > the device datasheet registers -- computed from those two numbers as 0.44% of the device's registers. A
@@ -930,13 +934,14 @@ The same eight weight sets, read two ways. Panel (a) zooms to per cent so the th
 
 **Mechanism, second half: why capacity is not the argument.** A reader could conclude from the card
 above that residency is a matter of space -- 3% used, room to spare. That conclusion is wrong, and the
-arithmetic of the feed rate shows it. Take a design that instantiates all 1,248 registered slices at one
-product each per cycle, at the same assumed 300 MHz that chapter 3's ridge point uses -- an assumption
-with no record behind it, stated as one here, and the ridge-point record in this section's table is the
-place that assumption is documented. That datapath consumes 1,248 multiplicands and 1,248 multipliers per cycle. If the weights
-were not resident they would have to arrive from off-chip, so the design would need 1,248 weight reads
-per cycle -- computed as $1{,}248 \times 300$ million per second, which is $3.7 \times 10^{11}$ reads a
-second. A DRAM controller does not serve single bytes on request. It serves a burst of tens of bytes
+arithmetic of the feed rate shows it. Take a design that instantiates all 1,248 slices at one product
+each per cycle, run at the same assumed 300 MHz that chapter 3's ridge point uses -- a stated
+assumption, not a measurement, and the table at this section's end says so. That datapath consumes
+1,248 multiplicands and 1,248 multipliers per cycle. If the weights were not resident they would have
+to arrive from off-chip, so the design would need 1,248 weight reads per cycle. At 300 million cycles
+per second that is $1{,}248 \times 300$ million reads a second -- $3.7 \times 10^{11}$, the product of
+one read per slice per cycle and cycles per second, which is the units the number is made of. A DRAM
+controller does not serve single bytes on request. It serves a burst of tens of bytes
 after a round trip, and the burst is useful only if consecutive words of the design's stream are
 consecutive in memory. That is the real constraint on this board, and it is not a capacity constraint:
 
