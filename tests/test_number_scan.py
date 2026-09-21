@@ -192,7 +192,7 @@ def test_numbers_in_a_comment_stay_inert(tmp_path: Path) -> None:
                 "",
                 "| Part | KB | Source |",
                 "| --- | --- | --- |",
-                "| Core | 32 | <!-- V-01-02 2560 revisited, 8.1 approved --> the cache data sheet |",
+                "| Core | 32 | <!-- V-01-02 8.1 revisited --> the cache data sheet |",
                 "",
             ]
         ),
