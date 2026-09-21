@@ -23,7 +23,10 @@ What counts as support
     cites, compared as numbers so that 23,616 and 23 616 and 23616 all match one record. In a table,
     the supporting ids must sit in the same row: book-en tables carry a "Where it comes from" column
     per row, and a row without a citation is a row making an uncited claim, which is the defect this
-    tool exists to find.
+    tool exists to find. The ids themselves may live inside an HTML comment on the row
+    ("<!-- V-01-03 -->"), because a source cell names the document for the reader and carries the
+    pointer where only this tool looks. Only the V-xx-yy pattern is read from comments; a number
+    inside a comment is still never scanned, so reviewer notes cannot become claims by relocation.
 
 What is exempt, and why each exemption is a region rather than a value
     Every rule below removes text before any matching happens, so it can only ever hide a class of
@@ -35,7 +38,9 @@ What is exempt, and why each exemption is a region rather than a value
         pair, which is arithmetic the definition performs, not a measured quantity.
       - headings and horizontal rules: document structure.
       - cross-references: [Figure 8], "chapter 8", "section 9.4", "Appendix A" address the book.
-      - an HTML comment or a raw-LaTeX block: authoring machinery, not prose.
+      - an HTML comment or a raw-LaTeX block: authoring machinery, not prose. The single
+        exception is the V-xx-yy pointer itself, which the same comment may carry for the
+        scanner — see "What counts as support".
     A number that survives all of that and matches nothing is reported. Declared derivations are
     reported too, in a separate list: prose that says "derived, from `V-05-31` with `V-05-32`" is
     using the same idiom the registry uses for its own arithmetic clauses, but this tool does not
@@ -235,21 +240,26 @@ def scan_file(
     path: Path, allowed: dict[str, set[float]]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return one finding per numeric token that no cited claim in its own scope supports."""
-    text = path.read_text(encoding="utf-8")
+    raw = path.read_text(encoding="utf-8")
     # Comments are blanked rather than deleted, so that a line number reported here is the line a
     # reader finds in the file. Comment contents are where authors write things like "8.1 reviewed
-    # fragment", and a section number inside a comment is not a claim about the world.
-    text = COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    # fragment", and a section number inside a comment is not a claim about the world. Numbers keep
+    # coming from the blanked text for exactly that reason. Claim ids are the one sanctioned
+    # exception: a source-table cell shows the reader a human document name and hides its V-xx-yy
+    # pointer in an HTML comment, so ids are read from the raw lines -- any other word in a comment
+    # stays inert.
+    text = COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), raw)
+    raw_lines = raw.split("\n")
     findings: list[dict[str, Any]] = []
     derived: list[dict[str, Any]] = []
     for sec in split_sections(text):
-        body = "\n".join(line for _, line, _ in sec["lines"])
+        body = "\n".join(raw_lines[lineno - 1] for lineno, _, _ in sec["lines"])
         cited = sorted({m.group(0) for m in CLAIM_ID.finditer(body)})
         support: set[float] = set()
         for cid in cited:
             support |= allowed.get(cid, set())
         for lineno, line, kind in sec["lines"]:
-            ids_here = {m.group(0) for m in CLAIM_ID.finditer(line)}
+            ids_here = {m.group(0) for m in CLAIM_ID.finditer(raw_lines[lineno - 1])}
             # In a table the row is the scope; in prose the section is the scope. See the docstring.
             scope_support = support
             if kind == "table" and not ids_here:

@@ -167,3 +167,29 @@ def test_id_digits_are_never_graded_as_measurements(tmp_path: Path) -> None:
 def test_promoted_scripts_import_cleanly(tool: str) -> None:
     mod = __import__(tool)
     assert hasattr(mod, "main")
+
+
+def test_id_in_html_comment_on_a_row_scopes_the_row(tmp_path: Path) -> None:
+    # Issue #113: a Source cell hides its id inside the leading comment; the id must still
+    # scope the row for pairing, exactly as a visible backtick id did.
+    by = registry(("V-01-02", "cache-kb", "32"))
+    text = "## 8.1 Section\n\n| Core | 32 | <!-- V-01-02 --> the cache data sheet |\n"
+    hard, notes, lines = grade(tmp_path, text, by)
+    assert hard == 0
+
+
+def test_number_in_a_comment_stays_ungraded_and_row_scope_is_kept(
+    tmp_path: Path,
+) -> None:
+    # The comment channel carries ids only: 2560 and 8.1 inside the comment are not graded,
+    # and a row without an id stays a hard orphan even though the section cites V-01-02.
+    by = registry(("V-01-02", "cache-kb", "32"))
+    text = (
+        "## 8.1 Section\n\n"
+        "<!-- V-01-02 2560 revisited, 8.1 approved -->\n\n"
+        "| Core | 32 | <!-- V-01-02 --> the cache data sheet |\n"
+        "| Tile | 64 | none |\n"
+    )
+    hard, notes, lines = grade(tmp_path, text, by)
+    assert hard == 1
+    assert lines and "64" in lines[0], lines

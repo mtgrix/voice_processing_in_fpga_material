@@ -135,6 +135,77 @@ def test_table_row_scopes_to_its_own_citation(tmp_path: Path) -> None:
     assert derived == []
 
 
+def test_comment_id_on_a_row_still_scopes_the_row(tmp_path: Path) -> None:
+
+    # The Source cell names the document for the reader and hides its V-xx-yy pointer in an HTML
+
+    # comment; the scanner must still see the id on the row, or the numbers it licenses would start
+
+    # falling into the baseline. 32 rides on its own comment-held citation; 64 cites nothing, and
+
+    # the section's 128 cannot vouch for a table row.
+
+    f = tmp_path / "chapter02.md"
+
+    f.write_text(
+        chr(10).join(
+            [
+                "## 2.1 Cache sizes",
+                "",
+                "The L2 is 128 KB, see `V-01-01`.",
+                "",
+                "| Part | KB | Source |",
+                "| --- | --- | --- |",
+                "| Core | 32 | <!-- V-01-02 --> the cache data sheet |",
+                "| Tile | 64 | none |",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    findings, derived = scan.scan_file(f, ALLOWED)
+
+    assert [r["token"] for r in findings] == ["64"]
+
+    assert findings[0]["in_table"] is True
+
+    assert derived == []
+
+
+def test_numbers_in_a_comment_stay_inert(tmp_path: Path) -> None:
+
+    # The comment channel exists for claim ids only. Reviewer snippets in the same comment --
+
+    # "2560 revisited, 8.1 approved" -- must not report 2560 or 8.1 as printed quantities, even
+
+    # though the row's id is read from that same comment.
+
+    f = tmp_path / "chapter02.md"
+
+    f.write_text(
+        chr(10).join(
+            [
+                "## 2.1 Cache sizes",
+                "",
+                "The L2 is 128 KB, see `V-01-01`.",
+                "",
+                "| Part | KB | Source |",
+                "| --- | --- | --- |",
+                "| Core | 32 | <!-- V-01-02 8.1 revisited --> the cache data sheet |",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    findings, derived = scan.scan_file(f, ALLOWED)
+
+    assert [r["token"] for r in findings] == []
+
+    assert derived == []
+
+
 def test_unit_numbers_license_prose() -> None:
     # "BRAM36 blocks" registers 36 through the unit, not the value; a section citing that
     # claim may print 36.
