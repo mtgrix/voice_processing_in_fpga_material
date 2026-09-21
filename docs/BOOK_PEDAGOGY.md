@@ -129,21 +129,26 @@ Ví dụ tối thiểu, để dạng thức không bị hiểu sai:
 cắt đôi mệnh đề mà người đọc đang theo.
 
 * Trong văn xuôi: **không** có `V-xx-yy`. Không paren, không inline.
-* Mỗi mục (section) kết thúc bằng một bảng **Traceability**: một hàng cho mỗi hồ sơ mục đó dựa vào, kèm
-  điều hồ sơ đó thực sự nói.
-* Bảng số liệu giữa mục giữ cột nguồn của riêng nó (`Where it comes from`). Đây là ngoại lệ bắt buộc,
-  không phải sơ suất: `scripts/verification/scan_numbers.py` coi một hàng bảng không có trích dẫn là một
-  claim không nguồn, và nó tính phạm vi trích dẫn **theo mục**, không theo file. Vì vậy bảng traceability
-  đặt ở cuối *mục* thì hợp lệ, còn đặt ở cuối *file* (kiểu footnote `[^1]`) thì làm hỏng cage: các số in
-  trong mục không còn hồ sơ nào cùng phạm vi.
+* Mỗi mục (section) kết thúc bằng một bảng **Where the numbers come from**: cột `Source` viết tên tài
+  liệu đọc được (thí dụ `Kria K26 SOM data sheet (DS987), the overview that names the part`), cột
+  `What it says` ghi điều hồ sơ đó thực sự nói. Con trỏ `V-xx-yy` sống trong chú thích HTML mở đầu cùng
+  ô `Source` (`| <!-- V-01-03 --> ... |`): pandoc bỏ chú thích khi dựng PDF, nên người đọc không thấy
+  id hay lời kiểm toán, còn `scan_numbers.py` vẫn đếm trích dẫn trên đúng hàng nó cần.
+* Bảng số liệu giữa mục giữ cột nguồn của riêng nó (`Where it comes from`), cột đó cũng viết bằng lời
+  người và giấu `V-xx-yy` trong chú thích HTML của ô. Đây là ngoại lệ bắt buộc, không phải sơ suất:
+  `scripts/verification/scan_numbers.py` coi một hàng bảng không có trích dẫn là một claim không nguồn,
+  và nó tính phạm vi trích dẫn **theo mục**, không theo file. Vì vậy bảng traceability đặt ở cuối *mục*
+  thì hợp lệ, còn đặt ở cuối *file* (kiểu footnote `[^1]`) thì làm hỏng cage: các số in trong mục
+  không còn hồ sơ nào cùng phạm vi.
 * Một claim dẫn xuất vẫn phải ghi rõ là dẫn xuất, và nêu tên các hồ sơ là số hạng.
 * Một chữ số trần trong văn bản luôn bị đọc là một đại lượng. `scan_numbers.py` bắt cả `1.` của danh sách đánh số lẫn `| **1 Air and microphone** |` của một bảng, và nó chỉ miễn cho "chapter 4" ở dạng số ít -- "chapters 4, 5 and 8" không khớp mẫu, nên hai số sau vẫn bị tính. Vì vậy: danh sách tầng viết bằng gạch đầu dòng, tên tầng đứng một mình không số, nhiều chương thì nhắc lại mỗi lần một chương, và số tầng chỉ xuất hiện trong fence `tikz` -- vùng đã được miễn. Thứ tự của sáu tầng do chính thứ tự dòng trong danh sách giữ.
 * Ba điều cấm của mục này được máy giữ chứ không phải lời hứa. `scripts/verification/prose_cage.py`
   khiến gate đỏ nếu một `V-xx-yy` nằm trên dòng văn xuôi (kể cả trong backticks), nếu một câu văn xuôi
   chứa cụm từ kiểm toán kiểu "the records say" hay "registered gap", hoặc nếu một số đo viết bằng chữ
-  (thay vì chữ số) xuất hiện trên dòng văn xuôi. Số 12 về xuống được phép viết bằng chữ theo quy ước
-  tiếng Anh; từ 13 trở lên là chữ số. Nợ hiện tại ghi trong `docs/verification/prose_baseline.json` --
-  chương nào sửa càng làm baseline đó co lại.
+  (thay vì chữ số) xuất hiện trên dòng văn xuôi. Quy ước id-trong-chú-thích chỉ dùng cho ô bảng: cage
+  không quét dòng bảng, nên nó không thấy `V-xx-yy` của một ô `Source` -- còn ở văn xuôi thì vẫn bị bắt.
+  Số 12 về xuống được phép viết bằng chữ theo quy ước tiếng Anh; từ 13 trở lên là chữ số. Nợ hiện tại
+  ghi trong `docs/verification/prose_baseline.json` -- chương nào sửa càng làm baseline đó co lại.
 
 ---
 

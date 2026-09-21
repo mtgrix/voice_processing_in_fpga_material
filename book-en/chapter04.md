@@ -156,16 +156,16 @@ case. What this section cannot give is the clock period itself, because a synthe
 frequency is a placement result and no measurement of one exists for this device -- chapter 3's ridge
 point has to assume a clock for exactly this reason.
 
-**Traceability.** Every quantity below is tied to the row that names it; the two figures that would
+**Where the numbers come from.** Every quantity below is tied to the row that names it; the two figures that would
 need a measurement -- a build's wall-clock and a synthesised clock period -- are named as absent
 rather than estimated.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-01-03` | the fabric holds 117,120 LUTs, so splitting the pool between stages is a division of a fixed number |
-| `V-01-15` | the device column those counts belong to, printed in full: LUTs, flip-flops, memory blocks and DSP slices together |
-| `V-01-01` | the part the budget belongs to, marked on the module rather than inferred from a board name |
-| `V-04-01` | building any of it needs no licence: the device is supported in the standard Vivado ML Standard flow |
+| <!-- V-01-03 --> UltraScale data sheet (DS890), device-feature table, CLB-LUTs row | the fabric holds 117,120 LUTs, so splitting the pool between stages is a division of a fixed number |
+| <!-- V-01-15 --> UltraScale data sheet (DS890), the device column that carries all four populations | the device column those counts belong to, printed in full: LUTs, flip-flops, memory blocks and DSP slices together |
+| <!-- V-01-01 --> Kria K26 SOM data sheet (DS987), the overview that names the part | the part the budget belongs to, marked on the module rather than inferred from a board name |
+| <!-- V-04-01 --> Vivado user guide (UG973), the architecture-support table, no-licence row | building any of it needs no licence: the device is supported in the standard Vivado ML Standard flow |
 
 **From dataflow to fabric.** Chapter 3 met the three dataflow families and the one thing each of them
 parks in its processing elements: weights, input activations, or running sums. What this book has not
@@ -548,28 +548,28 @@ containers, one cell eight times the other by area, and the design has to pick.
 The fabric's storage at one scale: 144 shallow 36-kilobit tiles as a square grid, 64 deep 288-kilobit tiles as a smaller square grid beside it, drawn so each deep square is the square root of eight wide and so eight shallow tiles fit inside one deep one by area. Two thirds of the containers hold a fifth of the bits, which is why a capacity question has to be asked in bytes and an allocation question in tiles.
 :::
 
-**Traceability.** What stands behind this section's printed numbers, and what this book leaves
+**Where the numbers come from.** What stands behind this section's printed numbers, and what this book leaves
 unnamed. Nothing here is
 a measured per-design result: the only measured footprint belongs to a vendor
 accelerator on another board, and it is cited as that.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-01-03` | 117,120 `CLB LUTs`, the logic population a design allocates against |
-| `V-01-04` | 234,240 `CLB Flip-Flops`, the second term of the 2.0 ratio |
-| `V-01-05` | 144 block RAM tiles, and each is 36 Kb usable as two 18 Kb halves |
-| `V-01-07` | 64 UltraRAM tiles |
-| `V-01-23` | the tile sizes, 36 Kb and 288 Kb, derived from the datasheet's own printed totals |
-| `V-01-22` | the 23,616 Kb sum and its unit chain to 2,952 KiB, 3,022,848 bytes, 2.8828 MiB and 3.02 MB |
-| `V-01-16` | 3.5 Mb of distributed RAM, which spends LUTs and is excluded from that sum |
-| `V-01-17` | 256 KB of processor-side on-chip memory, not fabric storage |
-| `V-01-09` | 1,248 `DSP Slices`, the multiplier ceiling every throughput figure divides by |
-| `V-01-19` | that the rounded "1.2K" is 4% low against 1,248, so it must not be used as a budget |
-| `V-01-15` | the datasheet column all four populations are read from, which is what makes them one device |
-| `V-01-11` | kept as a conflict: the two megabyte readings that arithmetic retired |
-| `V-04-07` | one measured accelerator footprint, 52,161 LUTs with 710 slices and 255 tiles, on a different board |
-| `V-04-09` | the derived verdict that it does not fit this device |
-| `V-04-06` | the report command that is the only legitimate source of a per-design number |
+| <!-- V-01-03 --> UltraScale data sheet (DS890), device-feature table, CLB-LUTs row | 117,120 `CLB LUTs`, the logic population a design allocates against |
+| <!-- V-01-04 --> UltraScale data sheet (DS890), device-feature table, flip-flop row | 234,240 `CLB Flip-Flops`, the second term of the 2.0 ratio |
+| <!-- V-01-05 --> UltraScale data sheet (DS890), device-feature table, block-RAM row | 144 block RAM tiles, and each is 36 Kb usable as two 18 Kb halves |
+| <!-- V-01-07 --> UltraScale data sheet (DS890), device-feature table, UltraRAM row | 64 UltraRAM tiles |
+| <!-- V-01-23 --> derived: the tile-size table (DS891) divided against the block counts (DS890) | the tile sizes, 36 Kb and 288 Kb, derived from the datasheet's own printed totals |
+| <!-- V-01-22 --> the summed tile capacities (DS890, DS891) carried along the unit chain | the 23,616 Kb sum and its unit chain to 2,952 KiB, 3,022,848 bytes, 2.8828 MiB and 3.02 MB |
+| <!-- V-01-16 --> UltraScale data sheet (DS890), device-feature table, distributed-RAM row | 3.5 Mb of distributed RAM, which spends LUTs and is excluded from that sum |
+| <!-- V-01-17 --> UltraScale data sheet (DS890), device-feature table, embedded-memory row | 256 KB of processor-side on-chip memory, not fabric storage |
+| <!-- V-01-09 --> UltraScale data sheet (DS890), device-feature table, DSP row | 1,248 `DSP Slices`, the multiplier ceiling every throughput figure divides by |
+| <!-- V-01-19 --> derived: the rounded column (DS986) compared with the exact counts (DS890) | that the rounded "1.2K" is 4% low against 1,248, so it must not be used as a budget |
+| <!-- V-01-15 --> UltraScale data sheet (DS890), the device column that carries all four populations | the datasheet column all four populations are read from, which is what makes them one device |
+| <!-- V-01-11 --> summed from the block counts (DS890) and the tile-size table (DS891) | two megabyte readings, each once defensible, of which the unit chain keeps one |
+| <!-- V-04-07 --> DPU product guide (PG338), the measured-footprint table, B4096 row | one measured accelerator footprint, 52,161 LUTs with 710 slices and 255 tiles, on a different board |
+| <!-- V-04-09 --> derived: the guide's footprint (PG338) held against this device's counts (DS890) | the comparison, derived from the rows above, that it does not fit this device |
+| <!-- V-04-06 --> Vivado user guide (UG906), the Report Utilization section | the report command that is the only legitimate source of a per-design number |
 ## 4.3 Streaming Interfaces: AXI4-Stream Protocol and Backpressure
 
 **Intuition.** Section 4.1 established that a fabric design is several machines working at once, and
@@ -751,13 +751,13 @@ nothing may be lost".
 There is a boundary where this stops being a design choice, and it is the one the next section crosses:
 back-pressure coordinates stages *inside* the fabric. It cannot make an external memory fast.
 
-**Traceability.** This section prints one device quantity and one percentage, and the absence behind the
+**Where the numbers come from.** This section prints one device quantity and one percentage, and the absence behind the
 rest of it is the finding.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-01-04` | 234,240 flip-flops, the denominator of the register cost, and the only registered population the wire card touches |
-| -- | no record: the protocol specification itself, the definitions of TVALID and TREADY, every level and interval in [Figure 19](#fig-ch4-stream-handshake), any channel width, and any streaming bandwidth -- the interface is this book's working definition, retrieved from no source
+| <!-- V-01-04 --> UltraScale data sheet (DS890), device-feature table, flip-flop row | 234,240 flip-flops, the denominator of the register cost, and the only fabric population the wire card's arithmetic touches |
+| no retrieved source | the protocol specification itself, the definitions of TVALID and TREADY, every level and interval in [Figure 19](#fig-ch4-stream-handshake), any channel width, and any streaming bandwidth -- the interface is this book's working definition, and no retrieved source fixes its details
 
 ---
 
@@ -973,21 +973,21 @@ The whole memory ladder is short enough to print at once, and reading it is the 
 
 | Rung | block RAM tiles | UltraRAM tiles | Where it comes from |
 | --- | --- | --- | --- |
-| B512 | 72 | 18 | `V-04-10`, `V-04-11` |
-| B800 | 90 | 40 | `V-04-10`, `V-04-11` |
-| B1024 | 104 | 26 | `V-04-10`, `V-04-11` |
-| B1152 | 121 | 44 | `V-04-10`, `V-04-11` |
-| B1600 | 126 | 56 | `V-04-10`, `V-04-11` |
-| B2304 | 165 | 60 | `V-04-10`, `V-04-11` |
-| B3136 | 208 | 64 | `V-04-10`, `V-04-11` |
-| B4096 | 255 | 68 | `V-04-10`, `V-04-11` |
+| B512 | 72 | 18 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B800 | 90 | 40 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B1024 | 104 | 26 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B1152 | 121 | 44 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B1600 | 126 | 56 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B2304 | 165 | 60 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B3136 | 208 | 64 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
+| B4096 | 255 | 68 | <!-- V-04-10, V-04-11 --> DPU product guide (PG338), the two ladder tables |
 
 ::: {#fig-ch4-dpu-ladder .figure}
 ```tikz
 % The same eight rows as geometry, so the two facts the prose reads off the table become lines a
 % reader checks with a ruler instead of re-deriving: the block RAM column crosses the device's 144
 % between B1600 and B2304, and the UltraRAM column does not climb with the rung name at all (B800
-% asks for 40 where the larger B1024 asks for 26). Tile counts are registered (V-04-10, V-04-11);
+% asks for 40 where the larger B1024 asks for 26). Tiles come from the guide's ladder tables (V-04-10, V-04-11);
 % the ceilings are the device's own populations (V-01-05, V-01-07). Heights are value x 0.026 cm,
 % computed by hand: this figure has no axis arithmetic to get wrong.
 \begin{tikzpicture}[
@@ -1055,26 +1055,26 @@ than supplying a budget: **the resource that runs out on a fabric is usually not
 predicts.** The keyword spotter's 140,000 weights are 4.63% of the storage and a rounding error in the
 logic; an accelerator's choice of how to stage its own buffers is what consumes the device.
 
-**Traceability.** The sources behind the residency arithmetic and the ladder, with the assumption named
+**Where the numbers come from.** The sources behind the residency arithmetic and the ladder, with the assumption named
 separately.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-05-01` | the three keyword-spotting parameter counts -- 77,000, 93,000, 140,000 -- and the source's own claim that a model this size fits in on-chip block RAM |
-| `V-05-16` | about 14 million parameters for the small Conformer, and that the count is rounded by its source |
-| `V-01-22` | the 2,952 KiB that every share above is divided by, with the unit chain that makes the division meaningful |
-| `V-01-11` | the same quantity kept as a registered conflict, because two larger readings were each once defensible |
-| `V-01-14` | the memory controller sits on the processor side and the fabric has no pins straight to the chips |
-| `V-01-13` | the 19.2 GB/s theoretical peak, derived from the bus width and rate, and the note that achievable bandwidth depends on port width, burst length and scheduling |
-| `V-01-12` | the datasheet's verbatim memory line behind that derivation |
-| `V-01-09` | 1,248 slices, the multiplier in the request-rate arithmetic |
-| `V-07-03` | the 300 MHz used above as a stated assumption with no record, and the ridge point it feeds |
-| `V-04-10` | the block RAM ladder: 72, 104, 126, 165 and 255 tiles at the rungs printed above |
-| `V-04-11` | the UltraRAM ladder, and that its rungs cannot be interpolated |
-| `V-04-12` | the derived fit: B1600 the largest block RAM core that fits, B2304 the practical UltraRAM ceiling |
-| `V-04-09` | the verdict that B4096 as tabulated fits neither variant on this device |
-| `V-04-13` | unresolved: which rung a shipped image actually loads |
-| `V-04-01` | the device is supported in the standard flow with no licence required |
+| <!-- V-05-01; Interspeech 2020 / arXiv:2004.08531 --> the keyword-spotting conference paper (Interspeech) | the three keyword-spotting parameter counts -- 77,000, 93,000, 140,000 -- and the source's own claim that a model this size fits in on-chip block RAM |
+| <!-- V-05-16 --> the NeMo recipe config, the recommended-variants table's Small-model row | about 14 million parameters for the small Conformer, and that the count is rounded by its source |
+| <!-- V-01-22 --> the summed tile capacities (DS890, DS891) carried along the unit chain | the 2,952 KiB that every share above is divided by, with the unit chain that makes the division meaningful |
+| <!-- V-01-11 --> summed from the block counts (DS890) and the tile-size table (DS891) | the same quantity, twice read and each reading once defensible, of which the unit chain keeps one |
+| <!-- V-01-14 --> Kria K26 SOM data sheet (DS987), the processing-system overview | the memory controller sits on the processor side and the fabric has no pins straight to the chips |
+| <!-- V-01-13 --> derived from the memory line (DS987) with the Kria card's own note (DS986) | the 19.2 GB/s theoretical peak, derived from the bus width and rate, and the note that achievable bandwidth depends on port width, burst length and scheduling |
+| <!-- V-01-12 --> Kria K26 SOM data sheet (DS987), the memory line in the overview | the datasheet's verbatim memory line behind that derivation |
+| <!-- V-01-09 --> UltraScale data sheet (DS890), device-feature table, DSP row | 1,248 slices, the multiplier in the request-rate arithmetic |
+| <!-- V-07-03 --> derived in chapter 7 from the DSP row (DS890) and the peak bandwidth (DS987) | the 300 MHz used above as a stated assumption, and the ridge point it feeds |
+| <!-- V-04-10 --> DPU product guide (PG338), the first resource table | the block RAM ladder: 72, 104, 126, 165 and 255 tiles at the rungs printed above |
+| <!-- V-04-11 --> DPU product guide (PG338), the second resource table | the UltraRAM ladder, and that its rungs cannot be interpolated |
+| <!-- V-04-12 --> derived: the two ladder tables (PG338) held against this device's tile counts (DS890) | the derived fit: B1600 the largest block RAM core that fits, B2304 the practical UltraRAM ceiling |
+| <!-- V-04-09 --> derived: the guide's footprint (PG338) held against this device's counts (DS890) | that B4096 fits neither variant on this device, read off the two rows above |
+| <!-- V-04-13 --> no retrieved source | which rung a shipped image actually loads -- no datasheet in this chapter states it |
+| <!-- V-04-01 --> Vivado user guide (UG973), the architecture-support table, no-licence row | the device is supported in the standard flow with no licence required |
 
 > **Scope note, closing this chapter.** Everything a design pays with is now on the table: logic tables
 > and registers for state, slices for arithmetic, tiles for storage, and a handshake that lets all four
