@@ -292,8 +292,8 @@ separately -- and why their ratio is a design constraint worth computing before 
 > input count that no retrievable source states, and a derived number inherits a missing premise.
 > Nor does the ratio say a design *can* use all of both:
 > placement is a packing problem, a table and a register in the same group share wiring, and a
-> utilisation report is where the truth about any one design lives, and the command that produces it
-> is registered in this section's table -- it is the only place a real per-design number comes from.
+> utilisation report is where the truth about any one design lives: the tool command that prints one,
+> named in this section's table, is the only legitimate source of a real per-design number.
 
 [Figure 16](#fig-ch4-lut-truth-table) is the two halves of that argument drawn together: the left panel
 shows a function becoming contents, the right shows what a design then has to fit into.
@@ -391,14 +391,14 @@ property of the design so much as a property of how many slices it was allowed t
 > when it does not fit.
 >
 > **What it costs.** One slice per lane, and 1,248 slices exist -- the `DSP Slices` row of the device
-> datasheet, printed as "1.2K" in the board's own rounded summary, which the registered comparison of
-> the two readings shows is 4% low if used as a budget. So
+> datasheet, printed as "1.2K" in the board's own rounded summary, a rounded reading
+> that sits 4% below the 1,248 the row actually counts and must not be used as a budget. So
 > a lane-per-slice design has 1,248 lanes of ceiling before any other resource is touched, and that
 > count divides every throughput number in this book: chapter 3's ridge point is built on it, and
 > chapter 1's Mel-stage arithmetic spread itself over it. What a slice costs in the *other* currencies
-> is registered only for one design: the vendor's own convolution engine puts 710 slices into a
-> network accelerator alongside 52,161 LUTs and 255 memory tiles, which is the closest thing to a
-> price list this repository has -- a real number, and one measured on a different board.
+> has only one measured answer: the vendor's own convolution engine puts 710 slices into a
+> network accelerator alongside 52,161 LUTs and 255 memory tiles -- a real footprint, and one
+> measured on a different board.
 >
 > **What it does not say.** Not the width of the multiplier, and not how many stages of registers are
 > inside the slice. Both are named only in the device guide this project could not fetch, and the
@@ -509,11 +509,10 @@ decides what a design fits into.
 > tiles against a device holding 144 does not fit, and no arithmetic in this card changes that. Nor
 > does it say how fast: a tile's port count and its clock behaviour are per-configuration choices this book leaves unnamed. And it does not say the total is convenient, which is the subject of section 4.4.
 
-**Hardware application.** The unit arithmetic in that card is not pedantry; it is the repair of a
-mistake this repository actually made. The storage total is a *conflict* precisely
-because two different totals -- "about 4 MB" and "about 4.5 MB" -- were each defensible from a datasheet
-row until somebody did the division, and neither survives it. The figure that survives carries its
-unit with it, and both totals are named in the table below. [Figure 18](#fig-ch4-tile-geometry)
+**Hardware application.** The unit arithmetic in that card is not pedantry: the same storage answered to two names --
+"about 4 MB" and "about 4.5 MB" -- until the division in the card showed which one the silicon
+actually holds. The figure that survives carries its unit with it, and the two readings are both
+named in the table below. [Figure 18](#fig-ch4-tile-geometry)
 draws the same fact as geometry, because "3.02 MB, mostly in the deep tiles" is a shape: two grids of
 containers, one cell eight times the other by area, and the design has to pick.
 
@@ -725,9 +724,7 @@ about a streaming design follows from the fact that no one may assume anything b
 > the source must accumulate 32 samples before its first valid edge, which is a buffer and a delay --
 > so the payload width is a latency decision disguised as a bus decision.
 >
-> **What it costs.** Nothing this project could price, and that is the point of printing it. No source
-> this project could retrieve states a channel width, a per-channel overhead, or a clock for any
-> design. What the card can be read
+> **What it costs.** No datasheet fixes a channel width, a per-channel overhead, or a clock for a design of this kind -- and that absence is the point of the card. What the card can be read
 > against is the fabric's own totals: $W$ payload bits need $W$ registers to be held across an edge at
 > each end of the link, so a 512-bit channel registered at both ends is 1,024 flip-flops of the 234,240
 > the device datasheet registers -- computed from those two numbers as 0.44% of the device's registers. A
@@ -736,7 +733,7 @@ about a streaming design follows from the fact that no one may assume anything b
 >
 > **What it does not say.** It does not say a channel is unlimited in rate. Throughput on a streaming
 > channel is $W$ bits per *transferring* cycle, and the number of transferring cycles per second is a
-> clock times a duty fraction, neither of which is registered here -- so this book never prints a
+> clock times a duty fraction, neither of which this book can measure -- so this book never prints a
 > streaming bandwidth for a link of this kind. Any such figure a reader meets elsewhere is a synthesis
 > result from a design they are not looking at, which is the distinction the whole chapter is built to
 > keep visible.
@@ -823,8 +820,8 @@ unit traps live.
 > model at 95% of the total does not fit. It does not say anything about speed, which is the argument
 > below and the actual reason residency matters. And it does not say a vendor tool sizes its own memory
 > the same way: the accelerator ladder at the end of this section is a measured footprint on a different
-> board, registered rung by rung, from which the fit against this device is derived arithmetic and is
-> labelled as such in the table below.
+> board, and the fit of each rung against this device is arithmetic on those rows -- the
+> table below lists where each one was measured.
 
 [Figure 20](#fig-ch4-residency) puts all eight quantities on one axis, because the interesting thing is
 not the per-centages -- it is that one bar crosses the fabric's line and the other six do not come
@@ -939,7 +936,7 @@ each per cycle, run at the same assumed 300 MHz that chapter 3's ridge point use
 assumption, not a measurement, and the table at this section's end says so. That datapath consumes
 1,248 multiplicands and 1,248 multipliers per cycle. If the weights were not resident they would have
 to arrive from off-chip, so the design would need 1,248 weight reads per cycle. At 300 million cycles
-per second that is $1{,}248 \times 300$ million reads a second -- $3.7 \times 10^{11}$, the product of
+per second that is $1{,}248 \times 300$ million reads a second -- $3.744 \times 10^{11}$, the product of
 one read per slice per cycle and cycles per second, which is the units the number is made of. A DRAM
 controller does not serve single bytes on request. It serves a burst of tens of bytes
 after a round trip, and the burst is useful only if consecutive words of the design's stream are
@@ -953,7 +950,7 @@ consecutive in memory. That is the real constraint on this board, and it is not 
 - **requests per second are not.** A controller serves a burst, not a byte, so what matters is how many
   separate asks a design makes. The keyword spotter re-read at 100 frames a second needs $1.4 \times 10^{7}$
   single-byte reads a second -- computed as 140,000 weights times that frame rate -- which a wide enough
-  burst could absorb. The full-array datapath above needs $3.7 \times 10^{11}$, because it wants 1,248 of
+  burst could absorb. The full-array datapath above needs $3.744 \times 10^{11}$, because it wants 1,248 of
   them *in one cycle*. That is 26,743 times the first figure, derived by dividing the two, and the gap is
   the whole argument: the bytes are affordable at either rate and the request granularity is impossible at
   the high one.
@@ -1050,9 +1047,8 @@ tiles of 144 is the largest block RAM core that fits, derived as 87.5% of the fa
 for one accelerator and leaving 18 tiles for everything else a voice design needs. The UltraRAM column
 does *not* climb with the name -- B800 asks for 40 tiles where the larger B1024 asks for 26 -- which is
 why no rung may be interpolated and each must be read from the table. Against this device's 64 UltraRAM
-tiles, B3136 fills 64 of 64 exactly and leaves nothing, which makes B2304 the practical ceiling; B4096 as
-tabulated fits neither variant, 255 tiles against 144 or 68 against 64, a verdict stated in the table rather than an
-inference -- and DSP is the one resource that does have headroom, 710 slices of the fabric's 1,248 (56.9%,
+tiles, B3136 fills 64 of 64 exactly and leaves nothing, which makes B2304 the practical ceiling; B4096 fits neither variant, 255 tiles against 144 or 68
+against 64 -- and DSP is the one resource that does have headroom, 710 slices of the fabric's 1,248 (56.9%,
 derived from those two). The rows were measured on another board with a stated option set, and the product guide leaves
 which rung a shipped image loads onto unresolved. So the ladder demonstrates a shape rather
 than supplying a budget: **the resource that runs out on a fabric is usually not the one a parameter count
