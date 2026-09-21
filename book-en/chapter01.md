@@ -430,9 +430,8 @@ $f_{\max} = 8{,}000\ \text{Hz}$.
 > repository has varied them, so this book cannot say any of them is optimal. The rate is the one
 > exception worth repeating: 16 kHz is inherited from the rate at which both training corpora store
 > audio, which makes it a constraint the data imposes rather than a choice this project made, and
-> section 1.2 shows why. Nothing here is a figure measured off a running frontend. Every quantity
-> printed below is derived from this block by arithmetic the text shows in full, and a number this
-> book has not measured is carried by this block instead, and the text says so.
+> section 1.2 shows why. Every quantity below is derived from this block by arithmetic the text
+> shows in full, and nothing here was read off a running frontend.
 
 ### A probe wave, before any formula
 
@@ -569,10 +568,9 @@ and fading is multiplication.
 > **What it costs.** $w$ never changes, so in hardware it is a read-only table of $L$ constants and a
 > multiplier per lane -- or one multiplier reused $L$ times per frame, which is the usual choice
 > because it trades area for latency and this stage has $10$ ms to answer. It has no state to carry
-> between frames and it makes no decisions. A measured figure for this stage's share of either
-> platform does not exist: the published resource totals describe whole accelerators and named
-> processor blocks, not a multiplier bank of this size, so the honest cost to state here is its
-> shape.
+> between frames and it makes no decisions. The honest cost to state here is its shape: the
+> published resource totals describe whole accelerators and named processor blocks, not a
+> multiplier bank of this size, and nothing smaller has been measured.
 >
 > **What it does not say.** It does not say the fade is harmless. Multiplying by $w$ lowers the
 > amplitude near both ends, which changes the answer every later stage gives, and changes it
@@ -687,8 +685,8 @@ to ask it that way, and this is where that construction is written down.
 > is where a fixed-point engine for it is specified. Two other costs hide in the notation. Padding
 > from $400$ to $512$ means any hardware holding a frame holds the padded length, not the physical
 > one. And the output is complex, so a design that keeps every bin in full stores two numbers per bin
-> even though the next stage throws one of them away. No measured cost for this stage on either
-> platform exists.
+> even though the next stage throws one of them away. These are prices the written form implies,
+> not readings a board has produced.
 >
 > **What it does not say.** It does not say a large result proves a tone is present. A frame of padded
 > silence, a click, a breath, and a tone sitting just off bin $k$'s rate all produce sums, and the
@@ -741,8 +739,7 @@ live with it.
 > parts are already in hand, and no extra storage: the output is half the size of the input because a
 > real number replaces a pair. The square root that the magnitude notation implies is deliberately
 > never computed, because this stage squares instead -- so a design needs no root here, which matters
-> because a square root is the kind of non-linear step that has no fixed cost per cycle. A measured
-> figure for this stage on either platform does not exist.
+> because a square root is the kind of non-linear step that has no fixed cost per cycle.
 >
 > **What it does not say.** It does not say the result is a power in any physical sense. $P_\ell[k]$
 > is in sample units squared: the microphone's sensitivity, the recording gain, and any normalisation
@@ -785,9 +782,8 @@ that scale.
 > **What it costs.** This function is evaluated during setup, once, at $M+2$ frequencies, and its
 > result is folded into a table of constants. At run time the stage costs no logarithm at all, which
 > is the entire reason for doing it this way: a non-linear function has no fixed cost per cycle and so
-> has no place in a data path that must answer every $10$ ms. A measured figure for the setup cost does not
-> exist, and it would not matter if it did, since setup runs once per experiment rather than
-> once per frame.
+> has no place in a data path that must answer every $10$ ms. The setup cost is paid once per
+> experiment, not once per frame, so nobody has needed to measure it.
 >
 > **What it does not say.** It does not say the Mel scale is correct for keyword spotting. It describes
 > how human listeners judge the closeness of two pure tones, measured in a laboratory, and it enters a
@@ -945,7 +941,7 @@ of the power spectrum under its own triangle.
 > claim that anyone has built that design. And on the Jetson side the count is a bandwidth problem
 > rather than an arithmetic one: the weights are read-only, so the question chapter 3 asks is how
 > much of this matrix can sit where it reads fast, not whether the multiplies fit. None of these
-> figures is a measured cost of an implementation.
+> figures comes from a bench; each is arithmetic on the design.
 >
 > **What it does not say.** Nothing here says $80$ is the right number of bands. 80 is what
 > `AudioConfig` declares; fewer bands lose spectral detail and cost less storage, more do the reverse,
@@ -1086,7 +1082,7 @@ so each band is replaced by the logarithm of its energy, and a floor keeps that 
 > table or a polynomial rather than a multiply -- or hold energies in a number format whose exponent
 > field already *is* a logarithm. That fork is chapter 6's subject, and which side is cheaper depends
 > on the number format chosen there, which is why this card cannot price it. On the GPU side the stage
-> is memory-bound and small next to the model; no measured cost exists. The comparison itself
+> is memory-bound and small next to the model. The comparison itself
 > is a comparator and a multiplexer, about as close to free as anything in this pipeline gets.
 >
 > **What it does not say.** This floor needs caution twice, and this book needs both. First,
@@ -1294,10 +1290,12 @@ The FPGA figures below are device capacities, printed in Advanced Micro Devices 
 
 Two of those rows are worth a note on how to read a datasheet. The BRAM total is printed as
 "5.1 Mb", which is the datasheet's rounding of $144 \times 36 = 5{,}184$ kilobit. The combined
-capacity carries a `conflict` flag: 23,616 Kb is what multiplying the two block counts by their sizes
-gives, while the project's own plan document says "4 MB" and a research note says about 4.5 MB. Unrolled to a single unit, that capacity is 23,616 Kb = 2,952 KiB = 3,022,848 bytes = 2.8828 MiB =
-3.02 MB in decimal units, so the disagreement is partly a units disagreement, which is exactly the kind
-of thing a table of capacities hides. Every number stays as printed; none was averaged.
+row hides a units question, which is exactly the kind of thing a table of capacities can smooth
+over. The same storage has five names: 23,616 Kb, 2,952 KiB, 3,022,848 bytes, 2.8828 MiB, and
+3.02 MB in decimal units -- five ways to write one number of bytes. A plan document in
+this project printed it as "4 MB" and a research note as "about 4.5 MB"; both are defensible under
+some reading of the units, and neither is the figure the arithmetic gives. The chain above is the
+checkable one.
 
 Now the two things the frontend actually needs to store, both in 32-bit floating point (FP32):
 
@@ -1308,7 +1306,8 @@ Now the two things the frontend actually needs to store, both in 32-bit floating
 
 Both right-hand columns are derived arithmetic: each percentage is the item's byte size divided by
 the container's byte size, so the first row is $1{,}600 / 4{,}608 = 34.7\%$ and the second is
-$82{,}240 / 663{,}552 = 12.4\%$. One derived number over one printed number, in that order. Read them for what they are. They say that the frontend's data is small against the
+$82{,}240 / 663{,}552 = 12.4\%$. Each percentage is one derived number over one printed number, in that order,
+and nothing more: they say the frontend's data is small against the
 storage a device of this class contains. They do **not** say the design would occupy that much
 of a device, because nothing here has been described in a hardware language, let alone
 synthesised. A percentage of a container is not a percentage of a design, and the difference
@@ -1351,12 +1350,11 @@ TOPS is arithmetic in this book, not a rating any datasheet prints; the rows are
 
 ### What the experiment measured, and what its number really says
 
-The reference run is recorded at `results/exp01/20260913T020406Z/`, with its digests in
-`results/SHA256SUMS`. It compared the streaming implementation against an offline one over one
-second of a three-tone test signal, on a host running Python 3.12.10 with NumPy 2.5.2. It
-produced 98 frames of 80 values and reported:
+One run of the reference implementation carried the comparison: the streaming version against an
+offline one over one second of a three-tone test signal, on a host running Python 3.12.10 with
+NumPy 2.5.2. It produced 98 frames of 80 values and reported:
 
-| Reported | Value | Reading |
+| Reported | Value | What the number shows |
 | --- | --- | --- |
 | Mean absolute error (MAE) | $0.0$ | Satisfies the section 7 bound of README `chapter01/`, which is written as an expectation, not a result |
 | Frames | 98 | As derived above from $L$, $H$ and one second |
@@ -1389,5 +1387,6 @@ cells are empty.
 
 ## Associated Experiment
 - Refer to [`chapter01/`](../chapter01/).
-- Executed on a host on 2026-09-13; raw output at
-  [`results/exp01/20260913T020406Z/`](../results/exp01/20260913T020406Z/). Section 1.4 reads it.
+- Executed on a host on 2026-09-13; raw output and digests at
+  [`results/exp01/20260913T020406Z/`](../results/exp01/20260913T020406Z/)
+  ([`results/SHA256SUMS`](../results/SHA256SUMS)). Section 1.4 reads it.
