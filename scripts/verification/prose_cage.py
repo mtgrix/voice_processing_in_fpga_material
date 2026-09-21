@@ -291,6 +291,13 @@ AUDIT_PHRASES: tuple[tuple[str, str], ...] = (
     ("the trail stops", "say what the evidence fails to say, in one plain sentence"),
     ("the citation trail", "say what the evidence fails to say, in one plain sentence"),
     ("unsourced", "say what the evidence fails to say, in one plain sentence"),
+    # Round-2 chapter-4 variants: identical machinery talk, verified absent from every other
+    # book-en manuscript file, so they can be listed here without lighting up another chapter.
+    ("unregistered here", "say what is unnamed in subject terms, not in the record system"),
+    ("in the registry", "say where the evidence lives in reader terms, not in the registry"),
+    ("the registry's own", "say what the source states, not what the registry says"),
+    ("from the record that", "say which source shows the number, not the record machinery"),
+    ("the record that states", "say what the number is, not that a record states it"),
 )
 
 

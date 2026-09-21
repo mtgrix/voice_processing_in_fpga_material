@@ -4,8 +4,8 @@
 > now the microarchitecture behind every capacity number used later in the book, written from the
 > primitive up: what a piece of fabric physically is, what one unit of it costs, and what the device
 > in this project actually contains. Two rules shape it. First, every hardware claim about *this*
-> part traces to a registered record; where a low-level figure is named only in a device guide this
-> project could not retrieve, the prose says "no record" rather than repeating a number from memory,
+> part traces to a named source; where a low-level figure is named only in a device guide this
+> project could not retrieve, the book names the gap and prints no number,
 > because a figure that reads like a datasheet value, with no source behind it, is the failure mode
 > this book exists
 > to avoid. Second, nothing here is a synthesis result. No design has been placed, routed or timed,
@@ -156,9 +156,9 @@ case. What this section cannot give is the clock period itself, because a synthe
 frequency is a placement result and no measurement of one exists for this device -- chapter 3's ridge
 point has to assume a clock for exactly this reason.
 
-**Traceability.** The records this section leans on. Each quantity it prints is a registered device
-count; the two figures that would need a measurement -- a build's wall-clock and a synthesised clock
-period -- are named as absent rather than estimated.
+**Traceability.** Every quantity below is tied to the row that names it; the two figures that would
+need a measurement -- a build's wall-clock and a synthesised clock period -- are named as absent
+rather than estimated.
 
 | Record | What it establishes here |
 | --- | --- |
@@ -239,10 +239,10 @@ designer writes, LUTs are what the silicon actually contains.
 > **What it costs.** One table of $k$ inputs costs $2^{k}$ SRAM cells and one address decoder, and it
 > is *the same piece of silicon* whatever the function is -- chapter 1's Mel triangle weights, a
 > comparator, and the enable line of a register all become cell contents rather than wiring. The
-> registered population for this device is 117,120 tables, counted as `CLB LUTs` by the datasheet row
-> named in the table at this section's end. What is **not** registered is $k$ for this family's table:
-> the device architecture guide that would name it could not be retrieved by this project, so no
-> record here states it, and no figure in this book is computed from it. The consequence for a reader is narrow but
+> population for this device is 117,120 tables, counted as `CLB LUTs` by the datasheet row
+> named in the table at this section's end. What no fetched source names is $k$ for this family's
+> table: the device architecture guide that would name it could not be retrieved by this project, so
+> this book leaves it unstated, and no figure in this book is computed from it. The consequence for a reader is narrow but
 > real: an LUT count is a count of *cells*, and converting it into "how much logic" needs $k$, so the
 > only honest per-cell statement available is a proportion -- see the next card.
 >
@@ -373,7 +373,7 @@ property of the design so much as a property of how many slices it was allowed t
 > **The variables.**
 >
 > - $A$ — the accumulator: the running total, held in a register that survives the clock edge. Its
->   width is what a dot product's partial sums need room to grow into, and no record here fixes it for
+>   width is what a dot product's partial sums need room to grow into, and no datasheet figure fixes it for
 >   this device.
 > - $x$ — one input value: a sample, or an activation from the previous layer. A number in whatever
 >   format the design chose, fixed-point at every point in this book's route.
@@ -401,8 +401,8 @@ property of the design so much as a property of how many slices it was allowed t
 > price list this repository has -- a real number, and one measured on a different board.
 >
 > **What it does not say.** Not the width of the multiplier, and not how many stages of registers are
-> inside the slice. Both are named only in the device guide this project could not fetch, so both are
-> unregistered here, and the practical consequence is stated plainly: this book cannot compute a
+> inside the slice. Both are named only in the device guide this project could not fetch, and the
+> practical consequence is plain: this book cannot compute a
 > maximum achievable clock from a DSP48E2's internal structure, which is why chapter 3's ridge point
 > assumes a fabric clock instead of deriving one. Nor does the count say 1,248 lanes are *usable*
 > together: they must be placed, fed with operands, and kept supplied by the memory tiles that the
@@ -465,7 +465,7 @@ The same arithmetic, two schedules. Panel (a) closes its accumulation loop throu
 **Mechanism.** Two kinds of bulk storage are wired into this fabric, and they differ in size, not in
 kind. A **block RAM** (BRAM -- on-chip storage) tile is a 36-kilobit block that can also be used as
 two independent 18-kilobit halves. An **UltraRAM** (URAM -- the deeper block of
-this family) tile is 288 kilobits, a pair of sizes derived -- in the record this section's table names
+this family) tile is 288 kilobits, a pair of sizes derived -- as this section's table shows
 -- from the datasheet's own printed totals. The tile sizes are why the datasheet counts *blocks* rather than bytes: capacity is
 not allocated continuously, it is allocated in whole tiles, and the unit of allocation is the fact that
 decides what a design fits into.
@@ -493,28 +493,27 @@ decides what a design fits into.
 > carry 5,184, so computed from those two products the deep blocks are 78.0% of the fabric's storage
 > while being 30.8% of its tiles. A designer counting tiles is not counting bytes.
 >
-> **What it costs.** Everything in this card is registered: 144 and 64 tiles from the two datasheet
+> **What it costs.** Every number in this card traces to the datasheet: 144 and 64 tiles from the two
 > rows this section's table names, 36 and 288 kilobits from the tile-size derivation, and the
-> 23,616-kilobit sum from the record that exists to state it. Carried to bytes it is 2,952 KiB, which
-> is 3,022,848 bytes, which that same record unrolls to 2.8828 MiB and to 3.02 MB read as a million
+> 23,616-kilobit sum from the datasheet's own printed totals. Carried to bytes it is 2,952 KiB, which
+> is 3,022,848 bytes, which the same totals unroll to 2.8828 MiB and to 3.02 MB read as a million
 > bytes -- the identical quantity wearing four units. Two further on-chip storage populations are
-> registered and deliberately left out of this sum: 3.5 Mb of distributed RAM, which is built from the
+> deliberately left out of this sum: 3.5 Mb of distributed RAM, which is built from the
 > LUTs of the first card and therefore spends logic rather than arriving free, and 256 KB of
 > processor-side memory, which is not fabric storage at all.
 >
 > **What it does not say.** Not what a design can use. The 144 and 64 tiles are gross populations: the
 > design that this book is building toward also needs storage for its input buffer, its line buffers,
-> its activations, its key-value cache, and the vendor accelerator's own weight staging, and the
-> registry holds one measured example of the collision: a convolution core that asks for 255 block RAM
+> its activations, its key-value cache, and the vendor accelerator's own weight staging, and a
+> measured example of the collision exists: a convolution core that asks for 255 block RAM
 > tiles against a device holding 144 does not fit, and no arithmetic in this card changes that. Nor
-> does it say how fast: a tile's port count and its clock behaviour are per-configuration choices and
-> unregistered here. And it does not say the total is convenient, which is the subject of section 4.4.
+> does it say how fast: a tile's port count and its clock behaviour are per-configuration choices this book leaves unnamed. And it does not say the total is convenient, which is the subject of section 4.4.
 
 **Hardware application.** The unit arithmetic in that card is not pedantry; it is the repair of a
-mistake this repository actually made. The registry keeps that quantity as a *conflict* precisely
+mistake this repository actually made. The storage total is a *conflict* precisely
 because two different totals -- "about 4 MB" and "about 4.5 MB" -- were each defensible from a datasheet
-row until somebody did the division, and neither survives it. The record that states it correctly
-exists to make the unit travel with the number, and both are named in the table below. [Figure 18](#fig-ch4-tile-geometry)
+row until somebody did the division, and neither survives it. The figure that survives carries its
+unit with it, and both totals are named in the table below. [Figure 18](#fig-ch4-tile-geometry)
 draws the same fact as geometry, because "3.02 MB, mostly in the deep tiles" is a shape: two grids of
 containers, one cell eight times the other by area, and the design has to pick.
 
@@ -550,8 +549,9 @@ containers, one cell eight times the other by area, and the design has to pick.
 The fabric's storage at one scale: 144 shallow 36-kilobit tiles as a square grid, 64 deep 288-kilobit tiles as a smaller square grid beside it, drawn so each deep square is the square root of eight wide and so eight shallow tiles fit inside one deep one by area. Two thirds of the containers hold a fifth of the bits, which is why a capacity question has to be asked in bytes and an allocation question in tiles.
 :::
 
-**Traceability.** The records behind this section's printed numbers, and the named gaps. Nothing here is
-a measured per-design result: the only measured footprint in the registry belongs to a vendor
+**Traceability.** What stands behind this section's printed numbers, and what this book leaves
+unnamed. Nothing here is
+a measured per-design result: the only measured footprint belongs to a vendor
 accelerator on another board, and it is cited as that.
 
 | Record | What it establishes here |
@@ -814,7 +814,7 @@ unit traps live.
 > those are 4.63% and 2.32% for the largest variant, 2.55% and 1.27% for the smallest, derived from the
 > same two numbers each time. The whole keyword-spotting family therefore lives at a few per cent of the
 > fabric either way, and the keyword spotter's own source makes that claim about this architecture
-> family -- it is the record this section's table names first. The 14-million Conformer is 13,672 KiB at INT8 and 6,836 KiB at INT4, computed
+> family -- it is the first source this section's table names. The 14-million Conformer is 13,672 KiB at INT8 and 6,836 KiB at INT4, computed
 > the same way: 4.63 and 2.32 times the fabric's entire storage.
 >
 > **What it does not say.** Three things, in order of how much they will cost a reader. It does not say
@@ -947,8 +947,8 @@ consecutive in memory. That is the real constraint on this board, and it is not 
 
 - **bytes per second are cheap.** Re-reading the largest keyword spotter's whole weight set once per
   frame at 100 frames per second is 14.00 MB/s at INT8, computed from 140,000 weights at one byte each
-  and that frame rate. That is 0.073% of the 19.2 GB/s theoretical peak, derived in the record this
-  section's table names from the bus width and the data rate. Even the 14-million Conformer's weight set, streamed once a frame, is 1,400 MB/s at INT8 --
+  and that frame rate. That is 0.073% of the 19.2 GB/s theoretical peak, derived from the bus width and the data rate named in this
+  section's table. Even the 14-million Conformer's weight set, streamed once a frame, is 1,400 MB/s at INT8 --
   7.29% of the same peak. Both look survivable, and that is the trap.
 - **requests per second are not.** A controller serves a burst, not a byte, so what matters is how many
   separate asks a design makes. The keyword spotter re-read at 100 frames a second needs $1.4 \times 10^{7}$
@@ -958,8 +958,8 @@ consecutive in memory. That is the real constraint on this board, and it is not 
   the whole argument: the bytes are affordable at either rate and the request granularity is impossible at
   the high one.
 - **and the peak is shared, not owned.** The datasheet places the controller on the processor side with
-  no direct fabric pins, and the processors on the same module are running Linux. The record behind the
-  19.2 GB/s says in its own note that achievable bandwidth depends on port width, burst length and
+  no direct fabric pins, and the processors on the same module are running Linux. The datasheet's note on the
+  19.2 GB/s row says that achievable bandwidth depends on port width, burst length and
   scheduling, so that peak is a ceiling a fabric design competes for rather than a pipe it holds.
 
 Residency is the answer to a *request-rate* problem, and the tiles of section 4.2 are what solve it: 208
@@ -968,10 +968,10 @@ anybody. That is the sentence chapter 9's overlay rests on, and it is why this b
 resident and activations streamed -- the traffic split chapter 9's boundary section names.
 
 **The residency budget is not the end of the fitting problem, and the vendor numbers prove it.** The
-device supports the free standard edition of the build flow -- a registered fact, named in the table
+device supports the free standard edition of the build flow -- a fact named in the table
 below -- so a reader can compile a resident design without a licence; what nobody can compile their way out of is a tile that does not
-exist. The measured ladder in the accelerator's own product guide is the most useful evidence in this
-registry for exactly that reason -- a real tool's real footprint, on a real board, at eight settings.
+exist. The measured ladder in the accelerator's own product guide is the most useful evidence for exactly
+that reason -- a real tool's real footprint, on a real board, at eight settings.
 The whole memory ladder is short enough to print at once, and reading it is the fitting test:
 
 | Rung | block RAM tiles | UltraRAM tiles | Where it comes from |
@@ -1051,16 +1051,16 @@ for one accelerator and leaving 18 tiles for everything else a voice design need
 does *not* climb with the name -- B800 asks for 40 tiles where the larger B1024 asks for 26 -- which is
 why no rung may be interpolated and each must be read from the table. Against this device's 64 UltraRAM
 tiles, B3136 fills 64 of 64 exactly and leaves nothing, which makes B2304 the practical ceiling; B4096 as
-tabulated fits neither variant, 255 tiles against 144 or 68 against 64, a registered verdict rather than an
+tabulated fits neither variant, 255 tiles against 144 or 68 against 64, a verdict stated in the table rather than an
 inference -- and DSP is the one resource that does have headroom, 710 slices of the fabric's 1,248 (56.9%,
-derived from those two). The rows were measured on another board with a stated option set, and the registry's own entry
-on which rung a shipped image loads is an unresolved non-answer. So the ladder demonstrates a shape rather
+derived from those two). The rows were measured on another board with a stated option set, and the product guide leaves
+which rung a shipped image loads onto unresolved. So the ladder demonstrates a shape rather
 than supplying a budget: **the resource that runs out on a fabric is usually not the one a parameter count
 predicts.** The keyword spotter's 140,000 weights are 4.63% of the storage and a rounding error in the
 logic; an accelerator's choice of how to stage its own buffers is what consumes the device.
 
-**Traceability.** The records behind the residency arithmetic and the ladder, with the assumption named
-apart from the evidence.
+**Traceability.** The sources behind the residency arithmetic and the ladder, with the assumption named
+separately.
 
 | Record | What it establishes here |
 | --- | --- |
