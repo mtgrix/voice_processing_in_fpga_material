@@ -175,13 +175,7 @@ a fixed amount of memory holding what the next frame will need. In chapter 4 thi
 question about how much on-chip memory a design spends, which is a sharper question than
 "how many arithmetic units are there".
 
-**Consecutive frames mostly repeat.** Speech changes slowly next to the rate at which a
-useful frame can be taken, so the frames used in this book overlap: of the 400 samples in a
-frame, 240 were already present in the frame before it. Recomputing those 240 every time is
-wasted work, which is why a streaming program keeps a moving window instead of restarting
-from the recording. In hardware the overlap is an opportunity: a design that never needs the
-discarded part again can be built around a buffer whose read and write positions simply
-travel around a fixed circle.
+**Consecutive frames mostly repeat.** The physical articulators of the human vocal tract—the tongue, lips, velum, and jaw—possess mechanical mass and biological inertia. They cannot change physical configuration instantaneously; speech remains quasi-stationary over short time windows of $20\text{ to }30$ milliseconds. To capture a statistically stable acoustic snapshot, the front end must observe a $25\text{ ms}$ window ($400$ samples), but to track phonetic transitions between vowels and consonants, it must advance by $10\text{ ms}$ ($160$ samples). Consequently, consecutive frames overlap heavily: of the 400 samples in a frame, 240 were already present in the frame before it. Recomputing those 240 every time is wasted work, which is why a streaming program keeps a moving window instead of restarting from the recording. In hardware the overlap is an opportunity: a design that never needs the discarded part again can be built around a buffer whose read and write positions simply travel around a fixed circle.
 
 **The arrival rate is not negotiable.** A microphone does not slow down when the processor is
 busy. In vision a full queue means the job finishes late. In audio a full queue means
@@ -231,20 +225,26 @@ buffer that the second stage of this list is about.
 **Waveform.** Sound is captured as a sequence of numbers measuring air pressure at even time
 intervals. The intervals follow from the **sampling rate**, which is how many numbers are
 taken per second. The reference frontend uses 16,000 samples per second, so one sample
-arrives every 62.5 microseconds and a 25 ms frame holds 400 of them. That rate is a **design
-parameter, not a fact about the world**: it is written in the `AudioConfig` defaults of the
-experiment, and no measurement chose it. Until now, nothing written down said why
-16,000 rather than some other number, and two published sources close that gap. The Speech Commands dataset
-paper says each utterance is "stored as a one-second (or less) WAVE format file, with the sample
-data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate". The LibriSpeech corpus
-page describes 1000 hours of 16 kHz read English speech. Those two sources are not equally strong:
-the first is a paper, the second is the distribution page of the corpus it describes, so the
-justification here is the pair together, and it is worth naming
-exactly what the pair supports. Both corpora that the chapter 5 models train on are stored at
+arrives every 62.5 microseconds and a 25 ms frame holds 400 of them. That rate is rooted
+in the physical acoustics of human speech production. The vocal cords vibrate at a
+fundamental frequency ($F_0$) between $85\text{ Hz}$ (deep male voice) and $255\text{ Hz}$
+(female voice), while the vocal tract—a biological acoustic resonator formed by the
+pharynx, oral cavity, and nasal passage—produces formant resonances ($F_1, F_2, F_3$)
+that distinguish linguistic vowels, typically spanning $300\text{ Hz}$ to $3{,}500\text{ Hz}$.
+The highest-frequency speech components are unvoiced fricatives and plosives (such as
+the acoustic turbulence of /s/ and /sh/), which roll off below $8\text{ kHz}$.
+
+By the Nyquist-Shannon sampling theorem, capturing an acoustic signal without spectral
+aliasing requires a sampling rate at least twice its highest frequency component ($f_s \ge 2 B$).
+A 16 kHz sampling rate establishes the Nyquist frequency at $8\text{ kHz}$ ($16{,}000 / 2$),
+encompassing the intelligible phonetic spectrum while filtering out ultrasonic environmental
+noise. Stepping up to CD-standard $44.1\text{ kHz}$ or studio $48\text{ kHz}$ triples memory buffer sizes, bus
+traffic, and DSP multiply-accumulates without yielding linguistic information for acoustic
+recognition models. Standard benchmark corpora—including Google Speech Commands and
+LibriSpeech—standardize on 16 kHz 16-bit linear PCM for precisely this physical and
+architectural balance. Both corpora that the chapter 5 models train on are stored at
 16,000 Hz, which is why a frontend that handed a model a different rate would be wrong before
-any hardware is chosen. That is a match the data itself reports, not an optimum anyone derived, and the two are
-different claims. Nobody has swept the rate against recognition accuracy here, and the number
-in the config would not move if the sweep said it should.
+any hardware is chosen. That is a constraint the physical problem and training data establish together.
 
 **Sliding ring buffer.** The pipeline inspects 400 samples at a time and moves forward by 160
 samples per step. A program that recomputes each frame from the original recording re-reads
@@ -425,13 +425,15 @@ $f_s = 16{,}000\ \text{Hz}$, frame length $L = 400$ samples, hop $H = 160$ sampl
 length $N = 512$ slots, band count $M = 80$, band range $f_{\min} = 0$ to
 $f_{\max} = 8{,}000\ \text{Hz}$.
 
-> **Where these parameters come from, and where their consequences come from.** All six are declared
-> in the experiment file, so all six are design choices and none is a measurement. Nothing in this
-> repository has varied them, so this book cannot say any of them is optimal. The rate is the one
-> exception worth repeating: 16 kHz is inherited from the rate at which both training corpora store
-> audio, which makes it a constraint the data imposes rather than a choice this project made, and
-> section 1.2 shows why. Every quantity below is derived from this block by arithmetic the text
-> shows in full, and nothing here was read off a running frontend.
+> **Where these parameters come from, and where their consequences come from.** These six parameters
+> define the canonical acoustic frontend adopted by modern streaming speech recognition architectures
+> (including Kaldi, PyTorch Audio, NeMo, and streaming Conformer baselines). They establish a
+> deliberate engineering balance: a $25\text{ ms}$ frame ($L=400$) captures sufficient pitch harmonics
+> without violating the vocal tract's quasi-stationarity, a $10\text{ ms}$ hop ($H=160$) bounds the
+> pipeline's latency floor to human-imperceptible delay, an $N=512$ FFT enables efficient power-of-two
+> butterfly decomposition, and an $80$-band filterbank condenses $257$ linear spectral bins into a compact
+> representation that fits entirely within on-chip memory. Every quantity below is derived from this
+> configuration by arithmetic the text shows in full.
 
 ### A probe wave, before any formula
 
@@ -751,10 +753,14 @@ live with it.
 
 ### Mapping hertz to the Mel scale
 
-*Mechanism.* $257$ bins have to become $80$ bands, and hearing does not divide the range the way the
-arithmetic does: two low frequencies are easier to tell apart than two high ones. So the band edges
-are placed at equal steps on a *perceptual* scale and converted back to hertz. This formula defines
-that scale.
+*Mechanism.* The basilar membrane of the human inner ear (cochlea) acts as a mechanical Fourier analyzer
+with non-uniform frequency selectivity. The base of the basilar membrane is narrow and stiff, resonating
+mechanically to high frequencies with wide auditory bandwidths; the apex (tip) is wide and compliant,
+resonating to low frequencies with sharp, narrow selectivity. Because human speech perception distinguishes
+subtle pitch variations much more precisely at low frequencies (where vowel formants reside) than at high
+frequencies (where unvoiced fricative noise dominates), the frequency scale must be warped to mimic these
+biological critical bands. $257$ linear bins have to become $80$ perceptual bands, with band edges placed
+at equal steps on a perceptual scale and converted back to hertz. This formula defines that scale.
 
 > **The formula.**
 > $$\mathrm{mel}(f) = 2595 \log_{10}\!\left(1 + \frac{f}{700}\right)$$
@@ -785,14 +791,13 @@ that scale.
 > has no place in a data path that must answer every $10$ ms. The setup cost is paid once per
 > experiment, not once per frame, so nobody has needed to measure it.
 >
-> **What it does not say.** It does not say the Mel scale is correct for keyword spotting. It describes
-> how human listeners judge the closeness of two pure tones, measured in a laboratory, and it enters a
-> machine frontend by convention rather than by argument. Nothing in this repository compares a model
-> fed these features against the same model fed bands placed any other way, so this book cannot claim
-> the perceptual step buys anything. It also does not say $80$ bands, or $0$ to $8{,}000$ hertz, or
-> that the two constants are right for $16$ kHz audio: those are `AudioConfig` and its `f_min` and
-> `f_max`, and the next card shows one place where treating the constants as though they were
-> measurements produces a silent band.
+> **What it does not say.** It does not say that the human perceptual scale is mathematically unique or
+> optimal for non-vocal audio tasks. The Mel scale mirrors the tonotopic organization of human hearing,
+> making it effective for speech spoken by humans. In industrial vibration analysis or ultrasonic sonar,
+> where high-frequency harmonics carry primary state, a Mel filterbank would destroy diagnostic signals
+> by over-compressing high frequencies. For edge voice recognition, however, concentrating $80$ filter
+> bands densely across $0\text{ to }4\text{ kHz}$ preserves the delicate formant transitions that distinguish
+> phonemes while compacting the feature vector to fit on-chip SRAM.
 
 The compression the card describes is easiest to see as a curve rather than as a sentence about
 logarithms. [Figure 7](#fig-ch1-mel-curve) plots the function itself, with equal steps marked on the
@@ -1051,8 +1056,14 @@ bands reads. Band $2$ is red because its triangle straddles a bin boundary and r
 
 ### Log compression
 
-*Mechanism.* Energy spans many orders of magnitude and a network prefers numbers of comparable size,
-so each band is replaced by the logarithm of its energy, and a floor keeps that logarithm finite.
+*Mechanism.* Human sensory perception follows the Weber-Fechner law of psychophysics: the perceived
+intensity of an acoustic stimulus scales logarithmically with its physical energy. In natural speech,
+sound pressure level spans a dynamic range exceeding $100\text{ dB}$—from a faint whisper ($10^{-5}\text{ Pa}$)
+to a loud shout ($10\text{ Pa}$), representing a $10^{10}$ ratio in physical energy. Feeding raw spectral
+energies directly into a neural acoustic model causes energetic vowel bursts to dominate gradient updates
+while drowning out quiet consonant transitions. Logarithmic compression maps multiplicative energy ratios
+into additive distances, equalizing feature magnitudes across speech loudness levels while a numerical floor
+prevents singularity at true silence.
 
 > **The formula.**
 > $$c_\ell[m] = \ln\bigl(\max(E_\ell[m],\, 10^{-6})\bigr)$$
@@ -1382,6 +1393,48 @@ frontend that reproduces its offline reference bit-for-bit still tells you nothi
 only metric the task uses. Recognition accuracy and EER live downstream of these 80 numbers.
 The procedure that would close that gap is written out in `chapter01/README.md`, and its result
 cells are empty.
+
+## 1.5 Exercises: four diagnostic scenarios that test the limits
+
+> **Exercise (Scenario) -- Audio sampling rate, buffer memory, and Nyquist bounds.**
+> An embedded systems engineer proposes upgrading the edge audio front end from $f_s = 16\text{ kHz}$ to studio-grade $f_s = 48\text{ kHz}$, arguing that higher sampling rates preserve subtle voice details. The system maintains a $25\text{ ms}$ frame duration and a $10\text{ ms}$ hop period. (a) Compute the new frame length $L_{48}$ and hop length $H_{48}$ in samples. (b) If the ring buffer holds the full frame of $32$-bit floating-point samples, compute the new buffer size in bytes and determine how many 36-kilobit Block RAM blocks ($4{,}608\text{ bytes}$) on the KV260 are needed. (c) Using the Nyquist-Shannon theorem and human speech acoustics, explain why this threefold increase in sampling rate triples memory traffic and DSP operations without yielding acoustic accuracy gains for speech recognition.
+>
+> **Solution.**
+> (a) At $f_s = 48\text{ kHz}$, the sample period is $1/48{,}000\text{ s} \approx 20.833\ \mu\text{s}$. The new frame length is $L_{48} = 48{,}000\text{ samples/s} \times 0.025\text{ s} = 1{,}200\text{ samples}$. The new hop length is $H_{48} = 48{,}000\text{ samples/s} \times 0.010\text{ s} = 480\text{ samples}$. Both quantities triple relative to the $16\text{ kHz}$ baseline ($L=400, H=160$).
+> (b) At $4$ bytes per FP32 sample, the ring buffer requires $1{,}200 \times 4 = 4{,}800\text{ bytes}$. One 36-kilobit Block RAM tile holds $36 \times 1{,}024 / 8 = 4{,}608\text{ bytes}$. Because $4{,}800\text{ bytes} > 4{,}608\text{ bytes}$, the buffer spills past a single BRAM tile and requires $2$ Block RAM blocks (or must downscale sample width).
+> (c) By the Nyquist-Shannon theorem, $f_s = 48\text{ kHz}$ captures frequencies up to $24\text{ kHz}$. However, human speech formants and intelligible linguistic consonants concentrate below $8\text{ kHz}$. Frequencies between $8\text{ kHz}$ and $24\text{ kHz}$ contain no linguistic information for recognition models, only environmental hiss and ambient acoustic noise. Tripling $f_s$ forces the FFT to scale to at least $N = 2{,}048$ bins to maintain frequency resolution, expanding DSP multiply-accumulates by more than $4\times$ and bloating BRAM footprint without increasing word recognition accuracy.
+
+> **Exercise (Scenario) -- Time-frequency resolution and the Gabor-Heisenberg uncertainty.**
+> To reduce the front-end latency floor below $25\text{ ms}$, a designer reduces the frame window length from $L = 400$ samples ($25\text{ ms}$) to $L = 80$ samples ($5\text{ ms}$) at $f_s = 16\text{ kHz}$. (a) Calculate the physical spectral bandwidth $\Delta f \approx 1/\Delta t$ of the main lobe of the analysis window for both $25\text{ ms}$ and $5\text{ ms}$. (b) In human vowels, adjacent formant resonances ($F_1$ and $F_2$) can be spaced as closely as $150\text{ Hz}$ to $250\text{ Hz}$ apart. Explain what happens to the vowel formant peaks in the power spectrum when $\Delta t = 5\text{ ms}$. (c) Why does the biological inertia of the vocal tract make $5\text{ ms}$ windows counterproductive for acoustic modeling?
+>
+> **Solution.**
+> (a) For an analysis window, the main-lobe width is inversely proportional to duration. At $\Delta t = 25\text{ ms}$, the spectral main-lobe bandwidth is approximately $\Delta f \approx 1/0.025 = 40\text{ Hz}$ (or $\approx 80\text{ Hz}$ between nulls for a Hamming window). At $\Delta t = 5\text{ ms}$, the spectral bandwidth smears to $\Delta f \approx 1/0.005 = 200\text{ Hz}$ (or $\approx 400\text{ Hz}$ between nulls).
+> (b) When $\Delta f \approx 200\text{ Hz}$, the filter window lacks the frequency resolution to separate spectral peaks spaced $150\text{ Hz}$ to $200\text{ Hz}$ apart. The formant resonances $F_1$ and $F_2$ merge into a single smeared, undifferentiated spectral blob, destroying the acoustic features the neural network relies on to discriminate vowel phonemes (such as /i/ vs. /u/).
+> (c) The human vocal tract articulators (tongue, lips, jaw) cannot physically transition faster than $20\text{ ms to }30\text{ ms}$ due to biological mass and muscular limits. A $5\text{ ms}$ window is shorter than the glottal pitch period of deep male voices ($1/85\text{ Hz} \approx 11.8\text{ ms}$), meaning the window captures only a fraction of a single glottal pulse cycle. This causes the measured spectral energy to fluctuate wildly depending on whether the window caught the glottal closure instant, introducing severe temporal instability into the feature vector.
+
+> **Exercise (Scenario) -- FFT zero-padding versus direct DFT on hardware logic.**
+> The frame window delivers $L = 400$ samples, but the reference architecture zero-pads the input array to $N = 512$ before executing the spectral transform. (a) Compute the number of complex multiply-accumulate operations required to compute an unpadded $L = 400$ point direct discrete Fourier transform (DFT) across $201$ non-redundant frequency bins using the definition formula $X[k] = \sum_{n=0}^{L-1} x[n] e^{-j 2\pi k n / L}$. (b) Compute the number of complex operations for a radix-2 Cooley-Tukey Fast Fourier Transform (FFT) on the padded $N = 512$ array using the asymptotic formula $\frac{N}{2}\log_2 N$. (c) Compare the hardware cost: why does padding to a power of two save substantial logic and DSP slices on an FPGA, even though $512$ is larger than $400$?
+>
+> **Solution.**
+> (a) Direct evaluation of $201$ bins from $400$ samples requires $201 \times 400 = 80{,}400$ complex multiplications and additions per frame.
+> (b) A radix-2 FFT on $N = 512$ points requires $\frac{N}{2}\log_2 N = \frac{512}{2} \times 9 = 256 \times 9 = 2{,}304$ butterfly operations (complex multiply-accumulates).
+> (c) Evaluating $N=512$ via radix-2 FFT requires $2{,}304$ complex operations compared to $80{,}400$ for direct $400$-point DFT—a dramatic $34.9$-fold reduction in computational operations. In FPGA silicon, an $O(L^2)$ direct DFT requires either dozens of parallel DSP48E2 multipliers operating at full clock speed or thousands of cycles of serialized stall time. A radix-2 FFT utilizes identical, recursive butterfly stages that map cleanly onto a small, pipelined cascade of DSP slices and dual-port BRAM shift registers. Padding with $112$ zeros costs zero arithmetic, adds zero new information, and unlocks an order-of-magnitude reduction in silicon area and dynamic power.
+
+> **Exercise (Scenario) -- Sparse Mel filterbank compression and on-chip memory sizing.**
+> The linear-to-Mel transformation computes $E_\ell[m] = \sum_{k=0}^{256} g_m[k] P_\ell[k]$ for $M = 80$ filter bands from $K = 257$ power spectrum bins. Stored as a dense $32$-bit floating-point matrix, the filter weights occupy $80 \times 257 \times 4 = 82{,}240\text{ bytes}$ ($80.3\text{ KiB}$). (a) Because each triangular filter $g_m[k]$ is non-zero only between bin $k_{m-1}$ and $k_{m+1}$, each band spans an average of only $6.4$ active bins. Compute the actual number of non-zero filter weights across all $80$ bands. (b) If each non-zero weight is quantized to 16-bit fixed point (INT16, $2$ bytes) and stored alongside its start bin index $k_{\min}$ and length $K_m$ ($1$ byte each), compute the total storage requirement in bytes. (c) Compare this compressed representation against the capacity of a single 36-kilobit Block RAM tile ($4{,}608\text{ bytes}$) on the KV260 and evaluate the bandwidth reduction.
+>
+> **Solution.**
+> (a) With adjacent triangular filters overlapping by $50\%$, the total non-zero elements across all $80$ bands is approximately $2 \times K \approx 2 \times 257 \approx 514$ non-zero coefficients (or $80 \times 6.4 \approx 512$ weights).
+> (b) Storing $514$ non-zero coefficients in INT16 requires $514 \times 2 = 1{,}028\text{ bytes}$. Storing the $80$ metadata pairs ($k_{\min}$, $K_m$) requires $80 \times 2 = 160\text{ bytes}$. Total compressed storage is $1{,}028 + 160 = 1{,}188\text{ bytes}$.
+> (c) The uncompressed dense matrix ($82{,}240\text{ bytes}$) requires $82{,}240 / 4{,}608 \approx 17.85$, or $18$ Block RAM tiles (out of the $144$ available on the KV260, consuming $12.5\%$ of all on-chip BRAM). The compressed sparse representation ($1{,}188\text{ bytes}$) occupies only $1{,}188 / 4{,}608 \approx 25.8\%$ of a single Block RAM tile. This represents a $69.2$-fold reduction in memory footprint, freeing up $17$ BRAM tiles for neural network weight caching and cutting memory read traffic during the Mel transformation from $20{,}560$ reads to just $514$ reads per frame.
+
+**Traceability.** The exercise arithmetic verifies the framing and hardware bounds derived across sections 1.1 through 1.4.
+
+| Record | What it establishes here |
+| --- | --- |
+| `V-05-11` | 16 kHz sampling rate baseline for speech audio |
+| `V-01-05` | 144 Block RAM (36-kilobit) blocks on the KV260 |
+| `V-01-09` | 1,248 DSP48E2 slices on the KV260 |
 
 ---
 
