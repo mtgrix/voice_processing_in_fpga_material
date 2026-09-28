@@ -1,45 +1,101 @@
-# Thí nghiệm 8.1: Tăng tốc Phần cứng cho Attention và Softmax (Voice Attention Accelerator)
+# Experiment 8: Audio Correlation Algorithms — Software Baseline
 
-## 1. Metadata & Mục đích Thí nghiệm
-- **Mã thí nghiệm**: `exp_08_voice_attention_accelerator`
-- **Chương liên kết**: Chương 08 — Tăng tốc Các Khối Tính toán Cốt lõi của Mô hình Thoại
-- **Trạng thái**: 🚧 Đang xây dựng khung sườn (Scaffolded)
-- **Mục đích**: Hiện thực hóa bộ tăng tốc phần cứng cho cơ chế Attention rút gọn và xấp xỉ hàm Softmax cơ số 2 trên FPGA.
+## 1. Experiment Metadata & Purpose
+- **Experiment code**: `exp_08_audio_correlation_baseline`
+- **Linked chapter**: Chapter 08 — Audio Correlation Algorithms for Reading Assessment
+- **Status**: 🚧 Design phase / Scaffolded
+- **Purpose**: Implement and validate software baselines for three audio correlation
+  algorithms (DTW, GOP, Cosine Similarity) on MFCC feature sequences, establishing
+  the golden reference for hardware verification in Chapter 9.
 
-## 2. Bối cảnh Lý thuyết & Mục tiêu Sư phạm
-- Giải quyết bài toán tính toán phi tuyến tính tốn tài nguyên nhất trong các mô hình ASR hiện đại (Conformer/Transformer).
+## 2. Theoretical Context & Pedagogical Goal
+- Validate the DTW dynamic programming recurrence against the `dtw-python` library.
+- Demonstrate the $O(N \times M)$ quadratic scaling of DTW with sequence length.
+- Compare correlation accuracy (PCC against human scores) across DTW, GOP, and
+  cosine similarity on a reading assessment dataset.
+- Establish the computational baseline that motivates FPGA acceleration.
 
-## 3. Mục tiêu Phần cứng
-- AMD Xilinx Kria KV260 Starter Kit.
+## 3. Hardware Target
+- **Software baseline**: Host CPU (any x86/ARM64 with Python 3.10+).
+- **Profiling target**: NVIDIA Jetson Orin (if available) for GPU baseline timing.
+- **Downstream hardware**: AMD Xilinx Kria KV260 (Chapter 9 uses these results as
+  the golden reference for bit-exact hardware verification).
 
-## 4. Dẫn xuất Toán học & Thuật toán
-- $\text{Softmax}(z)_i \approx 2^{z_i - z_{\max}} / \sum 2^{z_j - z_{\max}}$.
+## 4. Mathematical Derivation / Algorithm
 
-## 5. Tín hiệu Đầu vào & Đặc tả Dữ liệu
-- Ma trận $Q, K, V$ kích thước $T \times d_k$ với $T=64, d_k=64$.
+### DTW Recurrence
+$$D(i,j) = d(\mathbf{x}_i, \mathbf{y}_j) + \min\{D(i-1,j),\; D(i-1,j-1),\; D(i,j-1)\}$$
 
-## 6. Lệnh Thực thi
+Where $d(\mathbf{x}_i, \mathbf{y}_j) = \sqrt{\sum_{k=1}^{D}(x_{i,k} - y_{j,k})^2}$ is the
+Euclidean distance between two MFCC feature vectors of dimension $D = 80$.
+
+### Sakoe-Chiba Band Constraint
+Restrict the warping path to $|i - j| \leq W$ where $W$ is the band width,
+reducing complexity from $O(N \times M)$ to $O(N \times W)$.
+
+### Normalized DTW Distance
+$$\text{DTW}_{\text{norm}} = \frac{D(N, M)}{N + M}$$
+
+## 5. Input Signal & Dataset Specs
+- **Feature extraction**: 80-bin log-Mel MFCC from Chapter 1 pipeline.
+- **Audio parameters**: 16 kHz sample rate, 25 ms window, 10 ms hop.
+- **Test pairs**: Reference and student recordings of the same text passage.
+- **Dataset candidates**:
+  - SpeechOcean762 (pronunciation assessment with human scores)
+  - L2-ARCTIC (accented English with phoneme annotations)
+  - Google Speech Commands v2 (for initial validation)
+
+## 6. Execution Command
 ```bash
-python chapter08/exp_08_voice_attention_accelerator/run_hls.py
+# Run DTW baseline with validation
+python chapter08/dtw_baseline.py --validate
+
+# Profile DTW scaling with sequence length
+python chapter08/dtw_baseline.py --profile-scaling
+
+# Compare all three algorithms
+python chapter08/dtw_baseline.py --compare-all
 ```
 
-## 7. Kết quả Số học Dự kiến & Dung sai
-- Sai số đầu ra Softmax so với PyTorch FP32 $< 1\%$.
+## 7. Expected Numerical Output / Tolerances
+- DTW distance matches `dtw-python` library within $10^{-6}$ relative tolerance.
+- DTW computation time scales as $O(N^2)$ — regression $R^2 > 0.99$ on log-log plot.
+- Sakoe-Chiba band ($W = 32$) reduces computation by $> 5\times$ vs. unconstrained DTW
+  for sequences of length $N > 200$.
 
-## 8. Phương pháp Đo lường
-- HLS C/RTL Cosimulation waveform.
+## 8. Profiling & Measurement Methodology
+- Wall-clock time via `time.perf_counter_ns()` for each algorithm.
+- Memory usage via `tracemalloc` for the DTW cost matrix.
+- Sweep sequence lengths $N \in \{50, 100, 200, 500, 1000\}$ frames.
+- Report mean ± std over 100 runs per configuration.
 
-## 9. Kết quả Thực nghiệm & Bằng chứng
-- [Chờ hoàn thành mô phỏng]
+## 9. Empirical Results & Artifacts
+- [Awaiting execution]
 
-## 10. Đánh đổi Phần cứng - Phần mềm
-- Xấp xỉ hàm lũy thừa cơ số 2 tiết kiệm hàng ngàn LUTs so với tính hàm $e^x$ dấu phẩy động.
+## 10. Hardware-Software Trade-offs
+- DTW's $O(N \times M)$ cost matrix is the primary bottleneck — the inner loop
+  (distance + min-of-three) maps to a single FPGA Processing Element.
+- Cosine similarity is $O(D)$ per pair but requires a pretrained encoder.
+- GOP requires a neural acoustic model (DNN inference) but the scoring itself
+  is lightweight log-averaging on CPU.
 
-## 11. Giới hạn & Giả định
-- Áp dụng cho mô hình cơ chế Attention phân khối (Chunk/Local Attention).
+## 11. Limitations & Assumptions
+- Software baseline uses FP64 arithmetic; hardware will use INT16/INT8 fixed-point.
+- Quantization degradation analysis deferred to Chapter 7 revision.
+- No pretrained acoustic model for GOP in this experiment; GOP scoring uses
+  synthetic phoneme posteriors for algorithm validation only.
 
-## 12. Bài học Sư phạm Rút ra
-- Kỹ thuật biến đổi toán học tương đương là chìa khóa để triển khai các mô hình AI hiện đại lên phần cứng chuyên dụng.
+## 12. Pedagogical Takeaways
+- DTW is the most computationally intensive algorithm and the natural FPGA target.
+- The diagonal wavefront parallelism of the DP grid (anti-diagonal cells independent)
+  is invisible in sequential software but defines the hardware architecture.
+- Band constraints (Sakoe-Chiba) reduce both software time and hardware PE count.
 
-## 13. Nguồn Trích dẫn
-- `R01-03`: Conformer Interspeech 2020.
+## 13. Source Citations
+- Sakoe, H. & Chiba, S. (1978). "Dynamic programming algorithm optimization for
+  spoken word recognition." IEEE TASSP, 26(1), 43-49.
+- Witt, S. & Young, S. (2000). "Phone-level pronunciation scoring and assessment
+  for interactive language learning." Speech Communication, 30(2-3), 95-108.
+- Hu, W. et al. (2015). "Improved mispronunciation detection with deep neural
+  network trained acoustic models and transfer learning based logistic regression
+  classifiers." Speech Communication, 67, 154-166.

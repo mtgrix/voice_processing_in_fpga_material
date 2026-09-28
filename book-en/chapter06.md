@@ -6,7 +6,7 @@
 
 ## The same reduction, rebuilt as something you would have to wire
 
-Chapter 1 took a stream of numbers down to eighty of them -- frame, fade, transform, squash onto the
+Chapter 1 took a stream of numbers down to $80$ of them -- frame, fade, transform, squash onto the
 Mel scale, take the logarithm -- and did it as software calling functions, where the only cost worth
 naming was arithmetic. This chapter does that identical reduction again, but as hardware somebody has
 to place on a chip and route with real wires, and the moment the steps become circuits the questions
@@ -71,16 +71,16 @@ sigma-delta modulator inside the capsule: it emits a single bit per clock, and t
 carries the signal, so the fabric's job is to *filter and count that stream down* to a usable rate, and
 that counting is real arithmetic, done at the fastest clock in the design.
 
-**Mechanism.** The codec path first. The board's own audio module is a line-level stereo converter
-(`V-03-03`) on a PMOD header (`V-03-02`); it samples the line-level signal and serialises each sample
+**Mechanism.** The codec path first. The board's audio companion module is a line-level stereo converter
+mounted on peripheral header J2; it samples the line-level signal and serialises each sample
 over the companion link (I2S -- Inter-IC Sound), which carries a bit clock, a word clock and a data
-wire. The fabric receives serialised samples at the sample rate the corpus fixes: both corpora chapter 1
-reads store speech at 16 kHz (`V-05-10`, corroborated by `V-05-11`), so the ingest expects one 16 kHz
-sample per frame period and nothing faster. The blocker is clocking, not arithmetic: the codec's bit
-clock comes from the PMOD's own oscillator domain, and a design that crosses a clock boundary without a
-synchroniser reads metastable values, so the I2S receiver's job is to sample the data wire into the
-fabric's clock domain safely and then hand complete words to the frame buffer. By the numbering of
-chapter 4, this is a stream handshake at its simplest: a valid pulse per sample.
+wire. The fabric receives serialised samples at the sample rate the training corpus fixes: standard speech corpora
+store speech at 16 kHz, so the ingest expects one 16 kHz sample per sample period and nothing faster.
+The primary hardware obstacle is clocking, not arithmetic: the codec's bit clock comes from the external module's
+own oscillator domain, and a design that crosses a clock boundary without a synchroniser samples metastable values.
+The I2S receiver's job is therefore to sample the serial data wire into the fabric's clock domain through a dual-flip-flop
+synchroniser and hand complete words to the frame buffer. In the streaming interface vocabulary of chapter 4,
+this is a stream handshake at its simplest: one valid pulse per finished audio word.
 
 **The PDM path is the one that needs a filter.** A PDM microphone does not hand out samples at all; it
 handles a constant stream of single bits, oversampled by a large factor. Inside the packet is a
@@ -90,8 +90,8 @@ Turning that stream into 16 kHz PCM means *decimating* it: low-pass filtering th
 out-of-band noise is gone, then keeping one output sample per decimation factor. Do that naively -- a
 long finite-impulse-response (FIR) filter at the fast clock, multiplying every tap on every bit -- and
 the front end's fastest clock is also its most expensive arithmetic, which is backwards. The classic
-answer is a cascade-integrator-comb (CIC) filter, Eugene Hogenauer's 1981 contribution (`V-06-18`),
-which does the low-passing with adders and registers alone: no multipliers at all. [Figure 25](#fig-ch6-pdm-cic)
+answer is a cascade-integrator-comb (CIC) filter, Eugene Hogenauer's 1981 contribution,
+which does the low-pass filtering with adders and registers alone: no multipliers at all. [Figure 25](#fig-ch6-pdm-cic)
 draws the structure, and it is small enough to read as a recipe.
 
 ::: {#fig-ch6-pdm-cic .figure}
@@ -189,24 +189,22 @@ single most useful quantity in this section.
 >
 > **What it means.** The worst-case gain a signal can accumulate while crossing $N$ stages of a filter
 > whose decimating product is $DM$ is $(DM)^{N}$, and $(DM)^{N}$ demands $\log_{2}((DM)^{N}) = N \log_{2}(DM)$
-> bits beyond the input. The ceiling makes that a whole number of bits. With the design's choices this
+> bits beyond the input. The ceiling makes that a whole number of bits. With the design choices this
 > section uses -- a single-bit input, $N = 3$ stages and $M = 64$ -- the width comes out to
 > $1 + 3 \cdot 6 = 19$ bits, computed as the formula states, and that is the width the accumulator and
 > the internal buses are drawn at, with the output optionally rounded back down.
 >
 > **What it costs.** One bit of width per stage per halving of the decimating product, which is cheap on
-> fabric: nineteen bits is a handful of registers per cell, and the whole PDM filter's register bill is
-> a fraction of one block of the on-chip memory this book counts in chapter 1 (`V-01-22` gives the
-> board's total). What it *buys* is the guarantee that the pipelined filter's output is exact in
-> fixed-point terms until the final rounding, which is the strongest honest statement a fixed-point
-> front end can make about its own arithmetic.
+> fabric: a $19$-bit datapath is a handful of flip-flops per cell, and the whole PDM filter's register bill is
+> a tiny fraction of the total on-chip memory available across the device. What it *buys* is the guarantee
+> that the pipelined filter's internal accumulators never overflow in two's complement arithmetic, which is the
+> strongest mathematical guarantee a fixed-point front end can offer.
 >
-> **What it does not say.** It does not say the nineteen bits are all significant -- the growth bounds
-> the accumulator against overflow, it does not measure the noise in the signal itself, which the
-> one-bit modulator puts there deliberately. It does not say where the final rounding happens, or that
-> the codec path needs the same rule: a codec already emits finished samples, so a CIC is not used on
-> that side at all. And it does not say the growth number is a registered measurement of this design; it
-> is a derived arithmetic quantity, stated for the reader to check against the formula above.
+> **What it does not say.** It does not say the $19$ bits are all significant -- the growth formula bounds
+> the accumulator against overflow, but does not measure the quantization noise floor of the microphone capsule itself.
+> It does not say where the final rounding happens, or that the codec path needs the same rule: a codec already emits
+> finished multi-bit PCM samples, so a CIC filter is absent on that path entirely. And it does not say the growth
+> number is an empirical measurement; it is an exact mathematical bound for the worst-case DC input.
 
 **The width is visible in the code, and it is the whole interface.** The growth bound is not a
 number to believe: it is a line of RTL, and the line is where a learner sees that the register
@@ -238,11 +236,11 @@ endmodule
 Two things to read out of it. The `localparam` is the formula from the card, so the register width
 and the bound cannot drift apart in an edit: change `DECIM` and the accumulator widens by itself, which
 is the difference between a derived width and a magic number. And the add is an ordinary `+` on signed
-operands of that width, which is the whole cost claim of the section in one line -- an integrator is
+operands of that width, which highlights the primary hardware advantage of the structure in one line -- an integrator is
 one adder and one register, and the comb that follows it is a subtractor and a delay, so there is no
-multiplier anywhere in this filter. The width `B_MAX` evaluates to the nineteen bits the card derived
-for the section's choices, and the one-bit input is widened to it by the signed extension the port
-already declares, not by padding logic the designer must remember to add.
+multiplier anywhere in this filter. The width `B_MAX` evaluates to the $19$ bits the card derived
+for the section's parameters, and the single-bit input is sign-extended to that width automatically
+by the port declaration without manual zero-padding logic.
 
 **Application.** The section's whole case is the two paths beside each other. The I2S path hands the
 frame buffer complete 16 kHz samples as they arrive, with no arithmetic of its own, only clock-domain
@@ -268,16 +266,16 @@ chapter 7 to measure, exactly as the chapter opening promised.
 > every one of the fast clock's bits, which is where the multiplier bill comes from. The CIC's trick is
 > that both halves are adders, and the rate split is why it stays cheap.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the hardware specifications that fix them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-03-02` | the board's audio path is a PMOD module in an accessory header, so the design's boundary is a plug, not a chip |
-| `V-03-03` | that module is a line-level stereo converter, whose samples arrive framed on the serial link |
-| `V-05-10` | the LibriSpeech corpus stores 16 kHz speech, fixing the rate the ingest must deliver |
-| `V-05-11` | Speech Commands stores 16 kHz single-channel PCM, corroborating the same rate |
-| `V-06-18` | a CIC decimator (Hogenauer, 1981) is the registered low-pass structure for the PDM path |
-| `V-01-22` | the board's on-chip memory total, against which this section's register bill is a fraction |
+| <!-- V-03-02 --> Kria KV260 Vision AI Starter Kit User Guide (UG1089), accelerated application peripherals table | the board's audio companion module uses accessory header J2, establishing the physical interface at a connector |
+| <!-- V-03-03 --> Digilent Pmod I2S2 Reference Manual, product overview | the audio companion module is a line-level stereo converter with Cirrus CS5343 A/D and CS4344 D/A, delivering framed serial PCM |
+| <!-- V-05-10 --> LibriSpeech ASR corpus, corpus description | the acoustic speech corpus is sampled at 16 kHz, fixing the ingest PCM sampling rate |
+| <!-- V-05-11 --> Speech Commands dataset (Pete Warden), Section 6 | limited-vocabulary speech audio is stored as 16 kHz single-channel PCM, corroborating the sample rate |
+| <!-- V-06-18 --> Eugene Hogenauer (IEEE TASSP 1981), decimation filter paper | the Cascade-Integrator-Comb (CIC) filter structure for multiplierless high-rate decimation |
+| <!-- V-01-22 --> UltraScale Architecture and Product Data Sheet (DS890), Table 23 | the device provides 23,616 Kb of total on-chip memory (Block RAM plus UltraRAM), dwarfing the CIC register bill |
 
 ## 6.2 Line_Buffer_1D: Framing 400 Samples with a 160-Sample Hop
 
@@ -294,9 +292,8 @@ buffer uses is the *same* parameter the model was trained with, because a front 
 differs from training by one sample is a different front end.
 
 **Mechanism.** The frame spine chapter 1 fixed is the contract. Each frame reads 400 consecutive
-samples, a window of 0.025 s at the ingest rate (`V-06-13`, `V-06-15`); a new frame starts every 160
-samples, a stride of 0.01 s (`V-05-31`, `V-06-16`); the transform reads 512 points (`V-06-14`,
-`V-06-17`). The buffer's behaviour follows from those three numbers with no further choices. It
+samples, a window of 0.025 s at the ingest rate; a new frame starts every 160
+samples, a stride of 0.01 s; the transform reads 512 points. The buffer's behaviour follows from those three numbers with no further choices. It
 retains the newest 400 samples, emits them as a window, advances 160, and repeats -- so each window
 shares 240 of its samples with its predecessor, computed as the difference the frame and hop imply.
 The transform size exceeds the window, so the last $112$ positions of every 512-point input are filled
@@ -339,9 +336,9 @@ have to explain as error. The buffer emits windowed samples; the transform never
 
 **Application.** The section's deliverable is a contract the rest of the chapter can rely on. The buffer
 holds one frame, advances one hop, pads to the transform size, applies the fade, and hands section 6.3
-a finished 512-point window ten milliseconds after the previous one. Every number in that sentence is
-either a registered claim or a computed quantity stated as such, and the buffer itself is the only
-place in the front end that knows the frame exists -- downstream stages see windows, never streams.
+a finished 512-point window ten milliseconds after the previous one. Every parameter in that sequence is
+derived directly from the acoustic windowing contract, and the buffer itself is the only
+block in the front end that tracks frame boundaries -- downstream stages see windows, never raw sample streams.
 
 **What this section does not yet know.** It has not said how the 512 windowed samples become a
 spectrum, nor how many bits each of them carries. The transform engine is next, and with it the first
@@ -359,17 +356,17 @@ fixed-point decisions of the chapter.
 > transform must finish one window per hop period, because the buffer emits finished windows at that
 > rate and has nowhere to put a backlog.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the acoustic model parameters that define them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-05-10` | the ingest delivers 16 kHz speech, the rate the exercise's window count divides by |
-| `V-06-13` | each frame spans a window of 0.025 s, the duration the buffer holds |
-| `V-06-15` | that window is 400 samples at the ingest rate |
-| `V-05-31` | a new frame starts every 0.01 s, the stride the buffer advances |
-| `V-06-16` | that stride is 160 samples |
-| `V-06-14` | the transform reads 512 points, the size the buffer pads to |
-| `V-06-17` | that size is 512 FFT points as a derived quantity |
+| <!-- V-05-10 --> LibriSpeech ASR corpus, corpus description | the acoustic speech corpus is sampled at 16 kHz, establishing the time base for sample conversions |
+| <!-- V-06-13 --> NeMo Conformer configuration, window_size parameter | each acoustic analysis frame spans 0.025 s |
+| <!-- V-06-15 --> derived: the window size (0.025 s) multiplied by the sample rate (16 kHz) | that 0.025 s duration corresponds to exactly 400 samples at 16 kHz |
+| <!-- V-05-31 --> NeMo Conformer configuration, window_stride parameter | a new acoustic frame begins every 0.01 s |
+| <!-- V-06-16 --> derived: the window stride (0.01 s) multiplied by the sample rate (16 kHz) | that 0.01 s stride corresponds to exactly 160 samples at 16 kHz |
+| <!-- V-06-14 --> NeMo Conformer configuration, n_fft parameter | the subsequent Fourier transform operates on 512 points |
+| <!-- V-06-17 --> derived: 400-sample frame padded with 112 trailing zeros to the transform size | appending 112 trailing zeros pads the 400-sample frame out to 512 points |
 
 <!-- source: 6.3 draft fragment -->
 
@@ -382,8 +379,8 @@ window per hop period.*
 $N \log N$ operations instead of $N^{2}$, and on fabric the question is not the operation count but the
 *shape*: how the butterflies are laid out in space and time, where the twiddle factors (the complex
 roots of unity each butterfly multiplies by) are stored, and how many bits wide every intermediate is.
-This section's engine is a radix-$2$ single-path delay-feedback (R2SDF) pipeline after He and Torkelson
-(`V-06-19`): one butterfly per stage, stages chained in series, samples streaming through without ever
+This section's engine is a radix-$2$ single-path delay-feedback (R2SDF) pipeline after He and Torkelson:
+one butterfly per stage, stages chained in series, samples streaming through without ever
 stopping. The alternative the section title names -- radix-$4$, which does four samples per butterfly --
 is kept as a comparison, because its trade against radix-$2$ is the chapter's clearest example of area
 against throughput.
@@ -561,14 +558,14 @@ spend.
 > that the shift trades a bounded, measurable noise against unbounded width growth -- and section 6.6
 > defines exactly how that noise gets measured.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the architectural references behind them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-06-14` | the transform reads 512 points, the size this pipeline factors |
-| `V-06-17` | that size is 512 FFT points as a derived quantity |
-| `V-06-19` | the R2SDF pipeline (He and Torkelson, 1996) is the registered microarchitecture |
-| `V-06-16` | a new window arrives every 160 samples, setting the throughput the pipeline must sustain |
+| <!-- V-06-14 --> NeMo Conformer configuration, n_fft parameter | the Fourier transform reads 512 points |
+| <!-- V-06-17 --> derived: frame length padded with trailing zeros to the transform size | that size is 512 FFT points as a derived quantity |
+| <!-- V-06-19 --> Shousheng He and Mats Torkelson (IEEE IPPS 1996), pipeline FFT paper | the R2SDF pipelined microarchitecture |
+| <!-- V-06-16 --> derived: the window stride multiplied by the acoustic sample rate | a new window arrives every 160 samples, fixing the throughput the pipeline must sustain |
 
 <!-- source: 6.4 draft fragment -->
 
@@ -580,7 +577,7 @@ each band, and a requantizer that packs each compressed value into the integer w
 hardware reads.*
 
 **Intuition.** A spectrum is a wall of numbers, and too many of them matter for the downstream task to
-be practical: a streaming voice recognizer reads one hundred features per second and must not make one
+be practical: a streaming voice recognizer reads $100$ feature vectors per second and must not make one
 thousand decisions about what the spectrum contains. The Mel filterbank turns a spectrum into a much
 shorter vector of band energies, the logarithm compresses the dynamic range so quiet and loud frames
 fit in the same word, and the requantizer packs each result into the smallest integer the next stage
@@ -591,7 +588,7 @@ the log, in the requantizer, and in the buffer that holds the features for the n
 
 **Mechanism.** The Mel filterbank is a fixed matrix. Chapter 1 owns the formula that maps hertz to
 mel, and this section does not re-derive it; the 80 bands and their center frequencies are parameters
-of the trained model, already fixed (`V-05-35`), and the design's job is to multiply the spectrum by a
+of the trained model, and the design's job is to multiply the spectrum by a
 matrix whose $M$ rows each carry a triangular weighting over the FFT bins it spans. The matrix is
 $80 \times 257$, computed as the product of the band count and the bin count the transform produces,
 and every nonzero element is a fixed coefficient, loaded once. A single multiply-accumulate (MAC)
@@ -626,9 +623,8 @@ area against throughput is a trade the rest of the book inherits.
 > matrix the corpus's Mel formula produces -- not something the hardware designer chooses.
 >
 > **What it does not say.** It does not say the matrix is dense -- it is not, and a sparse layout
-> exploits the structure. It does not say the MAC count is a registered measurement of this design;
-> it is a derived arithmetic quantity, stated for the reader to check against the formula and the
-> matrix's structure. And it does not say the Mel formula belongs to this chapter: the formula is
+> exploits the structure. It does not say the MAC count is an empirical figure; it is an exact arithmetic consequence of the triangular sparsity pattern of the Mel filterbank.
+> And it does not say the Mel formula belongs to this chapter: the formula is
 > owned by chapter 1, and the matrix is its fixed-point discretization on the hardware.
 
 **The logarithm is a table lookup plus an interpolation.** A chip cannot compute a logarithm in a
@@ -637,7 +633,7 @@ solution is a lookup table (LUT) indexed by the upper bits of the Mel-energy val
 linear interpolation between table entries filling in the remaining bits. The table size sets the
 accuracy: a 256-entry table addressing the upper eight bits of a $16$-bit Mel energy gives each entry
 four bits of range, and one linear segment per range gives the log to within one quantization step.
-The LUT is stored in block RAM, which chapter 1 counts (`V-01-22` gives the total), and the
+The LUT is stored in block RAM, which draws on the fabric's on-chip memory pool, and the
 interpolation is one multiply and one add, both of the same width as the Mel energy. The log does not
 change the sample rate -- one output per input -- but it sets the word width of every downstream value:
 the log of a $16$-bit unsigned integer fits in a signed $16$-bit word, and that signed word is the width
@@ -652,7 +648,7 @@ $[a, b]$ into $[0, 2^{B} - 1]$ by a linear transformation: subtract the lower bo
 the range of the target word, divide by the range of the source, and round. In hardware this is one
 subtract, one multiply, one shift and one rounding, all free at the feature rate; the only table is
 the pair of bounds $[a, b]$, which are constants loaded once from the trained model's configuration.
-Jacob et al. (`V-06-01`, `V-06-02`) provide the formulation this design follows for the integer requantization
+Jacob et al. (2018) provide the formulation this design follows for the integer requantization
 weights, which fix both the bounds and the scaling. The cost is one arithmetic cycle per band per
 feature vector, and the price is the quantization error at the rounding step, a third bounded noise
 term that chapter 7 will measure.
@@ -686,7 +682,7 @@ word width the downstream features read; each stage is one cycle per band per fe
 
 > **Exercise (laddered).** The Mel matrix is $80 \times 257$. (a) If each row is sparse and spans
 > exactly 10 nonzero elements, how many MAC operations does one feature vector require, computed as the
-> product the nonzero count implies? (b) At one hundred feature vectors per second, how many MACs per second
+> product the nonzero count implies? (b) At $100$ feature vectors per second, how many MACs per second
 > does one MAC engine sustain, computed as the product the rates imply? (c) The log table has 256
 > entries and one interpolation multiply per lookup. If one table entry covers the range of eight bits
 > in the Mel energy, how many bits does the table index have, computed as the base-two logarithm the
@@ -732,17 +728,17 @@ features go.
 experiment protocol that proves them correct against a floating-point baseline has not been defined.
 Section 6.6 provides that protocol and states what the numbers will be before they are measured.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the neural network configurations that fix them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-05-35` | the Mel filterbank has 80 bands, fixing the matrix height |
-| `V-06-14` | the transform produces $257$ bins, fixing the matrix width |
-| `V-06-01` | integer requantization weights (Jacob et al., 2018) follow the standard linear scaling |
-| `V-06-02` | the same formulation, corroborating the requantization weights |
-| `V-05-10` | the corpus stores speech at 16 kHz, the rate the exercise's frame period divides by |
-| `V-06-16` | the hop is 160 samples, which fixes the $10$ ms frame period the duty cycle divides |
-| `V-01-22` | the board's on-chip memory total, against which the log LUT is a small allocation |
+| <!-- V-05-35 --> NeMo Conformer configuration, features parameter | the Mel filterbank has 80 bands, fixing the matrix height |
+| <!-- V-06-14 --> NeMo Conformer configuration, n_fft parameter | the 512-point transform produces $257$ non-redundant frequency bins, fixing the matrix width |
+| <!-- V-06-01 --> Benoit Jacob et al. (CVPR 2018), Section 2.1 | integer requantization scheme following affine linear scaling |
+| <!-- V-06-02 --> Benoit Jacob et al. (CVPR 2018), Section 2.2 | integer-arithmetic-only matrix multiplication formulation, corroborating the requantization weights |
+| <!-- V-05-10 --> LibriSpeech ASR corpus, corpus description | the acoustic corpus stores speech at 16 kHz, the rate the exercise's frame period divides by |
+| <!-- V-06-16 --> derived: the window stride multiplied by the acoustic sample rate | the hop is 160 samples, which fixes the frame period the duty cycle divides |
+| <!-- V-01-22 --> UltraScale Architecture and Product Data Sheet (DS890), Table 23 | the device provides 23,616 Kb of total on-chip memory, against which the log LUT is a small allocation |
 
 <!-- source: 6.5 draft fragment -->
 
@@ -752,10 +748,10 @@ Section 6.6 provides that protocol and states what the numbers will be before th
 the features it produces.*
 
 **Intuition.** The front end's output is a stream of 80-element vectors, one per hop period, and the
-stream's properties are fixed by the parameters chapter 1 derived: one vector per 0.01 s
-(`V-05-31`), one vector per 160 audio samples (`V-06-16`), each vector carrying 80 mel bands
-(`V-05-35`). The handoff is not a new stage but a contract: whatever follows must read 80 values per
-period at one hundred periods per second, and the front end must produce them at that rate. On the KV260 the
+stream's properties are fixed by the parameters chapter 1 derived: one vector per 0.01 s,
+one vector per 160 audio samples, each vector carrying 80 mel bands.
+The handoff is not a new stage but a contract: whatever follows must read 80 values per
+period at $100$ periods per second, and the front end must produce them at that rate. On the KV260 the
 receiver is a block that reshapes the vector into the activation format the first convolutional layer
 reads -- a small adapter, not a processing step -- and the chapter treats it as settled: the features
 arrive, the network accepts them.
@@ -776,13 +772,13 @@ hardware; it has been sized by the parameters the front end implies. Section 6.6
 experiment that measures the margin and the noise, and the wrongness the chapter opened with is left
 for chapter 7 to bound.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the interface contracts that govern them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-05-31` | the feature rate is one vector per 0.01 s, the hop period the handoff must sustain |
-| `V-06-16` | the hop is 160 audio samples, derived from the same rate |
-| `V-05-35` | each feature vector carries 80 mel bands, the vector length the handoff must deliver |
+| <!-- V-05-31 --> NeMo Conformer configuration, window_stride parameter | the feature delivery cadence is one vector per 0.01 s, defining the streaming hop period |
+| <!-- V-06-16 --> derived: the window stride multiplied by the acoustic sample rate | the hop spans 160 audio samples, fixing the inter-frame arrival interval |
+| <!-- V-05-35 --> NeMo Conformer configuration, features parameter | each feature vector carries 80 mel bands, defining the transfer vector length |
 
 <!-- source: 6.6 draft fragment -->
 
@@ -814,7 +810,7 @@ frames.
 > **The variables.**
 > - $\text{SQNR}_{\text{dB}}$ -- the signal-to-quantization-noise ratio in decibels. A negative number
 >   means the error is larger than the signal; a positive number means the signal dominates.
-> - $\mathbf{y}_f$ -- the $f$-th feature vector from the FP32 golden (exp_01). A vector of eighty
+> - $\mathbf{y}_f$ -- the $f$-th feature vector from the FP32 golden (exp_01). A vector of $80$
 >   floating-point values.
 > - $\mathbf{e}_f = \mathbf{y}_f - \hat{\mathbf{y}}_f$ -- the error vector: the difference between the
 >   FP32 golden and the fixed-point output for the same frame. The experiment's core quantity.
@@ -832,13 +828,13 @@ frames.
 > What it does not say. It does not say the SQNR will be a particular number -- that is what the
 > experiment will measure, and this section does not fabricate it.
 
-**The comparison also records the mean absolute error (MAE) per band.** The SQNR captures total
+**The comparison also evaluates the mean absolute error (MAE) per band.** The SQNR captures total
 noise power but not where it lives; a band-by-band MAE shows whether the error is concentrated in the
 low-frequency bands, where speech energy sits, or in the high-frequency bands, where the Mel weighting
 is sparse. The experiment computes the MAE of each of the $80$ bands across all frames, producing a
 vector of $80$ error values, one per band. The FP32 golden for exp_01 reported a zero mean absolute
 error for the feature vectors; the fixed-point front end will have nonzero error, and the experiment
-protocol records that error honestly.
+protocol evaluates that error across the validation corpus.
 
 **The experiment compares against the FP32 golden, not against the zero-decibel hypothesis.** The fixed-point
 front end is not expected to produce a zero-decibel error, and the comparison against zero decibels would be
@@ -853,15 +849,115 @@ are all to be measured. The experiment has been defined, the baseline captured, 
 metric chosen; the results will appear in the experiment log under `results/exp06/` when the design is
 synthesized and tested on the FPGA.
 
-**Traceability.** The records this section's argument rests on.
+**Where the numbers come from.** What stands behind this section's printed numbers, and the verification datasets that anchor them.
 
-| Record | What it establishes here |
+| Source | What it says |
 | --- | --- |
-| `V-05-35` | each feature vector carries 80 mel bands, the comparison dimension |
-| `V-05-31` | one feature vector arrives per hop period, the fixed input cadence for the comparison |
-| `V-05-10` | the ingest delivers 16 kHz speech, the rate the feature stream comes from |
-| `V-06-15` | the frame size of 400 samples, fixed by the design parameters |
-| `V-06-16` | the hop is 160 samples, which sets the feature rate the comparison counts |
+| <!-- V-05-35 --> NeMo Conformer configuration, features parameter | each feature vector carries 80 mel bands, the comparison dimension |
+| <!-- V-05-31 --> NeMo Conformer configuration, window_stride parameter | one feature vector arrives per 0.01 s hop period, the fixed input cadence for the comparison |
+| <!-- V-05-10 --> LibriSpeech ASR corpus, corpus description | the ingest delivers 16 kHz speech, the rate the feature stream comes from |
+| <!-- V-06-15 --> derived: the acoustic window size multiplied by the sample rate | the frame size of 400 samples, fixed by the acoustic model parameters |
+| <!-- V-06-16 --> derived: the window stride multiplied by the acoustic sample rate | the hop is 160 samples, which sets the feature rate the comparison counts |
+
+---
+
+## 6.7 Diagnostic Engineering Scenarios
+
+This section grounds the chapter's microarchitectural principles in four concrete hardware engineering scenarios.
+Each problem walks through the physical calculations and design decisions faced when implementing real-time
+audio preprocessing on the AMD Xilinx Kria KV260 platform.
+
+> **Exercise (Scenario) — PDM Clock Generation and CIC Internal Word Growth.**
+> A digital MEMS microphone delivers a single-bit PDM pulse stream oversampled at $f_{\text{pdm}} = 2.048\text{ MHz}$.
+> The ingestion engine uses a cascade-integrator-comb (CIC) decimation filter with $N = 3$ stages and differential delay $D = 1$
+> to downsample the stream to PCM audio.
+>
+> (a) Compute the decimation ratio $M$ required to produce a $32\text{ kHz}$ intermediate PCM stream, and compute the decimation ratio required to produce a standard $16\text{ kHz}$ stream directly.
+>
+> (b) Using Hogenauer's bit growth formula $B_{\text{out}} = B_{\text{in}} + N \lceil \log_{2}(DM) \rceil$ with single-bit input $B_{\text{in}} = 1$, compute the required internal accumulator width for both decimation ratios.
+>
+> (c) Suppose an engineer attempts to save flip-flops by truncating each integrator accumulator to $16\text{ bits}$ prior to the comb section. What failure mode occurs during sustained high-amplitude sound pressure?
+>
+> (d) Why does placing the comb section after the downsampling switch reduce dynamic power dissipation compared to an equivalent high-rate FIR filter?
+>
+> **Answers.**
+> (a) For $32\text{ kHz}$ output: $M = 2{,}048{,}000 / 32{,}000 = 64$. For $16\text{ kHz}$ output: $M = 2{,}048{,}000 / 16{,}000 = 128$.
+>
+> (b) For $M = 64$: $\log_{2}(64) = 6$, giving $B_{\text{out}} = 1 + 3 \times 6 = 19\text{ bits}$. For $M = 128$: $\log_{2}(128) = 7$, giving $B_{\text{out}} = 1 + 3 \times 7 = 22\text{ bits}$.
+>
+> (c) In two's complement arithmetic, intermediate overflow in the integrator stages is mathematically harmless only if the accumulator word width exceeds the maximum possible DC gain $(DM)^N$ and the comb section can compute the exact difference between wrapped states. Truncating the accumulators destroys this modular wrap-around property; when an accumulator overflows, the truncation discards high-order bits permanently, injecting catastrophic rail-to-rail impulse noise into the output audio stream.
+>
+> (d) Dynamic power in CMOS logic scales linearly with clock frequency: $P_{\text{dyn}} \propto C V^{2} f$. By placing the comb filters after the rate reduction, the combs operate at the slow sample rate ($16\text{ kHz}$ or $32\text{ kHz}$) rather than the $2.048\text{ MHz}$ PDM clock. The comb registers toggle $64\times$ to $128\times$ less frequently, eliminating over $98\%$ of the comb stage switching power while requiring zero physical multipliers.
+
+> **Exercise (Analysis) — Memory Footprint: R2SDF Streaming Pipeline vs In-Place FFT.**
+> A streaming voice front end requires a 512-point complex FFT operating on audio frames arriving every $10\text{ ms}$.
+>
+> (a) A conventional in-place radix-$2$ FFT processor uses a ping-pong memory architecture so that one complete frame can be transformed while the next frame is being ingested. Compute the total storage required in complex words.
+>
+> (b) In the Radix-2 Single-Path Delay-Feedback (R2SDF) pipelined architecture, each stage $k \in \{1, 2, \dots, 9\}$ contains a feedback delay line of length $N / 2^{k}$. Compute the exact total delay line storage across all nine stages.
+>
+> (c) What is the processing latency (in clock cycles) to the first valid output bin for both architectures?
+>
+> **Answers.**
+> (a) A ping-pong buffer requires two distinct memory banks of size $N = 512$, requiring $2 \times 512 = 1{,}024$ complex words of RAM.
+>
+> (b) Summing the feedback delay line lengths across all $9$ stages:
+> $$\sum_{k=1}^{9} \frac{512}{2^{k}} = 256 + 128 + 64 + 32 + 16 + 8 + 4 + 2 + 1 = 511 \text{ complex words.}$$
+> The R2SDF architecture requires exactly $N - 1 = 511$ complex words of storage—a $50.1\%$ saving over a single $512$-word frame buffer and a $75.0\%$ saving compared to the ping-pong memory scheme.
+>
+> (c) The in-place processor must buffer all $512$ samples before starting stage one, yielding a minimum latency of $512$ cycles plus the transformation time of $\frac{N}{2} \log_{2}(N) = 256 \times 9 = 2{,}304$ butterfly cycles. The R2SDF pipeline processes samples continuously as they arrive; the first valid frequency bin emerges exactly $511$ clock cycles after the first sample enters the pipeline, achieving genuine single-stream throughput with zero inter-frame memory stalls.
+
+> **Exercise (Tradeoff) — DSP Slice Allocation in Butterfly Stages.**
+> Consider complex multiplication $(a + jb)(c + jd) = (ac - bd) + j(ad + bc)$ required for twiddle factor scaling in the FFT pipeline.
+>
+> (a) Compare the direct multiplication formulation ($4$ real multiplications, $2$ additions) with Gauss's three-multiplier formulation ($p_1 = ac, p_2 = bd, p_3 = (a+b)(c+d)$, with $\text{Re} = p_1 - p_2$ and $\text{Im} = p_3 - p_1 - p_2$) in terms of arithmetic operations.
+>
+> (b) The AMD Xilinx Zynq UltraScale+ XCZU5EV device on the Kria KV260 contains 1,248 DSP48E2 slices. Each DSP48E2 slice contains an integrated $27$-bit pre-adder and $48$-bit accumulator. How does Gauss's formulation map onto DSP48E2 slices?
+>
+> (c) In our nine-stage R2SDF pipeline, stages one and two multiply by trivial twiddle factors ($W_{512}^{0} = 1$ and $W_{512}^{128} = -j$), which require only sign inversion and multiplexing without hardware multipliers. If the remaining $7$ stages require complex multipliers, compute the total DSP slice consumption under the direct vs. Gauss formulations.
+>
+> **Answers.**
+> (a) Direct form requires $4$ real multiplies and $2$ real adds/subtracts. Gauss's form requires $3$ real multiplies and $5$ real adds/subtracts ($2$ pre-additions and $3$ post-additions/subtractions).
+>
+> (b) Because the DSP48E2 slice includes a hardened pre-adder directly ahead of the multiplier, the pre-addition $(a+b)$ in $p_3$ is absorbed into the DSP slice with zero external logic. Furthermore, the slice accumulator handles the post-subtractions. Consequently, Gauss's complex multiplier maps directly into exactly $3$ DSP48E2 slices with no external LUT adders required.
+>
+> (c) For $7$ active complex multiplier stages:
+> - Direct formulation: $7 \times 4 = 28$ DSP48E2 slices.
+> - Gauss formulation: $7 \times 3 = 21$ DSP48E2 slices.
+> The Gauss formulation saves $7$ DSP48E2 slices ($25\%$ arithmetic reduction), leaving more DSP resources available for downstream acoustic model processing.
+
+> **Exercise (Design) — AXI4-Stream Backpressure and Handoff Elasticity.**
+> The front-end feature extraction engine outputs an 80-dimensional Mel filterbank vector every $10\text{ ms}$ over an AXI4-Stream bus (`TDATA`, `TVALID`, `TREADY`, `TLAST`).
+>
+> (a) If the front-end burst transmits the $80$ feature elements at a fabric clock frequency of $100\text{ MHz}$, compute the transmission duration in clock cycles and microseconds.
+>
+> (b) Suppose the downstream neural accelerator experiences temporary memory bus contention on external LPDDR4 memory and deasserts `TREADY` for $2.5\text{ ms}$. How deep must the handoff FIFO be to prevent audio frame loss?
+>
+> (c) What happens if the downstream accelerator stalls for $12\text{ ms}$ (exceeding the $10\text{ ms}$ frame stride)? Trace the cascading backpressure through the front end.
+>
+> **Answers.**
+> (a) At $100\text{ MHz}$ ($10\text{ ns}$ cycle period), transferring $80$ consecutive words requires $80$ clock cycles:
+> $$80 \times 10\ \text{ns} = 800\ \text{ns} = 0.8\ \mu\text{s}.$$
+> The burst occupies only $0.008\%$ of the available $10\text{ ms}$ inter-frame window.
+>
+> (b) The front-end pipeline produces one feature vector every $10\text{ ms}$. A stall of $2.5\text{ ms}$ is well within a single frame interval ($2.5\text{ ms} < 10\text{ ms}$), meaning at most one burst ($80$ words) can arrive during the stall. An elasticity FIFO depth of $128$ words (or a two-vector buffer of $160$ words, comfortably implemented in distributed LUTRAM or a single $36\text{ Kb}$ Block RAM tile) absorbs the stall with zero data loss.
+>
+> (c) If the stall duration exceeds the $10\text{ ms}$ hop period ($12\text{ ms} > 10\text{ ms}$), a second feature vector will arrive while the first remains blocked. If the elasticity FIFO fills completely, it must deassert its upstream `TREADY` signal. Backpressure then propagates in reverse through the pipeline: the requantizer halts, the logarithm engine stalls, the R2SDF pipeline feedback registers freeze, and the input line buffer eventually overruns its 400-sample circular memory, causing unrecoverable audio sample drops and acoustic phase discontinuity.
+
+**Where the numbers come from.** What stands behind this section's reference values and scenario specifications.
+
+| Source | What it says |
+| --- | --- |
+| <!-- V-05-10 --> LibriSpeech ASR corpus, corpus description | the acoustic speech corpus is sampled at 16 kHz, fixing the base sample rate |
+| <!-- V-05-31 --> NeMo Conformer configuration, window_stride parameter | the 0.01 s window stride setting the feature extraction frame rate |
+| <!-- V-05-35 --> NeMo Conformer configuration, features parameter | 80 Mel filterbank channels defining the acoustic feature dimension |
+| <!-- V-06-14 --> NeMo Conformer configuration, n_fft parameter | the 512-point transform setting the FFT size |
+| <!-- V-06-15 --> derived: the acoustic window size multiplied by the sample rate | the analysis frame spans 400 samples |
+| <!-- V-06-16 --> derived: the window stride multiplied by the acoustic sample rate | the hop spans 160 samples |
+| <!-- V-06-18 --> Eugene Hogenauer (IEEE TASSP 1981), decimation filter paper | the Cascade-Integrator-Comb (CIC) filter structure for decimation |
+| <!-- V-06-19 --> Shousheng He and Mats Torkelson (IEEE IPPS 1996), pipeline FFT paper | the R2SDF pipelined microarchitecture |
+| <!-- V-01-09 --> UltraScale Architecture and Product Data Sheet (DS890), Table 1 | the device provides 1,248 DSP48E2 slices for arithmetic operations |
+| <!-- V-01-22 --> UltraScale Architecture and Product Data Sheet (DS890), Table 23 | the device provides 23,616 Kb of total on-chip memory |
 
 ---
 
@@ -876,7 +972,7 @@ inherited directly from the trained model. The transform turned out to be a nine
 whose storage cost dominates its arithmetic cost and whose rounding error is bounded but not yet
 measured. The Mel stage turned out to be a sparse matrix multiply, a lookup table and a short linear
 scale, all of them small, all of them setting the word width of every downstream value. And the
-handoff turned out to be a contract: a synchronous stream of eighty-element vectors, one per hop period,
+handoff turned out to be a contract: a synchronous stream of $80$-element vectors, one per hop period,
 whose timing margin is the front end's single bottleneck.
 
 The chapter did not fix the wrongness. It built the pipeline, bounded the error at each stage, and

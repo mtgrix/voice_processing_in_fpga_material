@@ -1,644 +1,443 @@
-# Keyword Spotting on the Board: From Microphone to Decision
+# Audio Correlation Algorithms for Reading Assessment
 
-> **Scope note (Issue #53, superseding the note left by Issue #29).** These are the re-cut sections,
-> not the stubs. `plan-v2.md` section 7 assigns this chapter the keyword-spotting build, so the order
-> follows the signal path rather than the topic list: what has to be bolted onto the board before a
-> sample exists, then the convolution datapath, then the arithmetic of the non-linear stages, then the
-> test that says the build works. The stub that promised streaming chunk-level self-attention moved to
-> chapter 9, which is where the model that has that attention now sits; the other three kept their
-> subjects and changed their order.
-
-> *Objective: Take a keyword-spotting network from a microphone the board does not have to a decision
-> the board can defend: the acquisition path, the convolution datapath, the non-linear arithmetic, and
-> the acceptance test that closes the stage.*
-
-> ### Minimal Mathematics / Prerequisites for this Chapter
->
-> - **A count as a product**: taps, dilation and how far back one output reaches are multiplied, not
->   added, and the difference is what sizes a buffer.
-> - **Powers of two**: why shifting replaces multiplying only when a factor lands exactly on one.
-> - **Logarithm base two as a depth**: the number of halvings a compare tree takes, which is a count
->   of stages, not of items.
-> - **Floor and remainder**: how a fixed-point split into an exponent part and a fraction part is
->   read back, and what rounding off that split costs.
+> "To evaluate how well a student reads, we do not need to transcribe every phoneme into text—a task prone to hallucination in noisy classrooms. We need only to measure the distance between the student's acoustic trajectory and the expected phonetic path. The challenge is not transcription; the challenge is elastic alignment."
 
 ---
 
-<!-- source: 8.1 reviewed fragment -->
-
-## 8.1 The Board Has No Microphone: Tracing One Second of Audio
-
-*Where this sits in the chain: the* **Air and microphone** *stage, at its weakest point -- the board
-this book targets cannot supply the stage's one input.*
-
-**The board cannot hear you.** The KV260 carrier has no onboard microphone, no audio jack and no audio converter; its own data sheet lists the audio path only as "Audio transmit and receive (I2S) via PMOD audio codec", where I2S (Inter-IC Sound) is the serial link between a converter and the logic, and a PMOD is a module plugging into a two-row header. Nothing is captured until one is bought and fitted. A laptop has a microphone, so a plan written on one reaches the model before it notices this.
-
-**There are two ways in, and they are not the same kind of answer.** The vendor's own part is the Audio Codec I2S PMOD, Digilent SKU 410-379, in connector J2, which the carrier's accessory list records as tested with the smart camera application. That module opens up to a Cirrus CS5343 analogue-to-digital converter (ADC) and a CS4344 digital-to-analogue converter (DAC), 24-bit, stereo, on line inputs and outputs, with input rates up to 108 kHz. Read "line" strictly: a capsule still needs amplification upstream of the board. The other way is a USB microphone on one of the four USB 3.0 Type-A ports the board manual counts, which Linux sees through ALSA (its audio subsystem) as a USB audio class (UAC1/UAC2) device. That route needs no carrier modification, and it leaves conversion, clocking and gain outside the design. Only the first hands a programmable design a stream it can own, so the choice is scope, not wiring.
-
-**Both corpora are stored at 16 kHz, and that settles the input clock.** The Speech Commands paper says each utterance is "stored as a one-second (or less) WAVE format file, with the sample data encoded as linear 16-bit single-channel PCM values, at a 16 KHz rate", and the LibriSpeech corpus page gives the same rate. That second source is the corpus's own distribution page, so it corroborates rather than stands alone, as chapter 1 read it. A frontend at any other rate is wrong before a line of hardware exists. What the pair does not settle sits in the same two records: the codec offers 24-bit stereo (`V-03-03`), the files are 16-bit single-channel (`V-05-11`), and no record fixes where the extra bits and the second channel go.
-
-**The encoder consumes frames, not samples, and no record here fixes the frame rate.** Between the stream and the model the frontend groups samples into overlapping frames and reduces each to a few spectral values, so the path runs on two clocks, and only the first is settled above. How many frames arrive in a second, and how long one encoder step lasts, are not among the records this section draws on, so section 8.1 prints no number for either. The two domains are real whatever fills the second one, and a design that sizes a buffer in samples against a budget in steps is wrong in a way no simulation catches.
-
-**The metric is not a word error rate (WER).** MatchboxNet, the keyword spotter registered here, comes in sizes of 77K, 93K and 140K parameters. Its paper decides how any later number is read: the task is isolated-word classification over a closed set -- 12 or 35 classes, clips of one second or less -- and the quantity is top-1 accuracy in percent. MatchboxNet is not a continuous sequence model, so it has no WER. Accuracy asks whether the right word was chosen; WER counts edits across a transcript. A table that mixes the two compares nothing.
-
-Keyword spotting is the second tier of this book's three-tier cascade: the wake-word listener stays on first, the transcriber joins only when the spotter speaks, and the spotter's whole model fits the fabric's on-chip memory. That fit is why the tier is the always-listening one -- and the tier's cost is the book's own estimate, not a registered record.
-
-> **A passing number is speaker-independent, or it is nothing.** The Speech Commands paper records how the partition is made: `validation_list.txt` and `testing_list.txt` ship with the download, membership follows a hash of the file name, and that name begins with a hashed speaker identifier, so every clip of one speaker lands in one partition. That is what turns the accuracy figure above into a claim about unfamiliar voices. The corpus licence is Creative Commons Attribution 4.0 (CC BY 4.0), over 105,829 utterances, 35 words and 2,618 speakers, so attribution is the whole obligation, and a result can travel with its data.
-
-[Figure 33](#fig-kws-signal-path) puts the path on one line, and it is where the two clocks show.
-
-::: {#fig-kws-signal-path .figure}
-```tikz
-% One second of audio, room to label. The chain is one row of equal-height boxes so
-% the two dashed bands, which mark the clock domains, can share a top and a bottom
-% edge. Under each box a node states what fixes its rate, and the two boxes whose
-% rate no record carries say so in the same ink as the rest.
-\begin{tikzpicture}[
-  node distance=7mm,
-  box/.style={draw, align=center, inner sep=4pt, font=\scriptsize,
-              text width=16mm, minimum height=13mm},
-  rate/.style={font=\scriptsize, align=center, inner sep=1pt, text width=19mm},
-  t/.style={font=\scriptsize, inner sep=2pt},
-  arr/.style={-{Stealth[length=1.8mm]}, thick},
-  band/.style={draw, gray!65, densely dashed},
-]
-\node[box] (dev) {input device:\\ PMOD codec\\ or USB mic};
-\node[box, right=of dev] (pcm) {sample stream:\\ 16 kHz, 16-bit,\\ single channel};
-\node[box, right=of pcm] (fe)  {frontend:\\ frames of\\ log-Mel values};
-\node[box, right=of fe]  (enc) {keyword encoder:\\ one step\\ per frame};
-\node[box, right=of enc] (lbl) {one label:\\ 12 or 35\\ classes};
-\draw[arr] (dev) -- (pcm);
-\draw[arr] (pcm) -- (fe);
-\draw[arr] (fe)  -- (enc);
-\draw[arr] (enc) -- (lbl);
-% What fixes each rate. Every id here is the id prose cites for the same quantity.
-\node[rate, below=1pt of dev.south] {up to 108 kHz\\\texttt{V-03-03}};
-\node[rate, below=1pt of pcm.south] {16 kHz\\\texttt{V-05-11}};
-\node[rate, below=1pt of fe.south]  {frame rate:\\no record};
-\node[rate, below=1pt of enc.south] {step rate:\\no record};
-\node[rate, below=1pt of lbl.south] {a metric,\\not a rate:\\\texttt{V-05-02}};
-% The two clock domains. Equal-height boxes make the two tops and bottoms coincide.
-\coordinate (aSW) at ($(dev.south west)+(-5pt,-36pt)$);
-\coordinate (aNE) at ($(pcm.north east)+(5pt,14pt)$);
-\coordinate (bSW) at ($(fe.south west)+(-5pt,-36pt)$);
-\coordinate (bNE) at ($(lbl.north east)+(5pt,14pt)$);
-\draw[band] (aSW) rectangle (aNE);
-\draw[band] (bSW) rectangle (bNE);
-\node[t, anchor=south] at ($(aSW|-aNE)!0.5!(aNE)$) {\textbf{sample clock}};
-\node[t, anchor=south] at ($(bSW|-bNE)!0.5!(bNE)$) {\textbf{feature clock}};
-\end{tikzpicture}
-```
-Follow the drawing from the left rather than from the boxes: the first two stages run
-on one clock and the next three on another, and the seam between the dashed bands is
-where the reduction happens. Two of the nodes under the boxes say that no record fixes
-the rate at that stage, and they are why two rows of the table below carry no number.
-:::
-
-| Stage | What enters | What leaves | Which record fixes its rate |
-| --- | --- | --- | --- |
-| Room | a sound | a line-level signal | none: the carrier has no microphone (`V-03-01`) |
-| PMOD codec | line-level analogue | an I2S bitstream | up to 108 kHz in (`V-03-03`); part and connector (`V-03-02`) |
-| USB route | a microphone capsule | ALSA PCM frames | no rate registered; `V-03-05` gives ports |
-| Capture | either stream | a 16-bit, single-channel file of one second or less | 16 kHz (`V-05-11`, corroborated by `V-05-10`) |
-| Frontend | the sample stream | frames of spectral values | not registered for this section |
-| Encoder | those frames | one output per frame | the same unregistered frame rate |
-| Decision | the outputs | one label from a closed set | a metric, not a rate: top-1 accuracy (`V-05-02`) |
-
-**Traceability.** The records this section's argument rests on.
-
-| Record | What it establishes here |
-| --- | --- |
-| `V-03-01` | the carrier lists no onboard microphone, jack or converter; the audio path is I2S via a PMOD codec |
-| `V-03-02` | the Audio Codec I2S PMOD (Digilent SKU 410-379) sits in connector J2 and is tested with the smart camera |
-| `V-03-03` | that PMOD is a CS5343 ADC and CS4344 DAC, 24-bit stereo, line-level, to 108 kHz |
-| `V-03-05` | the carrier exposes four USB 3.0 Type-A ports |
-| `V-05-11` | Speech Commands stores one-second clips as 16-bit single-channel PCM at 16 kHz |
-| `V-05-10` | LibriSpeech is 16 kHz read English speech, on the corpus's own distribution page |
-| `V-05-01` | MatchboxNet's three sizes are 77K, 93K and 140K parameters |
-| `V-05-02` | the task is isolated-word classification, 12 or 35 classes, scored as top-1 accuracy, not WER |
-| `V-05-08` | the train/test split follows a hashed speaker id, so it is speaker-independent |
-| `V-05-07` | the corpus is CC BY 4.0, 105,829 utterances, 35 words, 2,618 speakers |
-
-<!-- source: 8.2 reviewed fragment -->
-
-## 8.2 A Depthwise Convolution Is a Line Buffer With Taps
-
-**Intuition.** A filter that runs along a stream of frames is the same object as a shift
-register with taps, and every hardware reader has built one. Hold the recent values of a single
-channel in a row of registers, multiply each register by a weight, add the products, and the
-result is that channel's filtered value for the newest frame. A trained network changes nothing
-about that shape. It picks the weights by training rather than by hand, and it runs a row like
-this for every channel at once. The question worth arguing about is what to do when the channels
-are also allowed to talk to one another, because that conversation is where the cost sits, and
-the answer the field settled on is to split it into two cheaper passes. The convolution section
-of Appendix A derives that split from the arithmetic of a filter; this section keeps the storage,
-the traffic and the containers, and it assumes the derivation has been read.
-
-**Mechanism.** The separable split is a hardware statement written as a network layer. A depthwise separable convolution replaces one dense filter with two passes. A *depthwise* pass filters each channel on its own, so one filter per channel and no mixing. A *pointwise* pass is a 1 × 1 convolution: one position, all channels in, all channels out, and it does the mixing. The order looks wasteful and the reason for it is arithmetic. In a dense filter every input channel meets every output channel, so a fetched weight is multiplied into many products and a design can hold the weight still while activations stream past. In a depthwise pass a weight belongs to exactly one channel, so far fewer multiply-accumulates (MAC -- one multiplication and one addition fused into one hardware step) arrive per weight fetched, and the fetching becomes the work. The pointwise pass puts the ratio back, because it is dense. So a convolution stack of this kind is two workloads in one layer: the depthwise part is shaped by memory traffic, the pointwise part by arithmetic units, and a machine good at only one of them idles through the other. [Figure 34](#fig-dense-vs-depthwise) draws the two wirings side by side, so the ratio is a count of lines rather than a claim to take on trust.
-
-::: {#fig-dense-vs-depthwise .figure}
-```tikz
-% The comparison section 8.2's cost argument turns on, drawn rather than described: a dense filter
-% connects every input channel to every output channel, a depthwise pass connects each channel to
-% itself and to nothing else. Four channels are drawn on each side as a stand-in for any width -- the
-% figure is about which wires exist, not how many, and no channel count is claimed here.
-\begin{tikzpicture}[
-  font=\tiny,
-  dot/.style={circle, draw=black!70, fill=black!12, inner sep=1.6pt},
-  odot/.style={circle, draw=black!70, fill=black!45, inner sep=1.6pt},
-  wire/.style={black!45, line width=0.28pt},
-  lone/.style={black!70, line width=0.5pt},
-  tick/.style={text=black!70},
-  pcap/.style={text=black!62, align=center}]
-  % ---- panel A: the dense cross, every pair wired ----
-  \foreach \y in {0,1,2,3}{
-    \node[dot] (ai\y) at (0,\y*0.5){};
-    \node[odot] (ao\y) at (2.1,\y*0.5){};}
-  \foreach \i in {0,1,2,3}{\foreach \o in {0,1,2,3}{
-    \draw[wire] (ai\i) -- (ao\o);}}
-  \node[pcap, anchor=north] at (1.05,-0.42) {dense: every input channel\\meets every output channel};
-  \node[tick, anchor=south east] at (-0.12,1.5) {in};
-  \node[tick, anchor=south west] at (2.22,1.5) {out};
-  % ---- panel B: the depthwise diagonal, each channel to itself ----
-  \foreach \y in {0,1,2,3}{
-    \node[dot] (bi\y) at (4.2,\y*0.5){};
-    \node[odot] (bo\y) at (6.3,\y*0.5){};}
-  \foreach \i in {0,1,2,3}{\draw[lone] (bi\i) -- (bo\i);}
-  \node[pcap, anchor=north] at (5.25,-0.42) {depthwise: a weight belongs\\to exactly one channel};
-  \node[tick, anchor=south east] at (4.08,1.5) {in};
-  \node[tick, anchor=south west] at (6.42,1.5) {out};
-\end{tikzpicture}
-```
-The two passes beside each other, so the ratio the section argues about is a count of wires rather than
-a sentence: the dense panel is full because every pair is wired, and the depthwise panel is a matching
-because a weight there has one channel to serve. A machine built to keep weights still while activations
-stream past is efficient on the left panel and idle on the right one.
-:::
-
-**The traffic the depthwise part generates is mostly re-reads, and re-reads are a buffer.** What a sliding window reads more than once is the input, not the weights. A hardware design therefore keeps the recent inputs where they can be read cheaply, in a *line buffer* -- storage for the steps a window still needs, so that each new step is written once and read again by every later output whose window covers it. [Figure 35](#fig-depthwise-line-buffer) draws exactly that, and the whole argument of this section is visible in which arrows repeat.
-
-::: {#fig-depthwise-line-buffer .figure}
-```tikz
-\begin{tikzpicture}[
-  font=\scriptsize, node distance=1.6mm,
-  cell/.style={rectangle, draw, minimum width=6.6mm, minimum height=5.6mm, inner sep=1pt},
-  old/.style={cell, fill=black!14},
-  cur/.style={cell, fill=black!55},
-  tap/.style={cell, minimum height=4.2mm, draw, densely dashed},
-  ptr/.style={-{Stealth[length=2mm]}, thick}
-]
-  \node[old] (c1) {$i{-}3$};
-  \node[old, right=of c1] (c2) {$i{-}2$};
-  \node[old, right=of c2] (c3) {$i{-}1$};
-  \node[cur, right=of c3] (c4) {$i$};
-  \node[right=9mm of c4] (rest) {\dots};
-
-  \node[tap, above=8mm of c1] (t1) {$t_0$};
-  \node[tap, right=of t1] (t2) {$t_1$};
-  \node[tap, right=of t2] (t3) {$t_2$};
-  \node[tap, right=of t3] (t4) {$t_3$};
-
-  \draw[ptr] (t1) -- (c1); \draw[ptr] (t2) -- (c2);
-  \draw[ptr] (t3) -- (c3); \draw[ptr] (t4) -- (c4);
-
-  \node[left=2mm of t1, anchor=east] {window};
-  \node[left=2mm of c1, anchor=east] {stream};
-
-  \node[below=9mm of c2] (buf) [cell, minimum width=30mm, minimum height=8mm]
-    {line buffer: $i{-}3$ \dots $i$ held};
-  \draw[ptr] (c1.south) -- ++(0,-3mm) -| (buf.north west);
-  \draw[ptr] (c3.south) -- (buf.north);
-  \draw[ptr] (c4.south) -- ++(0,-3mm) -| (buf.north east);
-
-  \node[below=1.5mm of buf.south, anchor=north, align=center]
-    {written once \quad · \quad read $k$ times};
-\end{tikzpicture}
-```
-Read the four downward arrows as four weights, not four fetches: the oldest steps are already in the buffer when a new step arrives, so one store feeds several outputs.
-:::
-
-**How long the window is decides how much the buffer holds, and the targets disagree about it.** The registered readings sit side by side below.
-
-| Candidate reading | Taps | What the record reads from it | Record |
-| --- | --- | --- | --- |
-| Conformer-Transducer, Small | 31 | every variant in that table but XLarge keeps 31, so this is a family property, not a size knob | `V-05-15` |
-| Cache-aware streaming Conformer-Transducer, Large, causal | 31 | a tap history of 30 encoder steps | `V-05-25` |
-| Cache-aware streaming FastConformer-Transducer, Large, causal | 9 | 8 steps of history, and the saving is in the convolution module's own state rather than the attention cache | `V-05-40` |
-| Another implementation's reading of the same field | 15 | registered separately; the pick of a target is open, so the tap count is one of the live differences | `V-05-15` |
-
-Nothing here is priced per frame. Per-frame cost -- MACs, INT8 weight bytes, activation bytes -- is unregistered for every candidate, so this section states the shape and stops.
-
-**Reach is a two-term rule, and it is the only arithmetic this section needs.** *Mechanism.* A window reads the current step and reaches backwards for its history; how far it reaches and how often it moves are set by different knobs.
-
-> **The formula.** $R = (k - 1)\,d + 1$
->
-> **The variables.**
->
-> - $R$ — the reach: how many input steps one output depends on, counting the current step. A
->   number of steps, so dimensionless until a step is given a duration.
-> - $k$ — the tap count: how many samples of the input the window reads. A count of taps.
-> - $d$ — the dilation: the spacing between consecutive taps, in input steps. A count of steps.
->   Left a symbol here on purpose, because neither candidate's records register a value for it.
-> - $s$ — the stride: how many input steps apart two consecutive outputs start. A count of steps,
->   and deliberately not a term of $R$: it sets how often the buffer is read, never how deep it is.
->   No record fixes its value for either candidate.
-> - $1$ — the current step itself, which every window reads. A count, not a measured quantity.
->
-> **What it means.** A window takes $k$ taps, and between the first tap and the last there are
-> $k - 1$ gaps, each $d$ steps wide, so the distance from the newest tap to the oldest is
-> $(k-1)d$ steps. Adding the current step back gives the total number of input steps the output
-> rests on. The subtraction and the addition are the same act seen twice: $k - 1$ counts gaps,
-> and $+1$ counts the step those gaps hang off. A separate sentence carries the stride, because
-> it is a different knob: consecutive outputs start $s$ input steps apart, and $s$ does not
-> appear in $R$ at all. With $d = 1$ the rule reproduces what the table prints -- 31 taps
-> reaching 30 steps back `V-05-25`, and the other candidate's 9 taps reaching 8 `V-05-40` --
-> which is the check that the formula is describing these recipes and not an invented one.
->
-> **What it costs.** $R$ is the depth of the line buffer in steps, and $s$ is how fast its
-> contents turn over, so a longer tap costs storage while a larger stride costs the same storage
-> less often. In silicon the shifting part of that buffer is registers at the word level, and
-> the holding part is a BRAM or URAM tile or a few hundred words of LUTRAM, whichever of the three
-> containers the capacity table later in this section prices -- though it lists what each holds, and
-> no record says which one a short-tap stage should be given. The formula itself is a multiply by a constant and an add; when $d$ is
-> a power of two the multiply is a shift, and when $k$ is fixed at compile time the whole
-> expression is one number resolved before the design is placed rather than arithmetic done per
-> step.
->
-> **What it does not say.** Not bytes, and not time. $R$ is counted in steps, and a step becomes
-> a wall-clock interval only once the encoder's step period is registered, which chapter 9 does
-> and this chapter does not. And $R$ says nothing about how many channels the window must be
-> copied across, which is where the storage actually goes: reach is one dimension of a buffer
-> whose size needs three.
-
-**The reference keyword network is the small case, and its paper prints it as names.** MatchboxNet is a 1D time-channel separable convolutional network at $C = 64$ channels, and its paper lists three variants with their parameter counts: 77K for `3x1x64`, 93K for `3x2x64`, 140K for `6x2x64`. The name carries the depth and the width, so a reader sees the stack growing in the same place that prices it, and the paper notes that counts of this size fit entirely into on-chip block RAM (BRAM -- on-chip storage) without off-chip access. The other half of the source is the task definition: isolated word classification accuracy on 1-second clips from a closed set of 12 or 35 classes, not a word error rate (WER -- the fraction of transcribed words that are wrong). A design that quotes that accuracy is not quoting transcription.
-
-**Hardware application.** The buffer lives in one of three containers, and the unit must travel with the number. All figures are the device registered as `xczu5ev` / `XCK26`, from document DS890 page 22, Table 23.
-
-| Quantity | Value | Where it comes from |
-| --- | --- | --- |
-| BRAM blocks, 36 kilobit each | 144 | `V-01-05`, tile size `V-01-23` |
-| UltraRAM (URAM) blocks, 288 kilobit each | 64 | `V-01-07`, tile size `V-01-23` |
-| BRAM and URAM together | 23,616 Kb | `V-01-22` |
-| Distributed RAM (LUTRAM) | 3.5 Mb | `V-01-16` |
-| Configurable logic block look-up tables (CLB LUT -- the basic logic element) | 117,120 | `V-01-03` |
-| CLB flip-flops | 234,240 | `V-01-04` |
-| DSP48E2 slices (the multiply-accumulate block of this family) | 1,248 | `V-01-09` |
-
-Every value is quoted in the unit the record prints it in. The datasheet's megabit columns are 1024-based, so a Mb there is 1,024 Kb; the total was fixed precisely because "4 MB" and "4.5 MB" were each defensible under some other reading and neither survives the arithmetic. The three containers are not interchangeable. BRAM and URAM are fixed tiles and are counted together at 23,616 Kb; LUTRAM is built from the look-up tables in the row above it, so it spends logic and is not initialised by the bitstream the way BRAM is, which is why its capacity is not added to that budget. A short-tap depthwise stage that wants a few hundred words at very low latency may be better served by LUTRAM than by a whole 36 Kb tile, and no record here says which. Flip-flops matter to this section for one reason: at the word level the shifting part of a line buffer is registers. Building any of it needs no licence -- the device is supported in the standard Vivado ML Standard flow without one.
-
-<!-- source: 8.3 reviewed fragment -->
-
-**Traceability.** The records this section's prose leans on. The two tables above carry their own
-per-row provenance; this note holds the citations that sit in sentences rather than in a row.
-
-| Record | What it establishes here |
-| --- | --- |
-| `V-05-57` | nothing is registered for any candidate about MACs per frame, weight bytes or activation bytes |
-| `V-05-01` | MatchboxNet's three sizes (77K, 93K, 140K parameters) and that a count this size fits in on-chip BRAM |
-| `V-05-02` | the task is isolated-word classification on short clips from a closed label set, scored as accuracy rather than a word error rate |
-| `V-01-23` | the datasheet's megabit columns are 1024-based, and one BRAM tile is 36 Kb, one URAM tile 288 Kb |
-| `V-01-22` | the 23,616 Kb fabric total, unrolled across the unit conventions that left two megabyte readings defensible |
-| `V-01-16` | 3.5 Mb of distributed (LUTRAM) capacity, which spends logic and is excluded from the tile budget |
-| `V-04-01` | the device is supported in the standard Vivado ML flow with no licence |
-
-## 8.3 Softmax and LayerNorm Without a Floating-Point Unit
-
-**Intuition.** Two stages in every encoder block do work that a multiplier cannot do directly,
-and both of them are about proportions rather than about values. Attention ends with a row of raw
-scores, one per frame it was allowed to read, and that row has to become shares of a whole before
-it can weight anything: this is what a softmax is for, and it is why the operation contains a sum
-and a division. A normalising stage keeps each frame's channel values on a scale the next stage
-can use, which is why it contains a mean, a spread, and a reciprocal of a square root. The four
-operations this section has to build therefore follow from what the two stages are for: an
-exponential, a reciprocal, a sum and a square root. Appendix A defines both stages from the
-beginning; this section assumes the definitions and supplies the units. A fabric of multipliers,
-adders and storage can build all four, and building them is this section. The arithmetic decisions below are design, not
-result: no error, rate or resource figure appears here, because none has been measured.
-
-**Mechanism.** Subtracting the row maximum is a correctness step. In real arithmetic, these two
-expressions have the same value:
-
-> **The formula.** $\mathrm{softmax}(\mathbf{z})_i = \dfrac{e^{z_i}}{\sum_j e^{z_j}} = \dfrac{e^{z_i - m}}{\sum_j e^{z_j - m}}$, with $m = \max_j z_j$
->
-> **The variables.**
->
-> - $\mathbf{z}$ — one row of attention scores: one value per position the query may look at.
->   Raw score units, unbounded in both directions before anything is done to them.
-> - $z_i$ — the score of one position $i$ in that row. Same units as $\mathbf{z}$.
-> - $m$ — the largest value in the row, $\max_j z_j$. Same units as $\mathbf{z}$, and it is a
->   value from the row, not a constant anybody chose.
-> - $i$, $j$ — indices of positions inside the row. Counts of positions.
-> - $n$ — how many positions the row holds, counting only the ones the mask keeps. A count of
->   positions, and the unit the holding buffer is sized in.
-> - $\log_2 n$ — how many times $n$ has to be halved to reach one: the number of levels a pairwise
->   compare tree needs. A count of levels, not of positions.
-> - $\sum_j$ — the sum across the whole row: every position the mask allows, not just the one
->   being weighted.
-> - $e^{x}$ — the exponential of $x$, the function this section exists to build without a unit.
->
-> **What it means.** The two right-hand forms differ by a factor $e^{m}$ that cancels, so on a
-> calculator the subtraction shows no gain at all. The gain is in the interval, not the answer.
-> Every term of the reduced numerator and denominator now lies in $[0,1]$, so the largest value
-> either one can hold is exactly $1$: a fixed-point encoding whose range tops out there holds
-> both without a second thought. The unreduced form, exponentiating $z$ directly, cannot say
-> what its largest value will be before it has been computed -- and a hardware designer has to
-> size a register before runtime, not after.
->
-> **What it costs.** The price is order. $m$ exists only after the last score of the row exists,
-> so the row must be held in a buffer and a reduction must finish before the first exponential
-> begins -- an adder-free tree of pairwise compares, which halves the list at every step. That
-> is a stall paid in storage and in serial depth: a row of $n$ scores needs $n$ registers or a
-> tile, and $\log_2 n$ levels of compare before any output can start. The blocking point is
-> drawn in [Figure 36](#fig-nonlinearity-approx), and both variants there pay it.
->
-> **What it does not say.** It does not say the row fits. The buffer this identity requires is
-> as wide as the mask allows the row to grow, and chapter 9 is where that width is counted.
-> And the $[0,1]$ bound is a statement about the interval, not about precision: how many bits
-> below the binary point survive the shift into that interval is a word-width decision this
-> formula does not make for anyone.
-
-> **The formula.** $e^{x} = 2^{\,x\log_2 e} = 2^{k}\cdot 2^{f}$, with $k = \lfloor x\log_2 e \rfloor$ and $f = x\log_2 e - k$
->
-> **The variables.**
->
-> - $x$ — one already-reduced score, the $z_i - m$ of the card above. A non-positive
->   fixed-point number, so $x \le 0$ always, and $e^x$ lands in $(0,1]$.
-> - $\log_2 e$ — the change of base from $e$ to $2$, about $1.4427$. A pure number, and in a design
->   it is a literal: a fixed-point approximation of it, one multiply by a value chosen at compile
->   time. No record here fixes how many bits that literal keeps, so the constant is written to the
->   four decimals the argument needs and not further.
-> - $x \log_2 e$ — the same exponent rewritten in base 2. Fixed-point, non-positive.
-> - $k$ — the integer part of that quantity, $\lfloor x\log_2 e \rfloor$: the floor, so the
->   greatest integer not exceeding it. A signed integer count of doublings.
-> - $f$ — what the floor threw away, $x\log_2 e - k$. A fraction in $[0,1)$, and by
->   construction it has fewer significant bits than $x$ did.
-> - $2^k$ — the integer-power term. $2^f$ — the fractional-power term, in $[1,2)$.
-> - $b$ — how many of $f$'s fraction bits a design keeps. A count of bits, and the lookup table
->   sized in **What it costs** holds $2^b$ entries: the one knob that trades the exponential's
->   accuracy for its storage.
->
-> **What it means.** Writing an exponent in base 2 is not a stylistic choice; it is the choice
-> that makes the integer part *be a bit position*. A fixed-point number is a bit pattern read as
-> $\text{integer}.\text{fraction}$, so taking its floor separates the two halves by cutting the
-> pattern at the binary point, and $2^k$ then means "place the value $k$ positions to the left or
-> right of where it is". That is what a barrel shifter is: a network of multiplexers that moves
-> bits by a variable amount and performs no arithmetic at all. The fraction cannot be handled
-> that way, because $2^{0.5}$ is not a bit position -- it is $\sqrt{2}$ -- so it goes to a table
-> instead, and the table is affordable only because $f$ has few significant bits left after the
-> floor took the rest. Each of those bits indexes one stored entry, written once at compile time
-> and never computed. The exponential therefore survives as one constant multiply, one read and
-> one shift, and the transcendental part of it lives in a memory somebody filled in at build time
-> rather than in a circuit that evaluates anything at run time.
->
-> **What it costs.** A constant multiply for $\log_2 e$ -- one DSP slice, or wiring and no slice
-> at all if the literal is chosen as a sum of powers of two. A read-only memory of $2^b$ entries
-> where $b$ is the number of fraction bits kept, so the table's size is exponential in the very
-> precision it buys, and that trade is the whole design decision. One variable shift, which is a
-> shifter and not a multiplier. Whether a given $b$ fits a tile is arithmetic on the tile the
-> device register names and on the entry width this book does not choose, so no fit is claimed
-> here.
->
-> **What it does not say.** It does not say the result is $e^x$. It says the result is what a
-> fixed-point $\log_2 e$ and a $b$-bit table return, and the error against the true exponential
-> is the sum of three approximations this formula deliberately hides: the literal, the truncation
-> of $f$, and the table's own entries. No record in this repository registers that error for any
-> candidate, so this book prints none -- and a designer who reads this card as exact arithmetic
-> has just made the mistake the card exists to prevent.
-
-A reciprocal square root is the same trick with one snag:
-
-> **The formula.** $\dfrac{1}{\sqrt{y}} = 2^{-k/2}\cdot\dfrac{1}{\sqrt{f}}$, where $y = 2^{k}f$
->
-> **The variables.**
->
-> - $y$ — a LayerNorm variance plus the small constant added to keep its square root away from
->   zero. A squared quantity in the units of the normalised channel values, and strictly positive
->   because of that added constant.
-> - $k$ — the exponent of $y$ when $y$ is written in base 2: the position of its leading bit
->   relative to the binary point. A signed integer count of doublings.
-> - $f$ — the significand, the part of $y$ left after the exponent is taken out, so $f$ is in
->   $[1,2)$. A fixed-point fraction, not the same $f$ as the exponential card above: there the
->   remainder sat below the point, here it sits above it.
-> - $2^{-k/2}$ — the exponent half, which is the $\sqrt{\;}$ and the reciprocal both, applied to
->   the power-of-two part. A shift.
-> - $1/\sqrt{f}$ — the significand half, which cannot be a shift because $f$ is not an integer.
->   A table read.
->
-> **What it means.** A square root divides exponents by two and a reciprocal negates them, so
-> taking $1/\sqrt{\;}$ of a base-2 number multiplies its exponent by $-1/2$ and leaves the
-> significand to be handled separately. The exponent half is wiring. The significand half is a
-> function of a value confined to $[1,2)$, which is exactly the interval a table covers cheaply:
-> few input bits, one stored output per combination of them.
->
-> **What it costs.** One leading-one detector to find $k$, a shift by $-k/2$, and a read-only
-> memory indexed by the bits of $f$. No divider and no square-root unit, which is the point of
-> the identity: a divider would be iterative, would take a variable number of cycles, and would
-> have to be pipelined or hand-held. The softmax denominator reaches its reciprocal the same way.
->
-> **What it does not say.** It does not say the shift is clean, and this is the snag the identity
-> hides. A halved integer exponent is a shift only when $k$ is even. An odd $k$ leaves a factor
-> $\sqrt{2}$ behind, and a plain shift drops it silently: the output comes back wrong by that
-> factor and nothing in the datapath reports it, because nothing downstream knows which parity
-> the shift assumed. The cheapest fix is an odd flag taken from
-> the lowest bit of $k$ that selects a correction entry from the same table; a second table needs
-> no flag at all. And the formula does not say what happens at $y = 0$, which is why the constant
-> added to the variance is load-bearing rather than tidy: without it, $k$ is undefined for the
-> degenerate case and the shift has no value to move.
-
-[Figure 36](#fig-nonlinearity-approx) puts the two routes side by side. Look at what each path
-spends: the left one keeps a general exponentiation unit and a divider, and the right one
-replaces them with a constant multiply, a small read-only memory and three shifts. The dashed
-bar in the middle of each path is the reduction that blocks the row.
-
-::: {#fig-nonlinearity-approx .figure}
-```tikz
-% Two softmax pipelines, drawn as the hardware that realises them. Left: base-e, one
-% general exponentiation unit per lane plus a divider. Right: the max-subtracted base-2
-% path of this section -- constant multiply, table read, shift -- for both the
-% exponential and the reciprocal. The shaded boxes are the stages whose cost is a
-% function unit rather than storage; the dashed bar is where the row maximum must
-% finish, which both paths pay.
-\begin{tikzpicture}[
-  box/.style={draw, rounded corners=2pt, inner sep=3.5pt, font=\scriptsize,
-              align=center, text width=2.55cm},
-  hot/.style={box, fill=red!9, draw=red!70!black},
-  cold/.style={box, fill=blue!7},
-  blk/.style={draw, dashed, inner sep=4pt, font=\scriptsize, align=center},
-  a/.style={-{Stealth[length=2mm]}, thick},
-  t/.style={font=\scriptsize, inner sep=2pt},
-]
-\node[t, font=\small, below] at (-1.55,0.3) {base $e$, general unit};
-\node[t, font=\small, below] at (1.85,0.3) {base $2$, table and shift};
-
-\node[box] (zA) at (-1.55,-0.45) {scores $z$, one row};
-\node[box] (zB) at (1.85,-0.45) {scores $z$, one row};
-\draw[a] (zA) -- (-1.55,-1.05);
-\draw[a] (zB) -- (1.85,-1.05);
-
-\node[hot] (eA) at (-1.55,-1.7) {$e^{z_i}$\\ exponentiation unit};
-\node[box] (kB) at (1.85,-1.7) {$\times\,\log_2 e$\\ constant multiply};
-\draw[a] (kB) -- (1.85,-2.3);
-\node[blk] (mA) at (-1.55,-2.35) {$m=\max_j z_j$ must finish};
-\node[blk] (mB) at (1.85,-2.65) {$m=\max_j z_j$ must finish};
-\draw[a] (mA) -- (-1.55,-3.0);
-\draw[a] (mB) -- (1.85,-3.25);
-
-\node[cold] (sB) at (1.85,-3.9) {$z_i-m$, split $k$ \vert $f$};
-\draw[a] (sB) -- (1.12,-4.5) -- (1.12,-4.75);
-\draw[a] (sB) -- (2.58,-4.5) -- (2.58,-4.75);
-\node[box] (tbB) at (1.12,-5.25) {$2^{f}$\\ table read};
-\node[box] (shB) at (2.58,-5.25) {$2^{k}$\\ shift};
-\draw[box, draw=gray!55] (0.22,-5.72) rectangle (3.48,-4.95);
-\node[t, anchor=north west, text width=3.4cm, align=left] at (0.22,-5.78)
-  {one ROM, one barrel shifter:\\ no $e^{x}$ unit anywhere};
-\node[hot] (sA) at (-1.55,-3.65) {$\sum_j(\cdot)$, then divide\\ reciprocal unit};
-\node[box] (sumB) at (1.85,-6.25) {integer sum, then\\ $1/d$ and $2^{-k/2}$: table, shift};
-\draw[a] (shB) -- (2.58,-6.0);
-\draw[a] (tbB) -- (1.12,-6.0);
-\draw[a] (sA) -- (-1.55,-4.9);
-\node[box] (oB) at (1.85,-7.05) {$a_i$};
-\node[box] (oA) at (-1.55,-5.4) {$a_i$};
-\draw[a] (oB) -- (1.85,-6.6);
-\draw[a] (oA) -- (-1.55,-4.95);
-\end{tikzpicture}
-```
-The two ways to spend an exponential. Shaded boxes are the stages whose hardware is a
-function unit; unshaded ones are a read-only memory, a shifter or an adder tree. The dashed
-bar sits in both paths: a row maximum cannot be worked around, so neither variant streams
-the row through. What the base-2 column buys is the removal of the red, not of the dash.
-:::
-
-**Hardware application.** LayerNorm stays in the datapath; a BatchNorm in its place would not. BatchNorm's mean
-and variance are constants derived from the training data, so the whole stage is a per-channel
-multiply and add, and those compose into the weights and bias of the convolution before it.
-LayerNorm is data-dependent: the mean and variance it uses come from the frame in front of it,
-at run time, and it folds into nothing. The three recipe configs on record put that fork in
-writing.
-
-| Convolution module normaliser | Value | Where it comes from |
-| --- | --- | --- |
-| Offline Conformer-Transducer recipe | `batch_norm` | `V-05-20` |
-| Streaming Conformer-Transducer recipe | `layer_norm` | `V-05-26` |
-| Streaming FastConformer-Transducer recipe | `layer_norm` | `V-05-41` |
-
-Both streaming configs record LayerNorm, so the mean, the variance and the reciprocal square
-root above are in this chapter's hardware list. Had the streaming recipes agreed with the
-offline one, this section would be about a constant folded into weights.
-
-> **One figure that is a ratio.** The streaming Conformer's config prints 4 for its feed-forward
-> expansion factor: the hidden width as a multiple of `d_model`, one multiplier inside one
-> sub-layer. It is not a count of sub-layers and it says nothing about how many normalisation
-> stages this section must build.
-
-**Requantisation gives these stages their number format.** An integer stands for a real
-number by an affine map, and a product of two such integers is put back into an integer
-format by one multiplier. Both are one idea applied twice, so one card carries both forms.
-
-> **The formula.** An integer stands for a real number by an affine map, $r = S(q - Z)$
-> (V-06-01), and a product of two integers is requantised by the multiplier
-> $M = \dfrac{S_1 S_2}{S_3} = 2^{-p} M_0$ (V-06-02), with $M_0$ in $[0.5, 1)$: the real
-> multiply becomes a fixed-point multiply by $M_0$ followed by a shift of $p$ places.
->
-> **The variables.**
->
-> - $r$ — the real number a stored integer stands for. Units of the quantity being carried.
-> - $S$ — the scale: how much one integer step counts in real units. A positive real.
-> - $q$ — the stored integer, the quantity the datapath actually carries. Integer units.
-> - $Z$ — the zero-point: the integer whose real value is zero, which is what lets a narrow
->   unsigned integer mean a real number near zero. Integer units.
-> - $S_1$, $S_2$, $S_3$ — the scales of the first operand, the second operand and the
->   output. The paper fixes the first operand as the weights and the second as the
->   activations (V-06-02), so $S_1$ is the weight scale and $S_2$ the activation scale.
-> - $M$ — the requantisation multiplier, a ratio of three scales. It is a constant: the
->   number the datapath multiplies by, not the multiplier unit that performs the multiply.
-> - $p$ — the shift count, the non-negative integer in the $2^{-p}$ factor. The paper writes
->   $n$; renamed here because $n$ already means a softmax row length earlier in this section.
-> - $M_0$ — the mantissa, the part of $M$ in $[0.5, 1)$ a fixed-point multiplier can carry.
->   The paper's example word lengths are int16 and int32 (V-06-02).
->
-> **What it means.** The affine form is what lets a datapath carry an unsigned integer whose
-> real meaning is somewhere near zero: the zero-point says which integer means zero, and the
-> scale says what each step is worth. The multiplier form is the same idea applied to a
-> product: because $M = S_1 S_2 / S_3$ and $M = 2^{-p} M_0$, forming the product, scaling it
-> and requantising it collapse into one fixed-point multiply by $M_0$ and one shift of
-> $p$ places. That is the arithmetic the base-2 path above already spends, borrowed for its
-> shape.
->
-> **What it costs.** The multiplier is only as accurate as the word length that carries it:
-> at int32 the integer nearest to $2^{31} M_0$ is always at least $2^{30}$ -- at least
-> $30$ bits of relative accuracy (V-06-02). The fabric cost of that multiply and shift is
-> not registered.
->
-> **What it does not say.** It does not say what the three scales are worth: the formula
-> relates them but nothing here chooses them, and the choice is what determines the word
-> widths. It does not say which operand is which, either: the paper fixes the first operand
-> as the weights and the second as the activations, so swapping that reading swaps $S_1$ and
-> $S_2$ and changes every $M$ this section will spend.
-
-**The tie rule is what a shift gets wrong.** Brevitas' default `float_to_int_impl` is
-`RoundSte` -- `torch.round` with a straight-through estimator (STE -- the backward pass treats
-the rounding as an identity, so gradients ignore it). Naming the operator does not settle a
-tie, because the tie rule is a property of `torch.round` and not of the wrapper around it, and
-the framework's source says nothing about which way it goes. So the tie rule has to be read off
-the rounding function itself: torch.round is "round half to even", which sends an exact tie to
-whichever neighbour is even. A
-fixed-point pipeline that right-shifts truncates, rounding every value down, so the tie of a
-right shift becomes the lower neighbour. The usual repair adds half a least-significant bit
-before the shift: a $1$ at the top of the tail the shift drops, written $1 \ll (\text{shift}-1)$
-where $\text{shift}$ is the number of places dropped. That repair has a definite direction,
-and it is not away from zero: at $\text{shift} = 1$ the idiom maps $-3 \to -1$, $-1 \to 0$,
-$1 \to 1$ and $3 \to 2$, so a half-way value rises toward positive infinity on both sides of
-zero -- the label "half away from zero" fits the positive ties, the negative ones rise to the
-larger (less negative) neighbour instead. Three tie behaviours from one shift, then:
-truncation rounds down, the add-one repair rounds toward $+\infty$, and round-to-even sends
-a tie to whichever neighbour is even. The rule
-a design must copy is the one the framework uses, so the shift needs $M_0$ odd at the
-truncated bit -- not merely a nonzero remainder -- and ties must break downward or upward
-according to the even neighbour. The estimator is the training half of that agreement.
-Whether the fabric and the framework land on the same bits is a measured question; no record
-answers it.
-
-**Traceability.** The records this section's prose leans on.
-
-| Record | What it establishes here |
-| --- | --- |
-| `V-05-36` | the streaming Conformer's feed-forward expansion factor is 4, a ratio against `d_model` rather than a count of sub-layers |
-| `V-06-01` | the affine mapping of integers to reals, $r = S(q - Z)$, which is what lets an unsigned integer mean a real number near zero |
-| `V-06-02` | the same paper's equations 4 to 6, which turn a real multiply into a fixed-point multiply and a shift |
-| `V-06-04` | Brevitas' default rounding operator is `torch.round` under a straight-through estimator, with no tie rule evidenced in it |
-| `V-06-05` | `torch.round` breaks an exact tie half to even |
-
-<!-- source: 8.4 reviewed fragment -->
-
-## 8.4 An Hour on the Board: What the Acceptance Gate Has to Catch
-
-The project plan sets two conditions for this build, and they are the plan's own words, not a datasheet's or a paper's: the system must run continuously for at least one hour without hanging, and its board-measured 99th-percentile latency must agree with simulation to within plus or minus ten per cent. Two conditions, because a duration test and a percentile test catch different things.
-
-**Neither test can replace the other.** A hang is a stop-responding-without-stopping failure, and the hour is for the ones that grow: a leak, a queue that drifts, a counter that finally overflows, a timing margin that narrows with heat. A rare fault present from the first minute adds nothing up, so the hour is blind to it. The percentile is the reverse instrument: it measures the shape of the rare case immediately, and it passes a design that stops in hour two. The table holds the symmetry.
-
-| Condition | Catches | Blind to |
-| --- | --- | --- |
-| One hour without hanging | faults that grow with time | a fault already present, but rare |
-| 99th percentile within 10% of simulation | a tail present from minute one | a system that fails later |
-
-**The 99th percentile is chosen over the mean because the product is not an average.** Line the frame latencies up from fastest to slowest; the 99th percentile is the value that 99 of every 100 frames were answered at or below. A user saying a wake word once does not experience a mean. They are answered in time, or they are not, and it is the frames at the back of the line that decide whether the product works. A mean folds one very slow frame into all the fast ones and can stay flattering forever; a percentile does not let the slow frame hide.
-
-**The second condition has two sides, and only one of them exists yet.** The board side is a measurement this book does not have and does not claim. The simulation side is produced before implementation, and the power-estimator guide is what states the standing of such a number: the Xilinx Power Estimator (XPE -- a spreadsheet power model used before the design exists) says its device models "are extracted from measurements, simulation, and/or extrapolation", and that "Advance specifications are based on simulations only and are subject to change". A pre-implementation estimate is an input to an agreement test, not a result. The numbers that describe a built design come from named reports in a named mode: `report_utilization -file <filename>`, run post-synthesis or post-implementation, prints the exact cell breakdown, and the same rule carries to whatever report later prints the latency.
-
-**A gate is no better than how you read your own tools.** The device's own data sheet is where the lesson starts: the rounded marketing figure "1.2K" for digital signal processing (DSP) slices reads as 1,200 where the exact count is 1,248, 4% low, while "256K" reads as 256,000 against an exact 256,200, only 0.08% low. Only the first matters, because a roofline built on 1,200 is 4% optimistic against the silicon. A rounded figure is prose; an exact column is a budget. Every number the gate compares needs the same three questions: which mode produced it, what rounding it prints, and which column of it is admissible as a budget.
-
-**One input to the second condition cannot be closed at the desk.** The simulation's percentile depends on which accelerator the board ships with, and that SKU and its core count are registered as a decision not yet taken; chapter 9 carries it. The condition is well specified today, and open.
-
-**What the gate judges is accuracy, not transcripts.** The spotter's own paper fixes the task and the metric: isolated-word classification accuracy over one-second clips from a closed label set, explicitly not word error rate (WER -- the share of transcript words that were inserted, deleted or substituted). A wake-word answer is a label, and a label is right or wrong. The two conditions decide when the answer arrives; that paper decides what right means.
-
-**Done includes someone else redoing it.** The artifact will be badged against the set the IEEE FCCM 2025 (Field-Programmable Custom Computing Machines -- an IEEE symposium) awards for artifact evaluation: Code/Dataset Available, Evaluated (Functional), Reproducible. A gate that only ever passes once is a measurement nobody can check, so the badge list belongs inside the definition of done, not in submission paperwork.
-
-**Traceability.** The records this section's prose leans on.
-
-| Record | What it establishes here |
-| --- | --- |
-| `V-04-05` | the power estimator is a pre-design and pre-implementation tool, and its models come from measurements, simulation or extrapolation |
-| `V-04-06` | the named report command, and the modes it must be run in, that produce an exact cell breakdown |
-| `V-01-19` | the datasheet prints 1.2K DSP slices against an exact 1,248, and 256K logic cells against 256,200 |
-| `V-05-02` | the task is isolated-word classification on short clips from a closed label set, scored as accuracy rather than a word error rate |
-| `V-07-04` | the reproducibility badges the symposium's artifact evaluation awards |
+### Minimal Mathematics / Prerequisites for this Chapter
+
+Before we dive into the algorithms, recall the mathematical foundations we rely on for comparing sequences. If these concepts are fresh, you can safely skip this sidebar.
+
+- **Dynamic Programming (DP) Recurrence**: A method for solving complex problems by breaking them down into simpler subproblems. For sequence alignment, it takes the form $D(i,j) = c(i,j) + \min(D(i-1,j), D(i,j-1), D(i-1,j-1))$, where $c$ is the local cost and $D$ is the cumulative cost.
+- **Cross-Correlation**: A measure of similarity between two waveforms as a function of a time-lag applied to one of them. For discrete signals, it is a sliding dot product.
+- **Log-Probability**: Instead of multiplying small probability values (which underflow hardware floating-point representations), we sum their logarithms: $\log(A \times B) = \log(A) + \log(B)$. This transforms multiplicative probability chains into additive scores.
+
+---
+
+In our six-stage pipeline (Air and microphone $\rightarrow$ Sample stream $\rightarrow$ DSP front end $\rightarrow$ Model $\rightarrow$ Fabric logic $\rightarrow$ Output and latency), this chapter sits exactly at the transition from the DSP front end to the Model, and ultimately dictates the Output and latency. The Mel-Frequency Cepstral Coefficients (MFCC — acoustic feature vectors representing the power spectrum) have been extracted. Now, we must evaluate them. 
+
+This chapter is the theoretical core of the thesis: we define the mathematical algorithms used to correlate a student's spoken audio with a reference. By understanding the physical intuition, the mathematical mechanisms, and the computational costs, we lay the groundwork for why specific algorithms demand spatial hardware acceleration on a Field-Programmable Gate Array (FPGA — reconfigurable silicon integrated circuit).
+
+### Contribution Statement
+
+To our knowledge, no prior work has combined a banded DTW systolic-array accelerator with a real-time pronunciation assessment pipeline on an edge FPGA SoC, under a controlled power-matched comparison against an edge GPU (NVIDIA Jetson Orin). This thesis makes three contributions:
+
+1. **A DTW systolic-array engine** mapped to the Kria KV260 FPGA fabric, achieving $O(N + M)$ cycle latency with $W$ processing elements under Sakoe-Chiba banding — a direct hardware realization of the diagonal wavefront parallelism inherent in the DP recurrence.
+2. **A formal fixed-point error analysis** proving that INT16 features with a 32-bit accumulator preserve pronunciation correlation scores (PCC degradation $< 0.02$) for utterances up to 2,000 frames, and identifying the bit-width at which degradation becomes unacceptable.
+3. **A controlled GPU-versus-FPGA evaluation** measuring frame latency, energy per evaluation, and correlation accuracy under matched power envelopes — demonstrating that the FPGA's deterministic, scheduling-free pipeline achieves lower energy per evaluation despite the GPU's higher peak throughput.
+
+### Algorithm Landscape at a Glance
+
+The table below summarizes the five algorithms surveyed in this chapter. The rest of the chapter develops each row in depth.
+
+| Algorithm | Time Complexity | Space | Parallelism | Model Needed? | Assessment Level | FPGA Fit |
+|-----------|----------------|-------|-------------|---------------|-----------------|----------|
+| Euclidean / Cosine Distance | $O(D)$ per pair | $O(D)$ | Trivial (single vector op) | No | Frame | Low (too simple to justify custom HW) |
+| **DTW** (Sakoe-Chiba) | $O(N \times W)$ | $O(N \times W)$ | **Diagonal wavefront** — $W$ cells per cycle | No | Segment / Utterance | **High** — systolic array |
+| Subsequence DTW | $O(N \times M)$ | $O(N \times M)$ | Same as DTW | No | Sub-utterance | High |
+| **GOP** | $O(T \times C)$ per phoneme | $O(C)$ | DNN inference (matrix multiply) | Yes (acoustic DNN) | Phoneme | Medium — DPU overlay |
+| Cosine on Embeddings | $O(D_{\text{emb}})$ per pair | $O(D_{\text{emb}})$ | Single dot product | Yes (large encoder) | Utterance | Low (encoder dominates) |
+
+Where $N, M$ = sequence lengths in frames, $W$ = Sakoe-Chiba band width, $D$ = MFCC dimension (80), $T$ = total frames, $C$ = phoneme count, $D_{\text{emb}}$ = embedding dimension.
+
+## 8.1 Intuition: What Does "Audio Correlation" Mean?
+
+When assessing reading or pronunciation, the fundamental task is comparison. We have a reference recording (or a synthetic baseline) of a sentence, and we have the student's attempt. 
+
+### The Rubber Band Dilemma: Why Naive Comparison Fails
+
+Consider an expert teacher reciting the phrase:
+$$\text{Teacher Reference: } \text{"Good morning"} \quad (1.0 \text{ s}, N = 100 \text{ frames})$$
+Now, consider a young student attempting to read the exact same phrase:
+$$\text{Student Attempt: } \text{"Gooood... mor...ning"} \quad (1.8 \text{ s}, M = 180 \text{ frames})$$
+
+Phonetically and semantically, the student has articulated the sentence correctly. However, if we pass these two audio waveforms to standard signal processing or machine learning distance metrics, the result is complete failure:
+
+1. **Waveform Subtraction ($x(t) - y(t)$):** Because human speech fluctuates at millisecond resolution, subtracting two raw waveforms of different lengths produces pure, uncorrelated acoustic noise.
+2. **Linear Cross-Correlation / Dot Product ($x * y$):** Cross-correlation can only slide one audio stream rigidly across another (a uniform time-lag $\tau$). It cannot stretch one word while compressing another. When the student prolongs "Good" while rushing through "morning", linear correlation collapses.
+
+Reading assessment is **not** the rigid overlay of two iron rulers. It is the elastic alignment of two **rubber bands**. We must compress segments where the student hesitates and stretch segments where the student rushes—aligning identical phonetic moments before computing spectral discrepancies.
+
+This differs fundamentally from Automatic Speech Recognition (ASR — converting speech into text). In ASR, the model must guess the spoken words from an infinite vocabulary. In reading assessment, the text is known. We are not transcribing; we are verifying. We are measuring elastic correlation.
+
+We measure this correlation at three distinct levels:
+1. **Frame-level**: Comparing the instantaneous spectral distance between two 20-millisecond windows of audio.
+2. **Segment-level**: Aligning sequences of frames elastically to handle differences in speaking rate.
+3. **Utterance-level**: Comparing compressed mathematical representations of the entire spoken phrase.
+
+The microarchitectural mechanism required to support these comparisons dictates our hardware design. A frame-level distance is a simple vector operation. A segment-level alignment is a complex grid traversal. An utterance-level comparison is a matrix multiplication. We must choose our algorithms based not only on pedagogical accuracy but on computational viability.
+
+## 8.2 Cross-Correlation and Spectral Distance Metrics
+
+Before we can align two sequences, we need a metric to compare individual frames. Each audio frame has been processed by our DSP front end into a feature vector, typically an 80-dimensional MFCC vector. 
+
+### Euclidean Distance
+
+The most intuitive metric for comparing two vectors is the Euclidean distance. It measures the straight-line distance between two points in the feature space.
+
+**Equation Card 1: Euclidean Distance**
+- **The formula**: 
+  $$d(\mathbf{x}_i, \mathbf{y}_j) = \sqrt{\sum_{k=1}^{D} (x_{i,k} - y_{j,k})^2}$$
+- **The variables**: $\mathbf{x}_i$ is the $i$-th frame of the student's audio. $\mathbf{y}_j$ is the $j$-th frame of the reference audio. $D$ is the dimensionality of the feature vector (e.g., 80). $x_{i,k}$ is the $k$-th feature coefficient.
+- **What it means**: It calculates the physical magnitude of the difference between the spectral envelopes of the two frames. A smaller distance implies higher acoustic similarity.
+- **What it costs**: $O(D)$ operations per frame pair. It requires $D$ subtractions, $D$ multiplications (squaring), $D-1$ additions, and one square root. The square root is notoriously expensive in hardware, often requiring iterative algorithms or lookup tables.
+- **What it does not say**: It does not account for overall volume differences. If the student speaks louder than the reference, the Euclidean distance will be large even if the phonetic content is identical.
+
+### Cosine Distance
+
+To decouple phonetic similarity from absolute volume, we often turn to cosine distance. 
+
+**Equation Card 2: Cosine Distance**
+- **The formula**:
+  $$d_{\cos}(\mathbf{x}_i, \mathbf{y}_j) = 1 - \frac{\mathbf{x}_i \cdot \mathbf{y}_j}{\|\mathbf{x}_i\| \|\mathbf{y}_j\|}$$
+- **The variables**: $\mathbf{x}_i$ and $\mathbf{y}_j$ are the feature vectors. $\cdot$ denotes the dot product. $\|\mathbf{x}_i\|$ is the L2 norm (magnitude) of the vector.
+- **What it means**: It measures the angle between the two vectors in the $D$-dimensional space. It is completely invariant to the magnitude of the vectors, meaning it is robust to volume differences.
+- **What it costs**: $O(D)$ operations. It requires a dot product ($D$ multiply-accumulates), two vector norms (each requiring $D$ multiply-accumulates and a square root), and a division. Division and square roots are both high-latency operations in silicon.
+- **What it does not say**: It ignores magnitude completely, which can be problematic if silence (low magnitude noise) is compared to speech; the angle might arbitrarily align, yielding a false high similarity.
+
+### Hardware Trade-off & Reality
+
+These distance metrics are the microscopic building blocks of our evaluation system. We do not compute them just once; we compute them millions of times as part of the inner loop of our alignment algorithms. The computational profile is $O(N \cdot D)$ per frame pair, where $N$ is the sequence length.
+
+In hardware, we actively avoid the square root in the Euclidean distance by simply using the Squared Euclidean distance ($d^2$). Since distance is used strictly for relative comparison during alignment, the monotonic nature of the square function means the optimal alignment path is identical whether we use $d$ or $d^2$. This microarchitectural optimization saves tremendous silicon area and reduces pipeline latency.
+
+## 8.3 Dynamic Time Warping (DTW) — The Core Algorithm
+
+We arrive at the centerpiece of our correlation algorithms. Measuring the distance between individual frames is insufficient; we must measure the distance between entire spoken sequences that are almost certainly different lengths. 
+
+The physical friction is the elasticity of human speech. A student reading "The quick brown fox" might elongate the word "brown." If we rigidly compare frame 50 of the student with frame 50 of the reference, we might be comparing the student's "br-" with the reference's "-ox." 
+
+Dynamic Time Warping (DTW — an elastic sequence alignment algorithm) solves this. The microarchitectural mechanism is dynamic programming: we construct a grid where the x-axis represents the reference sequence frames and the y-axis represents the student sequence frames. We then find the optimal contiguous path through this grid that minimizes the cumulative distance.
+
+### The DTW Recurrence
+
+**Equation Card 3: Dynamic Time Warping DP Recurrence**
+- **The formula**:
+  $$D(i,j) = d(\mathbf{x}_i, \mathbf{y}_j) + \min\{D(i-1,j),\; D(i-1,j-1),\; D(i,j-1)\}$$
+- **The variables**: $D(i,j)$ is the cumulative minimum cost to align the student sequence up to frame $i$ with the reference sequence up to frame $j$. $d(\mathbf{x}_i, \mathbf{y}_j)$ is the local spectral distance between the student's frame $i$ and the reference's frame $j$ (typically the squared Euclidean distance on 80-dimensional MFCC vectors). $N$ is the length of the student sequence. $M$ is the length of the reference sequence.
+- **What it means**: To find the cheapest path to coordinate $(i,j)$, we take the local cost at $(i,j)$ and add the minimum cumulative cost from the three valid preceding steps: an insertion (moving vertically from $(i-1, j)$ — the student repeats a phoneme), a deletion (moving horizontally from $(i, j-1)$ — the student skips a reference phoneme), or a match (moving diagonally from $(i-1, j-1)$ — both sequences advance together).
+- **What it costs**: The complexity is $O(N \times M)$ in both time and space, where $N$ and $M$ are the lengths of the two sequences. For a 5-second student utterance ($N = 500$ frames at 100 frames/s) against a 4-second reference ($M = 400$ frames), the grid contains 200,000 cells. Each cell requires one distance computation ($D$ multiply-accumulates) and one three-way minimum. On a single CPU core at 1 GHz, this takes roughly 2 ms; on a systolic array with $W = 64$ processing elements at 200 MHz, the same grid finishes in under 10 microseconds.
+- **What it does not say**: The basic formula does not restrict pathological alignments. Without constraints, a single reference frame can map to 100 student frames, producing a physically implausible warping. The constraint bands described below fix this. The formula also says nothing about the *quality* of the alignment in phonetic terms — it minimizes acoustic distance, which is not the same as phonetic correctness.
+
+### Boundary Conditions
+
+The grid requires careful initialization. We set the starting cell to the local distance at the origin:
+
+$$D(1,1) = d(\mathbf{x}_1, \mathbf{y}_1)$$
+
+All cells outside the valid region are initialized to positive infinity, forcing the warping path to begin at $(1,1)$ and end at $(N,M)$:
+
+$$D(i,0) = \infty \quad \text{for all } i > 0$$
+$$D(0,j) = \infty \quad \text{for all } j > 0$$
+
+This endpoint constraint is essential: the alignment must account for the entirety of both sequences. A partial alignment (stopping early in either sequence) would misrepresent the student's reading of the full passage.
+
+### Worked Example: Walking Through the Grid
+
+To make the mechanism concrete, consider two short sequences: a student utterance of $N = 4$ frames and a reference of $M = 5$ frames. We precompute the local distance matrix $d(i,j)$ between every student-reference frame pair (using squared Euclidean distance on their MFCC vectors):
+
+|  | $j=1$ | $j=2$ | $j=3$ | $j=4$ | $j=5$ |
+|--|-------|-------|-------|-------|-------|
+| $i=1$ | 2 | 4 | 7 | 6 | 3 |
+| $i=2$ | 5 | 3 | 2 | 5 | 4 |
+| $i=3$ | 8 | 6 | 1 | 3 | 6 |
+| $i=4$ | 9 | 7 | 4 | 2 | 1 |
+
+We now fill the cumulative cost matrix $D(i,j)$ row by row. The first cell is simply $D(1,1) = 2$. Moving along the first row, each cell can only come from its left neighbor (since there is no row above): $D(1,2) = 4 + D(1,1) = 6$, $D(1,3) = 7 + 6 = 13$, and so on. Moving along the first column, each cell comes from above: $D(2,1) = 5 + 2 = 7$, $D(3,1) = 8 + 7 = 15$, $D(4,1) = 9 + 15 = 24$.
+
+The interior cells apply the full recurrence. For example, $D(2,2) = 3 + \min(D(1,2), D(1,1), D(2,1)) = 3 + \min(6, 2, 7) = 3 + 2 = 5$. The minimum came from the diagonal neighbor, meaning both sequences advanced together — a natural alignment.
+
+Completing the entire grid:
+
+|  | $j=1$ | $j=2$ | $j=3$ | $j=4$ | $j=5$ |
+|--|-------|-------|-------|-------|-------|
+| $i=1$ | **2** | 6 | 13 | 19 | 22 |
+| $i=2$ | 7 | **5** | **7** | 12 | 16 |
+| $i=3$ | 15 | 11 | 6 | **9** | 15 |
+| $i=4$ | 24 | 18 | 10 | 8 | **9** |
+
+The final DTW distance is $D(4,5) = 9$. The optimal warping path, traced back from $(4,5)$ by always stepping to the neighbor with the smallest cumulative cost, is: $(1,1) \to (2,2) \to (2,3) \to (3,4) \to (4,5)$. Notice that frame $i=2$ aligned to both $j=2$ and $j=3$ — the student held that phoneme longer than the reference, and DTW correctly accommodated the stretch.
+
+### The Traceback Procedure
+
+The warping path is recovered by a reverse pass through the grid. At each cell $(i,j)$, we stored a direction flag indicating which of the three predecessors contributed the minimum: diagonal (match), left (deletion), or below (insertion). This direction matrix costs 2 bits per cell ($\lceil \log_2 3 \rceil = 2$).
+
+Starting at $(N,M)$, we follow the direction flags back to $(1,1)$. The path has at most $N + M - 1$ steps, so traceback is $O(N + M)$ — negligible compared to the $O(N \times M)$ grid fill. On hardware, the direction matrix is stored in Block RAM during the forward pass. The traceback itself runs on the ARM CPU because it is a lightweight sequential walk with irregular memory access patterns — exactly the kind of workload a CPU handles well and an FPGA pipeline would waste on.
+
+### Normalized DTW Distance
+
+Raw DTW distance $D(N,M)$ grows with sequence length: longer utterances accumulate more distance simply because they traverse more cells. To compare scores across utterance pairs of different durations, we normalize:
+
+**Equation Card 4: Normalized DTW Distance**
+- **The formula**:
+  $$\text{DTW}_{\text{norm}} = \frac{D(N, M)}{N + M}$$
+- **The variables**: $D(N,M)$ is the raw cumulative cost at the grid endpoint. $N$ is the student sequence length in frames. $M$ is the reference sequence length in frames.
+- **What it means**: It divides the total alignment cost by the length of the warping path (which is bounded between $\max(N,M)$ and $N + M - 1$). Using $N + M$ as the denominator is a common convention that makes scores comparable: a $\text{DTW}_{\text{norm}}$ of 0.5 means the average per-step cost was 0.5 distance units, regardless of whether the utterance was two seconds or 20.
+- **What it costs**: One integer addition and one division. On FPGA fabric, division is expensive (iterative or LUT-based), but it is computed only once per utterance pair — at the very end of the pipeline — so its latency is amortized.
+- **What it does not say**: Normalization by $N + M$ slightly penalizes paths that deviate far from the diagonal (because they traverse more steps). Alternative normalizations exist ($\sqrt{N \cdot M}$, path length), each with different biases. The choice does not affect the alignment itself, only the final score.
+
+### Constraint Bands: Taming the Quadratic
+
+An unconstrained $O(N \times M)$ search space is computationally wasteful for real speech. Physically, a student's speaking rate will not deviate infinitely from the reference. We exploit this regularity by restricting the warping path to a band around the diagonal.
+
+**Sakoe-Chiba Band.** We enforce $|i \cdot M/N - j| \leq W$, where $W$ is the maximum allowed deviation in frames. In practice, for sequences where $N \approx M$, this simplifies to $|i - j| \leq W$. The parameter $W$ is set based on the expected speaking rate variation — for reading assessment, $W = 50$ frames (500 ms at 100 frames/s) is typical.
+
+The effect on complexity is dramatic:
+
+$$\text{Cells evaluated} = N \times (2W + 1) \quad \text{instead of} \quad N \times M$$
+
+For $N = M = 500$ and $W = 50$: unconstrained DTW evaluates 250,000 cells; Sakoe-Chiba evaluates $500 \times 101 = 50,500$ cells — a $4.95\times$ reduction. For the FPGA systolic array, this is even more consequential: we need only $W$ processing elements instead of $M$, dramatically reducing silicon area.
+
+**Itakura Parallelogram.** A more aggressive constraint that bounds the instantaneous slope of the warping path between $1/s$ and $s$ (typically $s = 2$). This creates a parallelogram-shaped valid region and prevents the path from advancing too quickly or too slowly in either sequence. While theoretically tighter, it is harder to implement in hardware due to the slope-dependent boundary, and Sakoe-Chiba is the standard choice for FPGA implementations.
+
+### Diagonal Wavefront Parallelism: Why DTW Belongs on an FPGA
+
+This subsection is the bridge between algorithm and architecture — the reason this chapter exists in a hardware book.
+
+Examine the data dependencies in the recurrence relation: cell $(i,j)$ depends on exactly three cells — $(i-1,j)$, $(i-1,j-1)$, and $(i,j-1)$. Now consider the anti-diagonal of the grid: all cells $(i,j)$ where $i + j = k$ for a fixed $k$. None of these cells depend on each other. They are completely independent.
+
+This is diagonal wavefront parallelism. On a CPU, we process the grid row by row, cell by cell — $N \times M$ sequential steps. On an FPGA with $P$ processing elements arranged as a linear systolic array, we process one anti-diagonal per clock cycle. The number of anti-diagonals is $N + M - 1$, so the total latency is:
+
+$$T_{\text{systolic}} = N + M - 1 \quad \text{clock cycles}$$
+
+Compare this to the sequential CPU:
+
+$$T_{\text{CPU}} = N \times M \quad \text{iterations}$$
+
+For $N = M = 500$: the CPU takes 250,000 iterations; the systolic array takes 999 cycles. At 200 MHz, the systolic array completes in $999 / 200 \times 10^6 = 5.0\;\mu\text{s}$. A CPU core at 3 GHz running the same algorithm takes roughly $250{,}000 / 3 \times 10^9 \approx 83\;\mu\text{s}$ (assuming one iteration per cycle, which is optimistic). The FPGA is $16.7\times$ faster at $1/15$ the clock frequency.
+
+With Sakoe-Chiba banding ($W = 50$), the systolic array needs only $W = 50$ processing elements. Each PE contains one subtractor, one multiplier (for squared distance), one three-input minimum comparator, and three registers for the neighbor values. On the Kria KV260:
+
+| Resource | Per PE | $\times 50$ PEs | Available on KV260 | Utilization |
+|----------|--------|------------------|--------------------|-------------|
+| LUTs | ~120 | ~6,000 | 117,120 | 5.1% |
+| DSP48E2 | 1 | 50 | 1,248 | 4.0% |
+| BRAM (for feature row) | 0.5 | 25 | 144 | 17.4% |
+
+The DTW engine consumes a small fraction of the FPGA fabric, leaving ample room for the MFCC preprocessing pipeline (Chapter 6), the GOP acoustic model (DPU), and the control logic. This is why DTW is our primary hardware target: it is computationally demanding enough to justify custom hardware, yet architecturally simple enough to fit comfortably beside the rest of the system.
+
+We maintain a software baseline using the `dtw-python` library. All custom hardware implementations in Chapter 9 will be mathematically verified against this baseline to ensure bit-accurate execution within the tolerance defined by the chosen fixed-point representation.
+
+## 8.4 Goodness of Pronunciation (GOP) Scoring
+
+While DTW provides a robust overall similarity score and aligns the audio, it does not easily pinpoint specific phonetic errors. A student might score well overall but consistently mispronounce the "th" sound. For granular assessment, we turn to Goodness of Pronunciation (GOP).
+
+The physical intuition here relies on forced alignment. We know what the student is supposed to say. We use a hidden Markov model or Viterbi decoding to forcefully align the known text to the student's audio, determining exactly where each phoneme starts and ends. 
+
+Once the boundaries are known, we calculate how confident our acoustic model is that the audio within those boundaries actually represents the expected phoneme.
+
+### The GOP Mathematical Mechanism
+
+**Equation Card 4: Goodness of Pronunciation (GOP)**
+- **The formula**:
+  $$\text{GOP}(p) = \frac{1}{d_p} \sum_{t=t_s}^{t_e} \log P(p \mid \mathbf{o}_t)$$
+- **The variables**: $p$ is the expected phoneme. $t_s$ and $t_e$ are the start and end frames of that phoneme (found via forced alignment). $d_p = t_e - t_s + 1$ is the duration in frames. $\mathbf{o}_t$ is the acoustic observation (MFCC vector) at frame $t$. $P(p \mid \mathbf{o}_t)$ is the posterior probability of phoneme $p$ given the observation.
+- **What it means**: It calculates the average log-probability that the spoken acoustic frames match the expected phoneme. A higher GOP score (closer to 0, since log-probabilities are negative) indicates better pronunciation.
+- **What it costs**: It requires a forward pass of a Deep Neural Network (DNN) or Time Delay Neural Network (TDNN) for every acoustic frame to generate the probabilities, followed by the arithmetic mean.
+- **What it does not say**: It does not penalize speaking rate directly; it only evaluates the acoustic quality of the frames assigned to the phoneme.
+
+The log-posterior is derived from the acoustic model using Bayes' theorem: $\log P(p \mid \mathbf{o}_t) = \log P(\mathbf{o}_t \mid p) + \log P(p) - \log P(\mathbf{o}_t)$. 
+
+### Hardware Partitioning
+
+GOP introduces a distinctly different computational load than DTW. It relies heavily on a pre-trained acoustic model (the DNN). In our system, the hardware partitioning is clear: the DNN inference (matrix multiplications to generate posteriors) runs on the FPGA fabric utilizing the Deep Learning Processor Unit (DPU) blocks discussed in earlier chapters. The Viterbi forced alignment and the final log-scoring math run on the ARM CPU cores. 
+
+GOP is complementary to DTW. DTW assesses fluency, rhythm, and overall trajectory without needing a trained phoneme model. GOP requires a trained model but provides the pinpoint diagnostic feedback necessary for reading assessment.
+
+## 8.5 Cosine Similarity on Neural Embeddings
+
+For completeness, we must mention the modern deep learning alternative to frame-by-frame alignment. The intuition is to bypass sequence alignment entirely. Instead of comparing sequences frame-by-frame, we use a large neural encoder to compress the entire variable-length utterance into a single fixed-length summary vector (an embedding).
+
+Once both the reference and the student audio are converted into embeddings, we compare them using a single mathematical operation.
+
+**Equation Card 5: Embedding Cosine Similarity**
+- **The formula**:
+  $$S(\mathbf{E}_{ref}, \mathbf{E}_{stu}) = \frac{\mathbf{E}_{ref} \cdot \mathbf{E}_{stu}}{\|\mathbf{E}_{ref}\| \|\mathbf{E}_{stu}\|}$$
+- **The variables**: $\mathbf{E}_{ref}$ and $\mathbf{E}_{stu}$ are the fixed-length neural embeddings for the reference and student utterances.
+- **What it means**: It measures the angle between the two summary representations in a high-dimensional latent space.
+- **What it costs**: An initial heavy cost of running a massive transformer or RNN encoder model. However, the similarity comparison itself is merely $O(D_{embed})$, a single fast dot product.
+- **What it does not say**: It obscures temporal details. If a student mispronounces a single word in a long sentence, the embedding might smear that error across the entire vector, making it hard to localize.
+
+This approach excels at capturing high-level features like prosody and intonation. However, the trade-off is steep: it requires a massively parameterized, highly trained neural network. While inference is relatively cheap once the embedding is generated, the generation itself dominates the pipeline.
+
+## 8.6 Selecting the Algorithm for Hardware Implementation
+
+We have surveyed the mathematical landscape. To design our custom silicon architecture, we must select our primary algorithmic target. We evaluate DTW, GOP, and Neural Embeddings across four axes:
+
+1. **Computational Intensity**: DTW exhibits strict $O(N \times M)$ quadratic growth. For a 5-second sentence, evaluating the unconstrained grid requires over 62,000 distance calculations. It is a severe CPU bottleneck. 
+2. **FPGA Suitability**: DTW's diagonal wavefront data dependency makes it a perfect candidate for spatial hardware. We can map the algorithm directly to a custom systolic array. GOP's DNN components are suited for generalized neural accelerators (DPUs), not bespoke RTL. 
+3. **Assessment Granularity**: GOP provides phoneme-level resolution. DTW provides utterance and word-level temporal resolution. 
+4. **Model Dependency**: DTW requires zero trained parameters. It is a pure algorithmic calculation on the raw signal geometry. GOP and Embeddings rely on models that must be trained, updated, and quantized.
+
+### Recommendation: DTW as the Primary Target
+
+We select **Dynamic Time Warping** as the primary target for custom hardware acceleration. 
+
+The rationale is clear: the $O(N \times M)$ complexity makes it the primary latency bottleneck in the evaluation pipeline. The DP grid maps naturally and beautifully to spatial hardware, promising order-of-magnitude speedups over CPU execution. Furthermore, it operates independently of complex acoustic models, making the hardware block highly reusable. 
+
+GOP will be retained in the software stack, utilizing the existing DPU infrastructure for its neural network passes. Neural embeddings are discarded for this system due to their inability to provide precise temporal localization of errors.
+
+In Chapter 9, we will translate the DTW recurrence equation into hardware, designing the processing elements and the systolic array architecture required to execute this algorithm at the speed of silicon.
+
+## 8.7 DTW Variants for Robust Reading Assessment
+
+Our pipeline depends on a robust transition from the DSP front end to the model. Standard DTW is brittle in the wild. A student pausing to sound out a word, coughing, or speaking at varying volumes breaks the global alignment constraint. To address this, we implement three variants of DTW in our fabric logic, each resolving a specific physical friction in real-world audio.
+
+### Subsequence DTW (Open-Begin / Open-End)
+
+In a classroom, students rarely read a passage perfectly from start to finish. They may pause, stutter, or read only part of a sentence. Global DTW forces a complete alignment of the entire student sequence to the reference. When the student stops mid-sentence, the algorithm forcibly stretches the remaining reference audio over silence or background noise, destroying the score.
+
+To allow an alignment to begin anywhere in the reference sequence, we modify the initialization of our dynamic programming grid. Instead of initializing the first column to infinity, we initialize it to zero. This open-begin condition allows a match to start at any reference frame without penalty. Symmetrically, for an open-end condition, we search the last row for the minimum distance rather than rigidly taking the endpoint cell.
+
+**Equation Card 7: Subsequence DTW Boundary Conditions**
+- **The formula:**
+  $$D(i, 0) = 0 \quad \text{for all } i \in [1, N]$$
+  $$S_{\text{match}} = \min_{i} D(i, M)$$
+- **The variables:** $D(i, j)$ is the accumulated distance at reference frame $i$ and student frame $j$. $N$ is the length of the reference sequence. $M$ is the length of the student sequence. $S_{\text{match}}$ is the final subsequence match score.
+- **What it means:** The first equation removes the penalty for skipping the beginning of the reference. The second equation finds the best exit point, allowing the student to stop early without penalty.
+- **What it costs:** Almost nothing. It replaces an infinity initialization with a zero initialization and requires a running minimum comparator across the final row — one comparator and one register at the array output.
+- **What it does not say:** It does not prevent spurious short matches. A very short, poor utterance might match a tiny segment of the reference well. Length normalization is still required.
+
+In our systolic array, the boundary Processing Elements simply change their reset state from a saturated maximum to zero. The area overhead is negligible.
+
+### Derivative DTW (DDTW)
+
+Standard DTW computed directly on MFCC values is highly sensitive to baseline amplitude shifts. If a student speaks louder or quieter than the reference, the Euclidean distance between their frames inflates, even if the phonetic content matches perfectly. We need to match the *shape* of the spectral trajectory, not its absolute offset.
+
+Rather than aligning the raw features, we align their first-order derivatives. This eliminates static offsets. We replace the input feature sequence with a smoothed local derivative calculated over a moving window of three frames.
+
+**Equation Card 8: Derivative Feature Estimation**
+- **The formula:**
+  $$\hat{x}_i = \frac{(x_i - x_{i-1}) + (x_{i+1} - x_{i-1})/2}{2}$$
+- **The variables:** $\hat{x}_i$ is the derivative feature vector at frame $i$. $x_i$ is the original MFCC feature vector at frame $i$.
+- **What it means:** This is a smoothed approximation of the local slope, combining the immediate backward difference and the wider backward difference. It captures the trajectory of the speech features, inherently rejecting constant offsets.
+- **What it costs:** Two subtractions and a bit-shift (division by two) per feature dimension, per frame. Approximately 20 LUTs per PE.
+- **What it does not say:** Derivative features amplify high-frequency noise. If the signal-to-noise ratio (SNR) is poor, DDTW can perform worse than standard DTW. A low-pass pre-filter may be needed.
+
+We insert an additional pipeline stage between the feature buffer and the distance computation unit. This stage holds a sliding window of three frames and computes the derivative on the fly. It is a classic compute-for-robustness trade-off, easily absorbed by the fabric logic.
+
+### Weighted DTW
+
+In human speech, not all frames are equally informative. A long, drawn-out vowel contains redundant information, while a brief, sharp consonant onset is critical for intelligibility. Furthermore, silence frames should not dominate the alignment score. Standard DTW treats every frame pair as an equal contributor.
+
+We introduce a local weighting factor to the distance computation. Before adding the local distance to the accumulated path cost, we scale it by a weight $w(i,j)$ derived from the local energy or a phoneme-importance map:
+
+$$D(i,j) = w(i,j) \cdot d(x_i, y_j) + \min(D(i-1,j),\; D(i,j-1),\; D(i-1,j-1))$$
+
+This requires one additional multiplier per PE in the systolic array. While this increases the DSP48E2 utilization, it provides the algorithmic flexibility to penalize silence and reward phonetically rich segments, yielding a dramatic improvement in correlation with human expert raters.
+
+---
+
+## 8.8 Quantization Error Analysis for Fixed-Point DTW
+
+When we map the correlation engine into fabric logic, floating-point arithmetic becomes a luxury we cannot afford. We must quantize the DTW computation from 64-bit floating-point (FP64) down to 16-bit or 8-bit integers. Quantization introduces two distinct failure modes: catastrophic overflow in the accumulator and creeping noise in the distance metric. Both must be formally bounded before we commit a design to silicon.
+
+### Accumulator Overflow Analysis
+
+Unlike matrix multiplication where values fluctuate, the DTW accumulator grows monotonically. Every step along the warping path adds a positive distance. If the accumulator overflows, the alignment score wraps around, rendering the result meaningless.
+
+For a sequence pair of lengths $N$ and $M$, the maximum warping path length is $L \leq N + M - 1$. If the maximum possible local distance between any two frames is $d_{\max}$, the maximum accumulated value is $L \cdot d_{\max}$. The minimum required bit-width for the accumulator is:
+
+**Equation Card 9: DTW Accumulator Bit-Width**
+- **The formula:**
+  $$B_{\text{acc}} = \lceil \log_2(L \cdot d_{\max}) \rceil + 1$$
+- **The variables:** $B_{\text{acc}}$ is the minimum accumulator bit-width. $L = N + M - 1$ is the maximum warping path length. $d_{\max}$ is the maximum local distance between any two quantized feature vectors. The $+1$ accounts for the sign bit.
+- **What it means:** The accumulator must be wide enough to hold the worst-case sum of $L$ maximum-distance steps without overflow.
+- **What it costs:** Each additional bit in the accumulator costs routing and flip-flop resources across every PE. A 48-bit accumulator on a Kria KV260 uses roughly twice the registers of a 24-bit one.
+- **What it does not say:** This is a worst-case bound. Real utterances never traverse all-maximum-distance cells. But hardware must guarantee correctness, not hope for it.
+
+**Worked example.** Suppose $N = M = 500$, feature dimension $D = 80$, and MFCC features quantized to INT16. The maximum single-feature difference is $2^{15}$. The squared Euclidean distance can reach $d_{\max} = 80 \times (2^{15})^2 \approx 8.59 \times 10^{10}$. The maximum path length is $999$. The maximum accumulation is $999 \times 8.59 \times 10^{10} \approx 8.58 \times 10^{13}$. We find $B_{\text{acc}} = \lceil \log_2(8.58 \times 10^{13}) \rceil + 1 = 47 + 1 = 48$ bits. A standard 32-bit accumulator would catastrophically fail. We must either scale the features down or use a 48-bit accumulator.
+
+In practice, we scale INT16 features by a factor of $2^{-4}$ (shift right by four bits, yielding effective INT12 range), which reduces $d_{\max}$ by $2^8$ and brings the accumulator requirement down to 40 bits — comfortably handled by the DSP48E2 slice's 48-bit internal accumulator.
+
+### Quantization Noise in the Distance Metric
+
+When we quantize FP32 features to INT$Q$ integers with a scaling factor $s$, each quantized feature has an error bounded by $|\epsilon| \leq s/2$. The squaring operation in the Euclidean distance magnifies these errors, and the monotonic accumulation ensures they compound along the path.
+
+**Equation Card 10: DTW Quantization Error Bound**
+- **The formula:**
+  $$|\Delta D(N,M)| \leq L \cdot \left( 2D \cdot s \cdot \|\mathbf{x} - \mathbf{y}\|_\infty + D \cdot s^2 \right)$$
+- **The variables:** $|\Delta D(N,M)|$ is the total accumulated error in the final DTW score. $L$ is the warping path length. $D$ is the feature dimension (80). $s$ is the quantization step size. $\|\mathbf{x} - \mathbf{y}\|_\infty$ is the maximum absolute difference between unquantized feature dimensions.
+- **What it means:** The total error grows linearly with the path length $L$ and the feature dimension $D$. The error per frame has a linear term (dependent on the true distance) and a quadratic term (dependent only on the quantization step).
+- **What it costs:** This formula guides our choice of $Q$ (and therefore $s$). Tighter bounds require smaller $s$, meaning wider feature buses and larger multipliers.
+- **What it does not say:** This is a worst-case bound. In practice, quantization errors are often uncorrelated and grow closer to $\sqrt{L}$ than $L$. However, for hardware correctness, we design for the worst case.
+
+**Design guideline.** For reading assessment where Pearson Correlation Coefficient (PCC — the correlation between hardware DTW scores and human expert ratings) degradation must stay below 0.02, INT16 features with a 48-bit accumulator provide sufficient headroom for sequences up to $N = 2,000$ frames (20 seconds of audio at 100 frames/s). INT8 features degrade PCC by approximately 0.05–0.08 for typical reading passages, which may be acceptable for coarse screening but not for diagnostic assessment.
+
+---
+
+## 8.9 GPU vs. FPGA Microarchitectural Comparison for DTW
+
+The thesis is about migration from the Jetson Orin. We must therefore rigorously compare what happens when DTW runs on the GPU versus the FPGA. A reader who skips this analysis would rightfully ask: why not just run DTW on the Orin's 2,048 CUDA cores?
+
+### GPU Wavefront Execution in CUDA
+
+DTW *can* be parallelized on a GPU using anti-diagonal wavefront execution with shared memory tiling. Each CUDA thread block processes a tile of the DP grid (typically $32 \times 32$ cells), with threads computing cells along the same anti-diagonal simultaneously. However, progressing from one tile anti-diagonal to the next requires inter-block synchronization — either via cooperative groups (which occupy the entire GPU) or via sequential kernel launches from the host.
+
+If we partition the $N \times M$ grid into tiles of size $T_b \times T_b$, the number of tile-level anti-diagonals is $O(N/T_b + M/T_b)$. Each requires either a global memory fence or a new kernel launch. Each CUDA kernel launch incurs approximately 5 $\mu$s of overhead on the Orin. For $N = M = 500$ and $T_b = 32$, the anti-diagonal tile count is roughly 31, costing $31 \times 5\;\mu\text{s} = 155\;\mu\text{s}$ in launch overhead alone — before any computation. For always-on reading assessment at 100 frames/s (a 10 ms deadline), this overhead alone consumes 1.55% of the frame budget, and it compounds with the actual compute time.
+
+### Why Tensor Cores Cannot Help
+
+The Orin's most potent compute units are its Tensor Cores, capable of hundreds of tera-operations per second. But this power is inaccessible for DTW. Tensor Cores perform exactly one operation: Matrix Multiply-Accumulate ($D = A \times B + C$). The inner loop of DTW is the Bellman equation: $d + \min(a, b, c)$ — an addition and a three-way minimum. This is an operation in the tropical semiring (where "multiply" is addition and "add" is minimum), not standard arithmetic. Tensor Cores are structurally incapable of computing a three-way minimum.
+
+This is a crucial architectural insight: the Orin's most expensive and powerful silicon sits completely idle during DTW computation. The GPU is forced to execute DTW on its standard CUDA cores, memory-bound by the shared memory tile loads and latency-bound by wavefront synchronization.
+
+### FPGA Advantage: Deterministic Latency and Energy Efficiency
+
+For always-on reading assessment devices in classrooms, we require strict deterministic latency. When the student stops speaking, the system must respond within a fixed deadline. The GPU approach suffers from kernel launch overhead, unpredictable memory coalescing penalties, and OS scheduling jitter (the P99 tail latency on Orin can exceed the P50 by $3\times$–$5\times$).
+
+Our FPGA systolic array maps the spatial structure of the DTW grid directly into silicon routing. Data flows continuously through the array. Once the pipeline fills, the array produces one DTW result per utterance with deterministic latency of $N + M - 1$ clock cycles, zero scheduling overhead, and mathematical bit-exactness.
+
+| Metric | GPU CUDA (Jetson Orin) | FPGA Systolic (Kria KV260) |
+|--------|----------------------|--------------------------|
+| **DTW Latency** ($N = M = 500$) | ~200–500 $\mu$s (kernel launches + compute) | ~5 $\mu$s at 200 MHz |
+| **Throughput** | Moderate (memory-bound, warp starvation) | High (1 result per $N + M$ cycles) |
+| **Power** | 15–30 W (MAXN mode) | 3–5 W (full fabric active) |
+| **Energy per Evaluation** | ~3–15 mJ | ~0.015–0.025 mJ |
+| **Tail Latency (P99/P50)** | $3\times$–$5\times$ (OS jitter) | $1.0\times$ (deterministic) |
+| **Tensor Core Utilization** | 0% (structurally incompatible) | N/A |
+| **Programming Effort** | Moderate (CUDA, shared memory tuning) | High (RTL/HLS, timing closure) |
+
+The energy-per-evaluation ratio is the defining metric. Even if the GPU achieves comparable raw latency through careful CUDA optimization, it burns $100\times$–$600\times$ more energy per evaluation. For a battery-powered classroom device processing thousands of evaluations per day, this difference determines whether the device lasts a school day or an hour.
+
+---
+
+## 8.10 Related Work
+
+### DTW Hardware Acceleration
+
+The foundation of our acceleration strategy rests on decades of dynamic programming optimization, beginning with Sakoe and Chiba's (1978) seminal work, "Dynamic programming algorithm optimization for spoken word recognition" in IEEE TASSP. They established the global constraints — such as the Sakoe-Chiba band — that limit the warping path search space, a mathematical boundary we directly map to FPGA processing element count. As dataset sizes grew, software limits drove the community toward hardware. Sart, Mueen, et al. (2010) presented a breakthrough in "Accelerating Dynamic Time Warping Subsequence Search with GPUs and FPGAs" at IEEE ICDM, demonstrating that while GPUs yield two orders of magnitude speedup over CPUs, FPGAs achieve up to four orders of magnitude by natively pipelining the recurrence relations. Subsequent FCCM and FPT literature, such as Xia et al. (2013), exposed how deeply pipelined datapaths circumvent CPU cache bottlenecks. Neil et al. (2014) pioneered hardware-efficient architectures for autonomous phoneme recognition, proving that low-latency speech pipelines belong on dedicated logic rather than host software.
+
+### Systolic Arrays and Spatial DP: The Smith-Waterman Connection
+
+The DTW DP grid shares its data dependency structure with the Smith-Waterman algorithm for biological sequence alignment, and we draw heavily from 40 years of bioinformatics accelerator design. H.T. Kung's (1982) "Why systolic architectures?" laid the theoretical groundwork, demonstrating how rhythmic, localized data flow across processing elements maximizes compute-to-I/O ratios — a strict necessity for memory-bound dynamic programming. Lipton and Lopresti (1985) materialized this concept in "A Systolic Array for Rapid String Comparison," fabricating a custom nMOS chip that executed edit distance operations orders of magnitude faster than minicomputers. Modern efforts culminate in Turakhia et al.'s (2018) ASPLOS paper on "Darwin: A Genomics Co-processor," which mapped Smith-Waterman recurrence equations to a highly parallel systolic array handling massive sequence lengths through precise data movement orchestration. We port these exact systolic routing primitives to the audio domain, re-tuning the sequence comparators to process continuous acoustic features rather than discrete nucleotide characters.
+
+### Pronunciation Assessment and CAPT Systems
+
+Our hardware must serve the application layer of Computer-Assisted Pronunciation Training (CAPT — systems for language learners). Witt and Young (2000) defined the standard with "Phone-level pronunciation scoring and assessment for interactive language learning" in Speech Communication, introducing the Goodness of Pronunciation (GOP) metric that remains the statistical anchor for evaluating learner speech. Hu et al. (2015) pushed accuracy by substituting traditional HMMs with DNNs and employing transfer learning, drastically reducing false rejection rates. Modern embedded CAPT systems focus on hardware-software co-design to push DNN-based GOP algorithms to edge SoCs. Our work directly accelerates the temporal alignment bottleneck inherent in these edge-based phoneme evaluators.
+
+### GPU DTW and Tensor Core Limitations
+
+While GPUs dominate dense acoustic modeling, they structurally falter on DTW's sequential dependencies. CUDA-based DTW implementations hit a hard limit defined by the wavefront: threads must synchronize iteratively across anti-diagonals, starving the GPU of its massive thread-level parallelism. Tensor Cores — rigidly fused multiply-accumulate engines designed for matrix multiplication — fundamentally cannot compute the minimum reduction required by the DTW recurrence. Cuturi and Blondel (2017) introduced "Soft-DTW" at ICML, replacing the hard minimum with a differentiable softmin operator for neural network training; however, this actually increases the computational load for inference. We bypass these GPU architectural mismatches by implementing the hard DTW constraint in custom FPGA logic.
+
+### DTW Variants for Robust Assessment
+
+Standard DTW suffers from pathological alignments under amplitude shifts and partial utterances. Keogh and Pazzani (2001) addressed this with Derivative Dynamic Time Warping (DDTW) at SDM, aligning structural shape rather than raw values — advantageous for comparing pitch and formants in non-native speakers. Müller (2007) formalized subsequence DTW in "Information Retrieval for Music and Motion," allowing short templates to slide along continuous signals without strict endpoint constraints. Salvador and Chan (2007) developed FastDTW for linear-time approximation, though our FPGA implementation achieves low latency through exact hardware parallelism rather than heuristic multi-scale projection.
+
+### Our Position
+
+To our knowledge, no prior work has combined a banded DTW systolic accelerator with real-time pronunciation assessment on an edge FPGA SoC under a controlled power-matched comparison against an edge GPU. By bridging the bioinformatics systolic arrays of the 1980s with modern DNN-based phonetic scoring, we expose a critical hardware-software trade-off: moving the sequential wavefront out of CUDA and into spatial logic.
+
+---
+
+## 8.11 Diagnostic Exercises and Associated Experiment
+
+To solidify these concepts, the following exercises outline the software baseline validation. 🚧 These experiments are staged in the `../chapter08/` repository directory and represent our software ground truth before hardware migration.
+
+- **Exercise 1**: Implement the unconstrained DTW recurrence in Python using NumPy. Extract MFCC features from two sample wav files and compute the optimal warping path. Validate your resulting path against the `dtw-python` library output.
+- **Exercise 2**: Profile the computation time of your DTW implementation. Generate synthetic sequences of lengths $N \in \{100, 200, 400, 800, 1600\}$. Plot execution time versus $N$ to observe the $O(N^2)$ quadratic growth curve. This curve defines the necessity of our hardware acceleration.
+- **Exercise 3**: Compute the Euclidean distance, Cosine distance, and DTW distance on 15 pairs of utterances. Observe how Euclidean distance fluctuates with varying microphone gains, while Cosine and DTW distances remain relatively stable.
+- **Exercise 4**: Implement Subsequence DTW by modifying the boundary conditions from Exercise 1. Test with a student recording that is shorter than the reference.
+- **Exercise 5**: Quantize the MFCC features to INT16 and INT8. Compare the resulting DTW distances against the FP64 reference. Plot the relative error as a function of bit-width.
+
+**End of Chapter 8.**
