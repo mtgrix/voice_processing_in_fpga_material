@@ -1,17 +1,17 @@
 ## 1.1 Intuition: The Core Divergence Between Computer Vision and Edge Voice AI
 
 > 💡 **LEARNING OBJECTIVE**  
-> Rather than treating audio processing as a black-box sequence of numerical matrices, this section guides you through the physical and mechanical machinery of sound. We deduce why voice processing diverges fundamentally from computer vision, why edge latency ruthlessly enforces an execution batch size of one ($batch=1$), and how the biological inertia of human vocal articulators dictates the real-time frame boundaries for every silicon architecture developed in this monograph.
+> Rather than treating audio processing as a black-box sequence of numerical matrices, this section guides you through the physical and mechanical machinery of sound. We deduce why voice processing diverges fundamentally from computer vision, why edge latency enforces an execution batch size of one ($batch=1$), and how the biological inertia of human vocal articulators dictates the real-time frame boundaries for every silicon architecture developed in this monograph.
 
 ### A Photograph in a Gallery vs. An Oscillating Diaphragm
 
 A photograph is a finished object. A sound is a physical process that has not concluded.
 
-This single distinction governs nearly every architectural trade-off in this book. In computer vision, a digital image arrives at the processor as an intact, bounded spatial matrix. The pixels along the bottom edge exist at the exact same instant as the pixels along the top edge. Processing a second photograph does not alter the spatial reality of the first photograph; you can stack eight, sixteen, or sixty-four photographs together into a single four-dimensional tensor and launch them simultaneously through a neural network.
+This single distinction governs nearly every architectural trade-off in this book. In computer vision, a digital image arrives at the processor as an intact, bounded spatial matrix. The pixels along the bottom edge exist at the exact same instant as the pixels along the top edge. Processing a second photograph does not alter the spatial reality of the first photograph; you can stack eight photographs together into a single batch and launch them simultaneously through a neural network.
 
-Grouping independent inputs in this manner is called **batching**, and the count of grouped samples represents the **batch size** ($B$). A Graphics Processing Unit (GPU)—built from thousands of lightweight arithmetic execution lanes running in lockstep under a Single Instruction, Multiple Threads (SIMT) harness—executes one massive matrix multiplication far more efficiently than it can execute sixty-four disjointed, tiny multiplications. On a desktop or cloud GPU, batching delivers an immense throughput advantage virtually for free. The only currency expended is patience—and a static photograph resting in memory has no ticking deadline.
+Grouping independent inputs in this manner is called **batching**, and the count of grouped samples represents the **batch size** ($B$). A Graphics Processing Unit (GPU)—built from thousands of lightweight arithmetic execution lanes running in lockstep—executes one large matrix multiplication far more efficiently than it can execute eight separate, small multiplications. On a desktop or cloud GPU, batching delivers an immense throughput advantage virtually for free. The only currency expended is patience—and a static photograph resting in memory has no ticking deadline.
 
-A streaming voice signal presents the exact opposite physical reality. Acoustic data does not materialize as a complete, two-dimensional canvas; it arrives as a continuous, relentless stream of air pressure samples measured by an oscillating microphone diaphragm. To assemble a batch of eight audio frames, the processing system cannot pull future samples out of thin air. It is physically forced to hold the first audio frame captive in a waiting queue until the eighth frame has finished vibrating through the air and cleared the analog-to-digital converter.
+A streaming voice signal presents the exact opposite physical reality. Acoustic data does not materialize as a complete, two-dimensional canvas; it arrives as a continuous stream of air pressure samples measured by an oscillating microphone diaphragm. To assemble a batch of eight audio frames, the processing system cannot pull future samples out of thin air. It is physically forced to hold the first audio frame captive in a waiting queue until the eighth frame has finished vibrating through the air and cleared the analog-to-digital converter.
 
 ::: {#fig-1-1a-cv-vs-voice .figure}
 ```tikz
@@ -24,9 +24,16 @@ Figure 1.1a: The physical and geometric divergence between spatial computer visi
 
 ---
 
-### A 2-State Journey: Deducing the $batch = 1$ Mandate
+### A Deductive Journey: Formulating the Batching Dilemma
 
-Instead of accepting "$batch=1$" as an arbitrary rule of thumb, let us trace the physical queue of an acoustic ingress buffer and calculate the precise arithmetic tax that batching imposes upon the listener.
+To understand why edge voice architectures operate differently from vision systems, consider the contrasting hypotheses an engineer might formulate when sizing an ingress buffer:
+
+* **Hypothesis A (The GPU Bulk-Throughput Assumption):** Batching is assumed to provide "free" acceleration. In server environments or static image processing, grouping eight inputs costs zero additional waiting time because all data is already loaded in system memory. Under this assumption, an engineer might expect that batching eight audio frames on an edge processor would improve compute efficiency without penalty.
+* **Hypothesis B (The Streaming Physical Reality):** Audio does not wait pre-loaded in memory; it is generated by a physical speaker over continuous time. To process a batch of eight frames, the hardware must physically pause and wait for the speaker to produce future sound waves.
+
+The resolution is immediate: Hypothesis A collapses because it confuses data that exists in space with data that unfolds in time. In streaming voice, batching is not free performance—it is purchased directly with latency $\tau$.
+
+We can stage this physical penalty into two precise states:
 
 * **State 1 — The Ingress Queuing Penalty:**  
   Suppose our acoustic front end generates one analysis frame every $T_h$ seconds, where $T_h$ represents the **hop period** (the temporal stride between consecutive analysis windows). If our inference engine refuses to compute until it has assembled a batch of $B$ frames, the very first frame captured must sit completely idle in memory while frames $2, 3, \dots, B$ are being recorded:
@@ -35,14 +42,14 @@ Instead of accepting "$batch=1$" as an arbitrary rule of thumb, let us trace the
   
   In this equation, $(B-1)$ represents the exact count of subsequent frame intervals that must elapse in the physical world before the batch buffer is declared full.
 
-* **State 2 — The Latency Collapse at $B = 8$:**  
-  Throughout this monograph, standard edge speech processing fixes the hop period at $T_h = 10\text{ ms}$ (a rate whose biological origin we will derive shortly). Now, suppose a system designer attempts to run an edge GPU at a modest batch size of $B = 8$ to improve SIMT hardware utilization:
+* **State 2 — The Latency Penalty at $B = 8$:**  
+  Throughout this monograph, standard edge speech processing fixes the hop period at $T_h = 10\text{ ms}$ (a rate whose biological origin we derive below). If a system designer attempts to run an edge accelerator at a modest batch size of $B = 8$ to improve arithmetic lane utilization:
   
   $$\Delta t_{\text{wait}} = (8 - 1) \times 10\text{ ms} = 70\text{ ms}$$
   
-  Notice what has occurred: **$70\text{ ms}$ of pure latency has been added to the system before a single floating-point multiplication has taken place.**  
+  Notice what has occurred: **$70\text{ ms}$ of pure latency has been added to the system before a single multiplication has taken place.**  
   
-  This $70\text{ ms}$ penalty is an unyielding arithmetic consequence of the batching policy, not an artifact of poor code or slow memory buses. In an interactive Keyword Spotting (KWS) engine or real-time voice command interface, human auditory psychology perceives any total reaction time beyond $100\text{ to }150\text{ ms}$ as unnatural, sluggish, and broken. A queuing delay of $70\text{ ms}$ instantly consumes more than half of the entire system latency budget.
+  This $70\text{ ms}$ penalty is an unbending arithmetic consequence of the batching policy, not an artifact of code quality or bus bandwidth. In an interactive Keyword Spotting (KWS) engine, $70\text{ ms}$ is precisely the boundary between feeling instantaneous and feeling sluggish.
 
 ::: {#fig-1-1b-batch-tax .figure}
 ```tikz
@@ -52,7 +59,7 @@ Figure 1.1b: The arithmetic latency penalty imposed by input batching on an acou
 :::
 
 > 🎯 **GROUNDBREAKING FINDING**  
-> An edge voice interface operating in the physical presence of a speaking human being cannot aggregate inputs over time. To preserve real-time interactivity, the system is fundamentally locked into:
+> An edge voice interface operating in the physical presence of a speaking human cannot aggregate inputs over time. To preserve real-time interactivity, the system is fundamentally locked into:
 > 
 > $$batch = 1$$
 > 
@@ -66,32 +73,31 @@ Figure 1.1b: The arithmetic latency penalty imposed by input batching on an acou
 From the single reality that sound arrives sequentially in a $batch = 1$ regime, three physical consequences emerge. Each constraint directly dictates a hardware requirement in the chapters ahead.
 
 #### 1. Sound Possesses No Natural Boundary (The Memory State Mandate)
-A digital image is rigidly bounded by a finite pixel height $H$ and width $W$. A streaming audio waveform possesses neither: human speech continues indefinitely into the future, and an edge processor cannot observe the entire signal before beginning its work. 
+A digital image is rigidly bounded by a finite pixel height $H$ and width $W$. A streaming audio waveform possesses neither: human speech continues indefinitely into the future, and an edge processor cannot observe the entire signal before beginning its work.
 
 Because the processor cannot look ahead, it must bridge temporal continuity by preserving past context in **state**—a dedicated, tightly bounded on-chip memory that holds what the next arriving frame will need. 
 * *Hardware Bridge to Chapter 4:* This requirement transforms how we size semiconductor resources. When deploying streaming models, asking *"How many multiply-accumulate (MAC) units does the chip possess?"* is secondary to the far sharper architectural question: *"How many kilobits of on-chip Block RAM (BRAM) or UltraRAM (URAM) must be committed to maintain left-context state without stalling on external DRAM access?"*
 
 #### 2. Biological Inertia Governs Frame Overlap (The Sliding Ring Buffer Mandate)
-Why do standard acoustic pipelines enforce a $10\text{ ms}$ frame step? The answer lies in human biomechanics. 
+Why do standard acoustic pipelines enforce a $10\text{ ms}$ frame step? The answer lies in human biomechanics.
 
-The human vocal tract—comprising the tongue, lips, velum, pharynx, and mandible—is an assembly of biological tissue with physical mass. Because these articulators possess mechanical inertia, they cannot change their physical geometry instantaneously. Consequently, human speech remains **quasi-stationary** (statistically stable in its spectral envelope) over brief intervals of $20\text{ to }30\text{ ms}$. 
+The human vocal tract—comprising the tongue, lips, velum, pharynx, and mandible—is an assembly of biological tissue with physical mass. Because these articulators possess mechanical inertia, they cannot change their physical geometry instantaneously. Consequently, human speech remains **quasi-stationary** (statistically stable in its spectral envelope) over brief intervals of $20\text{ to }30\text{ ms}$.
 
-To capture a statistically reliable spectral snapshot, the digital front end must observe a temporal window of $25\text{ ms}$ ($400\text{ samples}$ at the standard sampling rate $f_s = 16\text{ kHz}$). However, to accurately track rapid phonetic transitions between plosives, fricatives, and vowels, the analysis window must advance in fine strides of $T_h = 10\text{ ms}$ ($160\text{ samples}$). 
+To capture a statistically reliable spectral snapshot, the digital front end must observe a temporal window of $25\text{ ms}$ ($400\text{ samples}$ at the standard sampling rate $f_s = 16\text{ kHz}$). However, to accurately track rapid phonetic transitions between plosives, fricatives, and vowels, the analysis window must advance in fine strides of $T_h = 10\text{ ms}$ ($160\text{ samples}$).
 
-This biological reality creates a dramatic mechanical consequence: **consecutive frames overlap heavily**. Out of the 400 samples comprising the current analysis frame:
+This biological reality creates a direct mechanical consequence: **consecutive frames overlap heavily**. Out of the 400 samples comprising the current analysis frame:
 
 $$400 - 160 = 240\text{ samples}$$
 
-have already been ingested, buffered, and analyzed during the preceding frame. 
+have already been ingested, buffered, and analyzed during the preceding frame.
 
-Copying or re-reading these 240 overlapping samples across system memory buses on every frame would squander memory bandwidth and waste dynamic power. In dedicated hardware, this overlap presents an elegant opportunity: an FPGA architecture can maintain a circular sliding buffer in local BRAM, where read and write address pointers advance smoothly along a fixed circular ring, eliminating data duplication entirely (a concept we formalize in Section 1.2 and map to FPGA silicon in Chapter 4 and Chapter 9).
+> 💡 **PHYSICAL INSIGHT**  
+> The 240-sample overlap between consecutive frames is not redundant overhead; it is a structural architectural opportunity. In conventional software, sliding an array often triggers costly memory copies (`memmove`). On an FPGA, dedicated on-chip Block RAM (BRAM) allows read and write address pointers to advance circularly around a fixed ring buffer, delivering the overlapping frame to the DSP pipeline with zero data duplication and zero bus traffic (formalized in Section 1.2 and silicon-verified in Chapters 4 and 9).
 
-#### 3. Nature's Clock is Non-Negotiable (The Back-Pressure and Data Loss Crisis)
-A physical microphone diaphragm does not halt its mechanical oscillation simply because a downstream CPU core is servicing an operating system interrupt or experiencing a memory cache miss. 
+#### 3. Nature's Clock is Non-Negotiable (The Dropped Sample Crisis)
+A physical microphone diaphragm does not halt its mechanical oscillation simply because a downstream CPU core is servicing an operating system interrupt or experiencing a memory cache miss.
 
-In computer vision, a congested processing queue merely delays the completion of a static frame by several milliseconds; the pixels remain intact in memory. In streaming audio, an unserviced queue causes the ingress buffer to overflow, triggering **dropped samples**. Because an acoustic waveform is an irreversible, continuous time-series, a dropped audio sample is annihilated permanently; it can never be retrieved or re-computed.
-
-* *Hardware Bridge to Chapter 4 & Chapter 8:* Chapter 4 formalizes the hardware mechanism of **back-pressure**—the structural protocol by which downstream processing units signal their readiness to upstream buffers. On an edge voice pipeline, the $10\text{ ms}$ frame budget is not a performance target or an optimization goal; it is a non-negotiable physical deadline.
+In computer vision, a congested processing queue merely delays the completion of a static frame by several milliseconds; the pixels remain intact in memory. In streaming audio, an unserviced queue causes the ingress buffer to overflow, triggering **dropped samples**. Because an acoustic waveform is an irreversible, continuous time-series, a dropped audio sample is permanently lost; it can never be retrieved or re-computed. On an edge voice pipeline, the $10\text{ ms}$ frame budget is not an optional optimization goal; it is a non-negotiable physical deadline.
 
 ---
 
@@ -99,16 +105,14 @@ In computer vision, a congested processing queue merely delays the completion of
 
 These three mechanical constraints force a profound shift in how an engineer defines computing speed.
 
-A computer vision accelerator is evaluated by **throughput**—the total volume of images processed per second ($\text{FPS}$) under high batch occupancy. In stark contrast, a real-time edge voice accelerator is evaluated first and foremost by **deterministic execution latency**: whether the processing engine guarantees that every single frame completes its entire extraction and classification pipeline well within its $10\text{ ms}$ physical deadline, cycle after cycle, with zero jitter. Only after this temporal contract is guaranteed does the design optimize for **energy efficiency per frame** ($\text{mJ/frame}$).
+A computer vision accelerator is evaluated by **throughput**—the total volume of images processed per second under high batch occupancy. In stark contrast, a real-time edge voice accelerator is evaluated first and foremost by **deterministic execution latency**: whether the processing engine guarantees that every single frame completes its entire extraction and classification pipeline well within its $10\text{ ms}$ physical deadline, cycle after cycle, with zero jitter. Only after this temporal contract is guaranteed does the design optimize for **energy efficiency per frame** ($\text{mJ/frame}$).
 
-The primary reason a traditional GPU is not the natural machine for real-time edge voice is not that its arithmetic circuits are weak. Rather, its silicon area is optimized for a metric—bulk parallel throughput across wide batches—that an interactive streaming system ($batch = 1$) is physically forbidden to use. 
-
-*Connecting to Chapter 3:* In Chapter 3, we verify this architectural bottleneck through empirical measurements on the NVIDIA Jetson Orin Nano, demonstrating the severe compute-lane starvation and power inefficiency that occur when a SIMT processor is forced to execute on single, isolated audio frames.
+The primary reason a traditional GPU is not the natural machine for real-time edge voice is not an absence of raw arithmetic power. Rather, its silicon area is optimized for a metric—bulk parallel throughput across wide batches—that an interactive streaming system ($batch = 1$) is physically forbidden to use. Chapter 3 develops this argument with measurements of what happens to a Single Instruction, Multiple Threads (SIMT) processor when there is only one frame to work on.
 
 ---
 
 #### The Unresolved Dilemma: The Streaming Ingestion Crisis
 
-If audio arrives as an unending, continuous stream of air pressure samples that cannot be batched without fatal latency penalties, how does an edge processor turn an infinite, continuous wave into finite mathematical packets without losing information or creating catastrophic boundary distortions? 
+If audio arrives as an unending, continuous stream of air pressure samples that cannot be batched without fatal latency penalties, how does an edge processor turn an infinite, continuous wave into finite mathematical packets without losing information or creating severe boundary distortions?
 
 This physical dilemma leads us directly to the mathematical machinery of the streaming preprocessing pipeline in Section 1.2.
