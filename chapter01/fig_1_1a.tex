@@ -1,0 +1,66 @@
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=0.92, every node/.style={transform shape},
+  box/.style={draw, rounded corners=2pt, align=center, inner sep=4pt, font=\small},
+  subbox/.style={draw, densely dashed, rounded corners=2pt, align=center, inner sep=3pt, font=\footnotesize, fill=gray!5},
+  ann/.style={font=\footnotesize, align=center},
+  timeline/.style={thick, ->}
+]
+
+% Left Side: Computer Vision (Spatial Batching)
+\node[font=\bfseries\normalsize, align=center] at (2.2, 3.6) {Computer Vision: Static Spatial Matrix};
+
+% Draw 2D Image Grid
+\draw[thick, fill=blue!5] (0, 0.5) rectangle (4.4, 3.0);
+\foreach \x in {0.88, 1.76, 2.64, 3.52} {
+  \draw[gray!40] (\x, 0.5) -- (\x, 3.0);
+}
+\foreach \y in {1.0, 1.5, 2.0, 2.5} {
+  \draw[gray!40] (0, \y) -- (4.4, \y);
+}
+
+% Labels on Image Grid
+\node[ann] at (2.2, 1.75) {Image Pixels $p(x, y)$\\All exist simultaneously at $t = t_0$};
+\draw[<->, semithick] (-0.3, 0.5) -- node[left, font=\footnotesize] {Height $H$} (-0.3, 3.0);
+\draw[<->, semithick] (0, 0.2) -- node[below, font=\footnotesize] {Width $W$} (4.4, 0.2);
+
+\node[subbox, text width=4.5cm] at (2.2, -0.9) {
+  \textbf{Zero Wait-Time Batching:}\\
+  Images $I_1, I_2, \dots, I_B$ can be stacked directly into tensor $(B, C, H, W)$ without temporal delay.
+};
+
+% Vertical Divider
+\draw[dashed, gray!60, thick] (5.2, -1.8) -- (5.2, 4.0);
+
+% Right Side: Streaming Voice (Temporal Physical Process)
+\node[font=\bfseries\normalsize, align=center] at (9.6, 3.6) {Edge Voice AI: Dynamic Physical Stream};
+
+% Microphone & Sound Wave
+\node[draw, circle, fill=gray!20, minimum size=0.6cm, inner sep=0pt] (mic) at (6.2, 2.0) {};
+\node[font=\tiny, align=center] at (6.2, 2.0) {Mic};
+\draw[thick] (6.0, 1.6) -- (6.0, 2.4); % Diaphragm bar
+
+% Incoming acoustic pressure wave
+\draw[thick, domain=6.6:8.0, samples=50, smooth] plot (\x, {2.0 + 0.35*sin(12*(\x-6.6)*180/3.14159)});
+\node[font=\scriptsize, above] at (7.3, 2.4) {Pressure $p(t)$};
+
+% Time Axis and Samples
+\draw[timeline] (8.2, 2.0) -- (13.5, 2.0) node[right, font=\footnotesize] {Time $t$};
+\foreach \t in {8.4, 8.7, 9.0, 9.3, 9.6, 9.9, 10.2, 10.5, 10.8, 11.1, 11.4, 11.7, 12.0, 12.3, 12.6, 12.9, 13.2} {
+  \filldraw (\t, 2.0) circle (1.2pt);
+  \draw[gray!60] (\t, 1.85) -- (\t, 2.15);
+}
+\node[font=\tiny, gray!80, below] at (8.7, 1.8) {$T_s = 62.5\,\mu\text{s}$};
+
+% Overlapping Frames brackets
+\draw[thick, decoration={brace, mirror, raise=3pt}, decorate] (8.4, 1.5) -- node[below=5pt, font=\scriptsize] {Frame 1 ($25\text{ ms}$, 400 samples)} (10.9, 1.5);
+\draw[thick, decoration={brace, mirror, raise=3pt}, decorate] (9.4, 0.7) -- node[below=5pt, font=\scriptsize] {Frame 2 ($25\text{ ms}$)} (11.9, 0.7);
+\draw[<->, semithick] (8.4, 0.2) -- node[below, font=\scriptsize] {Hop $T_h = 10\text{ ms}$} (9.4, 0.2);
+
+\node[subbox, text width=5.6cm] at (9.6, -0.9) {
+  \textbf{Inherent Serial Ingestion:}\\
+  Future samples do not physically exist yet.\\
+  Assembling batch $B > 1$ forces the processor to wait for the physical clock of the universe.
+};
+
+\end{tikzpicture}
