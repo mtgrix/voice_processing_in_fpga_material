@@ -1,0 +1,100 @@
+% Figure 1.3a: Probe-Wave Quadrature Interferometer
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=0.92, every node/.style={transform shape},
+  font=\small,
+  blk/.style={draw=black!75, rounded corners=3pt, fill=blue!8, semithick, align=center, inner sep=3pt},
+  mathnode/.style={draw=black!75, circle, fill=yellow!15, thick, inner sep=1pt, minimum size=6mm},
+  accum/.style={draw=black!75, rounded corners=3pt, fill=teal!12, semithick, align=center, inner sep=3pt},
+  outnode/.style={draw=black!85, rounded corners=3pt, fill=green!12, thick, align=center, inner sep=3pt},
+  wavebox/.style={draw=black!60, fill=white, thin, inner sep=2pt},
+  arrow/.style={->, thick, black!75}
+]
+
+% Input Frame
+\node[blk, fill=blue!10, text width=2.3cm] (input) at (0, 0) {
+  \textbf{Input Frame}\\
+  $x_\ell[n]$\\
+  \scriptsize $0 \le n < N$
+};
+
+% Branch split point
+\coordinate (split) at (1.8, 0);
+\filldraw[black!75] (split) circle (2pt);
+\draw[arrow] (input) -- (split);
+
+% Upper Branch: Cosine (In-Phase)
+\coordinate (c_in) at (1.8, 1.4);
+\coordinate (s_in) at (1.8, -1.4);
+\draw[thick, black!75] (split) -- (c_in);
+\draw[thick, black!75] (split) -- (s_in);
+
+\node[mathnode] (mul_cos) at (3.6, 1.4) {$\times$};
+\draw[arrow] (c_in) -- (mul_cos);
+
+% Cosine Generator / Waveform
+\node[wavebox, text width=2.5cm, align=center] (probe_cos) at (3.6, 2.7) {
+  \scriptsize\textbf{In-Phase Probe}\\
+  $\cos\left(\frac{2\pi k n}{N}\right)$\\[0.5mm]
+  \begin{tikzpicture}[scale=0.25]
+    \draw[->, gray!70] (0,0) -- (6.5,0);
+    \draw[blue!75!black, thick, domain=0:6.28, samples=40] plot (\x, {sin(\x r + 1.57 r)});
+  \end{tikzpicture}
+};
+\draw[arrow, blue!75!black] (probe_cos) -- (mul_cos);
+
+\node[accum, text width=2.4cm] (acc_cos) at (6.5, 1.4) {
+  \textbf{Accumulator}\\
+  $\sum_{n=0}^{N-1}$\\
+  \scriptsize Running Sum
+};
+\draw[arrow] (mul_cos) -- (acc_cos);
+
+\node[outnode, text width=2.3cm] (re_out) at (9.6, 1.4) {
+  \textbf{Real Part}\\
+  $\text{Re}(X_\ell[k])$\\
+  \scriptsize In-Phase Score
+};
+\draw[arrow] (acc_cos) -- (re_out);
+
+% Lower Branch: Sine (Quadrature)
+\node[mathnode] (mul_sin) at (3.6, -1.4) {$\times$};
+\draw[arrow] (s_in) -- (mul_sin);
+
+% Sine Generator / Waveform
+\node[wavebox, text width=2.5cm, align=center] (probe_sin) at (3.6, -2.7) {
+  \scriptsize\textbf{Quadrature Probe}\\
+  $-\sin\left(\frac{2\pi k n}{N}\right)$\\[0.5mm]
+  \begin{tikzpicture}[scale=0.25]
+    \draw[->, gray!70] (0,0) -- (6.5,0);
+    \draw[red!75!black, thick, domain=0:6.28, samples=40] plot (\x, {-sin(\x r)});
+  \end{tikzpicture}
+};
+\draw[arrow, red!75!black] (probe_sin) -- (mul_sin);
+
+\node[accum, text width=2.4cm] (acc_sin) at (6.5, -1.4) {
+  \textbf{Accumulator}\\
+  $\sum_{n=0}^{N-1}$\\
+  \scriptsize Running Sum
+};
+\draw[arrow] (mul_sin) -- (acc_sin);
+
+\node[outnode, text width=2.3cm] (im_out) at (9.6, -1.4) {
+  \textbf{Imag.~Part}\\
+  $\text{Im}(X_\ell[k])$\\
+  \scriptsize Quadrature Score
+};
+\draw[arrow] (acc_sin) -- (im_out);
+
+% Combining into Complex Bin
+\node[draw=purple!80!black, rounded corners=4pt, fill=purple!8, thick, align=center, text width=3.0cm] (euler) at (13.1, 0) {
+  \textbf{Complex Spectral Bin}\\[1mm]
+  $X_\ell[k] = \text{Re} + j\,\text{Im}$\\[1mm]
+  \scriptsize \textbf{Euler Packaging:}\\
+  $\sum x_\ell[n]\, e^{-j\frac{2\pi kn}{N}}$
+};
+
+\draw[arrow, purple!80!black] (re_out.east) -- ++(0.5, 0) |- (euler.north west);
+\draw[arrow, purple!80!black] (im_out.east) -- ++(0.5, 0) |- (euler.south west);
+
+\end{tikzpicture}
