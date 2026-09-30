@@ -1,0 +1,97 @@
+% Figure 1.4b: KV260 BRAM Breakdown and Shared vs. Dedicated Datapath
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small
+]
+
+% ==================== PANEL (a): On-Chip BRAM Allocation ====================
+\begin{scope}[x=1.0cm, y=1.0cm]
+  \node (titlea) [font=\bfseries\small, anchor=west] at (0, 4.5) 
+    {(a) KV260 BRAM Allocation ($648\text{ KiB}$ Total)};
+
+  % Audio Ring Buffer Box (Top)
+  \node (box1) [
+    draw=blue!80!black, fill=blue!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt
+  ] at (3.8, 3.65) {
+    \textbf{\textcolor{blue!90!black}{Audio Ring Buffer ($400$ FP32): $1{,}600\text{ B}$}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$34.7\%$ of 1 BRAM block ($0.2\%$ of total on-chip BRAM)}
+  };
+
+  % Mel Filterbank Weight Matrix Box (Middle)
+  \node (box2) [
+    draw=purple!80!black, fill=purple!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt,
+    below=0.32cm of box1
+  ] {
+    \textbf{\textcolor{purple!90!black}{Mel Filterbank Matrix ($80 \times 257$ FP32): $80.3\text{ KiB}$}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$18$ BRAM blocks ($12.4\%$ of total BRAM) $\implies$ Zero DDR access}
+  };
+
+  % Free / Available BRAM Box (Bottom)
+  \node (box3) [
+    draw=teal!80!black, fill=teal!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt,
+    below=0.32cm of box2
+  ] {
+    \textbf{\textcolor{teal!90!black}{Neural Model Headroom: $566.1\text{ KiB}$ ($87.4\%$ BRAM)}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$126$ BRAM blocks ($566.1\text{ KiB}$) $+$ $64$ UltraRAM blocks ($2.25\text{ MiB}$)}
+  };
+
+  % Summary note below panel (a)
+  \node (summa) [
+    font=\scriptsize, align=center, text=black!75, text width=7.5cm,
+    below=0.22cm of box3
+  ] {
+    AMD XCK26 Total SRAM: $5.1\text{ Mb}$ BRAM $+$ $18.0\text{ Mb}$ UltraRAM
+  };
+\end{scope}
+
+% Divider Line
+\draw[gray!35, thick, dashed] (8.0, -0.3) -- (8.0, 4.7);
+
+% ==================== PANEL (b): Shared Software vs. Dedicated Wires ====================
+\begin{scope}[xshift=8.4cm, x=1.0cm, y=1.0cm]
+  \node[font=\bfseries\small, anchor=west] at (0, 4.5) 
+    {(b) Execution Cadence: Shared Jitter vs. Dedicated Wires};
+
+  % GPU Track Label
+  \node[font=\scriptsize\bfseries, text=orange!95!black, anchor=west] at (0.1, 4.0) {
+    Edge GPU (Jetson Orin Nano Super): Shared Software Stack
+  };
+  % GPU Track Box
+  \draw[draw=orange!80!black, fill=orange!5, thick, rounded corners=3pt] (0, 2.55) rectangle (8.0, 3.75);
+  
+  % Sequence of steps in GPU
+  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.1cm] at (0.95, 3.15) {Mic DMA\\Buffer};
+  \draw[->, orange!80!black, semithick] (1.6, 3.15) -- (1.9, 3.15);
+  \node[draw=red!70!black, fill=red!8, rounded corners=2pt, font=\tiny, align=center, text width=1.6cm] at (2.85, 3.15) {OS Preempt \&\\Driver Queue};
+  \draw[->, orange!80!black, semithick] (3.8, 3.15) -- (4.1, 3.15);
+  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.3cm] at (4.9, 3.15) {CUDA Launch\\($5\text{--}15\ \mu\text{s}$)};
+  \draw[->, orange!80!black, semithick] (5.7, 3.15) -- (6.0, 3.15);
+  \node[draw=red!80!black, fill=red!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.4cm] at (6.85, 3.15) {Variable Jitter\\$\Delta t > 0$};
+
+  % FPGA Track Label
+  \node[font=\scriptsize\bfseries, text=teal!95!black, anchor=west] at (0.1, 2.05) {
+    Spatial FPGA (Kria KV260): Dedicated Silicon Wires
+  };
+  % FPGA Track Box
+  \draw[draw=teal!80!black, fill=teal!5, thick, rounded corners=3pt] (0, 0.65) rectangle (8.0, 1.85);
+
+  % Hardware Pipeline
+  \node[draw=teal!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.2cm] at (1.1, 1.25) {I2S Direct\\Wire};
+  \draw[->, teal!80!black, semithick] (1.85, 1.25) -- (2.25, 1.25);
+  \node[draw=teal!70!black, fill=teal!12, rounded corners=2pt, font=\tiny, align=center, text width=2.4cm] at (3.65, 1.25) {Pipelined DSP Fabric\\$N_{\text{clk}}$ Cycles Constant};
+  \draw[->, teal!80!black, semithick] (5.0, 1.25) -- (5.4, 1.25);
+  \node[draw=green!80!black, fill=green!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.9cm] at (6.5, 1.25) {Zero OS Jitter\\$\Delta t = 0\text{ ns}$ Deterministic};
+
+  % Summary note below panel (b)
+  \node[font=\scriptsize, align=center, text=black!75, text width=8.0cm] at (4.0, 0.05) {
+    Exclusive hardware wires meet the $10\text{ ms}$ hop deadline every cycle
+  };
+\end{scope}
+
+\end{tikzpicture}

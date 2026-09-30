@@ -89,7 +89,7 @@ To eliminate phase blindness, we must interrogate the wave with \textbf{two orth
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\scalebox{0.55}{\input{chapter01/fig_1_3a.tex}}\\[0.5mm]
+\resizebox{0.94\textwidth}{!}{\input{chapter01/fig_1_3a.tex}}\\[0.5mm]
 \begin{minipage}{0.96\textwidth}
 \small\textbf{Figure 1.3a}: \textbf{Probe-wave quadrature interferometer.} (1)~\textbf{What it is:} Internal architecture of a single Fourier frequency bin evaluated as a dual-branch correlation receiver. (2)~\textbf{What to look at:} Incoming frame $x_\ell[n]$ splits into branches multiplied by $\cos(2\pi kn/N)$ (in-phase) and $-\sin(2\pi kn/N)$ (quadrature), accumulating into real and imaginary coordinates. (3)~\textbf{What it proves:} Complex numbers represent the two orthogonal axes needed to measure wave energy independently of arrival phase.
 \end{minipage}
@@ -124,48 +124,57 @@ To eliminate artificial boundary step discontinuities, the raw audio packet is t
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\begin{tikzpicture}[>=Stealth, scale=0.74, every node/.style={transform shape}, font=\small]
+\resizebox{0.94\textwidth}{!}{%
+\begin{tikzpicture}[>=Stealth, font=\small]
   % Grid and Axes
-  \draw[->, black!75, thick] (-5.0, -2.5) -- (5.0, -2.5) node[right, font=\scriptsize\bfseries] {Frequency Offset from Center (Hz)};
-  \draw[->, black!75, thick] (0, -2.7) -- (0, 0.5) node[above, font=\scriptsize\bfseries] {Normalized Attenuation (dB)};
+  \draw[->, black!75, thick] (-6.8, -5.0) -- (6.8, -5.0) node[right, font=\scriptsize\bfseries] {Frequency Offset from Center (Hz)};
+  \draw[->, black!75, thick] (0, -5.2) -- (0, 0.6) node[above, font=\scriptsize\bfseries] {Normalized Attenuation (dB)};
 
-  \foreach \y/\lbl in {0/{0}, -0.7/{-13}, -1.4/{-26}, -2.4/{-44}} {
-    \draw[gray!30, thin] (-4.6, \y) -- (4.6, \y);
-    \node[left, font=\tiny, text=gray!80] at (-4.6, \y) {\lbl~dB};
+  % Horizontal grid lines and dB tick labels
+  \foreach \y/\lbl in {0/{0}, -1.3/{-13}, -2.6/{-26}, -4.4/{-44}} {
+    \draw[gray!30, thin] (-6.5, \y) -- (6.5, \y);
+    \node[left, font=\scriptsize, text=gray!80] at (-6.5, \y) {\lbl~dB};
   }
-  \foreach \x/\lbl in {-4/{-160}, -2/{-80}, 0/{0}, 2/{80}, 4/{160}} {
-    \draw[gray!30, thin] (\x, -2.5) -- (\x, 0.3);
-    \node[below, font=\tiny, text=gray!80] at (\x, -2.5) {\lbl};
+  % Vertical grid lines and Hz tick labels
+  \foreach \x/\lbl in {-4.8/{-160}, -2.4/{-80}, 0/{0}, 2.4/{80}, 4.8/{160}} {
+    \draw[gray!30, thin] (\x, -5.0) -- (\x, 0.4);
+    \node[below, font=\scriptsize, text=gray!80] at (\x, -5.0) {\lbl};
   }
 
   % Rectangular window spectrum (sinc shape, blue dashed)
   \draw[blue!80!black, thick, dashed] 
-    (-4.6, -1.8) -- (-3.2, -1.9) -- (-2.5, -1.5) -- (-2.0, -2.4) 
-    -- (-1.5, -0.7) -- (-1.0, -2.4) -- (-0.8, -1.1) -- (0, 0) 
-    -- (0.8, -1.1) -- (1.0, -2.4) -- (1.5, -0.7) -- (2.0, -2.4) 
-    -- (2.5, -1.5) -- (3.2, -1.9) -- (4.6, -1.8);
+    (-6.5, -2.6) -- (-6.0, -2.5) -- (-5.4, -4.8) -- (-4.8, -2.2) -- (-4.2, -4.8) 
+    -- (-3.6, -1.9) -- (-3.0, -4.8) -- (-2.4, -1.6) -- (-1.8, -1.3) -- (-1.2, -4.8) 
+    -- (0, 0) 
+    -- (1.2, -4.8) -- (1.8, -1.3) -- (2.4, -1.6) -- (3.0, -4.8) -- (3.6, -1.9) 
+    -- (4.2, -4.8) -- (4.8, -2.2) -- (5.4, -4.8) -- (6.0, -2.5) -- (6.5, -2.6);
 
   % Hamming window spectrum (broader main lobe, heavily suppressed side lobes, red solid)
   \draw[red!80!black, ultra thick] 
-    (-4.6, -2.4) -- (-3.5, -2.4) -- (-2.8, -2.3) -- (-2.0, -2.4) 
-    -- (-1.6, -1.2) -- (0, 0) -- (1.6, -1.2) -- (2.0, -2.4) 
-    -- (2.8, -2.3) -- (3.5, -2.4) -- (4.6, -2.4);
+    (-6.5, -4.5) -- (-5.5, -4.4) -- (-4.5, -4.5) -- (-3.5, -4.4) -- (-2.4, -4.4) 
+    -- (-1.6, -2.2) -- (0, 0) -- (1.6, -2.2) -- (2.4, -4.4) 
+    -- (3.5, -4.4) -- (4.5, -4.5) -- (5.5, -4.4) -- (6.5, -4.5);
 
-  % Annotations
-  \node[draw=blue!80!black, fill=blue!5, rounded corners=2pt, font=\scriptsize, align=left] at (-2.8, -0.1) {
-    \textbf{Rectangular Window:}\\
-    Main lobe: $\Delta f = 80\text{ Hz}$ ($2f_s/L$)\\
+  % Annotations: Both Callout Boxes placed fully inside with margins
+  \node[draw=blue!80!black, fill=blue!5, rounded corners=3pt, font=\footnotesize, align=left] (rect_box) at (-4.2, -0.9) {
+    \textbf{Rectangular Window:}\\[0.5mm]
+    Main lobe: $\Delta f = 80\text{ Hz}$ ($2f_s/L$)\\[0.5mm]
     First side-lobe: $\mathbf{-13\text{ dB}}$
   };
+  \draw[->, blue!80!black, semithick] (rect_box.east) -- (-1.9, -1.3);
 
-  \node[draw=red!80!black, fill=red!5, rounded corners=2pt, font=\scriptsize, align=left] at (2.8, -0.1) {
-    \textbf{Hamming Window:}\\
-    Main lobe: $\Delta f = 160\text{ Hz}$ ($4f_s/L$)\\
+  \node[draw=red!80!black, fill=red!5, rounded corners=3pt, font=\footnotesize, align=left] (hamm_box) at (4.2, -0.9) {
+    \textbf{Hamming Window:}\\[0.5mm]
+    Main lobe: $\Delta f = 160\text{ Hz}$ ($4f_s/L$)\\[0.5mm]
     First side-lobe: $\mathbf{-44\text{ dB}}$
   };
+  \draw[->, red!80!black, semithick] (hamm_box.south) -- (4.2, -4.3);
 
-  \draw[<->, purple!85!black, semithick] (1.6, -0.7) -- (1.6, -2.4) node[midway, right, font=\tiny\bfseries] {$+31\text{ dB}$ suppression};
-\end{tikzpicture}\\[1mm]
+  % Suppression Arrow
+  \draw[<->, purple!85!black, very thick] (2.0, -1.3) -- (2.0, -4.4) 
+    node[midway, right, font=\footnotesize\bfseries] {$+31\text{ dB}$ suppression};
+\end{tikzpicture}%
+}\\[1mm]
 \begin{minipage}{0.96\textwidth}
 \small\textbf{Figure 6}: \textbf{Spectral leakage: Rectangular vs.\ Hamming window ($L = 400$, $f_s = 16\text{ kHz}$).} (1)~\textbf{What it is:} Transfer functions for rectangular versus Hamming windowing. (2)~\textbf{What to look at:} Main lobe doubles in width ($80\text{ Hz} \to 160\text{ Hz}$), but the first side-lobe drops from $-13\text{ dB}$ to $-44\text{ dB}$ ($31\text{ dB}$ suppression). (3)~\textbf{What it proves:} Windowing trades frequency sharpness for dynamic range, preventing loud formants from masking quiet consonant harmonics.
 \end{minipage}
@@ -251,9 +260,9 @@ $g_m[k] = \frac{k - k_{m-1}}{k_m - k_{m-1}}$ for $k_{m-1} \le k \le k_m$; $g_m[k
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\scalebox{0.70}{\input{chapter01/fig_1_3b.tex}}\\[0.8mm]
+\resizebox{0.94\textwidth}{!}{\input{chapter01/fig_1_3b.tex}}\\[0.8mm]
 \begin{minipage}{0.96\textwidth}
-\small\textbf{Figure 1.3b}: \textbf{257 linear FFT bins collapsing under 80 Mel triangular filters.} (1)~\textbf{What it is:} Mapping of 257 linear frequency bins ($0\text{--}8{,}000\text{ Hz}$) into 80 perceptual Mel triangular filters. (2)~\textbf{What to look at:} In region (a), low filters are dense and narrow, while high filters expand exponentially. In region (b), Band $m=0$ integrates only 3 bins, whereas Band $m=79$ pools 45 bins ($6{,}593\text{--}8{,}000\text{ Hz}$). (3)~\textbf{What it proves:} The filterbank concentrates spectral resolution in phonetic formant bands while drastically reducing input dimensionality for downstream neural networks.
+\small\textbf{Figure 1.3b}: \textbf{257 linear FFT bins collapsing under 80 Mel triangular filters.} (1)~\textbf{What it is:} Mapping of 257 linear frequency bins ($0\text{--}8{,}000\text{ Hz}$) into 80 perceptual Mel triangular filters. (2)~\textbf{What to look at:} In region (a), low filters are dense and narrow, while high filters expand exponentially. In region (b), Band $m=0$ integrates only a few bins, whereas Band $m=79$ pools dozens of bins ($6{,}593\text{--}8{,}000\text{ Hz}$). (3)~\textbf{What it proves:} The filterbank concentrates spectral resolution in phonetic formant bands while drastically reducing input dimensionality for downstream neural networks.
 \end{minipage}
 \end{minipage}
 \end{center}
