@@ -1,58 +1,71 @@
 \begin{tikzpicture}[
   >=Stealth,
-  scale=0.88, every node/.style={transform shape},
+  scale=0.92, every node/.style={transform shape},
+  font=\small,
   ann/.style={font=\footnotesize, align=center},
-  subbox/.style={draw, densely dashed, rounded corners=2pt, align=center, inner sep=4pt, font=\scriptsize, fill=gray!4}
+  subbox/.style={draw, densely dashed, rounded corners=3pt, align=center, inner sep=5pt, font=\scriptsize, fill=gray!4}
 ]
 
-% Left: Computer Vision (Static 2D Spatial Canvas)
-\node[font=\bfseries\small, align=center] at (2.5, 3.8) {Computer Vision:\\Static Spatial Matrix};
+% ==================== LEFT: Computer Vision ====================
+\node[font=\bfseries\small, align=center] at (2.5, 4.8) {Computer Vision:\\Static Spatial Matrix};
 
-\draw[thick, fill=blue!5] (0.5, 1.2) rectangle (4.5, 3.0);
-\foreach \x in {1.5, 2.5, 3.5} {
-  \draw[gray!35] (\x, 1.2) -- (\x, 3.0);
+% 2D Image Matrix
+\draw[thick, fill=blue!5] (0.6, 2.0) rectangle (4.4, 3.8);
+\foreach \x in {1.55, 2.5, 3.45} {
+  \draw[gray!35] (\x, 2.0) -- (\x, 3.8);
 }
-\foreach \y in {1.8, 2.4} {
-  \draw[gray!35] (0.5, \y) -- (4.5, \y);
+\foreach \y in {2.6, 3.2} {
+  \draw[gray!35] (0.6, \y) -- (4.4, \y);
 }
 
-\node[ann] at (2.5, 2.1) {Pixels $p(x, y)$ \\ All exist at $t = t_0$};
-\draw[<->, semithick] (0.2, 1.2) -- node[left, font=\scriptsize] {$H$} (0.2, 3.0);
-\draw[<->, semithick] (0.5, 0.9) -- node[below, font=\scriptsize] {$W$} (4.5, 0.9);
+\node[ann] at (2.5, 2.9) {Pixels $p(x, y)$ \\ All exist at $t = t_0$};
+\draw[<->, semithick] (0.3, 2.0) -- node[left, font=\scriptsize] {$H$} (0.3, 3.8);
+\draw[<->, semithick] (0.6, 1.6) -- node[below, font=\scriptsize] {$W$} (4.4, 1.6);
 
-\node[subbox, text width=4.5cm] at (2.5, -0.4) {
+\node[subbox, text width=4.4cm] at (2.5, 0.0) {
   \textbf{Zero-Wait Batching:}\\
-  Independent images $I_1, \dots, I_B$ stack directly into a tensor $(B, C, H, W)$. No waiting for time.
+  Independent images $I_1, \dots, I_B$ stack directly into a tensor $(B, C, H, W)$.\\
+  No waiting for physical time.
 };
 
-% Vertical Separator
-\draw[dashed, gray!50, thick] (5.5, -1.0) -- (5.5, 4.2);
+% ==================== DIVIDER ====================
+\draw[dashed, gray!45, thick] (5.1, -0.7) -- (5.1, 5.2);
 
-% Right: Streaming Voice (Dynamic Temporal Wave)
-\node[font=\bfseries\small, align=center] at (10.0, 3.8) {Edge Voice AI:\\Dynamic Physical Stream};
+% ==================== RIGHT: Edge Voice AI ====================
+\node[font=\bfseries\small, align=center] at (10.6, 4.8) {Edge Voice AI:\\Dynamic Physical Stream};
 
-% Microphone & Sound Wave
-\node[draw, circle, fill=gray!20, minimum size=0.55cm, inner sep=0pt] (mic) at (6.2, 2.1) {};
-\node[font=\tiny, align=center] at (6.2, 2.1) {Mic};
-\draw[thick] (6.0, 1.7) -- (6.0, 2.5);
+% Microphone
+\node[draw, circle, fill=gray!25, minimum size=0.52cm, inner sep=0pt] (mic) at (5.7, 3.8) {};
+\node[font=\tiny\bfseries] at (5.7, 3.8) {Mic};
+\draw[thick] (5.45, 3.4) -- (5.45, 4.2);
 
-% Incoming Acoustic Wave
-\draw[thick, domain=6.6:7.8, samples=50, smooth] plot (\x, {2.1 + 0.3*sin(15*(\x-6.6)*180/3.14159)});
-\node[font=\scriptsize, above] at (7.2, 2.4) {$p(t)$};
+% Incoming Acoustic Wave p(t)
+\draw[thick, blue!80!black, domain=6.1:7.3, samples=50, smooth] plot (\x, {3.8 + 0.3*sin(15*(\x-6.1)*180/3.14159)});
+\node[font=\scriptsize\bfseries, text=blue!80!black, above] at (6.7, 4.12) {$p(t)$};
 
-% Time Axis and Sample Ticks
-\draw[thick, ->] (8.0, 2.1) -- (14.0, 2.1) node[right, font=\scriptsize] {Time $t$};
-\foreach \t in {8.2, 8.5, 8.8, 9.1, 9.4, 9.7, 10.0, 10.3, 10.6, 10.9, 11.2, 11.5, 11.8, 12.1, 12.4, 12.7, 13.0, 13.3} {
-  \filldraw (\t, 2.1) circle (1.1pt);
+% Discrete Time Axis
+\draw[thick, ->] (7.4, 3.8) -- (14.6, 3.8) node[right, font=\scriptsize] {Time $t$};
+
+% Sample Ticks
+\foreach \t in {7.6, 7.9, 8.2, 8.5, 8.8, 9.1, 9.4, 9.7, 10.0, 10.3, 10.6, 10.9, 11.2, 11.5, 11.8, 12.1, 12.4, 12.7, 13.0, 13.3, 13.6, 13.9} {
+  \filldraw (\t, 3.8) circle (1.2pt);
 }
-\node[font=\tiny, gray!80, below] at (8.5, 2.0) {$T_s = 62.5\,\mu\mathrm{s}$};
+\node[font=\tiny, text=black!75, above] at (8.05, 3.95) {$T_s = 62.5\,\mu\text{s}$};
 
-% Frames Brackets
-\draw[thick, decoration={brace, mirror, raise=2pt}, decorate] (8.2, 1.6) -- node[below=3pt, font=\tiny] {Frame 1 ($25\text{ ms}$, 400 samples)} (10.6, 1.6);
-\draw[thick, decoration={brace, mirror, raise=2pt}, decorate] (9.2, 0.9) -- node[below=3pt, font=\tiny] {Frame 2 ($25\text{ ms}$)} (11.6, 0.9);
-\draw[<->, semithick] (8.2, 0.45) -- node[below, font=\tiny] {Hop $T_h = 10\text{ ms}$} (9.2, 0.45);
+% Tier 1: Frame 1 brace
+\draw[thick, decoration={brace, mirror, raise=2pt}, decorate] (7.6, 3.55) -- node[below=3pt, font=\tiny] {Frame 1 ($25\text{ ms}$, 400 samples)} (10.6, 3.55);
 
-\node[subbox, text width=6.2cm] at (10.0, -0.4) {
+% Tier 2: Hop arrow
+\draw[<->, semithick, red!75!black] (7.6, 2.75) -- node[above=1pt, font=\tiny\bfseries] {Hop $T_h = 10\text{ ms}$ ($160$ new)} (8.8, 2.75);
+
+% Tier 3: Frame 2 brace
+\draw[thick, decoration={brace, mirror, raise=2pt}, decorate] (8.8, 2.45) -- node[below=3pt, font=\tiny] {Frame 2 ($25\text{ ms}$, 400 samples)} (11.8, 2.45);
+
+% Tier 4: Overlap indicator
+\draw[<->, semithick, teal!80!black] (8.8, 1.45) -- node[below=1pt, font=\tiny\bfseries] {$240$ samples overlap ($15\text{ ms}$)} (10.6, 1.45);
+
+% Inherent Serial Ingestion Subbox
+\node[subbox, text width=6.6cm] at (10.6, 0.0) {
   \textbf{Inherent Serial Ingestion:}\\
   Future samples do not physically exist yet.\\
   Batching $B > 1$ forces Frame 1 to wait in memory for future sound.

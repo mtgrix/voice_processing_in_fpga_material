@@ -1,0 +1,86 @@
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=0.92, every node/.style={transform shape},
+  font=\small,
+  blk/.style={draw=black!70, semithick, align=center, inner sep=2pt, minimum height=7.2mm},
+  oldblk/.style={blk, fill=gray!15, text=black!60},
+  ovrblk/.style={blk, fill=teal!20, text=teal!90!black, font=\scriptsize\bfseries},
+  newblk/.style={blk, fill=blue!20, text=blue!90!black, font=\scriptsize\bfseries},
+  ann/.style={font=\scriptsize, text=black!75, align=center},
+  ttl/.style={font=\bfseries\small, align=left}
+]
+
+% ==================== (a) SOFTWARE: Data is Copied ====================
+\node[ttl] at (2.4, 4.8) {(a) In Software (CPU / GPU): Data Moved};
+
+% Frame l
+\node[font=\scriptsize\bfseries, anchor=east] at (-0.1, 3.6) {Frame $\ell$};
+\node[oldblk, minimum width=2.0cm] at (1.0, 3.6) {Oldest 160};
+\node[ovrblk, minimum width=3.0cm] at (3.5, 3.6) {Retained 240};
+
+% Frame l+1
+\node[font=\scriptsize\bfseries, anchor=east] at (-0.1, 1.8) {Frame $\ell\!+\!1$};
+\node[ovrblk, minimum width=3.0cm] at (1.5, 1.8) {Shifted 240};
+\node[newblk, minimum width=2.0cm] at (4.0, 1.8) {New 160};
+
+% Shift arrow
+\draw[thick, ->, red!75!black] (3.5, 3.2) .. controls (3.0, 2.6) and (2.0, 2.6) .. (1.5, 2.2);
+\node[font=\tiny\bfseries, text=red!80!black, above=2pt] at (2.6, 2.6) {\texttt{memmove} ($240\times$)};
+
+% Discard arrow
+\draw[->, gray!60, thick] (0.8, 3.2) -- (0.3, 2.5);
+\node[font=\tiny, text=gray!70, left] at (0.3, 2.5) {Discarded};
+
+% Ingress arrow
+\draw[->, blue!75!black, thick] (5.8, 1.8) node[right, font=\tiny\bfseries, align=left] {New Ingress\\($T_h = 10\text{ ms}$)} -- (5.05, 1.8);
+
+\node[ann, text width=5.6cm] at (2.5, 0.2) {
+  \textbf{Software Copy Tax:}\\
+  $240$ memory reads and $240$ memory writes executed sequentially every $10\text{ ms}$ hop.
+};
+
+% ==================== DIVIDER ====================
+\draw[dashed, gray!40, thick] (6.6, -0.6) -- (6.6, 5.2);
+
+% ==================== (b) HARDWARE: Circular BRAM ====================
+\begin{scope}[shift={(11.2, 2.6)}]
+  \node[ttl, align=center] at (0, 2.45) {(b) In Hardware (FPGA BRAM): Stationary};
+
+  \def\R{1.25}\def\ri{0.58}
+  \def\cy{0.65}
+  % 160 samples = 144 deg (from 90 to -54)
+  % 240 samples = 216 deg (from -54 to -270)
+  \fill[blue!20] (0,\cy) -- ++(90:\R) arc (90:-54:\R) -- cycle;
+  \fill[teal!20] (0,\cy) -- ++(-54:\R) arc (-54:-270:\R) -- cycle;
+  \fill[white] (0,\cy) circle (\ri);
+
+  \draw[black!70, thick] (0,\cy) ++(90:\R) arc (90:-270:\R);
+  \draw[black!70, thick] (0,\cy) ++(90:\ri) arc (90:-270:\ri);
+  \draw[black!60, semithick] (0,\cy) ++(90:\ri) -- ++(90:\R-\ri);
+  \draw[black!60, semithick] (0,\cy) ++(-54:\ri) -- ++(-54:\R-\ri);
+
+  \node[font=\scriptsize\bfseries, text=blue!90!black] at ($(0,\cy)+(18:0.92)$) {New 160};
+  \node[font=\scriptsize\bfseries, text=teal!90!black] at ($(0,\cy)+(-162:0.92)$) {Overlap 240};
+
+  % Write Pointer
+  \filldraw[red!80!black] ($(0,\cy)+(90:\R)$) circle (2.2pt);
+  \node[font=\tiny\bfseries, text=red!80!black, anchor=south] at ($(0,\cy)+(90:\R+0.05)$) {Write Pointer};
+  \draw[thick, ->, red!80!black] ($(0,\cy)+(80:\R+0.22)$) arc (80:-44:\R+0.22);
+  \node[font=\tiny\bfseries, text=red!80!black, right] at ($(0,\cy)+(15:\R+0.25)$) {Step $+160$ ($T_h$)};
+
+  % Read Pointer (at -54 deg, label to the right)
+  \filldraw[teal!80!black] ($(0,\cy)+(-54:\R)$) circle (2.2pt);
+  \node[font=\tiny\bfseries, text=teal!90!black, anchor=west] at ($(0,\cy)+(-54:\R+0.12)$) {Read Pointer};
+
+  % Center text
+  \node[font=\tiny\bfseries, text=black!75, align=center] at (0,\cy) {Dual\\Pointers};
+
+  \node[ann, text width=6.2cm] at (0, -1.45) {
+    \textbf{Hardware Zero-Copy:}\\
+    Samples stay stationary in fixed BRAM cells.\\
+    Hardware address registers wrap modulo $400$.\\
+    \textbf{Data movement cost $= 0$ clock cycles.}
+  };
+\end{scope}
+
+\end{tikzpicture}

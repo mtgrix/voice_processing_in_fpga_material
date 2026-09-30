@@ -66,7 +66,7 @@ Grouping independent inputs in this manner is called \textbf{batching}, and the 
 
 A streaming voice signal presents the exact opposite physical reality. Acoustic data does not materialize as a complete, two-dimensional canvas; it arrives as a continuous stream of air pressure samples measured by an oscillating microphone diaphragm. To assemble a batch of eight audio frames, the processing system cannot pull future samples out of thin air. It is physically forced to hold the first audio frame captive in a waiting queue until the eighth frame has finished vibrating through the air and cleared the analog-to-digital converter.
 
-\begin{center}
+\begin{center}\vspace{-2mm}
 \begin{minipage}{\textwidth}
 \centering
 \input{fig_1_1a.tex}\\[2mm]
@@ -74,7 +74,7 @@ A streaming voice signal presents the exact opposite physical reality. Acoustic 
 \begin{minipage}{0.95\textwidth}
 \small\textbf{Figure \thefigure}: The physical and geometric divergence between spatial computer vision and streaming edge voice. Notice that while a static 2D image matrix exists instantaneously across all spatial dimensions and permits zero-wait batching, an acoustic waveform materializes sequentially as air pressure vibrates a microphone diaphragm over physical time. This proves that an audio frame cannot be fetched from the future, making streaming ingestion inherently serial.
 \end{minipage}
-\end{minipage}
+\end{minipage}\vspace{-2mm}
 \end{center}
 
 \textbf{Latency} ($\tau$)---the physical elapsed time from the instant an acoustic pressure wave strikes the microphone to the instant the edge processor emits an actionable linguistic decision---is not an abstract software profiling metric. In an interactive streaming system, batching is never free: every additional item in the batch is purchased directly by sacrificing user latency.
