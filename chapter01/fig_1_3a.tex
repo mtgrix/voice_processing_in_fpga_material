@@ -7,7 +7,7 @@
   mathnode/.style={draw=black!75, circle, fill=yellow!15, thick, inner sep=1pt, minimum size=6mm},
   accum/.style={draw=black!75, rounded corners=3pt, fill=teal!12, semithick, align=center, inner sep=3pt},
   outnode/.style={draw=black!85, rounded corners=3pt, fill=green!12, thick, align=center, inner sep=3pt},
-  wavebox/.style={draw=black!60, fill=white, thin, inner sep=2pt},
+  wavebox/.style={draw=black!60, fill=white, thin, inner sep=3pt},
   arrow/.style={->, thick, black!75}
 ]
 
@@ -33,8 +33,8 @@
 \draw[arrow] (c_in) -- (mul_cos);
 
 % Cosine Generator / Waveform
-\node[wavebox, text width=2.5cm, align=center] (probe_cos) at (3.6, 2.7) {
-  \scriptsize\textbf{In-Phase Probe}\\
+\node[wavebox, text width=2.6cm, align=center] (probe_cos) at (3.6, 2.7) {
+  \scriptsize\textbf{In-Phase Probe}\\[0.5mm]
   $\cos\left(\frac{2\pi k n}{N}\right)$\\[0.5mm]
   \begin{tikzpicture}[scale=0.25]
     \draw[->, gray!70] (0,0) -- (6.5,0);
@@ -62,8 +62,8 @@
 \draw[arrow] (s_in) -- (mul_sin);
 
 % Sine Generator / Waveform
-\node[wavebox, text width=2.5cm, align=center] (probe_sin) at (3.6, -2.7) {
-  \scriptsize\textbf{Quadrature Probe}\\
+\node[wavebox, text width=2.6cm, align=center] (probe_sin) at (3.6, -2.7) {
+  \scriptsize\textbf{Quadrature Probe}\\[0.5mm]
   $-\sin\left(\frac{2\pi k n}{N}\right)$\\[0.5mm]
   \begin{tikzpicture}[scale=0.25]
     \draw[->, gray!70] (0,0) -- (6.5,0);

@@ -75,12 +75,12 @@
 
 % ==================== (b) Microscopic Comparison ====================
 \begin{scope}[yshift=-3.2cm, x=0.038cm, y=1.0cm]
-  \node[font=\bfseries\small, anchor=west] at (0, 1.9) 
+  \node[font=\bfseries\small, anchor=west] at (0, 2.05) 
     {(b) Discrete Bin Integration: Narrow Base ($m{=}0$) vs. Wide Pool ($m{=}79$)};
 
   % Low-Freq Zoom Box
-  \draw[draw=gray!50, fill=gray!3, rounded corners=3pt] (-5, -1.0) rectangle (160, 1.5);
-  \node[font=\scriptsize\bfseries, text=teal!90!black, anchor=north west] at (0, 1.4) 
+  \draw[draw=gray!50, fill=gray!3, rounded corners=3pt] (-5, -1.0) rectangle (160, 1.75);
+  \node[font=\scriptsize\bfseries, text=teal!90!black, anchor=north west] at (0, 1.68) 
     {Band $m{=}0$ ($0\text{--}125\text{ Hz}$): 3 FFT Bins};
 
   \foreach \i in {0, 1, 2, 3, 4} {
@@ -90,18 +90,18 @@
     \node[font=\tiny, text=gray!70, below] at (\x + 14, -0.6) {\pgfmathparse{\i*31.25}\pgfmathprintnumber{\pgfmathresult}};
   }
   \draw[tri, ultra thick] (0, 0) -- (62.5, 0.9) -- (125, 0) -- cycle;
-  \node[font=\tiny\bfseries, text=teal!90!black] at (62.5, 1.05) {$W[0, k]$};
+  \node[font=\tiny\bfseries, text=teal!90!black] at (62.5, 1.1) {$W[0, k]$};
 
   % High-Freq Zoom Box
-  \draw[draw=gray!50, fill=gray!3, rounded corners=3pt] (185, -1.0) rectangle (365, 1.5);
-  \node[font=\scriptsize\bfseries, text=purple!90!black, anchor=north west] at (190, 1.4) 
+  \draw[draw=gray!50, fill=gray!3, rounded corners=3pt] (185, -1.0) rectangle (365, 1.75);
+  \node[font=\scriptsize\bfseries, text=purple!90!black, anchor=north west] at (190, 1.68) 
     {Band $m{=}79$ ($6{,}593\text{--}8{,}000\text{ Hz}$): 45 FFT Bins};
 
   \draw[hightri, ultra thick] (195, 0) -- (280, 0.9) -- (355, 0) -- cycle;
-  \node[font=\tiny\bfseries, text=purple!90!black] at (280, 1.05) {$W[79, k]$};
+  \node[font=\tiny\bfseries, text=purple!90!black] at (280, 1.1) {$W[79, k]$};
 
-  \node[font=\tiny, align=center, text=black!75] at (275, 0.35) {
-    Weighted sum pooling $45$ linear spectral bins\\
+  \node[font=\tiny, align=center, text=black!85] at (275, 0.35) {
+    Weighted sum pooling 45 linear spectral bins\\[0.5mm]
     $\sum_{k=211}^{256} W[79, k] \cdot P[k]$
   };
   \node[font=\tiny, text=gray!70, below] at (195, -0.6) {$6{,}593\text{ Hz}$};
