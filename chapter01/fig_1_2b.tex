@@ -1,0 +1,100 @@
+\begin{tikzpicture}[
+  >=Stealth,
+  scale=0.96, every node/.style={transform shape},
+  tensor/.style={
+    draw=black!75, rounded corners=3pt, semithick, align=center,
+    inner sep=2pt, minimum height=21mm, text width=1.52cm
+  },
+  t1/.style={tensor, fill=blue!10, draw=blue!75!black},
+  t2/.style={tensor, fill=teal!12, draw=teal!75!black},
+  t3/.style={tensor, fill=cyan!12, draw=cyan!75!black},
+  t4/.style={tensor, fill=purple!10, draw=purple!75!black},
+  t5/.style={tensor, fill=orange!12, draw=orange!75!black},
+  t6/.style={tensor, fill=red!10, draw=red!75!black},
+  t7/.style={tensor, fill=green!12, draw=green!65!black},
+  arrow/.style={->, very thick, black!65}
+]
+
+\def\xdist{2.42}
+
+% Stage 1: 160
+\node[t1] (s1) at (0*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Ingress}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $16\text{ kHz}$ ADC}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 160}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont samples}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{blue!85!black} 640 B}
+};
+
+% Stage 2: 400
+\node[t2] (s2) at (1*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Ring Buffer}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $25\text{ ms}$ State}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 400}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont samples}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{teal!85!black} 1,600 B}
+};
+
+% Stage 3: 400w
+\node[t3] (s3) at (2*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Windowed}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont Hamming}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 400w}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont samples}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{cyan!85!black} 1,600 B}
+};
+
+% Stage 4: 512
+\node[t4] (s4) at (3*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries FFT Input}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $+112$ zeros}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 512}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont samples}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{purple!85!black} 2,048 B}
+};
+
+% Stage 5: 257
+\node[t5] (s5) at (4*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Spectrum}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $|X|^2$ Real}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 257}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont bins}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{orange!85!black} 1,028 B}
+};
+
+% Stage 6: 80
+\node[t6] (s6) at (5*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Mel Bands}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $80\times 257$}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 80}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont bands}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{red!85!black} 320 B}
+};
+
+% Stage 7: 80 log
+\node[t7] (s7) at (6*\xdist, 0) {
+  {\fontsize{7}{8}\selectfont\bfseries Log-Mel}\\[1mm]
+  {\fontsize{5.5}{6.5}\selectfont $\ln(\max)$}\\[2mm]
+  {\fontsize{8}{9}\selectfont\bfseries 80}\\[0.5mm]
+  {\fontsize{5.5}{6.5}\selectfont features}\\[2mm]
+  {\fontsize{7}{8}\selectfont\bfseries\color{green!65!black} 320 B}
+};
+
+% Connecting Arrows
+\draw[arrow] (s1) -- (s2);
+\draw[arrow] (s2) -- (s3);
+\draw[arrow] (s3) -- (s4);
+\draw[arrow] (s4) -- (s5);
+\draw[arrow] (s5) -- (s6);
+\draw[arrow] (s6) -- (s7);
+
+% Bottom notes
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s1] {Every $10\text{ ms}$};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s2] {On-chip BRAM};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s3] {Tapered edges};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s4] {Power-of-2};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s5] {Positive half};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s6] {Triangles};
+\node[font=\fontsize{6.5}{7.5}\selectfont\itshape, text=black!75, below=4pt of s7] {To Acous.~Net};
+
+\end{tikzpicture}
