@@ -15,7 +15,7 @@ Scoring a spoken read-aloud task requires five distinct processing stages:
 2. **Stage 2: Word Edge Localization (Forced Alignment).** Segmenting the continuous audio stream into discrete word intervals by computing acoustic boundaries $[t_{\text{start}}, t_{\text{end}}]$ for each orthographic token in the prompt.
 3. **Stage 3: Phonetic Correctness Verification (Acoustic Quality Scoring).** Evaluating whether the spectral realization of each segment matches the target phonemes (e.g., verifying formant trajectories $F_1, F_2, F_3$, computing Goodness of Pronunciation [GOP] log-likelihood ratios, or detecting phoneme substitutions, deletions, and insertions).
 4. **Stage 4: Melodic and Prosodic Comparison Against Reference Audio.** Extracting prosodic contours---primarily fundamental frequency ($F_0$), syllabic duration, and energy dynamics---and comparing their trajectory against an exemplar spoken reference.
-5. **Stage 5: Labeling and Score Calibration.** Aggregating acoustic and prosodic measurements into pedagogical rubrics, mapping continuous numerical scores to discrete CEFR levels or word-level pass/fail color codes, and providing actionable feedback to the learner.
+5. **Stage 5: Labeling and Score Calibration.** Aggregating acoustic and prosodic measurements into pedagogical feedback, mapping continuous numerical scores to discrete word-level pass/fail color codes, diagnostic feedback, or calibrated performance rubrics.
 
 ```
 +----------------------------------------------------------------------------------------------------------------+
@@ -30,12 +30,12 @@ Scoring a spoken read-aloud task requires five distinct processing stages:
 
 ### Placement of the Group Report
 The 32 slides of `BAO_CAO_492026.pdf` occupy **Stage 4** (Melodic and prosodic comparison via Pearson pitch correlation) and provide an initial heuristic toward **Stage 5** (word-level pass/fail labeling via sliding window thresholding). The report does not implement Stages 1, 2, or 3, but rather makes specific operational assumptions about them:
-- **Stage 1 is assumed already resolved:** On Slide 25, the pipeline executes upon a pre-processed file explicitly named `sarah_trimmed.wav`. The silence detection, DC removal, and boundary cropping are assumed to be performed offline before the pipeline begins.
+- **Stage 1 is assumed already resolved:** On Slide 25, the pipeline executes upon a pre-processed reference recording with pre-trimmed silences. The silence detection, DC removal, and boundary cropping are assumed to be performed offline before the pipeline begins.
 - **Stage 2 is assumed unneeded:** Rather than deploying a forced alignment acoustic model to identify exact temporal word boundaries $[t_{\text{start}}, t_{\text{end}}]$, the report constructs an analytical sliding window model (Slides 19--23) that slices the sentence into $K+1$ overlapping geometric segments based solely on word count $K$ and total sentence length $N$.
 - **Stage 3 is assumed to follow from pitch correlation:** The report treats the correlation of fundamental frequency ($F_0$) as an indicator of whether the user read correctly (``checking whether the user reads like the model'', Slide 2), assuming that a learner matching the intonation contour also pronounced the underlying phonemes accurately.
 
 ### Sarah is an Exemplar Ruler, Not Linguistic Ground Truth
-Throughout the four meeting reports, the target reference is denoted as ``Sarah'' (Slide 5, 12, 25, 32). In the group's engineering baseline, Sarah is a specific native recording used as a comparative ruler. It is essential to recognize that Sarah represents an exemplar reference, not absolute linguistic ground truth. In human speech, two native speakers pronouncing the exact same sentence correctly will exhibit different baseline pitch registers (e.g., an adult male voice with $F_0 \in [85, 155]\text{ Hz}$ versus an adult female voice with $F_0 \in [165, 255]\text{ Hz}$), distinct dynamic pitch excursions, and natural tempo fluctuations across syllables.
+Throughout the four meeting reports, the target reference is denoted as ``Sarah'' (Slide 5, 12, 25, 32). In the group's engineering baseline, Sarah is a specific native recording used as a comparative ruler. It is essential to recognize that Sarah represents an exemplar reference, not absolute linguistic ground truth. In human speech, two native speakers pronouncing the exact same sentence correctly will exhibit different baseline pitch registers (between low-pitched and high-pitched voices), distinct dynamic pitch excursions, and natural tempo fluctuations across syllables.
 
 By selecting Sarah's audio as the sole comparative target, the pipeline adopts an engineering simplification: evaluating a student's prosodic contour against one fixed performance. Understanding where the report sits in this broader five-stage hierarchy allows a new member of the research group to appreciate what the slides deliberately chose to isolate, what they built, and what remains open for team decision.
 
@@ -133,9 +133,9 @@ even though Word 1 also overlaps Window 1 where r1 >= 0.3!
 The third meeting investigates the temporal regularity of the extracted pitch grid under the title *``PITCH ARRAY EVENLY DISTRIBUTED AT 0.01s: To ensure that linear interpolation can be applied soundly''* (Slide 24).
 
 Slide 25 formulates an empirical question based on a real test file:
-> *``Proving pitch values recorded by Praat are spaced at 0.01s (One might wonder why, with 0.01s spacing and a 1.450667s audio duration, Praat extracts 142 pitch points rather than 145, starting at 0.0203s instead of 0.01s)...''*
+> *``Proving pitch values recorded by Praat are spaced at 0.01s (One might wonder why, with 0.01s spacing and a 1.450667s audio duration, one would expect 145 pitch points starting from 0.01, 0.02, 0.03, ...)...''*
 
-When parsing `sarah_trimmed.wav` (duration $T_{\text{audio}} = 1.450667\text{ s}$), Praat extracts exactly $142$ pitch points, with timestamps starting at $t_1 = 0.02033333\text{ s}$ and continuing at regular $0.01\text{ s}$ increments ($0.03033333, 0.04033333, \dots$).
+When parsing a reference audio recording of duration $T_{\text{audio}} = 1.450667\text{ s}$ (Slide 25), Praat extracts exactly $142$ pitch points, spaced at regular $0.01\text{ s}$ increments.
 
 **Checking the Praat Manual.** Slide 26 cites the Praat documentation ([Intro 4.2 Configuring the pitch contour](https://www.fon.hum.uva.nl/praat/manual/Intro_4_2__Configuring_the_pitch_contour.html)) and Parselmouth. Opening the Praat manual reveals the exact sizing formulas:
 > *``If the pitch floor is 50 Hz, the pitch analysis method requires a 60-millisecond analysis window, i.e., in order to measure the F0 at a time of, say, 0.850 seconds, Praat needs to consider a part of the sound that runs from 0.820 to 0.880 seconds. These 60 milliseconds correspond to 3 maximum pitch periods (3/50 = 0.060).''*
@@ -158,11 +158,11 @@ $$\Delta t = \frac{0.75}{\text{pitch\_floor}} = \frac{0.75}{75} = 0.010\text{ s}
    $$\text{Hops} = \left\lfloor \frac{1.410667}{0.01} \right\rfloor = 141 \implies \text{Total Points} = 141 + 1 = 142\text{ points}$$
 3. **Centering Offset (Slide 30):** The 141 hops span $141 \times 0.01 = 1.410000\text{ s}$, leaving a residual:
    $$T_{\text{residual}} = 1.410667\text{ s} - 1.410000\text{ s} = 0.000667\text{ s}$$
-   Praat's centering mechanism splits this residual equally between the beginning and the end of the file:
-   $$\text{Centering Offset} = \frac{0.000667\text{ s}}{2} = 0.0003335\text{ s} \approx 0.00033\text{ s}$$
-   The center of the first window is located at:
-   $$t_1 = \frac{T_{\text{window}}}{2} + \text{Centering Offset} = \frac{0.04}{2} + 0.00033333 = 0.02033333\text{ s}$$
-   This matches the first timestamp extracted by the group on Slide 25 ($0.02033333\text{ s}$) to eight decimal places, verifying Praat's internal framing cadence.
+   Praat's centering mechanism splits this residual equally between the beginning and the end of the file (Slide 30):
+   $$\text{Centering Offset} = \frac{0.000667\text{ s}}{2} = 0.00033\text{ s}$$
+   The center of the first window is located at half the window length plus this centering offset:
+   $$t_1 = \frac{T_{\text{window}}}{2} + \text{Centering Offset} = \frac{0.04}{2} + 0.00033 = 0.02033\text{ s}$$
+   This accounts for why the pitch grid starts at $t_1 \approx 0.02033\text{ s}$ rather than $0.01\text{ s}$, directly explaining the framing mechanism analyzed on Slides 25--30.
 
 ### Meeting 23/09/2026: Rounding Discrepancy Budget and Edge Behavior (Slides 31--32)
 
@@ -188,11 +188,11 @@ $$\theta = \frac{T_1}{n_2} = \frac{1.42\text{ s}}{196} = 0.0072448979\dots\text{
 
 Slide 32 concludes: *``Misses approximately $(1.42 - 1.372) / 0.01 = 4$ to $5$ pitch points $\implies$ Thus approximating will miss or leave surplus points. We treat this as an allowable error tolerance.''*
 
-**Laboratory Recomputation for Duration $2.00\text{ s}$.** To cross-check the slide's claim of $196$ points for a $2.00\text{ s}$ audio under the verified 18/09 framing setup (pitch floor $75\text{ Hz}$, window $0.04\text{ s}$, hop $0.01\text{ s}$):
+**Laboratory Recomputation for Duration $2.00\text{ s}$.** To cross-check framing behavior on a $2.00\text{ s}$ audio under the verified 18/09 framing setup (pitch floor $75\text{ Hz}$, window $0.04\text{ s}$, hop $0.01\text{ s}$):
 $$T_{\text{interior}} = 2.000000\text{ s} - 0.040000\text{ s} = 1.960000\text{ s}$$
 The number of hops is:
-$$\text{Hops} = \frac{1.960000}{0.01} = 196 \implies \text{Total Samples} = 196 + 1 = 197\text{ points}$$
-The slide's count of $196$ reflects taking $1.96 / 0.01 = 196$ directly without the fencepost $+1$, or omitting the terminal boundary point in the Python array slice.
+$$\text{Hops} = \frac{1.960000}{0.01} = 196 \implies \text{Total Points} = 196 + 1 = 197\text{ points}$$
+Crucially, Slide 32's $n_2 = 196$ and this laboratory count of $197$ represent two distinct constructions. The count of $196$ on Slide 32 is an assumed scenario parameter chosen to demonstrate the arithmetic effect of three-decimal step truncation ($\theta \approx 0.007\text{ s}$). In contrast, $197$ is the sample count obtained when strictly applying the verified 18/09 window length ($0.04\text{ s}$) and hop cadence ($\lfloor 1.96 / 0.01 \rfloor + 1$) to a $2.00\text{ s}$ audio.
 
 ---
 
@@ -200,8 +200,8 @@ The slide's count of $196$ reflects taking $1.96 / 0.01 = 196$ directly without 
 
 A critical responsibility of any incoming researcher joining an active project is to understand what the existing design already achieves before analyzing unhandled edge cases. A reader who only encounters open cases risks forming the mistaken impression that the pipeline was arbitrary or deficient. In reality, the contract constructed across the September 2026 slides establishes several profound engineering advantages:
 
-1. **Minimal Computational Complexity (Slides 5, 11):** Evaluating linear interpolation (`np.interp`) and Pearson correlation requires only 1D scalar accumulation, multiply-adds, and a single square root. On an embedded CPU, computing Pearson correlation across a 500-point array takes less than $10\text{ }\mu\text{s}$. In hardware acceleration, this logic fits comfortably into a handful of LUTs and a single DSP slice, requiring negligible logic and zero off-chip memory bandwidth.
-2. **Invariance to Vocal Register and Dynamic Range (Slides 6, 8):** By subtracting means ($\bar{x}, \bar{y}$) and dividing by standard deviations ($\sigma_X, \sigma_Y$), the metric decouples evaluation from absolute pitch and amplitude. An adult male student with a natural pitch floor of $90\text{ Hz}$ can be compared directly against Sarah ($F_0 \approx 220\text{ Hz}$) without register bias or vocal strain penalties.
+1. **Minimal Computational Complexity (Slides 5, 11):** Evaluating linear interpolation (`np.interp`) and Pearson correlation requires only 1D scalar accumulation, closed-form multiply-accumulate (MAC) operations, and a single square root. This closed-form arithmetic avoids iterative optimization, dynamic programming grids, and large memory buffers, operating with minimal compute demands on an edge device.
+2. **Invariance to Vocal Register and Dynamic Range (Slides 6, 8):** By subtracting means ($\bar{x}, \bar{y}$) and dividing by standard deviations ($\sigma_X, \sigma_Y$), the metric decouples evaluation from absolute pitch magnitude and dynamic excursion range (Slides 6, 8). As the slides emphasize, subtracting the mean eliminates differences in absolute pitch between high-pitched and low-pitched voices (Slide 6), while dividing by standard deviations normalizes dynamic pitch excursion (Slide 8), allowing direct comparison across different vocal registers.
 3. **Zero Training Pipeline and Zero Weight Footprint (Slides 2, 10):** Unlike neural acoustic models that demand gigabytes of training data, CTC loss alignments, and megabytes of on-chip weight storage, the Pearson sliding window operates entirely as a closed-form deterministic algorithm. It requires zero training epochs, zero parameter storage, and zero memory thrashing.
 4. **Self-Contained Word Localization Without Forced Alignment (Slides 19--23):** Deploying an external forced aligner (such as a Kaldi or Montreal Forced Aligner pipeline) introduces heavy phonetic dictionaries, G2P converters, and acoustic hidden Markov models. The group's analytical formula ($W = 2N/(K+2)$ with $S = W/2$) provides an elegant geometric proxy that localizes scores along the utterance timeline using only the word count $K$.
 5. **Empirically Verified Framing Infrastructure (Slides 24--30):** The team conducted rigorous signal-level validation of Praat's framing mechanics, verifying the analysis window ($40\text{ ms}$), the hop cadence ($10\text{ ms}$), and the sub-millisecond boundary centering ($0.00033\text{ s}$). This empirical discipline provides a solid foundation for any subsequent signal-processing expansion.
@@ -247,20 +247,24 @@ In this section, we do not propose a dynamic time warping (DTW) solution or pre-
    - *If unvoiced frames are stored as `NaN`:* Any sum $\sum (x_i - \bar{x})$ containing a `NaN` propagates across all accumulators, resulting in $r = \text{NaN}$ and crashing downstream comparators.
    - *If unvoiced frames are filled with $0.0\text{ Hz}$:* A jump from $0.0\text{ Hz}$ to a voiced pitch of $150\text{ Hz}$ represents an artificial delta of $150\text{ Hz}$. These massive artificial discontinuities completely dominate the variance sums $\sum (x_i - \bar{x})^2$, distorting the Pearson correlation into a measure of silence overlap rather than intonation trend.
    - *If unvoiced frames are deleted:* Deleting unvoiced frames destroys the uniform $0.01\text{ s}$ temporal grid, making linear interpolation geometrically invalid.
-4. **Meeting Question for the Group:** What is the formal specification for unvoiced frames in the group's Python code? Are unvoiced intervals masked with a boolean voiced/unvoiced flag, linearly interpolated through, or evaluated strictly on mutually voiced frame pairs?
-5. **Engineering Label:** **patch this line**. The Pearson correlation framework can be retained by augmenting the contract with an explicit mutually voiced frame mask $\mathcal{V} = \{i \mid X_i > 0 \land Y_i > 0\}$ and enforcing a minimum voiced frame ratio threshold.
+4. **Meeting Question for the Group:** What is the formal specification for unvoiced frames in the group's Python code? When Praat marks a frame as undefined or voiceless, should the implementation drop missing frames, keep a sentinel value, or skip the window entirely?
+5. **Engineering Label:** **patch this line**. This is a patch because the slides currently leave unvoiced frame behavior underspecified; the patch consists of formally writing the missing unvoiced handling rule into the Python implementation without altering the overall pipeline architecture.
 
 ### Open Case 4: Window Staining Cascades and the Rounding Residual
 
-1. **Assumption Used on the Slides (Slides 20--23, 32):** The sliding window formula $W = 2N/(K+2)$ with $50\%$ stride ($S = W/2$) accurately isolates word-level mistakes, and the 4-to-5 frame discrepancy identified on Slide 32 is negligible allowable error (*``allowable error tolerance''*).
-2. **Physical Case Not Covered by This Assumption:** Geometric windows sized purely by total sentence length $N$ and word count $K$ assume that all words have identical durations. In real language, English words vary wildly in duration: monosyllabic function words (``a'', ``in'', ``the'') may last only $80\text{ ms}$, while polysyllabic content words (``pronunciation'', ``extraordinary'') span $600\text{ ms}$ or more.
-   Consequently, fixed geometric windows do not align with acoustic word boundaries. An intonation error occurring strictly within Word~2 will spill across both Window~2 and Window~3.
+1. **Assumption Used on the Slides (Slides 20--23, 32):** The sliding window formula $W = 2N/(K+2)$ with $50\%$ stride ($S = W/2$) accurately isolates word-level mistakes, and the 4-to-5 frame discrepancy identified on Slide 32 is an allowable engineering tolerance (*``allowable error tolerance''*).
+2. **Physical Cases Not Covered by This Assumption:**
+   - *Acoustic Window Staining:* Geometric windows sized purely by total sentence length $N$ and word count $K$ assume that all words have identical durations. In real language, English words vary wildly in duration: monosyllabic function words (``a'', ``in'', ``the'') may last only $80\text{ ms}$, while polysyllabic content words (``pronunciation'', ``extraordinary'') span $600\text{ ms}$ or more. Fixed geometric windows inevitably cut across acoustic word boundaries. An intonation error occurring strictly within Word~2 will spill across both Window~2 and Window~3.
+   - *The Rounding Residual:* Truncating the effective rescaled step $\theta$ to three decimal places ($0.007\text{ s}$) produces a $4\text{ to }5\text{ frame}$ ($40\text{ to }50\text{ ms}$) drift over the sentence (Slide 32), shifting window boundaries unpredictably relative to phonemes.
 3. **What the Current Rule Would Do:** Under the Group Condemnation Rule (Slide 23):
    > *``If any window has $r < 0.3$, then all words falling on that window are marked incorrect, even if they also fall on another window with $r \ge 0.3$.''*
-   Because Window~2 drops below $0.3$, Word~1 and Word~2 are marked incorrect. Because Window~3 also drops below $0.3$, Word~2 and Word~3 are marked incorrect. A single localized prosodic error on Word~2 thus stains and fails all three words in the sentence.
-   Furthermore, the rounding discrepancy of $4\text{ to }5\text{ frames}$ ($40\text{ to }50\text{ ms}$) documented on Slide 32 represents a significant portion of an $80\text{ ms}$ function word, shifting window edges across phoneme boundaries unpredictably.
-4. **Meeting Question for the Group:** Should word boundaries be derived from acoustic forced alignment rather than synthetic geometric formulas, and should the binary condemnation rule be relaxed to a weighted voting scheme based on the percentage of word overlap?
-5. **Engineering Label:** **patch this line**. The underlying pitch Pearson comparison can be preserved by replacing the synthetic window geometry with acoustic word boundary timestamps and replacing the binary condemnation rule with fractional credit.
+   Because Window~2 drops below $0.3$, Word~1 and Word~2 are marked incorrect. Because Window~3 also drops below $0.3$, Word~2 and Word~3 are marked incorrect. A single localized prosodic error on Word~2 thus stains and fails all three words in the sentence. Compounding this, the $4\text{ to }5\text{ frame}$ rounding residual documented on Slide 32 shifts the artificial geometric cut points by up to half the duration of a short function word.
+4. **Meeting Questions for the Group:**
+   - *On Window Staining:* Should the synthetic geometric window formula be replaced by acoustic word boundaries obtained from an upstream forced aligner, and should the binary condemnation rule be relaxed to proportional overlap credit?
+   - *On the Rounding Residual:* Should the Python framing arithmetic retain full floating-point time step precision rather than truncating $\theta$ to three decimal places?
+5. **Engineering Labels:**
+   - **Window Staining:** **replace this line**. Sizing windows by a synthetic geometric formula cannot track variable acoustic word durations. Replacing this line with acoustic forced alignment introduces real word boundaries; an aligner is an architectural replacement of the windowing line, not a patch.
+   - **Rounding Residual:** **patch this line**. Retaining floating-point precision for the time step $\theta$ rather than truncating to three decimals ($0.007\text{ s}$) is a local arithmetic patch that preserves the existing framing structure without altering the pipeline architecture.
 
 ---
 
@@ -268,45 +272,45 @@ In this section, we do not propose a dynamic time warping (DTW) solution or pre-
 
 ### Flow Stages Not Contained in the Report
 Reviewing the five-stage architecture established in Section~1.6.0 confirms that the group report focuses specifically on Stage~4 and an initial rule in Stage~5. The pipeline does not contain the following operational stages:
-1. **Stage 1: Upstream Audio Conditioning and Dynamic VAD.** The slides operate on a pre-trimmed static file (`sarah_trimmed.wav`, Slide 25). The report does not contain real-time Voice Activity Detection to crop user pauses, DC bias filters, or automated energy normalization to handle low-cost USB edge microphones.
+1. **Stage 1: Upstream Audio Conditioning and Dynamic VAD.** The slides operate on a pre-trimmed static reference recording (Slide 25). The report does not contain real-time Voice Activity Detection to crop user pauses, DC bias filters, or automated energy normalization to handle low-cost USB edge microphones.
 2. **Stage 2: Acoustic Forced Alignment.** The report does not include a phone- or word-level aligner (such as an HMM-GMM Viterbi decoder or CTC forced aligner). Word segmentation is performed entirely geometrically via the $K+1$ window formula ($W = 2N/(K+2)$).
 3. **Stage 3: Spectral Phoneme Quality Verification.** The report does not evaluate vocal tract filter properties (formants $F_1, F_2, F_3$) or acoustic model posteriors. Spectral phone correctness is assumed to correlate with fundamental frequency trajectory.
-4. **Stage 5: Composite Pedagogical Rubric Calibration.** While the report establishes the $r < 0.3$ threshold on Slide 23, it does not define how prosodic correlation combines with phonetic accuracy, lexical stress, or speaking rate to produce a standardized educational score (e.g., CEFR or IELTS scales).
+4. **Stage 5: Composite Pedagogical Rubric Calibration.** While the report establishes the $r < 0.3$ threshold on Slide 23, it does not define how prosodic correlation combines with phonetic accuracy, lexical stress, or speaking rate to produce a calibrated pedagogical rubric.
 
 ### Four Architecture Candidates Under Uniform Evaluation Axes
 
 To provide the research group with actionable engineering pathways without pre-judging the outcome, we evaluate four distinct architectural candidates. Each candidate is examined across the exact same four analytical axes:
-- **Axis 1 (Preserved Group Idea):** The percentage and components of the September 2026 contract retained.
+- **Axis 1 (Preserved Group Idea):** The core principles and components of the September 2026 contract retained.
 - **Axis 2 (Open Cases Covered):** Which of the four independent open cases (Section~1.6.3) the candidate resolves.
 - **Axis 3 (Output Granularity):** The resolution of feedback delivered to the student (sentence-level, window-level, word-level, or phoneme-level).
-- **Axis 4 (Compute Cost on CPU and Hardware Profile):** The algorithmic complexity and CPU execution time, accompanied by a concise one-phrase characterization of FPGA mapping.
+- **Axis 4 (Compute Profile and Hardware Profile):** The algorithmic complexity and compute requirements, accompanied by a concise one-phrase characterization of FPGA mapping.
 
 #### Candidate A: Keep the Contract
-- **Axis 1 (Preserved Group Idea):** $100\%$. Retains global linear interpolation (`np.interp`), the $K+1$ sliding window geometry ($W = 2N/(K+2)$), Praat $0.01\text{ s}$ framing, and the Group Condemnation Rule ($r < 0.3$).
+- **Axis 1 (Preserved Group Idea):** Full slide contract. Retains global linear interpolation (`np.interp`), the $K+1$ sliding window geometry ($W = 2N/(K+2)$), Praat $0.01\text{ s}$ framing, and the Group Condemnation Rule ($r < 0.3$).
 - **Axis 2 (Open Cases Covered):** Covers none of the four open cases. The pipeline treats the $4\text{ to }5$ frame rounding discrepancy documented on Slide 32 as an allowable engineering tolerance (*``allowable error tolerance''*).
 - **Axis 3 (Output Granularity):** Coarse window-level pass/fail status mapped to overlapping word groups.
-- **Axis 4 (Compute Cost):** Minimal on CPU. Composed entirely of $\mathcal{O}(N)$ 1D scalar interpolations and dot products, executing in under $10\text{ }\mu\text{s}$ per sentence. On FPGA, it synthesizes into minimal fabric logic and a single DSP block.
+- **Axis 4 (Compute Profile):** Minimal compute. Composed entirely of $\mathcal{O}(N)$ 1D scalar interpolations, closed-form multiply-accumulate (MAC) operations, and a single square root. On FPGA, it maps to lightweight arithmetic logic without large memory buffers.
 
 #### Candidate B: Add Word Edges, Then Pearson Per Word
-- **Axis 1 (Preserved Group Idea):** High ($\approx 75\%$). Retains Praat pitch extraction, Pearson intonation correlation, and comparative scoring against Sarah. Replaces the synthetic geometric windows ($W = 2N/(K+2)$) with acoustic word boundaries obtained from an upstream aligner.
-- **Axis 2 (Open Cases Covered):** Resolves Open Case 4 (Window Staining Cascades) completely: each word is evaluated strictly within its true acoustic boundaries $[t_{\text{start}}, t_{\text{end}}]$, eliminating cross-word staining. Partially mitigates Open Case 2 at word boundaries, but does not resolve sub-word non-uniform vowel stretching. Leaves Open Case 1 (phone identity) and Case 3 (unvoiced handling) open.
+- **Axis 1 (Preserved Group Idea):** Pitch Pearson and Sarah reference ruler preserved. Retains Praat pitch extraction, Pearson intonation correlation, and comparative scoring against Sarah. Replaces the synthetic geometric windows ($W = 2N/(K+2)$) with acoustic word boundaries obtained from an upstream aligner.
+- **Axis 2 (Open Cases Covered):** Resolves Open Case 4 window staining completely: each word is evaluated strictly within its true acoustic boundaries $[t_{\text{start}}, t_{\text{end}}]$, eliminating cross-word staining. Partially mitigates Open Case 2 at word boundaries, but does not resolve sub-word non-uniform vowel stretching. Leaves Open Case 1 (phone identity), Case 3 (unvoiced handling), and the Case 4 rounding residual open.
 - **Axis 3 (Output Granularity):** True word-level score ($K$ independent numerical correlation scores).
-- **Axis 4 (Compute Cost):** Moderate on CPU. Dominated by the upstream forced alignment pass ($10\text{--}50\text{ ms}$ depending on model size); once word boundaries are extracted, computing $K$ independent Pearson correlations takes $< 50\text{ }\mu\text{s}$. On FPGA, requires word timestamp metadata streamed from a host processor.
+- **Axis 4 (Compute Profile):** Moderate compute. Executes one upstream forced alignment pass to obtain word boundaries, then performs $K$ short Pearson calls on word intervals. On FPGA, word boundary timestamps must be streamed from an upstream model or host processor.
 
 #### Candidate C: Replace Only the Resize Line (Elastic Align, Then Pearson on Path)
-- **Axis 1 (Preserved Group Idea):** Moderate ($\approx 50\%$). Retains the core philosophy of comparative prosodic scoring against Sarah and the Pearson intonation metric. Replaces only the global linear interpolation line (`np.interp`) with non-linear dynamic time warping along an elastic path $\mathcal{P}$.
+- **Axis 1 (Preserved Group Idea):** Comparative prosodic scoring against Sarah and the Pearson intonation metric preserved. Replaces only the global linear interpolation line (`np.interp`) with non-linear dynamic time warping along an elastic path $\mathcal{P}$.
 - **Algorithmic Formulation:** For learner sequence $X$ of length $N$ and reference sequence $Y$ of length $M$, local cost is computed as Euclidean distance $d(i, j) = \|x_i - y_j\|$. The accumulated cost grid satisfies the standard dynamic programming recurrence:
   $$D(i, j) = d(i, j) + \min\big(D(i-1, j),\, D(i, j-1),\, D(i-1, j-1)\big)$$
   Tracing the optimal warping path $\mathcal{P} = ((i_1, j_1), \dots, (i_L, j_L))$ from $(1, 1)$ to $(N, M)$ elastically aligns corresponding acoustic events. Pearson intonation correlation is subsequently evaluated strictly along the reindexed warping path $\mathcal{P}$.
 - **Axis 2 (Open Cases Covered):** Resolves Open Case 2 (Equal Index After Resize) by elastically absorbing local vowel stretching and pauses, completely preventing false negative phase inversions ($r < 0$). When paired with a mutually voiced frame mask, it isolates Open Case 3. However, it does not resolve Open Case 1 unless multi-dimensional spectral features are incorporated into local distance $d(i, j)$.
 - **Axis 3 (Output Granularity):** Frame-level alignment path mapped into localized window or word scores.
-- **Axis 4 (Compute Cost):** Moderate on CPU. Evaluating the $N \times M$ grid for a 5-second sentence ($500 \times 500 = 250,000\text{ cells}$) requires approximately $5\text{--}15\text{ ms}$ in Python. On FPGA, it maps efficiently to a streaming systolic processing array.
+- **Axis 4 (Compute Profile):** Moderate compute. Evaluates an $N \times M$ dynamic programming recurrence grid ($250,000\text{ cells}$ for a 5-second sentence). On FPGA, it maps to a streaming systolic processing array without requiring external memory.
 
 #### Candidate D: Replace the Measure (Goodness of Pronunciation or Acoustic Embeddings)
-- **Axis 1 (Preserved Group Idea):** Low ($\approx 20\%$). Retains only the overarching goal of automated English pronunciation assessment. Replaces pitch Pearson correlation with acoustic model posterior probabilities (Goodness of Pronunciation, GOP) or self-supervised speech representation embeddings (e.g., wav2vec 2.0 or Conformer representations).
+- **Axis 1 (Preserved Group Idea):** High-level goal of automated English pronunciation assessment preserved. Replaces pitch Pearson correlation with acoustic model posterior probabilities (Goodness of Pronunciation, GOP) or self-supervised speech representation embeddings (e.g., wav2vec 2.0 or Conformer representations).
 - **Axis 2 (Open Cases Covered):** Resolves Open Case 1 (Phone Correctness) directly by evaluating spectral acoustic log-likelihoods, resolves Open Case 3 natively (neural acoustic models handle voiced and unvoiced frames inherently), and provides intrinsic phonetic forced alignment.
 - **Axis 3 (Output Granularity):** Fine-grained phoneme-level, syllable-level, and word-level posterior scores.
-- **Axis 4 (Compute Cost):** High on CPU. Demands full neural network forward inference, multi-megabyte parameter storage, and intensive matrix-vector multiplications, taking $50\text{--}200\text{ ms}$ on an embedded CPU. On FPGA, it requires a dedicated deep learning neural network accelerator core and an extensive ongoing engineering burden to train, prune, and maintain the acoustic model.
+- **Axis 4 (Compute Profile):** High compute. Demands full neural network forward inference, multi-megabyte parameter storage, and intensive matrix-vector multiplications. On FPGA, it requires a dedicated deep learning neural network accelerator core and an extensive ongoing engineering burden to train, prune, and maintain the acoustic model.
 
 **Explicit Neutrality Note:** We emphasize that Candidate~C is not declared the winner, nor is Candidate~A rejected as incorrect. If the project's computational budget is severely restricted and learners are instructed to match a fixed metronome cadence, Candidate~A provides an exceptionally lightweight baseline. If phoneme verification is paramount, Candidate~D is mandatory despite its substantial model footprint. The choice between these four candidates belongs entirely to the research group.
 
@@ -316,12 +320,12 @@ To provide the research group with actionable engineering pathways without pre-j
 
 To facilitate a productive discussion in the upcoming research group meeting, the table below synthesizes the four architecture candidates. In accordance with the objective tone of this review, the final column is intentionally left blank for the team's collective decision.
 
-| Candidate | Preserved Group Idea | Open Cases Covered | Output Grain | CPU Latency | FPGA Profile | Engineering Burden | Group Chooses |
+| Candidate | Preserved Group Idea | Open Cases Covered | Output Grain | Compute Profile | FPGA Profile | Engineering Burden | Group Chooses |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| **A: Keep Contract** | $100\%$ (linear resize, sliding windows, $r<0.3$ rule) | None (treats 4--5 frame residual as allowable error) | Coarse window pass/fail | $< 10\text{ }\mu\text{s}$ | Minimal LUTs, single DSP block | Zero new software; code is complete | |
-| **B: Add Word Edges** | $\approx 75\%$ (pitch Pearson and Sarah ruler survive) | Case 4 (eliminates window staining) | Word-level ($K$ scalar scores) | $10\text{--}50\text{ ms}$ (aligner bound) | Word timestamps streamed from host | Integrate forced aligner (MFA/Kaldi) or VAD segmentation | |
-| **C: Elastic Alignment** | $\approx 50\%$ (pitch Pearson on path $\mathcal{P}$ survives) | Case 2 (absorbs vowel tempo), isolates Case 3 | Warped path $\to$ word/window | $5\text{--}15\text{ ms}$ ($2.5\times 10^5$ cells) | Streaming systolic PE array | Implement 2D DP matrix recurrence; define local metric | |
-| **D: Replace Measure** | $\approx 20\%$ (only high-level goal survives) | Case 1 (phones), Case 3 (unvoiced), intrinsic alignment | Fine-grained phoneme posteriors | $50\text{--}200\text{ ms}$ (neural forward) | Dedicated deep learning NPU accelerator | Train, prune, and quantize neural acoustic model (GOP/Conformer) | |
+| **A: Keep Contract** | Full slide contract (linear resize, sliding windows, $r<0.3$ rule) | None (treats 4--5 frame residual as allowable error) | Coarse window pass/fail | Closed-form MACs, 1 sq-root | Lightweight arithmetic logic | Zero new software; code is complete | |
+| **B: Add Word Edges** | Pitch Pearson and Sarah ruler preserved; replaces geometric windows | Case 4 staining (eliminates cross-word staining) | Word-level ($K$ scalar scores) | 1 aligner pass, $K$ short Pearson calls | Word timestamps streamed from host | Integrate forced aligner (MFA/Kaldi) or VAD segmentation | |
+| **C: Elastic Alignment** | Pitch Pearson on warping path $\mathcal{P}$ preserved; replaces linear resize | Case 2 (absorbs vowel tempo), isolates Case 3 | Warped path $\to$ word/window | $N \times M$ DP grid ($2.5\times 10^5$ cells) | Streaming systolic PE array | Implement 2D DP matrix recurrence; define local metric | |
+| **D: Replace Measure** | High-level goal preserved; replaces pitch correlation | Case 1 (phones), Case 3 (unvoiced), intrinsic alignment | Fine-grained phoneme posteriors | Neural forward inference (GEMMs) | Dedicated deep learning NPU accelerator | Train, prune, and quantize neural acoustic model (GOP/Conformer) | |
 
 ### Actionable Meeting Questions for the Group
 
@@ -329,5 +333,5 @@ The decision matrix reflects four concrete architectural crossroads. We submit t
 
 1. **On Phonetic Scope (Open Case 1):** Is the current pipeline expected to detect unpronounced or substituted words independently, or is the edge voice system designed as a two-tier device where an upstream phoneme recognizer verifies phonetic correctness before passing pitch vectors to this stage?
 2. **On Temporal Alignment (Open Case 2):** Does the group wish to preserve global linear interpolation by instructing students to adhere to a rigid metronome pace (Candidate~A), segment utterances by word boundaries (Candidate~B), or adopt elastic non-linear dynamic time warping (Candidate~C) to accommodate natural vowel prolongation?
-3. **On Unvoiced Frame Specification (Open Case 3):** What precise mathematical rule will be committed to the Python codebase for unvoiced frames ($F_0 = 0$ or undefined)? Should the calculation adopt a mutually voiced frame mask, linear pitch interpolation across voiceless gaps, or an explicit voiceless frame penalty?
+3. **On Unvoiced Frame Specification (Open Case 3):** What precise mathematical rule will be committed to the Python codebase for unvoiced frames ($F_0 = 0$ or undefined)? Should the calculation drop missing frames, keep a sentinel value, or skip the window entirely?
 4. **On Rubric Calibration (Open Case 4):** How should the team refine the Group Condemnation Rule? Should the binary fail condition ($r < 0.3$ condemns all overlapping words) be replaced by a proportional credit rule based on the percentage of overlap between word acoustic boundaries and sliding windows?
