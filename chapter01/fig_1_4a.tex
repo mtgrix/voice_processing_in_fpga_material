@@ -40,7 +40,7 @@
   % New part of Frame 1 (25 to 35 ms): 10 ms hop
   \draw[fill=teal!30, draw=teal!80!black, thick, rounded corners=2pt] (25, 1.35) rectangle (35, 2.35);
   \node[font=\scriptsize\bfseries, text=teal!95!black, align=center, text width=2.8cm] at (30, 1.85) {
-    New Hop ($160$ s)
+    New Hop ($160$ samples)
   };
   \node[font=\footnotesize\bfseries, text=teal!90!black, anchor=west] at (35.5, 1.85) {
     Frame 1 ($25\text{ ms}$)
@@ -55,11 +55,11 @@
     Frame 2
   };
 
-  % Callout showing CPU compute vs. Acoustic floor
+  % Callout showing acoustic floor
   \node[draw=red!80!black, fill=red!5, rounded corners=2pt, font=\scriptsize, align=left, text width=6.6cm] (proc_box) at (38.2, 3.2) {
-    \textbf{Processor Speed Barrier:}\\[0.3mm]
-    A $5\text{ GHz}$ CPU ($t_{\text{proc}} \approx 0.05\text{ ms}$) cannot emit\\
-    Frame 0 before $t = 25\text{ ms}$. Physics sets the floor!
+    \textbf{Acoustic Latency Floor:}\\[0.3mm]
+    Frame 0 cannot exist before $25\text{ ms}$\\
+    because sample $400$ has not arrived.
   };
   \draw[<-, very thick, red!85!black] (25.2, 3.2) -- (proc_box.west);
 
