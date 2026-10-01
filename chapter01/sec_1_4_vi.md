@@ -11,7 +11,7 @@ Trong Mục 1.3, chúng ta đã hoàn thành việc quan sát dưới kính hi�
 
 ### Trạng thái 1: Sàn trễ vật lý
 
-Độ trễ trong một hệ thống âm thanh dòng (streaming audio) sở hữu một giới hạn chặn dưới vật lý tuyệt đối được ấn định bởi quy luật lan truyền sóng âm trước khi bất kỳ con chip bán dẫn nào được cấp nguồn. Ba đại lượng thời gian được khóa chặt vĩnh viễn bởi đặc tả âm học của tầng đầu vào:
+Độ trễ trong một hệ thống âm thanh dòng (streaming audio) sở hữu một giới hạn chặn dưới vật lý tuyệt đối được ấn định bởi thời gian gom mẫu trên màng mic trước khi bất kỳ con chip bán dẫn nào được cấp nguồn. Ba đại lượng thời gian được khóa chặt vĩnh viễn bởi đặc tả âm học của tầng đầu vào:
 
 | Tham số | Giá trị số | Nguồn gốc toán học & Định nghĩa vật lý |
 | :--- | :--- | :--- |
@@ -23,12 +23,11 @@ Thực tế âm học này thiết lập một sàn trễ tuyệt đối không 
 
 ```
 +-----------------------------------------------------------------------------+
-| Hình 1.4a: Sàn trễ âm học so với tốc độ tính toán của bộ xử lý              |
-| [Trục thời gian cho thấy quá trình tích lũy vật lý Khung 0 (0-25 ms) tạo ra |
-|  sàn trễ tuyệt đối, tiếp nối bởi Khung 1 (10-35 ms, gối đầu 60% = 240 mẫu)  |
-|  và nhịp bước định kỳ 10 ms (160 mẫu). Mũi tên rào cản tốc độ bộ xử lý      |
-|  nhấn mạnh rằng thời gian tính toán tiệm cận 0 không thể xóa bỏ yêu cầu     |
-|  tích lũy vật lý 25 ms.]                                                    |
+| Hình 1.4a: Sàn trễ âm học vật lý                                             |
+| Khung 0 bắt buộc phải tích lũy đủ 25 ms (400 mẫu) dao động áp suất trên      |
+| màng rung micro trước khi bất kỳ bộ xử lý nào có thể phát ra vector đặc      |
+| trưng đầu tiên.                                                             |
+| Callout: Khung 0 không tồn tại trước 25 ms vì mẫu 400 chưa tới.             |
 +-----------------------------------------------------------------------------+
 ```
 
@@ -38,20 +37,16 @@ Một khi sàn tích lũy $25\text{ ms}$ ban đầu được thỏa mãn, hệ t
 
 ### Trạng thái 2: Dấu chân bộ nhớ trên silicon vật lý
 
-Để đánh giá tính khả thi vật lý, chúng ta đối chiếu nhu cầu bộ nhớ với thông số phần cứng chính thức từ bảng dữ liệu AMD DS890 dành cho MPSoC Zynq UltraScale+ `XCK26` trên bo mạch Kria KV260:
+Để đánh giá tính khả thi vật lý, chúng ta đối chiếu nhu cầu bộ nhớ của tầng tiền xử lý với tài nguyên bộ nhớ nội bộ Block RAM trên chip của MPSoC Zynq UltraScale+ `XCK26` (bo mạch AMD Kria KV260).
 
-- **117.120** bảng tra cứu logic (LUTs).
-- **144** khối Block RAM loại $36\text{ kbit}$ ($5{,}1\text{ Mb} \approx 648\text{ KiB}$ tổng SRAM trên chip).
-- **64** khối UltraRAM ($18{,}0\text{ Mb} \approx 2{,}25\text{ MiB}$ SRAM khối tích hợp trên chip).
-
-Bây giờ hãy đối chiếu các tài nguyên sẵn có này với hai cấu trúc trạng thái cốt lõi mà tầng tiền xử lý DSP dòng phải duy trì ở định dạng dấu phẩy động 32-bit (FP32):
+Bây giờ hãy đối chiếu tài nguyên này với hai cấu trúc trạng thái cốt lõi mà tầng tiền xử lý DSP dòng phải duy trì ở định dạng dấu phẩy động 32-bit (FP32):
 
 1. **Bộ đệm vòng âm thanh ($400\text{ mẫu}$)**: Với $4\text{ byte}$ mỗi mẫu, việc lưu trữ lịch sử âm học đang chạy đòi hỏi $400 \times 4\text{ B} = 1.600\text{ byte} = 1.600\text{ B}$. Một khối Block RAM $36\text{-kbit}$ duy nhất cung cấp tới $4.608\text{ byte}$ dung lượng hai cổng (dual-port). Do đó, toàn bộ trạng thái miền thời gian chỉ chiếm đúng **$34{,}7\%$ dung lượng của một khối BRAM** ($0{,}2\%$ tổng BRAM trên chip).
 2. **Ma trận trọng số bộ lọc Mel ($80 \times 257$)**: Việc lưu trữ ma trận trọng số tam giác ở dạng dày đặc đòi hỏi $80 \times 257 \times 4\text{ B} = 82.240\text{ byte} = 80{,}3\text{ KiB}$. Toàn bộ ma trận hệ số này cần $18$ khối Block RAM, chiếm đúng **$12{,}4\%$ tổng BRAM trên chip**.
-3. **Khoảng trống bộ nhớ cho mô hình nơ-ron ($87{,}4\%$)**: Hai khối trên chỉ chiếm tổng cộng $12{,}6\%$ BRAM trên chip ($81{,}9\text{ KiB}$). Do đó, phần cứng còn nguyên **$87{,}4\%$ Block RAM** ($126$ khối, tương đương $566{,}1\text{ KiB}$) cùng toàn bộ $64$ khối UltraRAM ($2{,}25\text{ MiB}$) hoàn toàn tự do dành riêng cho các trọng số của mô hình mạng nơ-ron âm học.
+3. **Khoảng trống bộ nhớ cho mô hình nơ-ron ($87{,}4\%$)**: Hai khối trên chỉ chiếm tổng cộng $12{,}6\%$ BRAM trên chip ($81{,}9\text{ KiB}$). Do đó, phần cứng còn nguyên **$87{,}4\%$ Block RAM** ($566{,}1\text{ KiB}$) hoàn toàn tự do dành riêng cho các trọng số của mô hình mạng nơ-ron âm học.
 
-> 💡 **NHÌN THẤU VẬT LÝ**  
-> Bởi vì tổng dấu chân bộ nhớ của trạng thái đầu vào và ma trận Mel ($80{,}3\text{ KiB} + 1{,}6\text{ KiB} = 81{,}9\text{ KiB}$) chiếm chưa đầy $13\%$ Block RAM trên chip, toàn bộ pipeline DSP nằm gọn hoàn toàn bên trong bộ nhớ SRAM nội bộ của FPGA. Phần cứng không cần bất kỳ chuyến trung chuyển nào ra bộ nhớ ngoài DDR DRAM, triệt tiêu hoàn toàn sự tranh chấp bus, hiện tượng nghẽn do chu kỳ làm tươi DRAM (refresh stall), và tiêu hao năng lượng truyền dẫn qua bus ngoài.
+> 💡 **NHÌN THẤY VẬT LÝ**  
+> Bởi vì tổng dấu chân bộ nhớ của trạng thái đầu vào và ma trận Mel ($80{,}3\text{ KiB} + 1{,}6\text{ KiB} = 81{,}9\text{ KiB}$) chiếm chưa đầy $13\%$ Block RAM trên chip, toàn bộ pipeline DSP nằm gọn hoàn toàn bên trong bộ nhớ SRAM nội bộ của FPGA. Do đó, bộ đệm và ma trận Mel không cần DDR, triệt tiêu hoàn toàn sự tranh chấp bus, hiện tượng nghẽn do chu kỳ làm tươi DRAM (refresh stall), và tiêu hao năng lượng truyền dẫn qua bus ngoài.
 
 ---
 
@@ -65,13 +60,14 @@ $$\text{Thông lượng} = 20.560\ \text{MAC/khung} \times 100\ \text{khung/giâ
 
 ```
 +-----------------------------------------------------------------------------+
-| Hình 1.4b: Phân bổ BRAM trên KV260 và So sánh nhịp thực thi                 |
-| [Panel (a): Phân bổ BRAM trên Kria KV260 gồm Bộ đệm vòng (0,2%), Ma trận    |
-|  Mel (12,4%), và Khoảng trống BRAM còn lại (87,4%) cho mô hình nơ-ron.      |
-|  Panel (b): So sánh GPU biên (chồng phần mềm dùng chung: DMA -> ngắt HĐH &  |
-|  hàng đợi driver -> khởi chạy kernel -> trôi pha trễ) với FPGA không gian   |
-|  (đường dây chuyên dụng: I2S trực tiếp -> đường ống DSP chu kỳ hằng số      |
-|  -> hoàn tất tất định không trôi pha trễ).]                                 |
+| Hình 1.4b: Phân bổ bộ nhớ BRAM trên KV260 và tính tất định đường truyền      |
+| Panel (a): Phân bổ BRAM trên chip với 3 con số:                              |
+|   - 1.600 byte: Bộ đệm vòng âm thanh (400 mẫu FP32)                         |
+|   - 80,3 KiB: Ma trận trọng số Mel (80 x 257 FP32)                           |
+|   - 87,4%: Phần BRAM còn lại cho mô hình nơ-ron                              |
+| Panel (b): Đường thực thi GPU biên so với FPGA:                              |
+|   - Đường GPU biên: Bị ngắt HĐH & hàng đợi driver -> rung pha trễ Δt > 0     |
+|   - Đường FPGA: Đường dây silicon chuyên dụng không bị ngắt -> tất định Δt=0 |
 +-----------------------------------------------------------------------------+
 ```
 

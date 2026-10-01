@@ -1,0 +1,172 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Segoe UI}
+\setmonofont{Consolas}
+\usepackage[top=0.30in, bottom=0.30in, left=0.68in, right=0.68in, headheight=0pt, headsep=0pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{caption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+% Custom Callout Boxes matching house style
+\newtcolorbox{learningobj}{
+    colback=blue!3!white,
+    colframe=blue!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ MỤC TIÊU HỌC TẬP},
+    arc=1.2mm,
+    boxrule=0.7pt,
+    left=2.5mm, right=2.5mm, top=0.5mm, bottom=0.5mm,
+    before skip=0.2mm, after skip=0.5mm
+}
+
+\newtcolorbox{groundbreaking}{
+    colback=teal!4!white,
+    colframe=teal!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\bigstar$ PHÁT HIỆN THEN CHỐT},
+    arc=1.2mm,
+    boxrule=0.7pt,
+    left=2.5mm, right=2.5mm, top=0.3mm, bottom=0.3mm,
+    before skip=0.1mm, after skip=0.3mm
+}
+
+\newtcolorbox{physicalinsight}{
+    colback=yellow!6!white,
+    colframe=orange!75!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ NHÌN THẤY VẬT LÝ},
+    arc=1.2mm,
+    boxrule=0.7pt,
+    left=2.5mm, right=2.5mm, top=0.4mm, bottom=0.4mm,
+    before skip=0.2mm, after skip=0.4mm
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.2pt}
+
+\newcommand{\diagsec}[1]{\vspace{1.6pt}\textbf{\large #1}\vspace{0.5pt}\par}
+
+\begin{document}
+\setlength{\abovedisplayskip}{1.0pt}
+\setlength{\belowdisplayskip}{1.0pt}
+
+% ==================== TRANG 1 ====================
+\subsection*{1.5 Các chế độ lỗi chẩn đoán: Thử nghiệm ứng suất tại ranh giới silicon và âm học}
+
+\begin{learningobj}
+Thay vì coi chồng thông số $16\text{ kHz}$ / $25\text{ ms}$ / $N=512$ / Mel dày đặc là những quy ước bất khả xâm phạm, mục này sẽ bẻ gãy từng nút vặn cấu hình để chỉ ra chính xác nơi mà các định luật vật lý tiếng nói và silicon vi kiến trúc từ chối tuân theo.
+\end{learningobj}
+
+\textbf{Cầu nối tự nhiên từ Mục 1.4: Thử thách giới hạn vật lý tại ranh giới phần cứng.} Trong Mục~1.4, chúng ta đã chứng minh rằng tầng tiền xử lý DSP dòng ánh xạ gọn gàng lên tài nguyên silicon vật lý: bộ đệm vòng miền thời gian chiếm đúng $1{.}600\text{ byte}$ ($34{,}7\%$ một khối BRAM), và ma trận trọng số bộ lọc Mel không nén chiếm $82{.}240\text{ byte}$ ($18\text{ khối BRAM}$). Tổng cộng hai cấu trúc trạng thái này chỉ tiêu tốn khoảng $12{,}6\%$ dung lượng Block RAM trên chip, cho phép toàn bộ chuỗi tính toán vận hành hoàn toàn khép kín trong bộ nhớ SRAM nội bộ. Nhờ sự cô lập phần cứng độc quyền này, hệ thống triệt tiêu hoàn toàn sự rung pha độ trễ và luôn đáp ứng hạn chót thời gian thực $10\text{ ms}$ của mỗi bước nhảy.
+
+Tuy nhiên, một thuật toán vận hành êm ả dưới các tham số danh định thường che giấu những ranh giới gãy đổ toán học và vật lý rất sắc nhọn. Khi một kỹ sư hệ thống cố tình tối ưu hóa hiệu năng bằng cách xoay các nút vặn kiến trúc---chẳng hạn như tăng gấp ba tần số lấy mẫu để tìm kiếm độ trung thực cao hơn, cắt ngắn độ dài cửa sổ để ép giảm độ trễ, bỏ qua phần đệm số không để giảm số điểm FFT, hay lưu trữ ma trận lọc ở dạng dấu phẩy động dày đặc---các quy luật vật lý về truyền sóng âm và vi kiến trúc silicon không gian sẽ lập tức phản kháng dữ dội. Bốn kịch bản chẩn đoán dưới đây mổ xẻ chi tiết các điều kiện biên đó.
+
+\diagsec{Kịch bản chẩn đoán 1: Ảo ảnh tần số lấy mẫu 48 kHz}
+
+\textbf{Giả thuyết ngây thơ.} Một kỹ sư hệ thống đề xuất nâng cấp tầng thu nhận âm thanh từ chuẩn $f_s = 16\text{ kHz}$ lên chuẩn phòng thu chuyên nghiệp $f_s = 48\text{ kHz}$. Lý do kỹ thuật được đưa ra là việc tăng gấp ba tốc độ lấy mẫu theo thời gian sẽ thu giữ được các sắc thái âm thanh tần số cao tinh tế hơn, ức chế nhiễu lượng tử hóa và tăng độ chính xác nhận dạng từ khóa, trong khi vẫn duy trì độ dài khung cửa sổ ở mức $25\text{ ms}$ và nhịp bước ở mức $10\text{ ms}$.
+
+\textbf{Phép tính toán học.}
+
+\textbf{1.~Số lượng mẫu mỗi khung ($L_{48}$) và nhịp bước ($H_{48}$):} Ở tần số $f_s = 48\text{ kHz}$, chu kỳ lấy mẫu co lại còn $T_s = 1 / 48{.}000\text{ s} \approx 20{,}833\ \mu\text{s}$. Để giữ nguyên độ dài thời gian vật lý của khung là $25\text{ ms}$ và nhịp bước định kỳ $10\text{ ms}$, số lượng mẫu bắt buộc phải tăng tỷ lệ thuận:
+\begin{equation}
+  L_{48} = 48{.}000 \times 0{,}025 = 1{.}200\text{ mẫu}, \qquad H_{48} = 48{.}000 \times 0{,}010 = 480\text{ mẫu}
+\end{equation}
+Cả hai đại lượng đều tăng vọt gấp đúng ba lần so với mốc danh định $16\text{ kHz}$ ($L = 400\text{ mẫu}$, $H = 160\text{ mẫu}$).
+
+\textbf{2.~Dấu chân bộ nhớ trên chip:} Nếu biểu diễn bằng định dạng dấu phẩy động 32-bit (FP32, $4\text{ byte/mẫu}$), việc lưu trữ khung âm thanh $1{.}200\text{ mẫu}$ trong bộ đệm vòng đòi hỏi $1{.}200 \times 4\text{ B} = 4{.}800\text{ byte}$. Một khối Block RAM $36\text{-kbit}$ vật lý (RAMB36E2) trên chip AMD XCK26 cung cấp tối đa $36{.}864\text{ bit} = 4{.}608\text{ byte}$ dung lượng. Vì $4{.}800\text{ byte} > 4{.}608\text{ byte}$, bộ đệm vòng bị tràn khỏi ranh giới của một khối BRAM đơn lẻ. Trình tổng hợp buộc phải cấp phát \textbf{hai khối Block RAM 36-kbit riêng biệt}, làm tăng gấp đôi diện tích silicon cho bộ nhớ miền thời gian.
+
+\textbf{3.~Vì sao vật lý và silicon từ chối:} Theo định lý lấy mẫu Nyquist--Shannon, tần số $f_s = 48\text{ kHz}$ mở rộng dải thông âm học lên tới $f_{\text{max}} = f_s / 2 = 24\text{ kHz}$. Tuy nhiên, toàn bộ các cộng hưởng thanh đạo tạo nên tiếng nói con người---tần số cơ bản ($F_0 \approx 85\text{--}255\text{ Hz}$), các formant nguyên âm ($F_1\text{--}F_4$ trải dài từ $250\text{--}4{.}500\text{ Hz}$), cho đến các âm xát phụ âm ($/s/, /\int/$ đạt đỉnh ở $4{.}000\text{--}7{.}500\text{ Hz}$)---đều nằm hoàn toàn dưới $8\text{ kHz}$. Quãng tần số mở rộng từ $8\text{--}24\text{ kHz}$ không hề chứa bất kỳ thông tin ngữ âm nào; nó chỉ thu nhận thêm tiếng xì nhiệt môi trường và nhiễu đóng ngắt mạch điện tử. Hơn nữa, việc xử lý $1{.}200\text{ mẫu}$ buộc biến đổi FFT phía sau phải mở rộng lên ít nhất $N = 2{.}048\text{ điểm}$, làm tăng khối lượng tính toán bướm lên hơn bốn lần. Hệ thống phải trả giá đắt với dung lượng bộ nhớ tăng gấp đôi, thông lượng I/O tăng gấp ba và khối lượng tính toán tăng vọt, trong khi độ chính xác nhận dạng từ khóa nhận lại \textbf{hoàn toàn bằng không}.
+
+\begin{physicalinsight}
+Tăng tần số lấy mẫu từ $16\text{ kHz}$ lên $48\text{ kHz}$ làm tràn ranh giới $4{.}608\text{ byte}$ của một khối Block RAM 36-kbit và tăng khối lượng tính toán phía sau hơn bốn lần, lãng phí diện tích silicon và năng lượng động chỉ để thu nhận các tần số siêu âm nằm ngoài giới hạn cơ sinh học của thanh đới con người.
+\end{physicalinsight}
+
+\clearpage
+% ==================== TRANG 2 ====================
+\diagsec{Kịch bản chẩn đoán 2: Hình phạt Gabor--Heisenberg ở 5 ms}
+
+\textbf{Giả thuyết ngây thơ.} Để triệt tiêu độ trễ xử lý giọng nói trong một trợ lý ảo siêu phản ứng, một kỹ sư nhúng muốn cắt giảm mạnh mẽ sàn tích lũy khung vật lý. Thay vì đợi $25\text{ ms}$ để gom đủ $400\text{ mẫu}$ âm thanh, kỹ sư cắt ngắn độ dài cửa sổ phân tích xuống còn $L = 80\text{ mẫu}$ ($\Delta t = 5\text{ ms}$) ở $16\text{ kHz}$, với lập luận rằng các mạng nơ-ron sâu hiện đại vẫn có thể trích xuất đặc trưng âm học từ các lát cắt thời gian cực ngắn.
+
+\textbf{Phép tính toán học.}
+
+\textbf{1.~Độ phân giải búp phổ chính theo nguyên lý bất định:} Nguyên lý bất định Gabor--Heisenberg chi phối sự định xứ thời gian--tần số: độ định xứ thời gian ($\Delta t$) và độ phân giải tần số ($\Delta f$) tuân theo $\Delta t \cdot \Delta f \ge 1 / (4\pi)$. Độ rộng hiệu dụng của búp phổ chính tỷ lệ nghịch với thời lượng cửa sổ theo công thức $\Delta f \approx 1 / \Delta t$:
+\begin{itemize}\setlength{\itemsep}{0.2mm}\setlength{\parskip}{0pt}
+  \item Ở cửa sổ danh định $\Delta t = 25\text{ ms}$ ($L = 400\text{ mẫu}$): $\Delta f_{25} \approx \frac{1}{0{,}025\text{ s}} = 40\text{ Hz}$ (độ rộng điểm 0 búp chính Hamming $\approx 2 \times 40 = 80\text{ Hz}$).
+  \item Khi cắt ngắn cửa sổ còn $\Delta t = 5\text{ ms}$ ($L = 80\text{ mẫu}$): búp chính bị nới rộng thành $\Delta f_5 \approx \frac{1}{0{,}005\text{ s}} = 200\text{ Hz}$ (độ rộng điểm 0 búp chính Hamming $\approx 2 \times 200 = 400\text{ Hz}$).
+\end{itemize}
+
+\textbf{2.~Sự nhòe formant và sụp đổ ngữ âm:} Trong bộ máy phát âm của con người, các formant liền kề---đặc biệt là hai formant đầu tiên ($F_1$ và $F_2$), vốn mang tính quyết định để nhận diện nguyên âm---thường chỉ cách nhau khoảng $150\text{--}200\text{ Hz}$. Khi búp chính của bộ lọc bị phình rộng thành $\Delta f \approx 200\text{ Hz}$ (với vùng triệt tiêu búp phụ trải dài $400\text{ Hz}$), bộ phân tích phổ không thể phân giải hai đỉnh phổ cách nhau $180\text{ Hz}$. Hai formant phân biệt bị hòa lẫn vào nhau thành một khối phổ nhòe nhoẹt. Sự phân biệt ngữ âm giữa các nguyên âm cơ bản sụp đổ hoàn toàn---ví dụ nguyên âm đóng trước $/i/$ (với $F_2$ cao, $F_1$ thấp) bị nhòe thành một khối không thể phân biệt với nguyên âm đóng sau $/u/$ (với $F_1, F_2$ thấp và sát nhau), xóa sạch biểu diễn ngữ âm cần thiết cho các mô hình âm học phía sau.
+
+\textbf{3.~Vì sao vật lý và silicon từ chối:} Bộ máy phát âm của con người bị ràng buộc bởi quán tính cơ học: lưỡi, ngạc mềm, hàm và các cơ họng không thể biến đổi trạng thái nhanh hơn $20\text{--}30\text{ ms}$. Nghiêm trọng hơn, $5\text{ ms}$ ngắn hơn đáng kể so với chu kỳ cao độ cơ bản của giọng nam trầm thông thường ($1 / 85\text{ Hz} \approx 11{,}8\text{ ms}$). Cửa sổ $5\text{ ms}$ chỉ bắt được một phần dang dở của một chu kỳ thanh môn duy nhất. Tùy thuộc vào việc cửa sổ $5\text{ ms}$ rơi trúng pha mở hay pha đóng của thanh môn, năng lượng phổ trích xuất được sẽ dao động hỗn loạn hàng chục decibel giữa các khung liên tiếp, phá hủy tính ổn định của đặc trưng đầu vào.
+
+\begin{physicalinsight}
+Cắt ngắn cửa sổ xuống dưới $20\text{ ms}$ không tạo ra một hệ thống độ trễ siêu thấp; nó tạo ra một vệt nhòe phổ có độ phân giải kém. Độ trễ thời gian không thể bị ép vượt qua quán tính cơ sinh học của thanh đạo con người mà không vi phạm giới hạn Gabor--Heisenberg và làm dính liền các tần số formant sống còn.
+\end{physicalinsight}
+
+\diagsec{Kịch bản chẩn đoán 3: Bẫy biến đổi rời rạc trực tiếp}
+
+\textbf{Giả thuyết ngây thơ.} Một kiến trúc sư phần cứng khi quan sát luồng STFT nhận thấy rằng sau khi áp cửa sổ, khung âm thanh có đúng $L = 400\text{ mẫu}$. Thay vì chèn thêm $112$ số 0 nhân tạo để đạt kích thước lũy thừa của hai ($N = 512$), kiến trúc sư lập luận rằng FPGA nên tính trực tiếp Biến đổi Fourier rời rạc 400 điểm (Direct 400-point DFT), nhằm tránh chi phí bộ nhớ lưu các số 0 và loại bỏ điều mà họ cho là các phép tính thừa thãi.
+
+\textbf{Phép tính toán học.}
+
+\textbf{1.~Độ phức tạp của DFT trực tiếp:} Tính toán $201$ bin tần số độc lập ($k = 0, \dots, 200$) từ $400$ mẫu theo công thức $X[k] = \sum_{n=0}^{L-1} x[n] e^{-j 2\pi k n / L}$ đòi hỏi $L = 400$ phép nhân--tích lũy số phức (complex MAC) cho mỗi bin:
+$\text{Khối lượng}_{\text{DFT}} = 201 \times 400 = 80{.}400\text{ phép MAC phức / khung}$.
+
+\textbf{2.~Độ phức tạp của FFT cơ số 2 Cooley--Tukey:} Chèn thêm $112$ số 0 để tạo thành vector độ dài $512$ ($N = 2^9$) mở khóa thuật toán FFT cơ số 2 Cooley--Tukey, được giới hạn bởi $(N/2) \log_2 N$ tầng tính toán bướm:
+$\text{Khối lượng}_{\text{FFT}} = \frac{512}{2} \log_2(512) = 256 \times 9 = 2{.}304\text{ phép tính bướm / khung}$.
+
+\textbf{3.~Vì sao vật lý và silicon từ chối:} Đối chiếu hai khối lượng tính toán cho thấy tỷ lệ cắt giảm đạt $80{.}400 / 2{.}304 \approx 34{,}9\times$. Trên FPGA, một kiến trúc DFT trực tiếp bậc $\mathcal{O}(L^2)$ buộc phải hoàn tất trong hạn chót $10\text{ ms}$ đòi hỏi phải bố trí hàng loạt bộ nhân chạy song song làm cạn kiệt kênh định tuyến và tiêu tốn năng lượng. Ngược lại, FFT cơ số 2 ánh xạ thành một đường ống tính toán tầng gọn gàng, tiêu tốn rất ít tài nguyên tính toán. Việc đệm thêm $112$ số 0 tốn đúng \textbf{0 phép nhân}, không hề gây méo mó nhân tạo, mà lại mở khóa \textbf{mức tiết kiệm $34{,}9\times$ tài nguyên silicon}.
+
+\begin{physicalinsight}
+Đệm số 0 không phải là sự lãng phí tính toán; đó là một chất xúc tác kiến trúc. Các số 0 đệm tốn đúng 0 phép nhân--tích lũy nhưng lại mở khóa tính đối xứng đệ quy lũy thừa của hai, cắt giảm tới $34{,}9\times$ khối lượng tính toán trên silicon.
+\end{physicalinsight}
+
+\clearpage
+% ==================== TRANG 3 ====================
+\diagsec{Kịch bản chẩn đoán 4: Nút thắt cổ chai ma trận dày}
+
+\textbf{Giả thuyết ngây thơ.} Một kỹ sư quen với phần mềm khi ánh xạ tầng lọc Mel lên FPGA đã xem ma trận trọng số bộ lọc như một ma trận dày đặc tiêu chuẩn. Tầng này nhân $K = 257$ bin năng lượng phổ với $M = 80$ vector bộ lọc tam giác: $E_\ell[m] = \sum_{k=0}^{256} g_m[k] P_\ell[k]$. Lưu trữ phép biến đổi này dưới dạng ma trận FP32 dày đặc đòi hỏi $80 \times 257 \times 4\text{ B} = 82{.}240\text{ byte} = 80{,}3\text{ KiB}$, chiếm $82{.}240 / 4{.}608 \approx 18\text{ khối Block RAM } 36\text{-kbit}$ ($12{,}4\%$ tổng BRAM trên chip Kria KV260).
+
+\textbf{Phép tính toán học.}
+
+\textbf{1.~Khai thác tính thưa của dải lọc Mel:} Vì mỗi bộ lọc Mel $g_m[k]$ là một hình tam giác gọn gàng chỉ nhận giá trị khác không trong khoảng $[k_{m-1}, k_{m+1}]$, các bộ lọc liền kề gối đầu lên nhau đúng $50\%$. Mỗi bin tần số $k$ chỉ bị bao phủ bởi tối đa hai bộ lọc tam giác. Trong tổng số $80 \times 257 = 20{.}560$ phần tử ma trận, chỉ có một phần nhỏ khác không:
+$\text{Số trọng số khác không} \approx 2 \times 257 \approx 514$ (hoặc $80 \times 6{,}4 \approx 512$ trọng số tích cực). Hơn $97{,}5\%$ ma trận dày chỉ chứa các số 0 cấu trúc.
+
+\textbf{2.~Biểu diễn lưu trữ nén thưa:} Thay vì lưu ma trận dày FP32, nén từng bộ lọc thành các trọng số nguyên 16-bit lượng tử hóa (INT16, $2\text{ byte/trọng số}$) đòi hỏi $514 \times 2 = 1{.}028\text{ B}$. Phần tiêu đề siêu dữ liệu cho 80 dải lọc ($k_{\text{min}}$ và $K_m$, mỗi trường $1\text{ byte}$, $80 \times 2 = 160\text{ B}$) đưa tổng dung lượng nén về:
+$\text{Bộ nhớ nén} = 1{.}028\text{ B} + 160\text{ B} = 1{.}188\text{ byte}$.
+
+\textbf{3.~Vì sao vật lý và silicon từ chối:} So sánh ma trận dày FP32 với nén thưa INT16 cho thấy: $\text{Chiếm dụng BRAM} = 1{.}188\text{ B} / 4{.}608\text{ B} \approx 25{,}8\% \text{ của 1 BRAM}$, với $\text{Tỷ lệ thu nhỏ} = 82{.}240\text{ B} / 1{.}188\text{ B} \approx 69{,}2\times$. Nén thưa thu hẹp dấu chân bộ lọc Mel từ 18 khối BRAM xuống còn $25{,}8\%$ một khối BRAM đơn lẻ, lập tức giải phóng $17$ khối BRAM vật lý ($68\text{ KiB}$) cho các trọng số của mô hình âm học nơ-ron. Hơn nữa, băng thông đọc bộ nhớ giảm từ $20{.}560$ lượt đọc xuống đúng $514$ lượt đọc mỗi khung---\textbf{giảm $40\times$ số thao tác truy xuất bộ nhớ}.
+
+\begin{physicalinsight}
+Lưu trữ các số 0 cấu trúc trong bộ nhớ vật lý là hành vi tự sát kiến trúc. Nén tam giác thưa thu gọn dấu chân dải lọc Mel tới $69{,}2\times$, ép 18 khối Block RAM vào một phần tư của một khối duy nhất và cắt giảm tới $40\times$ băng thông đọc bộ nhớ.
+\end{physicalinsight}
+
+\noindent\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.92\textwidth}{!}{\input{fig_1_5a_vi.tex}}\\[2pt]
+{\small\textbf{Hình 1.5a: Bảng tổn thương bốn nút vặn cấu hình trên silicon và âm học.} Bốn chế độ lỗi chẩn đoán chứng minh các tham số chuẩn mực của tầng tiền xử lý dòng là ranh giới Pareto tối ưu bất khả kháng giữa các định luật vật lý tiếng nói con người và vi kiến trúc bộ nhớ FPGA.\par}
+\end{minipage}
+
+\begin{groundbreaking}
+Các tham số chuẩn mực của chuỗi xử lý tiếng nói dòng---lấy mẫu $16\text{ kHz}$, cửa sổ $25\text{ ms}$, đệm số 0 $N=512$, và nén thưa Mel INT16---không phải là những quy ước phần mềm tùy tiện. Chúng đại diện cho một ranh giới Pareto bất khả kháng nơi mà cơ sinh học thanh đạo người, giới hạn bất định âm học và các khối nguyên thủy bộ nhớ FPGA đạt tới sự hòa hợp silicon tối ưu.
+\end{groundbreaking}
+
+\textbf{Cầu nối tự nhiên sang Mục 1.6: Từ nhận dạng sang đánh giá phát âm.} Với chuỗi thông số tiền xử lý đã được bảo vệ vững chắc qua các thử nghiệm ứng suất, hệ thống sẵn sàng chuyển giao các vector phổ sang các tầng thuật toán tiếp theo để đo đạc quỹ đạo âm học thực tế mà không bị sai lệch bởi xu hướng tự sửa lỗi của các mô hình ngôn ngữ.
+
+\end{document}

@@ -1,97 +1,116 @@
-% Figure 1.4b: Phân bổ BRAM trên KV260 và So sánh chồng phần mềm với đường dây chuyên dụng (Bản tiếng Việt)
+% Figure 1.4b: Phân bổ BRAM và So sánh tính tất định (Bản tiếng Việt tinh chỉnh hoàn hảo)
 \begin{tikzpicture}[
   >=Stealth,
   font=\small
 ]
 
+\useasboundingbox (0, -0.3) rectangle (16.2, 4.9);
+
 % ==================== PANEL (a): Phân bổ BRAM trên chip ====================
-\begin{scope}[x=1.0cm, y=1.0cm]
-  \node (titlea) [font=\bfseries\small, anchor=west] at (0, 4.5) 
-    {(a) Phân bổ BRAM trên KV260 ($648\text{ KiB}$ tổng)};
+\begin{scope}[xshift=0.1cm, yshift=0.0cm]
+  \node[font=\bfseries\normalsize, text=blue!90!black, anchor=west] at (0, 4.55) 
+    {(a) Phân bổ BRAM trên chip};
 
-  % Khối bộ đệm vòng âm thanh (trên cùng)
-  \node (box1) [
-    draw=blue!80!black, fill=blue!12, rounded corners=3pt, thick,
-    font=\scriptsize, align=center,
-    text width=7.3cm, inner sep=4pt
-  ] at (3.8, 3.65) {
-    \textbf{\textcolor{blue!90!black}{Bộ đệm vòng âm thanh ($400$ mẫu FP32): $1{.}600\text{ B}$}}\\[0.8mm]
-    \scriptsize\textcolor{black!80}{$34{,}7\%$ của 1 khối BRAM ($0{,}2\%$ tổng BRAM trên chip)}
+  % Hộp 1: 1.600 byte
+  \node[
+    draw=blue!80!black, fill=blue!8, rounded corners=3pt, thick,
+    text width=7.0cm, inner sep=4.5pt, align=left
+  ] at (3.6, 3.60) {
+    \textbf{\textcolor{blue!95!black}{\large 1.600 byte}}\\[0.8mm]
+    \footnotesize Bộ đệm vòng âm thanh ($400$ mẫu FP32)
   };
 
-  % Khối ma trận bộ lọc Mel (ở giữa)
-  \node (box2) [
-    draw=purple!80!black, fill=purple!12, rounded corners=3pt, thick,
-    font=\scriptsize, align=center,
-    text width=7.3cm, inner sep=4pt,
-    below=0.32cm of box1
-  ] {
-    \textbf{\textcolor{purple!90!black}{Ma trận bộ lọc Mel ($80 \times 257$ FP32): $80{,}3\text{ KiB}$}}\\[0.8mm]
-    \scriptsize\textcolor{black!80}{$18$ khối BRAM ($12{,}4\%$ tổng BRAM) $\implies$ $0$ truy xuất DDR}
+  % Hộp 2: 80,3 KiB
+  \node[
+    draw=purple!80!black, fill=purple!8, rounded corners=3pt, thick,
+    text width=7.0cm, inner sep=4.5pt, align=left
+  ] at (3.6, 2.35) {
+    \textbf{\textcolor{purple!95!black}{\large 80,3 KiB}}\\[0.8mm]
+    \footnotesize Ma trận trọng số Mel ($80 \times 257$ FP32)
   };
 
-  % Khối BRAM còn trống cho mô hình nơ-ron (dưới cùng)
-  \node (box3) [
-    draw=teal!80!black, fill=teal!12, rounded corners=3pt, thick,
-    font=\scriptsize, align=center,
-    text width=7.3cm, inner sep=4pt,
-    below=0.32cm of box2
-  ] {
-    \textbf{\textcolor{teal!90!black}{Khoảng trống cho mô hình nơ-ron: $566{,}1\text{ KiB}$ ($87{,}4\%$ BRAM)}}\\[0.8mm]
-    \scriptsize\textcolor{black!80}{$126$ khối BRAM ($566{,}1\text{ KiB}$) $+$ $64$ khối UltraRAM ($2{,}25\text{ MiB}$)}
+  % Hộp 3: 87,4%
+  \node[
+    draw=teal!80!black, fill=teal!8, rounded corners=3pt, thick,
+    text width=7.0cm, inner sep=4.5pt, align=left
+  ] at (3.6, 1.10) {
+    \textbf{\textcolor{teal!95!black}{\large 87,4\%}}\\[0.8mm]
+    \footnotesize Phần BRAM còn lại cho mô hình nơ-ron
   };
 
-  % Chú thích tổng quan dưới panel (a)
-  \node (summa) [
-    font=\scriptsize, align=center, text=black!75, text width=7.5cm,
-    below=0.22cm of box3
-  ] {
-    Tổng SRAM AMD XCK26: $5{,}1\text{ Mb}$ BRAM $+$ $18{,}0\text{ Mb}$ UltraRAM
+  % Chú thích chân panel (a)
+  \node[font=\scriptsize, text=black!70, anchor=west] at (0.1, 0.15) {
+    Toàn bộ tầng tiền xử lý chỉ chiếm $12{,}6\%$ BRAM trên chip
   };
 \end{scope}
 
-% Đường vách ngăn phân chia
-\draw[gray!35, thick, dashed] (8.0, -0.3) -- (8.0, 4.7);
+% Đường vách ngăn phân chia hai panel
+\draw[gray!35, thick, dashed] (7.7, -0.2) -- (7.7, 4.7);
 
-% ==================== PANEL (b): Chồng phần mềm dùng chung vs Đường dây chuyên dụng ====================
-\begin{scope}[xshift=8.4cm, x=1.0cm, y=1.0cm]
-  \node[font=\bfseries\small, anchor=west] at (0, 4.5) 
-    {(b) Nhịp thực thi: Rung pha dùng chung so với Đường dây chuyên dụng};
+% ==================== PANEL (b): Đường GPU bị ngắt so với Đường FPGA không ngắt ====================
+\begin{scope}[xshift=8.0cm, yshift=0.0cm]
+  \node[font=\bfseries\normalsize, text=blue!90!black, anchor=west] at (0, 4.55) 
+    {(b) Thực thi: GPU biên so với FPGA};
 
-  % Nhãn đường GPU
-  \node[font=\scriptsize\bfseries, text=orange!95!black, anchor=west] at (0.1, 4.0) {
-    GPU biên: Chồng phần mềm dùng chung
+  % Đường gióng hạn chót 10 ms (nhãn đặt ở dưới cùng, hoàn toàn không chạm tiêu đề)
+  \draw[red!75!black, thick, dashed] (6.5, 0.35) -- (6.5, 4.10);
+  \node[font=\scriptsize\bfseries, text=red!85!black, below] at (6.5, 0.32) {Hạn chót $10\text{ ms}$};
+
+  % ----- ĐƯỜNG 1: GPU BIÊN (BỊ NGẮT) -----
+  \node[font=\footnotesize\bfseries, text=orange!95!black, anchor=west] at (0, 3.90) {
+    Đường GPU: Bị ngắt HĐH \& rung pha
   };
-  % Hộp bao ngoài đường GPU
-  \draw[draw=orange!80!black, fill=orange!5, thick, rounded corners=3pt] (0, 2.55) rectangle (8.0, 3.75);
-  
-  % Chuỗi các bước trong GPU
-  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.2cm] at (1.0, 3.15) {Bộ đệm\\DMA micro};
-  \draw[->, orange!80!black, semithick] (1.7, 3.15) -- (2.0, 3.15);
-  \node[draw=red!70!black, fill=red!8, rounded corners=2pt, font=\tiny, align=center, text width=1.7cm] at (2.95, 3.15) {Ngắt HĐH \&\\hàng đợi driver};
-  \draw[->, orange!80!black, semithick] (3.9, 3.15) -- (4.2, 3.15);
-  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.4cm] at (5.0, 3.15) {Khởi chạy\\kernel tính toán};
-  \draw[->, orange!80!black, semithick] (5.8, 3.15) -- (6.1, 3.15);
-  \node[draw=red!80!black, fill=red!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.5cm] at (7.0, 3.15) {Rung pha trễ\\$\Delta t > 0$};
 
-  % Nhãn đường FPGA
-  \node[font=\scriptsize\bfseries, text=teal!95!black, anchor=west] at (0.1, 2.05) {
-    FPGA không gian: Đường dây silicon chuyên dụng
+  % Trục thời gian GPU
+  \draw[->, thick, orange!80!black] (0, 3.20) -- (7.8, 3.20) node[right, font=\tiny\bfseries] {$t$};
+
+  % Đoạn tính toán 1 (0.1 đến 1.6 cm)
+  \draw[fill=orange!25, draw=orange!90!black, semithick] (0.1, 2.95) rectangle (1.6, 3.45);
+  \node[font=\tiny\bfseries, text=orange!95!black] at (0.85, 3.20) {Tính toán};
+
+  % Khối ngắt HĐH (1.6 đến 3.0 cm)
+  \draw[fill=red!20, draw=red!85!black, thick, dashed] (1.6, 2.85) rectangle (3.0, 3.55);
+  \node[font=\tiny\bfseries, text=red!90!black, align=center] at (2.3, 3.20) {Ngắt HĐH\\\& hàng đợi};
+
+  % Đoạn tính toán 2 (3.0 đến 4.6 cm)
+  \draw[fill=orange!25, draw=orange!90!black, semithick] (3.0, 2.95) rectangle (4.6, 3.45);
+  \node[font=\tiny\bfseries, text=orange!95!black] at (3.8, 3.20) {Tính toán tiếp};
+
+  % Vùng rung pha trễ (4.6 đến 6.1 cm)
+  \draw[fill=red!10, draw=red!70!black, dotted, thick] (4.6, 2.95) rectangle (6.1, 3.45);
+  \node[font=\tiny\bfseries, text=red!85!black] at (5.35, 3.20) {Trôi pha trễ};
+
+  % Mũi tên dao động trễ
+  \draw[red!90!black, very thick, ->] (6.1, 3.20) -- (6.7, 3.20);
+  \node[font=\scriptsize\bfseries, text=red!90!black, anchor=west] at (0.1, 2.45) {
+    $\blacktriangleright$ Bị ngắt: Rung pha trễ ($\Delta t > 0$)
   };
-  % Hộp bao ngoài đường FPGA
-  \draw[draw=teal!80!black, fill=teal!5, thick, rounded corners=3pt] (0, 0.65) rectangle (8.0, 1.85);
 
-  % Chuỗi các bước trong FPGA
-  \node[draw=teal!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.2cm] at (1.1, 1.25) {Đường dây\\trực tiếp I2S};
-  \draw[->, teal!80!black, semithick] (1.85, 1.25) -- (2.25, 1.25);
-  \node[draw=teal!70!black, fill=teal!12, rounded corners=2pt, font=\tiny, align=center, text width=2.4cm] at (3.65, 1.25) {Đường ống DSP chuyên dụng\\$N_{\text{clk}}$ chu kỳ hằng số};
-  \draw[->, teal!80!black, semithick] (5.0, 1.25) -- (5.4, 1.25);
-  \node[draw=green!80!black, fill=green!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.9cm] at (6.5, 1.25) {Không rung pha HĐH\\$\Delta t = 0\text{ ns}$ tất định};
-
-  % Chú thích dưới panel (b)
-  \node[font=\scriptsize, align=center, text=black!75, text width=8.0cm] at (4.0, 0.05) {
-    Đường dây phần cứng độc quyền đáp ứng hạn chót $10\text{ ms}$ trên mọi chu kỳ
+  % ----- ĐƯỜNG 2: FPGA KHÔNG GIAN (KHÔNG BỊ NGẮT) -----
+  \node[font=\footnotesize\bfseries, text=teal!95!black, anchor=west] at (0, 1.95) {
+    Đường FPGA: Đường dây silicon chuyên dụng
   };
+
+  % Trục thời gian FPGA
+  \draw[->, thick, teal!80!black] (0, 1.25) -- (7.8, 1.25) node[right, font=\tiny\bfseries] {$t$};
+
+  % Khối thực thi trơn tru duy nhất (0.1 đến 4.0 cm)
+  \draw[fill=teal!22, draw=teal!90!black, thick, rounded corners=2pt] (0.1, 1.00) rectangle (4.0, 1.50);
+  \node[font=\tiny\bfseries, text=teal!95!black] at (2.05, 1.25) {
+    Đường ống DSP chuyên dụng ($N_{\text{clk}}$ chu kỳ cố định)
+  };
+
+  % Vạch hoàn tất FPGA
+  \draw[teal!90!black, very thick] (4.0, 0.90) -- (4.0, 1.60);
+
+  % Khoảng an toàn tới deadline
+  \draw[<->, gray!60, thin] (4.0, 1.25) -- (6.5, 1.25);
+  \node[font=\tiny, text=gray!80, below] at (5.25, 1.20) {Khoảng an toàn};
+
+  \node[font=\scriptsize\bfseries, text=teal!90!black, anchor=west] at (0.1, 0.50) {
+    $\blacktriangleright$ Không ngắt: Hoàn tất đúng nhịp ($\Delta t = 0\text{ ns}$)
+  };
+
 \end{scope}
 
 \end{tikzpicture}
