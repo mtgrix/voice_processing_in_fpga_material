@@ -1,0 +1,90 @@
+% Figure 1.6a: Two-Panel Damage Board — The Iron Ruler vs. The Elastic Rubber Band
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  box/.style={draw=black!80, font=\scriptsize, align=center, rounded corners=1.5pt},
+  badbox/.style={draw=red!80!black, fill=red!6, font=\scriptsize, align=center, inner sep=4pt, rounded corners=2pt},
+  goodbox/.style={draw=teal!80!black, fill=teal!6, font=\scriptsize, align=center, inner sep=4pt, rounded corners=2pt},
+  warpar/.style={-{Stealth[length=1.5mm]}, teal!85!black, semithick},
+  link/.style={densely dashed, black!35, thin},
+  badlink/.style={densely dashed, red!70!black, semithick},
+  ttl/.style={font=\footnotesize\bfseries, text=black!90, align=left},
+  subttl/.style={font=\scriptsize\itshape, text=black!70, align=left},
+  ann/.style={font=\scriptsize\bfseries, text=black!85, align=right}
+]
+
+% ================= Panel (a): The Iron Ruler (Uniform Linear Resampling) =================
+\node[ttl, anchor=west] at (0, 7.5) {\textbf{Panel (a): The Iron Ruler — Uniform Linear Resampling Collapses}};
+\node[subttl, anchor=west] at (0, 7.1) {Utterances are stretched uniformly to equal duration, forcing mismatched phonemes across boundaries.};
+
+% Student Bar (Resampled 100%)
+\node[ann, anchor=east] at (-0.2, 6.0) {Student ($1.8\text{ s} \to 100\%$):};
+\draw[box, fill=blue!12, draw=blue!80!black, semithick] (0, 5.55) rectangle (4.27, 6.45) 
+  node[midway] {\textbf{``Gooood\dots''}\\[-0.5mm]{\tiny $/u/$ vowel prolonged ($61\%$, frames $0\text{--}60$)}};
+\draw[box, fill=blue!5, draw=blue!60!black, semithick] (4.27, 5.55) rectangle (7.0, 6.45) 
+  node[midway] {\textbf{``morning''}\\[-0.5mm]{\tiny ($39\%$, frames $61\text{--}99$)}};
+
+% Teacher Bar (Reference 100%)
+\node[ann, anchor=east] at (-0.2, 4.3) {Teacher ($1.0\text{ s} \to 100\%$):};
+\draw[box, fill=gray!25, draw=black!70, semithick] (0, 3.85) rectangle (2.45, 4.75) 
+  node[midway] {\textbf{``Good''}\\[-0.5mm]{\tiny ($35\%$, frames $0\text{--}34$)}};
+\draw[box, fill=gray!12, draw=black!50, semithick] (2.45, 3.85) rectangle (7.0, 4.75) 
+  node[midway] {\textbf{``morning''}\\[-0.5mm]{\tiny ($65\%$, frames $35\text{--}99$)}};
+
+% Boundary markers
+\draw[link] (0, 5.55) -- (0, 4.75);
+\draw[link] (7.0, 5.55) -- (7.0, 4.75);
+
+% Collision zone between x = 2.45 and x = 4.27
+\fill[red!15, opacity=0.75] (2.45, 4.75) -- (4.27, 5.55) -- (2.45, 5.55) -- cycle;
+\fill[red!15, opacity=0.75] (2.45, 4.75) -- (4.27, 5.55) -- (4.27, 4.75) -- cycle;
+\draw[badlink] (2.45, 4.75) -- (2.45, 5.55);
+\draw[badlink] (4.27, 4.75) -- (4.27, 5.55);
+
+\node[fill=white, draw=red!80!black, inner sep=2pt, font=\tiny\bfseries, text=red!90!black, rounded corners=1pt] at (3.36, 5.15) {PHONETIC COLLISION};
+
+% Callout Box for Panel (a)
+\node[badbox, text width=6.6cm, anchor=west] at (7.6, 5.15) {
+  \textbf{Phase Inversion Disaster:}\\[0.5mm]
+  At frame $45$, Student pitch is \textbf{rising} on ``Good'' ($\Delta x > 0$),\\
+  while Teacher pitch is \textbf{falling} on ``morning'' ($\Delta y < 0$).\\
+  $\Delta x \cdot \Delta y < 0 \implies \mathbf{r \approx -0.42}$ \textbf{(Erroneous Failure!)}
+};
+
+% ================= Panel (b): The Elastic Rubber Band (Mel-DTW Alignment) =================
+\node[ttl, anchor=west] at (0, 3.0) {\textbf{Panel (b): The Elastic Rubber Band — Dynamic Time Warping Aligns True Acoustics}};
+\node[subttl, anchor=west] at (0, 2.6) {Non-linear warping path elastically absorbs vowel stretching, preserving in-phase pitch correlation.};
+
+% Student True Time
+\node[ann, anchor=east] at (-0.2, 1.5) {Student ($1.8\text{ s}$):};
+\draw[box, fill=teal!15, draw=teal!80!black, semithick] (0, 1.05) rectangle (4.27, 1.95) 
+  node[midway] {\textbf{``Gooood\dots''}\\[-0.5mm]{\tiny $/u/$ vowel ($1.1\text{ s}$, $110$ frames)}};
+\draw[box, fill=teal!5, draw=teal!60!black, semithick] (4.27, 1.05) rectangle (7.0, 1.95) 
+  node[midway] {\textbf{``morning''}\\[-0.5mm]{\tiny ($0.7\text{ s}$, $70$ frames)}};
+
+% Teacher True Time (Scaled to physical 1.0s -> 3.89 cm)
+\node[ann, anchor=east] at (-0.2, -0.2) {Teacher ($1.0\text{ s}$):};
+\draw[box, fill=gray!25, draw=black!70, semithick] (0, -0.65) rectangle (1.36, 0.25) 
+  node[midway] {\textbf{``Good''}\\[-0.5mm]{\tiny $0.35\text{ s}$}};
+\draw[box, fill=gray!12, draw=black!50, semithick] (1.36, -0.65) rectangle (3.89, 0.25) 
+  node[midway] {\textbf{``morning''}\\[-0.5mm]{\tiny $0.65\text{ s}$}};
+
+% Warping Path Arrows (Elastic Non-Linear Mapping)
+\draw[warpar] (0.8, 1.05) -- (0.5, 0.25);
+\draw[warpar] (2.0, 1.05) -- (0.8, 0.25);
+\draw[warpar] (3.2, 1.05) -- (1.1, 0.25);
+\draw[warpar] (4.27, 1.05) -- (1.36, 0.25);
+
+\draw[warpar] (5.1, 1.05) -- (2.2, 0.25);
+\draw[warpar] (6.0, 1.05) -- (3.0, 0.25);
+\draw[warpar] (7.0, 1.05) -- (3.89, 0.25);
+
+% Callout Box for Panel (b)
+\node[goodbox, text width=6.6cm, anchor=west] at (7.6, 0.65) {
+  \textbf{Phase Harmony Preserved:}\\[0.5mm]
+  Warping path $\mathcal{P}$ locks identical phonetic states.\\
+  Student vowel prolongation is absorbed elastically.\\
+  $\Delta \tilde{x} \cdot \Delta \tilde{y} > 0 \implies \mathbf{r_{\text{warped}} \approx +0.94}$ \textbf{(Verified Mastery!)}
+};
+
+\end{tikzpicture}

@@ -7,7 +7,7 @@
 
 ### Organic Bridge from Section 1.4: Testing Physical Limits at the Hardware Boundary
 
-In Section 1.4, we grounded the front-end DSP pipeline in physical silicon, proving that on an AMD Kria KV260 FPGA, the streaming time-domain buffer and Mel filterbank consume minimal Block RAM ($12.6\%$) and negligible DSP48E2 compute ($< 0.001\%$). In contrast to an edge GPU (NVIDIA Jetson Orin Nano Super) where software scheduling, driver queues, and Linux OS interrupts introduce unpredictable latency jitter ($\Delta t_{\text{jitter}} > 0$), the FPGA architecture guarantees deterministic, cycle-accurate execution within the $10\text{ ms}$ real-time hop deadline.
+In Section 1.4, we grounded the front-end DSP pipeline in physical silicon, demonstrating that the streaming time-domain buffer occupies exactly $1{,}600\text{ B}$ of memory and the uncompressed Mel filterbank requires $80 \times 257 \times 4\text{ B} = 82{,}240\text{ B}$. Most critically, the isolation finding proved that front-end feature extraction runs entirely on-chip within fixed memory boundaries, isolated from external bus contention and guaranteed to satisfy the $10\text{ ms}$ real-time hop cadence.
 
 However, an algorithm that runs smoothly under nominal parameters often conceals sharp mathematical and physical failure boundaries. When a systems engineer attempts to optimize performance by turning architectural knobs—such as tripling the sampling rate for higher fidelity, slashing the window duration to cut latency, omitting zero-padding to reduce FFT points, or storing filter matrices in dense floating-point format—the underlying physics of acoustic wave propagation and spatial silicon microarchitectures violently push back.
 
@@ -49,16 +49,16 @@ A systems engineer proposes upgrading the front-end audio acquisition pipeline f
 To eliminate speech processing lag in an ultra-responsive edge voice assistant, an embedded designer seeks to aggressively reduce the physical frame accumulation floor. Rather than waiting $25\text{ ms}$ for $400$ audio samples to accumulate, the designer cuts the analysis window length by $80\%$, setting $L = 80$ samples ($\Delta t = 5\text{ ms}$) at $f_s = 16\text{ kHz}$, arguing that modern deep neural networks can extract acoustic features just as easily from shorter time slices.
 
 #### Worked Mathematical Breakdown
-1. **Spectral Main-Lobe Resolution:**  
-   The Gabor–Heisenberg uncertainty principle governs time-frequency localization in all linear transforms: temporal localization ($\Delta t$) and frequency resolution ($\Delta f$) are mutually constrained by $\Delta t \cdot \Delta f \ge 1 / (4\pi)$. For a finite window of duration $\Delta t$, the effective frequency bandwidth of the main spectral lobe scales inversely with window duration:
+1. **Time-Frequency Localization Limits:**  
+   The theoretical floor of time-frequency localization is bounded by the Gabor–Heisenberg uncertainty relation $\Delta t \cdot \Delta f \ge 1 / (4\pi)$. This sets an immutable Heisenberg floor of $\Delta f_{\text{min}} \approx 3.2\text{ Hz}$ at $\Delta t = 25\text{ ms}$, and $\approx 16\text{ Hz}$ at $\Delta t = 5\text{ ms}$. In practical spectral analysis with discrete windows, however, resolving power is determined by the Rayleigh main-lobe width $\Delta f \approx 1/T$:
    $$\begin{aligned}
-   \text{At } \Delta t &= 25\text{ ms (}L = 400\text{):} \quad \Delta f \approx \frac{1}{0.025\text{ s}} = 40\text{ Hz} \quad (\text{Hamming null-to-null: } \approx 80\text{ Hz}) \\
-   \text{At } \Delta t &= 5\text{ ms (}L = 80\text{):} \quad \Delta f \approx \frac{1}{0.005\text{ s}} = 200\text{ Hz} \quad (\text{Hamming null-to-null: } \approx 400\text{ Hz})
+   \text{At } \Delta t &= 25\text{ ms (}L = 400\text{):} \quad \Delta f_{25} = \frac{1}{0.025\text{ s}} = 40\text{ Hz} \quad (\text{Hamming null-to-null: } 4/T = 160\text{ Hz}, \text{ rect: } 2/T = 80\text{ Hz}) \\
+   \text{At } \Delta t &= 5\text{ ms (}L = 80\text{):} \quad \Delta f_5 = \frac{1}{0.005\text{ s}} = 200\text{ Hz} \quad (\text{Hamming null-to-null: } 4/T = 800\text{ Hz}, \text{ rect: } 2/T = 400\text{ Hz})
    \end{aligned}$$
 
 2. **Formant Smearing and Phonetic Collapse:**  
-   In human vowel production, formant frequencies correspond to the acoustic resonant poles of the vocal tract. Adjacent formants—specifically the first two formants ($F_1$ and $F_2$), which distinguish vowel identities—frequently lie within $150\text{--}250\text{ Hz}$ of each other.  
-   When the filter main lobe broadens to $\Delta f \approx 200\text{ Hz}$ (with side-lobe nulls spanning $400\text{ Hz}$), the spectral analyzer can no longer resolve two distinct spectral peaks spaced $180\text{ Hz}$ apart. The two distinct formants blur together into a single broad, merged spectral mass. Acoustic distinctions between cardinal vowels collapse—for example, the close front vowel $/i/$ (high $F_2$, low $F_1$) merges indistinguishably with the close back vowel $/u/$ (compact low $F_1, F_2$), destroying the phonetic representations required by downstream acoustic models.
+   In human vowel production, formant frequencies correspond to the acoustic resonant poles of the vocal tract. Adjacent formants—specifically the first two formants ($F_1$ and $F_2$), which distinguish vowel identities—frequently lie within $150\text{--}200\text{ Hz}$ of each other.  
+   When the filter main lobe broadens to $\Delta f \approx 200\text{ Hz}$ (with Hamming nulls spanning $800\text{ Hz}$), the spectral analyzer can no longer resolve two distinct spectral peaks spaced $180\text{ Hz}$ apart. The two distinct formants blur together into a single broad, merged spectral mass. Acoustic distinctions between cardinal vowels collapse—for example, the close front vowel $/i/$ (high $F_2$, low $F_1$) merges indistinguishably with the close back vowel $/u/$ (compact low $F_1, F_2$), destroying the phonetic representations required by downstream acoustic models.
 
 3. **Biomechanical Incompatibility:**  
    The human vocal apparatus is constrained by physical inertia: the tongue, velum, jaw, and pharyngeal muscles cannot physically change state in under $20\text{--}30\text{ ms}$. More critically, $5\text{ ms}$ is significantly shorter than the fundamental pitch period of a typical low adult male voice ($1 / 85\text{ Hz} \approx 11.8\text{ ms}$).  
@@ -123,7 +123,7 @@ Storing this transformation as a dense FP32 matrix requires $80 \times 257 \time
    \text{BRAM Consumption} &= \frac{1{,}188\text{ bytes}}{4{,}608\text{ bytes/BRAM}} \approx 25.8\% \text{ of ONE single Block RAM block} \\
    \text{Memory Reduction Ratio} &= \frac{82{,}240\text{ bytes}}{1{,}188\text{ bytes}} \approx 69.2\times
    \end{aligned}$$
-   Sparse compression collapses the Mel filterbank memory footprint from $18$ BRAM blocks down to a tiny quadrant ($25.8\%$) of a single BRAM, immediately liberating $17$ physical BRAM primitives ($68\text{ KiB}$) for neural network acoustic weights. Furthermore, the memory read bandwidth collapses from $20{,}560$ reads down to just $514$ reads per frame—a **$40\times$ reduction in memory access operations**.
+   Sparse compression collapses the Mel filterbank memory footprint from $18$ BRAM blocks down to a tiny quadrant ($25.8\%$) of a single BRAM, immediately liberating $17$ physical BRAM primitives ($17 \times 4{,}608\text{ B} = 78{,}336\text{ B} \approx 76.5\text{ KiB}$) for neural network acoustic weights. Furthermore, the memory read bandwidth collapses from $20{,}560$ reads down to just $514$ reads per frame—a **$40\times$ reduction in memory access operations**.
 
 > **PHYSICAL INSIGHT**  
 > Storing structural zeros in physical memory is architectural suicide. Sparse triangular compression collapses the Mel filterbank footprint by $69.2\times$, compressing 18 Block RAMs into a quarter of a single primitive and slashing memory read bandwidth by $40\times$.
