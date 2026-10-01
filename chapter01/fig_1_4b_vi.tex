@@ -1,0 +1,97 @@
+% Figure 1.4b: Phân bổ BRAM trên KV260 và So sánh chồng phần mềm với đường dây chuyên dụng (Bản tiếng Việt)
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small
+]
+
+% ==================== PANEL (a): Phân bổ BRAM trên chip ====================
+\begin{scope}[x=1.0cm, y=1.0cm]
+  \node (titlea) [font=\bfseries\small, anchor=west] at (0, 4.5) 
+    {(a) Phân bổ BRAM trên KV260 ($648\text{ KiB}$ tổng)};
+
+  % Khối bộ đệm vòng âm thanh (trên cùng)
+  \node (box1) [
+    draw=blue!80!black, fill=blue!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt
+  ] at (3.8, 3.65) {
+    \textbf{\textcolor{blue!90!black}{Bộ đệm vòng âm thanh ($400$ mẫu FP32): $1{.}600\text{ B}$}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$34{,}7\%$ của 1 khối BRAM ($0{,}2\%$ tổng BRAM trên chip)}
+  };
+
+  % Khối ma trận bộ lọc Mel (ở giữa)
+  \node (box2) [
+    draw=purple!80!black, fill=purple!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt,
+    below=0.32cm of box1
+  ] {
+    \textbf{\textcolor{purple!90!black}{Ma trận bộ lọc Mel ($80 \times 257$ FP32): $80{,}3\text{ KiB}$}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$18$ khối BRAM ($12{,}4\%$ tổng BRAM) $\implies$ $0$ truy xuất DDR}
+  };
+
+  % Khối BRAM còn trống cho mô hình nơ-ron (dưới cùng)
+  \node (box3) [
+    draw=teal!80!black, fill=teal!12, rounded corners=3pt, thick,
+    font=\scriptsize, align=center,
+    text width=7.3cm, inner sep=4pt,
+    below=0.32cm of box2
+  ] {
+    \textbf{\textcolor{teal!90!black}{Khoảng trống cho mô hình nơ-ron: $566{,}1\text{ KiB}$ ($87{,}4\%$ BRAM)}}\\[0.8mm]
+    \scriptsize\textcolor{black!80}{$126$ khối BRAM ($566{,}1\text{ KiB}$) $+$ $64$ khối UltraRAM ($2{,}25\text{ MiB}$)}
+  };
+
+  % Chú thích tổng quan dưới panel (a)
+  \node (summa) [
+    font=\scriptsize, align=center, text=black!75, text width=7.5cm,
+    below=0.22cm of box3
+  ] {
+    Tổng SRAM AMD XCK26: $5{,}1\text{ Mb}$ BRAM $+$ $18{,}0\text{ Mb}$ UltraRAM
+  };
+\end{scope}
+
+% Đường vách ngăn phân chia
+\draw[gray!35, thick, dashed] (8.0, -0.3) -- (8.0, 4.7);
+
+% ==================== PANEL (b): Chồng phần mềm dùng chung vs Đường dây chuyên dụng ====================
+\begin{scope}[xshift=8.4cm, x=1.0cm, y=1.0cm]
+  \node[font=\bfseries\small, anchor=west] at (0, 4.5) 
+    {(b) Nhịp thực thi: Rung pha dùng chung so với Đường dây chuyên dụng};
+
+  % Nhãn đường GPU
+  \node[font=\scriptsize\bfseries, text=orange!95!black, anchor=west] at (0.1, 4.0) {
+    GPU biên: Chồng phần mềm dùng chung
+  };
+  % Hộp bao ngoài đường GPU
+  \draw[draw=orange!80!black, fill=orange!5, thick, rounded corners=3pt] (0, 2.55) rectangle (8.0, 3.75);
+  
+  % Chuỗi các bước trong GPU
+  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.2cm] at (1.0, 3.15) {Bộ đệm\\DMA micro};
+  \draw[->, orange!80!black, semithick] (1.7, 3.15) -- (2.0, 3.15);
+  \node[draw=red!70!black, fill=red!8, rounded corners=2pt, font=\tiny, align=center, text width=1.7cm] at (2.95, 3.15) {Ngắt HĐH \&\\hàng đợi driver};
+  \draw[->, orange!80!black, semithick] (3.9, 3.15) -- (4.2, 3.15);
+  \node[draw=orange!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.4cm] at (5.0, 3.15) {Khởi chạy\\kernel tính toán};
+  \draw[->, orange!80!black, semithick] (5.8, 3.15) -- (6.1, 3.15);
+  \node[draw=red!80!black, fill=red!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.5cm] at (7.0, 3.15) {Rung pha trễ\\$\Delta t > 0$};
+
+  % Nhãn đường FPGA
+  \node[font=\scriptsize\bfseries, text=teal!95!black, anchor=west] at (0.1, 2.05) {
+    FPGA không gian: Đường dây silicon chuyên dụng
+  };
+  % Hộp bao ngoài đường FPGA
+  \draw[draw=teal!80!black, fill=teal!5, thick, rounded corners=3pt] (0, 0.65) rectangle (8.0, 1.85);
+
+  % Chuỗi các bước trong FPGA
+  \node[draw=teal!70!black, fill=white, rounded corners=2pt, font=\tiny, align=center, text width=1.2cm] at (1.1, 1.25) {Đường dây\\trực tiếp I2S};
+  \draw[->, teal!80!black, semithick] (1.85, 1.25) -- (2.25, 1.25);
+  \node[draw=teal!70!black, fill=teal!12, rounded corners=2pt, font=\tiny, align=center, text width=2.4cm] at (3.65, 1.25) {Đường ống DSP chuyên dụng\\$N_{\text{clk}}$ chu kỳ hằng số};
+  \draw[->, teal!80!black, semithick] (5.0, 1.25) -- (5.4, 1.25);
+  \node[draw=green!80!black, fill=green!15, rounded corners=2pt, font=\tiny\bfseries, align=center, text width=1.9cm] at (6.5, 1.25) {Không rung pha HĐH\\$\Delta t = 0\text{ ns}$ tất định};
+
+  % Chú thích dưới panel (b)
+  \node[font=\scriptsize, align=center, text=black!75, text width=8.0cm] at (4.0, 0.05) {
+    Đường dây phần cứng độc quyền đáp ứng hạn chót $10\text{ ms}$ trên mọi chu kỳ
+  };
+\end{scope}
+
+\end{tikzpicture}

@@ -1,0 +1,181 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Segoe UI}
+\setmonofont{Consolas}
+\usepackage[top=0.45in, bottom=0.45in, left=0.68in, right=0.68in, headheight=0pt, headsep=0pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{caption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+% Custom Callout Boxes matching math_tools_en / house style
+\newtcolorbox{learningobj}{
+    colback=blue!3!white,
+    colframe=blue!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ MỤC TIÊU HỌC TẬP},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.2mm, bottom=1.2mm,
+    before skip=1.0mm, after skip=2.0mm
+}
+
+\newtcolorbox{groundbreaking}{
+    colback=teal!4!white,
+    colframe=teal!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\bigstar$ PHÁT HIỆN THEN CHỐT},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.2mm, bottom=1.2mm,
+    before skip=1.5mm, after skip=2.0mm
+}
+
+\newtcolorbox{physicalinsight}{
+    colback=yellow!6!white,
+    colframe=orange!75!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ NHÌN THẤU VẬT LÝ},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.2mm, bottom=1.2mm,
+    before skip=1.5mm, after skip=2.0mm
+}
+
+\renewcommand{\thefigure}{1.4\alph{figure}}
+
+\begin{document}
+
+% ============================================================================
+% TRANG 1: Mục tiêu học tập, Cầu nối, Trạng thái 1, Bảng tham số, Hình 1.4a
+% ============================================================================
+\vspace*{-4.5mm}
+\section*{1.4 Hệ quả phần cứng và giới hạn trễ xử lý}
+\vspace{-2.5mm}
+
+\begin{learningobj}
+Thay vì xem độ trễ phần cứng là một khoảng trì hoãn tính toán tùy tiện, mục này neo chặt thời gian xử lý vào quá trình tích lũy âm học vật lý, đối chiếu sự phân bổ Block RAM trên chip với băng thông bộ nhớ ngoài, và làm sáng tỏ tại sao việc chuyển đổi tầng tiền xử lý âm thanh sang logic FPGA lại bắt nguồn từ khả năng thực thi tất định và cách ly phần cứng không rung pha, chứ không phải vì thông lượng số học thô.
+\end{learningobj}
+
+\vspace{0.5mm}
+\noindent\textbf{Cầu nối tự nhiên từ Mục 1.3: Ánh xạ phương trình lên các bóng bán dẫn vật lý.} Trong Mục 1.3, chúng ta đã hoàn thành việc quan sát dưới kính hiển vi toán học toàn bộ chuỗi xử lý DSP đầu vào, chuyển hóa 400 mẫu áp suất liên tục thành 80 giá trị phổ Log-Mel. Tuy nhiên, một thuật toán trên trang giấy luôn giả định bộ nhớ vô hạn và thời gian thực thi bằng không. Trong mục này, chúng ta buộc các phương trình trừu tượng đó phải va chạm trực tiếp với silicon vật lý: đánh giá cách các tham số toán học chuyển dịch thành dấu chân bộ nhớ và hạn chót xử lý giữa một GPU biên (Edge GPU) và fabric phần cứng không gian (Spatial FPGA fabric trên AMD Xilinx Kria KV260).
+
+\vspace{-1.5mm}
+\subsection*{Trạng thái 1: Sàn trễ vật lý}
+\vspace{-2mm}
+
+Độ trễ trong một hệ thống âm thanh dòng (streaming audio) sở hữu một giới hạn chặn dưới vật lý tuyệt đối được ấn định bởi quy luật lan truyền sóng âm trước khi bất kỳ con chip bán dẫn nào được cấp nguồn. Ba đại lượng thời gian được khóa chặt vĩnh viễn bởi đặc tả âm học của tầng đầu vào:
+
+\vspace{-2mm}
+\begin{center}
+\small
+\begin{tabular}{l c p{9.8cm}}
+\toprule
+\textbf{Tham số} & \textbf{Giá trị số} & \textbf{Nguồn gốc toán học \& Định nghĩa vật lý} \\
+\midrule
+Sàn tích lũy khung đầu tiên & $25\text{ ms}$ & $L / f_s = 400 / 16{.}000$ (Thời gian màng micro hứng áp suất âm thanh vật lý) \\
+Nhịp bước giữa các khung & $10\text{ ms}$ & $H / f_s = 160 / 16{.}000$ (Khoảng phát định kỳ sang mô hình nơ-ron kế tiếp) \\
+Tỷ lệ gối đầu giữa các khung & $60\%$ & $(L - H) / L = 240 / 400$ (Ngữ cảnh lịch sử chung giữ liền mạch năng lượng biên) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-3.5mm}
+
+Thực tế âm học này thiết lập một sàn trễ tuyệt đối không thể phá vỡ: \textbf{Khung 0 về mặt vật lý hoàn toàn không thể tồn tại} trước khi màng rung của micro hứng đủ $25\text{ ms}$ dao động sóng áp suất không khí liên tục. Ngay cả một bộ xử lý lý thuyết cực nhanh với thời gian tính toán tiệm cận 0 nano giây ($t_{\text{xử lý}} \to 0$) cũng không thể phát ra vector đặc trưng đầu tiên trước thời điểm $t = 25\text{ ms}$, bởi vì mẫu âm thanh thứ 400 đơn giản là chưa hề xảy ra trong thực tại vật lý.
+
+\vspace{-2.5mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.94\textwidth}{!}{\input{fig_1_4a_vi.tex}}\\[0.8mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Hình 1.4a}: \textbf{Sàn trễ âm học so với tốc độ tính toán của bộ xử lý.} (1)~\textbf{Nó là gì:} Trục thời gian luồng âm thanh dòng thể hiện quá trình tích lũy khung vật lý và nhịp phát định kỳ của các bước nhảy. (2)~\textbf{Nhìn vào đâu:} Khung 0 bắt buộc phải tích lũy đủ $25\text{ ms}$ ($400\text{ mẫu}$) áp suất âm học trước khi có thể bắt đầu xử lý; bộ xử lý lý thuyết dù có thời gian thực thi tiệm cận 0 cũng không thể vượt qua sàn vật lý này. Các khung kế tiếp tịnh tiến mỗi $10\text{ ms}$ ($160\text{ mẫu}$) với vùng gối đầu $60\%$ ($240\text{ mẫu}$). (3)~\textbf{Nó chứng minh điều gì:} Độ trễ thời gian thực trong hệ thống âm thanh biên bị chi phối nghiêm ngặt bởi quy luật truyền sóng và kích thước cửa sổ, không phụ thuộc vào tần số xung nhịp bộ xử lý.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-3.5mm}
+
+Một khi sàn tích lũy $25\text{ ms}$ ban đầu được thỏa mãn, hệ thống bước vào chế độ vận hành ổn định. Kể từ đây, cứ sau mỗi $10\text{ ms}$, micro lại cung cấp thêm một khối mới gồm đúng $H = 160\text{ mẫu}$ âm thanh. Khoảng thời gian $10\text{ ms}$ này chính là \textbf{hạn chót thời gian thực cứng (hard real-time deadline)}: toàn bộ các bước tính toán tiếp theo---áp cửa sổ Hamming, biến đổi 512-điểm FFT, tính phổ công suất, lọc 80 kênh Mel, nén logarit, và suy luận mô hình nơ-ron---phải hoàn tất xong xuôi trong vòng $10\text{ ms}$. Một bộ xử lý nhanh hơn không hề thu nhỏ được sàn vật lý $25\text{ ms}$; nó chỉ đơn thuần ngăn không cho độ trễ tính toán bị chồng chất thêm lên trên sàn âm học đó.
+
+\clearpage
+
+% ============================================================================
+% TRANG 2: Trạng thái 2, Nhìn thấu vật lý, Trạng thái 3, Thông lượng vs Tất định
+% ============================================================================
+\vspace*{-4.5mm}
+\subsection*{Trạng thái 2: Dấu chân bộ nhớ trên silicon vật lý}
+\vspace{-2mm}
+
+Để đánh giá tính khả thi vật lý, chúng ta đối chiếu nhu cầu bộ nhớ với thông số phần cứng chính thức từ bảng dữ liệu AMD DS890 dành cho MPSoC Zynq UltraScale+ \texttt{XCK26} trên bo mạch Kria KV260:
+\textbf{117.120} bảng tra cứu logic (LUTs); \textbf{144} khối Block RAM loại $36\text{ kbit}$ ($5{,}1\text{ Mb} \approx 648\text{ KiB}$ tổng SRAM trên chip); cùng \textbf{64} khối UltraRAM ($18{,}0\text{ Mb} \approx 2{,}25\text{ MiB}$ SRAM khối tích hợp trên chip).
+
+Bây giờ hãy đối chiếu các tài nguyên sẵn có này với hai cấu trúc trạng thái cốt lõi mà tầng tiền xử lý DSP dòng phải duy trì ở định dạng dấu phẩy động 32-bit (FP32):
+\begin{itemize}\setlength{\itemsep}{0.5mm}\setlength{\parskip}{0pt}
+  \item \textbf{Bộ đệm vòng âm thanh ($400\text{ mẫu}$)}: Với $4\text{ byte}$ mỗi mẫu, việc lưu trữ lịch sử âm học đang chạy đòi hỏi $400 \times 4\text{ B} = 1{.}600\text{ byte}$. Một khối Block RAM $36\text{-kbit}$ duy nhất cung cấp tới $4{.}608\text{ byte}$ dung lượng hai cổng (dual-port). Do đó, toàn bộ trạng thái miền thời gian chỉ chiếm đúng \textbf{$34{,}7\%$ dung lượng của một khối BRAM} ($0{,}2\%$ tổng BRAM trên chip).
+  \item \textbf{Ma trận trọng số bộ lọc Mel ($80 \times 257$)}: Việc lưu trữ ma trận trọng số tam giác ở dạng dày đặc đòi hỏi $80 \times 257 \times 4\text{ B} = 82{.}240\text{ byte} = 80{,}3\text{ KiB}$. Toàn bộ ma trận hệ số này cần 18 khối Block RAM, chiếm đúng \textbf{$12{,}4\%$ tổng BRAM trên chip}.
+  \item \textbf{Khoảng trống cho mô hình nơ-ron ($87{,}4\%$ BRAM)}: Tầng đầu vào chỉ chiếm dụng tổng cộng $12{,}6\%$ BRAM ($81{,}9\text{ KiB}$), giải phóng tới \textbf{$87{,}4\%$ dung tích Block RAM} ($126$ khối, tương đương $566{,}1\text{ KiB}$) cùng toàn bộ 64 khối UltraRAM ($2{,}25\text{ MiB}$) dành trọn vẹn cho các mô hình mạng nơ-ron âm học.
+\end{itemize}
+
+\begin{physicalinsight}
+Bởi vì tổng dấu chân bộ nhớ của trạng thái đầu vào và ma trận Mel ($80{,}3\text{ KiB} + 1{,}6\text{ KiB} = 81{,}9\text{ KiB}$) chiếm chưa đầy $13\%$ Block RAM trên chip, toàn bộ pipeline DSP nằm gọn hoàn toàn bên trong bộ nhớ SRAM nội bộ của FPGA. Phần cứng không cần bất kỳ chuyến trung chuyển nào ra bộ nhớ ngoài DDR DRAM, triệt tiêu hoàn toàn sự tranh chấp bus, hiện tượng nghẽn do chu kỳ làm tươi DRAM (refresh stall), và tiêu hao năng lượng truyền dẫn qua bus ngoài.
+\end{physicalinsight}
+
+\vspace{-2.5mm}
+\subsection*{Trạng thái 3: Ảo tưởng số học --- Thông lượng so với Cách ly tất định}
+\vspace{-2mm}
+
+Việc tính toán bộ lọc Mel 80 kênh đòi hỏi nhân 257 bin phổ công suất với 80 vector trọng số tam giác:
+$$\text{Khối lượng mỗi khung} = 80 \times 257 = 20{.}560\ \text{phép tính nhân-tích lũy (MAC)}$$
+Tại nhịp bước $10\text{ ms}$, tầng tiền xử lý tạo ra $100\text{ khung/giây}$, dẫn đến thông lượng tính toán gộp:
+$$\text{Thông lượng} = 20{.}560\ \text{MAC/khung} \times 100\ \text{khung/giây} = 2{.}056{.}000\ \text{MAC/giây} \approx 2{,}06\ \text{MMAC/s}$$
+
+So với năng lực xử lý của các bộ gia tốc biên hiện đại như Edge GPU, con số $2{,}06\text{ MMAC/s}$ là cực kỳ khiêm tốn. Các bộ xử lý GPU biên sở hữu năng lực tính toán dấu phẩy động khổng lồ, vượt trội hơn rất nhiều lần so với nhu cầu tính toán của chuỗi phép tính này.
+
+Sự chênh lệch này vạch trần một chân lý kiến trúc cốt lõi: \textbf{chuyển tầng tiền xử lý âm thanh lên logic FPGA không bao giờ bắt nguồn từ nhu cầu thông lượng số học thô}. Động lực thực sự của việc chuyển đổi hoàn toàn nằm ở \textbf{tính tất định thời gian và sự cách ly phần cứng hoàn toàn (deterministic hardware isolation)}:
+\begin{itemize}\setlength{\itemsep}{0.5mm}\setlength{\parskip}{0pt}
+  \item \textbf{Bẫy phần mềm dùng chung (Edge GPU)}: Trên hệ thống CPU/GPU biên, tầng tiền xử lý âm thanh phải chia sẻ cửa sổ $10\text{ ms}$ với nhân hệ điều hành Linux, các ngắt driver DMA thu âm từ micro, các tiến trình mạng nền và hàng đợi khởi chạy kernel tính toán. Sự tranh chấp tài nguyên và chuyển đổi ngữ cảnh ngẫu nhiên giữa các lớp phần mềm bất đồng bộ khiến độ trễ luôn chịu sự rung pha thời gian ($\Delta t_{\text{rung pha}} > 0$).
+  \item \textbf{Fabric không gian chuyên dụng (FPGA)}: Trên FPGA, pipeline DSP được thiết kế hoàn toàn bằng các đường dây silicon và thanh ghi chuyên dụng, được cách ly vật lý tuyệt đối. Phần cứng không dùng chung xung nhịp hay đường ống thực thi với bất kỳ hệ điều hành nào. Tầng tiền xử lý hoàn tất mỗi khung âm thanh trong đúng một số chu kỳ xung nhịp cố định ($N_{\text{clk}}$), bảo đảm độ rung pha thời gian bằng đúng 0 nano giây ($\Delta t = 0\text{ ns}$).
+\end{itemize}
+
+\clearpage
+
+% ============================================================================
+% TRANG 3: Hình 1.4b, Phát hiện then chốt, Cầu nối sang Mục 1.5
+% ============================================================================
+\vspace*{-4.5mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.94\textwidth}{!}{\input{fig_1_4b_vi.tex}}\\[1mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Hình 1.4b}: \textbf{Phân bổ bộ nhớ BRAM trên KV260 và tính tất định của đường truyền dữ liệu.} (1)~\textbf{Nó là gì:} Sự phân bổ tài nguyên Block RAM trên MPSoC AMD XCK26 đặt cạnh phép so sánh đường ống kiến trúc thực thi. (2)~\textbf{Nhìn vào đâu:} Ở (a), trạng thái tầng đầu vào ($1.600\text{ B}$) và trọng số Mel ($80{,}3\text{ KiB}$) chỉ chiếm tổng cộng $12{,}6\%$ SRAM trên chip, dành lại $87{,}4\%$ cho các mô hình mạng nơ-ron âm học. Ở (b), GPU biên phải chia sẻ cửa sổ bước nhảy $10\text{ ms}$ với các ngắt nhân hệ điều hành và tranh chấp bộ nhớ (gây rung pha), trong khi đường truyền dữ liệu FPGA thực thi bằng các đường dây silicon chuyên dụng với độ rung pha bằng 0. (3)~\textbf{Nó chứng minh điều gì:} Yêu cầu cấp thiết của việc di chuyển sang FPGA được quyết định bởi khả năng cách ly độ trễ tất định, chứ không phải hiệu năng FLOPS thô.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-2.5mm}
+
+\begin{groundbreaking}
+FPGA không đánh bại GPU biên về thông lượng số học thô; nó vượt trội hoàn toàn về khả năng cách ly tất định. Các đường dây silicon chuyên dụng bảo đảm thời gian thực thi không trôi pha trong hạn chót cứng 10 ms của mỗi nhịp bước, hoàn toàn độc lập với sự chiếm quyền của hệ điều hành và sự tranh chấp tài nguyên bộ nhớ.
+\end{groundbreaking}
+
+\vspace{2mm}
+\noindent\textbf{Cầu nối tự nhiên sang Mục 1.5: Thử nghiệm ứng suất tại ranh giới phần cứng.} Chúng ta đã chứng minh rằng pipeline tiền xử lý dòng ánh xạ cực kỳ hiệu quả lên tài nguyên vật lý của FPGA---chiếm dụng dung lượng Block RAM khiêm tốn ($12{,}6\%$) và bảo đảm tính tất định trễ tuyệt đối.
+
+Tuy nhiên, các công thức toán học luôn tiềm ẩn những điểm gãy đổ thảm khốc khi bị ép vượt qua giới hạn hoạt động danh định. Điều gì xảy ra nếu người thiết kế cố giảm độ trễ bằng cách cắt ngắn độ dài cửa sổ? Điều gì xảy ra nếu tín hiệu âm thanh được lấy mẫu ở chuẩn phòng thu ($48\text{ kHz}$)? Điều gì xảy ra nếu hệ thống lưu ma trận dày đặc thay vì nén thưa? Trong Mục 1.5, chúng ta sẽ đưa các mô hình lý thuyết vào bốn kịch bản thử nghiệm ứng suất nghiêm ngặt, trực tiếp khảo sát nơi mà silicon biên bị bẻ gãy khi chạm tới giới hạn vật lý.
+
+\end{document}
