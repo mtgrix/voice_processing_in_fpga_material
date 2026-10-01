@@ -1,0 +1,94 @@
+% Figure 1.6a: Cơ chế cửa sổ trượt và các chế độ gãy đổ của tương quan tuyến tính
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  wordbox/.style={draw=black!75, fill=blue!10, font=\footnotesize\bfseries, align=center, inner sep=2.5pt, rounded corners=1.5pt},
+  winbox/.style={draw=teal!70!black, fill=teal!8, font=\scriptsize, align=center, inner sep=2pt, rounded corners=1.5pt},
+  failwinbox/.style={draw=red!80!black, fill=red!12, font=\scriptsize\bfseries, align=center, inner sep=2pt, rounded corners=1.5pt},
+  dimline/.style={<->, >=Stealth, semithick, black!70},
+  guideline/.style={densely dashed, black!25, thin}
+]
+
+\useasboundingbox (0, 0) rectangle (16.2, 7.1);
+
+% Đường phân cách giữa Panel (a) trên và Panel (b) dưới
+\draw[gray!35, thick, dashed] (0.1, 3.35) -- (16.1, 3.35);
+
+% ==================== PANEL (a): TRÊN: MÔ HÌNH CỬA SỔ TRƯỢT VÀ KẾT ÁN NHÓM ====================
+\node[anchor=west, font=\bfseries\footnotesize, text=blue!85!black] at (0.1, 6.90) 
+  {(a) Mô hình cửa sổ trượt $K+1$ và Quy tắc kết án nhóm ($K=3$ từ, $W = 0{,}40N$, $S = 0{,}20N$)};
+
+% Hàng từ phát âm (K = 3 từ: READ THE BOOK)
+\draw[wordbox] (0.2, 5.95) rectangle (5.26, 6.55) node[midway] {Từ 1: ``READ'' ($0 \le t < 0{,}33N$)};
+\draw[wordbox] (5.26, 5.95) rectangle (10.33, 6.55) node[midway] {Từ 2: ``THE'' ($0{,}33N \le t < 0{,}67N$)};
+\draw[wordbox] (10.33, 5.95) rectangle (15.4, 6.55) node[midway] {Từ 3: ``BOOK'' ($0{,}67N \le t \le N$)};
+
+% 4 Cửa sổ trượt gối đầu 50%
+\draw[winbox] (0.2, 5.35) rectangle (6.28, 5.80) 
+  node[midway] {\textbf{Cửa 1} ($[0, W]$): Phủ Từ 1 + phần Từ 2 \quad \textcolor{teal!90!black}{\textbf{[$r_1 \ge 0{,}3 \implies$ Đạt]}}};
+
+\draw[failwinbox] (3.24, 4.75) rectangle (9.32, 5.20) 
+  node[midway] {\textbf{Cửa 2} ($[S, S+W]$): Phủ Từ 1 và Từ 2 \quad \textcolor{red!90!black}{\textbf{[$r_2 < 0{,}3$]}}};
+
+\draw[winbox] (6.28, 4.15) rectangle (12.36, 4.60) 
+  node[midway] {\textbf{Cửa 3} ($[2S, 2S+W]$): Phủ Từ 2 và Từ 3 \quad \textcolor{teal!90!black}{\textbf{[$r_3 \ge 0{,}3 \implies$ Đạt]}}};
+
+\draw[winbox] (9.32, 3.55) rectangle (15.4, 4.00) 
+  node[midway] {\textbf{Cửa 4} ($[3S, N]$): Phủ phần Từ 2 + Từ 3 \quad \textcolor{teal!90!black}{\textbf{[$r_4 \ge 0{,}3 \implies$ Đạt]}}};
+
+% Mũi tên và Callout kết án của Cửa 2
+\draw[->, red!85!black, thick] (9.35, 4.97) -- (9.85, 4.97);
+\node[draw=red!80!black, fill=red!6, rounded corners=2pt, font=\scriptsize\bfseries, text=red!90!black, inner sep=2.5pt, anchor=west] 
+  at (9.9, 4.97) {Cửa 2 hỏng $\implies$ Kết án trượt cả Từ 1 lẫn Từ 2!};
+
+% ==================== PANEL (b): DƯỚI: HAI BẪY GÃY ĐỔ CỦA CO GIÃN TUYẾN TÍNH ====================
+\draw[gray!30, thin, dashed] (8.0, 0.1) -- (8.0, 3.25);
+
+% --- Nửa trái: Lệch pha do kéo dài nguyên âm ---
+\begin{scope}[xshift=0.1cm, yshift=0.0cm]
+  \node[anchor=west, font=\bfseries\footnotesize, text=blue!85!black] at (0.1, 3.15) 
+    {(b1) Lệch pha do kéo dài nguyên âm (Tempo cục bộ)};
+
+  \draw[->, black!70, semithick] (0.4, 0.45) -- (7.5, 0.45) node[right, font=\tiny\bfseries] {Khung $k$};
+  \draw[->, black!70, semithick] (0.4, 0.45) -- (0.4, 2.75) node[above=0.5pt, font=\tiny\bfseries] {$F_0$};
+
+  \draw[teal!85!black, very thick] 
+    (0.6, 0.7) .. controls (1.5, 2.3) .. (2.5, 2.2) 
+    .. controls (3.2, 1.0) .. (4.5, 0.8) 
+    .. controls (5.8, 1.9) .. (7.2, 2.1);
+  \node[font=\tiny\bfseries, text=teal!90!black] at (2.2, 2.45) {Mẫu chuẩn Sarah};
+
+  \draw[red!85!black, very thick, dashed] 
+    (0.6, 0.7) .. controls (2.0, 0.8) .. (3.8, 2.3) 
+    .. controls (4.8, 2.1) .. (5.6, 1.0) 
+    .. controls (6.5, 0.8) .. (7.2, 1.5);
+  \node[font=\tiny\bfseries, text=red!90!black] at (4.5, 2.45) {Người học (sau dãn đều)};
+
+  \draw[gray!50, thin, dashed] (3.4, 0.45) -- (3.4, 2.1);
+  \fill[teal!85!black] (3.4, 1.15) circle (1.8pt);
+  \fill[red!85!black] (3.4, 2.05) circle (1.8pt);
+  \node[font=\tiny\bfseries, text=red!90!black, fill=white, fill opacity=0.9, text opacity=1, inner sep=1pt, anchor=west] at (3.5, 1.35) 
+    {Khung $k$: $\Delta x_k > 0, \Delta y_k < 0 \implies r < 0$};
+\end{scope}
+
+% --- Nửa phải: Bẫy ngân nga ---
+\begin{scope}[xshift=8.2cm, yshift=0.0cm]
+  \node[anchor=west, font=\bfseries\footnotesize, text=blue!85!black] at (0.1, 3.15) 
+    {(b2) Bẫy ngân nga (Humming Trap: $F_0$ mù formant)};
+
+  \node[draw=teal!70!black, fill=teal!6, rounded corners=2pt, text width=7.4cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.90) {
+    \scriptsize\textbf{1. Nguồn kích thích ($F_0$ --- Dây thanh âm):}\\[1pt]
+    \tiny Người học ngậm miệng ngân nga đúng điệu $\implies$ Quỹ đạo $F_0$ bám khít mẫu.\\
+    \textcolor{teal!90!black}{\textbf{Tương quan Pearson đạt cao ($r \ge 0{,}3$, ví dụ minh họa: $r \approx 0{,}98$).}}
+  };
+
+  \node[draw=red!70!black, fill=red!6, rounded corners=2pt, text width=7.4cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.40) {
+    \scriptsize\textbf{2. Bộ lọc cộng hưởng ($F_1, F_2, F_3$ --- Thanh đạo):}\\[1pt]
+    \tiny Miệng ngậm chặt $\implies$ Hoàn toàn \textbf{KHÔNG} có formant âm vị nguyên âm/phụ âm.\\
+    \textcolor{red!90!black}{\textbf{Phát âm sai $100\%$ nhưng thuật toán vẫn chấm Đạt (Lỗ hổng mù âm vị).}}
+  };
+\end{scope}
+
+\end{tikzpicture}
