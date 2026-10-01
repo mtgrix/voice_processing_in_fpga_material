@@ -1,0 +1,290 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Segoe UI}
+\setmonofont{Consolas}
+\usepackage[top=0.40in, bottom=0.40in, left=0.68in, right=0.68in, headheight=0pt, headsep=0pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{caption}
+
+\captionsetup[table]{name=Bảng}
+\captionsetup[figure]{name=Hình}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+% Hộp chú giải sư phạm
+\newtcolorbox{learningobj}{
+    colback=blue!3!white,
+    colframe=blue!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ MỤC TIÊU HỌC TẬP},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=0.8mm, bottom=0.8mm,
+    before skip=0.2mm, after skip=0.8mm
+}
+
+\newtcolorbox{groundbreaking}{
+    colback=teal!4!white,
+    colframe=teal!60!black,
+    fonttitle=\bfseries\sffamily,
+    title={$\bigstar$ PHÁT HIỆN THEN CHỐT},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3.5mm, right=3.5mm, top=1.8mm, bottom=1.8mm
+}
+
+\newtcolorbox{physicalinsight}{
+    colback=yellow!6!white,
+    colframe=orange!75!black,
+    fonttitle=\bfseries\sffamily,
+    title={$\blacktriangleright$ NHÌN THẤY VẬT LÝ},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3.5mm, right=3.5mm, top=1.8mm, bottom=1.8mm
+}
+
+\newtcolorbox{misconceptionbox}[1]{
+    colback=red!2!white,
+    colframe=red!70!black,
+    fonttitle=\bfseries\sffamily,
+    title={$\triangle$ BẺ GÃY NGỘ NHẬN: #1},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+
+\renewcommand{\thefigure}{1.2\alph{figure}}
+
+\begin{document}
+
+% ============================================================================
+% TRANG 1: Vật lý tiếng nói và Lấy mẫu Nyquist
+% ============================================================================
+\vspace*{-5mm}
+\section*{1.2 Chuỗi Tiền Xử Lý Âm Thanh Dạng Dòng}
+\vspace{-2mm}
+
+\begin{learningobj}
+Thay vì xem tầng tiền xử lý (frontend) như một công thức lập trình thuần túy (khung $\to$ FFT $\to$ Mel $\to$ log), mục này lần theo từng gói dữ liệu vật lý vượt qua các ranh giới tính toán. Chúng ta sẽ chứng minh vì sao đặc tính âm thanh biên bắt buộc phải xử lý dạng dòng với kích thước lô bằng một ($B = 1$), bẻ gãy ba tử huyệt ngộ nhận khi đưa tiền xử lý lên phần cứng, và giải mã lý do kiến trúc bộ nhớ cùng số học con trỏ trên chip phải khớp chính xác với kích thước các tensor âm học.
+\end{learningobj}
+
+Ở Mục 1.1, chúng ta đã xác lập một nguyên lý vật lý: âm thanh không cho phép gom lô ($B > 1 \implies \text{độ trễ}$). Dù vậy, bộ xử lý tín hiệu số và mô hình âm học nơ-ron không thể nuốt trọn một làn sóng tương tự vô tận. Để trích xuất biểu diễn ngôn ngữ từ áp suất không khí biến thiên liên tục, chúng ta phải xây dựng một đường truyền dữ liệu (datapath) phần cứng -- phần mềm có khả năng cắt lát, điều hòa và biến đổi dòng âm thanh với tính tất định thời gian tuyệt đối.
+
+Mục này theo chân dòng dữ liệu qua sáu phép biến đổi tiêu chuẩn được triển khai trong mã nguồn tham chiếu \nolinkurl{chapter01/exp_01_streaming_audio_pipeline.py}: dạng sóng thô, bộ đệm vòng trượt (sliding ring buffer), cửa sổ thuôn nhọn (tapering window), biến đổi Fourier thời gian ngắn (Short-Time Fourier Transform -- STFT), ngân hàng bộ lọc Mel (Mel filterbank), và nén logarit (logarithmic compression). Sáu tầng xử lý này không phải là một giáo trình phần mềm tùy tiện. Mỗi khối sinh ra bởi vì tầng vật lý liền trước để lại một thế lưỡng nan cơ học mà nếu không giải quyết thì phép tính số học tiếp theo không thể vận hành:
+
+{\footnotesize
+\begin{itemize}\setlength{\itemsep}{-2.5pt}\setlength{\parsep}{0pt}\setlength{\topsep}{0pt}\setlength{\partopsep}{0pt}
+    \item Áp suất không khí là đại lượng liên tục, trong khi phần cứng số chỉ lưu trữ các con số rời rạc; sóng âm vật lý do đó phải được \textbf{lấy mẫu} tại các khoảng xung nhịp đều đặn.
+    \item Âm thanh dòng không có điểm kết thúc, trong khi giải tích tần số đòi hỏi một khối số hữu hạn đứng yên; hệ thống do đó phải duy trì một \textbf{bộ đệm} kích thước cố định, tịnh tiến dần theo từng bước nhảy rời rạc.
+    \item Việc cắt ngang một làn sóng đang dao động tạo ra các bước nhảy đột ngột tại ranh giới khung mà bộ phân tích Fourier sẽ nhận diện nhầm thành các họa âm cao tần giả tạo; mỗi khung do đó phải được \textbf{áp cửa sổ} (thuôn dần về 0) trước khi biến đổi.
+    \item Thao tác thuôn mép triệt tiêu năng lượng tại biên khung -- nơi vẫn chứa thông tin âm học; hai khung liên tiếp do đó phải \textbf{gối chồng sâu}, kích hoạt một chu trình phân tích phổ sau mỗi bước nhảy thay vì sau mỗi chiều dài cửa sổ.
+    \item Khung tín hiệu sau khi áp cửa sổ vẫn nằm trong miền thời gian, che giấu các tần số cộng hưởng; phép biến đổi \textbf{STFT} so khớp khung với $N$ tần số dò ứng viên để tạo ra biểu diễn phổ công suất.
+    \item $257$ bin tần số tuyến tính thu được có độ dư thừa quá cao cho mô hình âm học hạ nguồn và phân bổ theo thang Hertz tuyến tính vốn không phản ánh thính giác người; chúng được gom vào $80$ dải \textbf{ngân hàng bộ lọc Mel} phi tuyến.
+    \item Năng lượng giữa các dải phổ dao động cách nhau hàng triệu lần, khiến phép cộng trong mạng nơ-ron bị dải âm lớn nhất chi phối áp đảo; từng giá trị năng lượng do đó được nén bằng cách lấy \textbf{logarit}.
+\end{itemize}
+}
+
+\vspace{0.3mm}
+\hrule
+\vspace{0.3mm}
+
+\vspace{-2.5mm}
+\subsection*{Bước 1: Dạng Sóng và Lấy Mẫu Nyquist}
+\vspace{-1.5mm}
+
+Âm thanh được ghi lại dưới dạng chuỗi thời gian rời rạc đo sự biến thiên của áp suất khí quyển. Khoảng cách thời gian giữa hai lần đo liên tiếp do \textbf{tần số lấy mẫu} ($f_s$ -- sampling frequency) quy định, biểu thị số lượng mẫu đo được thu thập trong một giây.
+
+Chuỗi tiền xử lý âm thanh biên tiêu chuẩn vận hành ở $f_s = 16\text{ kHz}$. Cứ mỗi chu kỳ lấy mẫu $T_s = 62{,}5\,\mu\text{s}$, đúng một mẫu mới xuất hiện từ bộ chuyển đổi tương tự -- số (Analog-to-Digital Converter -- ADC) của micro, và một cửa sổ phân tích $25\text{ ms}$ sẽ tích lũy đủ $400$ mẫu. Ràng buộc tham số này bắt nguồn trực tiếp từ cơ sinh học phát âm của con người:
+\begin{itemize}\setlength{\itemsep}{-2.5pt}\setlength{\parsep}{0pt}\setlength{\topsep}{0pt}\setlength{\partopsep}{0pt}
+    \item Dây thanh đới dao động ở tần số cơ bản ($F_0$) từ $85\text{ Hz}$ (giọng nam trầm) đến $255\text{ Hz}$ (giọng nữ cao).
+    \item Các khoang cộng hưởng của đường dẫn âm (hầu họng, khoang miệng, khoang mũi) tạo ra các đỉnh cộng hưởng formant ($F_1, F_2, F_3$) định hình nguyên âm, trải rộng từ $300\text{ Hz}$ đến $3.500\text{ Hz}$.
+    \item Thành phần tần số cao nhất trong tiếng nói người xuất hiện ở các phụ âm xát và phụ âm bật vô thanh (như /s/ và /sh/), triệt tiêu nhanh chóng ở dải trên $8\text{ kHz}$.
+\end{itemize}
+
+Theo định lý lấy mẫu Nyquist-Shannon (Nyquist-Shannon sampling theorem), quá trình khôi phục hoàn hảo một tín hiệu giới hạn băng thông đòi hỏi tần số lấy mẫu phải lớn hơn ít nhất hai lần tần số cao nhất của nó ($f_s \ge 2B$). Tần số $16\text{ kHz}$ thiết lập ranh giới Nyquist tại $8\text{ kHz}$, bao trọn toàn bộ phổ ngữ âm của con người đồng thời loại bỏ tiếng rít siêu âm từ môi trường. Việc nâng tần số lấy mẫu lên chuẩn CD ($44{,}1\text{ kHz}$) hay chuẩn phòng thu ($48\text{ kHz}$) làm tăng gấp ba kích thước bộ đệm trên chip, băng thông bus và khối lượng tính toán mà không mang lại thêm bất kỳ thông tin ngữ âm có nghĩa nào cho mô hình nhận dạng. Ràng buộc $16\text{ kHz}$ là quy chuẩn cố định bắt buộc từ các bộ dữ liệu huấn luyện thực tế (như Speech Commands hay LibriSpeech), không phải là một lựa chọn thẩm mỹ tùy tiện.
+
+\clearpage
+
+% ============================================================================
+% TRANG 2: Bộ đệm vòng trượt
+% ============================================================================
+
+\subsection*{Bước 2: Bộ Đệm Vòng Trượt}
+
+Tầng tiền xử lý quan sát một cửa sổ dài $L = 400$ mẫu sau mỗi bước nhảy, tiến dần trên dòng âm thanh đầu vào theo từng bước $H = 160$ mẫu ($T_h = 10\text{ ms}$).
+
+Để hiểu cách phần cứng giải quyết vùng gối đầu này, hãy xem xét hai giả thuyết triển khai đối lập:
+
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}
+    \item \textbf{Giả thuyết A (Dịch chuyển bộ nhớ ngây thơ trong phần mềm):} Bộ xử lý xem bộ đệm khung như một mảng tuyến tính liên tục. Khi $160$ mẫu mới xuất hiện, phần mềm thực thi lệnh dịch chuyển bộ nhớ (\texttt{memmove}), sao chép $240$ mẫu gần nhất lùi về đầu mảng trước khi ghi nối tiếp $160$ mẫu mới vào phần đuôi.
+    \item \textbf{Giả thuyết B (Bộ đệm con trỏ vòng trong phần cứng):} Địa chỉ ô nhớ nằm cố định trong bộ nhớ RAM khối (Block RAM -- BRAM) trên chip. Thay vì dịch chuyển các phần tử dữ liệu, kiến trúc cập nhật hai thanh ghi con trỏ địa chỉ tuần hoàn tăng theo modulo $400$.
+\end{itemize}
+
+Lời giải chứng minh tính ưu việt của phần cứng chuyên dụng trước bus bộ nhớ đa dụng: ở Giả thuyết A, bộ xử lý phải trả một khoản thuế truyền thông định kỳ sau mỗi khung gồm $240$ thao tác đọc và $240$ thao tác ghi bộ nhớ. Trên một dòng âm thanh vô tận, sự di chuyển dữ liệu thừa thãi này liên tục thiêu đốt băng thông bus và năng lượng truy xuất bộ nhớ. Ở Giả thuyết B, các mẫu vật lý một khi đã ghi vào Block RAM sẽ không bao giờ dịch chuyển vị trí. Con trỏ ghi tiến thêm $160$ địa chỉ để ghi đè lên dữ liệu cũ nhất, trong khi con trỏ đọc phát dòng $400$ mẫu liên tục vào đường truyền tính toán bắt đầu từ ranh giới vừa cập nhật.
+
+\begin{center}\vspace{-2mm}
+\begin{minipage}{\textwidth}
+\centering
+\input{fig_1_2a_vi.tex}\\[2mm]
+\refstepcounter{figure}\label{fig:1_2a_ring_buffer}
+\begin{minipage}{0.95\textwidth}
+\small\textbf{Hình \thefigure}: Sự đối lập cơ học giữa thao tác dịch bộ nhớ trong phần mềm (a) và cơ chế bộ đệm vòng phần cứng (b) cho khung 400 mẫu với bước nhảy 160 mẫu ($T_h = 10\text{ ms}$). Trong khi phần mềm phải liên tục đọc và ghi 240 mẫu qua bus sau mỗi bước nhảy, phần cứng giữ cố định dữ liệu trong Block RAM và chỉ dịch chuyển hai thanh ghi con trỏ theo modulo 400, triệt tiêu hoàn toàn chi phí dịch chuyển mẫu.
+\end{minipage}
+\end{minipage}\vspace{-2mm}
+\end{center}
+
+\begin{groundbreaking}
+Trên kiến trúc không gian FPGA, chi phí năng lượng và chu kỳ xung nhịp để dịch chuyển dữ liệu khi gối khung giảm về 0:
+$$\text{Năng lượng dịch chuyển dữ liệu} \to 0$$
+Trạng thái âm học giữa các khung không nằm trong các vòng lặp sao chép phần mềm. Trạng thái này lưu giữ hoàn toàn trong các bit địa chỉ của hai thanh ghi con trỏ BRAM tuần hoàn. Đây chính là khối lưu giữ trạng thái bền vững đầu tiên trong chuỗi xử lý giọng nói dạng dòng.
+\end{groundbreaking}
+
+\clearpage
+
+% ============================================================================
+% TRANG 3: Áp cửa sổ, STFT, Ngân hàng bộ lọc Mel
+% ============================================================================
+
+\subsection*{Bước 3: Áp Cửa Sổ và Sự Gián Đoạn Ranh Giới}
+
+Khung phân tích 400 mẫu đại diện cho một lát cắt chữ nhật hữu hạn trích xuất từ sóng âm tương tự liên tục. Một nhát cắt chữ nhật hoạt động như một hàm bước nhảy sắc nhọn: tín hiệu bắt đầu tức thì ở mẫu 0 và ngắt đột ngột ở mẫu 399.
+
+Đối với bộ phân tích Fourier, bước nhảy thẳng đứng không thể phân biệt được với các họa âm cao tần vốn không hề tồn tại trong môi trường âm thanh thực. Nếu biến đổi trực tiếp, vách đứng ranh giới gây ra hiện tượng \textbf{rò rỉ phổ} (spectral leakage) nghiêm trọng, làm nhòe năng lượng sang các bin tần số kế cận.
+
+Để ngăn ngừa biến dạng này, 400 mẫu lưu trong bộ đệm vòng được nhân từng phần tử với cửa sổ \textbf{Hamming} đối xứng $w[n]$:
+$$x_w[n] = x[n] \cdot w[n], \quad 0 \le n < 400$$
+
+Cửa sổ Hamming thuôn mượt về gần 0 ở cả hai mép ranh giới, đảm bảo dạng sóng tiến vào và rời khỏi khung phân tích mà không tạo ra các bước nhảy gãy khúc.
+
+\begin{physicalinsight}
+Cửa sổ thuôn nhọn là khoản thuế ranh giới phải trả để bộ phân tích Fourier không vấp phải vách đứng nhân tạo. Việc ép các mẫu ranh giới về gần 0 triệt tiêu họa âm cao tần giả tạo nhưng làm suy hao năng lượng thật ở mép khung. Sự suy hao này gây ra hiện tượng nhòe rộng phổ, khiến hai khung kế tiếp bắt buộc phải gối chồng sâu 240 mẫu để mọi biến cố âm học đều có cơ hội được phân tích tại vùng đỉnh cửa sổ.
+\end{physicalinsight}
+
+\smallskip
+\hrule
+\smallskip
+
+\subsection*{Bước 4: Biến Đổi Fourier Thời Gian Ngắn (STFT)}
+
+Việc tính toán biến đổi Fourier rời rạc (Discrete Fourier Transform -- DFT) trên các khung đã áp cửa sổ liên tiếp theo thời gian tạo nên biến đổi Fourier thời gian ngắn (STFT).
+
+Để tính DFT với hiệu năng tối ưu, 400 mẫu sau khi áp cửa sổ được mở rộng lên 512 mẫu bằng cách chèn thêm 112 giá trị 0 (\textbf{đệm số không} -- zero-padding). Việc đệm kích thước lên lũy thừa của 2 ($N_{\text{fft}} = 512$) cho phép đường truyền tận dụng cấu trúc biến đổi Fourier nhanh (Fast Fourier Transform -- FFT) cơ số 2.
+
+Vì tín hiệu âm thanh đầu vào hoàn toàn là các giá trị thực, phổ phức thu được mang tính đối xứng liên hợp: nửa trên của các bin tần số là bản sao phản chiếu của nửa dưới. Đường ống xử lý loại bỏ phần tần số âm dư thừa, chỉ giữ lại $N_{\text{fft}} / 2 + 1 = 257$ bin tần số dương thực thụ. Phổ công suất (power spectrum) được tạo ra bằng cách lấy bình phương độ lớn của các giá trị phức này, mang lại 257 giá trị năng lượng thực mô tả mật độ phân bổ công suất trên toàn dải tần.
+
+\smallskip
+\hrule
+\smallskip
+
+\subsection*{Bước 5: Ngân Hàng Bộ Lọc Mel}
+
+257 bin phổ công suất phân bổ đều dải tần số từ 0 đến 8 kHz.
+
+Tuy nhiên, thính giác con người không cảm nhận chênh lệch tần số theo thang tuyến tính. Ốc tai người phân giải các âm trầm với độ chính xác cao nhưng lại gom các âm bổng vào những dải cảm nhận rộng. Hơn nữa, việc cấp trực tiếp 257 giá trị phổ vào một mạng nơ-ron nhỏ sẽ làm bùng nổ số lượng tham số không cần thiết.
+
+Đường truyền nén 257 bin tuyến tính thành $M = 80$ dải \textbf{ngân hàng bộ lọc Mel}. Mỗi bộ lọc Mel là một hàm trọng số hình tam giác phủ lên một cụm bin FFT kế cận. Các bộ lọc được bố trí dày đặc ở dải tần thấp và dãn rộng dần về phía dải tần cao. Năng lượng đầu ra của từng dải Mel là tổng có trọng số của các bin phổ công suất nằm dưới tam giác lọc đó, thực hiện qua phép nhân với ma trận trọng số thưa kích thước $80 \times 257$.
+
+\clearpage
+
+% ============================================================================
+% TRANG 4: Nén Logarit, Kích thước Tensor và Bảng Dung Lượng
+% ============================================================================
+
+\subsection*{Bước 6: Nén Logarit}
+
+Năng lượng âm học trên 80 dải Mel có thể chênh lệch nhau hàng triệu lần giữa một tiếng thì thầm khẽ và một tiếng bật phụ âm vang dội. Nếu đưa thẳng các giá trị năng lượng thô vào mô hình âm học nơ-ron, biên độ quá lớn sẽ làm bão hòa các hàm kích hoạt và chi phối hoàn toàn quá trình cập nhật trọng số.
+
+Thính giác con người cảm nhận độ to theo tỷ lệ cường độ âm thay vì chênh lệch số học tuyến tính. Bước tiền xử lý cuối cùng nén logarit năng lượng của từng dải Mel. Ngưỡng chặn dưới $10^{-6}$ đóng vai trò số học sống còn: trong các khoảng lặng hoàn toàn khi năng lượng dải tiến sát 0, ngưỡng chặn ngăn toán tử logarit rơi vào âm vô cùng ($-\infty$), bảo đảm tính ổn định số học trên cả đường ống phần cứng dấu phẩy động lẫn dấu phẩy tĩnh.
+
+\smallskip
+\hrule
+\smallskip
+
+\subsection*{Kích Thước Tensor và Dung Lượng Bộ Nhớ}
+
+Trong kiến trúc silicon, kích thước tensor không phải là các con số trừu tượng trên phần mềm; chúng quy định trực tiếp độ rộng bit của thanh ghi, độ sâu của Block RAM và băng thông đường truyền bộ nhớ. Toàn bộ tiến trình biến đổi dữ liệu trên một khung $10\text{ ms}$ được tổng hợp trong Bảng~\ref{tab:tensor_sizes_vi}:
+
+\begin{center}\vspace{-1mm}
+\begin{minipage}{\textwidth}
+\centering
+\small
+\captionof{table}{Kích thước tensor âm thanh dòng và dung lượng bộ nhớ FP32 trên mỗi khung $10\text{ ms}$.}\label{tab:tensor_sizes_vi}
+\vspace{1mm}
+\begin{tabular}{lll}
+\toprule
+\textbf{Tầng Xử Lý} & \textbf{Dữ Liệu Sinh Ra Mỗi Khung} & \textbf{Dung Lượng FP32 (Float 32-bit)} \\
+\midrule
+Dạng sóng đầu vào & 160 mẫu mới & 640 B nạp mỗi $10\text{ ms}$ \\
+Bộ đệm vòng trượt & 400 mẫu thường trú & 1.600 B, trạng thái duy trì trên chip \\
+Khung sau áp cửa sổ & 400 mẫu qua cửa sổ & 1.600 B (bộ đệm $\times$ cửa sổ Hamming) \\
+Bộ đệm đầu vào FFT & 512 mẫu & 2.048 B (400 mẫu thực $+ 112$ mẫu số 0) \\
+Phổ công suất & 257 bin phổ & 1.028 B (257 giá trị năng lượng thực) \\
+Dải ngân hàng bộ lọc Mel & 80 giá trị bộ lọc & 320 B (nhân ma trận $80 \times 257$) \\
+Khung đặc trưng Log-Mel & 80 đặc trưng log năng lượng & 320 B (đầu vào trực tiếp cho mô hình âm học) \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\begin{center}\vspace{-2mm}
+\begin{minipage}{\textwidth}
+\centering
+\input{fig_1_2b_vi.tex}\\[2mm]
+\refstepcounter{figure}\label{fig:1_2b_pipeline_tensor_sizes}
+\begin{minipage}{0.95\textwidth}
+\small\textbf{Hình \thefigure}: Kích thước tensor và dung lượng bộ nhớ dọc theo đường truyền dữ liệu âm thanh dòng cho một khung phân tích 10 ms. Dữ liệu nở rộng từ 160 mẫu (640 B) lên 512 điểm đệm không (2.048 B) để biến đổi phổ, sau đó nén gọn về 80 giá trị log năng lượng (320 B) cấp cho mô hình âm học, khẳng định cấu hình bộ đệm và độ rộng bus phần cứng do chính hình dạng tensor DSP quy định.
+\end{minipage}
+\end{minipage}\vspace{-2mm}
+\end{center}
+\clearpage
+
+% ============================================================================
+% TRANG 5: Bẻ gãy ngộ nhận và Thế lưỡng nan nhòe tần số
+% ============================================================================
+
+\subsection*{Bẻ Gãy Ngộ Nhận: Ba Tử Huyệt Trong Tiền Xử Lý Giọng Nói Dạng Dòng}
+
+Ba cạm bẫy nhận thức sau đây thường xuyên gây sai lầm cho các kỹ sư khi chuyển từ học máy ngoại tuyến (offline) hoặc lập trình ứng dụng nói chung sang thiết kế trên phần cứng FPGA:
+
+\begin{misconceptionbox}{Bẫy A --- Tần số lấy mẫu càng cao ($48\text{ kHz}$) thì AI càng chính xác}
+\textbf{Căn nguyên:} Trực giác âm thanh trung thực cao (Hi-Fi) đánh đồng tần số lấy mẫu cao ($48\text{ kHz}$ hoặc $96\text{ kHz}$) với chất âm trong trẻo, khiến kỹ sư ngộ nhận rằng tần số cao hơn sẽ giúp mô hình âm học nhận dạng chính xác hơn.\\[1mm]
+\textbf{Thực tế khoa học:} Các đỉnh cộng hưởng formant tiếng người ($F_1, F_2, F_3$) chỉ nằm trong khoảng từ $300\text{ Hz}$ đến $3.500\text{ Hz}$, trong khi các phụ âm xát vô thanh triệt tiêu trước $8\text{ kHz}$. Việc tăng $f_s$ lên $48\text{ kHz}$ chỉ thu thêm tiếng xì siêu âm của môi trường trong khi thổi phồng dung lượng BRAM trên chip, băng thông bus và độ phức tạp tính toán FFT lên gấp ba lần mà không mang lại bất kỳ lợi thế ngữ âm nào cho mô hình nhận dạng.
+\end{misconceptionbox}
+
+\begin{misconceptionbox}{Bẫy B --- Bộ đệm khung trượt chỉ là thao tác sao chép bộ nhớ trong phần mềm}
+\textbf{Căn nguyên:} Trong mã nguồn Python hoặc C tiêu chuẩn, bước dịch khung phân tích được thực thi bằng hàm dịch chuyển bộ nhớ (\texttt{memmove}), tiêu tốn $240$ chu kỳ đọc và $240$ chu kỳ ghi sau mỗi bước nhảy.\\[1mm]
+\textbf{Thực tế khoa học:} Trên kiến trúc phần cứng không gian FPGA, bộ đệm vòng tiêu tốn đúng 0 chu kỳ xung nhịp sao chép. Bằng cách hiện thực hai thanh ghi đếm chạy vòng quanh Block RAM trên chip, các mẫu âm thanh nằm yên tại chỗ trong khi địa chỉ cuộn theo modulo 400. Chi phí truyền dữ liệu tuần tự $\mathcal{O}(L - H)$ biến mất hoàn toàn.
+\end{misconceptionbox}
+
+\begin{misconceptionbox}{Bẫy C --- Cắt khung bằng cửa sổ chữ nhật giữ nguyên vẹn mẫu âm thanh gốc}
+\textbf{Căn nguyên:} Phép cắt phẳng chữ nhật giữ nguyên giá trị số của mẫu âm thanh mà không nhân với bất kỳ hệ số suy hao nào, tạo cảm giác tín hiệu đạt độ trung thực tuyệt đối.\\[1mm]
+\textbf{Thực tế khoa học:} Bước nhảy đột ngột tại hai ranh giới khung tạo ra các sóng hài cao tần giả mạo vốn không hề tồn tại trong phòng thu. Đối với biến đổi Fourier, mép cắt sắc nhọn giống như các xung tần số vô hạn gây hiện tượng rò rỉ phổ nghiêm trọng sang các bin lân cận. Việc áp dụng cửa sổ thuôn mượt (Hamming) là bắt buộc về mặt vật lý để triệt tiêu nhiễu ranh giới.
+\end{misconceptionbox}
+
+\smallskip
+\hrule
+\smallskip
+
+\subsection*{Thế Lưỡng Nan Chưa Giải Quyết: Độ Nhòe Tần Số}
+
+Qua sáu tầng xử lý của đường truyền này, chúng ta đã điều hòa sóng áp suất không khí thô thành các vector đặc trưng 80 chiều ổn định, phát ra đều đặn mỗi $10\text{ ms}$.
+
+Dù vậy, phép chuyển đổi này làm lộ rõ một mâu thuẫn vật lý cốt lõi: khi bóp ngắn cửa sổ phân tích xuống $25\text{ ms}$ để bảo toàn tính dừng thời gian, khả năng phân tách hai tần số cộng hưởng nằm sát nhau sẽ bị ảnh hưởng ra sao? Độ rộng hữu hạn của từng bin phân tích phổ làm nhòe các họa âm kế cận như thế nào, và ngân hàng bộ lọc Mel cân bằng sự đánh đổi giữa độ phân giải thời gian và độ phân giải tần số theo cơ chế nào để cách ly các formant?
+
+Thế lưỡng nan toán học này dẫn dắt chúng ta trực tiếp vào phần dẫn xuất giải tích chi tiết của STFT và ngân hàng bộ lọc Mel trong Mục 1.3.
+
+\end{document}
