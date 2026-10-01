@@ -1,0 +1,72 @@
+% Figure 1.4a: Sàn trễ âm học so với tốc độ bộ xử lý (Bản tiếng Việt)
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  timeline/.style={->, thick, black!75},
+  ann/.style={font=\footnotesize, text=black!85},
+  tk/.style={font=\scriptsize, text=black!75}
+]
+
+% Trục thời gian (0 đến 50 ms)
+% Tỷ lệ: 0.31cm mỗi ms -> 50 ms = 15.5 cm
+\begin{scope}[x=0.31cm, y=1.0cm]
+  % Đường trục
+  \draw[timeline] (0, 0) -- (51.5, 0) node[right, font=\scriptsize\bfseries] {Thời gian vật lý (ms)};
+
+  % Vạch chia và lưới dọc
+  \foreach \t in {0, 10, 20, 25, 30, 40, 50} {
+    \draw[black!60, semithick] (\t, -0.1) -- (\t, 0.1);
+    \node[tk, below] at (\t, -0.1) {\t};
+    \draw[gray!25, dashed] (\t, 0.1) -- (\t, 4.3);
+  }
+
+  % Đường đánh dấu sàn âm học 25 ms
+  \draw[red!80!black, thick, dashed] (25, -0.2) -- (25, 4.3);
+  \node[font=\scriptsize\bfseries, text=red!80!black, above] at (25, 4.3) {Sàn âm học vật lý ($25\text{ ms}$)};
+
+  % Khung 0: Tích lũy vật lý (0 đến 25 ms)
+  \draw[fill=blue!12, draw=blue!80!black, thick, rounded corners=2pt] (0, 2.6) rectangle (25, 3.8);
+  \node[font=\scriptsize\bfseries, text=blue!90!black, align=center, text width=7.2cm] at (12.5, 3.2) {
+    Khung 0: Tích lũy vật lý ($L = 400\text{ mẫu}$, $25\text{ ms}$)\\[0.8mm]
+    \tiny Thu thập qua màng rung micro ở $16\text{ kHz}$ ($f_s = 16{.}000\text{ mẫu/giây}$)
+  };
+
+  % Khung 1: Nhịp bước (bắt đầu tại 10 ms, kết thúc tại 35 ms)
+  % Vùng gối đầu (10 đến 25 ms): 60%
+  \draw[fill=teal!18, draw=teal!80!black, thick, rounded corners=2pt] (10, 1.35) rectangle (25, 2.35);
+  \node[font=\scriptsize, text=teal!90!black, align=center, text width=4.2cm] at (17.5, 1.85) {
+    Gối đầu $60\%$ chung ($240\text{ mẫu}$)
+  };
+  % Vùng mới của Khung 1 (25 đến 35 ms): bước 10 ms
+  \draw[fill=teal!30, draw=teal!80!black, thick, rounded corners=2pt] (25, 1.35) rectangle (35, 2.35);
+  \node[font=\scriptsize\bfseries, text=teal!95!black, align=center, text width=2.8cm] at (30, 1.85) {
+    Bước mới ($160\text{ mẫu}$)
+  };
+  \node[font=\footnotesize\bfseries, text=teal!90!black, anchor=west] at (35.5, 1.85) {
+    Khung 1 ($25\text{ ms}$)
+  };
+
+  % Khung 2: Nhịp bước tiếp theo (bắt đầu tại 20 ms, kết thúc tại 45 ms)
+  \draw[fill=purple!12, draw=purple!80!black, thick, rounded corners=2pt] (20, 0.25) rectangle (45, 1.05);
+  \node[font=\scriptsize, text=purple!90!black, text width=7.2cm, align=center] at (32.5, 0.65) {
+    Khung 2: Nhịp bước $10\text{ ms}$ tiếp theo ($L = 400\text{ mẫu}$)
+  };
+  \node[font=\footnotesize\bfseries, text=purple!90!black, anchor=west] at (45.5, 0.65) {
+    Khung 2
+  };
+
+  % Hộp chú thích rào cản tốc độ bộ xử lý
+  \node[draw=red!80!black, fill=red!5, rounded corners=2pt, font=\scriptsize, align=left, text width=6.6cm] (proc_box) at (38.2, 3.2) {
+    \textbf{Rào cản tốc độ bộ xử lý:}\\[0.3mm]
+    Bộ xử lý dù nhanh đến mấy ($t_{\text{xử lý}} \to 0$) cũng không thể\\
+    phát Khung 0 trước $t = 25\text{ ms}$. Vật lý ấn định sàn trễ!
+  };
+  \draw[<-, very thick, red!85!black] (25.2, 3.2) -- (proc_box.west);
+
+  % Móc nhọn hiển thị nhịp bước
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}, thick, black!75] (25, -0.45) -- (35, -0.45);
+  \node[font=\scriptsize\bfseries, text=black!85, below=4pt] at (30, -0.45) {Nhịp bước $H/f_s = 10\text{ ms}$};
+
+\end{scope}
+
+\end{tikzpicture}
