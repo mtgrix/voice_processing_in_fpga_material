@@ -1,6 +1,6 @@
 \begin{tikzpicture}[
   >=Stealth,
-  scale=0.92, every node/.style={transform shape},
+  scale=0.89, every node/.style={transform shape},
   font=\small,
   blk/.style={draw=black!70, semithick, align=center, inner sep=2pt, minimum height=7.2mm},
   oldblk/.style={blk, fill=gray!15, text=black!60, font=\scriptsize},
@@ -11,42 +11,44 @@
 ]
 
 % ==================== (a) PHẦN MỀM: Dữ liệu bị sao chép ====================
-\node[ttl] at (2.6, 4.8) {(a) Trong phần mềm (CPU / GPU): Dữ liệu bị dời};
+\node[ttl] at (2.4, 4.8) {(a) Trong phần mềm (CPU / GPU): Dữ liệu bị dời};
 
 % Khung l
-\node[font=\scriptsize\bfseries, anchor=east] at (0.0, 3.6) {Khung $\ell$};
-\node[oldblk, minimum width=2.2cm] at (1.3, 3.6) {160 mẫu cũ nhất};
-\node[ovrblk, minimum width=2.8cm] at (3.8, 3.6) {240 mẫu giữ lại};
+\node[font=\scriptsize\bfseries, anchor=east] at (-0.1, 3.6) {Khung $\ell$};
+\node[oldblk, minimum width=2.0cm] at (1.0, 3.6) {160 mẫu cũ nhất};
+\node[ovrblk, minimum width=3.0cm] at (3.5, 3.6) {240 mẫu giữ lại};
 
 % Khung l+1
-\node[font=\scriptsize\bfseries, anchor=east] at (0.0, 1.8) {Khung $\ell\!+\!1$};
-\node[ovrblk, minimum width=2.8cm] at (1.6, 1.8) {240 mẫu bị dịch};
-\node[newblk, minimum width=2.2cm] at (4.1, 1.8) {160 mẫu mới};
+\node[font=\scriptsize\bfseries, anchor=east] at (-0.1, 1.8) {Khung $\ell\!+\!1$};
+\node[ovrblk, minimum width=3.0cm] at (1.5, 1.8) {240 mẫu bị dịch};
+\node[newblk, minimum width=2.0cm] at (4.0, 1.8) {160 mẫu mới};
 
 % Mũi tên dịch chuyển
-\draw[thick, ->, red!75!black] (3.8, 3.2) .. controls (3.2, 2.6) and (2.2, 2.6) .. (1.6, 2.2);
-\node[font=\tiny\bfseries, text=red!80!black, above=2pt] at (2.7, 2.6) {\texttt{memmove} ($240\times$)};
+\draw[thick, ->, red!75!black] (3.5, 3.2) .. controls (3.0, 2.6) and (2.0, 2.6) .. (1.5, 2.2);
+\node[font=\tiny\bfseries, text=red!80!black, above=2pt] at (2.5, 2.6) {\texttt{memmove} ($240\times$)};
 
 % Mũi tên loại bỏ
-\draw[->, gray!60, thick] (1.1, 3.2) -- (0.5, 2.5);
-\node[font=\tiny, text=gray!70, left] at (0.5, 2.5) {Loại bỏ};
+\draw[->, gray!60, thick] (0.8, 3.2) -- (0.3, 2.5);
+\node[font=\tiny, text=gray!70, left] at (0.3, 2.5) {Loại bỏ};
 
-% Mũi tên nạp mới
-\draw[->, blue!75!black, thick] (6.0, 1.8) node[right, font=\tiny\bfseries, align=left] {Dòng nạp mới\\($T_h = 10\text{ ms}$)} -- (5.25, 1.8);
+% Mũi tên nạp mới (không đụng vách ngăn)
+\draw[->, blue!75!black, thick] (6.2, 1.8) -- (5.05, 1.8);
+\node[font=\tiny\bfseries, text=blue!90!black, above] at (5.7, 1.85) {Dòng nạp mới};
+\node[font=\tiny, text=blue!85!black, below] at (5.7, 1.75) {($T_h = 10\text{ ms}$)};
 
-\node[ann, text width=5.6cm] at (2.6, 0.2) {
+\node[ann, text width=5.6cm] at (2.5, 0.2) {
   \textbf{Thuế sao chép phần mềm:}\\
   $240$ lần đọc và $240$ lần ghi bộ nhớ thực thi tuần tự sau mỗi bước nhảy $10\text{ ms}$.
 };
 
 % ==================== VÁCH NGĂN PHÂN CHIA ====================
-\draw[dashed, gray!40, thick] (6.7, -0.6) -- (6.7, 5.2);
+\draw[dashed, gray!45, thick] (6.8, -0.6) -- (6.8, 5.2);
 
 % ==================== (b) PHẦN CỨNG: BRAM vòng ====================
-\begin{scope}[shift={(11.3, 2.6)}]
-  \node[ttl, align=center] at (0, 2.45) {(b) Trong phần cứng (FPGA BRAM): Dữ liệu cố định};
+\begin{scope}[shift={(11.2, 2.6)}]
+  \node[ttl, align=center] at (0, 2.8) {(b) Trong phần cứng (FPGA BRAM): Dữ liệu cố định};
 
-  \def\R{1.25}\def\ri{0.58}
+  \def\R{1.35}\def\ri{0.65}
   \def\cy{0.65}
   % 160 mẫu = 144 độ (từ 90 đến -54)
   % 240 mẫu = 216 độ (từ -54 đến -270)
@@ -59,26 +61,26 @@
   \draw[black!60, semithick] (0,\cy) ++(90:\ri) -- ++(90:\R-\ri);
   \draw[black!60, semithick] (0,\cy) ++(-54:\ri) -- ++(-54:\R-\ri);
 
-  \node[font=\scriptsize\bfseries, text=blue!90!black] at ($(0,\cy)+(18:0.95)$) {160 mới};
-  \node[font=\scriptsize\bfseries, text=teal!90!black] at ($(0,\cy)+(-150:0.95)$) {240 gối đầu};
+  \node[font=\scriptsize\bfseries, text=blue!90!black] at ($(0,\cy)+(15:1.04)$) {160 mới};
+  \node[font=\scriptsize\bfseries, text=teal!90!black] at ($(0,\cy)+(-165:1.04)$) {240 gối đầu};
 
   % Con trỏ ghi
   \filldraw[red!80!black] ($(0,\cy)+(90:\R)$) circle (2.2pt);
-  \node[font=\tiny\bfseries, text=red!80!black, anchor=south] at ($(0,\cy)+(90:\R+0.12)$) {Con trỏ ghi};
-  \draw[thick, ->, red!80!black] ($(0,\cy)+(80:\R+0.22)$) arc (80:-44:\R+0.22);
-  \node[font=\tiny\bfseries, text=red!80!black, right] at ($(0,\cy)+(15:\R+0.25)$) {Tiến $+160$ ($T_h$)};
+  \node[font=\tiny\bfseries, text=red!80!black, anchor=south] at ($(0,\cy)+(90:\R+0.08)$) {Con trỏ ghi};
+  \draw[thick, ->, red!80!black] ($(0,\cy)+(75:\R+0.22)$) arc (75:-40:\R+0.22);
+  \node[font=\tiny\bfseries, text=red!80!black, right=1pt] at ($(0,\cy)+(15:\R+0.25)$) {Tiến $+160$ ($T_h$)};
 
   % Con trỏ đọc
   \filldraw[teal!80!black] ($(0,\cy)+(-54:\R)$) circle (2.2pt);
   \node[font=\tiny\bfseries, text=teal!90!black, anchor=west] at ($(0,\cy)+(-54:\R+0.12)$) {Con trỏ đọc};
 
-  % Chữ ở tâm
-  \node[font=\tiny\bfseries, text=black!75, align=center] at (0,\cy) {Hai\\con trỏ};
+  % Chữ ở tâm: Hai con trỏ + modulo 400
+  \node[font=\tiny\bfseries, text=black!90, align=center] at (0,\cy) {Hai con trỏ\\$\mathbf{\text{mod } 400}$};
 
   \node[ann, text width=6.2cm] at (0, -1.45) {
     \textbf{Phần cứng không sao chép:}\\
     Mẫu âm thanh nằm cố định trong Block RAM.\\
-    Thanh ghi địa chỉ cuộn theo modulo $400$.\\
+    Thanh ghi địa chỉ cuộn theo \textbf{modulo 400}.\\
     \textbf{Chi phí dịch dữ liệu $= 0$ chu kỳ xung nhịp.}
   };
 \end{scope}

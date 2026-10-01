@@ -1,0 +1,107 @@
+% Figure 1.5a: Four-Knob Silicon and Acoustic Damage Board
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small
+]
+
+\useasboundingbox (0, 0) rectangle (16.4, 5.4);
+
+% Dashed dividers
+\draw[gray!35, thick, dashed] (8.2, 0.15) -- (8.2, 5.30);
+\draw[gray!35, thick, dashed] (0.2, 2.70) -- (16.2, 2.70);
+
+% ==================== PANEL (a): Top-Left: Sampling Rate Overflow ====================
+\begin{scope}[xshift=0.2cm, yshift=2.70cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(a) Sampling Rate (48 kHz vs 16 kHz)};
+
+  % 16 kHz Baseline Box
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{16 kHz Baseline ($L=400$):}\quad \textcolor{teal!90!black}{\textbf{1 BRAM ($1{,}600\text{ B}$)}}\\
+    \tiny Takes $35\%$ of 4,608-B block; Nyquist $8\text{ kHz}$ captures speech.
+  };
+
+  % 48 kHz Studio Box
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{48 kHz Studio ($L_{48}=1{,}200$):}\quad \textcolor{red!90!black}{\textbf{2 BRAMs ($4{,}800\text{ B}$)}}\\
+    \tiny Overflows 4,608-B block; $8\text{--}24\text{ kHz}$ unneeded ($>4\times$ DSP).
+  };
+\end{scope}
+
+% ==================== PANEL (b): Top-Right: Gabor-Heisenberg Smear ====================
+\begin{scope}[xshift=8.4cm, yshift=2.70cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(b) Window Length (5 ms vs 25 ms)};
+
+  % Mini spectral plot
+  \draw[->, black!75, semithick] (0.3, 0.45) -- (7.2, 0.45) node[right, font=\scriptsize\bfseries] {Hz};
+  \draw[->, black!75, semithick] (0.3, 0.45) -- (0.3, 2.10) node[above, font=\scriptsize\bfseries] {dB};
+
+  % Formant grid lines
+  \draw[gray!35, thin, dashed] (2.1, 0.45) -- (2.1, 1.95);
+  \node[below, font=\scriptsize, text=gray!80] at (2.1, 0.45) {$F_1$};
+  \draw[gray!35, thin, dashed] (3.9, 0.45) -- (3.9, 1.95);
+  \node[below, font=\scriptsize, text=gray!80] at (3.9, 0.45) {$F_2$};
+
+  % 25 ms curve (sharp twin peaks, teal)
+  \draw[teal!85!black, very thick] 
+    (0.5, 0.55) .. controls (1.5, 0.65) .. (2.1, 1.85) 
+    .. controls (2.5, 0.75) .. (3.0, 0.70) 
+    .. controls (3.4, 0.75) .. (3.9, 1.70) 
+    .. controls (4.8, 0.65) .. (6.8, 0.55);
+  \node[font=\scriptsize\bfseries, text=teal!90!black, anchor=west] at (4.0, 1.80) {
+    $25\text{ ms}$: Resolved ($\Delta f \approx 40\text{ Hz}$)
+  };
+
+  % 5 ms curve (single smeared blob, red dashed)
+  \draw[red!85!black, very thick, dashed] 
+    (0.5, 0.55) .. controls (1.5, 0.70) .. (3.0, 1.35) 
+    .. controls (4.8, 0.70) .. (6.8, 0.55);
+  \node[font=\scriptsize\bfseries, text=red!90!black, anchor=west] at (0.4, 1.40) {
+    $5\text{ ms}$: Merged ($\Delta f \approx 200\text{ Hz}$)
+  };
+\end{scope}
+
+% ==================== PANEL (c): Bottom-Left: Transform Workload ====================
+\begin{scope}[xshift=0.2cm, yshift=0.0cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(c) Transform: 400-pt DFT vs 512 FFT};
+
+  % Direct DFT Box
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{Direct 400-pt DFT ($201 \times 400$):}\quad \textcolor{red!90!black}{\textbf{80,400 MACs}}\\
+    \tiny High complexity stalls pipeline or exhausts DSP48 slices.
+  };
+
+  % Radix-2 FFT Box
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{512-pt Radix-2 FFT:}\quad \textcolor{teal!90!black}{\textbf{2,304 Butterflies ($34.9\times$)}}\\
+    \tiny Zero-padding costs 0 MACs; unlocks butterfly pipelining.
+  };
+\end{scope}
+
+% ==================== PANEL (d): Bottom-Right: Dense vs Sparse Mel Memory ====================
+\begin{scope}[xshift=8.4cm, yshift=0.0cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(d) Mel Storage: Dense FP32 vs Sparse};
+
+  % Dense BRAM Box
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{Dense FP32 Mel ($80 \times 257$):}\quad \textcolor{red!90!black}{\textbf{18 BRAMs (80.3 KiB)}}\\
+    \tiny Takes 12.5\% KV260 BRAM; requires 20,560 reads/frame.
+  };
+
+  % Sparse INT16 Box
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{Sparse INT16 Mel:}\quad \textcolor{teal!90!black}{\textbf{0.26 BRAM ($1{,}188\text{ B}$)}}\\
+    \tiny $69.2\times$ memory cut; frees 17 BRAMs; reads cut $40\times$.
+  };
+\end{scope}
+
+\end{tikzpicture}
