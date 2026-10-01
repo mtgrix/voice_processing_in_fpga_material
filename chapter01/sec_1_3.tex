@@ -1,0 +1,312 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[top=0.42in, bottom=0.42in, left=0.68in, right=0.68in, headheight=0pt, headsep=0pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{caption}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black
+}
+
+% Custom Callout Boxes matching math_tools_en / house style
+\newtcolorbox{learningobj}{
+    colback=blue!3!white,
+    colframe=blue!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ LEARNING OBJECTIVE},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
+    before skip=0.8mm, after skip=1.2mm
+}
+
+\newtcolorbox{groundbreaking}{
+    colback=teal!4!white,
+    colframe=teal!60!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\bigstar$ GROUNDBREAKING FINDING},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
+    before skip=1.0mm, after skip=0.8mm
+}
+
+\newtcolorbox{physicalinsight}{
+    colback=yellow!6!white,
+    colframe=orange!75!black,
+    fonttitle=\bfseries\sffamily,
+    fontupper=\small,
+    title={$\blacktriangleright$ PHYSICAL INSIGHT},
+    arc=1.5mm,
+    boxrule=0.8pt,
+    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
+    before skip=1.5mm, after skip=3.5mm
+}
+
+\renewcommand{\thefigure}{1.3\alph{figure}}
+
+\begin{document}
+
+% ============================================================================
+% PAGE 1: The Probe Wave & Quadrature Projection
+% ============================================================================
+\vspace*{-4.5mm}
+\section*{1.3 Mathematical Modeling: STFT and Mel Filterbank}
+\vspace{-2.5mm}
+
+\begin{learningobj}
+Rather than memorizing six decoupled DSP formulas, this section deduces each operator from first principles: the probe wave that senses harmonic resonance, the tapering window that kills boundary jumps, the Short-Time Fourier Transform that resolves the Gabor-Heisenberg uncertainty trade-off, the power spectrum that strips superfluous phase, the Mel filterbank that warps linear Hertz to cochlear biology, and the logarithmic compression that mirrors human loudness perception. Every formula is autopsied under our five-beat framework---formula, symbols, physical meaning, hardware price, and what the formula hides.
+\end{learningobj}
+
+\vspace{0.5mm}
+Section 1.2 constructed the datapath packaging streaming air pressure into frames. Section 1.3 is the mathematical microscope placed over a single packet, deducing each spectral operator from wave interference and auditory perception.
+
+Six expressions transform streaming samples into 80 numbers: (1)~Windowed Frame, (2)~STFT, (3)~Power Spectrum, (4)~Mel Mapping, (5)~Mel Filterbank, and (6)~Log Compression. Standard parameters: $f_s = 16{,}000\text{ Hz}$, frame length $L = 400$ ($25\text{ ms}$), hop size $H = 160$ ($10\text{ ms}$), FFT size $N = 512$, filter count $M = 80$, $f_{\min} = 0\text{ Hz}$, $f_{\max} = 8{,}000\text{ Hz}$.
+
+\vspace{-1.5mm}
+\subsection*{The Probe Wave, Before the Formula}
+\vspace{-2mm}
+
+How does a circuit test whether an incoming acoustic packet $x_\ell[n]$ vibrates at frequency $f_k$? In classical physics, resonance is detected by probing: an internal reference oscillator evaluates interference against the incoming signal through an inner product $\int_0^T x(t) \cos(\omega_k t) \, dt$. If $x(t)$ contains frequency $\omega_k$ in identical phase ($\cos(\omega_k t)$), the product becomes $\cos^2(\omega_k t) = \frac{1 + \cos(2\omega_k t)}{2}$. Integrated across $T$, the $2\omega_k$ harmonic averages to zero, leaving a positive DC accumulation of $\frac{T}{2}$. If $x(t)$ oscillates at any different harmonic $\omega_m$ ($m \ne k$), the integral evaluates to identically zero. The probe resonates exclusively with its own frequency.
+
+Now expose the fatal flaw of a single probe wave: \textbf{phase blindness}. If the packet arrives delayed by a quarter-cycle (a phase shift of $\pi/2$, turning the input into $\sin(\omega_k t)$), the product becomes $\sin(\omega_k t)\cos(\omega_k t) = \frac{1}{2}\sin(2\omega_k t)$. Over interval $T$, this integrates to exactly zero: $\int_0^T \sin(\omega_k t) \cos(\omega_k t) \, dt = 0$. The single probe reports zero energy while a pure acoustic tone is roaring through the transducer.
+
+To eliminate phase blindness, we must interrogate the wave with \textbf{two orthogonal probes in quadrature}: an in-phase probe $\cos(\omega_k t)$ and a quadrature probe $-\sin(\omega_k t)$ ($90^\circ$ apart). Striking this dual-branch detector, the branches measure $A \cos\theta$ and $A \sin\theta$. By Pythagorean addition, total amplitude is recovered with absolute phase immunity: $A = \sqrt{(A\cos\theta)^2 + (A\sin\theta)^2}$. Euler's identity, $e^{-j\theta} = \cos\theta - j\sin\theta$, is the algebraic packaging of this two-channel physical quadrature receiver.
+
+\vspace{-3.5mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.94\textwidth}{!}{\input{chapter01/fig_1_3a.tex}}\\[0.5mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Figure 1.3a}: \textbf{Probe-wave quadrature interferometer.} (1)~\textbf{What it is:} Internal architecture of a single Fourier frequency bin evaluated as a dual-branch correlation receiver. (2)~\textbf{What to look at:} Incoming frame $x_\ell[n]$ splits into branches multiplied by $\cos(2\pi kn/N)$ (in-phase) and $-\sin(2\pi kn/N)$ (quadrature), accumulating into real and imaginary coordinates. (3)~\textbf{What it proves:} Complex numbers represent the two orthogonal axes needed to measure wave energy independently of arrival phase.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-3.5mm}
+
+\begin{groundbreaking}
+A complex spectral bin is a dual-channel hardware quadrature receiver: two orthogonal reference oscillators ($\cos$ and $-\!\sin$) beating against the incoming pressure wave, returning two agreement scores that recover signal magnitude invariant to arrival phase.
+\end{groundbreaking}
+
+\clearpage
+
+% ============================================================================
+% PAGE 2: Operator 1 (The Windowed Frame) & Figure 6
+% ============================================================================
+\vspace*{-4.5mm}
+\subsection*{1. The Windowed Frame}
+\vspace{-2mm}
+
+To eliminate artificial boundary step discontinuities, the raw audio packet is tapered smoothly toward zero before spectral analysis.
+
+\subsubsection*{The 5-Beat Autopsy: The Windowed Frame}
+\vspace{-2mm}
+{\small
+\textbf{Beat 1: The Formula.} $x_\ell[n] = x[n_0 + \ell H + n] \, w[n], \quad n = 0, 1, \dots, L-1$; followed by zero-padding: $x_\ell[n] = 0, \quad L \le n < N$.\\[1mm]
+\textbf{Beat 2: The Symbols.} $x_\ell[n]$ is the windowed frame $\ell$ ($L = 400$ samples, $25\text{ ms}$ at $f_s = 16{,}000\text{ Hz}$); $x$ is the streaming audio sequence; $H = 160$ samples ($10\text{ ms}$); $L = 400$ samples ($25\text{ ms}$); $w[n]$ is the fixed Hamming window, tapering boundary samples to $w[0] = w[L-1] = 0.08$ with a center peak of $1.00$.\\[1mm]
+\textbf{Beat 3: The Physical Meaning.} Slicing rectangularly convolves the spectrum with a sinc function whose side-lobes decay slowly (first side-lobe at $-13\text{ dB}$). The raised-cosine Hamming window tapers boundaries to $0.08$, suppressing the first side-lobe to $-44\text{ dB}$---a $31\text{ dB}$ reduction in spurious spectral leakage.
+}
+
+\vspace{-3mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.94\textwidth}{!}{%
+\begin{tikzpicture}[>=Stealth, font=\small]
+  % Grid and Axes
+  \draw[->, black!75, thick] (-6.8, -5.0) -- (6.8, -5.0) node[right, font=\scriptsize\bfseries] {Frequency Offset from Center (Hz)};
+  \draw[->, black!75, thick] (0, -5.2) -- (0, 0.6) node[above, font=\scriptsize\bfseries] {Normalized Attenuation (dB)};
+
+  % Horizontal grid lines and dB tick labels
+  \foreach \y/\lbl in {0/{0}, -1.3/{-13}, -2.6/{-26}, -4.4/{-44}} {
+    \draw[gray!30, thin] (-6.5, \y) -- (6.5, \y);
+    \node[left, font=\scriptsize, text=gray!80] at (-6.5, \y) {\lbl~dB};
+  }
+  % Vertical grid lines and Hz tick labels
+  \foreach \x/\lbl in {-4.8/{-160}, -2.4/{-80}, 0/{0}, 2.4/{80}, 4.8/{160}} {
+    \draw[gray!30, thin] (\x, -5.0) -- (\x, 0.4);
+    \node[below, font=\scriptsize, text=gray!80] at (\x, -5.0) {\lbl};
+  }
+
+  % Rectangular window spectrum (sinc shape, blue dashed)
+  \draw[blue!80!black, thick, dashed] 
+    (-6.5, -2.6) -- (-6.0, -2.5) -- (-5.4, -4.8) -- (-4.8, -2.2) -- (-4.2, -4.8) 
+    -- (-3.6, -1.9) -- (-3.0, -4.8) -- (-2.4, -1.6) -- (-1.8, -1.3) -- (-1.2, -4.8) 
+    -- (0, 0) 
+    -- (1.2, -4.8) -- (1.8, -1.3) -- (2.4, -1.6) -- (3.0, -4.8) -- (3.6, -1.9) 
+    -- (4.2, -4.8) -- (4.8, -2.2) -- (5.4, -4.8) -- (6.0, -2.5) -- (6.5, -2.6);
+
+  % Hamming window spectrum (broader main lobe, heavily suppressed side lobes, red solid)
+  \draw[red!80!black, ultra thick] 
+    (-6.5, -4.5) -- (-5.5, -4.4) -- (-4.5, -4.5) -- (-3.5, -4.4) -- (-2.4, -4.4) 
+    -- (-1.6, -2.2) -- (0, 0) -- (1.6, -2.2) -- (2.4, -4.4) 
+    -- (3.5, -4.4) -- (4.5, -4.5) -- (5.5, -4.4) -- (6.5, -4.5);
+
+  % Annotations: Both Callout Boxes placed fully inside with margins
+  \node[draw=blue!80!black, fill=blue!5, rounded corners=3pt, font=\footnotesize, align=left] (rect_box) at (-4.2, -0.9) {
+    \textbf{Rectangular Window:}\\[0.5mm]
+    Main lobe: $\Delta f = 80\text{ Hz}$ ($2f_s/L$)\\[0.5mm]
+    First side-lobe: $\mathbf{-13\text{ dB}}$
+  };
+  \draw[->, blue!80!black, semithick] (rect_box.east) -- (-1.9, -1.3);
+
+  \node[draw=red!80!black, fill=red!5, rounded corners=3pt, font=\footnotesize, align=left] (hamm_box) at (4.2, -0.9) {
+    \textbf{Hamming Window:}\\[0.5mm]
+    Main lobe: $\Delta f = 160\text{ Hz}$ ($4f_s/L$)\\[0.5mm]
+    First side-lobe: $\mathbf{-44\text{ dB}}$
+  };
+  \draw[->, red!80!black, semithick] (hamm_box.south) -- (4.2, -4.3);
+
+  % Suppression Arrow
+  \draw[<->, purple!85!black, very thick] (2.0, -1.3) -- (2.0, -4.4) 
+    node[midway, right, font=\footnotesize\bfseries] {$+31\text{ dB}$ suppression};
+\end{tikzpicture}%
+}\\[1mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Figure 6}: \textbf{Spectral leakage: Rectangular vs.\ Hamming window ($L = 400$, $f_s = 16\text{ kHz}$).} (1)~\textbf{What it is:} Transfer functions for rectangular versus Hamming windowing. (2)~\textbf{What to look at:} Main lobe doubles in width ($80\text{ Hz} \to 160\text{ Hz}$), but the first side-lobe drops from $-13\text{ dB}$ to $-44\text{ dB}$ ($31\text{ dB}$ suppression). (3)~\textbf{What it proves:} Windowing trades frequency sharpness for dynamic range, preventing loud formants from masking quiet consonant harmonics.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-3.5mm}
+
+\begin{physicalinsight}
+Windowing is an unavoidable bargain with the uncertainty principle: we accept a doubling of main-lobe width (from $80\text{ Hz}$ to $160\text{ Hz}$) to buy $31\text{ dB}$ of side-lobe suppression. Without this suppression, loud fundamental harmonics would wash out quiet high-frequency formants across the entire spectrum.
+\end{physicalinsight}
+
+\vspace{1mm}
+{\small
+\textbf{Beat 4: The Hardware Price.} The hardware price is $L = 400$ real multiplications per $10\text{ ms}$ frame. Symmetric window coefficients can be stored in an on-chip lookup table. Pipelined multipliers execute this stage easily within the frame cadence. The precise slice count is Section 1.4 / Chapter 6.\\[1mm]
+\textbf{Beat 5: What the Formula Does Not Say.} Windowing destroys acoustic energy near frame boundaries, attenuating edge samples toward zero. To prevent blind spots where transient acoustic events could vanish undetected, consecutive frames must overlap heavily: hop size $H = 160$ samples advances the window by only $40\%$ of its length, leaving a $60\%$ overlap ($L - H = 240$ shared samples) that guarantees continuous, uniform energy coverage across the streaming timeline.
+}
+
+\clearpage
+
+% ============================================================================
+% PAGE 3: Operator 2 (STFT), Operator 3 (Power Spectrum), Operator 4 (Mel Mapping)
+% ============================================================================
+\vspace*{-4.5mm}
+\subsection*{2. The Short-Time Fourier Transform (STFT)}
+\vspace{-2.5mm}
+{\small
+\textbf{Beat 1: The Formula.} $X_\ell[k] = \sum_{n=0}^{N-1} x_\ell[n] \, e^{-j \frac{2\pi k n}{N}}, \quad k = 0, 1, \dots, N-1$.\\[0.8mm]
+\textbf{Beat 2: The Symbols.} $k \in \{0, \dots, N-1\}$ is the discrete frequency bin ($f_k = k \frac{f_s}{N} = k \times 31.25\text{ Hz}$); $n \in \{0, \dots, N-1\}$ is the time index; $x_\ell[n]$ is padded with $N - L = 112$ zeros to $N = 512$; $X_\ell[k]$ is the complex spectral coefficient. By conjugate symmetry ($X_\ell[N-k] = X_\ell^*[k]$), retaining the first $N/2 + 1 = 257$ bins ($0\text{--}8{,}000\text{ Hz}$) preserves the full spectrum.\\[0.8mm]
+\textbf{Beat 3: The Physical Meaning.} Projects the 1D temporal signal into a 2D time-frequency coordinate space, balancing the fundamental trade-off between temporal localization and frequency resolution ($25\text{ ms}$ slices at $\Delta f = 31.25\text{ Hz}$).\\[0.8mm]
+\textbf{Beat 4: The Hardware Price.} Direct evaluation costs $N$ bins $\times N$ complex multiply-accumulates per $10\text{ ms}$ frame. A radix-2 FFT exists so the designer is not stuck with $N^2$, reducing arithmetic to $\frac{N}{2} \log_2 N$ butterflies per frame. The precise slice count is Section 1.4 / Chapter 6.\\[0.8mm]
+\textbf{Beat 5: What the Formula Does Not Say.} Presumes periodic repetition over $N$. Zero-padding to $512$ points interpolates the grid more densely without improving physical frequency resolution, which remains strictly limited by window length $L$.
+}
+
+\vspace{1.5mm}
+\hrule
+\vspace{1.5mm}
+
+\subsection*{3. The Power Spectrum}
+\vspace{-2.5mm}
+{\small
+\textbf{Beat 1: The Formula.} $P_\ell[k] = |X_\ell[k]|^2 = \text{Re}(X_\ell[k])^2 + \text{Im}(X_\ell[k])^2, \quad k = 0, 1, \dots, \frac{N}{2}$.\\[0.8mm]
+\textbf{Beat 2: The Symbols.} $P_\ell[k] \in \mathbb{R}_{\ge 0}$ is power spectral density across $257$ frequency bins; $\text{Re}(X_\ell[k]), \text{Im}(X_\ell[k])$ are in-phase and quadrature projection scores from the STFT.\\[0.8mm]
+\textbf{Beat 3: The Physical Meaning.} Speech recognition relies on formant energy distribution rather than acoustic phase. Squaring the magnitude strips phase angle, yielding $257$ non-negative real energy values.\\[0.8mm]
+\textbf{Beat 4: The Hardware Price.} The hardware price is 2 squarings and 1 addition per bin across 257 bins per $10\text{ ms}$ frame. Computing power ($|X|^2$) avoids square-root hardware logic entirely. The precise slice count is Section 1.4 / Chapter 6.\\[0.8mm]
+\textbf{Beat 5: What the Formula Does Not Say.} Discarding phase is mathematically irreversible. Time-domain waveform reconstruction is no longer possible without phase estimation.
+}
+
+\vspace{1.5mm}
+\hrule
+\vspace{1.5mm}
+
+\subsection*{4. Mel-Frequency Mapping}
+\vspace{-2.5mm}
+{\small
+\textbf{Beat 1: The Formula.} $\mathrm{mel}(f) = 2595 \log_{10}\!\left(1 + \frac{f}{700}\right)$.\\[0.8mm]
+\textbf{Beat 2: The Symbols.} $f$ is continuous frequency in Hertz ($0 \le f \le 8{,}000\text{ Hz}$); $\mathrm{mel}(f)$ is perceived pitch in Mels.\\[0.8mm]
+\textbf{Beat 3: The Physical Meaning.} Models human cochlear non-linearity: high sensitivity at low frequencies, coarser resolution at high frequencies. Equal steps of $355\text{ mel}$ span $259\text{ Hz}$ at the lowest band but dilate to $2{,}351\text{ Hz}$ at the highest band.\\[0.8mm]
+\textbf{Beat 4: The Hardware Price.} Zero runtime logic. The Mel warp is computed offline at design time to generate filter center frequencies stored in on-chip memory.\\[0.8mm]
+\textbf{Beat 5: What the Formula Does Not Say.} The continuous curve must map to a discrete bin grid. At low frequencies, perceptual filter bandwidths can become narrower than the digital bin spacing $\Delta f = 31.25\text{ Hz}$, risking discretization mismatch.
+}
+
+\clearpage
+
+% ============================================================================
+% PAGE 4: Operator 5 (Mel Filterbank as a Weighted Sum) + Figure 1.3b
+% ============================================================================
+\vspace*{-4.5mm}
+\subsection*{5. Mel Filterbank as a Weighted Sum}
+\vspace{-2mm}
+
+To compress linear bins into perceptual channels, triangular filters integrate energy across non-uniform bands.
+
+\subsubsection*{The 5-Beat Autopsy: The Mel Filterbank}
+\vspace{-2mm}
+{\small
+\textbf{Beat 1: The Formula.} $E_\ell[m] = \sum_{k=0}^{256} g_m[k] \, P_\ell[k], \quad m = 0, 1, \dots, M-1$, where $g_m[k]$ represents overlapping triangular weighting functions:
+$g_m[k] = \frac{k - k_{m-1}}{k_m - k_{m-1}}$ for $k_{m-1} \le k \le k_m$; $g_m[k] = \frac{k_{m+1} - k}{k_{m+1} - k_m}$ for $k_m < k \le k_{m+1}$; and $0$ otherwise.\\[1mm]
+\textbf{Beat 2: The Symbols.} $m \in \{0, 1, \dots, M-1\}$ is the Mel band index ($M = 80$); $k_m$ is the discrete FFT bin index of the center frequency of filter $m$; $g_m[k]$ is the triangular filter weight for bin $k$ in filter $m$; $E_\ell[m]$ is the integrated Mel spectral energy vector (shape $[1, 80]$).\\[1mm]
+\textbf{Beat 3: The Physical Meaning.} Eighty overlapping triangular filters compress 257 linear power bins into 80 perceptual energy channels. Each filter integrates energy across its band, preserving fine spectral detail in low-frequency vowel regions while pooling broad energy swaths in high-frequency noise regions.
+}
+
+\vspace{-3mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.94\textwidth}{!}{\input{chapter01/fig_1_3b.tex}}\\[0.8mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Figure 1.3b}: \textbf{257 linear FFT bins collapsing under 80 Mel triangular filters.} (1)~\textbf{What it is:} Mapping of 257 linear frequency bins ($0\text{--}8{,}000\text{ Hz}$) into 80 perceptual Mel triangular filters. (2)~\textbf{What to look at:} In region (a), low filters are dense and narrow, while high filters expand exponentially. In region (b), Band $m=0$ integrates only a few bins, whereas Band $m=79$ pools dozens of bins ($6{,}593\text{--}8{,}000\text{ Hz}$). (3)~\textbf{What it proves:} The filterbank concentrates spectral resolution in phonetic formant bands while drastically reducing input dimensionality for downstream neural networks.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-3.5mm}
+
+\begin{physicalinsight}
+The Mel filterbank is an unequal information concentrator. In low frequencies ($0\text{--}1\text{ kHz}$), where pitch and fundamental vowel formants reside, each band integrates only a few FFT bins, preserving fine harmonic detail. In high frequencies ($6\text{--}8\text{ kHz}$), where fricative consonants produce diffuse noise, each band pools dozens of bins, preserving overall energy envelope while shedding irrelevant fine structure.
+\end{physicalinsight}
+
+\vspace{1mm}
+{\small
+\textbf{Beat 4: The Hardware Price.} The hardware price is a sparse matrix-vector multiplication per frame. Because each linear FFT bin $k$ falls within at most two adjacent triangular filters, the matrix is predominantly zero. The hardware price is non-zero multiply-accumulates across active bin spans; the precise slice count is Section 1.4 / Chapter 6.\\[1mm]
+\textbf{Beat 5: What the Formula Does Not Say.} The discretization trap. When continuous filter center frequencies are mapped to discrete bin indices, adjacent low-frequency filters can round to the identical bin if spacing is narrower than $\Delta f = 31.25\text{ Hz}$. A filter whose center and edges collapse to the same bin produces zero width and returns dead energy. Hardware filterbanks must ensure every band spans at least one unique bin.
+}
+
+\clearpage
+
+% ============================================================================
+% PAGE 5: Operator 6 (Log Compression) & The Silicon Reality Check
+% ============================================================================
+\vspace*{-4.5mm}
+\subsection*{6. Logarithmic Compression}
+\vspace{-2mm}
+
+The final transformation compresses wide physical energy variations into a normalized feature space suitable for neural network layers.
+
+\subsubsection*{The 5-Beat Autopsy: Logarithmic Compression}
+\vspace{-2mm}
+{\small
+\textbf{Beat 1: The Formula.} $S_\ell[m] = \ln\bigl(\max(E_\ell[m], 10^{-6})\bigr), \quad m = 0, 1, \dots, M-1$.\\[1mm]
+\textbf{Beat 2: The Symbols.} $S_\ell[m]$ is the log-Mel energy feature vector (shape $[1, 80]$) emitted to downstream acoustic models; $E_\ell[m]$ is the raw Mel band energy from Operator 5; $10^{-6}$ is the clamping floor preventing catastrophic $\ln(0) \to -\infty$ evaluation during silence.\\[1mm]
+\textbf{Beat 3: The Physical Meaning.} Human loudness perception scales logarithmically with acoustic power. In the physical environment, acoustic pressure spans from a quiet whisper ($10^{-5}\text{ Pa}$) to a loud shout ($10\text{ Pa}$)---an energy ratio of $10^{10}$, or $100\text{ dB}$. Logarithmic compression normalizes this vast dynamic range into a compact numerical distribution. Furthermore, taking the logarithm converts multiplicative channel effects (such as microphone distance and room acoustics) into simple additive offsets.\\[1mm]
+\textbf{Beat 4: The Hardware Price.} The hardware price is 80 logarithm evaluations per $10\text{ ms}$ frame. In hardware, logarithms can be evaluated using lookup tables or piece-wise polynomial approximations. The precise slice count is Section 1.4 / Chapter 6.\\[1mm]
+\textbf{Beat 5: What the Formula Does Not Say.} The derivative of the natural logarithm, $\frac{d}{dx}\ln(x) = \frac{1}{x}$, diverges toward infinity as $x \to 0$. While clamping at $10^{-6}$ prevents negative infinity, tiny noise fluctuations near the clamping floor still produce large excursions in feature space, demanding careful numerical management during fixed-point quantization.
+}
+
+\vspace{5mm}
+\hrule
+\vspace{5mm}
+
+\subsection*{The Silicon Reality Check: Bridge to Section 1.4}
+
+The mathematical derivations of STFT and Mel filterbanks in this section assume infinite-precision arithmetic, zero-latency memory access, and instantaneous execution. On a workstation development machine, these equations run effortlessly within Python scientific environments, where abundant memory and floating-point hardware hide the $10\text{ ms}$ processing deadline and thermal budgets.
+
+When this mathematical chain is pushed onto physical edge silicon operating under strict thermal limits ($< 15\text{ W}$) with a hard $10\text{ ms}$ frame deadline, abstract formulas collide with physical hardware constraints. Whether an edge GPU or a spatial FPGA fabric can satisfy these streaming acoustic deadlines is the architectural question explored next.
+
+\end{document}
