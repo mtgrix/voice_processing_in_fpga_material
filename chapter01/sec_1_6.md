@@ -27,7 +27,7 @@ To ground this engineering challenge in concrete hardware reality, we examine th
 
 The baseline system attempted to evaluate English pronunciation prosody on embedded hardware by executing a four-stage algorithmic pipeline:
 1. **Pitch Contour Extraction:** Extract the fundamental frequency ($F_0$) trajectory of both reference teacher audio and student learner audio using autocorrelation-based pitch tracking (Praat algorithm).
-2. **Linear Temporal Normalization:** Because the student speaks at a different tempo than the teacher ($N_{\text{stu}} \ne N_{\text{ref}}$), uniformly stretch or compress the student's pitch vector to match the length of the teacher vector using linear interpolation (`scipy.signal.resample` or `np.interp`).
+2. **Linear Temporal Normalization:** Because the student speaks at a different tempo than the teacher ($N_{\text{stu}} \ne N_{\text{ref}}$), uniformly stretch or compress the student's pitch vector to match the length of the teacher vector using linear interpolation (`np.interp`).
 3. **Sliding Window Segmentation:** Divide the resampled pitch trajectory into $K+1$ overlapping inspection windows to assess intonation across individual words.
 4. **Prosodic Correlation Scoring:** Compute Pearson's correlation coefficient ($r$) between the normalized pitch contours within each window.
 
@@ -90,6 +90,12 @@ $$N = W + K \times S = W + K \times \frac{W}{2} = W \left(1 + \frac{K}{2}\right)
 Solving for the window width $W$ yields:
 $$W = \frac{2N}{K + 2}$$
 
+The report assumed equal windows; this relation is a mathematical sizing identity following directly from $S = W/2$ and $K+1$ windows, not a measured acoustic or linguistic word boundary.
+
+#### The Group Condemnation Rule
+
+In the report's scoring protocol, if an analysis window produces $r < 0.3$, every word overlapping that window is condemned and marked as mispronounced---even if the same word also sits on an adjacent overlapping window with $r \ge 0.3$. Because windows overlap by $50\%$, a single local phase misalignment, vowel hesitation, or unvoiced gap within one window cascades to condemn correctly spoken words across the sentence.
+
 > **PHYSICAL INSIGHT: The Rigid Window Rule Condemns Articulate Speech**  
 > The mathematical derivation $W = 2N / (K + 2)$ treats speech as a sequence of identical, rigid geometric blocks. In human language, word durations vary wildly based on lexical stress, phonetic makeup, and conversational emphasis: the article "a" may last $80\text{ ms}$, while the word "extraordinary" lasts $750\text{ ms}$. Forcing a uniform window width $W$ slices words arbitrarily in half. Crucially, when an unvoiced stop consonant (/t/, /p/, /k/) occurs, pitch is physically non-existent ($F_0 = 0$). In a rigid sliding window, the zero-pitch void of an unvoiced consonant in word A spills into word B, destroying the variance calculation and triggering cascading false failures.
 
@@ -129,11 +135,11 @@ Now observe what happens when uniform linear resampling compresses the student's
 When the system calculates the Pearson correlation covariance term at frame 45:
 $$\text{Covariance Term} = \Delta x_{45} \cdot \Delta y_{45} = (+\text{rising}) \times (-\text{falling}) < 0$$
 
-Instead of comparing "Good" against "Good" and "morning" against "morning", the iron ruler forces the rising melody of "Good" to multiply the falling melody of "morning". Across the entire evaluation window, negative products dominate the numerator, collapsing the correlation to $r \approx -0.42$. The system rejects the student's attempt, reporting "Incorrect Intonation", despite the student having mimicked the melody flawlessly.
+Instead of comparing "Good" against "Good" and "morning" against "morning", the iron ruler forces the rising melody of "Good" to multiply the falling melody of "morning". Across the entire evaluation window, negative products dominate the numerator, collapsing the correlation into an erroneous negative score ($r < 0$). The system rejects the student's attempt, reporting "Incorrect Intonation", despite the student having mimicked the melody flawlessly.
 
-#### Worked 4-Point Mathematical Breakdown
+#### Worked 4-Point Mathematical Breakdown: Constructed Contrary-Motion Probe
 
-To make the algebraic mechanism irrefutable, we construct a minimal 4-point pitch sequence demonstrating how a simple 1-frame temporal delay turns perfect intonation into strong negative correlation:
+To make the algebraic mechanism irrefutable, we examine a constructed contrary-motion probe demonstrating how opposite pitch trajectories collapse into a severe negative correlation:
 
 - **Teacher Pitch Contour:** $\mathbf{x} = [120, 140, 160, 130]\text{ Hz}$  
   - Mean: $\bar{x} = \frac{120 + 140 + 160 + 130}{4} = 137.5\text{ Hz}$
@@ -141,7 +147,7 @@ To make the algebraic mechanism irrefutable, we construct a minimal 4-point pitc
   - Variance sum: $\sum (\Delta x_i)^2 = (-17.5)^2 + (2.5)^2 + (22.5)^2 + (-7.5)^2 = 306.25 + 6.25 + 506.25 + 56.25 = 875.0$
 
 - **Student Pitch Contour:** $\mathbf{y} = [140, 120, 110, 150]\text{ Hz}$  
-  (The student executes a similar rise-and-fall shape, but due to hesitation at the start, the phase is shifted).
+  (The student executes an opposing trajectory across the same sample indices).
   - Mean: $\bar{y} = \frac{140 + 120 + 110 + 150}{4} = 130.0\text{ Hz}$
   - Centered deviations: $\Delta \mathbf{y} = [+10.0, -10.0, -20.0, +20.0]\text{ Hz}$
   - Variance sum: $\sum (\Delta y_i)^2 = (10)^2 + (-10)^2 + (-20)^2 + (20)^2 = 100 + 100 + 400 + 400 = 1{,}000.0$
@@ -159,12 +165,12 @@ Now compute the cross-product terms $\Delta x_i \cdot \Delta y_i$:
 Evaluating Pearson's correlation coefficient:
 $$r = \frac{\sum \Delta x_i \Delta y_i}{\sqrt{\sum (\Delta x_i)^2} \cdot \sqrt{\sum (\Delta y_i)^2}} = \frac{-800.0}{\sqrt{875.0} \cdot \sqrt{1000.0}} = \frac{-800.0}{29.5804 \times 31.6228} = \frac{-800.0}{935.414} \approx -0.8552$$
 
-The result is a severe negative correlation ($r = -0.86$). A single temporal delay forces a mathematically sound correlation metric to produce the exact opposite of pedagogical truth.
+The result is a severe negative correlation ($r = -0.86$). Opposite pitch motions force a mathematically sound correlation metric to produce the exact opposite of pedagogical truth.
 
 #### Two Fatal Acoustic Blind Spots of Pitch-Only Evaluation
 
 Beyond temporal distortion, relying exclusively on pitch ($F_0$) exposes two structural blind spots:
-1. **The Humming Trick (Formant Blindness):** The fundamental frequency $F_0$ measures only the rate of vocal fold vibration. It carries zero information regarding the articulation of the tongue, jaw, or lips—the oral tract resonances captured by spectral formants ($F_1, F_2, F_3$). If a user keeps their mouth tightly shut and hums the melody (*"Mmm... mmm-mmm"*), their pitch vector matches the teacher perfectly. Pearson correlation reaches **$r = 0.98$**, awarding a perfect pronunciation score to a user who did not articulate a single English word!
+1. **The Humming Trick (Formant Blindness):** The fundamental frequency $F_0$ measures only the rate of vocal fold vibration. It carries zero information regarding the articulation of the tongue, jaw, or lips—the oral tract resonances captured by spectral formants ($F_1, F_2, F_3$). If a user keeps their mouth tightly shut and hums the melody (*"Mmm... mmm-mmm"*), their pitch vector matches the teacher perfectly. Pearson correlation reaches a near-perfect intonation score, awarding a passing grade to a user who did not articulate a single English word! A closed-mouth hum can match $F_0$ and still miss every formant resonance.
 2. **The Unvoiced Abyss:** Voiceless consonants (/s/, /ʃ/, /t/, /p/, /k/) involve zero vocal fold vibration ($F_0 = 0$). Linear interpolation connects voiced pitch values across unvoiced regions with artificial slopes, creating fictitious melodic cliffs that distort correlation scores.
 
 ---
@@ -173,13 +179,13 @@ Beyond temporal distortion, relying exclusively on pitch ($F_0$) exposes two str
 
 To eliminate phase inversion and phonetic blindness, an embedded systems architect has three candidate methodologies:
 
-| Evaluation Paradigm | Algorithmic Mechanism | Silicon Cost (FPGA / Edge) | Vulnerability / Failure Mode |
+| Evaluation Paradigm | Feature & Resampling Mechanism | Computational / Silicon Profile | Vulnerability / Failure Mode |
 |:---|:---|:---|:---|
-| **Option 1: Phoneme ASR + Forced Alignment** | Deep acoustic model (Conformer / TDNN) + HMM or CTC forced alignment. | Massive BRAM & DSP footprint; requires multi-megabyte weight storage; high DRAM bandwidth. | Heavy silicon overhead; language model priors risk hallucinating phonetic accuracy. |
-| **Option 2: Pure Pitch DTW ($F_0$-DTW)** | 1-dimensional Dynamic Time Warping aligning raw pitch vectors $F_0$. | Minimal compute; requires only scalar differences. | Formant-blind; easily fooled by closed-mouth humming; unstable across unvoiced consonants ($F_0=0$). |
-| **Option 3: Dual-Tier Mel-DTW + Warp-Guided Pitch Pearson** *(Our Architecture)* | **Tier 1:** 80-d Log-Mel DTW locks true phonetic boundaries.  <br>**Tier 2:** Pearson intonation evaluated strictly along the elastic path $\mathcal{P}$. | Balanced workload; maps onto streaming memory and spatial PE systolic arrays. | None. Rejects humming, handles vowel prolongation elastically, and preserves pitch correlation. |
+| **Linear pitch Pearson** | Fundamental frequency ($F_0$), uniform global resample (`np.interp`). | Minimal compute; requires only 1D interpolation and scalar dot products. | Blind to local tempo variations and unvoiced gaps ($F_0=0$); phase inversion under vowel prolongation. |
+| **Windowed pitch Pearson** *(Group Baseline)* | Pitch ($F_0$) segmented into $K+1$ overlapping windows ($S = W/2$), linear resample per window. | Low compute; evaluated independently per window. | Still linear inside each window; delayed fall still multiplies a rise ($\Delta x \cdot \Delta y < 0$); subject to harsh window condemnation ($r < 0.3$). |
+| **Mel-DTW, then warped Pearson** *(Our Architecture)* | 80-d Log-Mel spectrogram dynamic time warping path $\mathcal{P}$; pitch ($F_0$) reindexed along $\mathcal{P}$. | Balanced 2D dynamic programming; maps to on-chip streaming memory and systolic arrays. | Without a Sakoe--Chiba band, or even with one, DTW does not prove the student said the words; gibberish inside the band can still align. |
 
-Option 3 achieves the optimal Pareto balance for edge hardware: it uses the 80-channel Log-Mel spectrogram already computed by our front-end DSP to establish physical phonetic alignment, and then evaluates pitch intonation along that non-linear alignment.
+Mel-DTW achieves the optimal Pareto balance for edge hardware: it uses the 80-channel Log-Mel spectrogram already computed by our front-end DSP to establish physical phonetic alignment, and then evaluates pitch intonation along that non-linear alignment.
 
 ---
 
@@ -230,8 +236,8 @@ i=4 & 24 & 18 & 10 & 8 & \mathbf{9} \\
 Tracing backward from terminal state $(4, 5)$ along the minimal predecessor cells establishes the optimal warping path $\mathcal{P}$:
 $$(1, 1) \longrightarrow (2, 2) \longrightarrow (2, 3) \longrightarrow (3, 4) \longrightarrow (4, 5)$$
 
-**Critical Biomechanical Observation at Frame $i=2$:**  
-Student frame $i=2$ maps to **both** reference frame $j=2$ and reference frame $j=3$ via a horizontal transition $(2, 2) \to (2, 3)$. The student prolonged that phonetic sound. The dynamic programming grid absorbed the vowel prolongation elastically, ensuring that subsequent phonemes at $i=3$ and $i=4$ aligned precisely with reference phonemes $j=4$ and $j=5$. Boundary alignment was preserved without phase shift!
+**Critical Acoustic Observation at Frame $i=2$:**  
+At frame $i=2$, the path executes a horizontal transition $(2, 2) \to (2, 3)$: the reference frame advanced while the student frame was held. The dynamic programming grid elastically absorbs this temporal difference without distorting subsequent alignments, ensuring that phonemes at $i=3$ and $i=4$ align precisely with reference phonemes $j=4$ and $j=5$. Boundary alignment is preserved without phase shift.
 
 #### Rescuing Pearson: DTW-Guided Pitch Evaluation
 
@@ -243,7 +249,7 @@ Filtering out mutually unvoiced points ($F_0 = 0$), we compute Pearson correlati
 
 $$r_{\text{warped}} = \frac{\sum_{k=1}^P (\tilde{x}_k - \bar{\tilde{x}})(\tilde{y}_k - \bar{\tilde{y}})}{\sqrt{\sum_{k=1}^P (\tilde{x}_k - \bar{\tilde{x}})^2} \cdot \sqrt{\sum_{k=1}^P (\tilde{y}_k - \bar{\tilde{y}})^2}}$$
 
-Because identical phonetic moments are compared against each other, phase inversion is completely eliminated. As illustrated in Figure 1.6a, this dual-tier architecture surges the evaluation score from a false failure ($r \approx -0.42$) to verified human mastery ($r_{\text{warped}} \approx +0.94$).
+Because identical phonetic moments are compared against each other, phase inversion is completely eliminated. As illustrated in Figure 1.6a, this dual-tier architecture rescues the evaluation score from a false negative failure ($r < 0$) into verified in-phase correlation ($r_{\text{warped}} > 0$).
 
 #### Computational Workload and The Silicon Handoff
 
@@ -264,12 +270,12 @@ On an embedded CPU, executing 250,000 sequential cell updates with nested memory
 > **GROUNDBREAKING FINDING: The Dual-Tier Multi-Modal Synthesis**  
 > Speech evaluation cannot be solved by a single algorithm. Statistical ASR is too forgiving, silently hallucinating correctness through language model priors; pitch correlation is too fragile, collapsing under non-uniform vowel stretching and falling blind to humming exploits. Robust edge evaluation demands a dual-tier multi-modal synthesis:  
 > 1. **Tier 1 (Mel-DTW Elastic Alignment):** An 80-channel Log-Mel distance grid aligns physical vocal tract formants ($F_1, F_2, F_3$), instantly rejecting humming tricks and extracting the non-linear warping path $\mathcal{P}$.  
-> 2. **Tier 2 (Warp-Guided Prosodic Correlation):** Pearson intonation ($F_0$) is evaluated strictly along $\mathcal{P}$, eliminating phase inversion and transforming a false failure ($r \approx -0.42$) into verified pedagogical mastery ($r_{\text{warped}} \approx +0.94$).
+> 2. **Tier 2 (Warp-Guided Prosodic Correlation):** Pearson intonation ($F_0$) is evaluated strictly along $\mathcal{P}$, eliminating phase inversion and transforming a false negative failure ($r < 0$) into verified in-phase correlation ($r_{\text{warped}} > 0$).
 
 ---
 
 ### Figure 1.6a: Silicon and Prosodic Damage Board
 
 Figure 1.6a contrasts the algorithmic failure of uniform linear resampling against the elastic rescue of Mel-DTW.
-- **Panel (a) — The Iron Ruler:** Uniform linear resampling forces prolonged phonemes across word boundaries. At frame 45, rising intonation of "Good" multiplies falling intonation of "morning" ($\Delta x \cdot \Delta y < 0$), collapsing Pearson correlation to $r \approx -0.42$ (Erroneous Failure).
-- **Panel (b) — The Elastic Rubber Band:** Non-linear dynamic programming absorbs vowel elongation via path $\mathcal{P}$, locking phonetic boundaries and evaluating pitch in-phase ($r_{\text{warped}} \approx +0.94$, Verified Mastery).
+- **Panel (a) — The Iron Ruler:** Uniform linear resampling forces prolonged phonemes across word boundaries. At frame 45, rising intonation of "Good" multiplies falling intonation of "morning" ($\Delta x \cdot \Delta y < 0$), collapsing Pearson correlation into an erroneous negative score ($r < 0$).
+- **Panel (b) — The Elastic Rubber Band:** Non-linear dynamic programming absorbs vowel elongation via path $\mathcal{P}$, locking phonetic boundaries and evaluating pitch in-phase ($r_{\text{warped}} > 0$, Verified In-Phase Alignment).

@@ -71,7 +71,7 @@ Rather than treating hardware latency as an arbitrary processing delay, this sec
 \end{learningobj}
 
 \vspace{0.5mm}
-\noindent\textbf{Organic Bridge from Section 1.3: Mapping Equations onto Physical Transistors.} In Section 1.3, we completed the mathematical microscope of the front-end DSP pipeline, transforming 400 streaming pressure samples into 80 Log-Mel spectral values. But an algorithm on paper assumes infinite memory and zero execution time. In this section, we force these abstract equations to collide with physical silicon: evaluating how the mathematical parameters translate into memory footprint and processing deadlines across an Edge GPU (NVIDIA Jetson Orin Nano) and a spatial FPGA fabric (AMD Xilinx Kria KV260).
+\noindent\textbf{Organic Bridge from Section 1.3: Mapping Equations onto Physical Transistors.} In Section 1.3, we completed the mathematical microscope of the front-end DSP pipeline, transforming 400 streaming pressure samples into 80 Log-Mel spectral values. But an algorithm on paper assumes infinite memory and zero execution time. In this section, we force these abstract equations to collide with physical silicon: evaluating how the mathematical parameters translate into memory footprint and processing deadlines across an edge GPU and a spatial FPGA fabric (AMD Xilinx Kria KV260).
 
 \vspace{-1.5mm}
 \subsection*{State 1: The Physical Latency Floor}
@@ -94,7 +94,7 @@ Overlap ratio across frames & $60\%$ & $(L - H) / L = 240 / 400$ (Shared histori
 \end{center}
 \vspace{-3.5mm}
 
-This acoustic reality establishes a strict latency floor that no processor can circumvent: \textbf{Frame 0 physically cannot exist} before $25\text{ ms}$ of continuous air pressure vibrations have physically struck the microphone diaphragm. Even a theoretical $5\text{ GHz}$ CPU executing the spectral transformation in zero nanoseconds cannot emit the first feature vector at $t = 24.9\text{ ms}$ because the four-hundredth audio sample has not yet occurred in physical reality.
+This acoustic reality establishes a strict latency floor that no processor can circumvent: \textbf{Frame 0 physically cannot exist} before $25\text{ ms}$ of continuous air pressure vibrations have physically struck the microphone diaphragm. No processor, regardless of clock frequency, can circumvent this acoustic floor: Frame 0 cannot exist before $25\text{ ms}$ because sample 400 has not arrived.
 
 \vspace{-2.5mm}
 \begin{center}
@@ -102,7 +102,7 @@ This acoustic reality establishes a strict latency floor that no processor can c
 \centering
 \resizebox{0.94\textwidth}{!}{\input{chapter01/fig_1_4a.tex}}\\[0.8mm]
 \begin{minipage}{0.96\textwidth}
-\small\textbf{Figure 1.4a}: \textbf{The acoustic latency floor versus processor compute speed.} (1)~\textbf{What it is:} Streaming audio timeline showing physical frame accumulation and periodic hop emission. (2)~\textbf{What to look at:} Frame 0 requires a full $25\text{ ms}$ ($400$ samples) of acoustic pressure accumulation before processing can begin; a $5\text{ GHz}$ CPU executing in near-zero time cannot bypass this acoustic floor. Subsequent frames advance every $10\text{ ms}$ ($160$ samples) with a $60\%$ ($240$-sample) overlap. (3)~\textbf{What it proves:} Real-time latency in voice edge systems is strictly governed by physical wave propagation and windowing acoustics, not processor clock frequency.
+\small\textbf{Figure 1.4a}: \textbf{The acoustic latency floor versus processor compute speed.} (1)~\textbf{What it is:} Streaming audio timeline showing physical frame accumulation and periodic hop emission. (2)~\textbf{What to look at:} Frame 0 requires a full $25\text{ ms}$ ($400$ samples) of acoustic pressure accumulation before processing can begin; Frame 0 cannot exist before $25\text{ ms}$ because sample 400 has not arrived. Subsequent frames advance every $10\text{ ms}$ ($160$ samples) with a $60\%$ ($240$-sample) overlap. (3)~\textbf{What it proves:} Real-time latency in voice edge systems is strictly governed by physical wave propagation and windowing acoustics, not processor clock frequency.
 \end{minipage}
 \end{minipage}
 \end{center}
@@ -143,7 +143,7 @@ $$\text{Throughput} = 20{,}560\ \text{MAC/frame} \times 100\ \text{frames/s} = 2
 
 Spread evenly across the $1{,}248$ DSP48E2 slices of the Kria KV260, each individual DSP slice would need to execute only \textbf{$1{,}647\text{ operations per second}$}. When clocked at $200\text{ MHz}$, a single DSP48E2 slice provides $200 \times 10^6\text{ MAC/s}$; thus, the entire front-end arithmetic workload represents less than $0.001\%$ of the chip's computational capacity.
 
-Now compare this to the competing edge accelerator: the \textbf{NVIDIA Jetson Orin Nano Super}. The Orin Nano delivers up to \textbf{67 sparse INT8 TOPS} (or approximately \textbf{33 dense TOPS} at a $25\text{ W}$ power ceiling). Against this massive computing budget, the $2.06\text{ MMAC/s}$ required by the voice front-end is literally \textbf{one millionth} of the GPU's available processing bandwidth.
+Now compare this to the competing edge accelerator: a commercial edge GPU accelerator. A modern edge GPU delivers up to tens of sparse INT8 TOPS at a $25\text{ W}$ power ceiling. Against this massive computing budget, the $2.06\text{ MMAC/s}$ required by the voice front-end is literally \textbf{one millionth} of the GPU's available processing bandwidth.
 
 This disparity exposes a central architectural truth: \textbf{migrating an audio front-end to FPGA logic is never about raw arithmetic throughput}. An edge GPU possesses orders of magnitude more raw floating-point performance. The migration is driven entirely by \textbf{temporal determinism and hardware isolation}:
 \begin{itemize}\setlength{\itemsep}{0.5mm}\setlength{\parskip}{0pt}
