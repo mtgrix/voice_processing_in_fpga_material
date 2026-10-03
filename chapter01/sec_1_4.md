@@ -2,7 +2,7 @@
 
 #### Organic Bridge from Section 1.3: Mapping Equations onto Physical Transistors
 
-In Section 1.3, we completed the mathematical microscope of the front-end DSP pipeline, transforming 400 streaming pressure samples into 80 Log-Mel spectral values. But an algorithm on paper assumes infinite memory and zero execution time. In this section, we force these abstract equations to collide with physical silicon: evaluating how the mathematical parameters translate into memory footprint and processing deadlines across an Edge GPU (NVIDIA Jetson Orin Nano) and a spatial FPGA fabric (AMD Xilinx Kria KV260).
+In Section 1.3, we completed the mathematical microscope of the front-end DSP pipeline, transforming 400 streaming pressure samples into 80 Log-Mel spectral values. But an algorithm on paper assumes infinite memory and zero execution time. In this section, we force these abstract equations to collide with physical silicon: evaluating how the mathematical parameters translate into memory footprint and processing deadlines across an edge GPU and a spatial FPGA fabric (AMD Xilinx Kria KV260).
 
 > 💡 **LEARNING OBJECTIVE**  
 > Rather than treating hardware latency as an arbitrary processing delay, this section grounds timing in physical acoustic accumulation, contrasts on-chip Block RAM allocations against external memory bandwidth, and exposes why the migration of audio front-ends to FPGA logic is driven by deterministic execution and zero-jitter hardware isolation rather than raw arithmetic throughput.
@@ -19,7 +19,7 @@ Latency in a streaming audio system has an absolute physical lower bound that is
 | Hop cadence between frames | $10\text{ ms}$ | $H / f_s = 160 / 16{,}000$ (Periodic emission interval to downstream model) |
 | Overlap ratio across adjacent frames | $60\%$ | $(L - H) / L = 240 / 400$ (Shared historical context preserving boundary energy) |
 
-This acoustic reality establishes a strict latency floor that no processor can circumvent: **Frame 0 physically cannot exist** before $25\text{ ms}$ of continuous air pressure vibrations have physically struck the microphone diaphragm. Even a theoretical $5\text{ GHz}$ CPU executing the spectral transformation in zero nanoseconds cannot emit the first feature vector at $t = 24.9\text{ ms}$ because the four-hundredth audio sample has not yet occurred in physical reality.
+This acoustic reality establishes a strict latency floor that no processor can circumvent: **Frame 0 physically cannot exist** before $25\text{ ms}$ of continuous air pressure vibrations have physically struck the microphone diaphragm. No processor, regardless of clock frequency, can circumvent this acoustic floor: Frame 0 cannot exist before $25\text{ ms}$ because sample 400 has not arrived.
 
 ```
 +-----------------------------------------------------------------------------+
@@ -64,7 +64,7 @@ $$\text{Throughput} = 20{,}560\ \text{MAC/frame} \times 100\ \text{frames/s} = 2
 
 Spread evenly across the $1{,}248$ DSP48E2 slices of the Kria KV260, each individual DSP slice would need to execute only **$1{,}647\text{ operations per second}$**. When clocked at $200\text{ MHz}$, a single DSP48E2 slice provides $200 \times 10^6\text{ MAC/s}$; thus, the entire front-end arithmetic workload represents less than $0.001\%$ of the chip's computational capacity.
 
-Now compare this to the competing edge accelerator: the **NVIDIA Jetson Orin Nano Super**. The Orin Nano delivers up to **67 sparse INT8 TOPS** (or approximately **33 dense TOPS** at a $25\text{ W}$ power ceiling). Against this massive computing budget, the $2.06\text{ MMAC/s}$ required by the voice front-end is literally **one millionth** of the GPU's available processing bandwidth.
+Now compare this to the competing edge accelerator: a commercial edge GPU accelerator. A modern edge GPU delivers up to tens of sparse INT8 TOPS at a $25\text{ W}$ power ceiling. Against this massive computing budget, the $2.06\text{ MMAC/s}$ required by the voice front-end is literally **one millionth** of the GPU's available processing bandwidth.
 
 ```
 +-----------------------------------------------------------------------------+
