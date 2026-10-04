@@ -1,314 +1,542 @@
-\documentclass[11pt,a4paper]{article}
-\usepackage{fontspec}
-\setmainfont{Times New Roman}
-\setsansfont{Segoe UI}
-\setmonofont{Consolas}
-\usepackage[top=0.42in, bottom=0.42in, left=0.68in, right=0.68in, headheight=0pt, headsep=0pt]{geometry}
-\usepackage{amsmath,amssymb}
-\usepackage{xcolor}
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{geometry}
+\geometry{a4paper, left=18mm, right=18mm, top=20mm, bottom=22mm}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
-\usepackage{tcolorbox}
-\usepackage{hyperref}
+\usetikzlibrary{arrows.meta, positioning, calc}
 \usepackage{booktabs}
-\usepackage{caption}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{url}
 
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue!70!black,
-    citecolor=blue!70!black,
-    urlcolor=blue!70!black
-}
+% House colors matching section 1.2
+\definecolor{objectiveblue}{RGB}{0, 51, 153}
+\definecolor{insightorange}{RGB}{204, 102, 0}
+\definecolor{groundbreakingteal}{RGB}{0, 102, 102}
 
-% Custom Callout Boxes matching math_tools_en / house style
 \newtcolorbox{learningobj}{
-    colback=blue!3!white,
-    colframe=blue!60!black,
-    fonttitle=\bfseries\sffamily,
-    fontupper=\small,
-    title={$\blacktriangleright$ MỤC TIÊU HỌC TẬP},
-    arc=1.5mm,
-    boxrule=0.8pt,
-    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
-    before skip=0.8mm, after skip=1.2mm
-}
-
-\newtcolorbox{groundbreaking}{
-    colback=teal!4!white,
-    colframe=teal!60!black,
-    fonttitle=\bfseries\sffamily,
-    fontupper=\small,
-    title={$\bigstar$ PHÁT HIỆN THEN CHỐT},
-    arc=1.5mm,
-    boxrule=0.8pt,
-    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
-    before skip=1.0mm, after skip=0.8mm
+    colback=objectiveblue!5!white,
+    colframe=objectiveblue,
+    coltitle=white,
+    fonttitle=\bfseries\small,
+    title={\scalebox{0.85}{$\blacktriangleright$}\; MỤC TIÊU HỌC TẬP},
+    sharp corners,
+    rounded corners=southeast,
+    arc=3mm,
+    boxrule=1pt,
+    left=3mm, right=3mm, top=2mm, bottom=2mm
 }
 
 \newtcolorbox{physicalinsight}{
-    colback=yellow!6!white,
-    colframe=orange!75!black,
-    fonttitle=\bfseries\sffamily,
-    fontupper=\small,
-    title={$\blacktriangleright$ NHÌN THẤY VẬT LÝ},
-    arc=1.5mm,
-    boxrule=0.8pt,
-    left=3mm, right=3mm, top=1.0mm, bottom=1.0mm,
-    before skip=1.5mm, after skip=3.5mm
+    colback=insightorange!5!white,
+    colframe=insightorange,
+    coltitle=white,
+    fonttitle=\bfseries\small,
+    title={\scalebox{0.85}{$\blacktriangleright$}\; NHÌN THẤY VẬT LÝ},
+    sharp corners,
+    rounded corners=southeast,
+    arc=3mm,
+    boxrule=1pt,
+    left=3mm, right=3mm, top=2mm, bottom=2mm
 }
 
-\renewcommand{\thefigure}{1.3\alph{figure}}
+\newtcolorbox{groundbreaking}{
+    colback=groundbreakingteal!5!white,
+    colframe=groundbreakingteal,
+    coltitle=white,
+    fonttitle=\bfseries\small,
+    title={\scalebox{0.85}{$\bigstar$}\; PHÁT HIỆN THEN CHỐT},
+    sharp corners,
+    rounded corners=southeast,
+    arc=3mm,
+    boxrule=1pt,
+    left=3mm, right=3mm, top=2mm, bottom=2mm
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.5pt}
 
 \begin{document}
 
 % ============================================================================
-% TRANG 1: Sóng Dò & Chiếu Vuông Pha
+% TRANG 1: Mục Tiêu Học Tập, Khế Ước Vào - Ra & Mở Đầu Cửa Sổ Hamming
 % ============================================================================
-\vspace*{-4.5mm}
+
 \section*{1.3 Mô Hình Hóa Toán Học: STFT và Ngân Hàng Bộ Lọc Mel}
-\vspace{-2.5mm}
+\vspace{-2mm}
 
 \begin{learningobj}
-Thay vì ghi nhớ sáu công thức DSP rời rạc, mục này suy diễn từng toán tử từ các nguyên lý vật lý gốc: sóng dò nhận diện cộng hưởng họa âm, cửa sổ thuôn triệt tiêu bước nhảy biên, phép biến đổi Fourier thời gian ngắn (STFT) hóa giải sự đánh đổi bất định Gabor-Heisenberg, phổ công suất loại bỏ pha dư thừa, ngân hàng bộ lọc Mel uốn thang Hertz tuyến tính theo sinh học ốc tai, và nén logarit mô phỏng độ to cảm nhận của con người. Mọi công thức đều được giải phẫu nghiêm ngặt theo khung năm nhịp: công thức, ký hiệu, ý nghĩa vật lý, giá phần cứng, và điều công thức giấu.
+Thay vì liệt kê sáu công thức tách rời, mục này dẫn xuất từng toán tử từ các thất bại vật lý thực tế trên một sóng âm chuẩn $440\text{ Hz}$ (\nolinkurl{datasets/sample_tone440.wav}) và tiếng nói thật (\nolinkurl{datasets/sample_speech_a.wav}). Chúng ta sẽ tính toán trực tiếp giới hạn bất định Gabor-Heisenberg ($\Delta t \cdot \Delta f \approx 1$ theo Rayleigh, $40\text{ Hz}$ ở $25\text{ ms}$; sàn Heisenberg $\Delta t \cdot \Delta f \ge \frac{1}{4\pi} \approx 0{,}08$), giải phẫu sự mù pha của sóng dò đơn lẻ, giải thích nghịch lý vì sao cần hai trục trực giao để đo năng lượng rồi ngay sau đó lại vứt bỏ pha, và vạch trần hiện tượng sụp đổ của các bộ lọc Mel tần số thấp trực tiếp từ mã nguồn thực nghiệm.
 \end{learningobj}
 
-\vspace{0.5mm}
-Mục 1.2 đã xây dựng đường truyền dữ liệu (datapath) đóng gói áp suất không khí dạng dòng thành các khung. Mục 1.3 là chiếc kính hiển vi toán học đặt lên một gói dữ liệu đơn lẻ, suy diễn từng toán tử biến đổi phổ từ hiện tượng giao thoa sóng và cơ chế cảm nhận thính giác.
-
-Sáu biểu thức biến dòng mẫu thành 80 con số: (1)~Khung sau áp cửa sổ, (2)~STFT, (3)~Phổ công suất, (4)~Ánh xạ Mel, (5)~Ngân hàng bộ lọc Mel, và (6)~Nén logarit. Các thông số chuẩn: $f_s = 16.000\text{ Hz}$, chiều dài khung $L = 400$ ($25\text{ ms}$), bước nhảy $H = 160$ ($10\text{ ms}$), kích thước FFT $N = 512$, số bộ lọc $M = 80$, $f_{\min} = 0\text{ Hz}$, $f_{\max} = 8.000\text{ Hz}$.
-
-\vspace{-1.5mm}
-\subsection*{Sóng Dò, Trước Công Thức}
+\vspace{-1mm}
+\subsection*{0. Bản Khế Ước Đầu Vào -- Đầu Ra}
 \vspace{-2mm}
 
-Làm sao một mạch số biết gói âm thanh $x_\ell[n]$ có dao động ở tần số $f_k$? Trong vật lý cổ điển, hiện tượng cộng hưởng được phát hiện bằng cách thăm dò: một bộ dao động chuẩn nội bộ đánh giá sự giao thoa với tín hiệu đầu vào thông qua tích vô hướng $\int_0^T x(t) \cos(\omega_k t) \, dt$. Nếu $x(t)$ chứa tần số $\omega_k$ cùng pha ($\cos(\omega_k t)$), tích số thành $\cos^2(\omega_k t) = \frac{1 + \cos(2\omega_k t)}{2}$. Tích phân trên $T$, họa âm $2\omega_k$ triệt tiêu về 0, để lại phần tích lũy DC dương bằng $\frac{T}{2}$. Nếu $x(t)$ dao động tại bất kỳ họa âm nào khác $\omega_m$ ($m \ne k$), tích phân bằng đúng 0. Sóng dò chỉ cộng hưởng duy nhất với đúng tần số của nó.
+Chuỗi xử lý nhận đầu vào là \textbf{một khung gồm 400 mẫu thời gian} và trả về đầu ra là \textbf{80 con số đặc trưng Log-Mel}, lặp lại đều đặn \textbf{mỗi 10 ms một lần}. Năm quyết định kiến trúc cốt lõi được chốt chặt, mỗi quyết định tương ứng với một phương án vật lý bị bác bỏ rõ ràng:
+\begin{enumerate}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{Tần số lấy mẫu $f_s = 16.000\text{ Hz}$}: Bác bỏ $8\text{ kHz}$ (bị mất dải phụ âm xát trên $4\text{ kHz}$) và bác bỏ $44{,}1\text{ kHz}$ (lãng phí băng thông bộ nhớ và năng lượng tính toán mà không mang lại thêm thông tin nhận dạng ngữ âm).
+    \item \textbf{Độ dài khung $L = 400$ mẫu ($25\text{ ms}$)}: Bác bỏ $5\text{ ms}$ (độ rộng búp chính dãn ra $200\text{ Hz}$, xóa nhòa các formant cạnh nhau) và bác bỏ $100\text{ ms}$ (vượt quá khoảng dừng gần như dừng $20\text{--}30\text{ ms}$ của đường dẫn âm học con người).
+    \item \textbf{Bước nhảy $H = 160$ mẫu ($10\text{ ms}$)}: Bác bỏ $25\text{ ms}$ ($H=L$, chuyển động âm học biến thiên giật cục giữa các khung) và bác bỏ $2\text{ ms}$ (gây bùng nổ khối lượng tính toán gấp năm lần mà tính năng đặc trưng bị dư thừa cao).
+    \item \textbf{Kích thước biến đổi $N = 512$ điểm}: Bác bỏ $N = 400$ (không thể tận dụng cấu trúc bướm FFT cơ số 2) và bác bỏ $N = 1024$ (nhân đôi dung lượng đệm số không trên chip mà không gia tăng độ phân giải vật lý).
+    \item \textbf{Số lượng bộ lọc $M = 80$ dải}: Bác bỏ $M = 20$ (quá thô để phân biệt các nguyên âm tiếng Anh tương đồng) và bác bỏ $M = 257$ (giữ nguyên toàn bộ bin tuyến tính, gây quá tải tham số cho mạng nơ-ron phía sau).
+\end{enumerate}
 
-Bây giờ hãy vạch trần tử huyệt của một sóng dò đơn lẻ: \textbf{sự mù pha} (phase blindness). Nếu gói âm thanh đến trễ một phần tư chu kỳ (lệch pha $\pi/2$, biến đầu vào thành $\sin(\omega_k t)$), tích số trở thành $\sin(\omega_k t)\cos(\omega_k t) = \frac{1}{2}\sin(2\omega_k t)$. Tích phân trên khoảng $T$ cho kết quả đúng bằng 0: $\int_0^T \sin(\omega_k t) \cos(\omega_k t) \, dt = 0$. Sóng dò đơn lẻ báo mức năng lượng bằng 0 trong khi một âm thanh thực tế đang dội vang qua bộ chuyển đổi.
+Toàn bộ các con số, độ suy giảm và tọa độ bộ lọc trên trang giấy này được xuất xưởng trực tiếp từ phòng thí nghiệm thực nghiệm \nolinkurl{chapter01/lab_1_3.py} và lưu vết trong nhật ký kết quả \nolinkurl{results/lab13/}.
 
-Để xóa bỏ sự mù pha, ta phải thẩm tra sóng âm bằng \textbf{hai sóng dò trực giao vuông pha} (quadrature): sóng dò đồng pha $\cos(\omega_k t)$ và sóng dò vuông pha $-\sin(\omega_k t)$ (lệch pha $90^\circ$). Đập vào bộ tách sóng hai nhánh này, hai nhánh đo được $A \cos\theta$ và $A \sin\theta$. Theo định lý Pythagoras, biên độ toàn phần được khôi phục với sự miễn nhiễm pha tuyệt đối: $A = \sqrt{(A\cos\theta)^2 + (A\sin\theta)^2}$. Đồng nhất thức Euler, $e^{-j\theta} = \cos\theta - j\sin\theta$, chính là chiếc vỏ bọc đại số của máy thu vuông pha phần cứng hai kênh này.
+\vspace{-1mm}
+\subsection*{1. Cửa Sổ Thuôn Nhọn (Hamming Window)}
+\vspace{-2mm}
 
-\vspace{-3.5mm}
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Làm sao cắt một làn sóng vô tận thành các đoạn hữu hạn mà không sinh ra các tần số rác? Một nhát cắt chữ nhật đột ngột tương đương với việc ép biên tín hiệu rơi thẳng đứng thành một bước nhảy bước (step function). Trong miền tần số, một bước nhảy chứa mọi tần số một chút, làm năng lượng từ tần số gốc tràn lan sang khắp các kênh khác (rò rỉ phổ).
+
+\textbf{2. Phương pháp thô sơ thất bại trên sóng $440\text{ Hz}$:} Nếu giữ nguyên nhát cắt chữ nhật ($w[n] = 1$), phổ Fourier của khung $440\text{ Hz}$ bị cuộn với hàm $\text{sinc}$. Búp phụ đầu tiên chỉ suy giảm $-13{,}27\text{ dB}$ (tại $57{,}6\text{ Hz}$ lệch tâm). Khi một nguyên âm trầm lớn xuất hiện, búp phụ cao $-13\text{ dB}$ này sẽ quét sạch và che lấp hoàn toàn các formant phụ âm yếu ở lân cận.
+
+Để dập tắt rò rỉ phổ, khung tín hiệu được nhân với cửa sổ Hamming đối xứng. Quá trình thuôn nhọn này sẽ được khảo sát chi tiết về mặt số học và đáp ứng tần số ngay trên trang tiếp theo.
+
+\clearpage
+
+% ============================================================================
+% TRANG 2: Công Thức Cửa Sổ, Hình 1.3_window & Nhìn Thấy Vật Lý
+% ============================================================================
+
+\textbf{3. Công thức hiển thị và các điểm mẫu thực nghiệm:}
+Giá trị đo thực nghiệm từ phòng thí nghiệm \nolinkurl{chapter01/lab_1_3.py} tại bốn vị trí then chốt trên khung 400 điểm:
+\[
+w[0] = 0{,}080000, \quad w[1] = 0{,}080057, \quad w[200] = 0{,}999986, \quad w[399] = 0{,}080000
+\]
+Khung tín hiệu sau khi nhân cửa sổ được xác định bởi:
+\[
+x_\ell[n] = x[n_0 + \ell H + n] \cdot w[n], \quad n = 0, 1, \dots, L-1
+\]
+tiếp nối bởi bước đệm thêm $N - L = 112$ số không:
+\[
+x_\ell[n] = 0, \quad L \le n < N
+\]
+
+\textbf{4. Cái giá phần cứng và điều bị phá hủy:} 
+Thao tác tiêu tốn đúng $L = 400$ phép nhân số thực cho mỗi khung $10\text{ ms}$, tương đương $40.000$ phép nhân mỗi giây. Tầng này \textbf{hoàn toàn không phải điểm nghẽn} tính toán của hệ thống.
+\textit{Điều bị phá hủy:} Cửa sổ thuôn mép triệt tiêu năng lượng vật lý ở hai đầu mút khung về $0{,}08$. Do đó, bước nhảy $H = 160$ bắt buộc phải để lại $L - H = 240$ mẫu gối đầu chia sẻ ($60\%$), bảo đảm mọi biến cố âm học ở vùng biên của khung hiện tại đều được khung tiếp theo quan sát trọn vẹn tại vị trí gần tâm cửa sổ.
+
+\vspace{-2mm}
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\resizebox{0.94\textwidth}{!}{\input{fig_1_3a_vi.tex}}\\[0.5mm]
+\resizebox{0.86\textwidth}{!}{\input{fig_1_3_window_vi.tex}}\\[1mm]
 \begin{minipage}{0.96\textwidth}
-\small\textbf{Hình 1.3a}: \textbf{Giao thoa kế vuông pha sóng dò.} (1)~\textbf{Bản chất:} Kiến trúc bên trong của một bin tần số Fourier được đánh giá như một máy thu tương quan hai nhánh. (2)~\textbf{Điểm cần quan sát:} Khung đầu vào $x_\ell[n]$ tách thành hai nhánh nhân với $\cos(2\pi kn/N)$ (đồng pha) và $-\sin(2\pi kn/N)$ (vuông pha), tích lũy thành tọa độ thực và ảo. (3)~\textbf{Ý nghĩa:} Số phức chính là hai trục trực giao cần thiết để đo năng lượng sóng độc lập với pha xuất hiện.
+\small\textbf{Hình 1.3\_window}: \textbf{Rò rỉ phổ đo thực nghiệm: Cửa sổ chữ nhật so với cửa sổ Hamming ($L = 400$, $f_s = 16\text{ kHz}$).} (1)~\textbf{Bản chất:} Đáp ứng phổ biên độ khi áp cửa sổ chữ nhật và Hamming đệm lên lưới 512 điểm, đo từ \nolinkurl{chapter01/lab_1_3.py}. (2)~\textbf{Điểm cần quan sát:} Búp chính cửa sổ chữ nhật có độ rộng null-to-null là $80{,}0\text{ Hz}$ ($2f_s/L$), búp phụ đầu tiên cao $-13{,}27\text{ dB}$ (tại $57{,}6\text{ Hz}$, mốc Harris $\approx -13\text{ dB}$). Cửa sổ Hamming nới rộng búp chính lên $\approx 209\text{ Hz}$, nhưng dìm búp phụ đầu tiên xuống $-42{,}67\text{ dB}$ (tại $179{,}7\text{ Hz}$, mốc Harris $\approx -43\text{ dB}$), triệt tiêu thêm tới $\mathbf{+29{,}40\text{ dB}}$. (3)~\textbf{Ý nghĩa:} Đánh đổi độ phân giải tần số lấy dải động âm học, ngăn các đỉnh formant mạnh tràn sóng che khuất âm yếu.
 \end{minipage}
 \end{minipage}
 \end{center}
-\vspace{-3.5mm}
+\vspace{-2mm}
+
+\begin{physicalinsight}
+Áp cửa sổ là sự thỏa hiệp trực tiếp với nguyên lý bất định Gabor-Heisenberg. Với chiều dài khung $L = 400$ mẫu ở $16\text{ kHz}$, khoảng thời gian quan sát là $\Delta t = 25\text{ ms} = 0{,}025\text{ s}$. Độ phân giải tần số vật lý theo giới hạn Rayleigh là $\Delta f \approx 1/\Delta t = 40\text{ Hz}$, cho tích số thời gian -- tần số $\Delta t \cdot \Delta f \approx 1$ (sàn lý thuyết Heisenberg $\Delta t \cdot \Delta f \ge \frac{1}{4\pi} \approx 0{,}08$, tương đương sai số tần số nhỏ nhất $3{,}18\text{ Hz}$). Cửa sổ Hamming chấp nhận nới rộng búp chính lên gấp đôi để đổi lấy $29{,}40\text{ dB}$ độ suy giảm búp phụ. Nếu không nén búp phụ, rò rỉ phổ từ năng lượng thanh quản tần số thấp sẽ làm biến dạng toàn bộ phổ năng lượng của phụ âm xát yếu phía trên.
+\end{physicalinsight}
+
+\clearpage
+
+% ============================================================================
+% TRANG 3: Toán Tử 2 Sóng Dò, Hình 1.3a & Hộp Phát Hiện Then Chốt
+% ============================================================================
+
+\subsection*{2. Hai Sóng Dò: Nơi STFT Được Khai Sinh}
+\vspace{-2mm}
+
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Làm sao một mạch số biết trong khung âm thanh $x_\ell[n]$ có dao động ở tần số $f_k$?
+
+\textbf{2. Sóng dò đơn lẻ và tử huyệt mù pha:} Trong vật lý sóng, ta phát hiện cộng hưởng bằng cách nhân tín hiệu với một sóng dò chuẩn nội bộ rồi tích lũy: $\sum_{n=0}^{L-1} x_\ell[n] \cos(\omega_k n)$. Nếu tín hiệu vào đồng pha hoàn hảo với sóng dò ($\cos$), tích số sinh ra thành phần một chiều (DC) dương lớn. Nhưng nếu âm thanh đến trễ một phần tư chu kỳ (lệch pha $90^\circ$, biến thành sóng $\sin$), tích phân rơi vào điểm mù:
+\[
+\int_0^T \sin(\omega_k t) \cos(\omega_k t) \, dt = 0
+\]
+Một sóng dò đơn lẻ sẽ báo mức năng lượng bằng không trong khi một âm thanh thực sự đang dội vang qua micro!
+
+Thực nghiệm đo đạc từ \nolinkurl{chapter01/lab_1_3.py} trên file sóng âm thật \nolinkurl{datasets/sample_tone440.wav} ở bin $14$ ($437{,}5\text{ Hz}$) đã xác nhận chính xác hiện tượng này:
+\begin{itemize}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{Ở khung gốc (lệch pha 0):} Nhánh $\cos$ tích lũy được $\mathbf{+105{,}34}$, nhánh $\sin$ đo được $\mathbf{+20{,}89}$.
+    \item \textbf{Khi dịch trễ $1/4$ chu kỳ (+9 mẫu):} Nhánh $\cos$ rơi xuống $\mathbf{-19{,}27}$, trong khi nhánh $\sin$ bùng nổ lên $\mathbf{+105{,}74}$.
+\end{itemize}
+Để xóa bỏ sự mù pha, bắt buộc phải thẩm tra khung sóng bằng \textbf{hai sóng dò vuông pha trực giao}: sóng đồng pha $\cos(2\pi kn/N)$ và sóng vuông pha $-\sin(2\pi kn/N)$. Biên độ không phụ thuộc pha được khôi phục nhờ định lý Pythagoras:
+\[
+A = \sqrt{\text{Re}^2 + \text{Im}^2}
+\]
+Ở cả hai trường hợp trễ, tổng bình phương đều khôi phục công suất gần như tuyệt đối: $105{,}34^2 + 20{,}89^2 = \mathbf{11.532{,}71}$ so với $(-19{,}27)^2 + 105{,}74^2 = \mathbf{11.552{,}08}$. Đồng nhất thức Euler:
+\[
+e^{-j \frac{2\pi kn}{N}} = \cos\left(\frac{2\pi kn}{N}\right) - j \sin\left(\frac{2\pi kn}{N}\right)
+\]
+chính là chiếc vỏ bọc đại số đóng gói máy thu hai nhánh vuông pha này vào một con số phức duy nhất.
+
+\vspace{-2mm}
+\begin{center}
+\begin{minipage}{\textwidth}
+\centering
+\resizebox{0.92\textwidth}{!}{\input{fig_1_3a_vi.tex}}\\[1mm]
+\begin{minipage}{0.96\textwidth}
+\small\textbf{Hình 1.3a}: \textbf{Máy thu vuông pha hai nhánh sóng dò đo thực nghiệm từ \nolinkurl{datasets/sample_tone440.wav}.} (1)~\textbf{Bản chất:} Kiến trúc bên trong của bin Fourier $k=14$ ($437{,}5\text{ Hz}$) như một bộ tương quan hai kênh đồng pha và vuông pha. (2)~\textbf{Điểm cần quan sát:} Các số đo thực nghiệm từ Lab 1.3 ghi nhận trực tiếp trong bộ tích lũy: ở pha gốc, nhánh $\cos$ đạt $+105{,}34$, nhánh $\sin$ đạt $+20{,}89$; khi trễ $1/4$ chu kỳ ($9$ mẫu), nhánh $\cos$ tụt xuống $-19{,}27$ trong khi nhánh $\sin$ gánh toàn bộ năng lượng với $+105{,}74$. (3)~\textbf{Ý nghĩa:} Hai trục trực giao loại bỏ hoàn toàn sự mù pha, bảo đảm công suất $|X|^2 \approx 11.533$ luôn bất biến trước độ trễ thời gian.
+\end{minipage}
+\end{minipage}
+\end{center}
+\vspace{-2mm}
 
 \begin{groundbreaking}
-Một bin phổ phức là một máy thu vuông pha phần cứng hai kênh: hai bộ dao động chuẩn trực giao ($\cos$ và $-\!\sin$) đập nhịp cùng sóng áp suất đầu vào, trả về hai điểm số tương đồng giúp khôi phục biên độ tín hiệu bất biến trước pha xuất hiện.
+Một bin phổ phức là một máy thu vuông pha phần cứng hai kênh: hai bộ dao động chuẩn trực giao ($\cos$ và $-\!\sin$) quét qua khung âm thanh, thu về hai điểm số hình chiếu độc lập giúp khôi phục năng lượng sóng mà không bị đánh lừa bởi góc pha xuất hiện.
 \end{groundbreaking}
 
+\textit{Nghịch lý kiến trúc:} Hai sóng dò trực giao là điều kiện bắt buộc để đo chính xác năng lượng sóng mà không mù pha, nhưng ngay ở toán tử tiếp theo (Toán tử 3), toàn bộ thông tin góc pha sẽ bị vứt bỏ vĩnh viễn!
+
 \clearpage
 
 % ============================================================================
-% TRANG 2: Toán tử 1 (Khung Sau Áp Cửa Sổ) & Hình 6
+% TRANG 4: Toán Tử STFT & Đo Lường So Sánh Lưới 400 vs Lưới 512
 % ============================================================================
+
+\subsection*{3. Biến Đổi Fourier Thời Gian Ngắn (STFT)}
+\vspace{-2mm}
+
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Máy thu vuông pha ở Mục 2 mới chỉ thẩm tra một tần số đơn lẻ $k$. Làm sao quét đồng thời toàn bộ dải phổ âm thanh từ $0$ đến $8.000\text{ Hz}$?
+
+\textbf{2. Dự đoán bin đỉnh trước công thức:} Lưới tần số STFT với $N = 512$ điểm ở $f_s = 16.000\text{ Hz}$ có bước nhảy bin là:
+\[
+\Delta f = \frac{f_s}{N} = \frac{16.000}{512} = 31{,}25\text{ Hz}
+\]
+Âm thanh đơn tần $440\text{ Hz}$ rơi vào chỉ số phân đoạn:
+\[
+k = \frac{440}{31{,}25} = 14{,}08
+\]
+Vì $14{,}08$ nằm gần số nguyên $14$ nhất ($14 \times 31{,}25 = 437{,}5\text{ Hz}$ so với bin 15 là $468{,}75\text{ Hz}$), người đọc có thể \textbf{dự đoán chắc chắn bin đỉnh công suất phải là bin 14}. Kết quả thực nghiệm từ \nolinkurl{chapter01/lab_1_3.py} xác nhận: \texttt{argmax bin: 14 (437.5 Hz)}.
+
+\textbf{3. Công thức hiển thị:}
+\[
+X_\ell[k] = \sum_{n=0}^{N-1} x_\ell[n] \, e^{-j \frac{2\pi k n}{N}}, \quad k = 0, 1, \dots, N-1
+\]
+Do tính đối xứng liên hợp của tín hiệu thực ($X_\ell[N-k] = X_\ell^*[k]$), phần cứng chỉ cần giữ lại $N/2 + 1 = 257$ bin đầu tiên ($0\text{--}8.000\text{ Hz}$) là bảo toàn toàn bộ năng lượng phổ.
+
+\textbf{4. Cái giá phần cứng và điều bị phá hủy:}
+\begin{itemize}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{DFT trực tiếp:} Để tính đủ $N = 512$ bin, mỗi bin cần $N$ tích phức:
+    \[
+    N^2 = 512^2 = 262.144 \text{ phép nhân phức mỗi khung } 10\text{ ms}
+    \]
+    \item \textbf{FFT cơ số 2 (Cooley-Tukey):} Tái sử dụng các hệ số quay tuần hoàn, giảm khối lượng xuống:
+    \[
+    \frac{N}{2} \log_2 N = \frac{512}{2} \times 9 = 2.304 \text{ bướm tính toán (butterflies) mỗi khung}
+    \]
+\end{itemize}
+Cần nhấn mạnh: \textbf{một bướm tính toán không phải là một phép nhân phức đơn lẻ}. Một bướm radix-2 bao gồm một phép nhân phức với hệ số quay $W_N^k$ và hai phép cộng/trừ phức. Tỷ số giảm tải hơn 100 lần giữa $262.144$ và $2.304$ chính là lý do các kiến trúc phần cứng chuyên dụng ở Chương 6 bắt buộc phải triển khai FFT thay vì ma trận DFT nhân thẳng.
+
+\textit{Bản chất của đệm số không (Zero-padding):} Việc thêm 112 số không vào sau 400 mẫu khung không tạo thêm thông tin vật lý mới. Nó chỉ làm lưới nội suy phổ dày hơn (chia từ bước $40\text{ Hz}$ của khung 400 điểm thành bước $31{,}25\text{ Hz}$ của lưới 512 điểm). Búp chính của tín hiệu vẫn giữ nguyên độ rộng vật lý do $L = 400$ ấn định.
+
+\vspace{-1.5mm}
+\subsubsection*{Đo Lường Thực Nghiệm: Lưới 400 Điểm So Với Lưới 512 Điểm Trên Sóng 440 Hz}
+\vspace{-2mm}
+
+Bảng số liệu và đồ thị đo từ \nolinkurl{chapter01/lab_1_3.py} khi biến đổi cùng khung âm thanh $440\text{ Hz}$ ($L=400$) qua hai lưới lấy mẫu phổ khác nhau:
+
+\vspace{-1.5mm}
+\begin{center}
+\small
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Lưới lấy mẫu} & \textbf{Độ phân giải bin} & \textbf{Bin đỉnh} & \textbf{Tần số bin đỉnh} & \textbf{Công suất đo được $|X|^2$} \\
+\midrule
+Lưới 400 điểm (không đệm số 0) & $\Delta f = 40{,}00\text{ Hz}$ & $k = 11$ & $440{,}0\text{ Hz}$ (trùng khít) & $11.613{,}77$ \\
+Lưới 512 điểm (đệm 112 số 0) & $\Delta f = 31{,}25\text{ Hz}$ & $k = 14$ & $437{,}5\text{ Hz}$ (lệch $2{,}5\text{ Hz}$) & $11.532{,}71$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-2mm}
+
+\begin{center}
+\begin{tikzpicture}[>=Stealth, font=\footnotesize, scale=0.88]
+    % Axes
+    \draw[->, black!70, thick] (0, 0) -- (10.8, 0) node[right, font=\scriptsize\bfseries] {Tần số (Hz)};
+    \draw[->, black!70, thick] (0, 0) -- (0, 3.4) node[above, font=\scriptsize\bfseries] {Công suất phổ $|X|^2$ $(\times 10^3)$};
+    
+    % X ticks and grid
+    \foreach \x/\hz in {1.0/{360}, 2.5/{400}, 4.0/{440}, 5.5/{480}, 7.0/{520}} {
+        \draw[gray!25, thin] (\x, 0) -- (\x, 3.1);
+        \node[below, font=\scriptsize, text=gray!80] at (\x, 0) {\hz};
+    }
+    % Y ticks
+    \foreach \y/\lbl in {0.75/{3}, 1.5/{6}, 2.25/{9}, 3.0/{12}} {
+        \draw[gray!25, thin] (0, \y) -- (10.4, \y);
+        \node[left, font=\scriptsize, text=gray!80] at (0, \y) {\lbl};
+    }
+    
+    % Continuous DTFT curve (dashed gray envelope)
+    \draw[gray!60, thick, dashed] 
+        (0.5, 0.02) .. controls (2.0, 0.5) and (3.0, 1.8) .. (4.0, 2.90)
+        .. controls (5.0, 1.8) and (6.0, 0.5) .. (7.5, 0.02);
+
+    % 400-grid samples (Blue stems)
+    \draw[blue!80!black, thick] (1.0, 0) -- (1.0, 0.01);
+    \draw[blue!80!black, thick] (2.5, 0) -- (2.5, 0.53);
+    \draw[blue!80!black, ultra thick] (4.0, 0) -- (4.0, 2.90);
+    \node[draw=blue!80!black, fill=blue!10, shape=circle, inner sep=1.5pt] at (4.0, 2.90) {};
+    \draw[blue!80!black, thick] (5.5, 0) -- (5.5, 0.53);
+    \draw[blue!80!black, thick] (7.0, 0) -- (7.0, 0.01);
+    \node[draw=blue!80!black, fill=blue!10, shape=circle, inner sep=1.2pt] at (2.5, 0.53) {};
+    \node[draw=blue!80!black, fill=blue!10, shape=circle, inner sep=1.2pt] at (5.5, 0.53) {};
+
+    % 512-grid samples (Red stems)
+    \draw[red!80!black, thick] (2.73, 0) -- (2.73, 0.88);
+    \draw[red!80!black, ultra thick] (3.91, 0) -- (3.91, 2.88);
+    \node[draw=red!80!black, fill=red!20, shape=circle, inner sep=1.4pt] at (3.91, 2.88) {};
+    \draw[red!80!black, thick] (5.08, 0) -- (5.08, 1.25);
+    \node[draw=red!80!black, fill=red!20, shape=circle, inner sep=1.2pt] at (5.08, 1.25) {};
+    \node[above right, font=\tiny\bfseries, text=red!80!black] at (5.08, 1.25) {Bin 15: $5.006$};
+    \draw[red!80!black, thick] (6.25, 0) -- (6.25, 0.04);
+
+    % Callout box for peaks (placed cleanly to the left, no collision with legend)
+    \node[draw=gray!40, fill=white, rounded corners=2pt, font=\scriptsize, align=left, anchor=east] (peak_box) at (3.4, 2.7) {
+        \textcolor{blue!80!black}{\textbf{Bin 11: 11.613,77}} ($440{,}0\text{ Hz}$)\\[1pt]
+        \textcolor{red!80!black}{\textbf{Bin 14: 11.532,71}} ($437{,}5\text{ Hz}$)
+    };
+    \draw[->, semithick, black!70] (peak_box.east) -- (3.88, 2.88);
+    
+    % Legend box placed compactly on the right side
+    \node[draw=gray!50, fill=white, rounded corners=2pt, font=\tiny, anchor=north east] at (10.5, 3.3) {
+        \begin{tabular}{ll}
+        \textcolor{blue!80!black}{\textbf{--- $\bullet$ ---}} & Lưới 400 điểm ($\Delta f = 40\text{ Hz}$) \\
+        \textcolor{red!80!black}{\textbf{--- $\circ$ ---}} & Lưới 512 điểm ($\Delta f = 31{,}25\text{ Hz}$) \\
+        \textcolor{gray!70}{\textbf{-- -- --}} & DTFT liên tục ($L=400$)
+        \end{tabular}
+    };
+\end{tikzpicture}
+\end{center}
+\vspace{-2mm}
+Đồ thị đo đạc minh chứng rõ nét: đệm số 0 chỉ lấy mẫu dày hơn trên đường cong DTFT có sẵn, không làm hẹp búp chính vật lý của tín hiệu.
+
+\clearpage
+
+% ============================================================================
+% TRANG 5: Toán Tử Công Suất & Toán Tử Ngân Hàng Bộ Lọc Mel
+% ============================================================================
+
+\subsection*{4. Phổ Công Suất (Power Spectrum)}
+\vspace{-2mm}
+
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Đầu ra STFT là 257 số phức chứa cả độ lớn lẫn góc pha. Mô hình âm học nơ-ron có cần xử lý góc pha phức tạp này không?
+
+\textbf{2. Phương pháp thô sơ và việc vứt bỏ pha:} Nhận dạng tiếng nói và từ khóa hoạt động dựa trên các dải cộng hưởng formant (vị trí lưỡi, môi, hàm làm thay đổi tần số cộng hưởng của thanh quản) chứ không phụ thuộc vào góc pha ban đầu của sóng âm khi chạm tới màng micro. Do đó, tầng này trích xuất mật độ công suất thực.
+
+Số liệu đo trực tiếp từ Lab 1.3 tại bin 14 của khung sóng $440\text{ Hz}$:
+\[
+\text{Re}(X_\ell[14]) = +105{,}3388, \quad \text{Im}(X_\ell[14]) = +20{,}8916
+\]
+cho công suất thực:
+\[
+P_\ell[14] = 105{,}3388^2 + 20{,}8916^2 = \mathbf{11.532{,}71}
+\]
+
+\textbf{3. Công thức hiển thị:}
+\[
+P_\ell[k] = |X_\ell[k]|^2 = \text{Re}(X_\ell[k])^2 + \text{Im}(X_\ell[k])^2, \quad k = 0, 1, \dots, \frac{N}{2}
+\]
+
+\textbf{4. Cái giá phần cứng và điều bị phá hủy:}
+\begin{itemize}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{Tiết kiệm phần cứng:} Việc tính phổ công suất ($|X|^2$) thay vì phổ biên độ ($|X| = \sqrt{\text{Re}^2 + \text{Im}^2}$) giúp \textbf{triệt tiêu hoàn toàn khối tính căn bậc hai} phần cứng vốn tiêu tốn hàng trăm chu kỳ xung nhịp hoặc diện tích bảng tra lớn. Vì ngay sau đây là phép nén logarit, tính chất:
+    \[
+    \ln(|X|^2) = 2 \ln(|X|)
+    \]
+    chứng minh rằng công suất và biên độ chứa đựng đặc trưng âm học giống hệt nhau, chỉ sai khác một hệ số tỷ lệ bằng 2. Chi phí số học là 2 phép bình phương thực và 1 phép cộng cho mỗi bin trên 257 bin mỗi khung $10\text{ ms}$ (tổng cộng 514 phép tính).
+    \item \textbf{Điều bị phá hủy:} Việc vứt bỏ pha là một \textbf{nhát cắt một chiều không thể đảo ngược}. Khi pha bị xóa bỏ, ta không còn khả năng tái tạo lại dạng sóng âm thanh nghe được từ phổ công suất nếu không dùng các thuật toán phục hồi pha lặp (như Griffin-Lim) hoặc mô hình nơ-ron tạo giọng (vocoder). Các bài toán nhận dạng tiếng nói (ASR) và phát hiện từ khóa (KWS) chấp nhận sự mất mát này; ngược lại, bài toán tăng cường tiếng nói (Speech Enhancement) ở các chương sau bắt buộc phải giữ lại pha để tái tạo âm thanh sạch.
+\end{itemize}
+
+\vspace{-1.5mm}
+\subsection*{5. Ngân Hàng Bộ Lọc Mel (Mel Filterbank)}
+\vspace{-2mm}
+
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Phổ công suất $P_\ell[k]$ có 257 bin tuyến tính đều đặn cách nhau $31{,}25\text{ Hz}$. Tại sao không đưa thẳng 257 con số này vào mô hình âm học?
+
+Có hai lý do vật lý và kiến trúc độc lập, tương ứng với hai đoạn suy diễn sau:
+
+\textit{Lý do thứ nhất: Sinh học thính giác người.} Ốc tai con người hoạt động như một ngân hàng bộ lọc cơ học phi tuyến. Tại dải tần số thấp dưới $1\text{ kHz}$ (nơi chứa cao độ cơ bản và các formant cốt lõi F1, F2 phân biệt nguyên âm), tai người phân biệt được các biến thiên tần số chỉ vài Hertz. Nhưng ở dải tần số cao trên vài kilohertz (nơi chứa tiếng ồn xát của phụ âm /s/, /sh/, /f/), tai người trở nên thô ráp, chỉ cảm nhận được năng lượng tổng thể của cả một dải rộng hàng trăm Hertz. Thang đo tần số Hertz tuyến tính do đó bị dư thừa thông tin ở dải cao và thiếu sự tập trung ở dải thấp.
+
+\textit{Lý do thứ hai: Ngân sách tham số của mô hình âm học.} Một mạng nơ-ron xử lý tiếng nói dạng dòng trên biên không thể gánh 257 đầu vào cho mỗi bước thời gian $10\text{ ms}$ mà không làm bùng nổ kích thước ma trận trọng số ở tầng tuyến tính đầu tiên. Việc gom 257 bin tuyến tính thành 80 kênh cảm nhận giúp giảm số chiều hơn ba lần, tập trung dung lượng học vào đúng các biến thiên âm học có ý nghĩa phân biệt ngôn ngữ.
+
+Đường cong biến đổi tần số Mel được xác lập theo công thức xấp xỉ thực nghiệm HTK / O'Shaughnessy:
+\[
+\mathrm{mel}(f) = 2595 \log_{10}\!\left(1 + \frac{f}{700}\right)
+\]
+Hai hằng số $2595$ và $700$ là kết quả làm khớp đường cong thực nghiệm từ các bài kiểm tra thính lực của Stevens và Volkmann, không phải là hằng số suy diễn từ giải tích thuần túy.
+
+\textbf{2. Bộ lọc thực tế mã nguồn xây dựng và hiện tượng sụp đổ (Filter Collapse):}
+Hàm \texttt{create\_mel\_filterbank} trong mã chuẩn \nolinkurl{chapter01/exp_01_streaming_audio_pipeline.py} chia dải từ $0$ đến $8.000\text{ Hz}$ ($\text{mel}(8000) = 2840{,}02$) thành $M = 80$ bộ lọc, sử dụng 82 điểm ranh giới với bước nhảy đều:
+\[
+\Delta\text{mel} = \frac{2840{,}02}{80 + 1} = 35{,}062\text{ mel}
+\]
+Các điểm tần số Mel liên tục này được chuyển ngược về Hertz rồi làm tròn xuống chỉ số bin nguyên:
+\[
+k_m = \left\lfloor \frac{(N + 1) \cdot f_m}{f_s} \right\rfloor = \left\lfloor \frac{513 \cdot f_m}{16.000} \right\rfloor
+\]
+Khi quan sát mảng \texttt{bin\_points} từ kết quả chạy thực nghiệm Lab 1.3, một sự thật cơ học bị phơi bày: \textbf{có đúng 3 bộ lọc tam giác bị sụp đổ (collapsed)}:
+\begin{itemize}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{Bộ lọc $m = 0$ có cạnh bin $[0, 0, 1]$}: Mép trái và đỉnh tâm đều rơi vào bin 0 ($0\text{ Hz}$ và $22{,}1\text{ Hz}$ đều bị làm tròn về 0). Cạnh trái của tam giác bị sụp đổ hoàn toàn về chiều dài bằng không!
+    \item \textbf{Bộ lọc $m = 2$ có cạnh bin $[1, 2, 2]$}: Đỉnh tâm và mép phải đều rơi vào bin 2. Cạnh phải bị sụp đổ về không.
+    \item \textbf{Bộ lọc $m = 3$ có cạnh bin $[2, 2, 3]$}: Mép trái và đỉnh tâm trùng vào bin 2. Cạnh trái sụp đổ.
+\end{itemize}
+Ở dải đối diện, \textbf{Bộ lọc $m = 79$ trải dài từ bin 239 đến bin 256} ($7475{,}2\text{ Hz}$ đến $8000{,}0\text{ Hz}$), có đỉnh tại bin 247 ($7733{,}5\text{ Hz}$), ôm trọn \textbf{17 bin FFT} ($\approx 525\text{ Hz}$) thành một bể gom năng lượng khổng lồ.
+
+\textbf{3. Trọng số tam giác cho bin 14 ($440\text{ Hz}$):}
+Bin 14 ($437{,}5\text{ Hz}$) nằm gọn bên trong Bộ lọc $m = 15$ (có cạnh bin $[13, 14, 15]$). Tại đúng bin $k = 14$, trọng số tam giác đạt đỉnh tuyệt đối:
+\[
+g_{15}[14] = \mathbf{1{,}0000}
+\]
+Mọi bộ lọc khác đều có trọng số bằng 0 tại bin 14. Năng lượng tích lũy của dải 15 từ âm thanh $440\text{ Hz}$ chính là:
+\[
+E_\ell[15] = 1{,}0000 \times P_\ell[14] = 11.532{,}71
+\]
+
+\textbf{4. Công thức hiển thị:}
+\[
+E_\ell[m] = \sum_{k=0}^{256} g_m[k] \, P_\ell[k], \quad m = 0, 1, \dots, M-1
+\]
+
+\textbf{5. Cái giá phần cứng và điều bị phá hủy:} Phép nhân ma trận thưa $80 \times 257$ với vector 257 phần tử. Vì mỗi bin $k$ chỉ thuộc tối đa hai tam giác kế cận, phần lớn ma trận là số không; phần cứng chỉ tốn tối đa 2 phép nhân - cộng cho mỗi bin hoạt động.
+\textit{Điều bị phá hủy:} Cấu trúc điều hòa chi tiết bên trong các dải tần số cao bị xóa nhòa hoàn toàn; 17 bin độc lập ở dải 79 bị nung chảy thành một giá trị vô hướng duy nhất.
+
+\clearpage
+
+% ============================================================================
+% TRANG 6: Hình 1.3b & Toán Tử Nén Logarit
+% ============================================================================
+
 \vspace*{-4.5mm}
-\subsection*{1. Khung Sau Áp Cửa Sổ}
-\vspace{-2mm}
-
-Để triệt tiêu các bước nhảy biên nhân tạo tại ranh giới khung, gói âm thanh thô được thuôn mượt dần về 0 trước khi giải tích phổ.
-
-\subsubsection*{Giải Phẫu 5 Nhịp: Khung Sau Áp Cửa Sổ}
-\vspace{-2mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $x_\ell[n] = x[n_0 + \ell H + n] \, w[n], \quad n = 0, 1, \dots, L-1$; tiếp nối bởi bước đệm thêm số 0: $x_\ell[n] = 0, \quad L \le n < N$.\\[1mm]
-\textbf{Nhịp 2: Ký Hiệu.} $x_\ell[n]$ là khung sau áp cửa sổ $\ell$ ($L = 400$ mẫu, $25\text{ ms}$ ở $f_s = 16.000\text{ Hz}$); $x$ là dòng âm thanh liên tục; $H = 160$ mẫu ($10\text{ ms}$); $L = 400$ mẫu ($25\text{ ms}$); $w[n]$ là cửa sổ đối xứng Hamming, thuôn dần hai mép ranh giới về $w[0] = w[L-1] = 0{,}08$ và đạt đỉnh $1{,}00$ ở chính giữa.\\[1mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} Cắt phẳng tín hiệu bằng nhát cắt chữ nhật tương đương với nhân với hàm chữ nhật, cuộn phổ gốc với hàm sinc có các búp phụ suy hao chậm (búp phụ đầu tiên nhô cao $-13\text{ dB}$). Cửa sổ Hamming thuôn hai mép về $0{,}08$, nén búp phụ đầu tiên xuống $-44\text{ dB}$---giảm rò rỉ phổ giả mạo tới $31\text{ dB}$.
-}
-
-\vspace{-3mm}
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\resizebox{0.94\textwidth}{!}{%
-\begin{tikzpicture}[>=Stealth, font=\small]
-  % Grid and Axes
-  \draw[->, black!75, thick] (-6.8, -5.0) -- (6.8, -5.0) node[right, font=\scriptsize\bfseries] {Độ lệch tần số so với tâm (Hz)};
-  \draw[->, black!75, thick] (0, -5.2) -- (0, 0.6) node[above, font=\scriptsize\bfseries] {Độ suy giảm chuẩn hóa (dB)};
-
-  % Horizontal grid lines and dB tick labels
-  \foreach \y/\lbl in {0/{0}, -1.3/{-13}, -2.6/{-26}, -4.4/{-44}} {
-    \draw[gray!30, thin] (-6.5, \y) -- (6.5, \y);
-    \node[left, font=\scriptsize, text=gray!80] at (-6.5, \y) {\lbl~dB};
-  }
-  % Vertical grid lines and Hz tick labels
-  \foreach \x/\lbl in {-4.8/{-160}, -2.4/{-80}, 0/{0}, 2.4/{80}, 4.8/{160}} {
-    \draw[gray!30, thin] (\x, -5.0) -- (\x, 0.4);
-    \node[below, font=\scriptsize, text=gray!80] at (\x, -5.0) {\lbl};
-  }
-
-  % Rectangular window spectrum (sinc shape, blue dashed)
-  \draw[blue!80!black, thick, dashed] 
-    (-6.5, -2.6) -- (-6.0, -2.5) -- (-5.4, -4.8) -- (-4.8, -2.2) -- (-4.2, -4.8) 
-    -- (-3.6, -1.9) -- (-3.0, -4.8) -- (-2.4, -1.6) -- (-1.8, -1.3) -- (-1.2, -4.8) 
-    -- (0, 0) 
-    -- (1.2, -4.8) -- (1.8, -1.3) -- (2.4, -1.6) -- (3.0, -4.8) -- (3.6, -1.9) 
-    -- (4.2, -4.8) -- (4.8, -2.2) -- (5.4, -4.8) -- (6.0, -2.5) -- (6.5, -2.6);
-
-  % Hamming window spectrum (broader main lobe, heavily suppressed side lobes, red solid)
-  \draw[red!80!black, ultra thick] 
-    (-6.5, -4.5) -- (-5.5, -4.4) -- (-4.5, -4.5) -- (-3.5, -4.4) -- (-2.4, -4.4) 
-    -- (-1.6, -2.2) -- (0, 0) -- (1.6, -2.2) -- (2.4, -4.4) 
-    -- (3.5, -4.4) -- (4.5, -4.5) -- (5.5, -4.4) -- (6.5, -4.5);
-
-  % Annotations: Both Callout Boxes placed fully inside with generous margins (no clipping)
-  \node[draw=blue!80!black, fill=blue!5, rounded corners=3pt, font=\footnotesize, align=left] (rect_box) at (-3.9, -0.9) {
-    \textbf{Cửa sổ chữ nhật:}\\[0.5mm]
-    Búp chính: $\Delta f = 80\text{ Hz}$ ($2f_s/L$)\\[0.5mm]
-    Búp phụ đầu: $\mathbf{-13\text{ dB}}$
-  };
-  \draw[->, blue!80!black, semithick] (rect_box.east) -- (-1.9, -1.3);
-
-  \node[draw=red!80!black, fill=red!5, rounded corners=3pt, font=\footnotesize, align=left] (hamm_box) at (3.9, -0.9) {
-    \textbf{Cửa sổ Hamming:}\\[0.5mm]
-    Búp chính: $\Delta f = 160\text{ Hz}$ ($4f_s/L$)\\[0.5mm]
-    Búp phụ đầu: $\mathbf{-44\text{ dB}}$
-  };
-  \draw[->, red!80!black, semithick] (hamm_box.south) -- (3.9, -4.3);
-
-  % Suppression Arrow
-  \draw[<->, purple!85!black, very thick] (1.8, -1.3) -- (1.8, -4.4) 
-    node[midway, right, font=\footnotesize\bfseries] {Triệt tiêu $+31\text{ dB}$};
-\end{tikzpicture}%
-}\\[1mm]
+\resizebox{0.94\textwidth}{!}{\input{fig_1_3b_vi.tex}}\\[1mm]
 \begin{minipage}{0.96\textwidth}
-\small\textbf{Hình 6}: \textbf{Rò rỉ phổ: Cửa sổ chữ nhật so với cửa sổ Hamming ($L = 400$, $f_s = 16\text{ kHz}$).} (1)~\textbf{Bản chất:} Hàm truyền đạt phổ khi áp cửa sổ chữ nhật so với Hamming. (2)~\textbf{Điểm cần quan sát:} Búp chính tăng gấp đôi độ rộng ($80\text{ Hz} \to 160\text{ Hz}$), nhưng búp phụ đầu tiên rơi từ $-13\text{ dB}$ xuống $-44\text{ dB}$ (triệt tiêu thêm $31\text{ dB}$). (3)~\textbf{Ý nghĩa:} Áp cửa sổ đánh đổi độ sắc nét tần số lấy dải động, ngăn các formant âm lượng lớn che lấp họa âm phụ âm nhỏ.
+\small\textbf{Hình 1.3b}: \textbf{Ngân hàng bộ lọc Mel xây dựng thực tế từ mảng \texttt{bin\_points} của Lab 1.3.} (1)~\textbf{Bản chất:} Ánh xạ 257 bin tần số tuyến tính vào 80 bộ lọc cảm nhận Mel với bước $\Delta\text{mel} = 35{,}062$ ($\text{mel}(8000) = 2840{,}02$). (2)~\textbf{Điểm cần quan sát:} Ở dải thấp, do bước bin $\Delta f = 31{,}25\text{ Hz}$ thô hơn bước Mel, Bộ lọc 0 sụp đổ mép trái tại bin $[0, 0, 1]$, Bộ lọc 2 sụp phải tại $[1, 2, 2]$, Bộ lọc 3 sụp trái tại $[2, 2, 3]$ (tổng cộng 3 bộ lọc sụp). Bộ lọc 15 ôm trọn bin 14 tại $[13, 14, 15]$ với trọng số $g_{15}[14] = 1{,}00$. Ở dải cao, Bộ lọc 79 dãn rộng qua 17 bin từ 239 đến 256 ($7475\text{--}8000\text{ Hz}$). (3)~\textbf{Ý nghĩa:} Cảnh báo kỹ sư phần cứng không được giả định mọi bộ lọc đều là tam giác hoàn chỉnh; các bộ lọc biên bị suy biến bắt buộc phải được xử lý cẩn trọng trong bảng chỉ số BRAM.
 \end{minipage}
 \end{minipage}
 \end{center}
-\vspace{-3.5mm}
+\vspace{-2mm}
 
-\begin{physicalinsight}
-Áp cửa sổ là một thỏa hiệp bắt buộc với nguyên lý bất định: ta chấp nhận tăng gấp đôi độ rộng búp chính (từ $80\text{ Hz}$ lên $160\text{ Hz}$) để đổi lấy $31\text{ dB}$ triệt tiêu búp phụ. Nếu không triệt tiêu rò rỉ phổ, năng lượng khổng lồ từ các họa âm cơ bản trầm sẽ làm lu mờ hoàn toàn các formant cao tần tinh tế trên toàn phổ.
-\end{physicalinsight}
+\subsection*{6. Nén Logarit (Logarithmic Compression)}
+\vspace{-2mm}
 
-\vspace{1mm}
-{\small
-\textbf{Nhịp 4: Giá Phần Cứng.} Tiêu tốn $L = 400$ phép nhân số thực trên mỗi khung $10\text{ ms}$. Các hệ số cửa sổ đối xứng được lưu sẵn trong bảng tra trên chip. Các bộ nhân tạo đường ống hoàn tất tầng này dễ dàng trong nhịp khung. Số lát cắt phần cứng chính xác được phân tích ở Mục 1.4 / Chương 6.\\[1mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Cửa sổ thuôn triệt tiêu năng lượng âm học ở hai đầu mút khung, ép các mẫu biên về gần 0. Để không tạo ra điểm mù khiến các biến cố âm học tức thời biến mất không dấu vết, các khung kế tiếp bắt buộc phải gối đầu sâu: bước nhảy $H = 160$ mẫu chỉ tiến thêm $40\%$ chiều dài cửa sổ, để lại vùng gối đầu $60\%$ ($L - H = 240$ mẫu chia sẻ) bảo đảm năng lượng âm thanh được bao phủ liên tục, đồng đều dọc theo trục thời gian.
-}
+\textbf{1. Câu hỏi giai đoạn trước không thể trả lời:} Năng lượng $E_\ell[m]$ giữa các dải Mel có thể chênh lệch nhau hàng triệu lần. Nếu đưa thẳng vào mạng nơ-ron, dải âm lượng lớn nhất sẽ chi phối hoàn toàn hàm mất mát và gradient.
+
+\textbf{2. Phương pháp thô sơ và độ to cảm nhận:} Độ to mà con người cảm nhận tỷ lệ thuận với logarit của năng lượng âm thanh vật lý (Định luật Weber-Fechner). Hơn nữa, sự thay đổi khoảng cách micro hoặc độ lợi khuếch đại (gain) $g$ sẽ nhân toàn bộ năng lượng âm thanh với hệ số $g^2$. Khi đi qua hàm logarit:
+\[
+\ln(g^2 \cdot E) = \ln(E) + 2\ln(g)
+\]
+Yếu tố khuếch đại có tính chất nhân bị biến đổi thành một \textbf{độ lệch cộng tính cố định} $2\ln(g)$ trên toàn bộ các khung. Đây chính là nền tảng toán học giúp kỹ thuật chuẩn hóa trừ trung bình theo thời gian (Cepstral Mean Normalization -- CMN) ở Chương 2 triệt tiêu hoàn toàn ảnh hưởng của độ nhạy micro!
+
+Ba giá trị đo thực nghiệm từ phòng thí nghiệm Lab 1.3 trên dải Mel:
+\begin{itemize}\setlength{\itemsep}{-1.5pt}
+    \item \textbf{Năng lượng lớn (dải 15 từ âm $440\text{ Hz}$):} $E = 11.532{,}71 \implies \ln(11.532{,}71) = \mathbf{9{,}3529}$.
+    \item \textbf{Năng lượng đơn vị:} $E = 1{,}0 \implies \ln(1{,}0) = \mathbf{0{,}0000}$.
+    \item \textbf{Năng lượng cực tiểu dưới ngưỡng sàn ($10^{-8} < 10^{-6}$):} Bị kẹp sàn tại $10^{-6} \implies \ln(10^{-6}) = \mathbf{-13{,}8155}$.
+\end{itemize}
+
+\textbf{3. Công thức hiển thị:}
+\[
+S_\ell[m] = \ln\bigl(\max(E_\ell[m], 10^{-6})\bigr), \quad m = 0, 1, \dots, M-1
+\]
+
+\textbf{4. Cái giá phần cứng và điều bị phá hủy:}
+Tiêu tốn đúng \textbf{80 phép tính logarit tự nhiên trên mỗi khung $10\text{ ms}$}. Trên phần cứng FPGA, hàm logarit không được tính bằng chuỗi Taylor dấu phẩy động chậm chạp mà được xấp xỉ bằng bảng tra kết hợp đa thức bậc một từng đoạn (piecewise linear approximation).
+\textit{Điều bị phá hủy:} Đạo hàm $\frac{d}{dx}\ln(x) = \frac{1}{x}$ tiến tới vô hạn khi $x \to 0$. Ngưỡng chặn sàn $10^{-6}$ ngăn chặn lỗi số học $-\infty$ khi gặp khoảng lặng tuyệt đối, nhưng đồng thời cũng san phẳng mọi biến thiên âm học vi mô nằm dưới mức năng lượng $10^{-6}$.
 
 \clearpage
 
 % ============================================================================
-% TRANG 3: Toán tử 2 (STFT), Toán tử 3 (Phổ Công Suất), Toán tử 4 (Ánh Xạ Mel)
+% TRANG 7: Hình 1.3_speech & Bảng Sổ Cái Tổng Kết
 % ============================================================================
+
 \vspace*{-4.5mm}
-\subsection*{2. Biến Đổi Fourier Thời Gian Ngắn (STFT)}
-\vspace{-2.5mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $X_\ell[k] = \sum_{n=0}^{N-1} x_\ell[n] \, e^{-j \frac{2\pi k n}{N}}, \quad k = 0, 1, \dots, N-1$.\\[0.8mm]
-\textbf{Nhịp 2: Ký Hiệu.} $k \in \{0, \dots, N-1\}$ là chỉ số bin tần số rời rạc ($f_k = k \frac{f_s}{N} = k \times \frac{16.000}{512} = k \times 31{,}25\text{ Hz}$); $n \in \{0, \dots, N-1\}$ là chỉ số mẫu thời gian; $x_\ell[n]$ được đệm thêm $N - L = 112$ số 0 lên chiều dài $N = 512$; $X_\ell[k]$ là hệ số phổ phức. Nhờ tính đối xứng liên hợp ($X_\ell[N-k] = X_\ell^*[k]$), chỉ cần giữ lại $N/2 + 1 = 257$ bin đầu tiên ($0\text{--}8.000\text{ Hz}$) là bảo toàn trọn vẹn phổ tín hiệu.\\[0.8mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} Chiếu tín hiệu thời gian 1D sang không gian tọa độ thời gian - tần số phức 2D, cân bằng sự đánh đổi cốt lõi giữa định vị thời gian và độ phân giải tần số (các lát cắt $25\text{ ms}$ tại độ chi tiết $\Delta f = 31{,}25\text{ Hz}$).\\[0.8mm]
-\textbf{Nhịp 4: Giá Phần Cứng.} Tính toán trực tiếp tiêu tốn $N$ bin $\times N$ phép nhân - cộng phức mỗi khung $10\text{ ms}$. Thuật toán FFT cơ số 2 giúp người thiết kế không bị kẹt ở $N^2$, giảm khối lượng số học xuống $\frac{N}{2} \log_2 N$ bướm tính toán mỗi khung. Số lát cắt phần cứng chính xác được phân tích ở Mục 1.4 / Chương 6.\\[0.8mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Mặc định tín hiệu lặp lại tuần hoàn với chu kỳ $N$. Việc đệm thêm 112 số 0 lên 512 điểm chỉ làm lưới nội suy phổ dày hơn mà không cải thiện độ phân giải tần số vật lý vốn bị chặn bởi chiều dài cửa sổ $L$.
-}
-
-\vspace{1.5mm}
-\hrule
-\vspace{1.5mm}
-
-\subsection*{3. Phổ Công Suất}
-\vspace{-2.5mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $P_\ell[k] = |X_\ell[k]|^2 = \text{Re}(X_\ell[k])^2 + \text{Im}(X_\ell[k])^2, \quad k = 0, 1, \dots, \frac{N}{2}$.\\[0.8mm]
-\textbf{Nhịp 2: Ký Hiệu.} $P_\ell[k] \in \mathbb{R}_{\ge 0}$ là mật độ phổ công suất trên $257$ bin tần số; $\text{Re}(X_\ell[k]), \text{Im}(X_\ell[k])$ là điểm số chiếu đồng pha và vuông pha thu từ STFT.\\[0.8mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} Nhận dạng giọng nói dựa trên sự phân bố năng lượng formant thay vì góc pha âm học. Bình phương độ lớn loại bỏ góc pha, trích xuất $257$ giá trị năng lượng thực không âm phản ánh cấu trúc ngữ âm.\\[0.8mm]
-\textbf{Nhịp 4: Giá Phần Cứng.} Tiêu tốn 2 phép bình phương và 1 phép cộng cho mỗi bin trên $257$ bin mỗi khung $10\text{ ms}$. Tính công suất ($|X|^2$) giúp triệt tiêu hoàn toàn khối tính căn bậc hai phần cứng đắt đỏ. Số lát cắt phần cứng chính xác được phân tích ở Mục 1.4 / Chương 6.\\[0.8mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Bỏ pha là biến đổi một chiều không thể đảo ngược. Việc khôi phục lại dạng sóng âm thanh miền thời gian là bất khả thi nếu không có thuật toán ước lượng pha.
-}
-
-\vspace{1.5mm}
-\hrule
-\vspace{1.5mm}
-
-\subsection*{4. Ánh Xạ Tần Số Mel}
-\vspace{-2.5mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $\mathrm{mel}(f) = 2595 \log_{10}\!\left(1 + \frac{f}{700}\right)$.\\[0.8mm]
-\textbf{Nhịp 2: Ký Hiệu.} $f$ là tần số liên tục tính bằng Hertz ($0 \le f \le 8.000\text{ Hz}$); $\mathrm{mel}(f)$ là cao độ cảm nhận tính bằng Mel.\\[0.8mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} Mô phỏng cơ chế phi tuyến của ốc tai người: nhạy bén ở tần số thấp, thô ráp dần ở tần số cao. Mỗi bước bằng nhau $355\text{ mel}$ (tương ứng $1/8$ toàn dải $2.840\text{ mel}$) chỉ trải $259\text{ Hz}$ ở dải thấp ($0\text{--}259\text{ Hz}$ qua nghịch đảo $700 \times (10^{355/2595} - 1)$), nhưng dãn rộng tới $2.351\text{ Hz}$ ở dải cao nhất ($5.649\text{--}8.000\text{ Hz}$ với $\Delta f = 8.000 - 5.649\text{ Hz}$)---dãn nở tới chín lần về băng thông vật lý.\\[0.8mm]
-\textbf{Nhịp 4: Giá Phần Cứng.} Không tiêu tốn logic thời gian chạy. Hàm uốn Mel được tính toán ngoại tuyến khi thiết kế để sinh tần số tâm lưu trong bộ nhớ trên chip.\\[0.8mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Đường cong liên tục phải ánh xạ lên lưới bin rời rạc. Ở tần số thấp, bề rộng bộ lọc có thể hẹp hơn khoảng cách bin $\Delta f = 31{,}25\text{ Hz}$ ($16000/512$), gây nguy cơ sai lệch rời rạc hóa.
-}
-
-\clearpage
-
-% ============================================================================
-% TRANG 4: Toán tử 5 (Ngân Hàng Bộ Lọc Mel Là Tổng Có Trọng Số) + Hình 1.3b
-% ============================================================================
-\vspace*{-4.5mm}
-\subsection*{5. Ngân Hàng Bộ Lọc Mel Là Tổng Có Trọng Số}
-\vspace{-2mm}
-
-Để nén các bin tuyến tính thành các kênh cảm nhận, các bộ lọc tam giác tích phân năng lượng qua các dải không đồng đều.
-
-\subsubsection*{Giải Phẫu 5 Nhịp: Ngân Hàng Bộ Lọc Mel}
-\vspace{-2mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $E_\ell[m] = \sum_{k=0}^{256} g_m[k] \, P_\ell[k], \quad m = 0, 1, \dots, M-1$, với $g_m[k]$ là các hàm trọng số hình tam giác gối chồng:
-$g_m[k] = \frac{k - k_{m-1}}{k_m - k_{m-1}}$ khi $k_{m-1} \le k \le k_m$; $g_m[k] = \frac{k_{m+1} - k}{k_{m+1} - k_m}$ khi $k_m < k \le k_{m+1}$; và $0$ ở các vị trí khác.\\[1mm]
-\textbf{Nhịp 2: Ký Hiệu.} $m \in \{0, 1, \dots, M-1\}$ là chỉ số dải Mel ($M = 80$); $k_m$ là chỉ số bin FFT của tần số tâm bộ lọc $m$; $g_m[k]$ là trọng số tam giác cho bin $k$ trong bộ lọc $m$; $E_\ell[m]$ là vector năng lượng phổ Mel (kích thước $[1, 80]$).\\[1mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} 80 bộ lọc tam giác nén 257 bin công suất tuyến tính thành 80 kênh cảm nhận. Từng bộ lọc tích phân năng lượng trong dải, bảo toàn chi tiết phổ tinh vi ở dải nguyên âm tần thấp trong khi gom các dải năng lượng rộng ở dải phụ âm ồn tần cao.
-}
-
-\vspace{-3mm}
 \begin{center}
 \begin{minipage}{\textwidth}
 \centering
-\resizebox{0.94\textwidth}{!}{\input{fig_1_3b_vi.tex}}\\[0.8mm]
+\resizebox{0.94\textwidth}{!}{\input{fig_1_3_speech_vi.tex}}\\[1mm]
 \begin{minipage}{0.96\textwidth}
-\small\textbf{Hình 1.3b}: \textbf{257 bin FFT tuyến tính sụp đổ dưới 80 bộ lọc tam giác Mel.} (1)~\textbf{Bản chất:} Ánh xạ 257 bin tần số tuyến tính ($0\text{--}8.000\text{ Hz}$) vào 80 bộ lọc tam giác cảm nhận Mel. (2)~\textbf{Điểm cần quan sát:} Ở vùng (a), các bộ lọc tần thấp dày đặc và hẹp, trong khi các bộ lọc cao dãn rộng theo hàm mũ. Ở vùng (b), Dải $m=0$ chỉ tích hợp vài bin, trong khi Dải $m=79$ gom hàng chục bin ($6.593\text{--}8.000\text{ Hz}$). (3)~\textbf{Ý nghĩa:} Ngân hàng bộ lọc tập trung độ phân giải vào các dải formant ngữ âm đồng thời thu gọn mạnh số chiều đầu vào cho mạng nơ-ron.
+\small\textbf{Hình 1.3\_speech}: \textbf{Đặc trưng phổ một khung tiếng nói thật trích xuất từ \nolinkurl{datasets/sample_speech_a.wav}.} (1)~\textbf{Bản chất:} Ba tầng biểu diễn của khung âm thanh đỉnh (khung thứ 66, thời điểm $t = 0{,}66\text{ s}$) của từ phát âm ``go'' trong tập dữ liệu Speech Commands. (2)~\textbf{Điểm cần quan sát:} Ở miền thời gian (a), dao động tuần hoàn thanh quản thể hiện rõ nét. Ở phổ công suất (b), năng lượng tập trung dày đặc ở các formant nguyên âm thấp tại bin 12--13 ($375\text{--}406\text{ Hz}$). Ở 80 thanh Log-Mel (c), ba dải năng lượng cực đại đo được chính xác là Dải 13 ($382{,}1\text{ Hz}$, giá trị $\mathbf{3{,}26}$), Dải 14 ($416{,}3\text{ Hz}$, giá trị $\mathbf{3{,}15}$), và Dải 10 ($285{,}7\text{ Hz}$, giá trị $\mathbf{2{,}16}$). (3)~\textbf{Ý nghĩa:} Minh chứng tính toàn vẹn của đường truyền dữ liệu khi ánh xạ một nguyên âm thực tế thành vector đặc trưng 80 chiều cung cấp cho mô hình âm học.
 \end{minipage}
 \end{minipage}
 \end{center}
-\vspace{-3.5mm}
+\vspace{-2mm}
 
-\begin{physicalinsight}
-Ngân hàng bộ lọc Mel là một cỗ máy tập trung thông tin bất đối xứng. Ở dải tần thấp ($0\text{--}1\text{ kHz}$) nơi cư trú của cao độ và formant nguyên âm cốt lõi, mỗi dải chỉ tích hợp một vài bin FFT, bảo tồn chi tiết họa âm tinh vi. Ở dải tần cao ($6\text{--}8\text{ kHz}$) nơi phụ âm xát tạo ra tiếng ồn khuếch tán, mỗi dải gom hàng chục bin, giữ lại đường bao năng lượng tổng thể trong khi gạt bỏ cấu trúc vi mô không cần thiết.
-\end{physicalinsight}
+\subsection*{7. Bảng Sổ Cái Kỹ Thuật (Pipeline Ledger)}
+\vspace{-2mm}
 
-\vspace{1mm}
-{\small
-\textbf{Nhịp 4: Giá Phần Cứng.} Tiêu tốn phép nhân ma trận thưa với vector trên mỗi khung. Vì mỗi bin tuyến tính $k$ chỉ rơi vào tối đa hai bộ lọc tam giác kế cận, ma trận phần lớn là số 0. Phần cứng chỉ tốn các phép nhân - cộng trên các nhịp bin tích cực; số lát cắt phần cứng chính xác được phân tích ở Mục 1.4 / Chương 6.\\[1mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Bẫy rời rạc hóa: Khi tần số tâm liên tục được làm tròn về chỉ số bin nguyên, các bộ lọc tần thấp kế cận có thể bị sụp về cùng một bin nếu khoảng cách hẹp hơn $\Delta f = 31{,}25\text{ Hz}$ ($16000/512$). Bộ lọc có đỉnh và hai mép trùng nhau sẽ có độ rộng bằng 0 và cho ra năng lượng chết. Phần cứng phải bảo đảm mỗi dải phủ ít nhất một bin duy nhất.
-}
+Bảng sổ cái dưới đây tổng hợp trọn vẹn năm giai đoạn toán tử được đo đạc và xác thực trực tiếp từ mã nguồn phòng thí nghiệm \nolinkurl{chapter01/lab_1_3.py}:
+
+\vspace{-1.5mm}
+\begin{center}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lp{3.5cm}cp{3.2cm}p{3.0cm}}
+\toprule
+\textbf{Toán tử} & \textbf{Câu hỏi vật lý được trả lời} & \textbf{Kích thước vào $\to$ ra} & \textbf{Khối lượng số học / 10 ms} & \textbf{Điều bị phá hủy} \\
+\midrule
+\textbf{1. Cửa sổ} & Cắt hữu hạn mà không sinh rò rỉ phổ rác? & $[400] \to [512]$ (đệm 112 số 0) & 400 phép nhân thực & Biên khung bị đè về $0{,}08$; buộc phải gối $60\%$. \\[5pt]
+\textbf{2. STFT} & Nhận diện tần số cộng hưởng không mù pha? & $[512] \to [257]$ số phức & 2.304 bướm FFT radix-2 ($262.144$ tích ở DFT thẳng) & Giả định tuần hoàn; độ phân giải chặn bởi $L=400$. \\[5pt]
+\textbf{3. Công suất} & Trích xuất năng lượng âm học bỏ qua góc pha? & $[257] \to [257]$ số thực & 514 phép tính thực (257 bình phương + 257 cộng) & Mất vĩnh viễn góc pha; không thể nghe lại dạng sóng. \\[5pt]
+\textbf{4. Mel} & Uốn phổ theo tai người và giảm chiều mô hình? & $[257] \to [80]$ dải & Nhân ma trận thưa (tối đa 2 tích/bin tích cực) & Phổ dải cao bị nung chảy; 3 bộ lọc thấp bị sụp đổ. \\[5pt]
+\textbf{5. Log} & Nén dải động và biến độ lợi micro thành độ lệch? & $[80] \to [80]$ log-Mel & 80 phép tính logarit tự nhiên (bảng tra đa thức) & Mất chi tiết dưới sàn $10^{-6}$; độ dốc phân kỳ gần 0. \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{-2mm}
 
 \clearpage
 
 % ============================================================================
-% TRANG 5: Toán tử 6 (Nén Logarit) & Cầu Nối Sang Mục 1.4
+% TRANG 8: Ba Câu Hỏi Tự Đánh Giá & Điểm Tựa Thực Nghiệm
 % ============================================================================
+
 \vspace*{-4.5mm}
-\subsection*{6. Nén Logarit}
+\subsection*{8. Ba Câu Hỏi Tự Đánh Giá Năng Lực Sư Phạm}
 \vspace{-2mm}
 
-Phép biến đổi cuối cùng nén các biến thiên năng lượng vật lý rộng lớn vào một không gian đặc trưng chuẩn hóa, phù hợp cho các tầng mạng nơ-ron.
+Để bảo đảm người học không chỉ ghi nhớ công thức thụ động mà thấu suốt cơ chế vật lý bên dưới, hãy tự trả lời ba câu hỏi phản biện kiến trúc sau đây:
 
-\subsubsection*{Giải Phẫu 5 Nhịp: Nén Logarit}
+\begin{enumerate}
+    \item \textbf{Về định vị bin và đệm số không:} Một âm thanh đơn tần $1.000\text{ Hz}$ được lấy mẫu ở $16.000\text{ Hz}$ và đưa vào khung STFT $N = 512$ điểm. Tín hiệu này sẽ rơi vào chính xác bin tần số số mấy? Việc đệm thêm 112 số không vào sau 400 mẫu của khung có làm cho búp đỉnh nhọn hơn và sắc nét hơn về mặt vật lý hay không?
+    
+    \textit{Trả lời:} Bước nhảy mỗi bin là $\Delta f = 16.000 / 512 = 31{,}25\text{ Hz}$. Chỉ số bin là $k = 1.000 / 31{,}25 = 32$. Tín hiệu rơi chính xác vào \textbf{bin 32}. Việc đệm 112 số không \textbf{hoàn toàn không làm thu hẹp búp đỉnh vật lý}; nó chỉ lấy mẫu dày hơn trên đường cong DTFT vốn có độ rộng búp chính bị khóa chặt bởi chiều dài cửa sổ vật lý $L = 400$ mẫu ($\Delta t = 25\text{ ms}$).
+
+    \item \textbf{Về hiện tượng mù pha và sự vứt bỏ góc pha:} Tại sao một sóng dò $\cos$ đơn lẻ lại báo năng lượng xấp xỉ bằng không khi gặp một sóng $\sin$ có cùng tần số? Nếu hai sóng dò trực giao ($\cos$ và $-\sin$) là bắt buộc để đo đúng năng lượng sóng, tại sao ở toán tử liền sau chúng ta lại thản nhiên vứt bỏ góc pha đi?
+    
+    \textit{Trả lời:} Sóng $\sin$ lệch pha $90^\circ$ so với sóng $\cos$. Tích phân hai hàm trực giao trên một chu kỳ nguyên vẹn triệt tiêu hoàn toàn về không, tạo ra sự mù pha. Cần hai nhánh trực giao để theo định lý Pythagoras tính được biên độ $A = \sqrt{\text{Re}^2 + \text{Im}^2}$ bất biến trước thời điểm xuất hiện của sóng. Sau khi biên độ đã được bảo toàn trong công suất thực $P[k] = \text{Re}^2 + \text{Im}^2$, góc pha âm học không còn mang thông tin nhận dạng ngữ âm (não bộ và mạng nơ-ron nhận diện nguyên âm dựa trên vị trí đỉnh formant chứ không dựa vào pha sóng đến micro), nên việc loại bỏ pha giúp giải phóng bộ nhớ và giảm độ phức tạp cho mô hình hạ nguồn.
+
+    \item \textbf{Về hình học ngân hàng bộ lọc Mel:} Bộ lọc số 0 ($m = 0$) trong cấu hình 80 dải Mel của hệ thống có còn giữ được hình dạng tam giác cân đối hay không? Hãy chỉ ra nguyên nhân toán học dẫn đến hình dạng đó.
+    
+    \textit{Trả lời:} \textbf{Không, Bộ lọc 0 không còn là hình tam giác}. Nó bị sụp đổ cạnh trái vì cả mép trái và đỉnh tâm đều bị làm tròn về cùng bin 0 ($[0, 0, 1]$). Nguyên nhân là ở dải tần số cực thấp ($0\text{--}22\text{ Hz}$), khoảng cách giữa các tần số tâm Mel liên tục hẹp hơn độ phân giải rời rạc của lưới FFT ($\Delta f = 31{,}25\text{ Hz}$), khiến phép làm tròn sàn số nguyên $\lfloor (N+1)f/f_s \rfloor$ ép hai điểm ranh giới trùng vào một bin duy nhất.
+\end{enumerate}
+
+\vspace{-1.5mm}
+\subsection*{9. Khởi Chạy và Tái Hiện Thực Nghiệm}
 \vspace{-2mm}
-{\small
-\textbf{Nhịp 1: Công Thức.} $S_\ell[m] = \ln\bigl(\max(E_\ell[m], 10^{-6})\bigr), \quad m = 0, 1, \dots, M-1$.\\[1mm]
-\textbf{Nhịp 2: Ký Hiệu.} $S_\ell[m]$ là vector đặc trưng log-Mel năng lượng (kích thước $[1, 80]$) phát cho mô hình âm học; $E_\ell[m]$ là năng lượng dải Mel thô từ Toán tử 5; $10^{-6}$ là ngưỡng chặn dưới ngăn thảm họa $\ln(0) \to -\infty$ khi gặp khoảng lặng.\\[1mm]
-\textbf{Nhịp 3: Ý Nghĩa Vật Lý.} Cảm nhận độ to của con người tỷ lệ logarit với công suất âm thanh. Trong môi trường thực tế, áp suất âm thanh dao động từ tiếng thì thầm khẽ ($10^{-5}\text{ Pa}$) đến tiếng thét lớn ($10\text{ Pa}$)---chênh lệch năng lượng tới $10^{10}$, tương đương $100\text{ dB}$. Nén logarit điều hòa dải động khổng lồ này về một phân phối số học gọn gàng. Hơn nữa, phép logarit biến các hiệu ứng kênh có tính chất nhân (như khoảng cách micro hay âm học phòng) thành các độ lệch cộng tính đơn giản.\\[1mm]
-\textbf{Nhịp 4: Giá Phần Cứng.} Tiêu tốn 80 phép tính logarit trên mỗi khung $10\text{ ms}$. Trên phần cứng, logarit được đánh giá bằng bảng tra hoặc xấp xỉ đa thức từng đoạn. Số lát cắt phần cứng chính xác được phân tích ở Mục 1.4 / Chương 6.\\[1mm]
-\textbf{Nhịp 5: Điều Công Thức Giấu.} Đạo hàm của logarit tự nhiên, $\frac{d}{dx}\ln(x) = \frac{1}{x}$, phân kỳ về vô hạn khi $x \to 0$. Dù ngưỡng chặn $10^{-6}$ ngăn được âm vô cùng, những dao động nhiễu siêu nhỏ quanh ngưỡng sàn vẫn tạo ra các biến động lớn trong không gian đặc trưng, đòi hỏi xử lý số học cẩn trọng trong quá trình lượng tử hóa dấu phẩy tĩnh.
-}
 
-\vspace{5mm}
-\hrule
-\vspace{5mm}
+Mọi con số, đường cong và bảng biểu trong mục này được sinh ra và kiểm chứng bằng lệnh duy nhất:
+\begin{center}
+\ttfamily\small
+python chapter01/lab\_1\_3.py
+\end{center}
+và bộ kiểm thử tự động toàn diện:
+\begin{center}
+\ttfamily\small
+python -m pytest chapter01/test\_lab\_1\_3.py
+\end{center}
 
-\subsection*{Thực Tế Silicon: Cầu Nối Sang Mục 1.4}
-
-Các dẫn xuất toán học của STFT và ngân hàng bộ lọc Mel trong mục này giả định số học vô hạn độ chính xác, truy xuất bộ nhớ trễ bằng 0 và thực thi tức thời. Trên máy tính phát triển, những phương trình này chạy mượt mà trong môi trường khoa học Python, nơi bộ nhớ dồi dào và phần cứng dấu phẩy động che giấu hạn chót xử lý $10\text{ ms}$ cùng ngân sách nhiệt.
-
-Khi chuỗi toán học này được đẩy xuống silicon biên vật lý vận hành dưới trần công suất ngặt nghèo ($< 15\text{ W}$) với hạn chót cứng $10\text{ ms}$ cho mỗi khung, các công thức trừu tượng va chạm trực diện với các ràng buộc phần cứng vật lý. Liệu một GPU biên hay một cấu trúc không gian FPGA có thể thỏa mãn các hạn chót âm thanh dạng dòng này hay không chính là câu hỏi kiến trúc được khám phá tiếp theo.
+Ba dòng kết quả then chốt từ đầu ra chuẩn của chương trình khớp tuyệt đối từng chữ số với các hình minh họa:
+\begin{enumerate}
+    \item \textbf{Khớp Hình 1.3a \& Mục 3:}\\
+    \footnotesize\texttt{argmax bin: 14 (437.5 Hz), Re = 105.3388, Im = 20.8916, Power = 11532.71}
+    \item \textbf{Khớp Hình 1.3b \& Mục 5:}\\
+    \footnotesize\texttt{filter-0 edges: [0, 0, 1], filter-79 edges: [239, 247, 256], collapsed count: 3}
+    \item \textbf{Khớp Hình 1.3\_speech \& Mục 7:}\\
+    \footnotesize\texttt{speech a (sample\_speech\_a.wav): peak frame 66, top 3: Band 13 (3.26), Band 14 (3.15), Band 10 (2.16)}
+\end{enumerate}
 
 \end{document}

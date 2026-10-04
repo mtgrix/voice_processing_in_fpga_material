@@ -25,6 +25,10 @@ Trong xử lý âm thanh thời gian thực, dữ liệu không thể nạp theo
 ```bash
 python chapter01/exp_01_streaming_audio_pipeline.py
 pytest chapter01/test_exp_01.py
+
+# Lab 1.3: Đo lường thực nghiệm từng toán tử trên sóng âm thật và tiếng nói
+python chapter01/lab_1_3.py
+pytest chapter01/test_lab_1_3.py
 ```
 
 ## 7. Kết quả Số học Dự kiến & Dung sai
@@ -39,6 +43,10 @@ Executed 2026-09-13 on a host (Python 3.12.10, NumPy 2.5.2, Windows 11). Raw out
 `results/exp01/20260913T020406Z/` — `stdout.log` plus `result.json`, both listed in
 `results/SHA256SUMS`. `scripts/capture_result.py` ran the script and wrote the files, so no
 number below was transcribed by hand.
+
+Bằng chứng thực nghiệm cho bài học Mục 1.3 (Lab 1.3) được ghi nhận tại
+`results/lab13/20261004T211854Z/` (`stdout.log` và `result.json`, băm khớp trong `results/SHA256SUMS`),
+xác thực số học trên file sóng âm thật `datasets/sample_tone440.wav` và hai mẫu tiếng nói Speech Commands.
 
 | Metric | Expected (§7) | Measured | Reading |
 | --- | --- | --- | --- |
