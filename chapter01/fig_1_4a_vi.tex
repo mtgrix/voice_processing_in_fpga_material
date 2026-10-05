@@ -1,0 +1,46 @@
+% fig_1_4a_vi.tex: Trục thời gian tiến trình khung âm thanh (tính theo mili-giây)
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  timeline/.style={->, thick, black!70},
+  tick/.style={black!70, thin},
+  framebar/.style={draw=blue!75!black, fill=blue!12, rounded corners=2pt, semithick},
+  sharedbar/.style={draw=blue!70!black, fill=blue!20, semithick},
+  hopbar/.style={draw=teal!75!black, fill=teal!25, semithick},
+  f2bar/.style={draw=blue!50!purple!75!black, fill=blue!50!purple!15, rounded corners=2pt, semithick},
+  brace/.style={decorate, decoration={brace, amplitude=4pt, mirror}, thick, black!75}
+]
+
+% Tỉ lệ: 1 ms = 0.24 cm. Trục từ 0 đến 50 ms
+\def\xscale{0.24}
+
+% Trục thời gian
+\draw[timeline] (-0.2, -0.1) -- (51*\xscale, -0.1) node[right, font=\footnotesize] {Thời gian (ms)};
+
+\foreach \t in {0, 10, 20, 25, 30, 35, 40, 45, 50} {
+  \draw[tick] (\t*\xscale, -0.05) -- (\t*\xscale, -0.15) node[below, font=\scriptsize] {\t};
+}
+
+% Khung 0: 0 đến 25 ms
+\draw[framebar] (0*\xscale, 2.3) rectangle (25*\xscale, 2.9);
+\node[font=\footnotesize\bfseries, text=blue!85!black] at (12.5*\xscale, 2.6) {Khung 0: Chiều dài 25 ms ($L = 400$ mẫu)};
+\node[anchor=west, font=\scriptsize\itshape, text=black!70] at (25.5*\xscale, 2.6) {Mẫu thứ 400 chưa đến trước thời điểm 25 ms};
+
+% Khung 1: 10 đến 35 ms (hai sắc độ: phần dùng chung và bước nhảy mới)
+\draw[sharedbar] (10*\xscale, 1.25) rectangle (25*\xscale, 1.85);
+\node[font=\scriptsize, text=blue!90!black] at (17.5*\xscale, 1.55) {Dùng chung 240 mẫu};
+
+\draw[hopbar] (25*\xscale, 1.25) rectangle (35*\xscale, 1.85);
+\node[font=\scriptsize\bfseries, text=teal!90!black] at (30*\xscale, 1.55) {Bước nhảy: 10 ms};
+
+\node[anchor=west, font=\scriptsize, text=black!75] at (35.5*\xscale, 1.55) {Chiều dài khung: 25 ms (160 mẫu mới)};
+
+% Khung 2: 20 đến 45 ms
+\draw[f2bar] (20*\xscale, 0.2) rectangle (45*\xscale, 0.8);
+\node[font=\footnotesize, text=black!85] at (32.5*\xscale, 0.5) {20 ms đến 45 ms và $L = 400$};
+
+% Móc ngoặc nhịp khung: dưới đoạn 25 - 35 ms
+\draw[brace] (25*\xscale, -0.65) -- (35*\xscale, -0.65);
+\node[below=5pt, font=\scriptsize\bfseries, text=black!85] at (30*\xscale, -0.65) {Nhịp khung: 10 ms};
+
+\end{tikzpicture}

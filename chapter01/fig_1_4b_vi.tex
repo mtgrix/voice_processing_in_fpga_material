@@ -1,0 +1,48 @@
+% fig_1_4b_vi.tex: So sánh mô hình hàng đợi chia sẻ (GPU) và đường truyền chuyên dụng (FPGA)
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  box/.style={draw=black!75, rounded corners=2pt, fill=blue!8, semithick, align=center, inner sep=3.5pt},
+  gpubox/.style={draw=orange!80!black, rounded corners=2pt, fill=orange!8, semithick, align=center, inner sep=3.5pt},
+  fpgabox/.style={draw=teal!80!black, rounded corners=2pt, fill=teal!8, semithick, align=center, inner sep=3.5pt},
+  arr/.style={->, thick, black!75},
+  wire/.style={->, thick, teal!80!black},
+  bracket/.style={decorate, decoration={brace, amplitude=5pt}, thick, black!80},
+  bracketb/.style={decorate, decoration={brace, amplitude=5pt, mirror}, thick, black!80}
+]
+
+% ==================== ĐƯỜNG TRUYỀN GPU (Hàng đợi chia sẻ chung) ====================
+\node[anchor=west, font=\footnotesize\bfseries, text=orange!90!black] at (0, 3.6) {(a) Đường truyền Edge GPU: Chia sẻ chung một tiến trình hàng đợi};
+
+\node[gpubox] (drv) at (1.5, 1.8) {Trình điều khiển\\micro};
+\node[gpubox] (os) at (4.5, 1.8) {Hệ điều hành\\\& Lập lịch};
+\node[gpubox] (fe) at (7.8, 1.8) {Tiền xử lý\\Frontend};
+\node[gpubox] (model) at (11.0, 1.8) {Mô hình\\âm học};
+
+\draw[arr] (drv) -- (os);
+\draw[arr] (os) -- (fe);
+\draw[arr] (fe) -- (model);
+
+% Móc ngoặc bao quát toàn bộ 4 khối
+\draw[bracket] (0.2, 2.45) -- (12.3, 2.45);
+\node[above=4pt, font=\scriptsize\bfseries, text=black!85] at (6.25, 2.45) {Ngân sách chia sẻ chung: 10 ms};
+
+% ==================== ĐƯỜNG TRUYỀN FPGA (Đường dây chuyên dụng) ====================
+\node[anchor=west, font=\footnotesize\bfseries, text=teal!90!black] at (0, 0.7) {(b) Đường truyền FPGA: Các toán tử đặt trên đường dây vật lý độc lập};
+
+\node[fpgabox] (win) at (1.1, -0.2) {Cửa sổ};
+\node[fpgabox] (fft) at (3.3, -0.2) {Biến đổi FFT};
+\node[fpgabox] (pow) at (5.7, -0.2) {Công suất};
+\node[fpgabox] (mel) at (8.0, -0.2) {Tổng Mel};
+\node[fpgabox] (log) at (10.4, -0.2) {Nén Log};
+
+\draw[wire] (win) -- (fft);
+\draw[wire] (fft) -- (pow);
+\draw[wire] (pow) -- (mel);
+\draw[wire] (mel) -- (log);
+
+% Móc ngoặc đặt bên cạnh / dưới các toán tử
+\draw[bracketb] (0.2, -0.75) -- (11.4, -0.75);
+\node[below=6pt, font=\scriptsize\bfseries, text=black!85] at (5.8, -0.75) {Hạn chót khung: 10 ms};
+
+\end{tikzpicture}
