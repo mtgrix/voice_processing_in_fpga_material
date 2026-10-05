@@ -285,55 +285,76 @@ def generate_figures(
     # -------------------------------------------------------------------------
     fig3_path = output_dir / "fig_1_4_rate_vi.pdf"
     fig, (ax_fe, ax_gpu) = plt.subplots(
-        1, 2, figsize=(7.6, 2.7), gridspec_kw={"width_ratios": [1, 1]}
+        1, 2, figsize=(7.6, 2.7), gridspec_kw={"width_ratios": [1, 1.25]}
     )
 
     # Left: Mel FP32 multiply/s (not whole frontend)
-    ax_fe.bar([0], [multiply_per_second / 1e3], color="#1f77b4", width=0.45)
+    ax_fe.bar([0], [multiply_per_second / 1e3], color="#1f77b4", width=0.38)
     ax_fe.set_xticks([0])
-    ax_fe.set_xticklabels(
-        ["407 nhân/khung $\\times$ 100 khung/s\n(Chỉ tính phép nhân Mel)"], fontsize=7.5
-    )
+    ax_fe.set_xticklabels(["Phép nhân Mel\n(407 nhân $\\times$ 100 khung/s)"], fontsize=7.5)
     ax_fe.set_ylabel("Nghìn phép nhân FP32 / giây", fontsize=8)
-    ax_fe.set_title("(a) Tốc độ nhân ma trận Mel (FP32)", fontsize=8.5, fontweight="bold")
+    ax_fe.set_title("(a) Tốc độ nhân Mel (Trục riêng FP32)", fontsize=8.5, fontweight="bold")
     ax_fe.text(
         0,
-        (multiply_per_second / 1e3) + 2.0,
+        (multiply_per_second / 1e3) + 1.8,
         f"{multiply_per_second:,} nhân/s\n({multiply_per_second / 1e3:.1f} nghìn/s)",
         ha="center",
         va="bottom",
         fontsize=8,
         fontweight="bold",
     )
-    ax_fe.set_ylim(0, 100)
+    ax_fe.set_ylim(0, 60)
     ax_fe.grid(True, linestyle="--", alpha=0.5, axis="y")
 
-    # Right: Jetson Orin Nano Super INT8 TOPS
-    # Show published 67 sparse TOPS and halved 33.5 dense TOPS
-    ax_gpu.bar(
-        [0],
-        [67],
-        color="#ffe5cc",
-        edgecolor="#ff7f0e",
-        linestyle="--",
-        linewidth=1.2,
-        width=0.45,
-        label="Công bố: 67 sparse TOPS (25 W)",
-    )
+    # Right: Jetson Orin Nano Super INT8 TOPS, with Mel on same TOPS scale to expose the 10^8 gap
     ax_gpu.bar(
         [0],
         [halved_sparse_tops],
         color="#ff7f0e",
         width=0.45,
-        label="Quy đổi sách: 33,5 dense TOPS (67/2)",
+        label="GPU: 33,5 dense TOPS (quy đổi 67/2)",
     )
-    ax_gpu.set_xticks([0])
-    ax_gpu.set_xticklabels(["NVIDIA Jetson Orin Nano Super\n(Trần công suất 25 W)"], fontsize=7.5)
-    ax_gpu.set_ylabel("Định mức INT8 TOPS ($10^{12}$ ops/s)", fontsize=8)
-    ax_gpu.set_title("(b) Định mức tính toán GPU (INT8)", fontsize=8.5, fontweight="bold")
+    ax_gpu.bar(
+        [0],
+        [67.0],
+        color="none",
+        edgecolor="#b35400",
+        linestyle="--",
+        linewidth=1.2,
+        width=0.45,
+        label="GPU công bố: 67 sparse TOPS (25 W)",
+    )
+    ax_gpu.bar(
+        [1],
+        [multiply_per_second / 1e12],
+        color="#1f77b4",
+        width=0.45,
+        label="Mel trên trục TOPS (0,00000004 TOPS)",
+    )
+
+    ax_gpu.set_xticks([0, 1])
+    ax_gpu.set_xticklabels(
+        [
+            "Jetson Orin Nano Super\n(Thang TOPS)",
+            "Mel trên thang TOPS\n(0,00000004 TOPS)",
+        ],
+        fontsize=7.5,
+    )
+    ax_gpu.set_ylabel(r"Định mức INT8 TOPS ($10^{12}$ thao tác/giây)", fontsize=8)
+    ax_gpu.set_title("(b) Đặt trên cùng trục TOPS của GPU", fontsize=8.5, fontweight="bold")
     ax_gpu.text(
         0,
-        67 + 1.5,
+        34.5,
+        "33,5 TOPS",
+        ha="center",
+        va="bottom",
+        fontsize=7.5,
+        fontweight="bold",
+        color="#ff7f0e",
+    )
+    ax_gpu.text(
+        0,
+        68.0,
         "67 TOPS (sparse)",
         ha="center",
         va="bottom",
@@ -342,21 +363,21 @@ def generate_figures(
         color="#b35400",
     )
     ax_gpu.text(
-        0,
-        halved_sparse_tops / 2.0,
-        "33,5 dense TOPS\n($33,5 \\times 10^{12}$ ops/s)",
+        1,
+        3.0,
+        "Mel: ~0 TOPS\n(chìm hoàn toàn)",
         ha="center",
-        va="center",
+        va="bottom",
         fontsize=7.5,
         fontweight="bold",
-        color="white",
+        color="#1f77b4",
     )
     ax_gpu.set_ylim(0, 80)
     ax_gpu.grid(True, linestyle="--", alpha=0.5, axis="y")
-    ax_gpu.legend(loc="upper left", fontsize=7.0)
+    ax_gpu.legend(loc="upper right", fontsize=6.8)
 
     fig.suptitle(
-        "Đối chiếu quy mô: Khác biệt bậc độ lớn $\\sim 10^8$ lần (33,5 TOPS vs 40.700 FP32 nhân/s)",
+        r"Đối chiếu quy mô: Mel chỉ bằng ~1 phần 823 triệu so với 33,5 TOPS của GPU",
         fontsize=8.5,
         fontstyle="italic",
         y=1.02,

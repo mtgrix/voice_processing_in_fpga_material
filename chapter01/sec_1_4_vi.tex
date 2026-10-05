@@ -134,7 +134,7 @@ Tỉ lệ chiếm dụng của bộ đệm vòng so với sức chứa của đ�
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.86\textwidth]{fig_1_4_bram_vi.pdf}
-\caption{\textbf{Bản chất:} Tương quan dung lượng giữa bộ đệm vòng 400 mẫu tín hiệu và sức chứa của một khối Block RAM 36 kbit đơn lẻ. \textbf{Điểm cần quan sát:} Bộ đệm vòng 1.600 byte chiếm 34,7\% dung lượng của khối BRAM 4.608 byte này; phần còn lại của khối là 3.008 byte. \textbf{Ý nghĩa:} 3.008 byte còn lại trong khối này không đủ sức chứa bảng trọng số 3.328 byte của ngân hàng Mel nếu đặt chung ($1600 + 3328 = 4928 > 4608$), đòi hỏi các khối BRAM độc lập trong 144 khối của chip.}
+\caption{\textbf{Bản chất:} Tương quan dung lượng giữa bộ đệm vòng 400 mẫu tín hiệu và sức chứa của một khối Block RAM 36 kbit đơn lẻ. \textbf{Điểm cần quan sát:} Bộ đệm vòng 1.600 byte chiếm 34,7\% dung lượng của khối BRAM 4.608 byte này; phần dung lượng danh định còn lại của khối là 3.008 byte. \textbf{Ý nghĩa:} Bộ đệm vòng 400 mẫu số thực FP32 nằm gọn trong dung lượng danh định 4.608 byte của duy nhất một khối BRAM 36 kbit, với 3.008 byte danh định còn lại của khối đó chưa được phân bổ.}
 \label{fig:1_4_bram}
 \end{figure}
 
@@ -217,12 +217,12 @@ Các thông số dẫn chiếu từ tài liệu công bố của nhà sản xu�
 \[
 \text{quotient\_mac\_as\_two} = \frac{33{,}5 \times 10^{12}}{2 \times 40700} \approx 411547911{,}55
 \]
-Con số 407 trong nhật ký kiểm thử là số phép nhân mỗi khung (61 hàng đa điểm thực tế cần 346 phép cộng). Thương số thứ nhất xem mỗi phép nhân tích lũy (MAC) là một thao tác ($40.700\text{ thao tác/giây}$). Thương số thứ hai dựa trên quy ước thiết kế đếm một phép MAC gồm hai thao tác (1 nhân + 1 cộng, tức $2 \times 40.700 = 81.400\text{ thao tác/giây}$). Dù tính theo quy ước nào, tỷ lệ quy mô vẫn đứng ở bậc hàng trăm triệu lần ($823095823{,}10$ và $411547911{,}55$), và lập luận so sánh hoàn toàn không phụ thuộc vào việc chọn thương số nào.
+Con số 407 trong nhật ký kiểm thử là số phép nhân mỗi khung. 61 hàng đa điểm cần thêm 346 phép cộng, đưa tổng số phép tính của ngân hàng Mel lên 753 thao tác mỗi khung (75.300 thao tác/giây). Thương số thứ nhất so sánh định mức GPU với riêng số phép nhân Mel ($40.700\text{ phép nhân/giây}$). Thương số thứ hai tính theo mẫu số nhân đôi ($2 \times 40.700$). Dù so sánh với riêng phép nhân hay tính cả phép cộng, tỷ lệ quy mô giữa năng lực GPU và tải tính toán Mel đều đứng vững chắc ở bậc hàng trăm triệu lần ($823095823{,}10$ và $411547911{,}55$), và lập luận so sánh hoàn toàn không phụ thuộc vào việc đếm phép tính theo quy ước nào.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.86\textwidth]{fig_1_4_rate_vi.pdf}
-\caption{\textbf{Bản chất:} Đối chiếu quy mô giữa tốc độ nhân ma trận Mel (FP32) và định mức tính toán công bố của Edge GPU (INT8). \textbf{Điểm cần quan sát:} Khối lượng 40.700 phép nhân/giây chỉ tính riêng cho ma trận Mel; định mức công bố của GPU là 67 sparse INT8 TOPS (quy đổi 33,5 dense INT8 TOPS); hai trục có thứ nguyên hoàn toàn khác nhau; thương số quy mô đạt $823095823{,}10$ (nếu tính 1 MAC = 1 op) và $411547911{,}55$ (nếu tính 1 MAC = 2 ops). \textbf{Ý nghĩa:} Tải tính toán số học của phép nhân Mel hoàn toàn chìm nghỉm trước năng lực tính toán cực đại của GPU, cho thấy phép so sánh thông lượng thuần túy không phải là căn cứ để chuyển đổi sang FPGA.}
+\caption{\textbf{Bản chất:} Đối chiếu quy mô giữa tốc độ nhân ma trận Mel (FP32) và định mức tính toán công bố của Edge GPU (INT8). \textbf{Điểm cần quan sát:} Khối lượng 40.700 phép nhân/giây chỉ tính riêng cho ma trận Mel; trên trục TOPS của GPU ở panel (b), khối lượng Mel chỉ tương đương $0{,}00000004\text{ TOPS}$, hoàn toàn chìm sát đáy đồ thị so với cột 33,5 dense TOPS; hai thương số quy mô từ nhật ký kiểm thử đều ở bậc hàng trăm triệu lần ($823095823{,}10$ và $411547911{,}55$). \textbf{Ý nghĩa:} Tải tính toán số học của phép nhân Mel hoàn toàn chìm nghỉm trước năng lực tính toán cực đại của GPU, cho thấy phép so sánh thông lượng thuần túy không thể là căn cứ để chuyển đổi sang FPGA.}
 \label{fig:1_4_rate}
 \end{figure}
 
