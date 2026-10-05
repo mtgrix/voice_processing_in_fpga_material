@@ -1,0 +1,139 @@
+{
+  "captured_utc": "20261005T154553Z",
+  "environment": {
+    "numpy": "2.5.2",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10"
+  },
+  "label": "section 1.3 corrections",
+  "returned_metrics": {
+    "argmax_bin": 14,
+    "argmax_hz": 437.5,
+    "bin14_filter": 15,
+    "bin14_weight": 1.0,
+    "collapsed_count": 3,
+    "cos_energy_ratio": 0.0335,
+    "cos_mag_ratio": 0.1829,
+    "cosine_probe_sum_0": 105.3388,
+    "cosine_probe_sum_quarter": -19.2665,
+    "dead_count": 1,
+    "dead_indices": [
+      2
+    ],
+    "direct_dft_products": 262144,
+    "filter0_edges": [
+      0,
+      0,
+      1
+    ],
+    "filter15_nonzero_idx": 14,
+    "filter2_max_weight": 0.0,
+    "filter79_edges": [
+      239,
+      247,
+      256
+    ],
+    "generated_figures": [
+      "fig_1_3_window_vi.pdf",
+      "fig_1_3_probe_vi.pdf",
+      "fig_1_3_grid_vi.pdf",
+      "fig_1_3b_vi.pdf",
+      "fig_1_3_speech_vi.pdf"
+    ],
+    "ham_n2n_hz": 160.64,
+    "ham_null_hz": 80.32,
+    "ham_side_db": -44.45,
+    "ham_side_hz": 88.87,
+    "im_bin14": 20.8916,
+    "log_clamped": -13.8155,
+    "log_moderate": 9.3529,
+    "log_unit": 0.0,
+    "mel_8000": 2840.02,
+    "multitap_count": 61,
+    "onetap_count": 18,
+    "onetap_indices": [
+      0,
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      22
+    ],
+    "power_adds": 257,
+    "power_bin14": 11532.71,
+    "power_rel_change": 0.001629,
+    "power_squares": 514,
+    "power_total_ops": 771,
+    "radix2_butterflies": 2304,
+    "re_bin14": 105.3388,
+    "rect_n2n_hz": 80.08,
+    "rect_null_hz": 40.04,
+    "rect_side_db": -13.26,
+    "rect_side_hz": 57.13,
+    "sine_probe_sum_0": 20.8916,
+    "sine_probe_sum_quarter": 105.7369,
+    "speech_a_file": "C:/Users/NGOC/Documents/learning_journey/voice_jetson_to_fpga_learning-journey/datasets/sample_speech_a.wav",
+    "speech_a_peak_frame": 66,
+    "speech_a_top3_bands": [
+      {
+        "band_index": 13,
+        "center_hz": 382.074747422074,
+        "log_mel": 3.2551138401031494,
+        "rank": 1
+      },
+      {
+        "band_index": 14,
+        "center_hz": 416.2684110426687,
+        "log_mel": 3.1533026695251465,
+        "rank": 2
+      },
+      {
+        "band_index": 10,
+        "center_hz": 285.6509457515467,
+        "log_mel": 2.164825201034546,
+        "rank": 3
+      }
+    ],
+    "speech_b_file": "C:/Users/NGOC/Documents/learning_journey/voice_jetson_to_fpga_learning-journey/datasets/sample_speech_b.wav",
+    "speech_b_peak_frame": 64,
+    "speech_b_top3_bands": [
+      {
+        "band_index": 21,
+        "center_hz": 687.8682669441692,
+        "log_mel": 5.2602362632751465,
+        "rank": 1
+      },
+      {
+        "band_index": 22,
+        "center_hz": 731.7250344943282,
+        "log_mel": 5.11593770980835,
+        "rank": 2
+      },
+      {
+        "band_index": 31,
+        "center_hz": 1194.3576488420033,
+        "log_mel": 4.608395099639893,
+        "rank": 3
+      }
+    ],
+    "step_mel": 35.062,
+    "tone_file_sha256": "4ef1f94fc2097c6c82a54f523dfaa24c0ecbf9c623a70820cda3c860affc5356",
+    "w_0": 0.08,
+    "w_200": 0.999986,
+    "w_399": 0.08
+  },
+  "row_id": "lab_1_3",
+  "script": "chapter01/lab_1_3.py"
+}

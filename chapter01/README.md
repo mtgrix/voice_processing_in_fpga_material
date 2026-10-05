@@ -45,8 +45,8 @@ Executed 2026-09-13 on a host (Python 3.12.10, NumPy 2.5.2, Windows 11). Raw out
 number below was transcribed by hand.
 
 Bằng chứng thực nghiệm cho bài học Mục 1.3 (Lab 1.3) được ghi nhận tại
-`results/lab13/20261004T211854Z/` (`stdout.log` và `result.json`, băm khớp trong `results/SHA256SUMS`),
-xác thực số học trên file sóng âm thật `datasets/sample_tone440.wav` và hai mẫu tiếng nói Speech Commands.
+`results/lab13/20261005T154553Z/` (`stdout.log` và `result.json`, băm khớp trong `results/SHA256SUMS`),
+xác thực số học trên tín hiệu kiểm chuẩn đơn tần tổng hợp `datasets/sample_tone440.wav` và hai mẫu tiếng nói Speech Commands (`sample_speech_a.wav`, `sample_speech_b.wav`).
 
 | Metric | Expected (§7) | Measured | Reading |
 | --- | --- | --- | --- |
