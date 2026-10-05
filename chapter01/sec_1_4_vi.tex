@@ -134,7 +134,7 @@ Tỉ lệ chiếm dụng của bộ đệm vòng so với sức chứa của đ�
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.86\textwidth]{fig_1_4_bram_vi.pdf}
-\caption{\textbf{Bản chất:} Tương quan dung lượng giữa bộ đệm vòng 400 mẫu tín hiệu và sức chứa của một khối Block RAM 36 kbit. \textbf{Điểm cần quan sát:} Bộ đệm vòng 1600 byte chỉ chiếm 34,7\% dung lượng của duy nhất một khối BRAM (4608 byte); 65,3\% còn lại trong khối vẫn chưa được khai thác. \textbf{Ý nghĩa:} Bộ đệm cửa sổ trượt tiền xử lý hoàn toàn có thể đặt gọn trong bộ nhớ nội vi (on-chip SRAM) mà không cần đến bộ nhớ ngoài.}
+\caption{\textbf{Bản chất:} Tương quan dung lượng giữa bộ đệm vòng 400 mẫu tín hiệu và sức chứa của một khối Block RAM 36 kbit đơn lẻ. \textbf{Điểm cần quan sát:} Bộ đệm vòng 1.600 byte chiếm 34,7\% dung lượng của khối BRAM 4.608 byte này; phần còn lại của khối là 3.008 byte. \textbf{Ý nghĩa:} 3.008 byte còn lại trong khối này không đủ sức chứa bảng trọng số 3.328 byte của ngân hàng Mel nếu đặt chung ($1600 + 3328 = 4928 > 4608$), đòi hỏi các khối BRAM độc lập trong 144 khối của chip.}
 \label{fig:1_4_bram}
 \end{figure}
 
@@ -142,7 +142,7 @@ Tỉ lệ phần trăm 34,7\% này là số byte của bộ đệm chia cho dung
 \[
 144 \times 36\text{ kbit} = 5184\text{ kbit}
 \]
-Nếu tính tổng dung lượng BRAM trên toàn chip từ số liệu thực nghiệm của lab:
+Phép nhân số học từ các thông số danh định trên datasheet cho thấy 144 khối BRAM tương ứng với tổng sức chứa lý thuyết:
 \[
 144 \times 4608\text{ byte} = 663552\text{ byte} = 648\text{ KiB}
 \]
@@ -173,21 +173,21 @@ Tuy nhiên, kiểm tra ma trận do hàm \texttt{create\_mel\_filterbank} xây d
     \item \textbf{Hàng đa điểm (multi-bin) có $k$ trọng số dương:} Có 61 hàng thuộc loại này. Mỗi trọng số dương cần lưu 4 byte float32 cho giá trị trọng số cùng 4 byte int32 cho chỉ số bin tương ứng ($k \times 8$ byte). Mỗi hàng này đòi hỏi $k$ phép nhân và $k - 1$ phép cộng.
 \end{itemize}
 
-Tổng dung lượng bộ nhớ thực dùng (\texttt{used\_weight\_bytes}) là tổng dung lượng của các phần tử thực tế đó:
+Tổng dung lượng bộ nhớ thực dùng (\texttt{used\_weight\_bytes}) theo mô hình sổ sách của bài học là tổng dung lượng của các phần tử thực tế đó:
 \[
 0\text{ byte (hàng chết)} + 18 \times 4\text{ byte (hàng đơn điểm)} + 407 \times 8\text{ byte (hàng đa điểm)} = 72 + 3256 = 3328\text{ byte}
 \]
-So với kỳ vọng ma trận dày 82240 byte, dung lượng thực tế chỉ là 3328 byte. Cả hai con số đều được tính toán theo quy chuẩn số thực FP32. Tổng khối lượng tính toán thực tế mỗi khung ghi nhận từ lab là \texttt{multiply\_per\_frame} = 407 phép nhân và \texttt{add\_per\_frame} = 346 phép cộng.
+So với kỳ vọng ma trận dày 82240 byte, mô hình lưu trữ thực dùng ghi nhận 3328 byte. Cả hai con số đều được tính toán theo quy chuẩn số thực FP32. Tổng khối lượng tính toán thực tế mỗi khung ghi nhận từ lab là \texttt{multiply\_per\_frame} = 407 phép nhân và \texttt{add\_per\_frame} = 346 phép cộng.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.86\textwidth]{fig_1_4_bank_vi.pdf}
-\caption{\textbf{Bản chất:} Cấu trúc phân bố trọng số của ngân hàng 80 bộ lọc Mel và đối chiếu dung lượng lưu trữ. \textbf{Điểm cần quan sát:} Bộ lọc 0 và 15 chỉ gồm một xung đơn vị đơn lẻ; Bộ lọc 2 hoàn toàn rỗng; dung lượng bộ nhớ thực dùng chỉ là 3328 byte so với 82240 byte của ma trận dày. \textbf{Ý nghĩa:} Cấu trúc thưa giúp loại bỏ phần lớn gánh nặng tính toán và thu nhỏ bảng tra trọng số trên phần cứng.}
+\caption{\textbf{Bản chất:} Cấu trúc phân bố trọng số của ngân hàng 80 bộ lọc Mel và đối chiếu dung lượng lưu trữ sổ sách. \textbf{Điểm cần quan sát:} Bộ lọc 0 và 15 chỉ gồm một xung đơn vị đơn lẻ; Bộ lọc 2 hoàn toàn rỗng; mô hình lưu trữ thực dùng ghi nhận 3.328 byte so với 82.240 byte của ma trận dày kỳ vọng. \textbf{Ý nghĩa:} Cấu trúc thưa giúp loại bỏ phần lớn gánh nặng tính toán và thu nhỏ bảng tra trọng số, dù 3.328 byte chiếm hơn 72\% dung lượng của một khối BRAM đơn lẻ.}
 \label{fig:1_4_bank}
 \end{figure}
 
 \begin{physicalinsight}
-Dung lượng trọng số thực tế sử dụng (3328 byte) rất nhỏ bé so với dung lượng in trên datasheet của một khối BRAM (4608 byte) hay toàn bộ 144 khối BRAM của chip (663552 byte). Tuy nhiên, phép chia dung lượng lý thuyết này không phải là một báo cáo tổng hợp mạch vật lý (synthesis report), bởi việc kết nối logic, thanh ghi trung gian và mạch tạo địa chỉ thực tế đòi hỏi các tài nguyên bổ sung trên phần cứng.
+Bảng trọng số 3.328 byte chiếm tới 72,2\% dung lượng của một khối BRAM 4.608 byte (do đó không thể nhét chung vào phần 3.008 byte còn lại của khối đệm vòng vì $1600 + 3328 = 4928 > 4608$). Tuy nhiên, con số 3.328 byte này rất nhỏ bé khi so với tổng dung lượng 663.552 byte của toàn bộ 144 khối BRAM trên chip. Phép chia dung lượng này là một mô hình tính toán số học trên sổ sách, không phải là một báo cáo tổng hợp mạch vật lý (synthesis report), bởi việc kết nối logic, thanh ghi trung gian và mạch tạo địa chỉ thực tế đòi hỏi các tài nguyên bổ sung trên phần cứng.
 \end{physicalinsight}
 
 \clearpage
@@ -200,29 +200,29 @@ Dung lượng trọng số thực tế sử dụng (3328 byte) rất nhỏ bé s
 
 \textbf{Câu hỏi giai đoạn trước không thể trả lời:} Việc di chuyển khối tiền xử lý âm thanh lên phần cứng chuyên dụng có mang lại thắng lợi về mặt thông lượng tính toán (throughput) hay không?
 
-Với nhịp bước nhảy 10 ms, hệ thống xử lý đúng 100 khung mỗi giây. Thông lượng phép nhân thực tế của khối tiền xử lý Mel là:
+Với nhịp bước nhảy 10 ms, hệ thống xử lý đúng 100 khung mỗi giây. Thông lượng phép nhân thực tế của ma trận Mel là:
 \[
 \text{multiply\_per\_second} = 407 \times 100 = 40700\text{ phép nhân/giây}
 \]
 Các thông số dẫn chiếu từ tài liệu công bố của nhà sản xuất (không phải số đo do lab này tự thực hiện):
 \begin{itemize}
-    \item NVIDIA Jetson Orin Nano Super công bố mức thông lượng cực đại 67 sparse INT8 TOPS tại trần công suất 25 W.
-    \item Độ thưa có cấu trúc (structured sparsity 2:4) nhân đôi thông lượng lý thuyết của nhân Tensor Core, do đó giá trị $67 / 2 = 33{,}5\text{ dense INT8 TOPS}$ là một phép số học trong cuốn sách này, không phải là một thông số công bố độc lập thứ hai.
+    \item NVIDIA Jetson Orin Nano Super công bố định mức cực đại 67 sparse INT8 TOPS tại trần công suất 25 W.
+    \item Độ thưa có cấu trúc (structured sparsity 2:4) nhân đôi thông lượng lý thuyết của nhân Tensor Core, do đó giá trị $67 / 2 = 33{,}5\text{ dense INT8 TOPS}$ là một phép tính số học trong cuốn sách này, không phải là một thông số công bố độc lập thứ hai.
 \end{itemize}
 
-Đối chiếu quy mô giữa thông lượng cực đại công bố của GPU và thông lượng tiền xử lý Mel:
+Đối chiếu quy mô giữa thông lượng tính đổi của GPU và tốc độ nhân ma trận Mel:
 \[
 \text{quotient\_mac\_as\_one} = \frac{33{,}5 \times 10^{12}}{40700} \approx 823095823{,}10
 \]
 \[
 \text{quotient\_mac\_as\_two} = \frac{33{,}5 \times 10^{12}}{2 \times 40700} \approx 411547911{,}55
 \]
-Cả hai thương số đều ở bậc hàng trăm triệu lần ($823095823{,}10$ nếu quy ước một phép nhân-tích lũy MAC là một thao tác, và $411547911{,}55$ nếu quy ước 1 MAC là hai thao tác). Lập luận so sánh hoàn toàn không phụ thuộc vào quy ước đếm thao tác này.
+Con số 407 trong nhật ký kiểm thử là số phép nhân mỗi khung (61 hàng đa điểm thực tế cần 346 phép cộng). Thương số thứ nhất xem mỗi phép nhân tích lũy (MAC) là một thao tác ($40.700\text{ thao tác/giây}$). Thương số thứ hai dựa trên quy ước thiết kế đếm một phép MAC gồm hai thao tác (1 nhân + 1 cộng, tức $2 \times 40.700 = 81.400\text{ thao tác/giây}$). Dù tính theo quy ước nào, tỷ lệ quy mô vẫn đứng ở bậc hàng trăm triệu lần ($823095823{,}10$ và $411547911{,}55$), và lập luận so sánh hoàn toàn không phụ thuộc vào việc chọn thương số nào.
 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.86\textwidth]{fig_1_4_rate_vi.pdf}
-\caption{\textbf{Bản chất:} Đối chiếu quy mô giữa tốc độ tính toán khối tiền xử lý Mel và thông số công bố của Edge GPU. \textbf{Điểm cần quan sát:} Hai cột biểu diễn trên hai trục tọa độ riêng biệt do khác biệt về bản chất phép toán (FP32 multiply/s so với INT8 TOPS); thương số tỷ lệ đạt $823095823{,}10$ (nếu tính 1 MAC = 1 op) và $411547911{,}55$ (nếu tính 1 MAC = 2 ops). \textbf{Ý nghĩa:} So sánh quy mô cho thấy tải tính toán số học của tiền xử lý Mel hoàn toàn chìm nghỉm trước năng lực tính toán cực đại của GPU.}
+\caption{\textbf{Bản chất:} Đối chiếu quy mô giữa tốc độ nhân ma trận Mel (FP32) và định mức tính toán công bố của Edge GPU (INT8). \textbf{Điểm cần quan sát:} Khối lượng 40.700 phép nhân/giây chỉ tính riêng cho ma trận Mel; định mức công bố của GPU là 67 sparse INT8 TOPS (quy đổi 33,5 dense INT8 TOPS); hai trục có thứ nguyên hoàn toàn khác nhau; thương số quy mô đạt $823095823{,}10$ (nếu tính 1 MAC = 1 op) và $411547911{,}55$ (nếu tính 1 MAC = 2 ops). \textbf{Ý nghĩa:} Tải tính toán số học của phép nhân Mel hoàn toàn chìm nghỉm trước năng lực tính toán cực đại của GPU, cho thấy phép so sánh thông lượng thuần túy không phải là căn cứ để chuyển đổi sang FPGA.}
 \label{fig:1_4_rate}
 \end{figure}
 
@@ -286,7 +286,7 @@ Phần 80 mẫu dôi dư này không bao giờ đủ 400 mẫu để cấu thàn
 \begin{figure}[h]
 \centering
 \input{fig_1_4_tail_vi.tex}
-\caption{\textbf{Bản chất:} Ranh giới phân khung ở cuối 1 giây âm thanh và phần mẫu dôi dư không đủ điều kiện tạo khung. \textbf{Điểm cần quan sát:} Khung thứ 98 (Khung 97) kết thúc tại mẫu 15.920; 80 mẫu cuối cùng từ 15.920 đến 16.000 bị bỏ sót vì không đủ chiều dài 400 mẫu; việc gom lô $B=8$ phát sinh thêm 70 ms chờ đợi. \textbf{Ý nghĩa:} Xử lý thời gian thực với kích thước lô bằng 1 (batch = 1) là một lựa chọn bắt buộc về độ trễ, bất chấp việc GPU thường ưa chuộng kích thước lô lớn để tối ưu hóa thông lượng tính toán song song.}
+\caption{\textbf{Bản chất:} Ranh giới phân khung ở cuối 1 giây âm thanh và phần mẫu dôi dư không đủ điều kiện tạo khung. \textbf{Điểm cần quan sát:} Khung thứ 98 (Khung 97) kết thúc tại mẫu 15.920; 80 mẫu cuối cùng từ 15.920 đến 16.000 bị bỏ sót vì không đủ chiều dài 400 mẫu; việc gom lô $B=8$ phát sinh thêm 70 ms chờ đợi. \textbf{Ý nghĩa:} batch = 1 là lựa chọn đánh đổi độ trễ: gom thêm mỗi khung làm trễ thêm 10 ms; một lô $B = 8$ khung tích lũy thêm 70 ms trước khi khung đầu tiên được đưa vào xử lý.}
 \label{fig:1_4_tail}
 \end{figure}
 
@@ -294,7 +294,7 @@ Trong kiến trúc xử lý luồng thời gian thực, việc chờ đợi tíc
 \[
 \Delta t_{\text{batch}} = (B - 1) \times 10\text{ ms}
 \]
-Cụ thể, một cấu hình gom lô kích thước $B = 8$ khung làm trễ thêm $(8 - 1) \times 10\text{ ms} = 70\text{ ms}$ tích lũy trước khi khung đầu tiên được chuyển đến bộ xử lý. Cấu hình xử lý tức thời với kích thước lô đơn lẻ (batch = 1) là một lựa chọn trực tiếp vì mục tiêu triệt tiêu độ trễ hàng đợi này.
+Cụ thể, một cấu hình gom lô kích thước $B = 8$ khung làm trễ thêm $(8 - 1) \times 10\text{ ms} = 70\text{ ms}$ tích lũy trước khi khung đầu tiên được chuyển đến bộ xử lý. batch = 1 là lựa chọn độ trễ để tránh khoảng thời gian chờ tích lũy hàng đợi này.
 
 \subsection*{Cầu Nối Sang Mục 1.5: Ba Câu Hỏi Mở Về Ranh Giới Phần Cứng}
 
