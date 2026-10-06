@@ -1,0 +1,47 @@
+% fig_1_4_tail_vi.tex: Khung cuoi trong 1 giay am thanh va phan mau duoi doi du
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  timeline/.style={->, thick, black!75},
+  tick/.style={black!70, thin},
+  framebar/.style={draw=blue!75!black, fill=blue!15, rounded corners=2pt, semithick},
+  tailbar/.style={draw=orange!85!black, fill=orange!25, rounded corners=2pt, semithick},
+  brace/.style={decorate, decoration={brace, amplitude=4pt}, thick, black!75}
+]
+
+% Trục thời gian tổng quát cho 1 giây âm thanh (16.000 mẫu = 1000 ms)
+\draw[timeline] (0, 0) -- (14.2, 0) node[right, font=\footnotesize] {Mẫu tín hiệu};
+
+% Điểm mốc 0, khung 0
+\draw[tick] (0, 0.1) -- (0, -0.1) node[below, font=\scriptsize] {0};
+\draw[framebar] (0, 0.4) rectangle (1.2, 1.1);
+\node[font=\scriptsize, text=blue!90!black] at (0.6, 0.75) {Khung 0};
+
+% Dấu ngắt quãng (khung 1 đến 96)
+\node[font=\normalsize, text=black!50] at (3.5, 0.75) {$\dots\dots$};
+\node[font=\scriptsize, text=black!65] at (3.5, 0.25) {98 khung hợp lệ (Khung 0 đến Khung 97)};
+
+% Phóng lớn đoạn cuối từ mẫu 15.000 đến 16.000
+\draw[tick] (5.8, 0.1) -- (5.8, -0.1) node[below, font=\scriptsize] {15.000};
+\draw[tick] (7.5, 0.1) -- (7.5, -0.1) node[below, font=\scriptsize] {15.520};
+\draw[tick] (12.2, 0.1) -- (12.2, -0.1) node[below, font=\scriptsize] {15.920};
+\draw[tick] (13.2, 0.1) -- (13.2, -0.1) node[below, font=\scriptsize] {16.000};
+
+% Khung 97: bắt đầu tại mẫu 15520, kết thúc tại mẫu 15920 (chiều dài L = 400 mẫu = 25 ms)
+\draw[framebar] (7.5, 0.4) rectangle (12.2, 1.1);
+\node[font=\scriptsize\bfseries, text=blue!90!black, align=center] at (9.85, 0.75) {Khung 97: 15.520 đến 15.920\\($L = 400$ mẫu)};
+
+% Phần mẫu dôi dư (đuôi): 15920 đến 16000 (80 mẫu = 5 ms)
+\draw[tailbar] (12.2, 0.4) rectangle (13.2, 1.1);
+
+% Chú thích phần mẫu dôi dư
+\draw[->, thick, orange!85!black] (12.7, 1.2) -- (12.7, 1.7) node[above, font=\scriptsize\bfseries, text=orange!90!black, align=center] {Đuôi 80 mẫu dôi dư\\(chưa đủ 400 mẫu cho khung mới)};
+
+% Móc ngoặc chú thích thời gian khung 97
+\draw[brace] (7.5, 1.2) -- (12.2, 1.2);
+\node[above=4pt, font=\scriptsize, text=black!85] at (9.85, 1.2) {25 ms};
+
+% Dòng ghi chú về độ trễ gom lô (batch)
+\node[anchor=west, font=\footnotesize, text=black!90] at (0.2, -0.85) {batch = 1 là lựa chọn độ trễ. Gom cụm $B = 8$ khung tích lũy thêm $(8 - 1) \times 10\text{ ms} = 70\text{ ms}$ trước khi khung đầu được xử lý.};
+
+\end{tikzpicture}

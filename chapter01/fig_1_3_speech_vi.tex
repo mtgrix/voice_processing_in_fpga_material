@@ -1,0 +1,147 @@
+% Figure 1.3_speech: Phân tích một khung tiếng nói thật (datasets/sample_speech_a.wav)
+\begin{tikzpicture}[>=Stealth, font=\small]
+
+% ==================== 1. Dạng sóng miền thời gian ====================
+\begin{scope}[xshift=0cm, yshift=6.4cm]
+  \node[font=\bfseries\footnotesize, anchor=west] at (0, 0.9) 
+    {(a) Khung thời gian thứ 66 ($25\text{ ms}$, tại $t = 0{,}66\text{ s}$) từ \nolinkurl{datasets/sample_speech_a.wav} (từ ``go'')};
+  
+  \draw[->, black!70] (0, 0) -- (15.0, 0) node[right, font=\tiny\bfseries] {Thời gian (ms)};
+  \draw[->, black!70] (0, -0.65) -- (0, 0.65);
+  \node[left, font=\tiny\bfseries, text=black!80] at (0, 0.5) {Biên độ};
+  
+  \foreach \t in {0, 5, 10, 15, 20, 25} {
+    \draw[black!40] (\t * 0.58, -0.05) -- (\t * 0.58, 0.05);
+    \node[below, font=\tiny, text=gray!80] at (\t * 0.58, -0.05) {\t};
+  }
+
+  \draw[blue!80!black, thick] (0.00, 0.08) -- (0.36, -0.08) -- (0.72, -0.56) -- (1.09, 0.05) -- (1.45, 0.23) -- (1.81, 0.03) -- (2.17, -0.10) -- (2.54, -0.02) -- (2.90, 0.17) -- (3.26, 0.06) -- (3.62, -0.11) -- (3.99, 0.03) -- (4.35, 0.14) -- (4.71, -0.01) -- (5.07, -0.06) -- (5.44, 0.23) -- (5.80, 0.01) -- (6.16, 0.03) -- (6.52, -0.57) -- (6.89, -0.12) -- (7.25, 0.13) -- (7.61, 0.21) -- (7.97, -0.09) -- (8.34, -0.17) -- (8.70, 0.24) -- (9.06, 0.19) -- (9.42, -0.23) -- (9.79, 0.07) -- (10.15, 0.01) -- (10.51, 0.07) -- (10.88, 0.00) -- (11.24, 0.04) -- (11.60, 0.14) -- (11.96, 0.04) -- (12.32, -0.27) -- (12.69, -0.44) -- (13.05, 0.04) -- (13.41, 0.32) -- (13.77, -0.01) -- (14.14, -0.10);
+\end{scope}
+
+% ==================== 2. Phổ công suất STFT ====================
+\begin{scope}[xshift=0cm, yshift=3.2cm]
+  \node[font=\bfseries\footnotesize, anchor=west] at (0, 1.7) 
+    {(b) Mật độ phổ công suất $|X_{66}[k]|^2$ ($257\text{ bin FFT}$, đỉnh formant tại bin 12--13: $375\text{--}406\text{ Hz}$)};
+  
+  \draw[->, black!70] (0, 0) -- (15.0, 0) node[right, font=\tiny\bfseries] {Tần số (Hz)};
+  \draw[->, black!70] (0, 0) -- (0, 1.4);
+  \node[left, font=\tiny\bfseries, text=black!80] at (0, 1.25) {Công suất};
+
+  \foreach \f/\k in {0/0, 500/16, 1000/32, 1500/48, 2000/64} {
+    \pgfmathsetmacro{\xpos}{\k * 14.5 / 64}
+    \draw[black!40] (\xpos, -0.05) -- (\xpos, 0.05);
+    \node[below, font=\tiny, text=gray!80] at (\xpos, -0.05) {\f};
+  }
+
+  \draw[teal!85!black, thick] (0.00, 0.00) -- (0.23, 0.00) -- (0.45, 0.06) -- (0.68, 0.20) -- (0.91, 0.11) -- (1.13, 0.11) -- (1.36, 0.35) -- (1.59, 0.22) -- (1.81, 0.09) -- (2.04, 0.44) -- (2.27, 0.38) -- (2.49, 0.37) -- (2.72, 1.30) -- (2.95, 1.17) -- (3.17, 0.17) -- (3.40, 0.09) -- (3.62, 0.12) -- (3.85, 0.01) -- (4.08, 0.04) -- (4.30, 0.06) -- (4.53, 0.02) -- (4.76, 0.04) -- (4.98, 0.09) -- (5.21, 0.03) -- (5.44, 0.04) -- (5.66, 0.11) -- (5.89, 0.05) -- (6.12, 0.03) -- (6.34, 0.04) -- (6.57, 0.01) -- (6.80, 0.04) -- (7.02, 0.10) -- (7.25, 0.02) -- (7.48, 0.01) -- (7.70, 0.07) -- (7.93, 0.04) -- (8.16, 0.00) -- (8.38, 0.00) -- (8.61, 0.00) -- (8.84, 0.00) -- (9.06, 0.00) -- (9.29, 0.00) -- (9.52, 0.00) -- (9.74, 0.00) -- (9.97, 0.00) -- (10.20, 0.00) -- (10.42, 0.00) -- (10.65, 0.00) -- (10.88, 0.00) -- (11.10, 0.00) -- (11.33, 0.00) -- (11.55, 0.00) -- (11.78, 0.00) -- (12.01, 0.00) -- (12.23, 0.00) -- (12.46, 0.00) -- (12.69, 0.00) -- (12.91, 0.00) -- (13.14, 0.00) -- (13.37, 0.00) -- (13.59, 0.00) -- (13.82, 0.00) -- (14.05, 0.00) -- (14.27, 0.00) -- (14.50, 0.00);
+  
+  % Đánh dấu đỉnh formant
+  \draw[->, red!80!black, thick] (13 * 14.5 / 64, 1.45) -- (13 * 14.5 / 64, 1.25)
+    node[above, font=\tiny\bfseries, text=red!80!black] {Đỉnh formant: bin 12--13 ($375\text{--}406\text{ Hz}$)};
+\end{scope}
+
+% ==================== 3. 80 thanh Log-Mel ====================
+\begin{scope}[xshift=0cm, yshift=0cm]
+  \node[font=\bfseries\footnotesize, anchor=west] at (0, 1.85) 
+    {(c) $80$ dải năng lượng Log-Mel (Ba dải lớn nhất: Dải 13 [$3{,}26$], Dải 14 [$3{,}15$], Dải 10 [$2{,}16$])};
+
+  \draw[->, black!70] (0, 0) -- (15.0, 0) node[right, font=\tiny\bfseries] {Chỉ số dải Mel $m$ ($0\text{--}79$)};
+  \draw[->, black!70] (0, 0) -- (0, 1.5);
+  \node[left, font=\tiny\bfseries, text=black!80] at (0, 1.35) {Log-Mel};
+
+  \foreach \m in {0, 10, 20, 30, 40, 50, 60, 70, 79} {
+    \draw[black!40] (\m * 0.18 + 0.07, -0.05) -- (\m * 0.18 + 0.07, 0.05);
+    \node[below, font=\tiny, text=gray!80] at (\m * 0.18 + 0.07, -0.05) {\m};
+  }
+
+  \fill[teal!60!black] (0.00, 0) rectangle ++(0.14, 0.70);
+  \fill[teal!60!black] (0.18, 0) rectangle ++(0.14, 0.75);
+  \fill[teal!60!black] (0.36, 0) rectangle ++(0.14, 0.05);
+  \fill[teal!60!black] (0.54, 0) rectangle ++(0.14, 1.07);
+  \fill[teal!60!black] (0.72, 0) rectangle ++(0.14, 1.16);
+  \fill[teal!60!black] (0.90, 0) rectangle ++(0.14, 1.11);
+  \fill[teal!60!black] (1.08, 0) rectangle ++(0.14, 1.12);
+  \fill[teal!60!black] (1.26, 0) rectangle ++(0.14, 1.20);
+  \fill[teal!60!black] (1.44, 0) rectangle ++(0.14, 1.16);
+  \fill[teal!60!black] (1.62, 0) rectangle ++(0.14, 1.10);
+  \fill[red!80!black] (1.80, 0) rectangle ++(0.14, 1.22);
+  \fill[teal!60!black] (1.98, 0) rectangle ++(0.14, 1.21);
+  \fill[teal!60!black] (2.16, 0) rectangle ++(0.14, 1.21);
+  \fill[red!80!black] (2.34, 0) rectangle ++(0.14, 1.30);
+  \fill[red!80!black] (2.52, 0) rectangle ++(0.14, 1.29);
+  \fill[teal!60!black] (2.70, 0) rectangle ++(0.14, 1.14);
+  \fill[teal!60!black] (2.88, 0) rectangle ++(0.14, 1.10);
+  \fill[teal!60!black] (3.06, 0) rectangle ++(0.14, 1.12);
+  \fill[teal!60!black] (3.24, 0) rectangle ++(0.14, 1.04);
+  \fill[teal!60!black] (3.42, 0) rectangle ++(0.14, 1.07);
+  \fill[teal!60!black] (3.60, 0) rectangle ++(0.14, 1.04);
+  \fill[teal!60!black] (3.78, 0) rectangle ++(0.14, 1.11);
+  \fill[teal!60!black] (3.96, 0) rectangle ++(0.14, 1.00);
+  \fill[teal!60!black] (4.14, 0) rectangle ++(0.14, 1.10);
+  \fill[teal!60!black] (4.32, 0) rectangle ++(0.14, 1.11);
+  \fill[teal!60!black] (4.50, 0) rectangle ++(0.14, 1.05);
+  \fill[teal!60!black] (4.68, 0) rectangle ++(0.14, 1.06);
+  \fill[teal!60!black] (4.86, 0) rectangle ++(0.14, 1.12);
+  \fill[teal!60!black] (5.04, 0) rectangle ++(0.14, 1.01);
+  \fill[teal!60!black] (5.22, 0) rectangle ++(0.14, 1.10);
+  \fill[teal!60!black] (5.40, 0) rectangle ++(0.14, 1.00);
+  \fill[teal!60!black] (5.58, 0) rectangle ++(0.14, 0.52);
+  \fill[teal!60!black] (5.76, 0) rectangle ++(0.14, 0.69);
+  \fill[teal!60!black] (5.94, 0) rectangle ++(0.14, 0.70);
+  \fill[teal!60!black] (6.12, 0) rectangle ++(0.14, 0.58);
+  \fill[teal!60!black] (6.30, 0) rectangle ++(0.14, 0.53);
+  \fill[teal!60!black] (6.48, 0) rectangle ++(0.14, 0.53);
+  \fill[teal!60!black] (6.66, 0) rectangle ++(0.14, 0.53);
+  \fill[teal!60!black] (6.84, 0) rectangle ++(0.14, 0.51);
+  \fill[teal!60!black] (7.02, 0) rectangle ++(0.14, 0.41);
+  \fill[teal!60!black] (7.20, 0) rectangle ++(0.14, 0.30);
+  \fill[teal!60!black] (7.38, 0) rectangle ++(0.14, 0.36);
+  \fill[teal!60!black] (7.56, 0) rectangle ++(0.14, 0.41);
+  \fill[teal!60!black] (7.74, 0) rectangle ++(0.14, 0.49);
+  \fill[teal!60!black] (7.92, 0) rectangle ++(0.14, 0.54);
+  \fill[teal!60!black] (8.10, 0) rectangle ++(0.14, 0.85);
+  \fill[teal!60!black] (8.28, 0) rectangle ++(0.14, 0.83);
+  \fill[teal!60!black] (8.46, 0) rectangle ++(0.14, 0.67);
+  \fill[teal!60!black] (8.64, 0) rectangle ++(0.14, 0.63);
+  \fill[teal!60!black] (8.82, 0) rectangle ++(0.14, 0.43);
+  \fill[teal!60!black] (9.00, 0) rectangle ++(0.14, 0.44);
+  \fill[teal!60!black] (9.18, 0) rectangle ++(0.14, 0.57);
+  \fill[teal!60!black] (9.36, 0) rectangle ++(0.14, 0.64);
+  \fill[teal!60!black] (9.54, 0) rectangle ++(0.14, 0.76);
+  \fill[teal!60!black] (9.72, 0) rectangle ++(0.14, 0.66);
+  \fill[teal!60!black] (9.90, 0) rectangle ++(0.14, 0.53);
+  \fill[teal!60!black] (10.08, 0) rectangle ++(0.14, 0.41);
+  \fill[teal!60!black] (10.26, 0) rectangle ++(0.14, 0.52);
+  \fill[teal!60!black] (10.44, 0) rectangle ++(0.14, 0.50);
+  \fill[teal!60!black] (10.62, 0) rectangle ++(0.14, 0.32);
+  \fill[teal!60!black] (10.80, 0) rectangle ++(0.14, 0.62);
+  \fill[teal!60!black] (10.98, 0) rectangle ++(0.14, 0.61);
+  \fill[teal!60!black] (11.16, 0) rectangle ++(0.14, 0.55);
+  \fill[teal!60!black] (11.34, 0) rectangle ++(0.14, 0.39);
+  \fill[teal!60!black] (11.52, 0) rectangle ++(0.14, 0.30);
+  \fill[teal!60!black] (11.70, 0) rectangle ++(0.14, 0.34);
+  \fill[teal!60!black] (11.88, 0) rectangle ++(0.14, 0.45);
+  \fill[teal!60!black] (12.06, 0) rectangle ++(0.14, 0.44);
+  \fill[teal!60!black] (12.24, 0) rectangle ++(0.14, 0.38);
+  \fill[teal!60!black] (12.42, 0) rectangle ++(0.14, 0.26);
+  \fill[teal!60!black] (12.60, 0) rectangle ++(0.14, 0.40);
+  \fill[teal!60!black] (12.78, 0) rectangle ++(0.14, 0.50);
+  \fill[teal!60!black] (12.96, 0) rectangle ++(0.14, 0.46);
+  \fill[teal!60!black] (13.14, 0) rectangle ++(0.14, 0.55);
+  \fill[teal!60!black] (13.32, 0) rectangle ++(0.14, 0.57);
+  \fill[teal!60!black] (13.50, 0) rectangle ++(0.14, 0.31);
+  \fill[teal!60!black] (13.68, 0) rectangle ++(0.14, 0.30);
+  \fill[teal!60!black] (13.86, 0) rectangle ++(0.14, 0.31);
+  \fill[teal!60!black] (14.04, 0) rectangle ++(0.14, 0.25);
+  \fill[teal!60!black] (14.22, 0) rectangle ++(0.14, 0.24);
+
+  % Chú thích 3 dải lớn nhất đặt gọn gàng phía bên phải các thanh cực đại
+  \draw[<-, red!80!black, semithick] (2.43, 1.30) -- (3.6, 1.15);
+  \node[draw=red!70, fill=white, rounded corners=2pt, font=\tiny\bfseries, text=red!80!black, anchor=west, align=left] at (3.6, 1.15) {
+    Dải 13 ($382{,}1\text{ Hz}$): $\mathbf{3{,}26}$\\
+    Dải 14 ($416{,}3\text{ Hz}$): $\mathbf{3{,}15}$\\
+    Dải 10 ($285{,}7\text{ Hz}$): $\mathbf{2{,}16}$
+  };
+\end{scope}
+
+\end{tikzpicture}

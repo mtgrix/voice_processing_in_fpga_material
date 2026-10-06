@@ -1,0 +1,40 @@
+{
+  "captured_utc": "20261005T230515Z",
+  "environment": {
+    "numpy": "2.5.2",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10"
+  },
+  "label": "",
+  "returned_metrics": {
+    "add_per_frame": 346,
+    "all_bram_bytes": 663552,
+    "all_bram_kib": 648,
+    "batch8_delay_ms": 70,
+    "bram_blocks": 144,
+    "cited_power_ceiling_w": 25,
+    "cited_sparse_int8_tops": 67,
+    "datasheet_bram_kbit": 5184,
+    "dead_count": 1,
+    "dense_bytes": 82240,
+    "dense_products_per_frame": 20560,
+    "dsp48e2_cited": 1248,
+    "frames_in_one_second": 98,
+    "halved_sparse_tops": 33.5,
+    "last_end": 15920,
+    "last_start": 15520,
+    "multiply_per_frame": 407,
+    "multiply_per_second": 40700,
+    "multitap_count": 61,
+    "one_bram_bytes": 4608,
+    "onetap_count": 18,
+    "quotient_mac_as_one": 823095823.095823,
+    "quotient_mac_as_two": 411547911.5479115,
+    "ring_bytes": 1600,
+    "ring_percent_of_one_bram": 34.7,
+    "tail_samples": 80,
+    "used_weight_bytes": 3328
+  },
+  "row_id": "lab_14",
+  "script": "chapter01/lab_1_4.py"
+}

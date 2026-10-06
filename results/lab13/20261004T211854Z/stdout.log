@@ -1,0 +1,17 @@
+================================================================================
+LAB 1.3 TEACHING LAB REPORT: MEASURED ACOUSTIC VALUES
+================================================================================
+tone file sha256: 4ef1f94fc2097c6c82a54f523dfaa24c0ecbf9c623a70820cda3c860affc5356
+w[0]: 0.080000, w[200]: 0.999986, w[399]: 0.080000
+cosine-probe sum (zero shift): 105.3388, sine-probe sum: 20.8916
+cosine-probe sum (quarter-cycle shift): -19.2665, sine-probe sum: 105.7369
+argmax bin: 14 (437.5 Hz)
+bin 14: Re = 105.3388, Im = 20.8916, Power = 11532.71
+direct-DFT product count: 262144, radix-2 butterfly count: 2304
+mel(8000): 2840.02, step_mel: 35.062, filter-0 edges: [0, 0, 1], filter-79 edges: [239, 247, 256]
+collapsed count: 3
+g for bin 14 (Filter 15): 1.0000
+log energies: ln(P[14]) = 9.3529, ln(1.0) = 0.0000, ln(1e-8 clamped) = -13.8155
+speech a (sample_speech_a.wav): peak frame 66, top 3 bands: Band 13 (382.1 Hz: 3.26), Band 14 (416.3 Hz: 3.15), Band 10 (285.7 Hz: 2.16)
+speech b (sample_speech_b.wav): peak frame 64, top 3 bands: Band 21 (687.9 Hz: 5.26), Band 22 (731.7 Hz: 5.12), Band 31 (1194.4 Hz: 4.61)
+================================================================================

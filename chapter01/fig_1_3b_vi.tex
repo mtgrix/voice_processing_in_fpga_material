@@ -1,8 +1,10 @@
-% Figure 1.3b: 257 bin FFT tuyến tính sụp đổ dưới 80 bộ lọc tam giác Mel (Bản tiếng Việt)
+% Figure 1.3b: 257 bin FFT tuyến tính ánh xạ vào 80 bộ lọc tam giác Mel (Đo từ bin_points của Lab 1.3)
 \begin{tikzpicture}[
   >=Stealth,
   font=\small,
   tri/.style={draw=teal!85!black, thick, fill=teal!12},
+  colltri/.style={draw=red!85!black, ultra thick, fill=red!15},
+  midtri/.style={draw=blue!85!black, thick, fill=blue!12},
   hightri/.style={draw=purple!85!black, thick, fill=purple!12},
   bin/.style={draw=black!35, thin},
   ax/.style={->, black!75, thick},
@@ -11,9 +13,9 @@
 ]
 
 % ==================== (a) Toàn bộ dải phổ 0 - 8 kHz ====================
-\begin{scope}[x=0.00205cm, y=1.2cm]
-  \node[font=\bfseries\small, anchor=west] at (-120, 2.35) 
-    {(a) Phân bổ ngân hàng bộ lọc Mel trên toàn dải âm thanh ($0\text{ đến } 8\text{ kHz}$)};
+\begin{scope}[x=0.00195cm, y=1.2cm]
+  \node[font=\bfseries\small, anchor=west] at (-120, 2.25) 
+    {(a) Phân bổ 80 bộ lọc Mel thực tế sinh từ 82 cạnh \texttt{bin\_points} ($\Delta\text{mel} = 35{,}062$, $\text{mel}(8000) = 2840{,}02$)};
 
   % Trục tần số
   \draw[ax] (-80, 0) -- (8300, 0) node[right, font=\scriptsize\bfseries] {Tần số (Hz)};
@@ -32,89 +34,96 @@
   \node[tk, below] at (8000, -0.06) {$8\text{k}$};
 
   % Các bin FFT tuyến tính bên dưới (tổng cộng 257 bin)
-  \fill[black!5] (0, 0) rectangle (8000, 0.10);
+  \fill[black!5] (0, 0) rectangle (8000, 0.08);
   \foreach \b in {0, 32, 64, 96, 128, 160, 192, 224, 256} {
     \pgfmathsetmacro{\hz}{\b * 31.25}
-    \draw[bin] (\hz, 0) -- (\hz, 0.75);
-    \node[font=\tiny, text=gray!70, anchor=south] at (\hz, 0.75) {$k{=}\b$};
+    \draw[bin] (\hz, 0) -- (\hz, 0.70);
+    \node[font=\tiny, text=gray!70, anchor=south] at (\hz, 0.70) {$k{=}\b$};
   }
 
-  % Các bộ lọc tam giác tiêu biểu
-  % Dải tần thấp (dày đặc, hẹp)
-  \draw[tri] (0, 0) -- (62.5, 0.45) -- (125, 0) -- cycle;
-  \draw[tri] (62.5, 0) -- (125, 0.45) -- (187.5, 0) -- cycle;
-  \draw[tri] (125, 0) -- (187.5, 0.45) -- (250, 0) -- cycle;
-  \draw[tri] (187.5, 0) -- (250, 0.45) -- (343.75, 0) -- cycle;
-  \draw[tri] (250, 0) -- (343.75, 0.45) -- (437.5, 0) -- cycle;
-  \draw[tri] (343.75, 0) -- (437.5, 0.45) -- (562.5, 0) -- cycle;
+  % Các bộ lọc tam giác thực tế
+  % Dải tần thấp (bị sụp mép và hẹp)
+  \draw[colltri] (0, 0) -- (0, 0.45) -- (31.25, 0) -- cycle; % Bộ lọc 0 sụp
+  \draw[tri] (0, 0) -- (31.25, 0.45) -- (62.5, 0) -- cycle; % Bộ lọc 1
+  \draw[colltri] (31.25, 0) -- (62.5, 0.45) -- (62.5, 0) -- cycle; % Bộ lọc 2 sụp
+
+  % Bộ lọc quanh 440 Hz
+  \draw[midtri, draw=blue!85!black, fill=blue!15, thick] (406.25, 0) -- (437.5, 0.45) -- (468.75, 0) -- cycle; % Bộ lọc 15 (bin 13, 14, 15)
 
   % Dải tần trung
-  \draw[tri] (1000, 0) -- (1156, 0.45) -- (1343, 0) -- cycle;
-  \draw[tri] (1718, 0) -- (1937, 0.45) -- (2187, 0) -- cycle;
-  \draw[tri] (2812, 0) -- (3125, 0.45) -- (3468, 0) -- cycle;
+  \draw[tri] (980, 0) -- (1135, 0.45) -- (1300, 0) -- cycle;
+  \draw[tri] (1850, 0) -- (2080, 0.45) -- (2320, 0) -- cycle;
+  \draw[tri] (3200, 0) -- (3550, 0.45) -- (3920, 0) -- cycle;
 
-  % Dải tần cao (rộng, thưa)
-  \draw[hightri] (4593, 0) -- (5031, 0.45) -- (5500, 0) -- cycle;
-  \draw[hightri] (5500, 0) -- (6031, 0.45) -- (6593, 0) -- cycle;
-  \draw[hightri] (6593, 0) -- (7250, 0.45) -- (8000, 0) -- cycle;
+  % Dải tần cao (rộng, dãn nở)
+  \draw[hightri] (5400, 0) -- (5880, 0.45) -- (6390, 0) -- cycle;
+  \draw[hightri] (6390, 0) -- (6920, 0.45) -- (7475, 0) -- cycle;
+  \draw[hightri] (7475.2, 0) -- (7733.5, 0.45) -- (8000.0, 0) -- cycle; % Bộ lọc 79
 
   % Chú thích
-  \node[ann, align=left, text=teal!90!black, anchor=west] at (350, 1.7) {
-    \textbf{Các dải tần thấp:}\\
-    Bộ lọc hẹp ($\Delta f \approx 62{,}5\text{ Hz}$)\\
-    Chỉ phủ vài bin FFT kế cận
+  \node[ann, align=left, text=red!90!black, anchor=west] at (350, 1.7) {
+    \textbf{Tần số thấp:}\\
+    Bộ lọc siêu hẹp ($\Delta f \le 31{,}25\text{ Hz}$)\\
+    \textbf{3 bộ lọc bị sụp đổ} ($m{=}0, 2, 3$)
   };
 
   \node[ann, align=right, text=purple!90!black, anchor=east] at (7800, 1.7) {
-    \textbf{Các dải tần cao:}\\
-    Bộ lọc rộng ($\Delta f > 1.000\text{ Hz}$)\\
-    Tích hợp hàng chục bin FFT
+    \textbf{Bộ lọc $m{=}79$ ($7475\text{--}8000\text{ Hz}$):}\\
+    Phủ bin 239 đến bin 256 ($17\text{ bin}$)\\
+    Dãn rộng $\Delta f \approx 525\text{ Hz}$
   };
 \end{scope}
 
-% ==================== (b) So sánh vi mô ====================
+% ==================== (b) So sánh vi mô: Sự sụp đổ vs Dãn nở ====================
 \begin{scope}[yshift=-3.1cm, y=1.0cm]
   \node[font=\bfseries\small, anchor=west] at (-0.3, 2.1) 
-    {(b) Tích phân bin rời rạc: Đáy hẹp ($m{=}0$) so với Bể gom rộng ($m{=}79$)};
+    {(b) Hiện thực chi tiết từng bin: Bộ lọc 0 sụp đổ, Bộ lọc 15 bắt đỉnh 440 Hz, Bộ lọc 79 dãn nở};
 
-  % Hộp zoom tần thấp (bên trái, rộng 7.8cm)
-  \draw[draw=gray!50, fill=gray!4, rounded corners=3pt] (-0.3, -0.9) rectangle (7.5, 1.8);
-  \node[font=\footnotesize\bfseries, text=teal!90!black, anchor=north west] at (0, 1.7) 
-    {Dải $m{=}0$ ($0\text{--}125\text{ Hz}$): Vài bin FFT};
+  % Hộp 1: Bộ lọc 0 sụp đổ (bên trái)
+  \draw[draw=gray!50, fill=gray!4, rounded corners=3pt] (-0.3, -0.9) rectangle (4.9, 1.8);
+  \node[font=\scriptsize\bfseries, text=red!85!black, anchor=north west] at (-0.2, 1.7) 
+    {Bộ lọc $m{=}0$ (sụp trái): $[0, 0, 1]$};
 
-  % Các bin FFT rời rạc trong hộp tần thấp
-  \foreach \i/\freq in {0/0, 1/31.25, 2/62.5, 3/93.75, 4/125} {
-    \pgfmathsetmacro{\bx}{0.2 + \i * 1.4}
-    \draw[fill=blue!10, draw=blue!60] (\bx, -0.55) rectangle ++(1.2, 0.45);
-    \node[font=\tiny] at (\bx + 0.6, -0.32) {bin \i};
-    \node[font=\tiny, text=gray!70, below] at (\bx + 0.6, -0.55) {\freq};
+  \foreach \i/\freq in {0/0, 1/31.25, 2/62.5} {
+    \pgfmathsetmacro{\bx}{0.2 + \i * 1.5}
+    \draw[fill=blue!10, draw=blue!60] (\bx, -0.55) rectangle ++(1.1, 0.45);
+    \node[font=\tiny] at (\bx + 0.55, -0.32) {bin \i};
+    \node[font=\tiny, text=gray!70, below] at (\bx + 0.55, -0.55) {\freq};
   }
-  % Tam giác cho Dải 0
-  \draw[tri, ultra thick] (0.2, 0) -- (3.0, 0.6) -- (5.8, 0) -- cycle;
-  \node[font=\scriptsize\bfseries, text=teal!90!black] at (3.0, 0.88) {$W[0, k]$};
+  % Vẽ tam giác sụp đổ của Bộ lọc 0 (cạnh trái trùng đỉnh tại x=0)
+  \draw[colltri] (0.2, 0) -- (0.2, 0.6) -- (1.7, 0) -- cycle;
+  \node[font=\scriptsize\bfseries, text=red!85!black] at (0.9, 0.85) {Sụp trái};
 
-  % Hộp zoom tần cao (bên phải, rộng 8.5cm)
-  \draw[draw=gray!50, fill=gray!4, rounded corners=3pt] (8.2, -0.9) rectangle (16.7, 1.8);
-  \node[font=\footnotesize\bfseries, text=purple!90!black, anchor=north west] at (8.5, 1.7) 
-    {Dải $m{=}79$ ($6.593\text{--}8.000\text{ Hz}$): Hàng chục bin FFT};
+  % Hộp 2: Bộ lọc 15 (ở giữa) - ôm đỉnh 440 Hz tại bin 14
+  \draw[draw=gray!50, fill=gray!4, rounded corners=3pt] (5.2, -0.9) rectangle (10.4, 1.8);
+  \node[font=\scriptsize\bfseries, text=blue!85!black, anchor=north west] at (5.3, 1.7) 
+    {Bộ lọc $m{=}15$ (bắt $440\text{ Hz}$): $[13, 14, 15]$};
 
-  % Dải các bin trong hộp tần cao
-  \foreach \j in {0, 1, 2, ..., 22} {
-    \pgfmathsetmacro{\bx}{8.5 + \j * 0.35}
-    \draw[fill=purple!8, draw=purple!35] (\bx, -0.55) rectangle ++(0.3, 0.45);
+  \foreach \i/\k/\freq in {0/13/406.2, 1/14/437.5, 2/15/468.8} {
+    \pgfmathsetmacro{\bx}{5.6 + \i * 1.5}
+    \draw[fill=blue!10, draw=blue!60] (\bx, -0.55) rectangle ++(1.1, 0.45);
+    \node[font=\tiny\bfseries] at (\bx + 0.55, -0.32) {bin \k};
+    \node[font=\tiny, text=gray!70, below] at (\bx + 0.55, -0.55) {\freq};
   }
-  \node[font=\tiny, text=purple!80!black] at (12.45, -0.32) {$\dots$ dải dày đặc các bin phổ tuyến tính $\dots$};
+  \draw[midtri, ultra thick] (5.6, 0) -- (7.1 + 0.55, 0.6) -- (8.6 + 1.1, 0) -- cycle;
+  \node[font=\scriptsize\bfseries, text=blue!85!black] at (7.65, 0.85) {$g_{15}[14] = 1{,}00$};
 
-  % Tam giác cho Dải 79
-  \draw[hightri, ultra thick] (8.5, 0) -- (12.45, 0.65) -- (16.4, 0) -- cycle;
-  \node[font=\scriptsize\bfseries, text=purple!90!black] at (12.45, 0.95) {$W[79, k]$};
+  % Hộp 3: Bộ lọc 79 (bên phải) - phủ 17 bin
+  \draw[draw=gray!50, fill=gray!4, rounded corners=3pt] (10.7, -0.9) rectangle (16.7, 1.8);
+  \node[font=\scriptsize\bfseries, text=purple!85!black, anchor=north west] at (10.8, 1.7) 
+    {Bộ lọc $m{=}79$ ($7475\text{--}8000\text{ Hz}$): $[239, 247, 256]$};
 
-  \node[font=\scriptsize, align=center, text=black!85] at (12.45, 0.25) {
-    $\sum_{k} W[79, k] \cdot P[k]$
-  };
-  \node[font=\tiny, text=gray!70, below] at (8.5, -0.55) {$6.593\text{ Hz}$};
-  \node[font=\tiny, text=gray!70, below] at (12.45, -0.55) {$7.250\text{ Hz}$};
-  \node[font=\tiny, text=gray!70, below] at (16.4, -0.55) {$8.000\text{ Hz}$};
+  \draw[fill=blue!10, draw=blue!60] (11.1, -0.55) rectangle ++(1.2, 0.45) node[midway, font=\tiny] {bin 239};
+  \node[font=\tiny, text=gray!70, below] at (11.7, -0.55) {$7475$};
+  \node[font=\small] at (12.8, -0.32) {$\cdots$};
+  \draw[fill=blue!20, draw=blue!80] (13.4, -0.55) rectangle ++(1.2, 0.45) node[midway, font=\tiny\bfseries] {bin 247};
+  \node[font=\tiny, text=gray!70, below] at (14.0, -0.55) {$7733$};
+  \node[font=\small] at (15.1, -0.32) {$\cdots$};
+  \draw[fill=blue!10, draw=blue!60] (15.4, -0.55) rectangle ++(1.1, 0.45) node[midway, font=\tiny] {bin 256};
+  \node[font=\tiny, text=gray!70, below] at (15.95, -0.55) {$8000$};
+
+  \draw[hightri, ultra thick] (11.1, 0) -- (14.0, 0.6) -- (16.5, 0) -- cycle;
+  \node[font=\scriptsize\bfseries, text=purple!85!black] at (14.0, 0.85) {Phủ $17\text{ bin}$};
 \end{scope}
 
 \end{tikzpicture}
