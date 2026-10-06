@@ -21,3 +21,5 @@
 *.tex text eol=lf
 *.lua text eol=lf
 results/** text eol=lf
+*.pdf binary
+*.png binary
