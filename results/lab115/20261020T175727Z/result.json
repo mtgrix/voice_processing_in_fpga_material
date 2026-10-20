@@ -1,0 +1,48 @@
+{
+  "captured_utc": "20261020T175727Z",
+  "environment": {
+    "numpy": "2.5.2",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10"
+  },
+  "mute": {
+    "mute_clocks": 262144,
+    "clocks_per_frame": 64,
+    "fs_hz": 16000,
+    "sck_hz": 1024000.0,
+    "mute_s": 0.256,
+    "mute_samples": 4096,
+    "hops": 25.6,
+    "datasheet_example_ms": 85.33333333333333
+  },
+  "internal_scaled_hz": [
+    1.2333333333333334,
+    3.466666666666667,
+    7.2
+  ],
+  "highpass": {
+    "fs_hz": 16000,
+    "fc_hz": 60.0,
+    "q": 0.7071067811865475,
+    "b0": 0.9834772033538365,
+    "b1": -1.966954406707673,
+    "b2": 0.9834772033538365,
+    "a1": -1.9666813852634852,
+    "a2": 0.9672274281518606,
+    "gain_at_dc": 0.0,
+    "db_at_20_hz": -19.13884422370595,
+    "db_at_40_hz": -7.826890379809564,
+    "db_at_60_hz": -3.010299956639892,
+    "db_at_80_hz": -1.1937491066956634,
+    "db_at_85_hz": -0.9629344232098309,
+    "db_at_300_hz": -0.006912388856107698,
+    "settle_samples": 219,
+    "settle_ms": 13.6875,
+    "constructed_mean_in": 0.2,
+    "constructed_mean_tail": -0.0020166591258494603,
+    "constructed_tone_rms_in": 0.20873919496422533,
+    "constructed_tone_rms_tail": 0.20964914527763148
+  },
+  "multiplies_per_sample": 5,
+  "multiplies_per_second": 80000
+}
