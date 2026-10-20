@@ -133,12 +133,12 @@ def _traceback(cost: np.ndarray) -> list[tuple[int, int]]:
         elif j == 0:
             i -= 1
         else:
-            candidates = {
+            candidates: dict[tuple[int, int], float] = {
                 (i - 1, j - 1): cost[i - 1, j - 1],
                 (i - 1, j): cost[i - 1, j],
                 (i, j - 1): cost[i, j - 1],
             }
-            i, j = min(candidates, key=candidates.get)
+            i, j = min(candidates, key=lambda k: candidates[k])
         path.append((i, j))
 
     path.reverse()
@@ -303,7 +303,7 @@ def compare_all() -> None:
 
     for pair_idx in range(n_pairs):
         # Generate reference
-        m = rng.integers(80, 200)
+        m = int(rng.integers(80, 200))
         ref = rng.standard_normal((m, d))
 
         # Generate student as a warped version of reference + noise
