@@ -29,6 +29,10 @@ pytest chapter01/test_exp_01.py
 # Lab 1.3: Đo lường thực nghiệm từng toán tử trên sóng âm thật và tiếng nói
 python chapter01/lab_1_3.py
 pytest chapter01/test_lab_1_3.py
+
+# Lab 1.1.5: mute 2^18 xung bit của INMP441 tại 16 kHz, và biquad thông cao 60 Hz
+python chapter01/lab_1_1_5.py
+pytest chapter01/test_lab_1_1_5.py
 ```
 
 ## 7. Kết quả Số học Dự kiến & Dung sai
@@ -43,6 +47,11 @@ Executed 2026-09-13 on a host (Python 3.12.10, NumPy 2.5.2, Windows 11). Raw out
 `results/exp01/20260913T020406Z/` — `stdout.log` plus `result.json`, both listed in
 `results/SHA256SUMS`. `scripts/capture_result.py` ran the script and wrote the files, so no
 number below was transcribed by hand.
+
+Bằng chứng dẫn xuất cho Mục 1.1.5 (Lab 1.1.5) nằm tại
+`results/lab115/20261020T175727Z/` (`stdout.log` và `result.json`, băm khớp trong
+`results/SHA256SUMS`). Lab tính khoảng câm $2^{18}$ xung bit tại $16\text{ kHz}$ và đáp ứng
+biquad thông cao $60\text{ Hz}$. Đây không phải log thu từ micro.
 
 Bằng chứng thực nghiệm cho bài học Mục 1.3 (Lab 1.3) được ghi nhận tại
 `results/lab13/20261005T154553Z/` (`stdout.log` và `result.json`, băm khớp trong `results/SHA256SUMS`),

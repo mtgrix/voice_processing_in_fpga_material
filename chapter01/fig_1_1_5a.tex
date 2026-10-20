@@ -1,0 +1,16 @@
+% Block diagram for section 1.1.5. The ring buffer is where section 1.2 begins.
+\begin{tikzpicture}[
+    font=\small,
+    node distance=5mm,
+    box/.style={draw, rounded corners=1.5pt, align=center, minimum height=11mm, inner sep=3.5pt, fill=blue!4},
+    gate/.style={draw, rounded corners=1.5pt, align=center, minimum height=11mm, inner sep=3.5pt, fill=orange!8},
+    arr/.style={-{Stealth[length=2.2mm]}, semithick}
+]
+    \node[box] (mic) {I\textsuperscript{2}S microphone\\24-bit word};
+    \node[gate, right=of mic] (mute) {discard the mute\\$2^{18}$ bit clocks};
+    \node[box, right=of mute] (hpf) {biquad high-pass\\$f_c = 60\text{ Hz}$};
+    \node[box, right=of hpf, fill=teal!8] (ring) {ring buffer\\Section 1.2};
+    \draw[arr] (mic) -- (mute);
+    \draw[arr] (mute) -- (hpf);
+    \draw[arr] (hpf) -- (ring);
+\end{tikzpicture}

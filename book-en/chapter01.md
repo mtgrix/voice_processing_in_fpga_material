@@ -2235,7 +2235,6 @@ derivations of this chapter to the hardware models of downstream chapters.
 | `V-01-09` | 1,248 DSP48E2 slices on the AMD Kria KV260 |
 | `V-01-05` | 144 Block RAM (36-kilobit) blocks on the KV260 |
 | `V-01-19` | 256,200 system logic cells on the Zynq UltraScale+ XCZUE40 |
-| `V-08-01` | Anti-diagonal wavefront parallel scheduling for dynamic programming |
 
 ---
 
