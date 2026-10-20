@@ -1,0 +1,16 @@
+% Sơ đồ khối cho mục 1.1.5. Bộ đệm vòng là nơi Mục 1.2 bắt đầu.
+\begin{tikzpicture}[
+    font=\small,
+    node distance=5mm,
+    box/.style={draw, rounded corners=1.5pt, align=center, minimum height=11mm, inner sep=3.5pt, fill=blue!4},
+    gate/.style={draw, rounded corners=1.5pt, align=center, minimum height=11mm, inner sep=3.5pt, fill=orange!8},
+    arr/.style={-{Stealth[length=2.2mm]}, semithick}
+]
+    \node[box] (mic) {Micro I\textsuperscript{2}S\\từ 24 bit};
+    \node[gate, right=of mic] (mute) {bỏ khoảng câm\\$2^{18}$ xung bit};
+    \node[box, right=of mute] (hpf) {biquad thông cao\\$f_c = 60\text{ Hz}$};
+    \node[box, right=of hpf, fill=teal!8] (ring) {bộ đệm vòng\\Mục 1.2};
+    \draw[arr] (mic) -- (mute);
+    \draw[arr] (mute) -- (hpf);
+    \draw[arr] (hpf) -- (ring);
+\end{tikzpicture}
