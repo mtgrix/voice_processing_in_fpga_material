@@ -51,11 +51,16 @@ $$\Delta t \cdot \Delta f = 0{,}025\text{ s} \times 40\text{ Hz} = 1{,}00$$
 
 *Tác hại thực tế trong xử lý tiếng nói:* Búp phụ cao $-13{,}26\text{ dB}$ khiến năng lượng âm trầm khổng lồ ($F_1$) tràn sang che lấp hoàn toàn các formant cao tần yếu ($F_2, F_3$ vốn nhỏ hơn $F_1$ từ $20$ đến $40\text{ dB}$); 80 bộ lọc dải Mel tích phân nhầm năng lượng rác làm méo mó đặc trưng đưa vào mạng nơ-ron; toàn bộ phổ bị đục và mất độ tương phản động giữa các đỉnh cộng hưởng.
 
-**3. Công thức hiển thị và sự đánh đổi (Trade-off):** Hệ thống áp cửa sổ Hamming đối xứng bậc $L = 400$ để vuốt nhẹ biên độ hai đầu mút về sát không:
+**3. Công thức hiển thị và sự đánh đổi (Trade-off):** Hệ thống áp cửa sổ Hamming đối xứng bậc $L = 400$ mẫu:
 
 $$w[n] = 0{,}54 - 0{,}46 \cos\left(\frac{2\pi n}{L - 1}\right), \qquad n = 0, 1, \dots, L - 1$$
 
-Điểm triệt tiêu đầu tiên của Hamming dời ra $2f_s/L = 80\text{ Hz}$, thiết lập bề rộng null-to-null $\Delta f_{\text{null, ham}} = 4f_s/L = 160\text{ Hz}$. Búp phụ đầu tiên rơi sâu xuống $\mathbf{-44{,}45\text{ dB}}$ tại tần số lệch $88{,}87\text{ Hz}$ (triệt tiêu thêm $\mathbf{+31{,}19\text{ dB}}$, năng lượng rò rỉ giảm hơn 1.300 lần). Phòng thí nghiệm dùng lưới đệm dài $65.536$ điểm độc lập để giải tích chính xác tọa độ này.
+*Giải phẫu thông số và nguồn gốc đại số:*
+- **Chiều dài $L = 400$ mẫu:** Ứng với $\Delta t = 25\text{ ms}$ tại $f_s = 16.000\text{ Hz}$ ($16.000 \times 0{,}025 = 400$). Khoảng thời gian này đảm bảo tính *gần dừng* (quasi-stationary) của cơ quan phát âm (vốn cần $10\text{--}30\text{ ms}$ để đổi khẩu hình), vừa bao trọn $2\text{--}3$ chu kỳ dao động thanh quản cơ bản để phân tích Fourier.
+- **Mẫu số $L-1$ và pha tuyến tính:** Chia cho $L-1$ giúp hàm đối xứng chuẩn qua tâm $(L-1)/2 = 199{,}5$, ấn định giá trị hai đầu $w[0] = w[399] = 0{,}08$. Tính đối xứng này mang lại đáp ứng *pha tuyến tính* (linear phase), duy trì độ trễ nhóm không đổi trên mọi tần số, bảo toàn dạng sóng.
+- **Hệ số $0{,}54$ và $0{,}46$:** Bắt nguồn từ bài toán triệt tiêu búp phụ đầu tiên của Hamming bằng cách chọn trọng số $\alpha = 25/46 \approx 0{,}5435$ (chuẩn DSP làm tròn thành $0{,}54$ và $1-\alpha = 0{,}46$). So với cửa sổ Hann ($0{,}5 / 0{,}5$) triệt tiêu hai đầu về $0$ nhưng búp phụ chỉ đạt $-31{,}5\text{ dB}$, Hamming giữ biên $0{,}08$ để ghìm búp phụ đầu tiên rơi sâu tới $\mathbf{-44{,}45\text{ dB}}$ tại $88{,}87\text{ Hz}$.
+
+*Bản chất Trade-off và đo đạc thực nghiệm:* Không thể đồng thời hẹp búp chính và sâu búp phụ do nguyên lý bất định Fourier: vuốt mượt mép thời gian tất yếu làm dãn nở miền tần số. Đáy null-to-null của Hamming nở gấp đôi lên $\Delta f_{\text{null, ham}} = 4f_s/L = 160\text{ Hz}$ (so với $80\text{ Hz}$ của chữ nhật). Đổi lại, búp phụ bị dìm sâu thêm $\mathbf{+31{,}19\text{ dB}}$, giảm năng lượng rò rỉ hơn $\mathbf{1.300\text{ lần}}$ ($10^{31{,}19/10} \approx 1.315$). Trong bài toán tiếng nói, độ phân giải $160\text{ Hz}$ là hoàn toàn đủ cho các dải lọc Mel, trong khi việc dìm búp phụ là sống còn để bảo vệ các *formant* cao tần ($F_2, F_3$ là các cực cộng hưởng khoang miệng) khỏi bị âm trầm nuốt chửng. Để định vị chính xác mức $-44{,}45\text{ dB}$ (vốn lọt giữa các bin thô $31{,}25\text{ Hz}$ của FFT 512), phòng thí nghiệm bắt buộc đệm dài $65.536$ điểm để đạt bước quét siêu mịn $0{,}244\text{ Hz}$.
 
 ![Đáp ứng phổ của Cửa sổ Chữ nhật so với Cửa sổ Hamming](fig_1_3_window_vi.pdf)
 
@@ -66,7 +71,7 @@ $$w[n] = 0{,}54 - 0{,}46 \cos\left(\frac{2\pi n}{L - 1}\right), \qquad n = 0, 1,
 
 > **$\blacktriangleright$ NHÌN THẤY VẬT LÝ**
 >
-> Áp cửa sổ là một thỏa hiệp bắt buộc: ta chấp nhận trả giá bằng việc nới rộng búp chính gấp đôi (từ $80\text{ Hz}$ lên $160\text{ Hz}$, giảm độ phân giải tần số) để đổi lấy việc dập tắt búp phụ từ $-13{,}26\text{ dB}$ xuống $-44{,}45\text{ dB}$ (tăng thêm $31{,}19\text{ dB}$ suy hao). Trong bài toán tiếng nói, độ phân giải $160\text{ Hz}$ là hoàn toàn đủ cho các dải lọc Mel, trong khi việc bảo toàn dải động để các formant yếu không bị âm trầm nuốt chửng là yếu tố sống còn.
+> Áp cửa sổ là một thỏa hiệp bắt buộc: chấp nhận nới rộng búp chính gấp đôi (từ $80\text{ Hz}$ lên $160\text{ Hz}$) để đổi lấy việc dập tắt búp phụ từ $-13{,}26\text{ dB}$ xuống $-44{,}45\text{ dB}$ (tăng thêm $31{,}19\text{ dB}$ suy hao). Trong bài toán tiếng nói, bảo toàn dải động để các formant yếu không bị âm trầm nuốt chửng là yếu tố sống còn.
 
 **4. Cái giá phần cứng và điều bị phá hủy:** Tiêu tốn đúng 400 phép nhân số thực trên mỗi khung $10\text{ ms}$ (tương ứng $40.000\text{ phép nhân/s}$). Hệ số đối xứng được lưu trong bảng tra ROM trên chip. *Điều bị phá hủy:* Biên độ ở hai đầu mút khung bị triệt tiêu về $w[0] = w[399] = 0{,}08$. Để bù đắp điểm mù này, hệ thống bắt buộc phải gối đầu khung sâu $60\%$ ($H = 160$ mẫu, tái sử dụng 240 mẫu với khung trước).
 
