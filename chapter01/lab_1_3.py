@@ -12,6 +12,7 @@ import hashlib
 import sys
 import wave
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -181,7 +182,8 @@ def log_compress(energy: np.ndarray | float, floor: float = 1e-6) -> np.ndarray 
     """Apply natural logarithm with lower-bound clamping at floor."""
     if isinstance(energy, (int, float, np.floating)):
         return float(np.log(max(float(energy), floor)))
-    return np.log(np.maximum(energy, floor))
+    result: np.ndarray = np.log(np.maximum(energy, floor))
+    return result
 
 
 def analyze_speech_file(
@@ -197,14 +199,14 @@ def analyze_speech_file(
     hz_centers = mel_to_hz(mel_points[1:-1])
 
     powers = []
-    log_mels = []
+    log_mels: list[np.ndarray] = []
     for i in range(n_frames):
         start = i * config.hop_length
         frame = audio[start : start + config.win_length] * w
         _, P = stft_power(frame, n_fft=config.n_fft)
         powers.append(P)
         E = np.dot(fb, P)
-        log_mels.append(log_compress(E))
+        log_mels.append(np.asarray(log_compress(E)))
 
     frame_energies = [float(np.sum(p)) for p in powers]
     peak_frame_idx = int(np.argmax(frame_energies))
@@ -676,7 +678,7 @@ def generate_vector_figures(
 
 def render_report(
     tone_path: Path, speech_a_path: Path, speech_b_path: Path
-) -> dict[str, str | int | float | list]:
+) -> dict[str, str | int | float | list[Any]]:
     """Run end-to-end lab measurements and print formatted report."""
     ensure_tone_file(tone_path)
 
@@ -757,7 +759,7 @@ def render_report(
         output_dir, tone_audio, speech_a_path, config, fb, bin_points
     )
 
-    report_data = {
+    report_data: dict[str, Any] = {
         "tone_file_sha256": tone_sha,
         "w_0": round(w_0, 6),
         "w_200": round(w_200, 6),
@@ -918,7 +920,7 @@ def render_report(
     return report_data
 
 
-def run_experiment() -> dict[str, str | int | float | list]:
+def run_experiment() -> dict[str, str | int | float | list[Any]]:
     """Entry point for capture_result.py."""
     tone_path = ROOT / "datasets" / "sample_tone440.wav"
     speech_a_path = ROOT / "datasets" / "sample_speech_a.wav"

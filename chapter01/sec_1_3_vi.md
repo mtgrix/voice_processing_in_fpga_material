@@ -42,27 +42,31 @@ $$\Delta t \cdot \Delta f = 0{,}025\text{ s} \times 40\text{ Hz} = 1{,}00$$
 
 ## 1. Cửa Sổ Hamming (Hamming Window)
 
-**1. Câu hỏi giai đoạn trước không thể trả lời:** Sau khi Mục 1.2 cắt dòng âm thanh liên tục thành từng khung $L = 400$ mẫu, hai mép ranh giới của khung bị cắt đứt đột ngột. Làm sao để phân tích phổ mà không sinh ra các họa âm giả mạo do các bước nhảy biên nhân tạo này tạo ra?
+**1. Câu hỏi giai đoạn trước không thể trả lời:** Sau khi Mục 1.2 cắt dòng âm thanh liên tục thành từng khung $L = 400$ mẫu ($25\text{ ms}$ tại $f_s = 16.000\text{ Hz}$), hai mép ranh giới của khung bị cắt đứt đột ngột. Làm sao để phân tích phổ mà không sinh ra các họa âm giả mạo do các bước nhảy biên nhân tạo này tạo ra?
 
-**2. Phương pháp thô sơ bị bác bỏ: Cửa sổ chữ nhật và thảm họa rò rỉ phổ.** Nếu lấy trực tiếp 400 mẫu mà không làm mượt (nhân với cửa sổ chữ nhật $w[n]=1$), tín hiệu bị nhân với một xung vuông trong miền thời gian, tương ứng với phép cuộn với hàm $\text{sinc}$ trong miền tần số. Điểm triệt tiêu đầu tiên (first null) của cửa sổ chữ nhật nằm tại $f_s/L = 16.000 / 400 = 40\text{ Hz}$, tạo ra bề rộng null-to-null là:
+**2. Phương pháp thô sơ bị bác bỏ: Cửa sổ chữ nhật và thảm họa rò rỉ phổ.** Đưa trực tiếp 400 mẫu vào FFT tương đương với nhân tín hiệu với cửa sổ chữ nhật $w_{\text{rect}}[n]=1$. Trong miền tần số, điều này cuộn phổ âm thanh thật với hàm sinc của xung vuông thời gian, tạo ra hai thành phần có ý nghĩa vật lý trái ngược:
 
-$$\Delta f_{\text{null, rect}} = 2 \times \frac{f_s}{L} = 2 \times 40\text{ Hz} = 80\text{ Hz}$$
+- **Búp chính (Main Lobe):** Mang *thông tin thật* của tín hiệu. Tọa độ đỉnh chỉ định tần số dao động thật, chiều cao đỉnh phản ánh biên độ thật, và bề rộng đáy null-to-null $\Delta f_{\text{null, rect}} = 2f_s/L = 2 \times 40\text{ Hz} = 80\text{ Hz}$ quyết định độ phân giải tần số (khả năng phân biệt hai tần số nằm gần nhau).
+- **Búp phụ (Sidelobe):** *Không mang thông tin giọng nói thật* mà là "bóng ma" toán học sinh ra do bước nhảy biên đột ngột ở hai mép khung. Do cạnh cắt sắc đứng vô hạn, búp phụ đầu tiên nhô cao tới $\mathbf{-13{,}26\text{ dB}}$ tại tần số lệch $57{,}13\text{ Hz}$ (chiếm $4{,}7\%$ năng lượng đỉnh), gây rò rỉ phổ trầm trọng.
 
-Búp phụ đầu tiên nhô cao tới $-13{,}26\text{ dB}$ tại tần số lệch $57{,}13\text{ Hz}$. Năng lượng từ các tần số trầm cực mạnh sẽ rò rỉ sang các dải lân cận, làm lu mờ hoàn toàn các formant âm thanh tinh tế ở dải cao.
+*Tác hại thực tế trong xử lý tiếng nói:* Búp phụ cao $-13{,}26\text{ dB}$ khiến năng lượng âm trầm khổng lồ ($F_1$) tràn sang che lấp hoàn toàn các formant cao tần yếu ($F_2, F_3$ vốn nhỏ hơn $F_1$ từ $20$ đến $40\text{ dB}$); 80 bộ lọc dải Mel tích phân nhầm năng lượng rác làm méo mó đặc trưng đưa vào mạng nơ-ron; toàn bộ phổ bị đục và mất độ tương phản động giữa các đỉnh cộng hưởng.
 
-**3. Công thức hiển thị:** Hệ thống sử dụng cửa sổ Hamming đối xứng bậc $L = 400$:
+**3. Công thức hiển thị và sự đánh đổi (Trade-off):** Hệ thống áp cửa sổ Hamming đối xứng bậc $L = 400$ để vuốt nhẹ biên độ hai đầu mút về sát không:
 
 $$w[n] = 0{,}54 - 0{,}46 \cos\left(\frac{2\pi n}{L - 1}\right), \qquad n = 0, 1, \dots, L - 1$$
 
-Điểm triệt tiêu đầu tiên của cửa sổ Hamming dời ra tần số $2f_s/L = 80\text{ Hz}$, thiết lập bề rộng null-to-null:
+Điểm triệt tiêu đầu tiên của Hamming dời ra $2f_s/L = 80\text{ Hz}$, thiết lập bề rộng null-to-null $\Delta f_{\text{null, ham}} = 4f_s/L = 160\text{ Hz}$. Búp phụ đầu tiên rơi sâu xuống $\mathbf{-44{,}45\text{ dB}}$ tại tần số lệch $88{,}87\text{ Hz}$ (triệt tiêu thêm $\mathbf{+31{,}19\text{ dB}}$, năng lượng rò rỉ giảm hơn 1.300 lần). Phòng thí nghiệm dùng lưới đệm dài $65.536$ điểm độc lập để giải tích chính xác tọa độ này.
 
-$$\Delta f_{\text{null, ham}} = 4 \times \frac{f_s}{L} = 4 \times 40\text{ Hz} = 160\text{ Hz}$$
+![Đáp ứng phổ của Cửa sổ Chữ nhật so với Cửa sổ Hamming](fig_1_3_window_vi.pdf)
 
-Búp phụ đầu tiên của Hamming nằm tại tần số lệch $88{,}87\text{ Hz}$ với mức suy giảm đạt $\mathbf{-44{,}45\text{ dB}}$. Một biến đổi FFT $N=512$ điểm với bước bin $31{,}25\text{ Hz}$ là quá thô để phát hiện chính xác tọa độ búp phụ này; do đó phòng thí nghiệm sử dụng lưới đệm dài $65.536$ điểm độc lập để giải tích đặc tính cửa sổ.
+> **Hình 1: Đáp ứng phổ của Cửa sổ Chữ nhật so với Cửa sổ Hamming ($L=400$ mẫu, đệm lưới $65.536$ điểm).**  
+> (1) **Bản chất:** Phổ suy giảm chuẩn hóa (dB) so với độ lệch tần số tâm.  
+> (2) **Điểm cần quan sát:** Búp phụ chữ nhật $-13{,}26\text{ dB}$ tại $57{,}13\text{ Hz}$ với null-to-null $80\text{ Hz}$; búp phụ Hamming $-44{,}45\text{ dB}$ tại $88{,}87\text{ Hz}$ với null-to-null $160\text{ Hz}$ (triệt tiêu thêm $+31{,}19\text{ dB}$).  
+> (3) **Ý nghĩa:** Dìm năng lượng rò rỉ sâu dưới sàn $-40\text{ dB}$, bảo vệ độ tinh khiết cho các formant cao tần.
 
 > **$\blacktriangleright$ NHÌN THẤY VẬT LÝ**
 >
-> Áp cửa sổ là một thỏa hiệp bắt buộc: ta chấp nhận trả giá bằng việc nới rộng búp chính gấp đôi (từ bề rộng null-to-null $80\text{ Hz}$ lên $160\text{ Hz}$) để đổi lấy búp phụ đầu tiên rơi sâu từ $-13{,}26\text{ dB}$ xuống $-44{,}45\text{ dB}$ (tăng thêm $31{,}19\text{ dB}$ suy hao búp phụ). Năng lượng rò rỉ giả mạo bị ghìm chặt dưới sàn, bảo vệ toàn bộ các formant cao tần.
+> Áp cửa sổ là một thỏa hiệp bắt buộc: ta chấp nhận trả giá bằng việc nới rộng búp chính gấp đôi (từ $80\text{ Hz}$ lên $160\text{ Hz}$, giảm độ phân giải tần số) để đổi lấy việc dập tắt búp phụ từ $-13{,}26\text{ dB}$ xuống $-44{,}45\text{ dB}$ (tăng thêm $31{,}19\text{ dB}$ suy hao). Trong bài toán tiếng nói, độ phân giải $160\text{ Hz}$ là hoàn toàn đủ cho các dải lọc Mel, trong khi việc bảo toàn dải động để các formant yếu không bị âm trầm nuốt chửng là yếu tố sống còn.
 
 **4. Cái giá phần cứng và điều bị phá hủy:** Tiêu tốn đúng 400 phép nhân số thực trên mỗi khung $10\text{ ms}$ (tương ứng $40.000\text{ phép nhân/s}$). Hệ số đối xứng được lưu trong bảng tra ROM trên chip. *Điều bị phá hủy:* Biên độ ở hai đầu mút khung bị triệt tiêu về $w[0] = w[399] = 0{,}08$. Để bù đắp điểm mù này, hệ thống bắt buộc phải gối đầu khung sâu $60\%$ ($H = 160$ mẫu, tái sử dụng 240 mẫu với khung trước).
 
