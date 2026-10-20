@@ -1,0 +1,107 @@
+% Figure 1.5a: Bảng tổn thương bốn nút vặn cấu hình (Bản tiếng Việt)
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small
+]
+
+\useasboundingbox (0, 0) rectangle (16.4, 5.4);
+
+% Các đường vách ngăn nét đứt phân chia 4 panel
+\draw[gray!35, thick, dashed] (8.2, 0.15) -- (8.2, 5.30);
+\draw[gray!35, thick, dashed] (0.2, 2.70) -- (16.2, 2.70);
+
+% ==================== PANEL (a): Trên-Trái: Tràn tần số lấy mẫu ====================
+\begin{scope}[xshift=0.2cm, yshift=2.70cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(a) Tần số lấy mẫu (48 kHz so với 16 kHz)};
+
+  % Hộp mốc danh định 16 kHz
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{Mốc danh định 16 kHz ($L=400$):}\quad \textcolor{teal!90!black}{\textbf{1 BRAM ($1{.}600\text{ B}$)}}\\
+    \tiny Chiếm $34{,}7\%$ khối $4{.}608\text{ B}$; Nyquist $8\text{ kHz}$ bao trọn tiếng nói.
+  };
+
+  % Hộp phòng thu 48 kHz
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{Chuẩn phòng thu 48 kHz ($L_{48}=1{.}200$):}\quad \textcolor{red!90!black}{\textbf{2 BRAM ($4{.}800\text{ B}$)}}\\
+    \tiny Tràn giới hạn $4{.}608\text{ B}$; dải $8\text{--}24\text{ kHz}$ thừa thãi ($>4\times$ tính toán).
+  };
+\end{scope}
+
+% ==================== PANEL (b): Trên-Phải: Vệt nhòe Gabor-Heisenberg ====================
+\begin{scope}[xshift=8.4cm, yshift=2.70cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(b) Độ dài cửa sổ (5 ms so với 25 ms)};
+
+  % Trục đồ thị phổ mini
+  \draw[->, black!75, semithick] (0.3, 0.45) -- (7.2, 0.45) node[right, font=\scriptsize\bfseries] {Hz};
+  \draw[->, black!75, semithick] (0.3, 0.45) -- (0.3, 1.85) node[above=0.5pt, font=\scriptsize\bfseries] {dB};
+
+  % Đường gióng vị trí formant
+  \draw[gray!35, thin, dashed] (2.1, 0.45) -- (2.1, 1.80);
+  \node[below, font=\scriptsize, text=gray!80] at (2.1, 0.45) {$F_1$};
+  \draw[gray!35, thin, dashed] (3.9, 0.45) -- (3.9, 1.80);
+  \node[below, font=\scriptsize, text=gray!80] at (3.9, 0.45) {$F_2$};
+
+  % Đường cong 25 ms (hai đỉnh sắc nét, màu teal)
+  \draw[teal!85!black, very thick] 
+    (0.5, 0.55) .. controls (1.5, 0.65) .. (2.1, 1.85) 
+    .. controls (2.5, 0.75) .. (3.0, 0.70) 
+    .. controls (3.4, 0.75) .. (3.9, 1.70) 
+    .. controls (4.8, 0.65) .. (6.8, 0.55);
+  \node[font=\scriptsize\bfseries, text=teal!90!black, fill=white, fill opacity=0.85, text opacity=1, inner sep=1pt, anchor=west] at (4.0, 1.75) {
+    $25\text{ ms}$: Phân giải rõ ($\Delta f \approx 40\text{ Hz}$)
+  };
+
+  % Đường cong 5 ms (dính liền thành một khối nhòe, màu đỏ đứt nét)
+  \draw[red!85!black, very thick, dashed] 
+    (0.5, 0.55) .. controls (1.5, 0.70) .. (3.0, 1.35) 
+    .. controls (4.8, 0.70) .. (6.8, 0.55);
+  \node[font=\scriptsize\bfseries, text=red!90!black, fill=white, fill opacity=0.85, text opacity=1, inner sep=1pt, anchor=west] at (0.4, 1.25) {
+    $5\text{ ms}$: Dính liền ($\Delta f \approx 200\text{ Hz}$)
+  };
+\end{scope}
+
+% ==================== PANEL (c): Dưới-Trái: Khối lượng biến đổi phổ ====================
+\begin{scope}[xshift=0.2cm, yshift=0.0cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(c) Biến đổi phổ: DFT 400 điểm so với FFT 512};
+
+  % Hộp DFT trực tiếp
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{DFT 400 điểm trực tiếp ($201 \times 400$):}\quad \textcolor{red!90!black}{\textbf{80.400 MAC phức}}\\
+    \tiny Độ phức tạp $\mathcal{O}(L^2)$ làm nghẽn đường ống và cạn kiệt tài nguyên.
+  };
+
+  % Hộp FFT cơ số 2
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{FFT cơ số 2 512 điểm:}\quad \textcolor{teal!90!black}{\textbf{2.304 phép bướm ($34{,}9\times$)}}\\
+    \tiny Đệm 112 số 0 tốn đúng 0 MAC; mở khóa đường ống bướm đệ quy.
+  };
+\end{scope}
+
+% ==================== PANEL (d): Dưới-Phải: Bộ nhớ dải lọc Mel ====================
+\begin{scope}[xshift=8.4cm, yshift=0.0cm]
+  \node[font=\bfseries\footnotesize, text=blue!85!black, anchor=west] at (0.1, 2.48) 
+    {(d) Bộ nhớ Mel: Ma trận dày FP32 so với Nén thưa};
+
+  % Hộp BRAM ma trận dày
+  \node[draw=red!80!black, fill=red!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 2.25) {
+    \scriptsize\textbf{Mel FP32 dày ($80 \times 257$):}\quad \textcolor{red!90!black}{\textbf{18 BRAM ($80{,}3\text{ KiB}$)}}\\
+    \tiny Chiếm $12{,}4\%$ BRAM trên chip; cần $20{.}560$ lượt đọc/khung.
+  };
+
+  % Hộp INT16 nén thưa
+  \node[draw=teal!80!black, fill=teal!10, rounded corners=2pt, semithick, text width=7.7cm, inner sep=2.5pt, align=left, anchor=north west] 
+    at (0.1, 1.35) {
+    \scriptsize\textbf{Mel INT16 nén thưa:}\quad \textcolor{teal!90!black}{\textbf{0,26 BRAM ($1{.}188\text{ B}$)}}\\
+    \tiny Giảm $69{,}2\times$ bộ nhớ; giải phóng 17 BRAM; đọc giảm $40\times$.
+  };
+\end{scope}
+
+\end{tikzpicture}

@@ -1,0 +1,69 @@
+% Figure 1.6a: Hợp đồng cửa sổ trượt và Quy tắc kết án nhóm
+% Minh họa K = 3 từ, K + 1 = 4 cửa sổ, gối đầu 50% (S = W/2), và ánh xạ từ - cửa sổ.
+\begin{tikzpicture}[
+  >=Stealth,
+  font=\small,
+  wordbox/.style={draw=black!75, fill=blue!8, font=\footnotesize\bfseries, align=center, inner sep=3pt, rounded corners=1.5pt},
+  winbox/.style={draw=teal!70!black, fill=teal!6, font=\scriptsize, align=center, inner sep=2.5pt, rounded corners=1.5pt},
+  failwinbox/.style={draw=red!80!black, fill=red!10, font=\scriptsize\bfseries, align=center, inner sep=2.5pt, rounded corners=1.5pt},
+  dimline/.style={<->, >=Stealth, semithick, black!70},
+  guideline/.style={densely dashed, black!30, thin},
+  ann/.style={font=\scriptsize, align=left}
+]
+
+  % Chiều rộng tổng thể: 13.0 cm đại diện cho độ dài câu N
+  \def\L{13.0}
+  % Với K = 3 từ, K + 1 = 4 cửa sổ với gối đầu 50%:
+  % N = W + 3*(W/2) = 2.5 W => W = N / 2.5 = 0.40 N = 5.2 cm
+  % S = W / 2 = 0.20 N = 2.6 cm
+  \def\W{5.2}
+  \def\S{2.6}
+
+  % Trục thời gian
+  \draw[->, thick, black!70] (0, 0) -- (\L + 0.6, 0) node[right, font=\scriptsize\bfseries] {Trục thời gian câu $t \in [0, N]$};
+
+  % Các mốc chia tại 0, 0.2N, 0.4N, 0.6N, 0.8N, 1.0N
+  \foreach \x/\label in {0/{$0$}, 2.6/{$S = 0{,}20N$}, 5.2/{$2S = 0{,}40N$}, 7.8/{$3S = 0{,}60N$}, 10.4/{$4S = 0{,}80N$}, 13.0/{$N$}} {
+    \draw[black!60] (\x, -0.1) -- (\x, 0.1);
+    \node[below, font=\tiny, text=black!75] at (\x, -0.15) {\label};
+    \draw[guideline] (\x, 0.1) -- (\x, 5.8);
+  }
+
+  % Hàng 1: Các từ phát âm (K = 3 từ)
+  \node[anchor=west, font=\footnotesize\bfseries, text=blue!80!black] at (0, 5.5) {Các từ phát âm ($K = 3$ từ trong toàn câu):};
+
+  \draw[wordbox] (0, 4.6) rectangle (4.29, 5.2) node[midway] {Từ 1: ``READ''\\{\tiny ($0 \le t < 0{,}33N$)}};
+  \draw[wordbox] (4.29, 4.6) rectangle (8.71, 5.2) node[midway] {Từ 2: ``THE''\\{\tiny ($0{,}33N \le t < 0{,}67N$)}};
+  \draw[wordbox] (8.71, 4.6) rectangle (13.0, 5.2) node[midway] {Từ 3: ``BOOK''\\{\tiny ($0{,}67N \le t \le N$)}};
+
+  % Vạch ranh giới âm học giữa các từ
+  \draw[densely dashed, blue!70!black, thick] (4.29, 4.5) -- (4.29, 5.3) node[above, font=\tiny\bfseries, text=blue!80!black] {Ranh giới 1};
+  \draw[densely dashed, blue!70!black, thick] (8.71, 4.5) -- (8.71, 5.3) node[above, font=\tiny\bfseries, text=blue!80!black] {Ranh giới 2};
+
+  % Hàng 2: Các cửa sổ trượt gối nhau (K + 1 = 4 cửa sổ, S = W/2)
+  \node[anchor=west, font=\footnotesize\bfseries, text=teal!80!black] at (0, 4.1) {Cửa sổ trượt ($K+1 = 4$ cửa sổ, $W = \frac{2N}{K+2} = 0{,}40N$, Bước trượt $S = \frac{W}{2} = 0{,}20N$):};
+
+  % Cửa sổ 1: y = 3.2
+  \draw[winbox] (0, 3.2) rectangle (5.2, 3.75) 
+    node[midway] {\textbf{Cửa sổ 1} ($[0, W]$): Phủ Từ 1 và một phần Từ 2 $\quad [r_1 \ge 0{,}3 \implies \text{Đạt}]$};
+
+  % Cửa sổ 2: y = 2.4 (Giả định r < 0.3 để minh họa Quy tắc kết án nhóm)
+  \draw[failwinbox] (2.6, 2.4) rectangle (7.8, 2.95) 
+    node[midway] {\textbf{Cửa sổ 2} ($[S, S+W]$): Phủ Từ 1 và Từ 2 $\quad [\mathbf{r_2 < 0{,}3} \implies \textbf{HỎNG}]$};
+
+  % Cửa sổ 3: y = 1.6
+  \draw[winbox] (5.2, 1.6) rectangle (10.4, 2.15) 
+    node[midway] {\textbf{Cửa sổ 3} ($[2S, 2S+W]$): Phủ Từ 2 và Từ 3 $\quad [r_3 \ge 0{,}3 \implies \text{Đạt}]$};
+
+  % Cửa sổ 4: y = 0.8
+  \draw[winbox] (7.8, 0.8) rectangle (13.0, 1.35) 
+    node[midway] {\textbf{Cửa sổ 4} ($[3S, 3S+W]$): Phủ một phần Từ 2 và Từ 3 $\quad [r_4 \ge 0{,}3 \implies \text{Đạt}]$};
+
+  % Kích thước đường dóng đo lường
+  \draw[dimline] (0, 0.35) -- (5.2, 0.35) node[midway, fill=white, font=\tiny\bfseries, inner sep=1.5pt] {$W = 0{,}40N$};
+  \draw[dimline] (0, 0.15) -- (2.6, 0.15) node[midway, fill=white, font=\tiny\bfseries, inner sep=1.5pt] {$S = W/2 = 0{,}20N$};
+
+  % Chú thích vùng gối nhau 50%
+  \draw[<->, >=Stealth, red!70!black, semithick] (2.6, 3.05) -- (5.2, 3.05) node[midway, fill=white, font=\tiny\bfseries, text=red!80!black, inner sep=1pt] {Gối đầu $50\%$};
+
+\end{tikzpicture}
