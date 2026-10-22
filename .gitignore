@@ -66,3 +66,12 @@ Thumbs.db
 .playwright-mcp/
 .remember/
 scratch/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
