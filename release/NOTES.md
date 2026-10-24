@@ -17,7 +17,7 @@ Integration: pull request 135 is merged. make gate: ruff check and ruff format p
 
 ---
 
-Tag: v0.1.3-ch1.3.5
+Tag: v0.1.4-ch1.3.5
 Source commit: feat/ch01-1-3-5-architecture-fixedpoint.
 SHA256 (vi): e8e4ddd570385d45d9d795c8223d3a0565388c7b12adb6ec0f9a44a85e47b36f
 Source SHA256: sec_1_3_5_vi.tex 57ef6dc538e421f1cd231d6ee5485734c4cd6de9de664a36dcff8ea4c8d6b92f; sec_1_3_5_vi.md 53d2c5bde8a46fdc2b009791e3daf131f266c1ad51f0c6fed44ab81cd2d3e7ce; lab_1_3_5.py cb525b16b4358da61d85a0fc89e4918853a3264a5aa1a5c7a21e09db24cb8b1c
