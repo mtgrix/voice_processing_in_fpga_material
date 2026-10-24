@@ -1,0 +1,101 @@
+======================================================================
+COMMAND: python chapter01/lab_1_3_5.py --export-hex chapter01/hex
+======================================================================
+Exported .hex files to chapter01\hex
+{
+  "window_rom_entries": 640,
+  "window_rom_w0": 1,
+  "window_rom_centre_q15": 32767,
+  "compensation_entries": 189,
+  "compensation_min_q13": 8281,
+  "compensation_max_q13": 17429,
+  "scoring_min_q13": 8283,
+  "scoring_max_q13": 17070,
+  "scan_lag_range": [
+    26,
+    214
+  ],
+  "search_lag_range": [
+    27,
+    213
+  ],
+  "n_scan_lags": 189,
+  "n_search_lags": 187,
+  "frame": {
+    "tau_star_fixed": 80,
+    "tau_star_float": 80,
+    "f0_fixed_hz": 200.05048027057222,
+    "f0_float_hz": 200.05108790280275,
+    "agree_hz": true
+  },
+  "median_example": {
+    "raw": [
+      122,
+      245,
+      124
+    ],
+    "filtered": [
+      122,
+      124,
+      124
+    ]
+  },
+  "voicing_threshold_hundredths": 45,
+  "silence_energy_ratio": [
+    9,
+    10000
+  ],
+  "octave_cost_sweep_failures": {
+    "0.0": 300,
+    "0.005": 21,
+    "0.009": 0,
+    "0.01": 0,
+    "0.02": 0
+  }
+}
+
+======================================================================
+COMMAND: python -m pytest chapter01/test_lab_1_3_5.py
+======================================================================
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\NGOC\AppData\Local\Programs\Python\Python312\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\NGOC\Documents\learning_journey\voice_jetson_to_fpga_learning-journey
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collecting ... collected 15 items
+
+chapter01/test_lab_1_3_5.py::test_window_rom_is_full_length_and_bounded PASSED [  6%]
+chapter01/test_lab_1_3_5.py::test_window_multiply_keeps_q15_scale PASSED [ 13%]
+chapter01/test_lab_1_3_5.py::test_compensation_table_is_monotone_and_fits_q3_13 PASSED [ 20%]
+chapter01/test_lab_1_3_5.py::test_scoring_rom_is_compensation_times_a_penalty_at_most_one PASSED [ 26%]
+chapter01/test_lab_1_3_5.py::test_integer_detector_matches_float_on_worked_example PASSED [ 33%]
+chapter01/test_lab_1_3_5.py::test_parabolic_interpolation_sub_cent_accuracy PASSED [ 40%]
+chapter01/test_lab_1_3_5.py::test_boundary_interpolation_590hz_and_75hz PASSED [ 46%]
+chapter01/test_lab_1_3_5.py::test_integer_detector_is_deterministic_across_repeated_runs PASSED [ 53%]
+chapter01/test_lab_1_3_5.py::test_silence_is_unvoiced PASSED             [ 60%]
+chapter01/test_lab_1_3_5.py::test_silence_gate_rejects_quiet_frame PASSED [ 66%]
+chapter01/test_lab_1_3_5.py::test_median3_removes_a_single_frame_octave_spike PASSED [ 73%]
+chapter01/test_lab_1_3_5.py::test_median3_preserves_monotone_run PASSED  [ 80%]
+chapter01/test_lab_1_3_5.py::test_octave_cost_sweep_matches_simulation PASSED [ 86%]
+chapter01/test_lab_1_3_5.py::test_export_hex_creates_valid_files PASSED  [ 93%]
+chapter01/test_lab_1_3_5.py::test_pitch_f0_q12_4_protocol PASSED         [100%]
+
+============================= 15 passed in 1.66s ==============================
+
+======================================================================
+COMMAND: python chapter01/verify_tiers.py
+======================================================================
+Kế hoạch Tier 3: testbench đọc golden_vectors.hex, đạt khi lệch 0 bit.
+Tín hiệu               | Tier 1 (Float/Praat)       | Tier 2 (Int/Float)       | Tier 3 (RTL/Int)    
+--------------------------------------------------------------------------------------------------
+Sin 75 Hz              | cent=0.41, V/UV=0.0%       | cent=0.11, V/UV=0.0%     | 0 bit lệch (khớp 100%)
+Sin 100 Hz             | cent=0.41, V/UV=0.0%       | cent=0.19, V/UV=0.0%     | 0 bit lệch (khớp 100%)
+Sin 200 Hz             | cent=0.43, V/UV=0.0%       | cent=0.01, V/UV=0.0%     | 0 bit lệch (khớp 100%)
+Sin 440 Hz             | cent=0.46, V/UV=0.0%       | cent=0.11, V/UV=0.0%     | 0 bit lệch (khớp 100%)
+Sin 590 Hz             | cent=0.46, V/UV=0.0%       | cent=0.07, V/UV=0.0%     | 0 bit lệch (khớp 100%)
+Im lặng                | Khớp 100% UV (47 khung)    | Khớp 100% UV (47 khung)  | 0 bit lệch (khớp 100%)
+Nhiễu trắng -35dBFS    | Khớp 100% UV (47 khung)    | Khớp 100% UV (47 khung)  | 0 bit lệch (khớp 100%)
+Âm xát /s/             | Khớp 100% UV (47 khung)    | Khớp 100% UV (47 khung)  | 0 bit lệch (khớp 100%)
+Giọng nam (speech_a)   | cent=0.04, V/UV=8.2%       | cent=0.02, V/UV=1.0%     | 0 bit lệch (khớp 100%)
+Giọng nữ (speech_b)    | cent=365.11, V/UV=27.8%    | cent=0.01, V/UV=0.0%     | 0 bit lệch (khớp 100%)
