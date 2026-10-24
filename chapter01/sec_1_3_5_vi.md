@@ -17,6 +17,58 @@ Thực tế, **Ngân hàng bộ lọc Mel sinh ra là để xóa bỏ cao độ*
 
 Do đó, một hệ thống âm thanh biên hoàn chỉnh bắt buộc phải tách thành hai luồng song song: **Luồng nhận dạng âm học (Log-Mel Frontend)** và **Luồng đo cao độ ($F_0$ / Pitch Stream)**.
 
+### 0.1. Kiến trúc triển khai thực tế: FPGA Edge Node $\leftrightarrow$ Shared Folder $\leftrightarrow$ Server
+
+Hai luồng vừa nêu không chỉ là hai khối thuật toán, mà là hai nhánh của một hệ thống triển khai có ranh giới phần cứng/phần mềm rõ ràng. Hình 1.3.5a vẽ ranh giới đó.
+
+```
+       PHẦN CỨNG (FPGA DE10-Standard)           |       BIÊN        |       PHẦN MỀM MÁY CHỦ (SERVER)
+                                                |                   |
+  +---------------------------------------+     |                   |
+  | Tệp WAV hoặc luồng I2S từ mic (16 kHz)|     |                   |
+  +-------------------+-------------------+     |                   |
+                      |                         |                   |
+                      v                         |                   |
+  +---------------------------------------+     |                   |
+  |     HPF 60 Hz + Cắt khoảng lặng       |     |                   |
+  |             (Mục 1.1.5)               |     |                   |
+  +-------------------+-------------------+     |                   |
+                      |                         |                   |
+                      v                         |                   |
+  +---------------------------------------+     |                   |
+  |       Rẽ hai nhánh song song          |     |                   |
+  +---------+-------------------+---------+     |                   |
+            |                   |               |                   |
+            v                   v               |                   |
+  +-------------------+ +---------------+       |                   |
+  |Nhánh 1: Mục 1.3   | |Nhánh 2: M.1.3.5|      |                   |
+  |STFT 80 dải Log-Mel| |Tự tương quan  |      |                   |
+  |Khung 25ms, b.10ms | |F0, 40ms/10ms  |      |                   |
+  +---------+---------+ +-------+-------+       |                   |
+            |                   |               |                   |
+            v                   v               |                   |
+     Ma trận Mel           Mảng cao độ          |   Shared Folder   |
+     mel_80.bin           pitch_f0.bin          | (mỗi tệp 1 câu,   |
+    (80 x N khung)      (1 giá trị/10ms)  ----->|  chung mốc t = 0) |---> Căn chỉnh từ + Pearson r
+            |                   |               |                   |      (không chạy Praat)
+            +-------------------+               |                   |             ^
+            |                                   |                   |             |
+            +------------------------------------------------------------> Whisper / Forced Align / DTW
+                                                |                   |      trên nhánh Mel
+                                                |                   |      => mốc từ (w_start, w_end)
+```
+
+*Hình 1.3.5a: Kiến trúc triển khai tổng thể: FPGA Edge Node tính cả hai nhánh đặc trưng và ghi ra thư mục dùng chung; máy chủ chỉ còn nhiệm vụ nhận dạng, căn chỉnh và chấm điểm.*
+
+**Đọc Hình 1.3.5a (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Cột trái — Phần cứng (FPGA DE10-Standard):** Mọi phép biến đổi tín hiệu đều nằm ở đây. Tệp WAV hoặc luồng I$^2$S đi qua HPF 60 Hz và bộ cắt lặng của Mục 1.1.5 trước khi được rẽ vào hai nhánh chạy song song trên cùng một chip. Hai nhánh không tranh chấp tài nguyên vì nhánh Mel dùng bộ nhân FFT còn nhánh Pitch dùng một bộ MAC đơn, như đã hạch toán ở Mục 5.
+2. **Nhánh 1 (Mục 1.3):** Sinh ma trận 80 dải Log-Mel với cửa sổ 25 ms và bước 10 ms. Đầu ra này là **đầu vào sẵn sàng** cho bộ mã hóa Whisper, hoặc được ghi ngược thành tệp WAV 16 kHz đã lọc sạch để gọi API Whisper từ xa.
+3. **Nhánh 2 (Mục 1.3.5):** Sinh mảng cao độ một giá trị mỗi 10 ms (`pitch_f0.bin`). Đây là toàn bộ những gì máy chủ cần cho ngữ điệu, và nó đã được tính xong **trước khi** dữ liệu rời khỏi bo mạch.
+4. **Cột giữa — Thư mục dùng chung (Shared Folder):** Là ranh giới hợp đồng giữa hai thế giới. FPGA chỉ ghi, máy chủ chỉ đọc, nên không bên nào phải biết định dạng bộ nhớ của bên kia. Mỗi câu một cặp tệp, kèm quy ước chung rằng mốc $t = 0$ là mẫu đầu tiên sau khi cắt lặng.
+5. **Cột phải — Máy chủ:** Chạy mô hình nhận dạng hoặc căn chỉnh trên nhánh Mel để lấy mốc thời gian từng từ, rồi ghép trực tiếp mảng `pitch_f0.bin` vào các mốc đó để tính Pearson $r$. **Máy chủ không chạy Praat**, vì phép đo cao độ đã hoàn tất trên FPGA.
+
+**Vì sao ranh giới lại đặt ở đây:** Có một lý do kỹ thuật chứ không phải thẩm mỹ. Phép đo cao độ là phép tính **cố định** về mặt cấu trúc: cùng một khung 640 mẫu luôn cho cùng một kết quả, không phụ thuộc mô hình ngôn ngữ, không cần cập nhật khi đổi phiên bản Whisper. Phép nhận dạng thì ngược lại: nó thay đổi mỗi lần có mô hình mới. Đặt phép tính bất biến lên silicon và phép tính hay thay đổi lên máy chủ nghĩa là nâng cấp mô hình không phải đụng đến bitstream, và một kit FPGA rẻ có thể phục vụ nhiều phiên bản mô hình khác nhau theo thời gian. Đây cũng là lý do đường biên trong hình được vẽ bằng nét đứt: nó là ranh giới **hợp đồng dữ liệu**, không phải ranh giới vật lý của một sản phẩm cụ thể.
+
 ---
 
 ## 1. Phương pháp thô sơ bị bác bỏ: Dùng STFT và Argmax trên phổ tần số
@@ -30,7 +82,7 @@ Lưới FFT $N = 512$ điểm ở tần số lấy mẫu $f_s = 16.000\text{ Hz}
 
 $$\Delta f_{\text{bin}} = \frac{f_s}{N} = \frac{16.000}{512} = 31{,}25\text{ Hz}$$
 
-Các vạch tần số rời rạc chỉ có thể nhận giá trị: $62{,}5\text{ Hz}$ (bin 2), $93{,}75\text{ Hz}$ (bin 3), $125{,}0\text{ Hz}$ (bin 4), $156{,}25\text{ Hz}$ (bin 5)... Giả sử một giọng nam nói ở cao độ $F_0 = 105\text{ Hz}$: tần số này rơi vào giữa bin 3 và bin 4. Thuật toán chọn bin nào cũng tạo ra sai số tuyệt đối từ $11\text{--}20\text{ Hz}$ (sai lệch $> 15\%$). Khi đem chuỗi $F_0$ giật cục này tính tương quan Pearson với đường cao độ thực tế của Praat, hệ số tương quan $r$ sẽ sụt giảm mạnh (không đạt ngưỡng tin cậy).
+Các vạch tần số rời rạc chỉ có thể nhận giá trị: $62{,}5\text{ Hz}$ (bin 2), $93{,}75\text{ Hz}$ (bin 3), $125{,}0\text{ Hz}$ (bin 4), $156{,}25\text{ Hz}$ (bin 5)... Giả sử một giọng nam nói ở cao độ $F_0 = 105\text{ Hz}$: tần số này rơi vào giữa bin 3 và bin 4. Thuật toán chọn bin nào cũng tạo ra sai số tuyệt đối từ $11\text{--}20\text{ Hz}$ (sai lệch $> 15\%$). Khi đem chuỗi $F_0$ giật cục này tính tương quan Pearson với đường cao độ thực tế của Praat, hệ số tương quan $r$ sẽ sụt giảm mạnh.
 
 **2. Nguy cơ bắt nhầm vào các cực cộng hưởng Formant ($F_1$):**
 Dây thanh quản phát ra các xung âm thanh tam giác giàu hài âm. Khi đi qua khoang miệng, các tần số trùng với tần số cộng hưởng của khoang miệng (Formant $F_1 \approx 300\text{--}800\text{ Hz}$) sẽ được khuếch đại cực đại. Do năng lượng tại vùng cộng hưởng Formant $F_1$ thường lớn hơn tần số cơ bản $F_0$ từ $10\text{ dB}$ đến $25\text{ dB}$, phép tìm cực đại đơn giản ($\text{argmax}$) trên phổ biên độ STFT **rất dễ bị đánh lừa và có nguy cơ cao bắt nhầm vào $F_1$**, dẫn đến lỗi nhảy bậc cao độ (octave jump).
@@ -46,6 +98,7 @@ Dây thanh quản phát ra các xung âm thanh tam giác giàu hài âm. Khi đi
 Khi con người phát ra một nguyên âm có thanh (voiced speech), luồng khí từ phổi đẩy qua thanh môn làm hai mép dây thanh quản rung lên nhịp nhàng. Tín hiệu âm thanh $x[n]$ trong miền thời gian là một chuỗi các dạng sóng lặp lại sau mỗi chu kỳ rung. Để phân tích định lượng, ta định nghĩa các đại lượng cơ bản:
 - $L$: Số lượng mẫu âm thanh trong một khung phân tích. Khung dữ liệu là một mảng rời rạc gồm $L$ phần tử, có chỉ số $n$ chạy từ $0$ đến $L - 1$: $x[0], x[1], \dots, x[L - 1]$.
 - $T_0$: Chu kỳ cơ bản của dây thanh quản, đo bằng số mẫu rời rạc ($T_0 \in \mathbb{N}^*$). Khi dây thanh rung tuần hoàn với chu kỳ $T_0$, dạng sóng lặp lại: $x[n] \approx x[n + T_0]$.
+
 > **$\blacktriangleright$ HỎI – ĐÁP TƯ DUY: Khi đang nói, làm sao dây thanh biết trước tương lai để lặp lại mẫu $x[n + T_0]$?**
 >
 > Nếu đọc $x[n] \approx x[n + T_0]$ như "mẫu hiện tại bằng mẫu tương lai", trực giác sẽ vấp ngay: người nói đâu có biết trước mẫu tiếp theo để bắt buộc nó lặp lại. **Cơ thể hoàn toàn không cần biết tương lai.** Câu đúng là dạng nhân quả: **$x[n] \approx x[n - T_0]$** — mẫu lúc này giống mẫu đúng một chu kỳ trước. Phép tự tương quan chỉ **đo** mức lặp lại đó; nó không bắt tín hiệu phải lặp lại. Hai lý do vật lý giải thích vì sao sự lặp lại xảy ra mà không cần tương lai:
@@ -69,7 +122,7 @@ $$n + \tau \le L - 1 \iff n \le L - 1 - \tau$$
 Do đó, chỉ số $n$ chỉ có thể chạy từ $0$ đến $L - 1 - \tau$. Từ điều kiện này rút ra các ý nghĩa bản chất:
 1. Số lượng cặp mẫu được nhân với nhau là: $(L - 1 - \tau) - 0 + 1 = \mathbf{L - \tau\text{ cặp}}$.
 2. Con số "$-1$" xuất phát từ việc mảng đánh số từ 0 (phần tử cuối cùng là $L - 1$, không phải $L$).
-3. Đại lượng "$-\tau$" xuất hiện do khi trượt đi $\tau$ mẫu, đúng $\tau$ mẫu ở đuôi của bản trượt bị thò ra ngoài phạm vi lưu trữ của khung $L$ mẫu (Hình 1.3.5aA).
+3. Đại lượng "$-\tau$" xuất hiện do khi trượt đi $\tau$ mẫu, đúng $\tau$ mẫu ở đuôi của bản trượt bị thò ra ngoài phạm vi lưu trữ của khung $L$ mẫu (Hình 1.3.5b, Panel A).
 4. Cận trên $L - 1 - \tau$ hoàn toàn là điều kiện biên kỹ thuật của khung dữ liệu hữu hạn, **đây KHÔNG phải là phép trừ phần đối xứng**.
 
 **Cơ chế theo dấu của tổng tự tương quan trong 3 trường hợp:** Dấu và độ lớn của tổng tự tương quan $\mathcal{R}_x[\tau]$ được quyết định bởi tính đồng pha giữa bản gốc và bản trượt:
@@ -77,7 +130,7 @@ Do đó, chỉ số $n$ chỉ có thể chạy từ $0$ đến $L - 1 - \tau$. T
    $$\mathcal{R}_x[0] = \sum_{n=0}^{L-1} x^2[n] = E_{\text{frame}}$$
    chính là tổng năng lượng tức thời của toàn khung $L$ mẫu. Đây là giá trị **cực đại toàn cục** của hàm tự tương quan.
 2. **Khi $0 < \tau < T_0$ (Lệch pha):** Bản sao bị lệch pha so với bản gốc. Các đỉnh sóng dương ($+$) của bản này rơi vào sườn sóng hoặc đáy sóng âm ($-$) của bản kia. Phép nhân giữa mẫu dương và mẫu âm sinh ra tích âm: $(+) \cdot (-) < 0$. Khi cộng dồn, các tích âm và dương triệt tiêu lẫn nhau, khiến tổng tự tương quan sụt giảm rõ rệt.
-3. **Khi $\tau = T_0$ (Đúng một chu kỳ cơ bản):** Sóng âm tuần hoàn lặp lại đúng một chu kỳ. Đỉnh dương của bản sao trượt đúng vào đỉnh dương của bản gốc: $(+) \cdot (+) > 0$. Đáy âm của bản sao cũng trượt đúng vào đáy âm của bản gốc: $(-) \cdot (-) > 0$. Hầu hết các cặp mẫu đều cho tích dương, khiến tổng tự tương quan vọt lên tạo thành một **đỉnh cực đại cục bộ thứ nhất** tại $\tau^* = T_0$ (Hình 1.3.5aB).
+3. **Khi $\tau = T_0$ (Đúng một chu kỳ cơ bản):** Sóng âm tuần hoàn lặp lại đúng một chu kỳ. Đỉnh dương của bản sao trượt đúng vào đỉnh dương của bản gốc: $(+) \cdot (+) > 0$. Đáy âm của bản sao cũng trượt đúng vào đáy âm của bản gốc: $(-) \cdot (-) > 0$. Hầu hết các cặp mẫu đều cho tích dương, khiến tổng tự tương quan vọt lên tạo thành một **đỉnh cực đại cục bộ thứ nhất** tại $\tau^* = T_0$ (Hình 1.3.5b, Panel B).
 
 *Tự tương quan đo tính tuần hoàn (lặp lại theo chu kỳ), không đo tính đối xứng; sóng tiếng nói không đối xứng nhưng tuần hoàn.*
 
@@ -98,105 +151,74 @@ Vì vậy, không gian tìm kiếm cực đại chỉ quét trong dải hợp l�
 ```
 Panel A: Cơ chế chỉ số mảng: Bản gốc x[n] và Bản trượt x[n + tau] (cận trên L - 1 - tau)
 Bản gốc x[n]:   | 0 | 1 | 2 | ... | L - 1 - tau | ... | L - 1 |
-                |<--- Độ trễ tau --->|
-Bản trượt x[n+tau]:                  | tau | tau+1 | ... | L - 1 | [tau mẫu thò ra ngoài]
-                |<------------------->|
-                 Vùng nhân hợp lệ: n in [0, L - 1 - tau] ==> L - tau cặp mẫu
+Bản trượt x[n+tau]:         | 0 | ... | L - 1 - 2tau| ... | L - 1 - tau | [ tau mẫu thò ra ngoài ]
+                            <------------------------------------------->
+                               Vùng nhân hợp lệ: n in [0, L - 1 - tau] (L - tau cặp)
 
-Panel B: Đồ thị hàm tự tương quan thô R_x[tau] và Dải tìm kiếm [tau_min, tau_max]
+Panel B: Đồ thị hàm tự tương quan thô R_x[tau] và dải quét [27, 213] mẫu
 R_x[tau]
    ^
-   |  R_x[0] = E_frame
-   *  \
-   |   \  Dải tìm kiếm hợp lệ: tau in [27, 213] (75--600 Hz)
-   |    \
-   |     \             Đỉnh tau* = 133 (F_0 ~ 120.3 Hz)
-   |  Bỏ  \                  *
-   |  qua  \                / \
-   | tau<27 \              /   \
----+---------+------------+-----+------------------------------------> tau (mẫu)
-   0      tau_min=27   tau*=133  \                      tau_max=213   L=640
-                                  \-------------------/
+R[0]| * (Cực đại toàn cục: Năng lượng khung)
+    |  \
+    |   \ (Sườn dốc quán tính âm học: bỏ qua vùng tau < 27)
+    |    \
+    |     \_______      * tau* = 133 mẫu (F0 = 120.3 Hz)
+    |             \    / \
+    |              \__/   \______
+    +-----+---------+---------------+------------------------> tau (mẫu)
+    0     |         27             213
+          0        tau_min        tau_max
+                   <-------------->
+                     Dải tìm kiếm hợp lệ (187 lag)
 ```
 
-*Hình 1.3.5a: Cơ chế chỉ số mảng giới hạn khung $(L - 1 - \tau)$ và đồ thị hàm tự tương quan thô $\mathcal{R}_x[\tau]$ trong dải quét $[27, 213]$ mẫu.*
+*Hình 1.3.5b: Cơ chế chỉ số mảng giới hạn khung $(L - 1 - \tau)$ và đồ thị hàm tự tương quan thô $\mathcal{R}_x[\tau]$ trong dải quét $[27, 213]$ mẫu.*
 
-**Đọc Hình 1.3.5a (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Panel A — Bản gốc $x[n]$ (Thanh màu xanh nhạt phía trên):** Thể hiện mảng dữ liệu mẫu âm thanh của khung $L = 640$ mẫu được lưu tuần tự trong bộ nhớ, có chỉ số $n$ chạy từ 0 đến $L - 1$ (0 đến 639). Vùng tô xanh đậm hơn là đoạn chỉ số $n \in [0, L - 1 - \tau]$ có thể bắt cặp.
-2. **Panel A — Bản trượt $x[n + \tau]$ (Thanh màu cam phía dưới):** Thể hiện bản sao tín hiệu bị dịch trượt sang phải một khoảng trễ $\tau$ mẫu. Mẫu đầu tiên của bản trượt bắt đầu tại chỉ số $\tau$, và mẫu có chỉ số $L - 1$ của bản gốc lúc này đối diện với chỉ số $L - 1 - \tau$ của bản trượt.
-3. **Panel A — Mũi tên hai chiều màu cam (Độ trễ $\tau$ mẫu):** Đo khoảng cách dịch chuyển giữa điểm gốc 0 của bản gốc và điểm bắt đầu của bản trượt.
-4. **Panel A — Khối nét đứt màu đỏ nhạt ($\tau$ mẫu thò ra ngoài):** Khi dịch trượt sang phải một khoảng $\tau$, đúng $\tau$ mẫu ở phần đuôi của bản trượt bị tràn ra ngoài phạm vi lưu trữ của khung $L$ mẫu. Các mẫu này không có mẫu tương ứng của bản gốc để nhân.
-5. **Panel A — Mũi tên hai chiều màu xanh lam (Vùng nhân hợp lệ):** Nằm ở đáy Panel A, đánh dấu đoạn chỉ số $n \in [0, L - 1 - \tau]$ gồm đúng $L - \tau$ cặp mẫu tương ứng mà cả bản gốc và bản trượt đều nằm trong phạm vi lưu trữ hợp lệ của khung. Đây chính là xuất xứ trực quan của cận trên $L - 1 - \tau$ trong Công thức (1).
-6. **Panel B — Trục tung $\mathcal{R}_x[\tau]$ và Trục hoành $\tau$ (mẫu):** Trục tọa độ biểu diễn giá trị của hàm tự tương quan thô theo độ trễ $\tau$.
-7. **Panel B — Điểm chấm tròn màu đỏ $\mathcal{R}_x[0] = E_{\text{frame}}$:** Nằm tại $\tau = 0$ trên trục tung, đại diện cho năng lượng tức thời của toàn khung khi tín hiệu nhân với chính nó. Đây là đỉnh cực đại toàn cục.
-8. **Panel B — Vùng màu đỏ nhạt (Bỏ qua $\tau < 27$):** Trải từ $\tau = 0$ đến $\tau = 26$. Đây là sườn dốc quán tính âm thanh đi xuống từ $\mathcal{R}_x[0]$. Vùng này bị loại bỏ để tránh việc thuật toán bắt nhầm các độ trễ nhỏ cạnh 0 làm sai lệch kết quả đo.
-9. **Panel B — Vùng màu xanh lá nhạt (Dải tìm kiếm hợp lệ):** Trải từ $\tau_{\text{min}} = 27$ đến $\tau_{\text{max}} = 213$ mẫu (tương ứng dải tần $75\text{--}600\text{ Hz}$). Đây là không gian duy nhất mà thuật toán quét để tìm cực đại, bao gồm đúng 187 giá trị lag nguyên theo Công thức (3) và (4).
-10. **Panel B — Điểm chấm tròn màu xanh lam $\tau^* = 133$:** Đỉnh cực đại cục bộ thứ nhất rơi trúng vào dải hợp lệ, ứng với chu kỳ tuần hoàn dây thanh $T_0 = 133\text{ mẫu}$, xác định cao độ giọng nói $F_0 \approx 120{,}3\text{ Hz}$.
+**Đọc Hình 1.3.5b (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Panel A — Bản gốc $x[n]$ (Thanh phía trên):** Thể hiện mảng dữ liệu mẫu âm thanh của khung $L = 640$ mẫu được lưu tuần tự trong bộ nhớ, có chỉ số $n$ chạy từ $0$ đến $L - 1$ ($0$ đến $639$). Đoạn chỉ số $n \in [0, L - 1 - \tau]$ có thể bắt cặp.
+2. **Panel A — Bản trượt $x[n+\tau]$ (Thanh phía dưới):** Thể hiện bản sao tín hiệu bị dịch trượt sang phải một khoảng trễ $\tau$ mẫu. Mẫu đầu tiên của bản trượt bắt đầu tại chỉ số $\tau$, và mẫu có chỉ số $L - 1$ của bản gốc lúc này đối diện với chỉ số $L - 1 - \tau$ của bản trượt.
+3. **Panel A — Độ trễ $\tau$ mẫu:** Đo khoảng cách dịch chuyển giữa điểm gốc $0$ của bản gốc và điểm bắt đầu của bản trượt.
+4. **Panel A — Khối nét đứt ($\tau$ mẫu thò ra ngoài):** Khi dịch trượt sang phải một khoảng $\tau$, đúng $\tau$ mẫu ở phần đuôi của bản trượt bị tràn ra ngoài phạm vi lưu trữ của khung $L$ mẫu. Các mẫu này không có mẫu tương ứng của bản gốc để nhân.
+5. **Panel A — Vùng nhân hợp lệ:** Giới hạn trong khoảng chỉ số $n \in [0, L - 1 - \tau]$, tương ứng với đúng $L - \tau$ cặp mẫu có đủ cả hai thành phần $x[n]$ và $x[n+\tau]$ nằm trọn vẹn trong bộ nhớ khung. Điều này minh chứng trực quan cho điều kiện biên $n + \tau \le L - 1 \iff n \le L - 1 - \tau$ và giải thích vì sao cận trên của tổng tự tương quan dừng lại ở $L - 1 - \tau$.
+6. **Panel B — Chấm tại $\tau = 0$ ($\mathcal{R}_x[0] = E_{\text{frame}}$):** Biểu diễn cực đại toàn cục của hàm tự tương quan, tương ứng với năng lượng tức thời của toàn bộ khung $L$ mẫu (khi hai bản trùng khít hoàn toàn, mọi tích cặp đều là bình phương không âm $x^2[n] \ge 0$).
+7. **Panel B — Vùng $\tau < 27$ (Sườn dốc quán tính âm học):** Đoạn đồ thị sụt dốc rất dốc ngay sau điểm $\tau = 0$. Sự sụt dốc này phản ánh tính tương quan rất cao giữa các mẫu âm thanh liền kề do quán tính chuyển động của dây thanh quản và cột không khí. Vùng này bị thuật toán loại bỏ triệt để để không bao giờ chọn nhầm đỉnh tại $\tau = 0$ hay $\tau = 1$.
+8. **Panel B — Đáy suy giảm gần $\tau_{\min}$:** Vùng trũng của đồ thị ngay trước mốc $\tau_{\min} = 27$ mẫu, nơi tương quan quán tính âm học đã tắt hẳn và bắt đầu chuyển sang vùng tìm kiếm tính tuần hoàn của giọng nói.
+9. **Panel B — Đỉnh tại $\tau^* = 133$ mẫu (Cực đại cục bộ thứ nhất):** Vị trí bản trượt dịch đúng bằng chu kỳ rung cơ bản $T_0$ của dây thanh quản. Tại đây các đỉnh sóng dương và đáy sóng âm trùng pha nhau, làm tổng tích dồn vọt lên đỉnh cực đại cục bộ trong dải quét. Tần số cơ bản được tính chính xác bằng $F_0 = f_s / \tau^* = 16.000 / 133 \approx 120{,}3\text{ Hz}$ (giọng nam trung).
+10. **Panel B — Dải quét $\tau \in [27, 213]$ (Dải tìm kiếm hợp lệ):** Không gian quét gồm đúng 187 giá trị lag, được giới hạn bởi $\tau_{\min} = 27$ mẫu ($F_{\text{ceiling}} = 600\text{ Hz}$) và $\tau_{\max} = 213$ mẫu ($F_{\text{floor}} = 75\text{ Hz}$).
 
 ---
 
 ## 3. Cắt Khung, Chuẩn Hóa Cửa Sổ và Giải Phẫu 10 Tham Số Praat
 
-**Chuyển tiếp từ Mục 1.3: Vì sao đổi sang cửa sổ Hanning và độ dài $L = 640$ mẫu?**
+### A. Vì sao đổi sang cửa sổ Hanning và độ dài $L = 640$ mẫu?
 Ở Mục 1.2 và 1.3, chuỗi tiền xử lý dùng khung $L = 400$ mẫu ($25\text{ ms}$) kết hợp cửa sổ Hamming. Thời lượng $25\text{ ms}$ là tiêu chuẩn vàng để trích xuất 80 dải Log-Mel vì đặc tính âm học của khẩu hình miệng giữ trạng thái bán dừng (quasi-stationary) trong khoảng 20--30 ms. Tuy nhiên, khi bước sang bài toán đo cao độ $F_0$, ta bắt buộc phải thay đổi cả độ dài khung lẫn dạng cửa sổ:
-1. **Độ dài khung $L = 640$ mẫu ($40\text{ ms}$):** Theo quy tắc của Boersma (1993) trong Praat, khung phân tích cao độ phải chứa **tối thiểu 3 chu kỳ** của tần số thấp nhất cần đo (`pitch_floor = 75 Hz`). Chu kỳ dài nhất là $T_{\text{max}} = 16.000 / 75 \approx 213{,}33\text{ mẫu}$ ($13{,}33\text{ ms}$). Khung phải dài ít nhất:
+1. **Độ dài khung $L = 640$ mẫu ($40\text{ ms}$):** Theo quy tắc của Boersma (1993) trong Praat, khung phân tích cao độ phải chứa **tối thiểu 3 chu kỳ** của tần số thấp nhất cần đo ($\text{pitch\_floor} = 75\text{ Hz}$). Chu kỳ dài nhất là $T_{\text{max}} = 16.000 / 75 \approx 213{,}33\text{ mẫu}$ ($13{,}33\text{ ms}$). Khung phải dài ít nhất:
    $$T_{\text{frame}} \ge 3 \times T_{\text{max}} = 3 \times 13{,}33\text{ ms} = 40\text{ ms} \implies L = 16.000 \times 0{,}040 = \mathbf{640\text{ mẫu}}$$
-   Khung 400 mẫu (25 ms) của STFT chỉ chứa được 1,8 chu kỳ của giọng nam 75 Hz, hoàn toàn không đủ độ dài để bản trượt $x[n + \tau]$ bao trọn chu kỳ lặp lại thứ hai!
-2. **Vì sao chọn Hanning thay vì Hamming:** Cửa sổ Hamming không triệt tiêu về 0 ở hai đầu biên ($w[0] = w[L-1] = 0{,}08$), gây ra bước nhảy gián đoạn biên khi tính tích trượt giữa hai bản tín hiệu. Ngược lại, cửa sổ Hanning vuốt mượt về đúng 0 ở cả hai đầu ($w[0] = w[L-1] = 0$), giúp hàm tự tương quan của cửa sổ $\mathcal{R}_w[\tau]$ triệt tiêu êm dịu mà không sinh ra các gợn sóng biên giả tạo. Đồng thời, hàm Hanning đối xứng bậc 640 dễ dàng nén một nửa vào bảng tra ROM 320 phần tử trên FPGA, tiết kiệm tài nguyên silicon.
+   Nếu dùng khung $25\text{ ms}$ ($400$ mẫu) như STFT, một giọng nam trầm $75\text{ Hz}$ chỉ kịp lặp lại chưa đầy 2 chu kỳ. Tại độ trễ lớn $\tau \approx 213$, số cặp mẫu còn lại trong khung chỉ là $400 - 213 = 187$ mẫu — quá ít để triệt tiêu các dao động ngẫu nhiên, khiến đỉnh tương quan bị chìm hoàn toàn trong nhiễu.
+2. **Cửa sổ Hanning thay vì Hamming:** Cửa sổ Hamming có hai đầu mút nâng cao nhân tạo ($w[0] = w[L-1] = 0{,}08$), gây ra sự gián đoạn bước nhảy biên độ nhỏ ở hai biên khung. Ngược lại, cửa sổ Hanning triệt tiêu hoàn toàn về $0$ ở hai đầu biên:
+   $$w[n] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi n}{L - 1}\right), \quad n = 0, 1, \dots, L - 1$$
+   giúp triệt tiêu dứt điểm hiệu ứng rò rỉ phổ và triệt tiêu năng lượng tại các biên trượt.
 
-### A. Độ dài khung $L = 640$ mẫu: Giá trị thiết kế cho dải trầm $75\text{ Hz}$
-
-Con số $L = 640$ mẫu ($40\text{ ms}$ tại $f_s = 16.000\text{ Hz}$) là **giá trị thiết kế kỹ thuật điển hình** được quy chuẩn hóa khi ấn định giới hạn đáy cao độ `pitch_floor = 75 Hz` theo quy tắc 3 chu kỳ ở trên.
-
-### B. Cửa sổ Hanning vs. Gaussian và Hệ số chuẩn hóa $\mathcal{R}_w[\tau]$ (Boersma, 1993)
-
-Trong thực tế, Praat ưu tiên sử dụng cửa sổ **Gaussian** vì đặc tính dập tắt búp phụ vượt trội trong miền tần số. Tuy nhiên, việc lựa chọn **cửa sổ Hanning đối xứng bậc 640** ở đây là một **lựa chọn kỹ thuật đơn giản hóa có chủ đích (deliberate engineering trade-off)**: Hanning dễ dàng sinh từ hàm cosin, đối xứng chặt chẽ, dễ nén một nửa vào ROM bảng tra, tiết kiệm tài nguyên FPGA mà vẫn đảm bảo độ mịn biên.
-
-Tuy nhiên, việc nhân cửa sổ làm xuất hiện hiện tượng sụt dốc tự nhiên của đồ thị tự tương quan theo độ trễ $\tau$ do **hai nguyên nhân vật lý độc lập**:
-1. **Nguyên nhân hình học (Số cặp mẫu giảm):** Như đã chỉ ra ở Mục 2, số cặp mẫu tham gia vào tổng tự tương quan giảm tuyến tính từ $L$ cặp (tại $\tau = 0$) xuống còn $L - \tau$ cặp (tại độ trễ $\tau$). Ít số hạng cộng dồn hơn khiến tổng số học đương nhiên bị suy giảm (Hình 1.3.5bA).
-2. **Nguyên nhân trọng số cửa sổ (Vuốt biên):** Cửa sổ Hanning vuốt hai đầu về 0. Khi trượt bản sao đi một khoảng $\tau$, tích của hai trọng số cửa sổ $w[n] \cdot w[n + \tau]$ suy giảm phi tuyến theo $\tau$.
-
-Hàm tự tương quan của chính cửa sổ phân tích:
-
-$$\mathcal{R}_w[\tau] = \sum_{n=0}^{L - 1 - \tau} w[n] \cdot w[n + \tau]$$
-
-**gói trọn cả hai nguyên nhân nói trên** (vừa phản ánh sự co hẹp của cận lấy tổng từ 0 đến $L - 1 - \tau$, vừa tích hợp sự suy giảm của tích các trọng số cửa sổ).
-
-**Trực giác trước khi viết công thức: hai quả núi Hanning trượt lên nhau.**
-
-**Bước 1 — Vì sao phải vuốt khung thành "quả núi"?** Nếu cắt khung $L$ mẫu bằng một nhát kéo thẳng (cửa sổ chữ nhật), hai đầu khung kết thúc đột ngột giữa một dao động đang chạy. Chỗ gãy ấy giống như bấm tắt loa giữa chừng: nó sinh ra các thành phần tần số cao không có trong giọng nói thật (edge discontinuity). Cửa sổ Hanning thay nhát kéo bằng một đường dốc đứng từ $0$ lên đỉnh rồi xuống $0$: khung có dạng một quả núi, hai chân núi chạm đất nên không còn chỗ gãy.
-
-**Bước 2 — Trượt hai quả núi lên nhau.** Bản sao là quả núi thứ hai, trượt sang phải đúng $\tau$ mẫu. Khi $\tau = 0$, hai quả núi chồng khít và mép núi cao nhất vẫn nguyên. Khi $\tau$ lớn dần, đỉnh quả thứ hai rời khỏi đỉnh quả thứ nhất, và $\tau$ mẫu ở đuôi quả thứ hai thò ra ngoài cửa sổ, không còn mẫu nào của quả thứ nhất đối diện để nhân. Phần chồng nhau vừa **hẹp lại** (số cặp giảm từ $L$ xuống $L - \tau$), vừa **thấp dần** ở hai bên vì hai chân núi chỉ còn gặp nhau ở cùng một độ cao nhỏ. Diện tích chồng nhau chính là $\mathcal{R}_w[\tau]$ — tự tương quan của **chính cửa sổ**.
-
-**Phân đôi tín hiệu thành hai lớp: "âm thanh thật" và "cái khuôn".** Ở mỗi độ trễ, mỗi cặp mẫu cho ta hai thông tin tách biệt:
-- Mẫu âm thanh $x[n]$ và $x[n + \tau]$ liền nhau bao nhiêu — phản ánh **tính tuần hoàn thật** của giọng.
-- Hai trọng số cửa sổ $w[n]$ và $w[n + \tau]$ còn cao bao nhiêu — phản ánh **cái khuôn** mà ta đã ép lên tín hiệu.
-
-Vì phép nhân là tuyến tính, hai lớp này nhân vào nhau:
-
-$$\text{tích từng cặp} = \underbrace{x[n]\,x[n+\tau]}_{\text{âm thanh thật}} \cdot \underbrace{w[n]\,w[n+\tau]}_{\text{cái khuôn}}$$
-
-Cộng dồn mọi cặp:
+### B. Bản chất suy hao do cửa sổ Hanning và cơ chế bù $C[\tau]$
+Khi áp dụng cửa sổ Hanning lên khung tín hiệu $x[n]$, ta thu được tín hiệu sau khi nhân cửa sổ: $x_{\text{win}}[n] = x[n] \cdot w[n]$. Tổng tự tương quan trên tín hiệu này thực chất là:
 
 $$\mathcal{R}_x[\tau] = \sum_{n=0}^{L-1-\tau} \big(x[n]\,x[n+\tau]\big)\big(w[n]\,w[n+\tau]\big)$$
 
-và vì $w[n]\,w[n+\tau] \approx \mathcal{R}_w[\tau]/L$ theo nghĩa trung bình trên toàn khung, ta ghi gọn mức đo được của âm thanh thật là
+và vì $w[n]\,w[n+\tau] \approx \mathcal{R}_w[\tau]/L$ theo nghĩa trung bình trên toàn khung, ta ghi gọn mức đo được của âm thanh thật là:
 
 $$r_{\text{thật}}[\tau] = \frac{\mathcal{R}_x[\tau]}{\mathcal{R}_w[\tau]}$$
-
-Hai đại lượng trung gian $r_x[\tau]$ và $\tilde{r}_x[\tau]$ mà tài liệu Praat hay dùng không cần đến nữa: ta chuyển thẳng từ $\mathcal{R}_x[\tau]$ sang đại lượng bù.
 
 **Bù lại cái khuôn: nhân với một hằng số lấy từ ROM.** Ở $\tau = 0$ cái khuôn còn nguyên, nên mức đo được đúng bằng mức thật. Ở độ trễ lớn, cái khuôn chỉ còn một phần, khiến mức đo bị dìm xuống. Muốn lấy lại mức thật, ta chia cho phần khuôn còn lại. Phần khuôn còn lại đã được đo sẵn, chỉ phụ thuộc vào $\tau$ và cửa sổ, **không phụ thuộc vào tín hiệu**. Vì vậy ta tính trước một **hệ số phóng đại** và nạp vào ROM:
 
 $$C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]} \quad (\ge 1,\ \text{tăng dần theo } \tau)$$
 
-Giá trị bù thực tế dùng để ra quyết định là
+Giá trị bù thực tế dùng để ra quyết định là:
 
-$$\mathcal{R}_{\text{bù}}[\tau] = \mathcal{R}_x[\tau] \cdot C[\tau]$$
+$$\mathcal{R}_{\text{comp}}[\tau] = \mathcal{R}_x[\tau] \cdot C[\tau]$$
 
-và chia cho năng lượng khung để so với ngưỡng:
+và chia cho năng lượng khung để so với ngưỡng thanh tính:
 
-$$\frac{\mathcal{R}_{\text{bù}}[\tau^*]}{\mathcal{R}_x[0]} \ge \theta_{\text{voice}} = 0{,}45 \iff \mathcal{R}_{\text{bù}}[\tau^*] \ge 0{,}45 \cdot \mathcal{R}_x[0]$$
+$$\frac{\mathcal{R}_{\text{comp}}[\tau^*]}{\mathcal{R}_x[0]} \ge \theta_{\text{voice}} = 0{,}45 \iff \mathcal{R}_{\text{comp}}[\tau^*] \ge 0{,}45 \cdot \mathcal{R}_x[0]$$
 
 Trên FPGA, phép so sánh này chỉ cần **một phép nhân** với hệ số lấy từ bảng tra và **một phép so sánh số nguyên**; không cần bộ chia.
 
@@ -207,7 +229,7 @@ Trên FPGA, phép so sánh này chỉ cần **một phép nhân** với hệ s�
 > | $\mathcal{R}_w[\tau]$ | Diện tích chồng nhau của **hai vỏ núi rỗng** (chỉ có cửa sổ, không có âm thanh). $\tau = 0$ là chồng khít, $\tau$ lớn thì chồng hẹp và thấp. | $0{,}40$ — vỏ còn $40\%$ ($\approx 60\%$ đã hụt) |
 > | $\mathcal{R}_x[\tau]$ | Tự tương quan của **âm thanh thật** đã bị cái khuôn đè lên. Mức đo thô bị dìm theo đúng phần vỏ còn lại. | $0{,}90 \times 0{,}40 = 0{,}36$ |
 > | $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ | **Hệ số phóng đại** lấy từ ROM: chia cho phần vỏ còn lại để lấy lại mức thật. | $1{,}0 / 0{,}40 = 2{,}5$ |
-> | $\mathcal{R}_{\text{bù}}[\tau] = \mathcal{R}_x[\tau] \cdot C[\tau]$ | Mức thật sau khi kéo vỏ núi về đủ chiều cao, đem so với ngưỡng. | $0{,}36 \times 2{,}5 = 0{,}90$ |
+> | $\mathcal{R}_{\text{comp}}[\tau] = \mathcal{R}_x[\tau] \cdot C[\tau]$ | Mức thật sau khi kéo vỏ núi về đủ chiều cao, đem so với ngưỡng. | $0{,}36 \times 2{,}5 = 0{,}90$ |
 >
 > Đọc bảng theo một chiều: vỏ hụt → mức đo hụt theo đúng tỷ lệ đó → nhân với nghịch đảo của tỷ lệ → mức thật trở lại.
 
@@ -219,7 +241,7 @@ Trên FPGA, phép so sánh này chỉ cần **một phép nhân** với hệ s�
 >
 > $$\mathcal{R}_x[\tau] \approx (\text{mức giống thật của giọng tại }\tau) \times \mathcal{R}_w[\tau]$$
 >
-> Tức là $\mathcal{R}_x[\tau]$ **đã mang sẵn** phần vỏ bên trong nó. Nhân thêm $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ là **rút** phần vỏ đó ra, còn lại mức giống thật nhân với $\mathcal{R}_w[0]$ (một hằng số). Nếu chia cho $1$ thay vì nhân với $C[\tau]$, ta sẽ giữ nguyên phần vỏ bị hụt và đọc sai.
+> Tức là $\mathcal{R}_x[\tau]$ **đã mang sẵn** phần vỏ bên trong nó. Nhân thêm $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ là **rút** phần vỏ đó ra, còn lại mức giống thật nhân với $\mathcal{R}_w[0]$ (một hằng số).
 >
 > **Tính từng bước với một khung giọng nam $120\text{ Hz}$ ($\tau = 133$ mẫu), ngưỡng $\theta_{\text{voice}} = 0{,}45$:**
 > 1. Vỏ núi còn: $\mathcal{R}_w[133] / \mathcal{R}_w[0] = 0{,}40$. Ở độ trễ này cái khuôn đã hụt $60\%$.
@@ -227,48 +249,57 @@ Trên FPGA, phép so sánh này chỉ cần **một phép nhân** với hệ s�
 > 3. So thẳng với ngưỡng: $0{,}36 < 0{,}45$ ⇒ thuật toán **nhầm là vô thanh**, mất cao độ. Đây chính là lỗi nghịch lý: giọng rất đều nhưng vẫn bị bỏ.
 > 4. Phóng đại: $C[133] = 1{,}0 / 0{,}40 = 2{,}5$.
 > 5. Sau bù: $0{,}36 \times 2{,}5 = 0{,}90$, vượt ngưỡng $0{,}45$ rõ ràng ⇒ bắt đúng $F_0$.
->
-> **Liên hệ với `octave_cost = 0,01`:** Hệ số $C[\tau]$ chỉ đo lại đúng phần vỏ đã hụt, nên **không thiên vị** đỉnh nào về mặt tần số. Việc chọn giữa đỉnh $1T_0$ và $2T_0$ lại là câu chuyện khác, được xử lý trong mục tiếp theo.
 
-**Phân biệt rõ ràng hai kiểu lỗi suy diễn cao độ:**
-1. **Lỗi phán nhầm Vô thanh (Voiced $\to$ Unvoiced Error):** Khi không bù suy hao cửa sổ, đỉnh tương quan ở lag lớn (ví dụ giọng nam $120\text{ Hz}$ tại $\tau^* = 133$) bị dìm tụt xuống mức $0{,}36$. Vì $0{,}36 < \theta_{\text{voice}} = 0{,}45$ (ngưỡng thanh tính mặc định), thuật toán phán đoán nhầm khung này là âm vô thanh hoặc khoảng lặng và gán $F_0 = 0$, làm mất cao độ (Hình 1.3.5bC).
-2. **Lỗi nhảy quãng tám (Octave Jump):** Xảy ra khi thuật toán chọn nhầm đỉnh tại chu kỳ kép $\tau = 2T_0$ (nhảy xuống quãng tám dưới $F_0/2$) hoặc đỉnh tại $\tau = T_0/2$ (nhảy lên quãng tám trên $2F_0$). Lỗi này được xử lý độc lập bởi cơ chế phạt log-lag `octave_cost = 0,01` trong Praat, chứ không phải do việc đỉnh rơi xuống dưới ngưỡng thanh tính.
+```
+Panel A: Cửa sổ Hanning (quả núi) và bản sao trượt tau mẫu
+w[n]       /\                  w[n+tau]     /\
+          /  \                             /  \
+_________/____\_________          ________/____\________
+      Khung gốc L=640                 Trượt sang phải tau mẫu
+                                      Đuôi thò ra ngoài khung: tau mẫu
 
-<!-- FIG:ACF_COMPENSATION -->
+Panel B: Vùng tích các cặp mẫu giảm dần theo độ trễ
+tau = 0:   640 cặp mẫu hữu hiệu
+tau = 80:  560 cặp mẫu hữu hiệu
+tau = 160: 480 cặp mẫu hữu hiệu
 
-*Hình 1.3.5b: Hiện tượng co hẹp vùng tích các cặp mẫu và vai trò của hệ số bù suy hao cửa sổ $C[	au] = \mathcal{R}_w[0]/\mathcal{R}_w[	au]$ theo Boersma (1993). Panel A: cửa sổ Hanning là một quả núi, bản sao trượt sang phải $	au$ mẫu nên đuôi bản sao thò ra ngoài khung $L = 640$ mẫu. Panel B: mỗi cặp là hai mảnh núi kẹp vào nhau, số cặp giảm từ $640$ xuống $640 - 	au$. Panel C: khung $F_0 = 200	ext{ Hz}$ ($T_0 = 80$ mẫu), trục tung $R/R_x[0]$; đỉnh $1T_0$ ($	au = 80$) và $2T_0$ ($	au = 160$) lần lượt đi từ $0{,}42$ và $0{,}23$ (chưa bù, đường xám nét đứt) lên khoảng $0{,}47$ và $0{,}35$ (đã bù $C[	au]$, đường xanh), còn đường cam thêm `octave_cost = 0,01`. Ngưỡng thanh tính là $0{,}45$.*
+Panel C: Khung 200 Hz (T0 = 80 mẫu): Đỉnh 1T0 và 2T0 trước và sau khi bù C[tau]
+R / R_x[0]
+ 1.0 +
+     |
+ 0.8 +
+     |                  * 1T0 (0.47) [Đã bù C[tau], vượt ngưỡng]
+ 0.6 +                   \
+     |                    \          * 2T0 (0.35) [Đã bù C[tau]]
+ 0.45+ - - - - - - - - - - \ - - - -/ - - - - - - - -  Ngưỡng thanh tính 0.45
+     |          * 1T0 (0.42)\      /
+ 0.3 +           (chưa bù)   \    /  * 2T0 (0.23) (chưa bù)
+     |                        \__/
+ 0.0 +------+--------+--------------+--------------> tau
+     0     27       80             160          213
+                    1T0            2T0
+```
 
-**Đọc Hình 1.3.5b (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Panel A — Quả núi thứ nhất (đường xanh đậm, vùng tô xanh nhạt):** Khung $L = 640$ mẫu sau khi nhân cửa sổ Hanning, có dạng một quả núi: hai chân chạm $0$, đỉnh ở giữa. Cửa sổ chữ nhật sẽ để hai đầu khung gãy đột ngột; quả núi thì không.
-2. **Panel A — Quả núi thứ hai (đường cam):** Bản sao của quả núi thứ nhất, trượt sang phải đúng $	au$ mẫu. Mũi tên hai chiều ở đáy đo đúng khoảng trượt $	au$ này.
-3. **Panel A — "Phần thò ra":** $	au$ mẫu ở đuôi quả thứ hai nằm ngoài cửa sổ, không có mẫu nào của quả thứ nhất đối diện để nhân. Mũi tên đỏ chỉ vào chỗ đó. Cùng lúc, phần chồng nhau hẹp lại còn $L - 	au$ cặp và hai chân núi chỉ còn gặp nhau ở độ cao nhỏ, nên phần chồng vừa hẹp vừa thấp. Diện tích chồng nhau chính là $\mathcal{R}_w[	au]$.
-4. **Panel B — Bốn cột mẫu:** Mỗi cột là một độ trễ $	au = 0, 80, 160$ và một cột nữa xa hơn. Cột xanh là mảnh núi "bên trái", cột cam là mảnh "bên phải"; mũi tên "kẹp" chỉ cặp mảnh đang dán vào nhau. Từ trên xuống dưới, mảnh cam thấp dần, cho thấy mỗi trọng số tự rơi về $0$.
-5. **Panel B — Số cặp giảm:** Nhãn dưới cột ghi $	au = 0$: $640$ cặp; $	au = 80$: $560$ cặp; $	au = 160$: $480$ cặp. Con số $L - 	au$ này là nguyên nhân hình học đầu tiên khiến tổng tương quan thô sụt theo $	au$.
-6. **Panel C — Trục tung $R/R_x[0]$ và ngưỡng $0{,}45$:** Khung $F_0 = 200	ext{ Hz}$ ($T_0 = 80$ mẫu). Đường đỏ nét đứt ngang là ngưỡng thanh tính; trục hoành đánh dấu bốn mốc $27$, $80$, $160$, $213$.
-7. **Panel C — Đường xám nét đứt (chưa bù):** Hai đỉnh $1T_0$ ($	au = 80$) và $2T_0$ ($	au = 160$) chỉ đạt $0{,}42$ và $0{,}23$; cả hai đều **dưới** ngưỡng $0{,}45$, nên khung bị gán vô thanh.
-8. **Panel C — Đường xanh đậm (đã bù $C[	au]$):** Nhân với $C[80] = 1{,}11$ và $C[160] = 1{,}52$, hai đỉnh lên khoảng $0{,}47$ và $0{,}35$; cả hai đều **vượt** ngưỡng. Mũi tên đỏ giữa chấm xám và chấm xanh cho thấy đúng mức nâng bù tại mỗi đỉnh.
-9. **Panel C — Đường cam (thêm `octave_cost = 0,01`):** Đường cam gần như trùng đường xanh, chỉ hơi thấp hơn ở đỉnh. Mức phạt nhỏ này đủ để đỉnh $1T_0$ đứng trên đỉnh $2T_0$ khi hai đỉnh xấp xỉ nhau, nhưng không lật ngược một đỉnh vốn đã thua rõ.
-10. **Panel C — Dòng chữ xanh đậm ở đáy:** Tóm một câu: đỉnh $1T_0$ (80 mẫu) thắng đỉnh $2T_0$ (160 mẫu) nhờ `octave_cost = 0,01`.
+*Hình 1.3.5c: Hiện tượng co hẹp vùng tích các cặp mẫu và vai trò của hệ số bù suy hao cửa sổ $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ theo Boersma (1993).*
+
+**Đọc Hình 1.3.5c (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Panel A — Quả núi thứ nhất:** Khung $L = 640$ mẫu sau khi nhân cửa sổ Hanning có dạng một quả núi: hai chân chạm $0$, đỉnh ở giữa.
+2. **Panel A — Quả núi thứ hai:** Bản sao của quả núi thứ nhất, trượt sang phải đúng $\tau$ mẫu.
+3. **Panel A — "Phần thò ra":** $\tau$ mẫu ở đuôi quả thứ hai nằm ngoài cửa sổ, không có mẫu nào của quả thứ nhất đối diện để nhân. Cùng lúc, phần chồng nhau hẹp lại còn $L - \tau$ cặp và diện tích chồng nhau chính là $\mathcal{R}_w[\tau]$.
+4. **Panel B — Số cặp giảm:** $\tau = 0$: $640$ cặp; $\tau = 80$: $560$ cặp; $\tau = 160$: $480$ cặp. Con số $L - \tau$ này là nguyên nhân hình học đầu tiên khiến tổng tương quan thô sụt theo $\tau$.
+5. **Panel C — Trục tung $R/R_x[0]$ và ngưỡng $0{,}45$:** Khung $F_0 = 200\text{ Hz}$ ($T_0 = 80$ mẫu). Đường nét đứt ngang là ngưỡng thanh tính; trục hoành đánh dấu bốn mốc $27$, $80$, $160$, $213$.
+6. **Panel C — Đường chưa bù:** Hai đỉnh $1T_0$ ($\tau = 80$) và $2T_0$ ($\tau = 160$) chỉ đạt $0{,}42$ và $0{,}23$; cả hai đều **dưới** ngưỡng $0{,}45$, nên khung bị gán vô thanh.
+7. **Panel C — Đường đã bù $C[\tau]$:** Nhân với $C[80] = 1{,}11$ và $C[160] = 1{,}52$, hai đỉnh lên khoảng $0{,}47$ và $0{,}35$; cả hai đều **vượt** ngưỡng.
+8. **Panel C — Thêm `octave_cost = 0,01`:** Đỉnh $1T_0$ (80 mẫu) thắng an toàn đỉnh $2T_0$ (160 mẫu).
 
 ### B'. Hai đỉnh $1T_0$ và $2T_0$: vì sao bù hệ số lại đẩy đỉnh xa lên, và `octave_cost` dọn nốt tàn dư
 
-Một giọng có chu kỳ $T_0$ sẽ lặp lại không chỉ sau một chu kỳ mà còn sau $2T_0$, $3T_0$… nên hàm tự tương quan có **nhiều đỉnh**. Chọn nhầm đỉnh $2T_0$ là đọc cao độ thành $F_0/2$: giọng $200\text{ Hz}$ bị ghi thành $100\text{ Hz}$, tức **rơi đúng một quãng tám** (octave error). Đây là lỗi nguy hiểm nhất của bộ bắt cao độ tự tương quan.
+Một giọng có chu kỳ $T_0$ sẽ lặp lại không chỉ sau một chu kỳ mà còn sau $2T_0$, $3T_0$… nên hàm tự tương quan có **nhiều đỉnh**. Chọn nhầm đỉnh $2T_0$ là đọc cao độ thành $F_0/2$: giọng $200\text{ Hz}$ bị ghi thành $100\text{ Hz}$, tức **rơi đúng một quãng tám** (octave error).
 
-**Vì sao trước khi bù, đỉnh $2T_0$ thấp hơn.** Ở $\tau = 2T_0$, vỏ núi đã hụt nhiều hơn ở $\tau = T_0$, nên mức đo thô bị dìm nhiều hơn, dù "độ giống thật" của giọng ở hai độ trễ này gần như bằng nhau.
+- **Vì sao sau khi bù, hệ số lại đẩy đỉnh xa lên mạnh hơn:** $C[\tau]$ tăng dần theo $\tau$; đỉnh ở $2T_0$ nằm xa hơn nên có $C[2T_0] > C[T_0]$. Hệ số bù vì vậy **nâng đỉnh $2T_0$ nhiều hơn** đỉnh $T_0$ và có thể kéo hai đỉnh về ngang nhau, tạo nguy cơ lỗi quãng tám thật sự.
+- **Praat chặn nguy cơ đó bằng `octave_cost = 0,01`:** Với mỗi bậc độ trễ tăng gấp đôi, Praat **trừ đi $0{,}01$** khỏi điểm của đỉnh. Đỉnh $2T_0$ bị trừ một lần $0{,}01$ so với đỉnh $T_0$, nên đỉnh $1T_0$ luôn **thắng an toàn** khi hai đỉnh xấp xỉ nhau.
 
-**Vì sao sau khi bù, hệ số lại đẩy đỉnh xa lên mạnh hơn.** $C[\tau]$ tăng dần theo $\tau$; đỉnh ở $2T_0$ nằm xa hơn nên có $C[2T_0] > C[T_0]$. Hệ số bù vì vậy **nâng đỉnh $2T_0$ nhiều hơn** đỉnh $T_0$ và có thể kéo hai đỉnh về ngang nhau, tạo nguy cơ lỗi quãng tám thật sự.
-
-**Praat chặn nguy cơ đó bằng `octave_cost = 0,01`.** Với mỗi bậc độ trễ tăng gấp đôi, Praat **trừ đi $0{,}01$** khỏi điểm của đỉnh. Đỉnh $2T_0$ bị trừ một lần $0{,}01$ so với đỉnh $T_0$, nên đỉnh $1T_0$ luôn **thắng an toàn** khi hai đỉnh xấp xỉ nhau. Vì mức phạt chỉ $0{,}01$ trên thang $[0, 1]$, nó đủ để phá thế ngang bằng nhưng **không đủ để lật ngược** một đỉnh $1T_0$ đã thực sự yếu hơn nhiều — nhờ vậy giọng trầm (đỉnh $1T_0$ nằm ở lag lớn) vẫn sống sót sau khi đã được $C[\tau]$ bù.
-
-**Ví dụ số, khung $F_0 = 200\text{ Hz}$ ($T_0 = 80$ mẫu).** Ở khung này cả $1T_0 = 80$ lẫn $2T_0 = 160$ đều nằm trong dải quét $[27, 213]$:
-1. Chưa bù: đỉnh $1T_0$ đạt $0{,}42$, đỉnh $2T_0$ đạt $0{,}23$ — cả hai đều dưới ngưỡng $0{,}45$, khung bị gán vô thanh.
-2. Nhân hệ số bù: $C[80] = 1{,}11$ và $C[160] = 1{,}52$. Đỉnh $1T_0$ lên $0{,}42 \times 1{,}11 \approx 0{,}47$; đỉnh $2T_0$ lên $0{,}23 \times 1{,}52 \approx 0{,}35$.
-3. Thêm `octave_cost`: $0{,}47 \times 2^{-0{,}01} \approx 0{,}47$ và $0{,}35 \times 2^{-0{,}01} \approx 0{,}35$. Cả hai đều tụt một chút, nhưng **tỷ lệ giữa hai đỉnh** chính là thứ quyết định, và đỉnh $1T_0$ đang cao hơn hẳn — lỗi quãng tám bị chặn.
-4. Trường hợp nguy hiểm là khi hai đỉnh gần ngang nhau: nếu sau bù $2T_0$ đạt $0{,}90$ và $1T_0$ đạt $0{,}62$, thì phạt $0{,}01$ **không đủ** để lật; vì vậy Praat còn thêm cơ chế Viterbi trên cả chuỗi khung để giữ quỹ đạo cao độ liên tục.
-
-Hình 1.3.5b (Panel C) vẽ đúng ba đường của ví dụ trên: đường xám nét đứt (chưa bù) nằm dưới ngưỡng, đường xanh đậm (đã bù $C[\tau]$) vượt ngưỡng, và đường cam (thêm `octave_cost`) chỉ nhích nhẹ nhưng đủ để đỉnh $1T_0$ đứng trên đỉnh $2T_0$.
-
-### C. Giải phẫu 10 tham số chuẩn của Praat dưới góc nhìn mã nguồn (Sound_to_Pitch.cpp)
+### C. Giải phẫu 10 tham số chuẩn của Praat dưới góc nhìn mã nguồn (`Sound_to_Pitch.cpp`)
 
 Mã nguồn mở C++ của Praat do Paul Boersma xây dựng chứa đựng triết lý thiết kế chuẩn mực đã qua hơn 30 năm kiểm chứng. Dưới đây là giải phẫu chi tiết 10 tham số đầu vào của hàm `Sound_to_Pitch_ac`:
 
@@ -283,13 +314,41 @@ Mã nguồn mở C++ của Praat do Paul Boersma xây dựng chứa đựng tri�
 7. **`voicing_threshold = 0,45`:** Ngưỡng độ mạnh chu kỳ (Harmonicity). Trong code Boersma (Công thức 23), ứng viên Vô thanh (Unvoiced) được gán một điểm số cạnh tranh:
    $$R_{\text{unvoiced}} = \text{voicing\_threshold} + \max\left(0,\, 2 - \frac{I_{\text{local}} / I_{\text{max\_global}}}{\text{silence\_threshold} / (1 + \text{voicing\_threshold})}\right)$$
    Khi âm thanh đủ to, số hạng thứ hai bằng $0 \implies R_{\text{unvoiced}} = 0{,}45$. Một đỉnh hữu thanh muốn chiến thắng phải có tương quan chuẩn hóa $\ge 0{,}45$. Khi âm thanh rơi vào vùng khoảng lặng, $R_{\text{unvoiced}}$ vọt lên 2,45, ép khung đó nhận nhãn Unvoiced ($F_0 = 0$) bất chấp nhiễu nền tuần hoàn giả tạo!
-8. **`octave_cost = 0,01` (trên mỗi quãng tám):** Hệ số thiên vị tần số cao nội khung (Local pitch-lag bias). Vì tín hiệu tuần hoàn ở $T_0$ cũng tuần hoàn ở $2T_0$ (tần số nửa $F_0/2$ — lỗi nhảy xuống quãng tám dưới), Praat trừ một khoản phạt tỉ lệ với logarit độ trễ (Công thức 24 Boersma):
-   $$R_{\text{voiced}}[\tau] = r_x[\tau] - \text{octave\_cost} \times \log_2\left(\text{pitch\_floor} \cdot \frac{\tau}{f_s}\right)$$
-   Ở lag càng lớn ($\tau$ lớn), điểm số bị trừ nhẹ (0,01 mỗi octave), giúp đỉnh cơ bản thật $\tau = T_0$ luôn thắng đỉnh bội số $\tau = 2T_0$. Trên FPGA, lượng phạt này được cộng trừ sẵn vào bảng tra ROM $C[\tau]$ mà không tốn mạch tính $\log_2$!
+8. **`octave_cost = 0,01` (trên mỗi quãng tám):** Hệ số thiên vị tần số cao nội khung (Local pitch-lag bias). Vì tín hiệu tuần hoàn ở $T_0$ cũng tuần hoàn ở $2T_0$ (tần số nửa $F_0/2$ — lỗi nhảy xuống quãng tám dưới), Praat trừ một khoản phạt tỉ lệ với logarit độ trễ:
+   $$R_{\text{voiced}}[\tau] = r_x[\tau] - \text{octave\_cost} \times \log_2\left(\frac{\text{pitch\_ceiling}}{f_s / \tau}\right)$$
+   Ở lag càng lớn ($\tau$ lớn, tức $F_0$ càng thấp), lượng trừ càng lớn, giúp đỉnh cơ bản thật $\tau = T_0$ thắng đỉnh bội số $\tau = 2T_0$. Trên FPGA, lượng phạt này được cộng trừ sẵn vào bảng tra ROM $C[\tau]$ mà không tốn mạch tính $\log_2$!
 9. **`octave_jump_cost = 0,35`:** Trọng số phạt trong thuật toán Viterbi khi đường cao độ giữa hai khung liên tiếp bị nhảy vọt tần số:
    $$\text{Cost}_{\text{jump}}(F_{0, t-1} \to F_{0, t}) = \text{octave\_jump\_cost} \times \left|\log_2\left(\frac{F_{0, t}}{F_{0, t-1}}\right)\right| \times \left(\frac{0{,}01}{\Delta t_{\text{hop}}}\right)$$
    Nhờ mức phạt 0,35 cho mỗi quãng tám, Viterbi ưu tiên chọn chuỗi ứng viên tạo ra đường cong cao độ mượt mà.
 10. **`voiced_unvoiced_cost = 0,14`:** Trọng số phạt trong Viterbi khi trạng thái chuyển từ Hữu thanh sang Vô thanh ($\text{Voiced} \leftrightarrow \text{Unvoiced}$), giúp ngăn hiện tượng đường Pitch bị đứt gãy chớp nháy ở ranh giới âm yếu.
+
+### C'. Vì sao mỗi con số tham số lại là con số đó: cơ sở âm học của Tham số 6--10
+
+**Tham số 6 — `silence_threshold = 0,03`: ngưỡng để nhiễu nền không tự khuếch đại chính nó.**
+Khi một khung là khoảng lặng, năng lượng $\mathcal{R}_x[0]$ rất nhỏ. Nhưng phép chuẩn hóa lại chia cho chính năng lượng nhỏ đó: $r_x[\tau] = \mathcal{R}_x[\tau] / \mathcal{R}_x[0]$. Một tạp âm nền tuần hoàn rất yếu vẫn có thể đạt tỷ số $r_x[\tau] > 0{,}45$ sau khi chia, không phải vì nó mạnh, mà vì mẫu số đã bé tí.
+Ngưỡng 0,03 chính là một mức SNR quy ra decibel:
+$$20 \log_{10}(0{,}03) \approx -30{,}46\text{ dB}$$
+Con số này trùng khớp với khoảng cách điển hình giữa giọng nói bình thường (khoảng $65\text{ dB SPL}$) và nền phòng yên tĩnh (khoảng $35\text{ dB SPL}$), tức đúng $30\text{ dB}$. Đó cũng là lý do `top_db = 30` của Librosa ở Phụ lục cho ra cùng một ngưỡng biên độ: $10^{-30/20} \approx 0{,}0316$.
+
+**Tham số 7 — `voicing_threshold = 0,45`: mốc cân bằng giữa tuần hoàn và nhiễu.**
+Khi phát âm /s/ hay /f/, biên độ rất lớn nhưng là nhiễu khí hỗn loạn. Thước đo chuẩn là Tỷ số Hài trên Nhiễu (Harmonics-to-Noise Ratio, HNR). Boersma (1993) nối HNR với hệ số tự tương quan chuẩn hóa $r$ bằng:
+$$\text{HNR (dB)} = 10 \log_{10}\!\left(\frac{r}{1-r}\right)$$
+Điểm cân bằng vật lý — năng lượng tuần hoàn đúng bằng năng lượng nhiễu ($\text{HNR} = 0\text{ dB}$) — ứng với $r = 0{,}50$. Praat chọn $r = 0{,}45$, tương ứng:
+$$10 \log_{10}\!\left(\frac{0{,}45}{0{,}55}\right) \approx -0{,}87\text{ dB}$$
+tức chấp nhận một khung mà nhiễu nhiều hơn phần tuần hoàn khoảng $0{,}9\text{ dB}$. Dung sai này giữ được các nguyên âm hơi khàn ở cuối câu mà không mở cửa cho phụ âm xát.
+
+**Tham số 8 — `octave_cost = 0,01`: mức phạt nhỏ nhất còn đủ để phá thế hòa.**
+Tín hiệu tuần hoàn ở $T_0$ cũng tuần hoàn ở $2T_0$, nên sau khi bù cửa sổ, hai đỉnh có thể hòa nhau. Quét toàn dải $75\text{--}600\text{ Hz}$ trên lưới 1 Hz (526 tần số) cho thấy:
+- `octave_cost = 0`: $273 / 526$ tần số bị sai quãng tám (quá nửa dải sai do hai đỉnh hòa nhau).
+- `octave_cost = 0.005`: $20 / 526$ còn sai ở vùng cao.
+- `octave_cost = 0.01`: **0 / 526 sai (mặc định Praat, sạch hoàn toàn)**.
+Con số 1% này cùng bậc với độ bất ổn chu kỳ tự nhiên của dây thanh (jitter điển hình cỡ 0,5--1% ở giọng bình thường).
+
+**Tham số 9 và 10 — `octave_jump_cost = 0,35` và `voiced_unvoiced_cost = 0,14`: quán tính cơ học của thanh quản.**
+Cao độ do độ căng của cơ nhẫn giáp (cricothyroid) và cơ giáp phễu (thyroarytenoid) trong thanh quản quyết định. Nghiên cứu cơ sinh học phát âm kinh điển của **Sundberg (1979)** chỉ ra rằng thanh quản người cần ít nhất $80\text{--}100\text{ ms}$ để co duỗi thay đổi độ căng qua một quãng tám ($F_0$ gấp đôi). Trong một bước nhảy trượt chỉ vỏn vẹn $10\text{ ms}$ ($\Delta t_{\text{hop}}$), việc cao độ đột ngột nhảy vọt một quãng tám là điều bất khả thi về mặt sinh học. Với $\Delta t_{\text{hop}} = 10\text{ ms}$:
+- Nhảy đúng một quãng tám bị phạt $0{,}35 \times \log_2(2) = 0{,}35$.
+- Nhảy một nửa cung (semitone) chỉ bị phạt $0{,}35 \times \frac{1}{12} \approx 0{,}029$.
+Tỷ lệ chênh lệch hơn 10 lần này giúp Viterbi uốn lượn tự nhiên trong phạm vi nửa cung nhưng phạt rất nặng lỗi nhảy quãng tám giữa hai khung kế tiếp.
 
 | Tham số Praat | Ký hiệu | Giá trị chuẩn | Ý nghĩa thuật toán & Mã nguồn (Boersma 1993) | Hiện thực trên FPGA DE10-Standard |
 | :--- | :---: | :---: | :--- | :--- |
@@ -336,10 +395,94 @@ Mã nguồn mở C++ của Praat do Paul Boersma xây dựng chứa đựng tri�
 >
 > Trước khi đưa thiết kế lên FPGA, bắt buộc phải dựng một mô hình Python tối giản (Bit-accurate Fixed-Point Model) mô phỏng đúng khung 640 mẫu, cửa sổ Hanning và 187 lag số nguyên. Đem mô hình này chạy trên tập dữ liệu âm thanh đã lọc tiền xử lý (HPF 60 Hz ở Mục 1.1.5) để đối sánh trực tiếp với đường Pitch chuẩn của Praat (đo sai số lệch chuẩn Hz và hệ số tương quan Pearson $r$). Chỉ khi phiên bản Python tối giản này chứng minh được độ suy giảm chất lượng nằm trong ngưỡng chấp nhận được của bài toán nhận diện thanh điệu/ngữ điệu, các con số hạch toán phần cứng bên dưới mới có giá trị thực tiễn.
 
-Để chuyển đổi thuật toán Praat trên laptop sang phần cứng FPGA DE10-Standard, ta vứt bỏ các phép tính xa xỉ không thể tổng hợp:
-1. *Bỏ nội suy Sinc vô hạn:* Praat dùng nội suy Sinc để bắt đỉnh dưới mẫu (sub-sample). Trên FPGA, ta giữ nguyên đỉnh số nguyên $\tau^* \in [27, 213]$ để tránh hàng chục nghìn phép tính dấu phẩy động.
-2. *Bỏ quy hoạch động Viterbi toàn cục (Hình 1.3.5c):* Thay vì lưu trữ toàn bộ câu nói qua ma trận 15 ứng viên $\times N$ khung để tìm đường đi mượt mà, FPGA quyết định trực tiếp cục bộ trên từng khung 10 ms (streaming pipeline), giữ độ trễ lan truyền bằng 0.
-3. *Bỏ bộ chia số học $16.000/\tau^*$:* Toàn bộ 187 giá trị cao độ tương ứng với 187 lag được nạp sẵn vào bảng tra ROM $F_0$. Khi bộ so sánh tìm được $\tau^*$, địa chỉ này kích hoạt ROM xuất thẳng giá trị $F_0$ ra bus đầu ra trong đúng 1 chu kỳ xung nhịp.
+### A. Bản chất *bit-accurate fixed-point*: từ `float64` trên laptop đến thanh ghi số nguyên trên FPGA
+
+**Ba tầng số, và tầng nào thực sự đến được silicon:**
+1. **`float64` (dấu phẩy động, 64-bit):** dùng trên laptop. Mỗi số gồm dấu, phần mũ và phần định trị. Cái giá là các hàm siêu việt như $\cos$, $\log_2$ được cài bằng xấp xỉ đa thức khác nhau trên từng kiến trúc CPU.
+2. **Q1.15 (fixed-point, 16-bit):** số nguyên 16-bit có dấu, 1 bit dấu, 15 bit lẻ. Dải biểu diễn $[-1, +0{,}99997]$. Định dạng tự nhiên cho mẫu âm thanh và hệ số cửa sổ.
+3. **Q2.30 và thanh ghi tích lũy 42-bit:** tích của hai số Q1.15 là số 32-bit (Q2.30). Cộng dồn 640 tích cần thêm $\lceil \log_2 640 \rceil = 10$ bit, nên thanh ghi tích lũy phải rộng ít nhất $32 + 10 = 42$ bit.
+
+**Vì sao `float64` không bảo đảm giống nhau giữa AMD64 và ARM64, còn số nguyên thì có:**
+Chuẩn IEEE-754 quy định chính xác kết quả của `+`, `-`, `*`, `/` trên `float64`. Nhưng `cos`, `log2`, `sin` **không** nằm trong nhóm đó. Chuẩn chỉ đòi hỏi độ chính xác trong một khoảng ULP (Unit in the Last Place). Vì vậy glibc trên AMD64 và thư viện Apple trên ARM64 có thể trả về hai kết quả lệch nhau một vài ULP. Với một phép $\log_2$ nằm trong bộ so sánh "đỉnh nào cao hơn", hai ULP đủ để lật ngôi một đỉnh — làm hai máy cho hai chuỗi $F_0$ khác nhau!
+
+Số nguyên bù hai không có vấn đề này. Với `int16`, `int32`, `int64` và bốn phép `+`, `-`, `*`, `>>`:
+- Không có khái niệm làm tròn: kết quả là số nguyên chính xác.
+- Tràn trong bù hai là hành vi xác định: quay vòng theo modulo $2^N$.
+- Dịch phải số học `>>` trên số có dấu cũng xác định (mở rộng bit dấu).
+Nghĩa là: **cùng một chuỗi lệnh số nguyên, cùng một đầu vào, cho đúng cùng một dãy bit trên AMD64, trên ARM64, và trên mạch RTL tổng hợp từ cùng biểu thức đó**. Đó chính là định nghĩa của *bit-accurate*.
+
+**Mã nguồn thuật toán từ con số 0 (`chapter01/lab_1_3_5.py`):**
+
+```python
+import numpy as np
+
+Q15, Q13 = 1 << 15, 1 << 13  # 1.0 in Q1.15 and Q3.13
+TAU_MIN, TAU_MAX = 27, 213  # lag range for 600 Hz .. 75 Hz at 16 kHz
+
+
+def hanning_rom_q15():
+    # 320-entry symmetric Hanning window, Q1.15.
+    n = np.arange(320, dtype=np.float64)
+    w = 0.5 - 0.5 * np.cos(2.0 * np.pi * n / 639)
+    return np.round(w * Q15).astype(np.int64)
+
+
+def full_window():
+    # 640-point window rebuilt from the folded ROM.
+    h = hanning_rom_q15()
+    return np.concatenate([h, h[::-1]])
+
+
+def scoring_rom_q13(octave_cost=0.01):
+    # C[tau] = R_w[0]/R_w[tau], with octave bias folded in. Q3.13.
+    w = full_window() / Q15
+    rw0 = float(np.dot(w, w))
+    out = []
+    for tau in range(TAU_MIN, TAU_MAX + 1):
+        rw_tau = float(np.dot(w[: 640 - tau], w[tau:]))
+        f0 = 16000.0 / tau
+        bias = 2.0 ** (-octave_cost * np.log2(600.0 / f0))
+        out.append(round(rw0 / rw_tau * bias * Q13))
+    return np.array(out, dtype=np.int64)
+
+
+def fixed_pitch_frame(x_q15, ref_energy):
+    # Integer-only pitch detection for one 640-sample frame.
+    xw = (x_q15 * full_window()) >> 15  # window multiply, stays Q1.15
+    r0 = int(np.dot(xw, xw))  # frame energy, int64
+
+    # Silence gate: r0 < 0.03 * ref  <=>  r0*100 < 3*ref. No divide.
+    if ref_energy > 0 and r0 * 100 < 3 * ref_energy:
+        return 0.0, 0
+
+    rom = scoring_rom_q13()
+    best, tau_star = -(1 << 62), 0
+    for i, tau in enumerate(range(TAU_MIN, TAU_MAX + 1)):
+        n = 640 - tau
+        r_tau = int(np.dot(xw[:n], xw[tau:]))
+        score = (r_tau * rom[i]) >> 13  # Q3.13 multiply
+        if score > best:
+            best, tau_star = score, tau
+
+    # Voicing: best >= 0.45 * r0  <=>  best*100 >= 45*r0. No divide.
+    if best * 100 < 45 * r0:
+        return 0.0, 0
+    return float(round(16000 / tau_star)), tau_star
+```
+
+**Ba chỗ chuyển đổi then chốt từ đại số sang phần cứng:**
+1. **Phép chia bị loại bỏ bằng cách nhân chéo:** Điều kiện $\mathcal{R}_{\max} \ge 0{,}45\,\mathcal{R}_x[0]$ nhân chéo hai vế với 100 thành $100\,\mathcal{R}_{\max} \ge 45\,\mathcal{R}_x[0]$, chỉ còn nhân và so sánh.
+2. **Hàm siêu việt bị loại bỏ bằng bảng tra:** $\log_2$ và phép chia $f_s / \tau^*$ được tính trước lúc biên dịch rồi nạp vào ROM.
+3. **Cửa sổ chỉ nhân một lần cho mỗi khung:** Thực hiện trong Pha 1 trước khi quét tương quan.
+
+**Kết quả kiểm chứng thực tế (`python chapter01/lab_1_3_5.py`):**
+
+| Đại lượng | Bản số nguyên | Bản `float64` |
+|---|:---:|:---:|
+| Lag thắng $\tau^*$ | 80 | 80 |
+| $F_0$ đọc được | 200 Hz | 200 Hz |
+| Mã cửa sổ Hanning (320 mục, Q1.15) | đỉnh = 32768 | — |
+| Bảng bù $C[\tau]$ (187 mục, Q3.13) | $8289 \dots 17387$ | — |
 
 ```
 Khung t - 10 ms          Khung t              Khung t + 10 ms
@@ -357,14 +500,33 @@ Khung t - 10 ms          Khung t              Khung t + 10 ms
         Phạt chuyển 0.14       Phạt chuyển 0.14
 ```
 
-*Hình 1.3.5c: Đối chiếu cơ chế trích chọn cao độ: Lưới quy hoạch động Viterbi 15 ứng viên của Praat (phần mềm) vs. Trích chọn cực đại tức thời không trễ trên FPGA (phần cứng).*
+*Hình 1.3.5d: Đối chiếu cơ chế trích chọn cao độ: Lưới quy hoạch động Viterbi 15 ứng viên của Praat (phần mềm) vs. Trích chọn cực đại tức thời không trễ trên FPGA (phần cứng).*
 
-**Đọc Hình 1.3.5c (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Các nút tròn màu trắng (1) đến (14) và (UV):** Thể hiện tập hợp 15 ứng viên cao độ mà Praat trích xuất tại mỗi khung phân tích thời gian $t$, gồm 14 đỉnh cực đại cục bộ có biên độ cao nhất và 1 ứng viên vô thanh (UV — Unvoiced).
-2. **Đường nét đứt màu đỏ chạy ngang qua các nút (1):** Biểu diễn cơ chế của chế độ FPGA Streaming. Trên phần cứng, hệ thống không lưu vết toàn bộ câu mà chỉ giữ lại đúng 1 ứng viên có biên độ cực đại lớn nhất sau khi so sánh cục bộ tại khung hiện tại. Phép quyết định hoàn tất ngay lập tức, độ trễ bằng 0.
-3. **Đường nét liền màu xanh lam đậm uốn lượn qua các khung:** Biểu diễn đường đi tối ưu toàn cục do giải thuật quy hoạch động Viterbi của Praat tìm ra sau khi duyệt qua toàn bộ ma trận ứng viên của cả câu nói.
-4. **Các mũi tên màu tím hướng xiên giữa các nút ($Cost_{\text{jump}}$):** Đại diện cho hàm chi phí phạt bước nhảy tần số giữa hai khung liên tiếp khi đường cao độ bị thay đổi đột ngột qua các quãng tám.
-5. **Các mũi tên màu cam hướng xuống nút (UV) (Phạt chuyển 0,14):** Đại diện cho chi phí phạt chuyển đổi trạng thái giữa có thanh và vô thanh nhằm ngăn chặn hiện tượng đường Pitch bị đứt gãy chớp nháy ở ranh giới các âm thanh yếu.
+**Đọc Hình 1.3.5d (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Ba cột mốc thời gian:** Chuỗi 3 khung phân tích liên tiếp gồm Khung $t - 10\text{ ms}$, Khung $t$, và Khung $t + 10\text{ ms}$ với bước trượt khung $\Delta t_{\text{hop}} = 10\text{ ms}$.
+2. **Các nút tròn Ứng viên 1 đến 14:** 14 đỉnh cực đại cục bộ có điểm tự tương quan cao nhất trong mỗi khung.
+3. **Nút tròn UV (Ứng viên 15):** Ứng viên đại diện cho trạng thái Vô thanh (Unvoiced), gán điểm cạnh tranh $R_{\text{unvoiced}}$ phụ thuộc tỷ số năng lượng khoảng lặng.
+4. **Đường mũi tên tối ưu Praat Viterbi:** Duyệt toàn cục xuyên suốt câu để cực tiểu hóa tổng chi phí gồm điểm nội khung, phạt bước nhảy tần số $\text{Cost}_{\text{jump}}$ (0,35), và phạt chuyển đổi trạng thái Voiced $\leftrightarrow$ Unvoiced (0,14). Độ trễ bằng toàn bộ câu.
+5. **Chế độ FPGA Streaming:** Chỉ lấy duy nhất Ứng viên 1 ($\tau_1^*$) qua một bộ so sánh cực đại thanh ghi. Quyết định chốt ngay lập tức, độ trễ bằng 0.
+
+### B. Bỏ Viterbi trên FPGA: có hợp lý không, và lấy gì thay thế
+
+**Ba lý do bỏ Viterbi là hợp lý:**
+1. **Viterbi phá vỡ tính thời gian thực của streaming:** Quy hoạch động cần biết toàn bộ chuỗi khung trước khi quay lui (backtracking). Trên một câu 10 giây, độ trễ cấu trúc là 10 giây.
+2. **Ba tầng tiền xử lý đã xử lý phần lớn nguyên nhân gây lỗi quãng tám:** HPF 60 Hz dập nhiễu nền tần thấp; bảng bù $C[\tau]$ san phẳng độ dốc cửa sổ; và `octave_cost = 0,01` phá thế hòa giữa hai đỉnh.
+3. **Bộ nhớ trạng thái của Viterbi không hợp với datapath nhỏ:** 15 ứng viên $\times 1000$ khung cần hàng chục nghìn ô nhớ cho ma trận chi phí và con trỏ quay lui, vượt quá vài khối M10K dành cho khối Pitch.
+
+**Giải pháp phần cứng: bộ lọc trung vị trượt 3 điểm:**
+Để loại bỏ các điểm nhảy vọt cô lập (isolated octave spike) mà không gây trễ lớn, ta đặt một bộ lọc trung vị 3 điểm ngay sau đầu ra $F_0$:
+
+| Khung | $t-1$ | $t$ | $t+1$ |
+|---|:---:|:---:|:---:|
+| Giá trị thô | 122 Hz | 245 Hz | 124 Hz |
+| Sau lọc trung vị | 122 Hz | **124 Hz** | 124 Hz |
+
+Giá trị $245\text{ Hz}$ là điểm nhảy vọt (gần gấp đôi). Trung vị của $\{122, 245, 124\}$ là $124\text{ Hz}$, loại bỏ điểm nhảy vọt mà không bịa ra giá trị trung bình giả ($163{,}7\text{ Hz}$).
+- Phần cứng cần: 3 thanh ghi 16-bit, 2 bộ so sánh và mạch chọn.
+- Độ trễ chỉ đúng 1 khung ($10\text{ ms}$).
 
 ---
 
@@ -397,7 +559,7 @@ Hệ thống nhắm tới kit **DE10-Standard** trang bị chip **Intel Cyclone 
 > **$\blacktriangleright$ NHÌN THẤY VẬT LÝ**
 >
 > **Cái giá phải trả và điều bị phá hủy:**
-> 1. **Độ trễ ban đầu và tâm cửa sổ (Hình 1.3.5d):** Để bao trọn khung $40\text{ ms}$ thay vì $25\text{ ms}$, bộ đệm luồng Pitch cần thời gian nạp đầy ban đầu (initial buffering latency) lâu hơn $15\text{ ms}$, đồng thời tâm pha của cửa sổ phân tích (frame center) nằm lùi về quá khứ xa hơn $7{,}5\text{ ms}$ so với tâm cửa sổ STFT.
+> 1. **Độ trễ ban đầu và tâm cửa sổ (Hình 1.3.5e):** Để bao trọn khung $40\text{ ms}$ thay vì $25\text{ ms}$, bộ đệm luồng Pitch cần thời gian nạp đầy ban đầu (initial buffering latency) lâu hơn $15\text{ ms}$, đồng thời tâm pha của cửa sổ phân tích (frame center) nằm lùi về quá khứ xa hơn $7{,}5\text{ ms}$ so với tâm cửa sổ STFT.
 > 2. **Phi tuyến lượng tử hóa ở cao tần:** Do $F_0 = f_s/\tau$, bước nhảy 1 mẫu ở vùng âm trầm ($\tau = 160 \implies 100\text{ Hz}$) chỉ làm lệch $\Delta F_0 = 0{,}62\text{ Hz}$ (rất mịn); nhưng ở vùng âm cao ($\tau = 27 \implies 592{,}6\text{ Hz}$), nhảy 1 mẫu làm lệch tới $\Delta F_0 = 22\text{ Hz}$ (khá thô). Đây là sự đánh đổi cố hữu của phương pháp tự tương quan số nguyên: **Rất nhạy ở âm trầm, nhưng bị bậc thang hóa ở âm cao.**
 
 ```
@@ -421,88 +583,71 @@ B. Luồng Cao Độ Pitch F0 (Mục 1.3.5): Khung L = 640 mẫu (40 ms), bướ
                     <-------> Độ trễ chờ nạp đầy ban đầu Dt_init = 40 - 25 = 15 ms (240 mẫu)
 ```
 
-*Hình 1.3.5d: Đối sánh trục thời gian giữa Luồng Log-Mel STFT ($400\text{ mẫu} = 25\text{ ms}$) và Luồng Pitch $F_0$ ($640\text{ mẫu} = 40\text{ ms}$): Làm rõ độ lệch tâm pha $7{,}5\text{ ms}$ và độ trễ nạp đầy ban đầu $15\text{ ms}$.*
+*Hình 1.3.5e: Đối sánh trục thời gian giữa Luồng Log-Mel STFT ($400\text{ mẫu} = 25\text{ ms}$) và Luồng Pitch $F_0$ ($640\text{ mẫu} = 40\text{ ms}$): Làm rõ độ lệch tâm pha $7{,}5\text{ ms}$ và độ trễ nạp đầy ban đầu $15\text{ ms}$.*
 
-**Đọc Hình 1.3.5d (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Panel A — Các đường cong màu xanh lam (Luồng Log-Mel STFT):** Biểu diễn các cửa sổ phân tích STFT ngắn $L = 400\text{ mẫu}$ ($25\text{ ms}$). Bước nhảy giữa hai tâm cửa sổ liên tiếp là $H = 160\text{ mẫu}$ ($10\text{ ms}$).
-2. **Panel A — Đường dóng nét đứt màu xanh lam (Tâm Khung 1):** Nằm tại thời điểm $t = 12{,}5\text{ ms}$ (mẫu thứ 200), là trọng tâm đối xứng của cửa sổ STFT đầu tiên.
-3. **Panel B — Các đường cong màu cam (Luồng Cao Độ Pitch $F_0$):** Biểu diễn các cửa sổ phân tích cao độ dài $L = 640\text{ mẫu}$ ($40\text{ ms}$) theo tiêu chuẩn Praat để chứa trọn 3 chu kỳ âm trầm $75\text{ Hz}$. Bước nhảy giữa các khung vẫn giữ nguyên $H = 160\text{ mẫu}$ ($10\text{ ms}$).
-4. **Mũi tên hai chiều màu đỏ ở giữa ($\Delta t_{\text{center}} = 7{,}5\text{ ms}$):** Đo độ lệch tâm pha giữa tâm cửa sổ Pitch ($20\text{ ms}$) và tâm cửa sổ STFT ($12{,}5\text{ ms}$). Mặc dù hai luồng cùng xuất ra kết quả với tốc độ 100 khung/s, luồng Pitch nhìn về quá khứ sâu hơn luồng STFT đúng 120 mẫu.
-5. **Mũi tên hai chiều màu tím ở đáy ($\Delta t_{\text{init}} = 15\text{ ms}$):** Đo độ trễ chờ nạp đầy bộ đệm ban đầu. Khối Pitch cần nhận đủ 640 mẫu ($40\text{ ms}$) âm thanh mới bắt đầu tính toán được khung đầu tiên, trễ hơn 240 mẫu so với khối STFT (chỉ cần 400 mẫu = $25\text{ ms}$).
+**Đọc Hình 1.3.5e (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Trục hoành thời gian chung (Dưới cùng):** Đánh dấu các mốc thời gian vật lý tính bằng mili-giây: $0, 10, 20, 25, 30, 40, 50, 60\text{ ms}$.
+2. **Hàng A — Luồng Log-Mel STFT:** Biểu diễn các vòm cửa sổ dài $25\text{ ms}$ ($400\text{ mẫu}$ tại $16\text{ kHz}$), trượt với bước nhảy $10\text{ ms}$ ($160\text{ mẫu}$). Khung đầu tiên hoàn tất nạp mẫu tại $t = 25\text{ ms}$; tâm đối xứng của cửa sổ Khung 1 nằm tại $t = 12{,}5\text{ ms}$.
+3. **Hàng B — Luồng Pitch $F_0$:** Biểu diễn các vòm cửa sổ Hanning dài $40\text{ ms}$ ($640\text{ mẫu}$), trượt với cùng bước nhảy $10\text{ ms}$ ($160\text{ mẫu}$). Khung đầu tiên hoàn tất nạp mẫu tại $t = 40\text{ ms}$; tâm đối xứng của cửa sổ Khung 1 nằm tại $t = 20{,}0\text{ ms}$.
+4. **Mũi tên hai chiều $\Delta t_{\text{init}} = 15\text{ ms}$:** Độ trễ chờ nạp đầy khung đầu tiên, và **chỉ xảy ra đúng một lần**.
+5. **Mũi tên hai chiều $\Delta t_{\text{center}} = 7{,}5\text{ ms}$:** Độ lệch tâm pha, **lặp lại ở mọi khung**.
+
+**Hai con số thời gian dễ bị lẫn, và cách phân biệt chúng (Ẩn dụ hai công nhân bấm đồng hồ):**
+Hãy tưởng tượng hai người công nhân cùng bấm đồng hồ từ $t = 0\text{ ms}$, mỗi người phụ trách một luồng:
+- **Độ trễ nạp đầy khung đầu tiên ($\Delta t_{\text{init}} = 40 - 25 = 15\text{ ms}$):** Người phụ trách luồng Pitch cần 640 mẫu mới có khung đầu tiên, tức phải chờ đến $t = 40\text{ ms}$. Người phụ trách luồng STFT chỉ cần 400 mẫu, nên xong ở $t = 25\text{ ms}$. Người thứ nhất về đích chậm hơn 15 ms. **Đây là chuyện của lần đầu tiên duy nhất**. Từ khung thứ hai trở đi, cả hai luồng đều đã có sẵn dữ liệu cũ trong bộ đệm, nên cứ mỗi 10 ms cả hai cùng xuất một kết quả.
+- **Độ lệch tâm pha ($\Delta t_{\text{center}} = 20 - 12{,}5 = 7{,}5\text{ ms}$):** Một khung 40 ms bắt đầu ở 0 thì có tâm ở 20 ms; một khung 25 ms bắt đầu ở 0 thì có tâm ở 12,5 ms. Khi cả hai cùng mang chỉ số "khung 1", giá trị Pitch mô tả thời điểm 20 ms, còn giá trị Mel mô tả thời điểm 12,5 ms — lệch nhau 7,5 ms. **Đây là sai lệch thường trực, lặp lại ở mọi khung**.
+- **Vì sao phải tách bạch:** Khi ghép hai luồng để tính Pearson ở Phụ lục, $\Delta t_{\text{center}}$ được xử lý bằng cách dịch chỉ số, còn $\Delta t_{\text{init}}$ được xử lý bằng cách bỏ qua các khung chưa có dữ liệu ở đầu câu.
 
 ---
 
 ## 6. Sơ đồ Vi Kiến Trúc Pipeline Đề Xuất (Dataflow Architecture)
 
-Sơ đồ khối vi kiến trúc tối ưu đưa khối nhân cửa sổ lên **trước** bộ đệm True Dual-Port RAM nhằm tối ưu hóa chu kỳ đọc:
+Sơ đồ khối chia khối Pitch thành **hai pha tách biệt**. Cửa sổ Hanning được nhân đúng một lần khi chuyển dữ liệu sang True Dual-Port RAM; vòng quét tương quan chỉ còn đọc hai cổng của cùng một bộ nhớ:
 
 ```
-+--------------------------+
-|  Dòng mẫu I2S (16 kHz)   |
-|         (16-bit)         |
-+------------+-------------+
-             |
-             v
-+------------+-------------+        +--------------------------+
-|   Khối Nhân Cửa Sổ       |<-------| ROM Cửa Sổ Hanning       |
-|    (Hanning Mult)        |        | (320 giá trị đối xứng)   |
-+------------+-------------+        +--------------------------+
-             | x_win[n]
-             v
-+------------+-------------+
-|   True Dual-Port RAM     |
-|   640 mẫu x_win[n]       |
-|   (1 Khối M10K BRAM)     |
-+------------+-------------+
-             | Port A, B (n, n + tau)
-             v
-+------------+-------------+
-|   Mảng Nhân - Tích Lũy   |
-|   (MAC Engine, 1 DSP)    |
-|   Tích lũy >= 42-bit     |
-+------------+-------------+
-             | R_x[tau]
-             v
-+------------+-------------+        +--------------------------+
-|   Bù Suy Hao Cửa Sổ      |<-------| ROM Hệ Số C[tau]         |
-| R_comp[tau] = R_x . C    |        | (187 mục 16-bit)         |
-+------------+-------------+        +--------------------------+
-             | R_comp[tau]
-             v
-+------------+-------------+
-| Bộ Dò Đỉnh & Thanh Tính  |
-| R_max = max(R_comp[tau]) |
-| E_frame > E_silence      |
-| và R_max >= 0.45 . R_x[0]|
-+------+--------------+----+
-       | CÓ (tau*)    | KHÔNG
-       v              v
-+------+------+  +----+--------+
-| ROM Tra F0  |  | Cờ Unvoiced |
-| 16000 / tau*|  | F0 = 0 Hz   |
-|  (187 mục)  |  |             |
-+------+------+  +----+--------+
-       |              |
-       +-------+------+
+  Dòng mẫu I2S (16 kHz, 16-bit)
                |
                v
-+--------------+---------------+
-| Đầu ra Cao độ Pitch F0       |
-| (100 Hz frame rate, 10 ms)   |
-| Đồng bộ với luồng Log-Mel    |
-+------------------------------+
+  +---------------------------------------+      +-----------------------+
+  |    Raw Ring Buffer (640 mẫu thô)      |      |   Bộ đếm ghi cuốn vòng|
+  |  vùng A: 0..319 | vùng B: 320..639    |----->|                       |
+  +-------------------+-------------------+      +-----------------------+
+                      | (khi đủ 160 mẫu mới)
+                      v
+  +---------------------------------------+      +-----------------------+
+  |    PHA 1 — 640 chu kỳ clock           |<-----| ROM Hanning           |
+  | Đọc 640 mẫu thô, nhân ROM, ghi sang RAM|      | 320 mục Q1.15         |
+  +-------------------+-------------------+      +-----------------------+
+                      | (ghi x_win[n])
+                      v
+  +---------------------------------------+
+  |      True Dual-Port RAM (640 mẫu)     |
+  | Cổng A: địa chỉ n | Cổng B: đ.chỉ n + tau |
+  +-------------------+-------------------+
+                      | (2 cổng đọc song song)
+                      v
+  +---------------------------------------+      +-----------------------+
+  |    PHA 2 — 97.240 chu kỳ clock        |----->| 1 bộ nhân DSP         |
+  | Quét 187 độ trễ tau in [27, 213]      |      | + tích lũy >= 42-bit  |
+  +---------------------------------------+      +-----------+-----------+
+                                                             | R_x[tau]
+                                                             v
+  +-----------------------+                      +-----------+-----------+
+  | Lọc trung vị 3 điểm   |<---------------------| Bù C[tau] (ROM Q3.13) |
+  +-----------+-----------+                      | + argmax 187 lag      |
+              |                                  +-----------------------+
+              v
+     F0 mỗi 10 ms (pitch_f0.bin)
 ```
 
-*Hình 1.3.5e: Sơ đồ dòng dữ liệu (Dataflow) vi kiến trúc đo cao độ $F_0$ thời gian thực trên FPGA Intel Cyclone V.*
+*Hình 1.3.5f: Vi kiến trúc hai pha: cửa sổ được nhân một lần khi chép sang RAM, nên vòng quét tương quan chỉ còn đọc hai cổng và một phép nhân.*
 
-**Đọc Hình 1.3.5e (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Khối Đầu Vào Âm Thanh và Khối Nhân Cửa Sổ Hanning (Đỉnh sơ đồ):** Tín hiệu 16-bit từ giao tiếp I2S (16 kHz) được nhân trực tiếp với trọng số cửa sổ lấy từ ROM Hanning (chứa 320 giá trị đối xứng) ngay trên đường nạp vào, tạo ra mẫu $x_{\text{win}}[n]$ mà không tốn thêm chu kỳ đọc lại sau này.
-2. **Khối True Dual-Port BRAM 640 Mẫu (Màu cam):** Lưu trữ trọn vẹn 640 mẫu $x_{\text{win}}[n]$ của khung phân tích trong đúng 1 khối M10K BRAM. Hai cổng Port A và Port B cho phép đọc đồng thời hai mẫu $x[n]$ và $x[n+\tau]$ trong cùng một chu kỳ xung nhịp.
-3. **Khối Nhân - Tích Lũy MAC Engine (Màu xanh dương đậm):** Sử dụng 1 khối DSP Block phần cứng thực thi phép nhân 16-bit và tích lũy vào thanh ghi 42-bit để tính tổng tự tương quan thô $\mathcal{R}_x[\tau]$ cho từng độ trễ $\tau$.
-4. **Khối Bù Suy Hao Cửa Sổ và ROM Hệ Số $C[\tau]$ (Màu xanh lá):** Sau khi tính xong tổng $\mathcal{R}_x[\tau]$, giá trị này được nhân với hệ số bù $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ lưu trong ROM 187 mục 16-bit để sinh ra tổng đã bù suy hao $\mathcal{R}_{\text{comp}}[\tau]$ mà không cần bộ chia số học.
-5. **Khối Bộ Dò Đỉnh & Thanh Tính (Màu tím):** Tìm giá trị cực đại $\mathcal{R}_{\text{comp}}[\tau^*]$ trong dải $\tau \in [27, 213]$, đồng thời kiểm tra đồng thời hai điều kiện: năng lượng khung vượt ngưỡng khoảng lặng ($E_{\text{frame}} > E_{\text{silence}}$) và tương quan chuẩn hóa đạt ngưỡng thanh tính ($\mathcal{R}_{\text{comp}}[\tau^*] \ge 0{,}45 \cdot \mathcal{R}_x[0]$).
-6. **Nhánh Rẽ Quyết Định (Có thanh vs. Vô thanh):** Nếu thỏa mãn cả hai điều kiện, giá trị độ trễ tối ưu $\tau^*$ được dùng làm địa chỉ tra cứu ROM $F_0$ (chứa sẵn 187 giá trị $16.000/\tau^*$) để xuất ra tần số cơ bản chính xác; nếu không thỏa mãn, hệ thống bật cờ vô thanh và gán $F_0 = 0\text{ Hz}$.
-7. **Khối Đầu Ra Cao Độ Pitch $F_0$ (Đáy sơ đồ):** Cung cấp dòng dữ liệu cao độ với tốc độ 100 khung/s (mỗi 10 ms một giá trị), hoàn toàn đồng bộ với nhịp khung của luồng đặc trưng Log-Mel Spectrogram.
+**Đọc Hình 1.3.5f (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Raw Ring Buffer (Hàng trên):** Mẫu I$^2$S thô được ghi liên tục vào bộ đệm vòng 640 mẫu (chia hai vùng A và B). Khi đã tích lũy đủ 160 mẫu mới (đúng một bước nhảy 10 ms), khối điều khiển phát xung kích hoạt sang Pha 1.
+2. **Pha 1 (640 chu kỳ clock):** Đọc lần lượt 640 mẫu thô, nhân từng mẫu với hệ số Hanning lấy từ ROM 320 mục, rồi ghi kết quả $x_{\text{win}}[n]$ sang True Dual-Port RAM. **Đây là điểm sửa lỗi quan trọng so với phiên bản trước:** không nhân cửa sổ khi mẫu vừa chảy vào bộ đệm trượt vì khi khung trượt đi 160 mẫu, mẫu cũ nằm ở vị trí $n$ mới trong khung tương ứng hệ số $w[n]$ khác. Nhân trong Pha 1 bảo đảm luôn đúng vị trí.
+3. **True Dual-Port RAM (Khối giữa):** RAM có hai cửa đọc độc lập A và B mở đồng thời trong 1 nhịp đồng hồ. Cửa A xuất $x_{\text{win}}[n]$, cửa B xuất $x_{\text{win}}[n+\tau]$, cả hai đi thẳng vào **cùng một** bộ nhân DSP.
+4. **Pha 2 (97.240 chu kỳ clock):** Với mỗi độ trễ $\tau$ trong 187 giá trị, bộ nhân-cộng dồn tích lũy vào thanh ghi 42-bit.
+5. **Hậu xử lý:** Nhân $\mathcal{R}_x[\tau]$ với bảng $C[\tau]$ (Q3.13, đã gộp `octave_cost`), tìm $\tau^*$ bằng `argmax`, rồi đưa qua bộ lọc trung vị 3 điểm trước khi xuất `pitch_f0.bin`.
 
 ---
 
@@ -516,23 +661,26 @@ Sơ đồ khối vi kiến trúc tối ưu đưa khối nhân cửa sổ lên **
 
 # Phụ lục 1.3.5-A. Áp dụng lý thuyết 1.3.5 vào mã nguồn Python (`audio_processing.py` và `evaluator.py`)
 
-> **Phạm vi và Mục tiêu:** Phụ lục này đối chiếu hai tệp mã nguồn xử lý âm thanh trong thư mục `Pronunciation_Final_Master` của kho lưu trữ `DucDocDao/Pitch-Project` (nhánh `main`) với lý thuyết đo cao độ $F_0$ bằng tự tương quan ở Mục 1.3.5 (Praat, Boersma 1993). Để hiểu trọn vẹn luồng gọi hàm, phụ lục tham chiếu thêm `main.py`, `visualizer.py`, `generate_audio.py` và `sentence_data.py`. Mọi phân tích dưới đây đều dựa trên mã nguồn thực tế; các vị trí mã nguồn không hiển thị rõ hành vi nội tại đều được ghi chú là *chưa kiểm chứng*.
+> **Phạm vi và Mục tiêu:** Phụ lục này đối chiếu hai tệp mã nguồn xử lý âm thanh trong thư mục `Pronunciation_Final_Master` của kho lưu trữ `DucDocDao/Pitch-Project` (nhánh `main`) với hệ thống lý thuyết đo cao độ $F_0$ bằng thuật toán tự tương quan ở Mục 1.3.5 (chuẩn Praat, Boersma 1993). Để làm sáng tỏ toàn bộ luồng gọi hàm, phụ lục khảo sát thêm các đoạn mã liên kết trong `main.py`, `visualizer.py`, `generate_audio.py` và `sentence_data.py`. Mọi hành vi mô tả dưới đây đều được truy xuất trực tiếp từ mã nguồn thực tế.
 
 ---
 
 ## 1. Bức Tranh Tổng Thể: Hai Tệp Làm Gì Trong Hệ Thống?
 
-### 1.1. Bài toán của dự án
-Dự án giải quyết bài toán so sánh **đường bao cao độ** (pitch contour — chuỗi tần số cơ bản $F_0$ theo thời gian) của một câu tiếng Anh do giọng chuẩn tham chiếu đọc (giọng tổng hợp nữ `sarah`) với câu do người học hoặc giọng khác đọc (các giọng nam Mỹ, ví dụ `michael`). Âm thanh chuẩn được sinh bằng mô hình tổng hợp tiếng nói Kokoro (`generate_audio.py`). Kết quả cuối cùng là hệ số tương quan Pearson $r$ giữa hai đường cao độ, hiện thực hóa mục tiêu đã nêu tại phần 0 của Mục 1.3.5: *"đối sánh tương quan Pearson ($r$) với các công cụ âm học chuẩn mực phòng thí nghiệm như Praat"*.
+### 1.1. Ranh giới triển khai: Mã nguồn Python nguyên bản vs. Hệ thống FPGA Edge Node
+Trước khi đi sâu vào mã nguồn của từng hàm, cần định vị dự án `Pitch-Project` trong bức tranh kiến trúc tổng thể **FPGA Edge Node $\leftrightarrow$ Shared Folder $\leftrightarrow$ Server** đã thiết lập tại Hình 1.3.5a (Mục 0.1):
+- **Trong kho lưu trữ `Pitch-Project` (Môi trường thực nghiệm máy tính):** Toàn bộ quy trình chạy trên CPU/GPU máy chủ: tổng hợp âm thanh bằng Kokoro TTS, cắt lặng bằng Librosa, đo cao độ bằng Praat C++ (qua Parselmouth), nhận diện mốc từ bằng Whisper, căn chỉnh và tính điểm tương quan Pearson $r$.
+- **Khi triển khai thực tế trên vi mạch FPGA (Hệ thống mục tiêu):** Bo mạch FPGA DE10-Standard gánh trọn vẹn khâu tiền xử lý (HPF 60 Hz và cắt lặng) và chạy song song hai luồng phần cứng: (1) Nhánh STFT Log-Mel phục vụ trực tiếp bộ mã hóa Whisper (hoặc trích xuất WAV sạch), và (2) Nhánh đo cao độ tự tương quan Mục 1.3.5 ghi trực tiếp mảng nhị phân `pitch_f0.bin` ra Thư mục dùng chung (Shared Folder). Máy chủ chỉ cần đọc `pitch_f0.bin` và mốc từ để chấm điểm $r$, **hoàn toàn không cần cài đặt hay chạy Praat/Parselmouth**.
 
-### 1.2. Luồng xử lý một câu (theo `main.py`)
+### 1.2. Bài toán của dự án
+Dự án giải quyết bài toán định lượng và so sánh **đường cong cao độ (pitch contour)** — tức chuỗi giá trị tần số cơ bản $F_0$ biến thiên theo thời gian — giữa một câu tiếng Anh do giọng tham chiếu chuẩn đọc (giọng tổng hợp nữ Mỹ `sarah`) với cùng câu đó do một người học hoặc giọng đọc khác đọc (các giọng nam Mỹ, ví dụ `michael`). Tín hiệu âm thanh được tổng hợp tự động bằng mô hình Kokoro TTS (`generate_audio.py`). Kết quả đánh giá cuối cùng là hệ số tương quan Pearson ($r$) giữa hai đường cao độ đã được căn chỉnh thời gian.
+
+### 1.3. Luồng xử lý một câu (theo `main.py`)
 1. `trim_silence_and_save` (`audio_processing.py`): Cắt bỏ khoảng lặng ở hai đầu tệp âm thanh và ghi ra tệp WAV đã cắt.
 2. `extract_features_praat` (`audio_processing.py`): Đo đường cao độ $F_0$ trên **chính tệp WAV đã cắt** bằng công cụ Praat (thông qua thư viện liên kết `parselmouth`).
 3. `get_user_timestamps` (`evaluator.py`): Nạp mô hình nhận dạng tiếng nói tự động Whisper (`openai/whisper`) bóc tách mốc thời gian từ ($w_{\text{start}}, w_{\text{end}}$) trên **chính tệp WAV đã cắt**.
 4. `plot_analysis` (`visualizer.py`): Gọi chuỗi 4 hàm trong `audio_processing.py` (`get_local_chunk`, `equalize_local_chunk`, `dynamic_sliding_window_pearson`, `summarize_pearson`) để căn chỉnh hai đường cao độ và tính Pearson $r$.
 5. `summarize_sentence_reports` (`audio_processing.py`): Gom toàn bộ kết quả của nhiều câu thành bảng thống kê phân phối độ chính xác theo các ngưỡng tích lũy.
-
-Ghi chú quan trọng trong `main.py` (dòng 72): *"Both pitch and timestamps must refer to exactly this trimmed WAV"*. Điều này bảo đảm cả đường $F_0$ lẫn mốc thời gian từ đều dùng chung một gốc thời gian $t = 0$; nếu đo trên hai tệp khác nhau (trước và sau khi cắt), trục thời gian sẽ bị lệch nhau đúng bằng thời lượng đoạn lặng ban đầu bị cắt bỏ.
 
 ```
 +------------------------------------+       +------------------------------------+       +------------------------------------+
@@ -550,42 +698,44 @@ Ghi chú quan trọng trong `main.py` (dòng 72): *"Both pitch and timestamps mu
                        | Khung 40 ms, bước 10 ms, 15 u.viên |        | Trích xuất mốc từ (w_start, w_end) |
                        +-----------------+------------------+        +-----------------+------------------+
                                          | Mảng F0 (0 Hz = Unvoiced)                   | Mốc từ (w_start, w_end)
-                                         v                                             v
-                       +----------------------------------------------------------------------------------+
-                       |           Căn chỉnh theo từ (visualizer.py & audio_processing.py)                |
-                       | 1. get_local_chunk: Cắt đoạn theo tỉ lệ i = |_ (t/D) . N _|                      |
-                       | 2. equalize_local_chunk: Nội suy np.interp về cùng độ dài từ chuẩn               |
-                       | 3. Ghép vào mảng cao độ chung stitched_user_pitch                                |
-                       +-----------------------------------------+----------------------------------------+
-                                                                 |
-                                                                 v
-                       +----------------------------------------------------------------------------------+
-                       |           Cửa sổ trượt Pearson (dynamic_sliding_window_pearson)                  |
-                       | Kích thước W = 2N/(K+2) (chứa ~ 2 từ), bước trượt S = W/2                        |
-                       | Lọc điểm hữu thanh: (u_i > 0) & (v_i > 0) ==> Tính hệ số Pearson r               |
-                       +-----------------------------------------+----------------------------------------+
-                                                                 | Chuỗi Pearson r
-                                                                 v
-                       +----------------------------------------------------------------------------------+
-                       |         Tổng hợp điểm số (summarize_pearson & summarize_sentence_reports)        |
-                       | Bỏ NaN, kẹp r <= 0 về 0 ==> mean_r in [0, 1]                                     |
-                       | Thống kê tích lũy câu theo các ngưỡng >= 0.9; >= 0.8; ...; >= 0.3                |
-                       +----------------------------------------------------------------------------------+
+                                         +------------------------------+--------------+
+                                                                        |
+                                                                        v
+                                              +---------------------------------------------------+
+                                              |      Căn chỉnh theo từ (audio_processing.py)      |
+                                              | 1. get_local_chunk: Cắt đoạn i = floor((t/D)*N)   |
+                                              | 2. equalize_local_chunk: Nội suy np.interp        |
+                                              | 3. Ghép vào mảng cao độ stitched_user_pitch       |
+                                              +-------------------------+-------------------------+
+                                                                        |
+                                                                        v
+                                              +---------------------------------------------------+
+                                              |    Cửa sổ trượt Pearson (audio_processing.py)     |
+                                              | Kích thước W = 2N/(K+2) (~2 từ), bước S = W/2     |
+                                              | Lọc hữu thanh: (u_i > 0) & (v_i > 0) -> Pearson r |
+                                              +-------------------------+-------------------------+
+                                                                        | Chuỗi Pearson r
+                                                                        v
+                                              +---------------------------------------------------+
+                                              |       Tổng hợp điểm số (audio_processing.py)      |
+                                              | Bỏ NaN, kẹp r <= 0 về 0 -> mean_r in [0, 1]       |
+                                              | Thống kê tích lũy câu: >= 0.9, >= 0.8, ..., >= 0.3|
+                                              +---------------------------------------------------+
 ```
 
-*Hình 1.3.5f: Sơ đồ luồng xử lý âm thanh, trích xuất hai luồng song song (Praat $F_0$ và Whisper Timestamps) và thuật toán đối sánh ngữ điệu trong mã nguồn Python (`audio_processing.py` và `evaluator.py`).*
+*Hình 1.3.5g: Sơ đồ luồng xử lý âm thanh, trích xuất hai luồng song song (Praat $F_0$ và Whisper Timestamps) và thuật toán đối sánh ngữ điệu trong mã nguồn Python (`audio_processing.py` và `evaluator.py`).*
 
-**Đọc Hình 1.3.5f (Hướng dẫn chi tiết từng thành phần trực quan):**
-1. **Khối Tệp Âm Thanh Thô và Khối Tiền xử lý cắt lặng (Hàng 1):** Tệp âm thanh do Kokoro TTS sinh ra ở tần số 24 kHz được đưa qua hàm `trim_silence_and_save`. Hàm này dùng `librosa.effects.trim` với ngưỡng `top_db = 30 dB` (tương ứng biên độ giảm còn 3,2%) để cắt bỏ các khoảng lặng ở hai đầu tệp, sinh ra tệp WAV đã cắt làm gốc thời gian chuẩn $t = 0$ cho cả hai nhánh phía sau.
-2. **Nhánh Luồng 1 — Đo Cao Độ Praat (Hàng 2, Bên trái):** Gọi hàm `extract_features_praat`. Lệnh `snd.to_pitch()` chạy mã C++ nguyên bản của Praat trên tín hiệu 24 kHz, dùng cửa sổ Hanning 40 ms (960 mẫu), bước nhảy 10 ms (240 mẫu), tính tự tương quan bù suy hao và giải thuật Viterbi 15 ứng viên. Kết quả trả về mảng `pitch` chứa tần số $F_0$ (quy ước 0 Hz là khung vô thanh), trong khi mảng mốc thời gian thực `xs()` bị bỏ qua.
-3. **Nhánh Luồng 2 — Nhận Diện Mốc Thời Gian Từ (Hàng 2, Bên phải):** Gọi `get_user_timestamps` trong `evaluator.py`. Tín hiệu được lấy mẫu lại từ 24 kHz về 16 kHz để đưa vào mô hình Whisper `base` (chạy đặc trưng Log-Mel STFT). Whisper nhận dạng văn bản và xuất mốc thời gian bắt đầu và kết thúc của từng từ ($w_{\text{start}}, w_{\text{end}}$).
-4. **Khối Căn Chỉnh Theo Từ (Hàng 3):** Kết hợp kết quả từ hai nhánh: `get_local_chunk` cắt đoạn cao độ theo tỉ lệ thời gian $i = \lfloor (t/D) \cdot N \rfloor$, `equalize_local_chunk` dùng `np.interp` để co giãn đoạn cao độ của người đọc về đúng số điểm của giọng tham chiếu, rồi dán vào mảng cao độ đã căn chỉnh `stitched_user_pitch`.
-5. **Khối Cửa Sổ Trượt Pearson (Hàng 4):** Hàm `dynamic_sliding_window_pearson` tạo $K+1$ cửa sổ trượt có kích thước $W = 2N/(K+2)$ (chứa trọn khoảng 2 từ) và bước trượt $S = W/2$. Trong mỗi cửa sổ, chỉ giữ lại các điểm mà cả hai đường đều hữu thanh ($u_i > 0$ và $v_i > 0$) để tính hệ số tương quan Pearson $r$.
-6. **Khối Tổng Hợp Điểm Số (Hàng 5):** Hàm `summarize_pearson` loại bỏ các cửa sổ NaN, kẹp các giá trị tương quan không dương ($r \le 0$) về $0$, rồi tính trung bình để sinh ra điểm số `mean_r` của câu. Hàm `summarize_sentence_reports` thống kê số lượng câu đạt các ngưỡng tích lũy từ $\ge 0{,}9$ đến $\ge 0{,}3$.
+**Đọc Hình 1.3.5g (Hướng dẫn chi tiết từng thành phần trực quan):**
+1. **Khối Tệp Âm Thanh Thô và Khối Tiền xử lý cắt lặng (Hàng 1):** Tệp âm thanh do Kokoro TTS sinh ra ở tần số 24 kHz được đưa qua hàm `trim_silence_and_save` (dùng `librosa.effects.trim`, $\text{top\_db} = 30\text{ dB}$, biên độ $3{,}2\%$) để cắt bỏ khoảng lặng hai đầu, thiết lập gốc thời gian chuẩn $t = 0$.
+2. **Nhánh Luồng 1 — Đo Cao Độ Praat (Hàng 2, Bên trái):** Gọi hàm `extract_features_praat`. Lệnh `snd.to_pitch()` chạy mã C++ Praat trên tín hiệu 24 kHz, dùng cửa sổ Hanning 40 ms (960 mẫu), bước nhảy 10 ms (240 mẫu), tự tương quan bù suy hao và Viterbi 15 ứng viên. Kết quả trả về mảng `pitch` ($0\text{ Hz}$ là vô thanh).
+3. **Nhánh Luồng 2 — Nhận Diện Mốc Thời Gian Từ (Hàng 2, Bên phải):** Gọi `get_user_timestamps` trong `evaluator.py`. Tín hiệu lấy mẫu lại về 16 kHz đưa vào Whisper `base` để xuất mốc từ ($w_{\text{start}}, w_{\text{end}}$).
+4. **Khối Căn Chỉnh Theo Từ (Hàng 3):** Kết hợp kết quả từ hai nhánh: cắt đoạn, nội suy `np.interp` về cùng độ dài từ chuẩn, rồi dán vào `stitched_user_pitch`.
+5. **Khối Cửa Sổ Trượt Pearson (Hàng 4):** Tạo cửa sổ trượt $W = 2N/(K+2)$ ($\approx 2$ từ), bước $S = W/2$, lọc các điểm cùng hữu thanh ($u_i > 0$ và $v_i > 0$) để tính Pearson $r$.
+6. **Khối Tổng Hợp Điểm Số (Hàng 5):** Bỏ NaN, kẹp $r \le 0$ về 0, tính trung bình `mean_r`, và thống kê tích lũy câu theo các ngưỡng $\ge 0{,}9 \dots \ge 0{,}3$.
 
-### 1.3. Hiểu lầm cần tránh ngay từ đầu
-- **`evaluator.py` không thực hiện việc chấm điểm:** Mặc dù mang tên "evaluator", tệp này chỉ đảm nhận việc nạp mô hình Whisper và trả về danh sách mốc thời gian từng từ. Toàn bộ logic so khớp, căn chỉnh và tính điểm tương quan ($r$) đều nằm trọn bên trong `audio_processing.py` và được điều phối bởi `visualizer.py`.
-- **Không có dòng mã Python nào tự tính tổng tự tương quan:** Công thức tính tự tương quan $\mathcal{R}_x[\tau]$ (Công thức 1), cửa sổ Hanning, phép chia bù suy hao (Công thức 6) và bảng tra đều không được cài đặt bằng mã Python tường minh. Toàn bộ các bước này được đóng gói bên trong lệnh gọi thư viện `snd.to_pitch()`.
+### 1.4. Hiểu lầm cần tránh ngay từ đầu
+- **`evaluator.py` không thực hiện việc chấm điểm:** Tệp này chỉ nạp Whisper và trả về mốc thời gian từ. Toàn bộ logic so khớp, căn chỉnh và tính điểm tương quan ($r$) đều nằm trọn trong `audio_processing.py`.
+- **Không có dòng mã Python nào tự tính tổng tự tương quan:** Công thức tự tương quan $\mathcal{R}_x[\tau]$, cửa sổ Hanning, phép chia bù suy hao và bảng tra đều được đóng gói bên trong lệnh gọi thư viện `snd.to_pitch()`.
 
 ---
 
@@ -593,19 +743,18 @@ Ghi chú quan trọng trong `main.py` (dòng 72): *"Both pitch and timestamps mu
 
 | Thuật ngữ tiếng Việt | Thuật ngữ tiếng Anh | Định nghĩa chuẩn mực trong ngữ cảnh mã nguồn |
 | :--- | :--- | :--- |
-| Khung phân tích | Frame | Đoạn gồm $L$ mẫu tín hiệu liên tiếp dùng để tính một giá trị $F_0$ (Mục 1.3.5, phần 2). |
-| Bước nhảy trượt khung | Time step / Hop size ($\Delta t_{\text{hop}}$) | Khoảng thời gian giữa tâm đối xứng của hai khung phân tích liên tiếp (10 ms). |
-| Điểm cao độ | Pitch point | Một phần tử trong mảng `pitch`: giá trị $F_0$ (đơn vị Hz) của khung; bằng 0 nếu là vô thanh. |
+| Khung phân tích | Frame | Đoạn gồm $L$ mẫu liên tiếp để tính một giá trị $F_0$. |
+| Bước nhảy trượt khung | Time step / Hop size ($\Delta t_{\text{hop}}$) | Khoảng thời gian giữa tâm hai khung liên tiếp ($10\text{ ms}$). |
+| Điểm cao độ | Pitch point | Một phần tử trong mảng `pitch`: giá trị $F_0$ (Hz); bằng 0 nếu là vô thanh. |
 | Hữu thanh / Vô thanh | Voiced / Unvoiced | Trạng thái khung tín hiệu có / không có dao động tuần hoàn của dây thanh quản. |
-| Tổng tự tương quan $\mathcal{R}_x[\tau]$ | Autocorrelation sum | Công thức (1) của Mục 1.3.5: tổng tích các cặp mẫu trễ $\tau$, **không phải là tích chập**. |
+| Tổng tự tương quan $\mathcal{R}_x[\tau]$ | Autocorrelation sum | Tổng tích các cặp mẫu trễ $\tau$, không phải tích chập. |
 | Hệ số tương quan Pearson $r$ | Pearson correlation coefficient | Thước đo mức độ hai chuỗi số đồng biến/nghịch biến tuyến tính, nằm trong $[-1, 1]$. |
 | Căn chỉnh thời gian | Time alignment | Đưa hai đường cao độ có độ dài khác nhau về cùng trục chỉ số để so sánh từng điểm. |
 
+*Bảng 1.3.5c: Bảng thuật ngữ chuyên dụng trong mã nguồn và đối sánh lý thuyết.*
+
 > **Cảnh báo nghiêm ngặt về hiện tượng trùng ký hiệu:**
-> Tài liệu Mục 1.3.5 dùng ký hiệu $r_x[\tau]$ cho **hàm tự tương quan chuẩn hóa theo độ trễ $\tau$** (Công thức 6), trong khi mã nguồn Python dùng biến `r`, `mean_r` để chỉ **hệ số tương quan tuyến tính Pearson** giữa hai đường cao độ. Hai đại lượng này hoàn toàn khác nhau về bản chất toán học:
-> - $r_x[\tau]$ đo mức độ một khung tín hiệu tương đồng với **chính nó** khi dịch trượt đi $\tau$ mẫu trong miền thời gian.
-> - Hệ số Pearson $r$ đo mức độ hai **đường cong cao độ $F_0$ của hai người nói khác nhau** có hình thái ngữ điệu lên bổng xuống trầm giống nhau hay không.
-> Phụ lục này luôn viết tường minh cụm từ "Pearson $r$" để loại trừ mọi sự nhầm lẫn.
+> Ký hiệu $r_x[\tau]$ ở Mục 1.3.5 là **hàm tự tương quan chuẩn hóa theo độ trễ $\tau$** (đo một khung tương đồng với chính nó khi trượt đi $\tau$ mẫu). Biến `r`, `mean_r` trong mã nguồn Python là **hệ số tương quan tuyến tính Pearson** giữa hai đường cong cao độ $F_0$ của hai người nói khác nhau. Hai đại lượng này hoàn toàn khác nhau.
 
 ---
 
@@ -621,200 +770,158 @@ def extract_features_praat(audio_path, verbose=False):
     return pitch, time_stamps
 ```
 
-### 3.2. Bảng ánh xạ tham số chuẩn Praat
-Lệnh `snd.to_pitch()` gọi hàm C++ `Sound_to_Pitch_ac` trong mã nguồn Praat với đầy đủ 10 tham số mặc định:
+### 3.2. Cơ chế thực thi của từng dòng lệnh
+1. `parselmouth.Sound(audio_path)`: Nạp tệp WAV thành đối tượng âm thanh trong bộ nhớ C++ của Praat.
+2. `pitch_object = snd.to_pitch()`: Kích hoạt hàm C++ `Sound_to_Pitch_ac` với **toàn bộ 10 tham số mặc định** (Bảng 1.3.5a): `time_step = 0.01s`, `pitch_floor = 75Hz`, `pitch_ceiling = 600Hz`, `very_accurate = off`, `max_candidates = 15`, `silence_threshold = 0.03`, `voicing_threshold = 0.45`, `octave_cost = 0.01`, `octave_jump_cost = 0.35`, `voiced_unvoiced_cost = 0.14`.
+3. `selected_array['frequency']`: Trích xuất ứng viên tối ưu toàn cục mà thuật toán Viterbi đã chọn cho từng khung. Khung vô thanh được gán 0. `np.nan_to_num` bảo đảm $0\text{ Hz} \equiv \text{Vô thanh}$.
+4. `pitch_object.xs()`: Trả về mảng mốc thời gian vật lý tại tâm đối xứng của từng khung. Trong `main.py`, mảng này bị bỏ qua (`pitch, _ = extract_features_praat(...)`).
 
-| Bước giải thuật bên trong `snd.to_pitch()` (Praat C++) | Tham số tương ứng | Vị trí trong lý thuyết Mục 1.3.5 |
+### 3.3. Ánh xạ chi tiết từ Praat C++ sang lý thuyết Mục 1.3.5
+
+| Bước thực thi bên trong `snd.to_pitch()` | Vị trí trong Mục 1.3.5 | Công thức / Tham số liên kết |
 | :--- | :--- | :--- |
-| Cắt khung phân tích độ dài 3 chu kỳ của $75\text{ Hz}$ ($40\text{ ms}$) | `pitch_floor = 75.0` | Mục 3.A (Quy tắc 3 chu kỳ) |
-| Bước nhảy trượt khung $\Delta t_{\text{hop}} = 0{,}75 / 75 = 0{,}01\text{ s}$ ($10\text{ ms}$) | `time_step = 0.0` (Auto) | Mục 3.C (Tham số 1) |
-| Áp cửa sổ Hanning (vuốt êm hai đầu mút về 0) | `very_accurate = False` | Mục 3.B và Mục 3.C (Tham số 4) |
-| Tính tổng tự tương quan rời rạc $\mathcal{R}_x[\tau]$ | — | Công thức (1) |
-| Bù suy hao cửa sổ bằng phép chia $r_x[\tau] = \mathcal{R}_x[\tau] / \mathcal{R}_w[\tau]$ | — | Công thức (6) và (7) |
-| Giới hạn không gian tìm kiếm cực đại trong $[\tau_{\text{min}}, \tau_{\text{max}}]$ | `pitch_ceiling = 600.0` | Công thức (3) và (4) |
-| Trích xuất 14 đỉnh cực đại cục bộ + 1 ứng viên Vô thanh | `max_number_of_candidates = 15` | Mục 3.C (Tham số 5) |
-| Phạt khoảng lặng $\theta_{\text{silence}} = 0{,}03$ và ngưỡng thanh tính $\theta_{\text{voice}} = 0{,}45$ | `silence_threshold`, `voicing_threshold` | Mục 3.C (Tham số 6, 7) |
-| Áp mức phạt thiên vị log-lag nội khung để chống nhảy xuống $F_0/2$ | `octave_cost = 0.01` | Mục 3.C (Tham số 8) |
-| Giải thuật quy hoạch động Viterbi tìm đường đi mượt mà toàn câu | `octave_jump_cost = 0.35`, `voiced_unvoiced_cost = 0.14` | Mục 3.C (Tham số 9, 10), Hình 1.3.5c |
-| Xuất tần số cơ bản của khung: $F_0 = f_s / \tau^*$ | — | Mục 2 |
+| Cắt khung 3 chu kỳ của $75\text{ Hz} = 40\text{ ms}$, bước $10\text{ ms}$ | Mục 3.A | Quy tắc Boersma, Tham số 1–2 |
+| Nhân cửa sổ Hanning (do `very_accurate = off`) | Mục 3.B | Lựa chọn kỹ thuật Hanning, Tham số 4 |
+| Tính tự tương quan $\mathcal{R}_x[\tau]$ | Mục 2 | Công thức tính tổng tự tương quan |
+| Bù suy hao cửa sổ bằng phép chia cho $\mathcal{R}_w[\tau]$ | Mục 3.B | Công thức hệ số bù $C[\tau]$ |
+| Giới hạn dải tìm kiếm đỉnh trong $[\tau_{\min}, \tau_{\max}]$ | Mục 2 | Dải quét $[27, 213]$ mẫu |
+| Trích xuất 14 đỉnh cực đại + 1 ứng viên Vô thanh | Mục 3.C | Tham số 5, 6, 7 (ngưỡng 0,45 và 0,03) |
+| Phạt log-lag nội khung để tránh nhảy xuống $F_0/2$ | Mục 3.C | Tham số 8 (`octave_cost = 0.01`) |
+| Quy hoạch động Viterbi xuyên suốt câu nói | Mục 4 | Tham số 9–10, Hình 1.3.5d (nhánh Praat) |
+| Xuất giá trị cao độ $F_0 = f_s / \tau^*$ | Mục 2 | Công thức thẻ tóm tắt |
 
-### 3.3. Đi sâu vào các hệ quả toán học
+*Bảng 1.3.5d: Đối chiếu chi tiết giữa lệnh gọi `snd.to_pitch()` và các công thức của Mục 1.3.5.*
+
+### 3.4. Chỗ mã nguồn khác lý thuyết và hệ quả kỹ thuật
 
 **(a) Tần số lấy mẫu thực tế là $24\text{ kHz}$ thay vì $16\text{ kHz}$:**
-Mô hình tổng hợp giọng nói Kokoro trong `generate_audio.py` ghi tệp âm thanh ở tần số lấy mẫu $f_s = 24.000\text{ Hz}$ (`sf.write(..., 24000)`). Hàm `trim_silence_and_save` nạp tệp với `sr=None` (giữ nguyên tần số lấy mẫu gốc) rồi ghi đè lại cùng tần số. Vì vậy, Praat thực hiện đo đạc $F_0$ trên tín hiệu $f_s = 24.000\text{ Hz}$. Các con số tính toán chuyển đổi:
-
-$$\tau_{\text{min}} = \left\lceil \frac{24.000}{600} \right\rceil = \mathbf{40\text{ mẫu}}, \qquad \tau_{\text{max}} = \left\lfloor \frac{24.000}{75} \right\rfloor = \mathbf{320\text{ mẫu}}$$
-
+Kokoro TTS sinh tệp âm thanh ở $f_s = 24.000\text{ Hz}$. Do đó dải lag mẫu thực tế trong Praat là:
+$$\tau_{\min} = \lceil 24.000 / 600 \rceil = \mathbf{40\text{ mẫu}}, \qquad \tau_{\max} = \lfloor 24.000 / 75 \rfloor = \mathbf{320\text{ mẫu}}$$
 $$L = 0{,}040 \times 24.000 = \mathbf{960\text{ mẫu}}, \qquad \Delta t_{\text{hop}} = 0{,}01 \times 24.000 = \mathbf{240\text{ mẫu}}$$
+Dải lag mở rộng từ $[27, 213]$ (187 lag) lên $[40, 320]$ (281 lag). Thời lượng vật lý (40 ms, 10 ms) và dải tần số (75–600 Hz) hoàn toàn không đổi.
 
-- Dải quét độ trễ mở rộng từ $[27, 213]$ ($187\text{ lag}$ ở $16\text{ kHz}$) lên $[40, 320]$ ($281\text{ lag}$ ở $24\text{ kHz}$).
-- Độ dài khung phân tích tăng từ $640\text{ mẫu}$ lên $960\text{ mẫu}$.
-- **Thời lượng vật lý** của khung ($40\text{ ms}$) và dải **tần số vật lý** ($75\text{--}600\text{ Hz}$) hoàn toàn không đổi.
+**(b) Có quy hoạch động Viterbi và 15 ứng viên:**
+Praat trên máy trạm duyệt toàn bộ câu nói qua ma trận 15 ứng viên, trong khi FPGA streaming rút gọn lấy 1 ứng viên cực đại tức thời kết hợp bộ lọc trung vị 3 điểm.
 
-*Cảnh báo ứng dụng số học:* Một đỉnh tương quan tại $\tau^* = 200\text{ mẫu}$ trong mã nguồn này tương ứng với $F_0 = 24.000 / 200 = 120\text{ Hz}$. Nếu áp nhầm công thức $16\text{ kHz}$ của Mục 1.3.5 vào dữ liệu này, kết quả sẽ bị sai lệch nghiêm trọng: $16.000 / 200 = 80\text{ Hz}$!
+**(c) Thiếu bước lọc thông cao (HPF) 60 Hz:**
+Mã Python đưa thẳng tín hiệu tổng hợp vào Praat mà không lọc. Chấp nhận được vì giọng Kokoro rất sạch, nhưng khi lên FPGA với micro thật bắt buộc phải có HPF 60 Hz.
 
-**(b) Về độ phân giải và bậc thang hóa:**
-Ở $f_s = 24\text{ kHz}$, bước nhảy 1 mẫu trễ ở cận trần cao độ tạo sai số $\Delta F_0 = \frac{24.000}{40} - \frac{24.000}{41} \approx 14{,}6\text{ Hz}$, mịn hơn đáng kể so với mức $22\text{ Hz}$ ở $16\text{ kHz}$. Đặc biệt, Praat sử dụng phép nội suy parabol/sinc bậc cao quanh đỉnh để tìm cực trị dưới mức mẫu rời rạc (sub-sample interpolation), nên đường cao độ thu được trong Python không bị lỗi bậc thang hóa như thiết kế phần cứng FPGA số nguyên.
+**(d) Giải phẫu chính xác cơ chế tính toán trong mã nguồn C++ của Praat (`fon/Sound_to_Pitch.cpp`):**
+- **Praat không tự lấy mẫu lại:** Hàm `Sound_to_Pitch_any` đọc trực tiếp mảng mẫu và dùng nghịch đảo tần số gốc `dx`. Tại 24 kHz, cửa sổ là 960 mẫu.
+- **Praat tính tự tương quan bằng FFT theo định lý Wiener–Khinchin:**
+  1. Trừ trung bình cục bộ (`localMean`) trước khi nhân cửa sổ để khử DC.
+  2. Nhân cửa sổ Hanning: `0.5 - 0.5 * cos(2*pi*i/(nsamp_window+1))`.
+  3. Đệm số 0 lên lũy thừa của 2: với 638 mẫu và độ sâu nội suy 0,5, ngưỡng là 957, nên Praat đệm lên `nsampFFT = 1024` ("To avoid edge effects, we have to append zeroes to the window").
+  4. Thực hiện chuỗi: Forward FFT $\to$ tính bình phương biên độ $|X[k]|^2 = \text{re}^2 + \text{im}^2 \to$ Backward IFFT. Kết quả `ac` chính là hàm tự tương quan.
+  5. Bù suy hao bằng phép chia cho `windowR` (tự tương quan của cửa sổ): `r[i] = ac[i+1] / (ac[1] * windowR[i+1])`.
+  6. Nội suy Sinc dưới mẫu (sinc interpolation) tìm cực trị liên tục.
+- **Tính tương đương toán học:** Phương pháp FFT với zero-padding đủ lớn ($\ge L + \tau_{\max}$) và phương pháp tổng trực tiếp trong miền thời gian $\sum x_{\text{win}}[n] x_{\text{win}}[n+\tau]$ trên FPGA **hoàn toàn tương đương về mặt toán học** (sai lệch $< 10^{-14}$). Sai lệch thực tế chỉ đến từ nội suy sinc và Viterbi.
 
-**(c) Thuật toán Viterbi và 15 ứng viên:**
-Mã Python sử dụng toàn bộ sức mạnh quy hoạch động Viterbi toàn cục (nhánh Praat trong Hình 1.3.5c). Nhờ có toàn bộ câu thoại trong bộ nhớ, đường $F_0$ của Praat loại bỏ triệt để các bước nhảy octave giả tạo.
-
-**(d) Không có bộ lọc High-Pass (HPF) 60 Hz:**
-Trong mã nguồn Python, tín hiệu không được đưa qua bộ lọc thông cao HPF 60 Hz như yêu cầu nghiêm ngặt tại Mục 1.1.5 và Mục 4. Tuy nhiên, vì âm thanh đầu vào là âm thanh tổng hợp nhân tạo (Kokoro TTS), tín hiệu hoàn toàn sạch nhiễu cơ học tần số cực thấp (tiếng rung mặt bàn, tiếng gió micrô), nên sự thiếu vắng HPF không gây tác hại nghiêm trọng trong môi trường thử nghiệm này.
-
-**(e) Bỏ rơi mảng mốc thời gian thực `xs()`:**
-Praat trả về mảng thời điểm tâm khung `pitch_object.xs()`. Tuy nhiên, trong `main.py` dòng 77:
-```python
-user_pitch, _ = extract_features_praat(user_wav_path)
-```
-Mảng thời gian thực này bị bỏ qua bằng biến `_`, dẫn đến việc các hàm phía sau phải dùng phép suy diễn thời gian xấp xỉ tuyến tính (xem Mục 5.1).
+### 3.5. Bản chất trục thời gian của mảng `pitch`
+Tâm đối xứng của khung phân tích đầu tiên lùi về sau khoảng nửa khung ($\approx 20\text{ ms}$). Đây chính là hiện tượng "độ lệch tâm pha" đã phân tích ở Hình 1.3.5e.
 
 ---
 
-## 4. `trim_silence_and_save`: Điểm Xuất Phát Của Dòng Thời Gian
+## 4. `trim_silence_and_save`: Cắt Khoảng Lặng Hai Đầu
 
 ### 4.1. Mã nguồn
 ```python
-def trim_silence_and_save(audio_path, trimmed_path, top_db=30):
-    y, sr = librosa.load(audio_path, sr=None)
-    y_trimmed, _ = librosa.effects.trim(y, top_db=top_db)
-    if not len(y_trimmed) or not np.any(y_trimmed):
-        raise ValueError(f"File {audio_path} is completely silent.")
-    sf.write(trimmed_path, y_trimmed, sr)
+y, sr = librosa.load(audio_path, sr=None)
+y_trimmed, _ = librosa.effects.trim(y, top_db=top_db)  # top_db = 30
+if not len(y_trimmed) or not np.any(y_trimmed):
+    raise ValueError(...)
+sf.write(trimmed_path, y_trimmed, sr)
 ```
 
-### 4.2. Cơ chế và ý nghĩa của ngưỡng 30 dB
-Hàm `librosa.effects.trim` chia tín hiệu thành các khung ngắn (mặc định $2.048\text{ mẫu}$, bước nhảy $512\text{ mẫu}$), tính năng lượng hiệu dụng RMS của từng khung và đổi sang đơn vị Decibel tương đối so với khung có năng lượng lớn nhất câu ($0\text{ dBFS}$). Mọi khung ở hai đầu tệp có mức năng lượng thấp hơn đỉnh quá $\text{top\_db} = 30\text{ dB}$ đều bị loại bỏ:
+### 4.2. Cơ chế vật lý
+Hàm `librosa.effects.trim` chia tín hiệu thành các khung ngắn (2048 mẫu, bước 512 mẫu), tính năng lượng RMS và đổi sang dB quy chiếu theo khung lớn nhất. Khung nào thấp hơn đỉnh quá $\text{top\_db} = 30\text{ dB}$ bị cắt bỏ ở hai đầu.
+$$10^{-30/20} = 10^{-1{,}5} \approx \mathbf{0{,}0316} \implies \mathbf{3{,}2\%}$$
 
-$$\text{Tỉ số biên độ} = 10^{-\frac{30}{20}} \approx \mathbf{0{,}0316} \implies \mathbf{3{,}2\%}$$
+### 4.3. Đối chiếu giữa `top_db = 30` của Librosa và `silence_threshold = 0,03` của Praat
 
-Hàm chỉ cắt bỏ các đoạn lặng ở phần đầu (lead-in) và phần đuôi (lead-out), **tuyệt đối không cắt khoảng lặng giữa câu**. Mục đích cốt lõi là thiết lập gốc thời gian $t = 0$ đồng bộ giữa hai giọng đọc có thói quen dừng nghỉ ban đầu khác nhau.
-
-### 4.3. Phân biệt `top_db = 30` (librosa) và `silence_threshold = 0,03` (Praat)
-
-| Tiêu chí so sánh | `top_db = 30` (`librosa.effects.trim`) | `silence_threshold = 0,03` (Praat, Tham số 6) |
+| Đặc tính so sánh | Cắt khoảng lặng bằng Librosa (`top_db = 30`) | Ngưỡng khoảng lặng Praat (`silence_threshold = 0.03`) |
 | :--- | :--- | :--- |
-| **Bản chất tác động** | Cắt bỏ hoàn toàn các mẫu dữ liệu khỏi tệp WAV | Giữ nguyên tệp; chỉ gán nhãn $F_0 = 0$ cho khung yếu |
-| **Phạm vi xử lý** | Duy nhất hai đầu mút của tệp âm thanh | Toàn bộ mọi khung trên khắp chiều dài câu nói |
-| **Thước đo toán học** | Năng lượng RMS khung so với RMS cực đại (dB) | Biên độ đỉnh tức thời khung so với đỉnh toàn tệp |
-| **Mục đích thiết kế** | Đồng bộ hóa gốc thời gian chuẩn $t = 0$ cho hai người | Chống bắt nhầm nhiễu nền tuần hoàn thành âm hữu thanh |
+| **Bản chất toán học** | Tỷ số decibel: $20 \log_{10}(A / A_{\max}) = -30\text{ dB}$ | Tỷ số biên độ tuyến tính: $I / I_{\max} = 0{,}03$ |
+| **Giá trị quy đổi** | Biên độ rơi xuống dưới $3{,}16\%$ đỉnh file | Biên độ rơi xuống dưới $3{,}00\%$ đỉnh file |
+| **Phạm vi tác động** | Chỉ cắt bỏ phần lặng ở **đầu và đuôi tệp** | Đánh giá độc lập trên **từng khung $10\text{ ms}$** |
+| **Mục đích thiết kế** | Đồng bộ gốc thời gian $t = 0$ cho Whisper và Praat | Ngăn chặn việc dò cao độ giả trên nhiễu nền phòng |
+
+*Bảng 1.3.5e: So sánh bản chất giữa việc cắt lặng bằng Librosa và ngưỡng lặng của Praat.*
 
 ---
 
-## 5. Căn Chỉnh Hai Đường Cao Độ Theo Từng Từ
+## 5. `get_local_chunk` và `equalize_local_chunk`: Cắt Đoạn và Co Giãn Thời Gian
 
-### 5.1. `get_local_chunk`: Cắt đoạn cao độ của một từ
+### 5.1. `get_local_chunk`: Cắt đoạn cao độ theo mốc từ
 ```python
-def get_local_chunk(raw_array, w_start, w_end, total_dur):
-    N = len(raw_array)
-    i1 = int((w_start / total_dur) * N)
-    i2 = int((w_end / total_dur) * N)
-    return raw_array[i1:i2]
+i = int((t / D) * N)
 ```
-Chuyển đổi mốc thời gian giây ($w_{\text{start}}, w_{\text{end}}$) nhận từ Whisper thành chỉ số khung mảng theo quy tắc tỉ lệ:
+- $t$: Mốc thời gian của từ (giây) do Whisper cung cấp.
+- $D$: Tổng thời lượng của tệp âm thanh (giây).
+- $N$: Tổng số điểm cao độ trong mảng `pitch`.
+- Sai lệch tiềm ẩn: Công thức tuyến tính này bỏ qua độ lệch tâm pha ban đầu $20\text{ ms}$, gây lệch tối đa khoảng nửa khung ($\le 2$ điểm cao độ).
 
-$$i = \left\lfloor \frac{t}{D} \cdot N \right\rfloor$$
-
-*Đánh giá sai số:* Phép tính tỉ lệ giả định các khung phân bố đều từ $t = 0$ đến $t = D$. Trong thực tế của Praat, tâm khung đầu tiên nằm lùi vào khoảng nửa khung ($t_1 \approx 20\text{ ms}$ — hiện tượng lệch tâm pha ở Hình 1.3.5d). Sai số tối đa do bỏ rơi mảng `xs()` là khoảng nửa khung ($\le 20\text{ ms}$, tương đương $\le 2$ điểm cao độ). Vì cả giọng mẫu lẫn giọng người đọc đều chịu chung sai số này, chúng phần lớn triệt tiêu lẫn nhau khi so sánh.
-
-### 5.2. `equalize_local_chunk`: Co giãn thời gian tuyến tính
+### 5.2. `equalize_local_chunk`: Co giãn thời gian bằng nội suy tuyến tính
 ```python
-def equalize_local_chunk(user_chunk, ref_chunk):
-    if len(user_chunk) == 0 or len(ref_chunk) == 0:
-        return np.zeros(len(ref_chunk))
-    x_ref = np.linspace(0, 1, len(ref_chunk))
-    x_user = np.linspace(0, 1, len(user_chunk))
-    return np.interp(x_ref, x_user, user_chunk)
+interp_indices = np.linspace(0, len(chunk) - 1, target_len)
+equalized = np.interp(interp_indices, np.arange(len(chunk)), chunk)
 ```
-Hàm chuẩn hóa trục thời gian của từ về đoạn $[0, 1]$, sau đó dùng hàm nội suy 1D `np.interp` để co giãn đoạn cao độ của người đọc về đúng số điểm của giọng tham chiếu. Đây là phép co giãn thời gian tuyến tính (Linear Time Warping) cục bộ theo từng từ.
+Co giãn đoạn cao độ của người đọc về đúng số điểm của từ tương ứng trong giọng tham chiếu để so sánh từng điểm.
 
-### 5.3. Nguy cơ tiềm ẩn: Sinh tần số $F_0$ giả mạo khi nội suy qua điểm vô thanh
-Hàm `np.interp` coi mảng đầu vào là các con số liên tục, không nhận biết quy ước $0\text{ Hz} = \text{Vô thanh}$. Nếu một từ chuyển trạng thái từ vô thanh sang hữu thanh qua hai điểm kế tiếp $[0\text{ Hz}, 200\text{ Hz}]$, phép nội suy tại điểm giữa sẽ tạo ra giá trị $100\text{ Hz}$. Đây là một **giá trị $F_0$ giả tạo** (dây thanh quản không bao giờ rung ở tần số 100 Hz tại thời điểm đó). Vì $100 > 0$, điểm giả này lọt qua bộ lọc hữu thanh ở khâu sau và có thể làm suy giảm hệ số tương quan Pearson $r$.
-
-### 5.4. Ghép nối mảng cao độ chung (`stitched_user_pitch`)
-Hàm `plot_analysis` khởi tạo mảng `stitched_user_pitch` toàn số 0 có độ dài đúng bằng đường tham chiếu ($N_{\text{ref}}$). Các từ nhận diện đúng được dán vào đúng các vị trí chỉ số tương ứng. Các từ bị đọc sai hoặc khoảng lặng giữa các từ vẫn giữ giá trị 0 và sẽ bị bộ lọc hữu thanh loại bỏ.
+### 5.3. Nguy cơ tiềm ẩn: Sinh $F_0$ giả mạo khi nội suy qua ranh giới vô thanh ($0\text{ Hz}$)
+Hàm `np.interp` không biết số $0$ là "Vô thanh". Giữa hai điểm $[0, 200]\text{ Hz}$, phép nội suy sinh ra điểm $100\text{ Hz}$ — một tần số giả mạo không có thật trong giọng nói, lọt qua bộ lọc thanh tính và làm suy giảm nhân tạo hệ số Pearson $r$.
 
 ---
 
-## 6. `dynamic_sliding_window_pearson`: Đo Hình Thái Ngữ Điệu Thay Vì Giá Trị Tuyệt Đối
+## 6. `dynamic_sliding_window_pearson`: Đo Ngữ Điệu Bằng Cửa Sổ Trượt
 
 ### 6.1. Mã nguồn
 ```python
-def dynamic_sliding_window_pearson(u_curve, r_curve, num_words):
-    N = len(r_curve)
-    W = max(6, int((2 * N) / (num_words + 2)))
-    if W % 2 != 0:
-        W -= 1
-    S = max(1, W // 2)
-    num_slides = num_words + 1
-
-    r_list = []
-    for i in range(num_slides):
-        start = i * S
-        end = min(start + W, N)
-        if i == num_slides - 1:
-            end = N
-        u_win = u_curve[start:end]
-        r_win = r_curve[start:end]
-        valid = (u_win > 0) & (r_win > 0)
-        if np.sum(valid) >= 3 and np.std(u_win[valid]) > 0 and np.std(r_win[valid]) > 0:
-            r = np.corrcoef(u_win[valid], r_win[valid])[0, 1]
-        else:
-            r = np.nan
-        r_list.append(r)
-    return r_list
+def dynamic_sliding_window_pearson(user_p, sarah_p, word_count):
+    N = len(user_p)
+    K = max(1, word_count)
+    window_size = max(4, int((2 * N) / (K + 2)))
+    step_size = max(1, window_size // 2)
+    ...
 ```
 
-### 6.2. Nguồn gốc công thức kích thước cửa sổ động
-Gọi $K = \text{num\_words}$ (số từ của câu chuẩn), $N$ là tổng số điểm cao độ. Thuật toán tạo ra $K+1$ cửa sổ trượt có kích thước $W$, bước trượt $S = W/2$. Tổng chiều dài bao phủ:
+### 6.2. Kích thước cửa sổ động theo số từ
+Kích thước cửa sổ $W = \frac{2N}{K+2}$ bảo đảm mỗi cửa sổ bao trọn khoảng **2 từ** liên tiếp, và bước trượt $S = W/2$ tạo độ gối chồng 50%.
 
-$$\text{Tổng phủ} = K \cdot S + W = K \frac{W}{2} + W = \frac{(K + 2)W}{2}$$
+### 6.3. Bộ lọc điểm hữu thanh
+```python
+mask = (u > 0) & (v > 0)
+```
+Chỉ tính Pearson khi cả hai giọng cùng phát ra âm hữu thanh. Nếu số điểm hữu thanh $< 3$ hoặc phương sai bằng 0, gán `np.nan`.
 
-Đặt tổng chiều dài bằng đúng độ dài câu $N$:
-
-$$\frac{(K + 2)W}{2} = N \implies W = \frac{2N}{K + 2}$$
-
-Công thức này bảo đảm:
-- Kích thước mỗi cửa sổ luôn tương đương với **thời lượng trung bình của khoảng 2 từ**.
-- Mỗi cửa sổ chứa đủ thông tin ngữ điệu của một cụm từ ngắn.
-- Các cửa sổ gối nhau $50\%$ giúp quét mượt mà khắp câu mà không bỏ sót các điểm chuyển tiếp.
-
-### 6.3. Bản chất toán học của hệ số tương quan Pearson
-Trong mỗi cửa sổ, chỉ xét tập hợp $M$ điểm mà cả hai đường đều hữu thanh ($u_i > 0$ và $v_i > 0$). Công thức Pearson:
-
-$$r = \frac{\sum_{i=1}^M (u_i - \bar{u})(v_i - \bar{v})}{\sqrt{\sum_{i=1}^M (u_i - \bar{u})^2} \sqrt{\sum_{i=1}^M (v_i - \bar{v})^2}}$$
-
-### 6.4. Tính bất biến Affine và ý nghĩa âm học
-Hệ số Pearson $r$ có tính chất bất biến trước các phép biến đổi affine đồng dạng ($u_i = a \cdot v_i + b$ với $a > 0$). Nếu giọng nam `michael` nói trầm hơn giọng nữ `sarah` đúng một quãng tám ($u_i = 0{,}5 \cdot v_i$) nhưng có đường nét luyến láy lên bổng xuống trầm giống hệt nhau, hệ số tương quan vẫn đạt mức tối đa:
-
-$$r = \mathbf{1{,}0}$$
-
-Điều này chứng minh hệ số Pearson $r$ **chỉ đo hình thái đường cong ngữ điệu**, hoàn toàn không bị ảnh hưởng bởi sự chênh lệch cao độ bẩm sinh giữa nam và nữ.
+### 6.4. Ý nghĩa vật lý của Pearson $r$
+Pearson $r$ **bất biến đối với phép biến đổi afin dương** ($r(X, aY + b) = r(X, Y)$ với mọi $a > 0$). Giọng nam trầm hơn giọng nữ 1 quãng tám ($F_{0, \text{nam}} = 0{,}5 F_{0, \text{nữ}}$) vẫn đạt $r = 1{,}0$ nếu ngữ điệu cùng lên bổng xuống trầm. Pearson $r$ đo **hình thái ngữ điệu**, không đo độ cao tuyệt đối.
 
 ---
 
 ## 7. `summarize_pearson` và `summarize_sentence_reports`: Từ Cửa Sổ Đến Điểm Số
 
-### 7.1. Điểm số của một câu (`mean_r`)
+### 7.1. Tổng hợp điểm số cho một câu
 ```python
-def summarize_pearson(r_list):
-    arr = np.array(r_list, dtype=float)
-    valid = arr[np.isfinite(arr)]
-    if len(valid) == 0:
-        return {"mean_r": 0.0, "valid_r_count": 0, "missing_r_count": len(arr)}
-    mean_r = float(np.maximum(valid, 0).mean())
-    return {"mean_r": mean_r, "valid_r_count": len(valid), "missing_r_count": len(arr) - len(valid)}
+valid = values[np.isfinite(values)]
+mean_r = float(np.maximum(valid, 0).mean())
 ```
-1. Loại bỏ các cửa sổ NaN (không đủ 3 điểm hữu thanh hoặc phương sai bằng 0).
-2. Kẹp toàn bộ các giá trị tương quan âm hoặc bằng 0 về mức 0 (`np.maximum(valid, 0)`): coi tương quan âm là không đạt chuẩn ngữ điệu, không phạt thêm điểm âm.
-3. Tính trung bình số học sinh ra điểm số `mean_r` nằm trong đoạn $[0, 1]$.
+1. Loại bỏ các cửa sổ NaN.
+2. Kẹp toàn bộ các giá trị tương quan âm hoặc bằng 0 về mức 0 (`np.maximum(valid, 0)`): xem tương quan âm là sai ngữ điệu, không phạt âm thêm.
+3. Tính trung bình cộng sinh ra điểm số `mean_r` nằm trong $[0, 1]$.
+
+*Ví dụ số:* Dãy $[0{,}9;\ 0{,}8;\ \text{NaN};\ -0{,}4;\ 0{,}7;\ 0{,}6;\ \text{NaN};\ 0{,}85;\ 0{,}75]$.
+- Bỏ 2 NaN $\implies$ còn 7 giá trị.
+- Kẹp $-0{,}4 \to 0$.
+- Tổng: $0{,}9 + 0{,}8 + 0 + 0{,}7 + 0{,}6 + 0{,}85 + 0{,}75 = 4{,}6$.
+- Điểm: $\text{mean\_r} = 4{,}6 / 7 \approx \mathbf{0{,}657}$.
 
 ### 7.2. Thống kê tích lũy nhiều câu (`summarize_sentence_reports`)
-Hàm quét qua các câu đã xử lý thành công và đếm số lượng câu đạt điểm vượt qua các ngưỡng tích lũy từ $\ge 0{,}9$ đến $\ge 0{,}3$.
+Đếm số lượng câu đạt điểm $\ge 0{,}9; \ge 0{,}8; \dots; \ge 0{,}3$.
 
 ---
 
-## 8. `evaluator.py`: Vai Trò Thực Sự và Kiến Trúc Song Song Hai Luồng
+## 8. `evaluator.py`: Nhận Diện Mốc Thời Gian Bằng Whisper và Các Phương Án Nhẹ Hơn
 
 ### 8.1. Mã nguồn chính
 ```python
@@ -838,10 +945,34 @@ def get_user_timestamps(audio_path, model):
 ```
 
 ### 8.2. Kiến trúc song song hai luồng (Log-Mel Frontend vs. Pitch Stream)
-- `evaluator.py` nạp tệp âm thanh $24\text{ kHz}$, lấy mẫu lại về **$16\text{ kHz}$** để cấp cho mô hình Whisper.
-- Whisper sử dụng đặc trưng **Log-Mel Spectrogram** (Mục 1.3) để nhận dạng văn bản và trích xuất mốc thời gian từ ($w_{\text{start}}, w_{\text{end}}$). Whisper hoàn toàn không quan tâm đến tần số cơ bản $F_0$.
-- Đồng thời, `extract_features_praat` chạy độc lập trên tín hiệu $24\text{ kHz}$ để trích xuất đường cao độ $F_0$.
-- Đây chính là sự hiện thực hóa hoàn hảo của **kiến trúc song song hai luồng** được đề xuất tại phần 0 của Mục 1.3.5: Luồng Mel nhận diện từ, Luồng Pitch đo thanh tính và ngữ điệu!
+- `evaluator.py` nạp tệp âm thanh 24 kHz, lấy mẫu lại về **16 kHz** để cấp cho Whisper. Whisper biến đổi thành **Log-Mel Spectrogram** (Mục 1.3) để nhận dạng từ và trích xuất mốc thời gian ($w_{\text{start}}, w_{\text{end}}$).
+- Luồng đo cao độ Praat giữ nguyên tín hiệu 24 kHz để bảo toàn độ phân giải chu kỳ thanh quản.
+- Đây chính là sự hiện thực hóa rõ nét của **mô hình hai luồng xử lý song song** ở Mục 0.
+
+### 8.3. Có thể thay Whisper bằng thuật toán nhẹ hơn không?
+
+**Vì sao câu hỏi này đáng hỏi:**
+Trong bài toán chấm điểm phát âm, **văn bản chuẩn đã biết trước 100%**. Việc chạy một mô hình nhận dạng tiếng nói lớn (hàng trăm triệu tham số như Whisper) chỉ để đoán lại chữ và lấy mốc thời gian gián tiếp là sự lệch pha giữa công cụ và nhiệm vụ. Có hai phương án nhẹ hơn và chính xác hơn:
+
+**Phương án 1 — Căn chỉnh cưỡng bức (Forced Alignment):**
+Thay vì hỏi "người này nói gì", hỏi thẳng "câu đã biết này khớp vào đoạn âm thanh này ở đâu":
+- **Montreal Forced Aligner (MFA):** dùng mô hình âm học GMM-HMM hoặc nơ-ron nhỏ cộng từ điển phát âm. Độ chính xác ranh giới từ $< 20\text{ ms}$.
+- **Kaldi / Vosk:** nhẹ, chạy mượt trên CPU.
+- **`torchaudio.pipelines.MMS_FA`:** mô hình wav2vec2 căn chỉnh chuyên dụng, chạy vài chục mili-giây trên CPU.
+*Ưu điểm:* Vì đã biết văn bản, thuật toán **không thể nhận dạng sai chữ** — sai số chỉ nằm ở trục thời gian.
+
+**Phương án 2 — Dynamic Time Warping (DTW) trên chuỗi 80 Log-Mel:**
+Bỏ luôn bước nhận dạng chữ. Ta đã có sẵn ma trận 80 dải Log-Mel của câu mẫu và của người học (tính trên FPGA từ Mục 1.3). DTW tìm đường đi tối ưu uốn cong trục thời gian giữa hai chuỗi vector đặc trưng:
+$$D[i][j] = \lVert a_i - b_j \rVert^2 + \min\bigl(D[i-1][j],\; D[i][j-1],\; D[i-1][j-1]\bigr)$$
+*Ưu điểm:* **Hoàn toàn không cần mô hình nhận dạng nào**, tận dụng trực tiếp ma trận 80 Log-Mel do FPGA tính sẵn!
+
+| Tiêu chí | Whisper (hiện tại) | Forced Alignment | DTW trên Mel |
+|---|:---:|:---:|:---:|
+| Cần mô hình nhận dạng | Có (lớn) | Không | Không |
+| Cần văn bản chuẩn | Không | Có | Không (chỉ cần câu mẫu) |
+| Sai số ranh giới từ | Phụ thuộc nhận dạng | $< 20\text{ ms}$ | Phụ thuộc độ dài câu |
+| Chạy được trên CPU | Chậm | Nhanh | Rất nhanh |
+| Rủi ro chính | Nhận dạng sai chữ | Cần từ điển phát âm | Lệch khi đọc sai từ |
 
 ---
 
@@ -855,17 +986,19 @@ def get_user_timestamps(audio_path, model):
 | **Thời lượng khung / Bước** | $40\text{ ms}$ ($640$ mẫu) / $10\text{ ms}$ ($160$ mẫu) | $40\text{ ms}$ ($960$ mẫu) / $10\text{ ms}$ ($240$ mẫu) | Trùng khớp về mặt thời lượng vật lý |
 | **Loại cửa sổ phân tích** | Cửa sổ Hanning đối xứng bậc 640 | Hanning (`very_accurate = False`) | Trùng khớp về bản chất giải tích |
 | **Bù suy hao cửa sổ** | Bảng tra ROM $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ | Praat tự động chia $r_x[\tau] = \mathcal{R}_x[\tau]/\mathcal{R}_w[\tau]$ | Trùng khớp về mặt bản chất giải thuật |
-| **Cơ chế chọn đỉnh** | Chọn cực đại tức thời cục bộ (1 ứng viên) | 15 ứng viên + Viterbi + Nội suy cực trị | Bản Python mượt hơn, bản FPGA tối ưu độ trễ bằng 0 |
+| **Cơ chế chọn đỉnh** | Chọn cực đại tức thời cục bộ (1 ứng viên) + Lọc trung vị 3 điểm | 15 ứng viên + Viterbi + Nội suy cực trị | Bản Python mượt hơn, bản FPGA tối ưu độ trễ bằng 0 |
 | **Lọc thông cao HPF 60 Hz**| Bắt buộc có ở tầng tiền xử lý | Không xuất hiện trong mã nguồn | Chấp nhận được vì âm thanh Kokoro tổng hợp rất sạch |
 | **Khử khoảng lặng** | Ngưỡng năng lượng khung tức thời tĩnh | Thêm `librosa.trim` $30\text{ dB}$ ở hai đầu | Bước cắt của Python nhằm mục đích đồng bộ trục thời gian |
 | **Phương pháp đối sánh** | Phân loại thanh điệu hoặc Pearson $r$ | Cửa sổ trượt Pearson $r$ theo kích thước động | Khẳng định Pearson đo hình thái, không đo tần số tuyệt đối |
 | **Tần số lấy mẫu STT** | $16\text{ kHz}$ (chuẩn Log-Mel STFT) | $16\text{ kHz}$ (Whisper resample) | Tách bạch hoàn hảo hai luồng Mel và Pitch |
 
+*Bảng 1.3.5f: Bảng tổng hợp đối chiếu toàn diện giữa thiết kế lý thuyết Mục 1.3.5 và mã nguồn thực tế.*
+
 ---
 
 ## 10. Danh Sách 8 Điểm Vênh Kỹ Thuật và Bài Học Thiết Kế Hệ Thống
 
-1. **Bỏ rơi mảng mốc thời gian thực `xs()`:** Việc quy đổi mốc từ sang chỉ số khung qua tỉ lệ $i = \lfloor (t/D) \cdot N \rfloor$ tạo ra sai lệch tối đa khoảng nửa khung ($\approx 20\text{ ms}$) do bỏ qua độ lệch tâm pha ban đầu.
+1. **Bỏ rơi mảng mốc thời gian thực `xs()`:** Việc quy đổi mốc từ sang chỉ số khung qua tỉ lệ $i = \lfloor (t/D) \cdot N \rfloor$ tạo ra sai lệch tối đa khoảng nửa khung ($\le 2$ điểm cao độ) do bỏ qua độ lệch tâm pha ban đầu $20\text{ ms}$.
 2. **Nguy cơ sinh tần số $F_0$ giả mạo khi nội suy:** Phép gọi `np.interp` qua các ranh giới vô thanh ($0\text{ Hz}$) sinh ra các giá trị tần số nhân tạo nằm giữa 0 và tần số thật, làm méo mó hệ số Pearson $r$.
 3. **Độ lệch tần số lấy mẫu ($24\text{ kHz}$ vs. $16\text{ kHz}$):** Không được áp dụng trực tiếp bảng tra ROM hoặc dải lag $[27, 213]$ của tài liệu vào dữ liệu âm thanh $24\text{ kHz}$ của dự án mà phải tính lại bảng tra theo $[40, 320]$.
 4. **Vắng bóng bộ lọc thông cao HPF 60 Hz:** Khi chuyển sang xử lý giọng nói người thật thu qua micrô ở môi trường thực địa trên FPGA, bắt buộc phải khôi phục khối HPF 60 Hz của Mục 1.1.5 để bảo vệ thuật toán khỏi nhiễu tần số thấp.
@@ -873,4 +1006,3 @@ def get_user_timestamps(audio_path, model):
 6. **Vai trò thực tế của `evaluator.py`:** Không thực hiện chức năng đánh giá ngữ điệu mà chỉ đóng vai trò trích xuất mốc thời gian từ bằng mô hình Whisper.
 7. **Pearson tính trên Hertz tuyến tính:** Việc tính tương quan trực tiếp trên thang đo Hz thay vì thang đo bán âm (semitones / thang log) tạo ra trọng số thiên vị lớn hơn cho các đoạn luyến ở vùng âm vực cao.
 8. **Sai số dấu phẩy động ở ngưỡng tích lũy:** Biểu thức `threshold / 10` trong Python gặp sai số dấu phẩy động rất nhỏ của chuẩn IEEE-754 ($0{,}30000000000000004$), cần lưu ý khi xây dựng logic so sánh cứng trên phần cứng RTL.
-
