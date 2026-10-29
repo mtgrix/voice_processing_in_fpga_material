@@ -1,78 +1,191 @@
 \clearpage
 \phantomsection
-\section*{Chương 13. Xác minh ba tầng (float $\to$ fixed $\to$ RTL)}
-\addcontentsline{toc}{section}{Chương 13. Xác minh ba tầng (float → fixed → RTL)}
-\pdfbookmark[1]{Chương 13. Xác minh ba tầng (float → fixed → RTL)}{chuong13}
+\section*{Chương 13. Kiểm chứng ba tầng: float / fixed / RTL}
+\addcontentsline{toc}{section}{Chương 13. Kiểm chứng ba tầng: float / fixed / RTL}
+\pdfbookmark[1]{Chương 13. Kiểm chứng ba tầng: float / fixed / RTL}{chuong13}
 
 \begin{learningobj}
-Sau chương này bạn vận hành ba tầng xác minh; viết TB Avalon-ST có valid-gap; so cent với Praat; điền bảng tài nguyên từ Fitter (không bịa); và giải thích từng mục ngân sách xác minh.
+Sau Chương~13, người học sẽ:
+\begin{enumerate}[leftmargin=1.4em]
+    \item Vận hành được quy trình kiểm chứng ba tầng: (1)~mô hình float đối chiếu Praat; (2)~mô hình dấu phẩy tĩnh twin đối chiếu float; (3)~RTL/sim đối chiếu twin bit-exact.
+    \item Định nghĩa và tính tay được ba chỉ số cổ điển \textbf{GPE}, \textbf{VDE}, \textbf{FFE} (Gross Pitch Error, Voicing Decision Error, Fine/F0 Frame Error) kèm ví dụ số đã kiểm Python.
+    \item Viết testbench Avalon-ST có \texttt{valid}-gap và backpressure, đếm beat, so Q12.4 với golden.
+    \item Điền bảng tài nguyên từ báo cáo Fitter thật (không bịa số), và giải thích vì sao mỗi tầng bắt một lớp lỗi khác nhau.
+\end{enumerate}
 \end{learningobj}
 
-\begin{firstprin}{Ba tầng bắt ba lớp lỗi khác nhau}
-Silicon không chạy Python. Mỗi tầng khoanh một lớp:
+\subsection*{13.1. Hiện tượng thật: ba tầng bắt ba lớp lỗi}
+
+\begin{firstprin}{Silicon không chạy Python --- hãy khoanh đúng lớp}
+Một đường $F_0$ sai có thể đến từ rất nhiều chỗ: nhầm công thức Boersma, sai Q-format, sai handshake, quên bão hòa, đảo endian. Nếu nhảy thẳng vào Signal Tap trên DE10, bạn sẽ mất ngày để đoán. Ba tầng kiểm chứng tách bạch ba lớp:
 \begin{itemize}[leftmargin=1.4em]
-\item \textbf{Float} (Praat/NumPy): sai công thức / thứ tự bước.
-\item \textbf{Fixed} (twin integer): sai Q-format, round/sat, thứ tự shift.
-\item \textbf{RTL} (sim/Signal Tap): sai handshake, latency, reset, X-prop.
+    \item \textbf{Tầng 1 --- Float vs Praat:} cùng wav, cùng time step $10\,\text{ms}$, cùng floor/ceiling $75$--$600\,\text{Hz}$. Sai ở đây là sai \emph{thuật toán / thứ tự bước} (quên chuẩn hóa $C[\tau]$, sai parabolic, tắt nhầm silence gate).
+    \item \textbf{Tầng 2 --- Fixed twin vs Float:} cùng công thức nhưng mọi phép toán dùng Q$m.n$, round/sat/shift giống RTL. Sai ở đây là sai \emph{lượng tử hóa và làm tròn}.
+    \item \textbf{Tầng 3 --- RTL vs Fixed:} ModelSim/Questa hoặc Signal Tap dump từng mẫu/từng khung. Mục tiêu lab: \textbf{$0$ bit mismatch} trên vector golden. Sai ở đây là sai \emph{handshake, latency, reset, X-propagation}.
 \end{itemize}
-Ba vector bắt buộc: \texttt{zero}, \texttt{DC}, \texttt{clip}. Thêm \texttt{valid}-gap: source hạ \texttt{valid} khi sink vẫn \texttt{ready} --- bắt bug giữ data (Ch.~11). Nhảy thẳng RTL khi float sai = lãng phí ngày debug FSM.
+Nhảy thẳng tầng~3 khi tầng~1 còn đỏ chính là lãng phí ngày debug FSM.
 \end{firstprin}
 
-\subsection*{Toán --- ngân sách sai số cent}
+Ba vector bắt buộc mọi khối tiền xử lý (đã nêu Chương~3): \texttt{zero} (toàn $0$), \texttt{DC} (hằng khác $0$), \texttt{clip} (đụng $\pm 32767$). Thêm vector sine $75/100/200/440/590\,\text{Hz}$, nhiễu trắng, âm xát $/s/$, và hai đoạn giọng thật --- cùng tinh thần \texttt{verify\_tiers.py}.
 
-Sai số cao độ đo bằng cent: $\Delta=1200\log_2(F_{\mathrm{hw}}/F_{\mathrm{ref}})$. Mỗi stage (DC, FIR lượng tử, window Q1.15, MAC cắt bit, $C[\tau]$ Q3.13, parabolic, LPM\_DIVIDE) góp vài cent. Ngân sách lab tổng: thường $<20$--$30$ cent trên sine/giọng sạch so Praat cùng tham số. Vượt ngân sách $\Rightarrow$ lần ngược từ peak về FIR, không đoán.
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth,
+  tier/.style={draw, rounded corners, align=center, minimum width=3.6cm, minimum height=1.15cm}]
+  \node[tier, fill=blue!10] (t1) {Tầng 1\\Float $\leftrightarrow$ Praat\\GPE / VDE / FFE};
+  \node[tier, fill=teal!10, right=1.1cm of t1] (t2) {Tầng 2\\Fixed $\leftrightarrow$ Float\\sai số cent / Q};
+  \node[tier, fill=orange!12, right=1.1cm of t2] (t3) {Tầng 3\\RTL $\leftrightarrow$ Fixed\\bit-exact + beat};
+  \draw[->, very thick] (t1)-- (t2);
+  \draw[->, very thick] (t2)-- (t3);
+  \node[below=0.45cm of t1, font=\scriptsize, align=center]{Công thức\\thứ tự bước};
+  \node[below=0.45cm of t2, font=\scriptsize, align=center]{Q-format\\round / sat};
+  \node[below=0.45cm of t3, font=\scriptsize, align=center]{Handshake\\latency / X};
+\end{tikzpicture}
+\caption{Ba tầng kiểm chứng: mỗi tầng khoanh một lớp lỗi; chỉ xuống tầng dưới khi tầng trên đã xanh trên cùng bộ vector.}
+\label{fig:ch13_three_tiers}
+\end{figure}
 
-\subsection*{Ví dụ tính tay --- đếm beat khi gap}
+\subsection*{13.2. Toán: GPE, VDE, FFE --- định nghĩa từng ký hiệu}
 
-Giả sử stage nhận 10 beat \\texttt{valid}, xen kẽ \\texttt{ready}=0 trong 3 chu kỳ. Số mẫu phải ra vẫn là 10 --- không ``bù'' mẫu giả, không bỏ mẫu. Đếm beat vào $=$ đếm beat ra (trừ chỗ decimate cố ý). Twin TB: ép gap ngẫu nhiên; assert đếm.
+Trong đánh giá cao độ chuẩn (Rabiner, Chu \& Alwan, v.v.), mỗi khung được gắn nhãn hữu thanh/vô thanh bởi tham chiếu (ở đây: Praat) và bởi hệ thống (float / fixed / RTL). Ký hiệu:
+\begin{itemize}[leftmargin=1.4em]
+    \item $N$: tổng số khung có mặt cả hai hệ thống.
+    \item $N_{VV}$: số khung cả tham chiếu lẫn hệ thống đều hữu thanh.
+    \item $F_{\mathrm{ref}}[k]$, $F_{\mathrm{hw}}[k]$: cao độ (Hz) trên các khung cùng hữu thanh.
+\end{itemize}
 
-\subsection*{TB + twin (ý tưởng)}
+\paragraph{GPE --- Gross Pitch Error (Sai cao độ thô).}
+\begin{equation}
+\label{eq:ch13_gpe}
+\mathrm{GPE}=\frac{1}{N_{VV}}\bigl|\bigl\{k\in VV:\ \bigl|F_{\mathrm{hw}}[k]/F_{\mathrm{ref}}[k]-1\bigr|>0{,}2\bigr\}\bigr|.
+\end{equation}
+Ngưỡng $20\%$ roughly một quãng gần (khoảng lớn hơn sai số tinh). GPE cao thường báo octave error ($F_0/2$ hoặc $2F_0$) --- đúng bệnh Chương~8--10 khi quên $C[\tau]$ hoặc voicing nuốt đỉnh đúng.
 
-TB đọc \texttt{golden\_pcm.hex} / \texttt{golden\_f0.hex}; LFSR tạo valid-gap; scoreboard so Q12.4. Twin Python:
+\paragraph{VDE --- Voicing Decision Error (Sai quyết định hữu/vô thanh).}
+\begin{equation}
+\label{eq:ch13_vde}
+\mathrm{VDE}=\frac{N_{\mathrm{FV}}+N_{\mathrm{FU}}}{N},
+\end{equation}
+với $N_{\mathrm{FV}}$ = false voiced (hệ thống báo V khi tham chiếu UV), $N_{\mathrm{FU}}$ = false unvoiced (ngược lại). VDE cao $\Rightarrow$ xem lại ngưỡng $V$, $S$, warmup $P_{\mathrm{global}}$ (Chương~10).
+
+\paragraph{FFE --- F0 Frame Error (gộp).}
+Nhiều báo cáo lab định nghĩa FFE là tỷ lệ khung ``hỏng'' theo nghĩa \emph{hoặc} sai voicing \emph{hoặc} GPE trên khung cùng hữu thanh:
+\begin{equation}
+\label{eq:ch13_ffe}
+\mathrm{FFE}=\frac{N_{\mathrm{VDE\ frames}}+N_{\mathrm{GPE\ frames}}}{N}.
+\end{equation}
+(Một số tài liệu gọi ``Fine Error'' là sai số cent trung bình trên khung \emph{không} GPE; lab này dùng FFE dạng frame-error tổng hợp như trên và ghi rõ trong báo cáo.)
+
+\paragraph{Sai số cent trên khung ``tinh''.}
+\begin{equation}
+\Delta_{\mathrm{cent}}[k]=1200\log_2\bigl(F_{\mathrm{hw}}[k]/F_{\mathrm{ref}}[k]\bigr).
+\end{equation}
+Ngân sách lab trên sine/giọng sạch: $\max|\Delta_{\mathrm{cent}}| < 20$---$30$~cent sau khi đã loại khung GPE (nếu có). Mỗi stage (DC, FIR lượng tử, window Q1.15, MAC cắt bit, $C[\tau]$ Q3.13, parabolic, LPM\_DIVIDE, Q12.4) góp vài cent; vượt ngân sách thì lần ngược từ peak về FIR, không đoán.
+
+\subsection*{13.3. Ví dụ tính tay --- chỉ số và cent (đã kiểm Python)}
+
+\paragraph{Cent.} $F_{\mathrm{hw}}=199{,}466\,\text{Hz}$ (parabolic Chương~9), $F_{\mathrm{ref}}=200\,\text{Hz}$:
+\[
+\Delta_{\mathrm{cent}}=1200\log_2(199{,}466/200)\approx -4{,}629\,\text{cent}.
+\]
+Nằm trong ngân sách $20$~cent.
+
+\paragraph{Đồ thị nhầm lẫn giả định $N=20$ khung.} Giả sử $N_{VV}=14$, trong đó $2$ khung lệch $>20\%$ (octave); thêm $3$ khung sai voicing (không trùng hai khung GPE):
+\[
+\mathrm{GPE}=\frac{2}{14}\approx 0{,}1429,\qquad
+\mathrm{VDE}=\frac{3}{20}=0{,}15,\qquad
+\mathrm{FFE}=\frac{5}{20}=0{,}25.
+\]
+Script \texttt{verify/verify\_chuong\_10\_14.py} khẳng định các tỷ số này. Trên sine sạch lab, mục tiêu thực tế: $\mathrm{GPE}\approx 0$, $\mathrm{VDE}$ thấp, $|\Delta_{\mathrm{cent}}|<20$.
+
+\paragraph{LSB Q12.4.} Tại $200\,\text{Hz}$, $0{,}0625\,\text{Hz}$ $\approx 0{,}541\,\text{cent}$ --- nhỏ hơn nhiều so với $-4{,}6\,\text{cent}$ của parabolic ở ví dụ trên, nên tầng pack hiếm khi là thủ phạm GPE.
+
+\subsection*{13.4. Tầng 1: Float vs Praat}
+
+Thực hành khuyến nghị (Parselmouth hoặc Praat batch):
+\begin{verbatim}
+snd = parselmouth.Sound(wav, sampling_frequency=16000)
+pm = snd.to_pitch_ac(time_step=0.01, pitch_floor=75, pitch_ceiling=600)
+f_ref = pm.selected_array["frequency"]  # 0 = UV
+# f_float: twin float_pitch_frame tung hop
+# Do GPE/VDE/FFE chi tren khung overlap thoi gian
+\end{verbatim}
+Tham số bắt buộc khớp lab: time step $0{,}01\,\text{s}$, floor $75$, ceiling $600$, và (nếu đối chiếu sâu) cùng voicingThreshold $0{,}45$. Khác tham số $\Rightarrow$ ``sai số'' giả tạo.
+
+\subsection*{13.5. Tầng 2: Fixed twin vs Float}
+
+Twin cố định bit dùng cùng ROM Hanning Q1.15, ROM $C[\tau]$ Q3.13, cùng sat/shift như RTL. Đo:
+\begin{itemize}[leftmargin=1.4em]
+    \item Sai lệch cent trung bình / max giữa $F_{\mathrm{fixed}}$ và $F_{\mathrm{float}}$ trên khung cùng voiced;
+    \item Số khung đổi voicing so với float (thường $0$ trên sine).
+\end{itemize}
+Nếu tầng~1 xanh mà tầng~2 đỏ: nghi ngờ cắt bit MAC, quên dịch BFP (nếu dùng FFT), hoặc ROM $C[\tau]$ sai endian trong hex.
+
+\subsection*{13.6. Tầng 3: RTL vs Fixed --- bit-exact và testbench}
+
+\paragraph{Hợp đồng bit-exact.} Trên cùng \texttt{golden\_pcm.hex}, mọi khung Q12.4 dump từ sim phải bằng twin fixed: $0$ bit lệch. Không ``gần đúng'' ở tầng này.
+
+\paragraph{Testbench Avalon-ST.}
+\begin{itemize}[leftmargin=1.4em]
+    \item Đọc PCM hex $\to$ stream sample với \texttt{valid} có gap ngẫu nhiên (LFSR).
+    \item Sink hạ \texttt{ready} ngẫu nhiên ở mọi stage (đặc biệt MAC$\leftrightarrow$peak, pack$\leftrightarrow$HPS).
+    \item Đếm beat vào $=$ đếm beat ra (trừ decimate cố ý).
+    \item Scoreboard so $F_q$ với \texttt{golden\_f0.hex}.
+    \item Vector cạnh: zero / DC / clip phải cho $F_q=0$ hoặc hành vi DC-blocker đã định nghĩa (Chương~3).
+\end{itemize}
+
 \begin{verbatim}
 delta_cent = 1200 * np.log2(f_hw / f_praat)
-assert np.nanmax(np.abs(delta_cent[voiced])) < 20.0
+assert np.nanmax(np.abs(delta_cent[voiced_both])) < 20.0
+assert (q_rtl == q_fixed).all()  # tang 3
 \end{verbatim}
-Trích UG đúng số: Avalon~683091, FIR~683208, FFT~683374, LPM\_DIVIDE handbook. Fmax/ALM lấy Fitter report.
 
-\begin{costbox}
-\textbf{Ngân sách xác minh --- giải thích từng mục.}
-\begin{itemize}[leftmargin=1.2em]
-\item Sim time: giây--phút cho 1\,s audio @50\,MHz TB.
-\item Disk: golden hex vài MB --- commit cùng revision RTL.
-\item Người: không skip tầng float; mỗi fail gắn đúng tầng.
-\item Vì sao ba tầng: khoanh vùng; một TB ``tất cả'' không chỉ ra \emph{loại} lỗi.
-\end{itemize}
-\end{costbox}
+\paragraph{Tài liệu Intel cần mở đúng số.} Avalon~683091, FIR~683208, FFT~683374 (nếu bật), LPM\_DIVIDE handbook. Fmax/ALM/DSP/M10K lấy từ \emph{Fitter report} sau Place \& Route --- không bịa.
 
-\subsection*{Bảng tài nguyên (điền từ Fitter)}
+\subsection*{13.7. Bảng tài nguyên (điền từ Fitter)}
 
 \begin{center}\small
 \begin{tabular}{@{}lcccc@{}}\toprule
-Khối & ALM & DSP & M10K & Latency \\
+Khối & ALM & DSP & M10K & Latency (ck) \\
 \midrule
-PLL+I2S &  &  &  & \\
+PLL + I\textsuperscript{2}S &  &  &  & \\
 DC-blocker &  &  &  & \\
 FIR $2/3$ &  &  &  & \\
 Sliding RAM &  &  &  & \\
 Window &  &  &  & \\
 MAC ACF &  &  &  & \\
 ROM $C[\tau]$ &  &  &  & \\
-Peak+DIV &  &  &  & \\
-Voicing+med &  &  &  & \\
+Peak + DIV &  &  &  & \\
+Voicing + median-3 &  &  &  & \\
+FSM + pack Q12.4 &  &  &  & \\
 \midrule
-\textbf{Tổng} &  &  &  & \\
+\textbf{Tổng} (mục tiêu $\lesssim 850$ ALM, $3$ DSP, $4$ M10K) &  &  &  & \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\subsection*{Thực hành}
+\noindent Khi nộp bài (Chương~14), không được để trống các ô tổng nếu đã chạy Fitter --- điền số thật kèm ảnh chụp report.
 
-\begin{enumerate}[leftmargin=1.4em]
-\item Chạy zero/DC/clip trên DC-blocker twin --- kỳ vọng?
-\item Cố ý đảo endian Q12.4: cent fail thế nào?
-\item Điền một dòng Fitter thật vào bảng trên (không để trống khi nộp).
-\end{enumerate}
+\begin{costbox}
+\textbf{Ngân sách xác minh --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+    \item \textbf{Thời gian sim:} vài giây đến vài phút cho $1\,\text{s}$ audio @ $50\,\text{MHz}$ TB (tuỳ độ chi tiết dump).
+    \item \textbf{Disk:} golden hex vài MB --- commit cùng revision RTL để tái lập.
+    \item \textbf{Người:} không bỏ tầng float; mỗi fail gắn đúng tầng (GPE $\to$ thuật toán; cent fixed $\to$ Q-format; bit mismatch $\to$ RTL).
+    \item \textbf{Vì sao ba tầng:} một TB ``tất cả'' không chỉ ra \emph{loại} lỗi; tách tầng rút ngắn chu kỳ sửa.
+\end{itemize}
+\end{costbox}
 
-\noindent\textbf{Mở rộng.} Ngân sách sai số: mỗi stage (DC, FIR, window, MAC, $C$, parabolic, divide) góp vài cent; tổng mục tiêu $<20$--$30$ cent vs Praat trên giọng sạch. TB: kích DC, impulse, sine $F_0$ biết trước, wav thật. Khi gap \texttt{valid}, đếm beat không được ``bù'' giả. Điền bảng Fitter: ALM, DSP, M10K, Fmax --- đối chiếu costbox từng chương.
+\subsection*{13.8. Bài tập và lời giải giải thích}
 
+\paragraph{Bài tập 13.1.} Chạy twin DC-blocker trên zero / DC / clip. Kỳ vọng đầu ra định tính?
+
+\paragraph{Lời giải.} Zero $\to$ zero. DC hằng $\to$ sau vài hằng số thời gian $\alpha$, đầu ra $\to 0$ (zero tại $z=1$). Clip $\pm 32767$ xen kẽ $\to$ không được wrap thành âm lớn; sat\_16 giữ biên. Nếu clip tạo dao động limit-cycle, nghi \texttt{y\_acc} quá hẹp (Chương~3).
+
+\paragraph{Bài tập 13.2.} Cố ý đảo endian Q12.4 trên golden $200\,\text{Hz}$. GPE/cent thay đổi thế nào?
+
+\paragraph{Lời giải.} Server đọc $2048{,}75\,\text{Hz}$ (Chương~12). $|2048{,}75/200-1|\gg 0{,}2$ $\Rightarrow$ mọi khung đó thành GPE; $\Delta_{\mathrm{cent}}$ khổng lồ. Tầng~1 ``đỏ'' dù thuật toán đúng --- phải bắt bằng test pack/unpack trước khi đổ tội MAC.
+
+\paragraph{Bài tập 13.3.} Cho $N=20$, $N_{VV}=14$, $2$ GPE, $3$ VDE (rời nhau). Tính GPE, VDE, FFE.
+
+\paragraph{Lời giải.} $\mathrm{GPE}=2/14\approx 0{,}1429$, $\mathrm{VDE}=3/20=0{,}15$, $\mathrm{FFE}=5/20=0{,}25$ --- khớp script verify.
