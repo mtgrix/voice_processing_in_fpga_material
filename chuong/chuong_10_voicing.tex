@@ -56,7 +56,7 @@ Hình~\ref{fig:ch10_voicing_timeline} minh họa một đoạn sóng có nguyên
   \node[font=\scriptsize, gray!60!black] at (9.8,-0.45){UV};
   \node[font=\scriptsize, align=center] at (6.0,-1.35){Đường cam: chỉ báo $F_0$ khi cổng voicing = Hữu thanh;\\các khung UV xuất đúng $0$ (sẽ đóng gói Q12.4 $=0$ ở Chương~12).};
 \end{tikzpicture}
-\caption{Hình 10.1 --- Trực giác voicing: sóng có đoạn rung và đoạn im. Cổng voicing buộc $F_0=0$ trên khung vô thanh/im lặng trước khi median-3 và đóng gói.}
+\caption{Trực giác voicing: sóng có đoạn rung và đoạn im. Cổng voicing buộc $F_0=0$ trên khung vô thanh/im lặng trước khi median-3 và đóng gói.}
 \label{fig:ch10_voicing_timeline}
 \end{figure}
 
@@ -168,7 +168,7 @@ Spike $80\,\text{Hz}$ (thường là bắt nhầm $2T_0$ hoặc nhiễu) biến 
   \node[teal!80!black, font=\scriptsize, align=left] at (7.2,3.1){Median-3 (nét liền)\\trễ 1 khung};
   \node[gray!60!black, font=\scriptsize] at (1.2,3.1){Thô (nét đứt)};
 \end{tikzpicture}
-\caption{Hình 10.2 --- Median-3 đập một xung thấp đơn; đường xuất trễ đúng một khung so với quyết định voicing tức thời.}
+\caption{Median-3 đập một xung thấp đơn; đường xuất trễ đúng một khung so với quyết định voicing tức thời.}
 \label{fig:ch10_median3}
 \end{figure}
 
@@ -307,7 +307,7 @@ Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4
   \draw[->, thick] (and)--(out);
   \node[below=2mm of pl, font=\scriptsize, align=center]{$P_g\leftarrow$ IIR $\alpha=1/16$\\(max-hold tuỳ chọn)};
 \end{tikzpicture}
-\caption{Hình 10.5 --- Khối cổng voicing trên fabric: hai so sánh + AND; $P_g$ cập nhật chậm; UV ép $F_0=0$ trước median-3.}
+\caption{Khối cổng voicing trên fabric: hai so sánh + AND; $P_g$ cập nhật chậm; UV ép $F_0=0$ trước median-3.}
 \label{fig:ch10_voicing_gate}
 \end{figure}
 
@@ -328,7 +328,7 @@ Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4
   \node[below=8mm of $(u1)!0.5!(u2)$, align=center, font=\small]
     {Trellis Viterbi $2\times 2$: đường V$\to$V thắng dù $\delta(\mathrm{UV}_2)>\delta(V_2)$.};
 \end{tikzpicture}
-\caption{Hình 10.6 --- Lưới chuyển trạng thái rút gọn của \texttt{Pitch\_pathFinder}: chi phí $c_{ij}$ phạt nhảy V$\leftrightarrow$UV và octave.}
+\caption{Lưới chuyển trạng thái rút gọn của \texttt{Pitch\_pathFinder}: chi phí $c_{ij}$ phạt nhảy V$\leftrightarrow$UV và octave.}
 \label{fig:ch10_viterbi_trellis}
 \end{figure}
 
@@ -352,7 +352,7 @@ Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4
   \node[teal!70!black, left] at (0.2,0.6) {$f\_out$};
   \node[font=\scriptsize, align=left] at (8.2,3.0){Xuất trễ đúng\\1 hop so với med};
 \end{tikzpicture}
-\caption{Hình 10.7 --- Pipeline median-3 đăng ký: $\texttt{f\_out}$ lấy giá trị $\texttt{m\_reg}$ của nhịp trước, khớp Feynman box~11 (trễ nhóm $10\,\text{ms}$).}
+\caption{Pipeline median-3 đăng ký: $\texttt{f\_out}$ lấy giá trị $\texttt{m\_reg}$ của nhịp trước, khớp Feynman box~11 (trễ nhóm $10\,\text{ms}$).}
 \label{fig:ch10_median_pipe}
 \end{figure}
 
@@ -369,7 +369,7 @@ Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4
   \node[font=\scriptsize, align=left] at (4.5,-0.5)
     {So sánh chi phí silicon: giữ median trên fabric; chuyển pathFinder sang HPS nếu cần.};
 \end{tikzpicture}
-\caption{Hình 10.8 --- Trực giác ngân sách: median-3 + cổng voicing nằm gọn trong phần nhỏ của $\approx 850$ ALM; Viterbi đa ứng viên phá ngân sách lab.}
+\caption{Trực giác ngân sách: median-3 + cổng voicing nằm gọn trong phần nhỏ của $\approx 850$ ALM; Viterbi đa ứng viên phá ngân sách lab.}
 \label{fig:ch10_cost_bars}
 \end{figure}
 

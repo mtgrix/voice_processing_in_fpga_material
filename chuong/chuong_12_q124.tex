@@ -9,7 +9,7 @@ Sau Chương~12, người học sẽ:
 \begin{enumerate}[leftmargin=1.4em]
     \item Giải thích được hợp đồng số giữa FPGA và phần mềm phía trên: mỗi khung xuất một từ \textbf{uint16} theo thang \textbf{Q12.4} (đơn vị $1/16\,\text{Hz}$), ghi \textbf{little-endian}, khung vô thanh gửi đúng $0$.
     \item Tính tay và đóng gói được bảng $F_0\to$ Q12.4 $\to$ hai byte LE cho các mốc $0$, $75$, $150{,}0625$, $199{,}466$, $200$, $220$, $440$, $600$, $700$ (bão hòa), đã kiểm Python.
-    \item Đọc được bố trí bitfield (Hình~12.1--12.3), tách phần nguyên/frac, và giải mã đúng trên HPS.
+    \item Đọc được bố trí bitfield (Hình~\ref{fig:ch12_bitfield_layout}--\ref{fig:ch12_bit_199}), tách phần nguyên/frac, và giải mã đúng trên HPS.
     \item Ghép được cặp tệp kiểm chứng \texttt{audio\_16k.wav} (PCM $16\,\text{kHz}$) với \texttt{pitch\_f0.bin} (chuỗi uint16 LE đồng bộ theo hop $10\,\text{ms}$).
     \item Viết RTL pack có bão hòa trần $600\,\text{Hz}$ ($q=9600$) và twin \texttt{struct.pack("<H", q)} khớp từng bit; phân biệt lỗi thuật toán với lỗi giao thức (đảo endian, quên chia $16$).
 \end{enumerate}
@@ -88,7 +88,7 @@ Giải mã ngược: $3191/16=199{,}4375\,\text{Hz}$ (phần nguyên $199$, frac
 \]
 Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>2\,\text{kHz}$ --- GPE/FFE ở Chương~13 sẽ ``nổ'', trong khi RTL và twin pack vẫn xanh.
 
-\subsection*{12.4. Bố trí bitfield Q12.4 (Hình 12.1--12.3)}
+\subsection*{12.4. Bố trí bitfield Q12.4 (Hình~\ref{fig:ch12_bitfield_layout}--\ref{fig:ch12_bit_199})}
 
 \begin{figure}[H]
 \centering
@@ -98,14 +98,14 @@ Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>
     \draw[thick, fill=blue!3] (\x,0) rectangle (\x+0.58,0.85);
     \node[font=\scriptsize] at (\x+0.29,0.42) {\i};
   }
-  \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, teal!70!black]
-    (0,-0.15) -- (2.32,-0.15)
-    node[midway, below=7pt, font=\scriptsize]{frac (bit 3..0)};
   \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, blue!70!black]
-    (2.32,-0.15) -- (9.28,-0.15)
+    (0,-0.15) -- (6.96,-0.15)
     node[midway, below=7pt, font=\scriptsize]{phần nguyên (bit 15..4)};
+  \draw[decorate, decoration={brace, amplitude=5pt, mirror}, thick, teal!70!black]
+    (6.96,-0.15) -- (9.28,-0.15)
+    node[midway, below=7pt, font=\scriptsize]{frac (bit 3..0)};
 \end{tikzpicture}
-\caption{Hình 12.1 --- Bitfield Q12.4: bit~$0$ (LSB $=0{,}0625\,\text{Hz}$) bên phải; bit~$15$ bên trái.}
+\caption{Bitfield Q12.4: bit~$0$ (LSB $=0{,}0625\,\text{Hz}$) bên phải; bit~$15$ bên trái.}
 \label{fig:ch12_bitfield_layout}
 \end{figure}
 
@@ -118,10 +118,10 @@ Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>
     \draw[thick, fill={\ifnum\b=1 orange!40\else white\fi}] (\x,0) rectangle (\x+0.55,0.8);
     \node at (\x+0.275,0.4) {\b};
   }
-  \node[below] at (2.2,-0.35) {byte thấp \texttt{0x80} (LE trước)};
-  \node[below] at (6.6,-0.35) {byte cao \texttt{0x0C} (LE sau)};
+  \node[below] at (2.2,-0.35) {byte cao \texttt{0x0C} (LE sau)};
+  \node[below] at (6.6,-0.35) {byte thấp \texttt{0x80} (LE trước)};
 \end{tikzpicture}
-\caption{Hình 12.2 --- Bit pattern $200\,\text{Hz}$: trên tệp/bin là \texttt{80 0C}.}
+\caption{Bit pattern $200\,\text{Hz}$: trên tệp/bin là \texttt{80 0C}.}
 \label{fig:ch12_bit_200}
 \end{figure}
 
@@ -137,7 +137,7 @@ Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>
   \node[below, align=center] at (4.5,-0.55)
     {$3191\gg 4=199$, $3191\bmod 16=7$ $\Rightarrow 199{,}4375\,\text{Hz}$ sau giải mã.};
 \end{tikzpicture}
-\caption{Hình 12.3 --- Bit pattern sau parabolic; LE \texttt{77 0C}.}
+\caption{Bit pattern sau parabolic; LE \texttt{77 0C}.}
 \label{fig:ch12_bit_199}
 \end{figure}
 
