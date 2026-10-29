@@ -629,3 +629,110 @@ Chọn V tại $t = 3$, backpointer về V ở $t = 2$ rồi V ở $t = 1$. (Đ�
 
 \paragraph{Lời giải.} $\mathrm{cum}(V_2) = 0{,}48+\max(0{,}50-0{,}20,\,0{,}45-0{,}14) = 0{,}48+\max(0{,}30,\,0{,}31) = 0{,}79$ (bp $=$ UV!); $\mathrm{cum}(\mathrm{UV}_2) = 0{,}45+\max(0{,}50-0{,}14,\,0{,}45) = 0{,}90$. Unvoiced tạm thắng tại $t = 2$ --- minh họa jump cost quá nặng có thể ``bẻ'' đường voiced ổn định thành UV giả. Vì thế Praat gắn correction theo $\Delta t$ và chọn mặc định $0{,}35$ cho hop $10\,\text{ms}$.
 
+\subsection*{1.13. Bảng giữ / xấp xỉ / xóa trên FPGA}
+
+Trước khi mở Quartus, kỹ sư phải biết khối nào \emph{không} có trên fabric --- tránh tìm IP không tồn tại và tránh im lặng lệch Praat rồi đổ lỗi twin.
+
+\begin{center}\small
+\begin{tabular}{@{}p{4.2cm}p{4.2cm}p{4.2cm}@{}}\toprule
+\textbf{Giữ (gần bit-exact)} & \textbf{Xấp xỉ} & \textbf{Xóa trên fabric} \\
+\midrule
+$L{=}640$, $H{=}160$, Hanning & Silence envelope (IIR/max-hold thay globalPeak cả file) & Soft upsample FFT cả utterance (Bước~1) \\
+Mean/DC-blocker, MAC ACF & K$=1$ thay 14 ứng viên & Sinc/Brent (Bước~8) \\
+ROM $C[\tau]$, parabolic, $f_s/\tau$ & Median-3 thay Viterbi & \texttt{Pitch\_pathFinder} đầy đủ (Bước~12) \\
+Voicing gate, đóng gói Q12.4 & --- & CC method (\texttt{to\_Pitch\_cc}) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Mỗi ô ``xóa/xấp xỉ'' đã có lý do chi phí ở mục silicon tương ứng. Ngân sách sai số lab: $|\Delta F| < 20\,\text{cent}$ trên sine sạch so Praat (Chương~13). Mỗi bước xóa phải ghi trong báo cáo kiểm chứng --- không im lặng.
+
+\begin{costbox}
+\textbf{Vì sao bảng này kết thúc Chương~1?} Để bản đồ ``giấy Boersma $\to$ C++ $\to$ silicon'' khép lại trước khi Chương~2 mở PLL và I\textsuperscript{2}S. Từ đây trở đi, mỗi khối phần cứng chỉ còn việc hiện thực những ô ``Giữ'' và ``Xấp xỉ''.
+\end{costbox}
+
+\subsection*{1.14. Mười tham số \texttt{Sound\_to\_Pitch} --- ý nghĩa vật lý từng cái}
+
+\begin{center}\footnotesize
+\begin{tabular}{@{}lll@{}}\toprule
+Tham số & Default & Ý nghĩa vật lý / thiết kế một câu \\
+\midrule
+time step & $0\to$ auto & Khoảng giữa hai đo; auto $= 0{,}75/F_{\min}$ \\
+pitch floor $F_{\min}$ & $75\,\text{Hz}$ & Chu kỳ dài nhất $\Rightarrow L$ và $\tau_{\max}$ \\
+very accurate & off & Hanning/SINC70 vs Gaussian/SINC700 \\
+silence threshold & $0{,}03$ & Tỉ local/global dưới mức $\to$ nghi lặng \\
+voicing threshold & $0{,}45$ & Sàn strength cho ứng viên UV \\
+octave cost & $0{,}01$ & Phạt $\log_2$ thiên vị $F_0/2$ \\
+octave jump cost & $0{,}35$ & Phạt $|\log_2 f_1/f_2|$ giữa khung \\
+voiced/unvoiced cost & $0{,}14$ & Phạt đổi trạng thái V/UV \\
+ceiling & $600\,\text{Hz}$ & $F_{\max}$ + mốc octave cost \\
+maxn candidates & $15$ & 14 đỉnh + UV \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{1.15. Tóm tắt ký hiệu dùng xuyên suốt các chương sau}
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}\toprule
+Ký hiệu & Đơn vị / kiểu & Định nghĩa \\
+\midrule
+$f_s$ & Hz & Tần số lấy mẫu sau hạ mẫu ($16\,\text{kHz}$ trên DE10) \\
+$F_0$ & Hz & Cao độ $= 1/T_0$ dây thanh \\
+$T_0$, $\tau_0$ & s hoặc mẫu & Chu kỳ cơ bản \\
+$\tau$ & mẫu & Trễ (lag) trong tự tương quan \\
+$\mathcal{R}_x[\tau]$ & năng lượng & $\sum x[n]x[n+\tau]$ (không vòng) \\
+$r_a[\tau]$ & 1 & Autocorr chuẩn hóa Boersma \\
+$C[\tau]$ & 1 & $\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ \\
+$L$, $H$ & mẫu & Độ dài cửa sổ và hop khung \\
+Q$m.n$ & --- & Fixed-point: $m$ bit nguyên (kể dấu), $n$ fraction \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{1.16. Bài tập tổng hợp và Lời giải chi tiết}
+
+\paragraph{Bài tập T1 (Chuỗi số từ mean đến $r_a$).}
+Cho $x = [3,5,3,5]$, cửa sổ Praat $N = 4$ đã tính $w\approx[0{,}3455,0{,}9045,0{,}9045,0{,}3455]$, $C[2]\approx\mathcal{R}_w[0]/\mathcal{R}_w[2]$.
+\begin{enumerate}[label=\alph*)]
+\item Trừ mean, nhân cửa sổ, tính $\mathcal{R}_{\tilde x}[0]$ và $\mathcal{R}_{\tilde x}[2]$.
+\item Tính $C[2]$ rồi $r_a[2] = (\mathcal{R}[2]/\mathcal{R}[0])\cdot C[2]$. Nhận xét so với tỉ thô $0{,}5$.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích.}
+\begin{enumerate}[label=\alph*)]
+\item $x_{\mathrm{zm}} = [-1,1,-1,1]$; $\tilde x[i] = x_{\mathrm{zm}}[i-1]\cdot w[i]$ (lập chỉ số $i=1..4$):
+$\tilde x \approx [-0{,}3455,\,0{,}9045,\,-0{,}9045,\,0{,}3455]$.
+$\mathcal{R}[0] = \sum\tilde x^2 = \mathcal{R}_w[0] = 1{,}875$ (vì $|x_{\mathrm{zm}}| = 1$ mọi mẫu).
+$\mathcal{R}[2] = (-0{,}3455)(-0{,}9045)+(0{,}9045)(0{,}3455) = 2\cdot 0{,}3455\cdot 0{,}9045 \approx 0{,}6249$.
+\item $\mathcal{R}_w[2] = w_1 w_3 + w_2 w_4 = 0{,}3455\cdot 0{,}9045 + 0{,}9045\cdot 0{,}3455 \approx 0{,}6249$; $C[2] = 1{,}875/0{,}6249 \approx 3{,}000$.
+$r_a[2] = (0{,}6249/1{,}875)\cdot 3{,}000 = 0{,}3333\cdot 3 = 1{,}000$. Chuẩn hóa Boersma kéo tỉ số về đúng $1$ trên tín hiệu tuần hoàn sau cửa sổ --- đó là lý do bắt buộc có bảng $C[\tau]$ trên ROM.
+\end{enumerate}
+
+\paragraph{Bài tập T2 (Ngân sách RTF và quyết định giữ/xóa).}
+Tại $50\,\text{MHz}$, hop $10\,\text{ms}$, MAC $120960$ chu kỳ. Giả sử thêm SINC70 cho 1 đỉnh ($70$ MAC) và Viterbi soft trên HPS (không đụng fabric).
+\begin{enumerate}[label=\alph*)]
+\item RTF fabric sau khi thêm SINC70 còn bao nhiêu?
+\item Vì sao tài liệu vẫn khuyến cáo \emph{không} đưa SINC70 vào fabric mặc định?
+\end{enumerate}
+
+\paragraph{Lời giải giải thích.}
+\begin{enumerate}[label=\alph*)]
+\item Tổng chu kỳ $\approx 120960+70 = 121030$; $T_{\mathrm{compute}} = 121030/(50\cdot 10^6) = 2{,}4206\,\text{ms}$; $\mathrm{RTF} = 0{,}24206$ --- gần như không đổi.
+\item Lý do không phải RTF mà là độ phức tạp kiểm chứng, FSM địa chỉ, và lợi ích biên nhỏ trên speech thật so với parabolic (đã bàn ở Bài tập 1.8). Nguyên tắc: mỗi khối thêm phải chứng minh cải thiện sai số cent trên bộ kiểm thử Chương~13, không chỉ ``còn chỗ trên chip''.
+\end{enumerate}
+
+\paragraph{Bài tập T3 (Checklist Feynman trước khi cắt bước Praat).}
+Với mỗi bước trong \{1, 8, 12\}, trả lời năm câu: (1)~Bảo vệ khỏi hiện tượng vật lý nào? (2)~Sai số khi xóa trên sine? trên speech? (3)~Silicon: LUT/DSP/M10K/latency? (4)~Twin còn so được Praat không? (5)~Có đẩy HPS thay vì xóa hoàn toàn không?
+
+\paragraph{Lời giải giải thích (tóm tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{Bước 1:} Bảo vệ khỏi rò phổ mép Nyquist; xóa trên fabric thay bằng FIR --- sai số kiểm soát được nếu stopband FIR đủ sâu; twin offline vẫn soft-upsample được; không cần HPS real-time.
+\item \textbf{Bước 8:} Bảo vệ khỏi bias lưới mẫu; xóa $\to$ parabolic: lệch vài cent trên sine, thường nhỏ hơn nhiễu speech; 0 DSP thêm; twin parabolic khớp RTL; HPS optional Sinc.
+\item \textbf{Bước 12:} Bảo vệ khỏi nhảy octave giữa khung; xóa $\to$ median-3: mất tối ưu đường dài nhưng đủ cho lab; $<200$ ALM; twin median-3 khớp fabric, Viterbi soft trên HPS khi cần ``Praat đầy đủ''.
+\end{itemize}
+
+\begin{physicalinsight}
+Sai một công thức ở Chương~1 thì không một khối DSP hay bộ nhớ M10K nào ở các chương sau có thể cứu vãn được hệ thống. Hãy chạy lại toàn bộ \texttt{verify/verify\_chuong\_00\_01.py} trước khi sang Chương~2.
+\end{physicalinsight}
+
