@@ -240,6 +240,9 @@ R = acf_linear_int(xw_q15, 26, 214)
 \end{verbatim}
 Giải thích: \texttt{np.dot} trên \texttt{int64} tương đương vòng RUN của FSM; không lấy \texttt{numpy.correlate} float. Trên nhánh FFT, twin phải gồm cả barrel $2^{2e}$ giống RTL và so với \texttt{\_model} của IP.
 
+
+Khi đo RTF thực tế trên board, đừng chỉ đếm chu kỳ MAC lý thuyết: thêm latency đọc TDP RAM (1~ck/mẫu), handshake Avalon-ST có thể chen \texttt{waitrequest}, và pha nhân $C[\tau]$ (Chương~8). Ngân sách an toàn lab: dành $3\,\text{ms}$ cho toàn bộ Pha~2 (cửa sổ + MAC + chuẩn hóa + peak), tương đương RTF $0{,}3$. Nếu sau place-and-route Fmax tụt dưới $40\,\text{MHz}$, phải pipeline thêm nhân DSP hoặc giảm $\tau_{\max}$ --- không được ``hy vọng'' timing tự hết.
+
 \subsection*{7.7. Chi phí silicon}
 
 \begin{costbox}
