@@ -235,7 +235,7 @@ y_2 &= 255-(255\ggg 8)=255.
 \end{align*}
 Residual kẹt ở $255$ LSB --- đó chính là vùng chết. Trên Q1.15, $255/32768\approx 0{,}0078$ vẫn đủ làm phình nhẹ $\mathcal{R}[0]$ nếu đọng xuyên khung.
 
-\paragraph{Ví dụ tính tay --- limit cycle lưỡng cực (mô hình làm tròn).} Xét ánh xạ đồ chơi $y\leftarrow -\mathrm{round}(0{,}875\cdot y)$ (minh họa phản hồi lượng tử có đổi dấu; không phải RTL lab). Xuất phát $y_0=5$:
+\paragraph{Ví dụ tính tay --- limit cycle lưỡng cực (mô hình làm tròn).} Xét ánh xạ minh họa tối giản $y\leftarrow -\mathrm{round}(0{,}875\cdot y)$ (minh họa phản hồi lượng tử có đổi dấu; không phải RTL lab). Xuất phát $y_0=5$:
 \begin{align*}
 y_1 &= -\mathrm{round}(0{,}875\cdot 5)=-\mathrm{round}(4{,}375)=-4,\\
 y_2 &= -\mathrm{round}(0{,}875\cdot(-4))=+4,\\
