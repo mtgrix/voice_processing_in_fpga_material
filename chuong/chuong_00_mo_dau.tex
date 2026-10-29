@@ -150,7 +150,7 @@ Hiện tượng năng lượng của một tần số đơn lẻ bị phát tán
   \foreach \c/\h in {5.1/1.0, 6.2/0.75, 7.3/0.58, 8.4/0.46, 9.5/0.38} {
     \draw[thick, dashed, gray!60] (\c-0.35,0) .. controls (\c-0.15,\h) and (\c+0.15,\h) .. (\c+0.35,0);
   }
-  \node[gray!80!black, font=\scriptsize, align=center] at (5.1,1.3) {Sidelobe chữ nhật\\$\sim -13\,\text{dB}$};
+  \node[gray!75!black, font=\scriptsize, align=center] at (5.1,1.5) {Sidelobe chữ nhật\\($\sim -13\,\text{dB}$)};
 
   % Hanning window spectrum (solid blue and orange)
   \draw[very thick, blue!80!black, domain=-1.6:1.6, samples=60]
@@ -164,12 +164,15 @@ Hiện tượng năng lượng của một tần số đơn lẻ bị phát tán
 
   % Annotations
   \node[blue!80!black] at (3.5,3.35) {\textbf{Thùy chính (Mainlobe)}};
-  \node[orange!85!black] at (6.8,0.75) {\textbf{Thùy phụ Hanning (Sidelobe)}};
-  \draw[<->, thick, teal] (5.6,0.55) -- (5.6,3.1);
-  \node[right, font=\footnotesize, teal, align=left] at (5.7,1.85) {Độ dập tắt: $\approx 32\,\text{dB}$\\(Biên độ còn $\approx 1/40$)};
+  \node[orange!85!black, font=\scriptsize] at (7.2,0.65) {\textbf{Thùy phụ Hanning (Sidelobe)}};
 
-  \draw[->, red!80!black, thick] (9.5,2.4) -- node[above, font=\scriptsize, sloped]{Rò phổ tràn xuống $F_0$} (6.0,0.5);
-  \node[draw=red!60, fill=red!5, font=\scriptsize, align=left] at (9.8,2.7) {Tần số cao gần Nyquist\\tràn vào vùng $75 \ldots 600\,\text{Hz}$};
+  % Suppression arrow
+  \draw[<->, thick, teal] (4.6,0.3) -- (4.6,3.1);
+  \node[left, font=\scriptsize, teal, align=right] at (4.5,1.7) {Độ dập tắt: $\approx 32\,\text{dB}$\\(Biên độ còn $\approx 1/40$)};
+
+  % High frequency leakage note
+  \node[draw=red!60, fill=red!5, font=\scriptsize, align=center] (box_leak) at (9.2,2.5) {Tần số cao gần Nyquist\\tràn vào vùng $75 \ldots 600\,\text{Hz}$};
+  \draw[->, red!80!black, thick] (box_leak.south) -- node[right, font=\tiny]{Rò phổ} (7.8,0.35);
 \end{tikzpicture}
 \caption{So sánh phổ biên độ của cửa sổ Chữ nhật (nét đứt) và cửa sổ Hanning (nét liền). Cửa sổ Hanning chấp nhận thùy chính rộng hơn đôi chút để dập tắt thùy phụ từ mức $-13\,\text{dB}$ xuống $-32\,\text{dB}$, ngăn chặn hiện tượng rò phổ làm bẩn dải đo cao độ $F_0$.}
 \label{fig:ch00_mainlobe_sidelobe}
@@ -256,3 +259,74 @@ Hệ số này chứng minh phần cứng chạy nhanh gấp hơn $4.1$ lần so
     \item \textbf{Chương 11 đến Chương 14 (Tích hợp, Đóng gói và Kiểm chứng 3 tầng):} Dành từ $4$ đến $5$ giờ. Kết nối toàn hệ thống qua FSM Avalon-ST, đóng gói dữ liệu đầu ra Q12.4, chạy mô phỏng ModelSim và đối chiếu sai số với ngưỡng 20 cent của Praat.
 \end{itemize}
 \end{costbox}
+
+\subsection*{0.6. Bài tập tự đánh giá và Lời giải chi tiết}
+
+Nhằm giúp người học tự củng cố tư duy kiến trúc và các nguyên lý nền tảng trước khi bước vào chi tiết giải thuật Praat và phần cứng, dưới đây là hệ thống 4 bài tập phân tích sâu kèm lời giải tường minh:
+
+\paragraph{Bài tập 0.1 (Hiện tượng Aliasing và Méo Cao Độ):} Một micro thu âm ghi nhận tín hiệu tiếng nói bị lẫn một xung nhiễu điện cơ học tần số cao $f_{\mathrm{noise}} = 9\,\text{kHz}$. Hệ thống xử lý hoạt động tại tần số lấy mẫu $f_s = 16\,\text{kHz}$.
+\begin{enumerate}[label=\alph*)]
+    \item Xác định tần số Nyquist của hệ thống và tính tần số phản xạ giả mạo ($f_{\mathrm{alias}}$) của tín hiệu nhiễu sau quá trình lấy mẫu.
+    \item Tần số giả mạo này có rơi vào vùng tìm kiếm cao độ con người ($75\,\text{Hz} \ldots 600\,\text{Hz}$) hay không? Nếu tín hiệu này tiếp tục đi qua khối hạ mẫu Decimation $2/3$ hoặc bị rò phổ bởi cửa sổ phân khung, hậu quả gì sẽ xảy ra đối với đỉnh tự tương quan?
+\end{enumerate}
+
+\paragraph{Lời giải giải thích:}
+\begin{enumerate}[label=\alph*)]
+    \item Tần số Nyquist của hệ thống là $f_N = f_s / 2 = 16\,\text{kHz} / 2 = 8\,\text{kHz}$. Do tần số nhiễu $f_{\mathrm{noise}} = 9\,\text{kHz} > f_N$, hiện tượng aliasing chắc chắn xảy ra. Tần số giả mạo xuất hiện trong miền gốc được tính theo công thức phản xạ gương qua ranh giới Nyquist:
+    \[
+    f_{\mathrm{alias}} = |f_s - f_{\mathrm{noise}}| = |16\,\text{kHz} - 9\,\text{kHz}| = 7\,\text{kHz}.
+    \]
+    \item Tại tần số $7\,\text{kHz}$, sóng phản xạ chưa rơi trực tiếp vào dải cao độ cơ bản $75 \ldots 600\,\text{Hz}$. Tuy nhiên, trong miền thời gian, một thành phần $7\,\text{kHz}$ có biên độ lớn khi bị nhân với cửa sổ phân khung Hanning dài $40\,\text{ms}$ sẽ sinh ra các thùy phụ lan rộng. Nguy hiểm hơn, nếu hệ thống tiếp tục áp dụng các bước hạ mẫu số mà bộ lọc chống chồng phổ (anti-aliasing) không đạt độ suy giảm tối thiểu $60\,\text{dB}$, thành phần $7\,\text{kHz}$ này sẽ tiếp tục gập qua các ranh giới Nyquist kế tiếp và đổ thẳng vào dải vài trăm Hertz, tạo ra các đỉnh tương quan giả mạo cạnh tranh trực tiếp với tần số dây thanh quản thật. Do đó, việc dọn sạch phổ trước khi phân khung là yêu cầu sinh tử.
+\end{enumerate}
+
+\paragraph{Bài tập 0.2 (Định mức Thời gian thực và Hệ số RTF):} Hệ thống đo cao độ $F_0$ hoạt động với xung nhịp đồng hồ hệ thống $f_{\mathrm{clk}} = 50\,\text{MHz}$. Bước nhảy khung thời gian là $H = 160$ mẫu tại $f_s = 16\,\text{kHz}$ ($10\,\text{ms}$). Để quét dải cao độ từ $75\,\text{Hz}$ đến $600\,\text{Hz}$, khối MAC tự tương quan phải tính toán $189$ giá trị trễ ($\tau = 26 \ldots 214$), mỗi giá trị trễ tích lũy $L = 640$ tích mẫu.
+\begin{enumerate}[label=\alph*)]
+    \item Tính số chu kỳ xung nhịp tối đa mà hệ thống có sẵn trong một bước nhảy khung $10\,\text{ms}$.
+    \item Giả sử kiến trúc sử dụng 1 khối DSP nhân dồn tuần tự (1 phép tính nhân-cộng trên mỗi chu kỳ đồng hồ). Tính tổng thời gian cần thiết để xử lý xong một khung và suy ra hệ số thời gian thực $\text{RTF}$. Đưa ra nhận xét về biên độ an toàn (margin) của thiết kế.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích:}
+\begin{enumerate}[label=\alph*)]
+    \item Số chu kỳ xung nhịp hệ thống có sẵn trong khoảng thời gian một bước nhảy khung $T_{\mathrm{audio}} = 10\,\text{ms} = 0.01\,\text{s}$ là:
+    \[
+    N_{\mathrm{cycles}} = f_{\mathrm{clk}} \times T_{\mathrm{audio}} = 50 \times 10^6\,\text{Hz} \times 0.01\,\text{s} = 500,000\,\text{chu kỳ}.
+    \]
+    \item Tổng số phép nhân dồn MAC cần thực hiện cho $189$ giá trị trễ là:
+    \[
+    N_{\mathrm{MAC}} = 189 \times 640 = 120,960\,\text{phép tính}.
+    \]
+    Với 1 khối DSP thực thi 1 phép MAC trên 1 chu kỳ, thời gian tính toán tiêu tốn là $T_{\mathrm{compute}} = 120,960 / (50 \times 10^6\,\text{Hz}) = 2.4192\,\text{ms}$.
+    Hệ số thời gian thực là:
+    \[
+    \text{RTF} = \frac{T_{\mathrm{compute}}}{T_{\mathrm{audio}}} = \frac{2.4192\,\text{ms}}{10.0\,\text{ms}} \approx 0.2419.
+    \]
+    Vì $\text{RTF} = 0.2419 \ll 1.0$, phần cứng chỉ dùng chưa đến $25\%$ thời gian có sẵn của mỗi khung. Hệ thống có biên an toàn dồi dào ($> 75\%$ thời gian rảnh rỗi), cho phép xung nhịp có thể hạ xuống $25\,\text{MHz}$ để tiết kiệm năng lượng hoặc dùng chung khối DSP cho các thuật toán khác mà không bao giờ lo tràn bộ đệm.
+\end{enumerate}
+
+\paragraph{Bài tập 0.3 (Đặc tính Bộ nhớ M10K và Xung đột Đọc-khi-Ghi):} Một kỹ sư đề xuất thiết kế bộ đệm trượt $L = 640$ mẫu âm thanh bằng khối RAM On-Chip Memory 2-PORT trên Cyclone~V, trong đó Cổng A liên tục ghi mẫu mới từ ADC vào địa chỉ $k$ trong khi Cổng B đọc mẫu cũ tại chính địa chỉ $k$ đó để chuyển cho khối tự tương quan tính toán. Kỹ sư này cấu hình chế độ ngõ ra là ``New Data'' để hy vọng đọc được mẫu vừa ghi tức thì.
+\begin{enumerate}[label=\alph*)]
+    \item Kiến trúc silicon thật của khối M10K trên Intel Cyclone~V có hỗ trợ chế độ ``New Data'' cho hai cổng độc lập (mixed-port read-during-write) hay không?
+    \item Điều gì sẽ xảy ra nếu phần mềm tổng hợp Quartus gặp cấu hình này? Giải pháp thiết kế đúng đắn để tránh lỗi dữ liệu rác là gì?
+\end{enumerate}
+
+\paragraph{Lời giải giải thích:}
+\begin{enumerate}[label=\alph*)]
+    \item Không. Cấu tạo vật lý của các khối nhớ nhúng M10K trên dòng vi mạch Intel Cyclone~V \textbf{hoàn toàn không hỗ trợ} chế độ ``New Data'' khi đọc và ghi đồng thời vào cùng một địa chỉ từ hai cổng khác nhau. Trong tài liệu chính thức \emph{Cyclone V Device Handbook}, Intel quy định rõ: đối với chế độ True Dual-Port hoặc Simple Dual-Port trên các xung nhịp khác nhau hoặc cùng một xung nhịp nhưng khác cổng, ngõ ra dữ liệu khi xảy ra xung đột địa chỉ chỉ có thể là \textbf{``Old Data''} (xuất dữ liệu trước khi ghi) hoặc \textbf{``Don't Care''} (dữ liệu không xác định).
+    \item Nếu cố tình ép chế độ ``New Data'', Quartus Prime bắt buộc phải chèn thêm hàng chục khối logic ALM ngoại vi để tạo mạch ghép kênh đường vòng (bypass multiplexer logic), làm giảm đáng kể tần số hoạt động cực đại $F_{\max}$ và tăng diện tích chip. Giải pháp thiết kế chuẩn mực là: phân định rõ thời gian ghi mẫu mới và đọc khung cũ theo cơ chế lệch pha (ping-pong buffer hoặc quản lý con trỏ modulo vòng tròn với khoảng cách đọc/ghi cách xa nhau ít nhất $H = 160$ địa chỉ), bảo đảm Cổng A và Cổng B không bao giờ truy cập trùng một địa chỉ RAM trong cùng một chu kỳ xung nhịp.
+\end{enumerate}
+
+\paragraph{Bài tập 0.4 (Rò Phổ và Đơn Vị Decibel):} Biên độ thùy phụ đầu tiên của cửa sổ chữ nhật là $-13\,\text{dB}$ so với thùy chính, trong khi cửa sổ Hanning đạt mức suy giảm $-32\,\text{dB}$.
+\begin{enumerate}[label=\alph*)]
+    \item Đổi các mức suy giảm $-13\,\text{dB}$ và $-32\,\text{dB}$ sang tỷ số biên độ tuyến tính tương đối ($A / A_0$).
+    \item Giải thích tại sao việc suy giảm năng lượng rò rỉ từ $22.4\%$ xuống $2.5\%$ lại có ý nghĩa sống còn trong việc ngăn chặn hiện tượng nhảy quãng tám (octave error) của hàm tự tương quan.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích:}
+\begin{enumerate}[label=\alph*)]
+    \item Theo định nghĩa đơn vị decibel cho biên độ tín hiệu áp suất âm thanh hoặc điện áp: $L_{\mathrm{dB}} = 20 \log_{10}(A / A_0) \Rightarrow A / A_0 = 10^{L_{\mathrm{dB}} / 20}$.
+    \begin{itemize}
+        \item Với cửa sổ chữ nhật: $A / A_0 = 10^{-13 / 20} = 10^{-0.65} \approx 0.22387$ (tương đương $22.39\%$, tức biên độ chỉ giảm khoảng $4.47$ lần).
+        \item Với cửa sổ Hanning: $A / A_0 = 10^{-32 / 20} = 10^{-1.60} \approx 0.02512$ (tương đương $2.51\%$, tức biên độ giảm tới $39.81$ lần).
+    \end{itemize}
+    \item Năng lượng sóng âm tỷ lệ với bình phương biên độ. Với cửa sổ chữ nhật, thùy phụ còn giữ tới $0.22387^2 \approx 5.01\%$ năng lượng; khi giọng nói phát ra một nguyên âm có các tần số cộng hưởng formant bậc cao (ví dụ $F_1, F_2$ ở dải $800 \ldots 2500\,\text{Hz}$), năng lượng rò rỉ qua các thùy phụ này sẽ tạo nên các gợn sóng nhấp nhô có chu kỳ ngắn đè lên hàm tự tương quan. Các đỉnh phụ này có thể vượt qua đỉnh chu kỳ thật của dây thanh quản, dẫn đến hiện tượng thuật toán bắt nhầm đỉnh phụ và báo sai cao độ lên gấp đôi hoặc xuống một nửa. Cửa sổ Hanning ép năng lượng rò rỉ xuống chỉ còn $0.02512^2 \approx 0.063\%$ (giảm gần $80$ lần năng lượng rò so với chữ nhật), giữ cho đáy hàm tương quan giữa các chu kỳ luôn bằng phẳng và sạch sẽ.
+\end{enumerate}
