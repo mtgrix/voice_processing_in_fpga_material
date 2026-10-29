@@ -14,7 +14,7 @@ assert abs(fout - 12.287997390737116) < 1e-12
 ppm = abs(fout - 12.288) / 12.288 * 1e6
 assert abs(ppm - 0.21234235709465438) < 1e-6
 drift = ppm * 1e-6 * 60 * 16000
-assert abs(drift - 0.203048662) < 1e-5
+assert abs(drift - 0.2038486628108682) < 1e-9
 
 # Fractional illustration
 assert abs(50.0 * 61.44 / (5 * 50) - 12.288) < 1e-12
