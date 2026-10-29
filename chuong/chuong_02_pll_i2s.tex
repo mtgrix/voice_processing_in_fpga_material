@@ -25,7 +25,7 @@ Với $f_{\mathrm{in}}=50\,\text{MHz}$ và $f_{\mathrm{out}}=12{,}288\,\text{MHz
 \[
 \frac{M}{N\cdot C}=\frac{12{,}288}{50}=0{,}24576.
 \]
-Tỷ số $0{,}24576$ không phân tích thành bộ $(M,N,C)$ nguyên nhỏ nằm trong dải VCO Cyclone~V ($600\ldots1600\,\text{MHz}$) với sai số đúng $0\,\text{ppm}$. Có thể tìm bộ nguyên lớn cho sai số khoảng $0{,}2\,\text{ppm}$ (ví dụ $M=1507$, $N=73$, $C=84$ cho $f_{\mathrm{out}}\approx 12{,}287997\,\text{MHz}$), nhưng cách dạy chuẩn trên DE10 là dùng \textbf{Fractional PLL}: MegaWizard/IP Catalog đặt ngõ ra đúng $12{,}288\,\text{MHz}$, phần mềm chọn hệ số phân số và ghi $M,N,C$ vào báo cáo. Một nghiệm phân số minh họa: $N=5$, $M=61{,}44$, $C=50$ cho $f_{\mathrm{VCO}}=614{,}4\,\text{MHz}$ và $f_{\mathrm{out}}=12{,}288\,\text{MHz}$ đúng tuyệt đối trên giấy.
+Tỷ số $0{,}24576$ không phân tích thành bộ $(M,N,C)$ nguyên nhỏ nằm trong dải VCO Cyclone~V ($600\ldots1600\,\text{MHz}$) với sai số đúng $0\,\text{ppm}$. Có thể tìm bộ nguyên lớn cho sai số khoảng $0{,}2\,\text{ppm}$ --- ví dụ $M=1507$, $N=73$, $C=84$ cho $f_{\mathrm{out}}\approx 12{,}287997\,\text{MHz}$. Cách dạy chuẩn trên DE10 vẫn là dùng \textbf{Fractional PLL}: MegaWizard/IP Catalog đặt ngõ ra đúng $12{,}288\,\text{MHz}$, phần mềm chọn hệ số phân số và ghi $M,N,C$ vào báo cáo. Một nghiệm phân số minh họa: $N=5$, $M=61{,}44$, $C=50$ cho $f_{\mathrm{VCO}}=614{,}4\,\text{MHz}$ và $f_{\mathrm{out}}=12{,}288\,\text{MHz}$ đúng tuyệt đối trên giấy.
 
 \begin{figure}[H]
 \centering
