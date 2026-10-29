@@ -238,3 +238,174 @@ FPGA tách hai lớp: DC-blocker IIR streaming (Chương~3) nuốt offset chậm
 
 \paragraph{Lời giải.} $\mu = 3$, $x_{\mathrm{zm}} = [-1,1,-1,1]$ --- trùng ví dụ trên: $\mathcal{R}_{\mathrm{zm}}[0] = 4$, $\mathcal{R}_{\mathrm{zm}}[2] = 2$, thô $0{,}5$, unbiased $1$. Không trừ: $\mathcal{R}_x[0] = 4+16+4+16 = 40$, $\mathcal{R}_x[2] = 4+16 = 20$, phình $40/4 = 10$ lần.
 
+\subsection*{1.4. Bước 4 --- Cửa sổ Hanning (và tuỳ chọn Gaussian)}
+
+\begin{firstprin}{Hiện tượng thật: cắt khung đột ngột gây rò phổ; Hanning vuốt biên}
+Chương~0 đã định nghĩa framing, cửa sổ, mainlobe, sidelobe và đơn vị dB. Nhắc ngắn: framing \emph{không} cắt đứt tín hiệu gốc rồi bỏ phần còn lại, mà nhân toàn bộ $x[n]$ với một cửa sổ trượt $w[n-kH]$ chỉ khác không trên đúng $L$ mẫu của khung $k$. Cửa sổ chữ nhật nhảy xuống 0 ở hai đầu; phổ $\mathrm{sinc}$ của nó có thùy phụ đầu khoảng $-13\,\text{dB}$ (biên độ còn $\approx 1/4{,}5$). Cửa sổ Hanning vuốt hai đầu về gần 0 bằng nửa chu kỳ cosine, kéo thùy phụ xuống khoảng $-32\,\text{dB}$ (biên độ $\approx 1/40$), bảo vệ dải $F_0$ khỏi bóng ma tần số cao.
+\end{firstprin}
+
+\paragraph{Toán từng bước --- công thức Praat dùng $N+1$.}
+Praat (\texttt{Sound\_to\_Pitch.cpp}) định nghĩa trên $N$ mẫu của khung:
+\[
+w[i] = 0{,}5 - 0{,}5\cos\frac{2\pi i}{N+1},\qquad i = 1,2,\ldots,N.
+\]
+Các ký hiệu: $i$ là chỉ số mẫu \emph{trong} khung (chạy $1..N$, không phải $0..N-1$); $N$ là số mẫu khung ($640$ trên DE10); mẫu số $N+1$ là lựa chọn có chủ đích của Praat để $w[1]$ và $w[N]$ vẫn $> 0$ nhỏ --- mọi ô trong bộ nhớ đều đóng góp năng lượng, không ``chết'' hai mẫu biên (giáo trình cổ điển thường dùng $N-1$ và cho $w[0] = w[N-1] = 0$).
+
+\paragraph{Ví dụ tính tay $N = 4$ (đã kiểm Python).}
+\[
+w[i] = 0{,}5 - 0{,}5\cos\frac{2\pi i}{5},\quad i = 1,2,3,4.
+\]
+\begin{align*}
+i=1&:\; 0{,}5 - 0{,}5\cos(2\pi/5) = 0{,}5 - 0{,}5(-0{,}309017) = 0{,}345491,\\
+i=2&:\; 0{,}5 - 0{,}5\cos(4\pi/5) = 0{,}5 - 0{,}5(-0{,}809017) = 0{,}904508,\\
+i=3&:\; 0{,}904508,\qquad
+i=4:\; 0{,}345491.
+\end{align*}
+Vậy $w \approx [0{,}3455,\,0{,}9045,\,0{,}9045,\,0{,}3455]$ --- đối xứng. Từ đây
+\begin{align*}
+\mathcal{R}_w[0] &= \sum_{i=1}^{4} w_i^2 = 1{,}875,\\
+\mathcal{R}_w[1] &= \sum_{i=1}^{3} w_i w_{i+1} \approx 1{,}443136,\\
+C[1] &= \mathcal{R}_w[0]/\mathcal{R}_w[1] \approx 1{,}299254.
+\end{align*}
+Tích $w[n]w[n+\tau]$ suy giảm khi $\tau$ tăng --- đúng gốc của bảng $C[\tau]$ ở Bước~6 và Chương~8.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \draw[->] (0,2.8)--(11.2,2.8) node[right]{$n$};
+  \draw[thick,blue!70!black,smooth,tension=0.7]
+    plot coordinates {
+      (0.3,2.95)(0.7,2.55)(1.1,3.05)(1.5,2.60)(1.9,3.00)(2.3,2.50)
+      (2.7,2.95)(3.1,2.55)(3.5,3.05)(3.9,2.60)(4.3,2.95)(4.7,2.50)
+      (5.1,3.00)(5.5,2.55)(5.9,2.95)(6.3,2.50)(6.7,3.00)(7.1,2.55)
+      (7.5,3.05)(7.9,2.60)(8.3,2.95)(8.7,2.50)(9.1,3.00)(9.5,2.55)
+      (9.9,2.95)(10.3,2.60)(10.7,2.90)
+    };
+  \node[blue!70!black,left] at (0,2.8) {$x[n]$};
+  \draw[thick,teal,opacity=0.85] (0.5,1.6) .. controls (1.3,2.5) and (2.7,2.5) .. (3.5,1.6);
+  \draw[thick,orange!80!black,opacity=0.85] (2.5,1.6) .. controls (3.3,2.5) and (4.7,2.5) .. (5.5,1.6);
+  \draw[thick,purple!70!black,opacity=0.85] (4.5,1.6) .. controls (5.3,2.5) and (6.7,2.5) .. (7.5,1.6);
+  \node[teal] at (2.0,1.35) {$w[n]$};
+  \node[orange!80!black] at (4.0,1.35) {$w[n-H]$};
+  \node[purple!70!black] at (6.0,1.35) {$w[n-2H]$};
+  \draw[<->] (0.5,1.15)--(3.5,1.15) node[midway,below]{$L$};
+  \draw[<->] (0.5,0.85)--(2.5,0.85) node[midway,below]{$H$};
+\end{tikzpicture}
+\caption{Framing = nhân $x[n]$ với cửa sổ trượt $w[n-kH]$. Hop $H$ dịch cửa sổ; chồng lấn $75\%$ khi $L = 640$, $H = 160$.}
+\label{fig:ch01_framing}
+\end{figure}
+
+\paragraph{Tuỳ chọn Gaussian.}
+Gaussian $w[n]\propto\exp\bigl(-\tfrac12(n/\sigma)^2\bigr)$ hẹp hơn trong tần số (sidelobe thấp hơn) nhưng đuôi dài hơn trong thời gian. Praat khi bật \texttt{very\_accurate} nhân đôi \texttt{periodsPerWindow} ($3\to 6$) và dùng nội suy SINC700. Trên FPGA điều đó nghĩa là khoảng $2\times$ M10K cửa sổ và $2\times$ MAC. Mặc định silicon: Hanning 3 chu kỳ.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 4 Window.}
+\begin{itemize}[leftmargin=1.2em]
+\item ROM Hanning: $640\times 16$-bit (Q1.15) $= 10240\,\text{bit} = 1$ khối M10K; thực tế chỉ cần nửa bảng nhờ đối xứng $w[n] = w[L-1-n]$ (Chương~6).
+\item Nhân mẫu $\tilde{x}[n] = (x[n]-\mu)\,w[n]$: 1 khối DSP.
+\item Gaussian 6 chu kỳ: $L\approx 1280$, ROM+MAC roughly $\times 2$ --- chỉ bật khi lab đối chiếu ``very accurate''.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.4.} Tính $w[1]$ và $w[2]$ theo công thức Praat với $N = 8$. Kiểm đối xứng $w[i] = w[N+1-i]$.
+
+\paragraph{Lời giải.} $w[i] = 0{,}5-0{,}5\cos(2\pi i/9)$. $w[1] = 0{,}5-0{,}5\cos(2\pi/9) \approx 0{,}5-0{,}5\cdot 0{,}7660 = 0{,}1170$; $w[2] = 0{,}5-0{,}5\cos(4\pi/9) \approx 0{,}5-0{,}5\cdot 0{,}1736 = 0{,}4132$. Đối xứng: $w[8] = w[1]$, $w[7] = w[2]$,\ldots
+
+\subsection*{1.5. Bước 5 --- Tự tương quan: Wiener--Khinchin hoặc MAC trực tiếp}
+
+\begin{firstprin}{Hiện tượng thật: đỉnh tại $\tau = T_0$ đo chu kỳ dây thanh}
+Chương~0 đã định nghĩa hàm tự tương quan $\mathcal{R}_x[\tau]$, độ trễ (lag) và Định lý Wiener--Khinchin: $\mathcal{R}_x = \mathcal{F}^{-1}\{|X|^2\}$. Khi dây thanh rung tuần hoàn với chu kỳ $T_0$ ($\tau_0 = f_s\cdot T_0$ mẫu), trượt đúng $\tau = \tau_0$ làm các cặp mẫu cùng pha nhân với nhau đạt cực đại. Đo được $\tau_0$ thì $F_0 = f_s/\tau_0$. Định lý Wiener--Khinchin mở hai đường thực thi tương đương toán học: FFT $\to |X|^2\to$ IFFT, hoặc MAC thời gian trực tiếp.
+\end{firstprin}
+
+\paragraph{Toán từng bước.}
+Praat AC path pad zero đến
+\[
+\texttt{nsampFFT} = 2^{\lceil\log_2(N\cdot(1+\texttt{depth}))\rceil}
+\]
+với Hanning depth $0{,}5$: $640\times 1{,}5 = 960\to 1024$ điểm FFT. Sau IFFT lấy $\mathcal{R}_x[\tau]$ tại các trễ nguyên. Đường FPGA mặc định thay bằng:
+\[
+\mathcal{R}_x[\tau] = \sum_{n=0}^{L-1-\tau}\tilde{x}[n]\,\tilde{x}[n+\tau],
+\quad \tau\in[\tau_{\min},\tau_{\max}],
+\]
+một phép nhân-cộng (MAC) mỗi chu kỳ đồng hồ trên 1 khối DSP.
+
+\paragraph{Ví dụ tính tay DFT 8 điểm + butterfly.}
+Cho $x = [1,1,-1,-1,1,1,-1,-1]$ (chu kỳ 4). Stage~1 radix-2 với twiddle $W = 1$ (cố ý để thấy lõi cộng/trừ; stage sau mới nhân twiddle phức --- xem định nghĩa butterfly/twiddle ở Chương~0):
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+Butterfly & $a$ & $b$ & $a\pm Wb$ ($W=1$) \\
+\midrule
+pair0 & $x[0]=1$ & $x[4]=1$ & $2$, $0$ \\
+pair1 & $1$ & $1$ & $2$, $0$ \\
+pair2 & $-1$ & $-1$ & $-2$, $0$ \\
+pair3 & $-1$ & $-1$ & $-2$, $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Sau khi có $X[k]$, bình phương $|X|^2$, rồi IFFT cho $\mathcal{R}[\tau]$ lớn tại $\tau = 0$ và $\tau = 4$ --- đúng chu kỳ của $x$.
+
+Ví dụ Parseval sạch hơn với xung chữ nhật $x = [1,1,1,1,0,0,0,0]$: $\sum|x|^2 = 4$; DFT cho $X[0] = 4$, $X[1] = 1 - j(1+\sqrt{2})$, $X[2] = 0$,\ldots và $\frac1N\sum|X|^2 = 4$ khớp Parseval. (Đã kiểm \texttt{test\_dft\_8\_manual}.)
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth, node distance=0.55cm]
+  \node[draw, rounded corners] (x) {$x[n]$};
+  \node[draw, rounded corners, right=of x] (fft) {FFT};
+  \node[draw, rounded corners, right=of fft] (p) {$|X|^2$};
+  \node[draw, rounded corners, right=of p] (ifft) {IFFT};
+  \node[draw, rounded corners, right=of ifft] (r) {$\mathcal{R}_x[\tau]$};
+  \draw[->, thick] (x)--(fft)--(p)--(ifft)--(r);
+  \node[below=0.7cm of p, align=center, font=\scriptsize]
+    {Praat: pad đến $nsampFFT=1024$ (Hanning depth $0{,}5$).\\
+     FPGA mặc định: MAC trực tiếp (cùng $\mathcal{R}$, khác đường sai số).};
+\end{tikzpicture}
+\caption{Đường AC trong \texttt{Sound\_to\_Pitch.cpp}: FFT $\to$ power $\to$ IFFT. Silicon DE10 thay bằng MAC (Chương~7).}
+\label{fig:ch01_acf_path}
+\end{figure}
+
+\paragraph{BFP nhắc ngắn.}
+Nếu lab bật FFT IP, nhớ Block Floating Point: khi lấy $|X|^2$ phải nhân lại $2^{2e}$ trước IFFT (đã giải ở Chương~0). Quên bước này làm sai toàn bộ tỉ lệ $\mathcal{R}[\tau]$.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 5 ACF.}
+\begin{itemize}[leftmargin=1.2em]
+\item MAC mặc định: 1 DSP, accumulator 48-bit, $120960$ chu kỳ/khung @ $50\,\text{MHz}$ $\Rightarrow 2{,}42\,\text{ms}$, $\mathrm{RTF} = 0{,}242$.
+\item FFT 1024 tùy chọn: vài nghìn butterfly + twiddle ROM + BFP --- đắt hơn khi $\tau_{\max}\ll L$; chỉ lab đối chiếu.
+\item Twin: vòng \texttt{for tau} nhân dồn khớp bit với RTL, hoặc \texttt{np.fft} khi so Praat float.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.5.} Với $x_{\mathrm{zm}} = [-1,1,-1,1]$, tính $\mathcal{R}[0]$, $\mathcal{R}[1]$, $\mathcal{R}[2]$ theo định nghĩa không vòng. Đỉnh chu kỳ nằm ở $\tau$ nào?
+
+\paragraph{Lời giải.} $\mathcal{R}[0] = 4$; $\mathcal{R}[1] = (-1)(1)+(1)(-1)+(-1)(1) = -3$; $\mathcal{R}[2] = 2$. Đỉnh dương tại $\tau = 2$ (và $\tau = 0$), đúng chu kỳ 2.
+
+\subsection*{1.6. Bước 6 --- Chuẩn hóa cho tự tương quan cửa sổ $\mathcal{R}_w[\tau]$}
+
+\begin{firstprin}{Hiện tượng / toán Boersma: hai quả núi Hanning ít chồng khi $\tau$ lớn}
+Sau khi nhân cửa sổ, ngay cả tín hiệu tuần hoàn hoàn hảo cũng có $\mathcal{R}_x[\tau]$ suy giảm khi $\tau$ tăng, vì hai bản sao cửa sổ chồng ít hơn. Nếu không bù, thuật toán thiên vị chọn $\tau$ nhỏ (cao độ cao giả). Boersma chuẩn hóa:
+\[
+r_a[\tau]
+= \frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]\cdot\mathcal{R}_w[\tau]/\mathcal{R}_w[0]}
+= \frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau],
+\quad
+C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
+\]
+Mã: \texttt{r[i] = ac[i+1] / (ac[1] * windowR[i+1])} (\texttt{Sound\_to\_Pitch.cpp}). $C[\tau]$ chỉ phụ thuộc cửa sổ --- tính offline một lần.
+\end{firstprin}
+
+\paragraph{Ví dụ tính tay $N = 4$, $\tau = 1$.}
+Với $w\approx[0{,}3455,0{,}9045,0{,}9045,0{,}3455]$ đã tính ở Bước~4: $\mathcal{R}_w[0] = 1{,}875$, $\mathcal{R}_w[1]\approx 1{,}443$, $C[1]\approx 1{,}299$. Nhân $r$ thô với $1{,}299$ kéo đỉnh gần biên về công bằng với đỉnh giữa. (Đã kiểm Python.)
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 6 Norm.}
+\begin{itemize}[leftmargin=1.2em]
+\item Bảng $C[\tau]$ tính offline từ đúng $w$ đã dùng, lượng tử Q3.13, nạp ROM (Chương~8): $189\times 16\,\text{bit} = 3024\,\text{bit}$ --- chưa đầy 1 M10K.
+\item Runtime: 1 nhân DSP mỗi $\tau$ (nhân $r$ thô với $C[\tau]$). Divider runtime từng $\tau$ là phương án khác, tốn ALM/latency --- không mặc định.
+\item Twin: cùng bảng hex $C[\tau]$ với ROM phần cứng; so khớp từng từ Q3.13.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.6.} Với $w = [0{,}5,1{,}0,1{,}0,0{,}5]$, tính $\mathcal{R}_w[0]$, $\mathcal{R}_w[1]$, $\mathcal{R}_w[2]$ và $C[1]$, $C[2]$.
+
+\paragraph{Lời giải.} $\mathcal{R}_w[0] = 0{,}25+1+1+0{,}25 = 2{,}5$; $\mathcal{R}_w[1] = 0{,}5+1{,}0+0{,}5 = 2{,}0$; $\mathcal{R}_w[2] = 0{,}5+0{,}5 = 1{,}0$. $C[1] = 2{,}5/2 = 1{,}25$; $C[2] = 2{,}5/1 = 2{,}5$. $C$ tăng theo $\tau$ --- đúng thiên vị cần bù.
+
