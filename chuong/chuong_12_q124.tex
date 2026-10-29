@@ -1,95 +1,187 @@
 \clearpage
 \phantomsection
-\section*{Chương 12. Đóng gói $F_0$ Q12.4 little-endian}
-\addcontentsline{toc}{section}{Chương 12. Đóng gói F0 Q12.4}
-\pdfbookmark[1]{Chương 12. Đóng gói F0 Q12.4}{chuong12}
+\section*{Chương 12. Đóng gói $F_0$ Q12.4 và tệp \texttt{pitch\_f0.bin}}
+\addcontentsline{toc}{section}{Chương 12. Đóng gói F0 Q12.4 và tệp pitch\_f0.bin}
+\pdfbookmark[1]{Chương 12. Đóng gói F0 Q12.4 và tệp pitch\_f0.bin}{chuong12}
 
 \begin{learningobj}
-Sau chương này bạn đóng $F_0$ thành uint16 Q12.4 LE; giải thích từng bit; xử lý UV$=0$ và bão hòa ceiling; viết twin \texttt{struct.pack}; và hiểu vì sao lỗi endian là lỗi giao thức chứ không phải lỗi pitch.
+Sau Chương~12, người học sẽ:
+\begin{enumerate}[leftmargin=1.4em]
+    \item Giải thích được hợp đồng số giữa FPGA và phần mềm phía trên: mỗi khung xuất một từ \textbf{uint16} theo thang \textbf{Q12.4} (đơn vị $1/16\,\text{Hz}$), ghi \textbf{little-endian}, khung vô thanh gửi đúng $0$.
+    \item Tính tay và đóng gói được bảng $F_0\to$ Q12.4 $\to$ hai byte LE cho các mốc $0$, $75$, $150{,}0625$, $199{,}466$, $200$, $220$, $440$, $600$, $700$ (bão hòa), đã kiểm Python.
+    \item Ghép được cặp tệp kiểm chứng \texttt{audio\_16k.wav} (PCM $16\,\text{kHz}$) với \texttt{pitch\_f0.bin} (chuỗi uint16 LE đồng bộ theo hop $10\,\text{ms}$).
+    \item Viết RTL pack có bão hòa trần $600\,\text{Hz}$ ($q=9600$) và twin \texttt{struct.pack("<H", q)} khớp từng bit.
+    \item Phân biệt lỗi \emph{thuật toán} với lỗi \emph{giao thức} (đảo endian, quên chia $16$).
+\end{enumerate}
 \end{learningobj}
 
-\begin{firstprin}{Hợp đồng số: server đọc gì từ FPGA?}
-Khối ước lượng trên FPGA không nói chuyện với server bằng số thực dấu phẩy động. Hợp đồng là một từ 16~bit không dấu theo thang \textbf{Q12.4}: 12 bit nguyên + 4 bit frac $\Rightarrow$ giá trị nguyên $=F_0^{\mathrm{Hz}}\times 16$. Ghi \textbf{little-endian} trên tệp \texttt{pitch\_f0.bin}: byte thấp trước. Khung vô thanh (\textbf{unvoiced}, UV) gửi đúng $0$ --- không NaN, không mã đặc biệt. Đảo endian hoặc quên chia 16 phía server làm $F_0$ lệch $\times256$ hoặc $\times16$ trong khi silicon vẫn đúng --- đó là lỗi \emph{giao thức}, không phải lỗi thuật toán.
+\subsection*{12.1. Hiện tượng thật: server đọc gì từ FPGA?}
+
+\begin{firstprin}{Hợp đồng số, không phải số thực dấu phẩy động}
+Khối ước lượng trên Cyclone~V không nói chuyện với HPS/server bằng \texttt{float64}. Sau median-3 (Chương~10) và FSM OUT (Chương~11), hợp đồng là một từ $16$~bit không dấu theo thang \textbf{Q12.4}: $12$ bit phần nguyên + $4$ bit phần thập phân cố định. Giá trị nguyên lưu trong thanh ghi thỏa
+\begin{equation}
+\label{eq:ch12_q124}
+F_q = \mathrm{sat}_{0..9600}\!\bigl(\mathrm{round}(F_0^{\mathrm{Hz}}\cdot 16)\bigr),
+\qquad
+\hat F_0 = F_q / 16\ \text{(Hz)}.
+\end{equation}
+Trọng số bit thấp nhất (LSB) bằng $2^{-4}=0{,}0625\,\text{Hz}$. Trên tệp \texttt{pitch\_f0.bin} (và trên bus Avalon-ST $16$~bit), hai byte được ghi \textbf{little-endian}: byte thấp trước, byte cao sau --- khớp hầu hết CPU little-endian của HPS ARM. Khung vô thanh (\textbf{unvoiced}, UV) gửi đúng $F_q=0$ (\texttt{00 00}), không dùng NaN hay mã đặc biệt. Đảo endian hoặc quên chia $16$ phía server làm $\hat F_0$ lệch $\times 256$ hoặc $\times 16$ trong khi silicon vẫn đúng: đó là lỗi \emph{giao thức}, không phải lỗi pitch.
 \end{firstprin}
 
-\subsection*{Toán --- từng ký hiệu}
+\paragraph{Vì sao chọn đúng $4$ bit frac?} Tại $F_0=200\,\text{Hz}$, một LSB $0{,}0625\,\text{Hz}$ tương đương
+\[
+1200\log_2\bigl((200+0{,}0625)/200\bigr)\approx 0{,}541\,\text{cent}
+\]
+(đã kiểm script). Ngân sách sai số lab so Praat thường $20$--$30$~cent (Chương~13), nên lượng tử Q12.4 nhỏ hơn nhiều so với sai số thuật toán --- không phải nút thắt. Đồng thời $600\cdot 16=9600 < 2^{16}-1$, cả dải $75\ldots 600\,\text{Hz}$ nằm gọn trong $16$~bit không dấu kèm trần bão hòa rõ ràng.
 
-Q12.4 nghĩa là 12 bit phần nguyên và 4 bit phần thập phân cố định: giá trị thực $=N/16$ Hz. Phạm vi không dấu $0..(2^{12}-2^{-4})$ Hz; có dấu thì thêm bit dấu tùy pack. Chọn 4 bit frac vì $\Delta=0{,}0625$\,Hz --- nhỏ hơn nhiều so với ngân sách vài chục cent ở 100--300\,Hz. Ký hiệu: $F_q=\mathrm{sat}(\mathrm{round}(F_0\cdot 16))$. Unpack: $\hat F=F_q/16$.
+\subsection*{12.2. Toán từng bước: từ Hz đến hai byte}
 
-\subsection*{Ví dụ tính tay (đã kiểm Python)}
+\begin{enumerate}[leftmargin=1.4em]
+    \item Nhân $F_0$ (Hz, số thực sau LPM\_DIVIDE/parabolic) với $16$.
+    \item Làm tròn tới số nguyên gần nhất: $q_0=\mathrm{round}(F_0\cdot 16)$.
+    \item Nếu không voiced hoặc $F_0\le 0$: ép $q=0$.
+    \item Bão hòa: $q=\min(q_0,\ \texttt{CEIL})$ với $\texttt{CEIL}=600\cdot 16=9600$.
+    \item Tách byte: $b_0=q\bmod 256$, $b_1=\lfloor q/256\rfloor$ (little-endian: ghi $b_0$ rồi $b_1$).
+\end{enumerate}
+
+Định dạng Q$m.n$ đã được Chương~0 (Feynman box~7) định nghĩa: đây là Q12.4 \emph{không dấu} trên dây ra, khác với Q1.15 có dấu của mẫu âm thanh.
+
+\subsection*{12.3. Ví dụ tính tay (đã kiểm Python)}
 
 \begin{center}\small
 \begin{tabular}{@{}llll@{}}\toprule
-$F_0$ Hz & Q12.4 uint16 & bytes LE & ghi chú \\
+$F_0$ (Hz) & $F_q$ (uint16) & Bytes LE & Ghi chú \\
 \midrule
-0 (UV) & 0 & \texttt{00 00} & \\
-75{,}0 & 1200 & \texttt{B0 04} & floor \\
-150{,}0625 & 2401 & \texttt{61 09} & \\
-199{,}466 & 3191 & \texttt{77 0C} & parabolic Ch.~9 \\
-200{,}0 & 3200 & \texttt{80 0C} & \\
-440{,}0 & 7040 & \texttt{80 1B} & \\
-600{,}0 & 9600 & \texttt{80 25} & ceil \\
-700{,}0 & 9600 & \texttt{80 25} & sat ceil \\
+$0$ (UV) & $0$ & \texttt{00 00} & Hợp đồng UV \\
+$75{,}0$ & $1200$ & \texttt{B0 04} & Sàn tìm kiếm \\
+$150{,}0625$ & $2401$ & \texttt{61 09} & Đúng một LSB trên $150$ \\
+$150{,}25$ & $2404$ & \texttt{64 09} & $150\cdot 16+4$ \\
+$199{,}466$ & $3191$ & \texttt{77 0C} & Parabolic Chương~9 \\
+$200{,}0$ & $3200$ & \texttt{80 0C} & Mốc lab \\
+$220{,}0$ & $3520$ & \texttt{C0 0D} & \\
+$440{,}0$ & $7040$ & \texttt{80 1B} & \\
+$600{,}0$ & $9600$ & \texttt{80 25} & Trần \\
+$700{,}0$ & $9600$ & \texttt{80 25} & Bão hòa về trần \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\subsection*{RTL pack}
+\paragraph{Bẫy endian.} Bytes LE của $200\,\text{Hz}$ là \texttt{80 0C}. Nếu server đọc nhầm big-endian:
+\[
+\texttt{0x0C80}=3200_{\mathrm{LE}}\ \text{đọc BE}\ \Rightarrow\ 0\text{x}0\text{C}80 = 32780,\qquad 32780/16=2048{,}75\,\text{Hz}.
+\]
+Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>2\,\text{kHz}$ --- GPE/FFE ở Chương~13 sẽ ``nổ'', trong khi RTL và twin pack vẫn xanh.
+
+\subsection*{12.4. Cặp tệp \texttt{audio\_16k.wav} và \texttt{pitch\_f0.bin}}
+
+\paragraph{Luồng kiểm chứng chuẩn lab.}
+\begin{enumerate}[leftmargin=1.4em]
+    \item \texttt{audio\_16k.wav}: PCM mono $16$-bit, $f_s=16\,\text{kHz}$, đã qua (hoặc giả lập) DC-block + FIR hạ mẫu. Đây là đầu vào ``sạch'' của sliding RAM.
+    \item Chạy đường float/fixed/RTL theo hop $H=160$ mẫu ($10\,\text{ms}$): số khung
+    \[
+    N_{\mathrm{frames}}=\Bigl\lfloor\frac{N_{\mathrm{samples}}-L}{H}\Bigr\rfloor+1
+    \]
+    với $L=640$.
+    \item \texttt{pitch\_f0.bin}: đúng $N_{\mathrm{frames}}$ từ uint16 LE. Khung $k$ ứng với tâm cửa sổ quanh mẫu $kH + L/2$ (cùng quy ước thời gian Praat time step $0{,}01\,\text{s}$).
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth,
+  fbox/.style={draw, rounded corners, align=center, minimum height=1.0cm, inner sep=4pt}]
+  \node[fbox, fill=blue!8] (wav) {\texttt{audio\_16k.wav}\\PCM Q1.15 @ $16\,\text{kHz}$};
+  \node[fbox, fill=teal!8, right=1.6cm of wav] (pipe) {DC$\to$FIR$\to$RAM\\Win$\to$MAC$\to$Peak\\Voice$\to$Med3};
+  \node[fbox, fill=orange!10, right=1.6cm of pipe] (bin) {\texttt{pitch\_f0.bin}\\uint16 LE Q12.4\\$1/16\,\text{Hz}$};
+  \draw[arr/.style={->, thick, >=Stealth}, arr] (wav)-- (pipe);
+  \draw[arr] (pipe)-- node[above,font=\scriptsize]{1 từ / hop} (bin);
+  \node[below=0.35cm of pipe, font=\scriptsize, align=center]
+    {Đồng bộ: khung $k$ $\leftrightarrow$ byte $2k,2k+1$ trong bin};
+\end{tikzpicture}
+\caption{Hợp đồng kiểm chứng: mỗi hop $10\,\text{ms}$ trên wav sinh đúng hai byte trong \texttt{pitch\_f0.bin}.}
+\label{fig:ch12_wav_bin}
+\end{figure}
+
+\paragraph{Ví dụ kích thước.} Một giây âm thanh $16\,\text{kHz}$ có $16000$ mẫu. Với $L=640$, $H=160$:
+\[
+N_{\mathrm{frames}}=\bigl\lfloor(16000-640)/160\bigr\rfloor+1=97.
+\]
+Tệp bin chiếm $97\cdot 2=194$ byte. Script verify có thể assert \texttt{len(bin)==2*n\_frames}.
+
+\subsection*{12.5. RTL pack}
 
 \begin{verbatim}
-module pack_q124 #(parameter CEIL_Q = 16'd9600)(
-  input  wire clk, rst_n, in_valid, voiced,
-  input  wire [15:0] f0_hz_u,   // Hz integer
-  input  wire [3:0]  f0_frac,   // /16 bits if any
-  output reg  out_valid,
+module pack_q124 #(
+  parameter CEIL_Q = 16'd9600  // 600 Hz * 16
+)(
+  input  wire        clk, rst_n,
+  input  wire        in_valid,
+  input  wire        voiced,
+  input  wire [15:0] f0_hz_u,   // phan nguyen Hz (tu LPM_DIVIDE)
+  input  wire [3:0]  f0_frac,   // 4 bit frac neu mang san Q12.4
+  output reg         out_valid,
   output reg  [15:0] q124,
-  output reg  [7:0]  b0, b1
+  output reg  [7:0]  b0, b1     // LE: b0 thap, b1 cao
 );
+  // raw = f0_hz_u * 16 + f0_frac  (khong dau, 17 bit de so CEIL)
   wire [16:0] raw = {1'b0, f0_hz_u, 4'b0} + f0_frac;
   wire [15:0] sat = (raw > CEIL_Q) ? CEIL_Q : raw[15:0];
-  always @(posedge clk or negedge rst_n)
-    if (!rst_n) begin q124<=0; b0<=0; b1<=0; out_valid<=0; end
-    else if (in_valid) begin
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      q124<=0; b0<=0; b1<=0; out_valid<=0;
+    end else if (in_valid) begin
       q124 <= voiced ? sat : 16'd0;
       b0   <= voiced ? sat[7:0]  : 8'd0;
       b1   <= voiced ? sat[15:8] : 8'd0;
       out_valid <= 1'b1;
     end else out_valid <= 1'b0;
+  end
 endmodule
 \end{verbatim}
 
-\subsection*{Twin bit-exact}
+Không cần DSP: chỉ dịch trái $4$ bit, cộng frac, so sánh bão hòa, mux UV. Ngõ \texttt{b0}/\texttt{b1} tiện ghi Memory-Mapped hoặc stream byte vào thẻ SD; ngõ \texttt{q124} đi Avalon-ST $16$~bit sang HPS.
+
+\subsection*{12.6. Twin bit-exact}
 
 \begin{verbatim}
 import numpy as np, struct
 CEIL = 9600
+
 def pack_q124(f0_hz, voiced=True):
-    if not voiced or f0_hz <= 0: q = 0
-    else: q = max(0, min(CEIL, int(np.round(f0_hz * 16.0))))
+    if (not voiced) or f0_hz <= 0:
+        q = 0
+    else:
+        q = max(0, min(CEIL, int(np.round(f0_hz * 16.0))))
     return q, struct.pack("<H", q)
+
 assert pack_q124(200.0)[1] == b"\x80\x0c"
 assert pack_q124(199.466)[0] == 3191
 assert pack_q124(0.0, False)[0] == 0
 assert pack_q124(700.0)[0] == CEIL
+assert pack_q124(220.0)[1] == b"\xc0\x0d"
 \end{verbatim}
 
+Mọi hàng trong bảng mục~12.3 khớp \texttt{verify/verify\_chuong\_10\_14.py}.
+
 \begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
+\textbf{Ngân sách silicon --- đóng gói Q12.4.}
 \begin{itemize}[leftmargin=1.2em]
-\item Pack: vài ALM (dịch, sat, mux UV), 0 DSP, 0 M10K.
-\item FIFO HPS (tuỳ chọn): 1 M10K cho burst khung.
-\item Vì sao Q12.4: đủ 75--600\,Hz trong 16 bit; bước nhỏ hơn sai số ước lượng; LE khớp hầu hết CPU/HPS.
-\item Vì sao UV$=0$: một giá trị đặc biệt duy nhất --- server không cần enum riêng.
+    \item \textbf{ALM:} vài chục (dịch, cộng frac, so CEIL, mux UV, thanh ghi). \textbf{DSP:} $0$. \textbf{M10K:} $0$ cho bản thân pack; FIFO HPS tuỳ chọn $1$ M10K nếu gom burst nhiều khung.
+    \item \textbf{Latency:} $1$ chu kỳ đăng ký --- không đổi RTF.
+    \item \textbf{Vì sao Q12.4:} đủ $75$--$600\,\text{Hz}$ trong $16$~bit; LSB $\approx 0{,}54\,\text{cent}$ tại $200\,\text{Hz}$, nhỏ hơn ngân sách $20$~cent; LE khớp HPS.
+    \item \textbf{Vì sao UV$=0$:} một giá trị đặc biệt duy nhất --- server không cần enum riêng; median-3 và Pearson đều xử lý $0$ như ``không cao độ''.
 \end{itemize}
 \end{costbox}
 
-\subsection*{Thực hành}
+\subsection*{12.7. Bài tập và lời giải giải thích}
 
-\begin{enumerate}[leftmargin=1.4em]
-\item Pack 220\,Hz: kỳ vọng $3520=$ \texttt{C0 0D}.
-\item Đổi big-endian cố ý: evaluator lệch bao nhiêu? (đọc nhầm $\times$ đến hàng trăm Hz).
-\item UV phải \texttt{00 00}, không phải $0{,}01$\,Hz ($q=0$ vs $q=1$).
-\end{enumerate}
+\paragraph{Bài tập 12.1.} Pack $220\,\text{Hz}$: kỳ vọng $F_q$ và hai byte LE?
 
-\noindent\textbf{Mở rộng.} Q12.4 đóng gói $F_0$ Hz: 12 bit nguyên + 4 bit thập phân ($\Delta=1/16$\,Hz). Ví dụ $150{,}25$\,Hz $\to$ $150\cdot16+4=2404$. Tràn sat về max. Twin pack/unpack bit-exact với RTL; so lệch $<0{,}0625$\,Hz trước khi đổi sang cent.
+\paragraph{Lời giải.} $220\cdot 16=3520=0\text{x}0\text{DC}0$. LE: \texttt{C0 0D}.
 
+\paragraph{Bài tập 12.2.} Đổi big-endian cố ý trên $200\,\text{Hz}$: evaluator đọc ra bao nhiêu Hz?
+
+\paragraph{Lời giải.} Bytes thật \texttt{80 0C}; đọc BE cho $0\text{x}0\text{C}80=32780$, $32780/16=2048{,}75\,\text{Hz}$. Sai số hàng nghìn Hz --- rõ ràng là lỗi giao thức.
+
+\paragraph{Bài tập 12.3.} Vì sao UV phải là \texttt{00 00} chứ không phải $0{,}0625\,\text{Hz}$ ($q=1$)?
+
+\paragraph{Lời giải.} $q=1$ vẫn là ``có cao độ'' rất thấp; các chỉ số VDE/FFE và logic thanh điệu sẽ coi khung đó hữu thanh. Hợp đồng lab: đúng một mã $0$ duy nhất cho Unvoiced/Silence sau cổng Chương~10.
