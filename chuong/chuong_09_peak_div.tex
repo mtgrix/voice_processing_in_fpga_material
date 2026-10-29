@@ -297,4 +297,7 @@ Một lưu ý vận hành: khi demo realtime trên DE10, đừng đánh giá b�
 \item Cần $\tau^*\pm 1$ luôn nằm trong mảng điểm số. Nếu cho phép $\tau^*=26$, thiếu $r_{-}$; $\tau^*=214$ thiếu $r_{+}$. Vì vậy biên argmax thụt vào một mẫu mỗi phía.
 \end{enumerate}
 
+
+Nếu bạn chỉ nhớ một câu của chương này: \emph{đỉnh nguyên chưa đủ --- cần $\tau_{\mathrm{fine}}$ và đúng latency chia}. Mọi công thức parabolic, mọi giá trị Q12.4 trong bảng 9.3, và mọi assert trong \texttt{verify/verify\_chuong\_06\_09.py} đều phục vụ câu đó. Khi mở rộng sau này sang sinc hoặc Viterbi, giữ nguyên hợp đồng Avalon-ST và định dạng Q12.4 để không phá Chương~12--13.
+
 Tóm tắt chương: argmax chọn $\tau^*$ trên điểm số đã chuẩn hóa; parabolic ba điểm cho $\tau_{\mathrm{fine}}$; một phép chia LPM\_DIVIDE / non-restoring mỗi khung cho $F_0$ Q12.4; latency chia là hợp đồng testbench; ngân sách vài trăm chu kỳ --- nhỏ trước MAC. Mọi số mục 9.3 đã chạy \texttt{verify/verify\_chuong\_06\_09.py}.
