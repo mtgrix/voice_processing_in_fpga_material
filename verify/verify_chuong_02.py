@@ -1,4 +1,4 @@
-"""Verify Chương 2 numbers: PLL, SCLK/MCLK, ppm, Gray, I2S pack, FIFO depth, VCO."""
+"""Verify Chương 2 numbers: PLL, SCLK/MCLK, ppm, Gray, I2S pack, FIFO depth, VCO, RTF/cost."""
 import numpy as np
 
 assert abs(12.288 / 50 - 0.24576) < 1e-12
@@ -48,4 +48,13 @@ assert v16 == 16384
 
 assert abs(48000 * 100e-6 - 4.8) < 1e-12
 
-print("verify_chuong_02 OK", {"fout": fout, "ppm": ppm, "drift_samples": drift, "fvco": fvco})
+# §2.4 Ví dụ tính tay — RTF CDC and hop fraction
+cdc_latency_s = 3 / 50e6
+audio_period_s = 1 / 48000
+rtf_cdc = cdc_latency_s / audio_period_s
+assert abs(rtf_cdc - 0.00288) < 1e-9  # 60ns / 20.833us
+assert abs(3 / 500_000 - 6e-6) < 1e-15
+assert 150 / 41910 < 0.004  # <0.4% ALM
+assert abs(1 / 48000 - 20.833333333333332e-6) < 1e-15
+
+print("verify_chuong_02 OK", {"fout": fout, "ppm": ppm, "drift_samples": drift, "fvco": fvco, "rtf_cdc": rtf_cdc})

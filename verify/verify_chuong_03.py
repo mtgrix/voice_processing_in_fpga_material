@@ -1,4 +1,4 @@
-"""Verify Chương 3: DC-blocker float tables + bit-exact Q1.15 twin + extended rows."""
+"""Verify Chương 3: DC-blocker float tables + bit-exact Q1.15 twin + limit-cycle demos."""
 import numpy as np
 
 def dc_float(x, alpha):
@@ -65,4 +65,34 @@ x_long = np.array([0, 0, 0] + [16384] * 1600, dtype=np.int16)
 y_long, _ = dc_q15(x_long)
 assert abs(int(y_long[-1])) < 50
 assert abs(int(y_long[3 + 256]) - int(round(16384 / np.e))) < 80
-print("verify_chuong_03 OK y[3:9]=", y[3:9].tolist(), "fc16=", fc16)
+
+# §3.3b Ví dụ tính tay — deadband
+def deadband_step(y0, shift=8, steps=5):
+    y = y0
+    hist = [y]
+    for _ in range(steps):
+        y = y - (y >> shift)
+        hist.append(y)
+    return hist
+
+assert deadband_step(255) == [255, 255, 255, 255, 255, 255]
+assert deadband_step(256) == [256, 255, 255, 255, 255, 255]
+assert abs(255 / 32768 - 0.007781982421875) < 1e-15
+
+# §3.3b Ví dụ tính tay — bipolar limit cycle toy
+def bip_limit(a=0.875, start=5.0, steps=6):
+    y = float(start)
+    hist = [y]
+    for _ in range(steps):
+        y = float(-np.round(a * y))
+        hist.append(y)
+    return hist
+
+bl = bip_limit()
+assert bl[0] == 5.0
+assert bl[1] == -4.0
+assert bl[2] == 4.0
+assert bl[3] == -4.0
+assert bl[4] == 4.0
+
+print("verify_chuong_03 OK y[3:9]=", y[3:9].tolist(), "fc16=", fc16, "deadband255", deadband_step(255)[:3])

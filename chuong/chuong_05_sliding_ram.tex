@@ -45,7 +45,7 @@ FIFO tuyến tính (chỉ đẩy mẫu mới, đọc tuần tự từ đầu) kh
 
 \paragraph{An toàn đa khung.} Nếu FSM chậm và yêu cầu khung mới khi khung trước chưa đọc xong, cần hoặc chặn \texttt{frame\_req} (backpressure) hoặc double-buffer hai vùng $L$ (tốn 2 M10K). Lab mặc định backpressure: một burst tại một thời điểm, đơn giản và đủ vì $642\ll 500000$. Double-buffer chỉ cần khi pipeline MAC quá sâu đến mức đọc khung chồng nhau --- không phải trường hợp thiết kế DE10 ở Chương~0.
 
-\paragraph{Liên hệ RTF.} Thời gian đọc khung $642/50\times 10^{6}\approx 12{,}8\,\mu\mathrm{s}$ trên $10\,\text{ms}$ audio cho RTF riêng phần nhớ $\approx 0{,}00128$. Toàn hệ thống RTF bị chi phối bởi MAC (Chương~7), không bởi M10K --- đúng chỗ đặt ngân sách silicon.
+\paragraph{Liên hệ RTF.} \textbf{RTF} (\emph{real-time factor}) $=$ thời gian xử lý $/$ thời gian audio. Thời gian đọc khung $642/(50\times 10^{6})\approx 12{,}84\,\mu\mathrm{s}$ trên $10\,\text{ms}$ audio cho RTF riêng phần nhớ $\approx 0{,}00128$. Toàn hệ thống RTF bị chi phối bởi MAC (Chương~7), không bởi M10K --- đúng chỗ đặt ngân sách silicon.
 \subsection*{5.2. Toán con trỏ vòng và ví dụ tính tay}
 
 Con trỏ ghi $n_w\in\{0,\ldots,L-1\}$ chạy modulo $L$: mỗi beat \texttt{valid} ghi $\mathrm{mem}[n_w]\leftarrow x_{\mathrm{in}}$ rồi $n_w\leftarrow(n_w+1)\bmod L$. Khi FSM cần khung (sau khi đã có đủ mẫu mới theo hop $H$), đọc oldest-first:
@@ -80,7 +80,7 @@ Với $H=160$, $f_s=16\,\text{kHz}$, số khung mỗi giây là $16000/160=100$ 
 
 \subsection*{5.3. Old Data, latency 1/2 và timing chu kỳ-cụ-thể}
 
-Như Chương~0 đã khẳng định: trên Cyclone~V, khi Port~A ghi địa chỉ $a$ mà Port~B đọc \emph{cùng} $a$ trong cùng chu kỳ (mixed-port read-during-write), silicon \textbf{không hỗ trợ New Data}; chỉ bảo đảm \textbf{Old Data} (đọc giá trị trước lần ghi) hoặc Don't Care. Twin Python phải trả về giá trị cũ trong cùng ``delta-cycle''; nếu không, testbench xanh trên mô hình tưởng tượng nhưng đỏ trên chip thật.
+Trên Cyclone~V, khối \textbf{M10K} True Dual-Port cho phép Port~A ghi và Port~B đọc \emph{cùng lúc}. Khi hai cổng chạm \emph{cùng một địa chỉ} trong cùng chu kỳ (mixed-port read-during-write), cần một quy tắc: silicon trả về giá trị nào? \textbf{Old Data} nghĩa là cổng đọc nhận đúng nội dung ô \emph{trước} cạnh ghi --- như nhìn vào ngăn kéo trước khi ai đó thay đồ trong đó. \textbf{New Data} nghĩa là đọc ngay giá trị vừa ghi; trên mixed-port Cyclone~V chế độ này \emph{không được bảo đảm} (chỉ Don't Care hoặc Old Data). Twin Python phải trả về giá trị cũ trong cùng ``delta-cycle''; nếu không, testbench xanh trên mô hình tưởng tượng nhưng đỏ trên chip thật. Chương~0 đã cảnh báo điều này ở bài tập~0.3 --- đây là chỗ hiện thực.
 
 \paragraph{Cấu hình IP.} On-Chip Memory (RAM: 2-PORT), True Dual-Port, width 16 (Q1.15), depth $\ge L$ (có thể làm tròn 1024). Mixed-port RDW = \textbf{Old Data}. Không dùng MLAB cho $L=640$ (depth lớn, timing kém). Single-port + time-mux ghi/đọc sẽ buộc FSM không ghi trong lúc đọc khung --- phức tạp hóa và dễ mất mẫu audio.
 
@@ -166,10 +166,20 @@ def write(x):
 def read_frame():
     return [mem[(wr + k) % L] for k in range(L)]  # oldest-first
 \end{verbatim}
-Hàm \texttt{write} trả về \texttt{old} khớp dout silicon khi đọc trùng địa chỉ đang ghi. Script \texttt{verify/verify\_chuong\_05.py} kiểm khung $[2,\ldots,9]$ ($L=8$) và ngân sách $640\times 16=10240$~bit.
+Hàm \texttt{write} trả về \texttt{old} khớp dout silicon khi đọc trùng địa chỉ đang ghi.
+Script \texttt{verify\_chuong\_05.py} kiểm khung $[2,\ldots,9]$ ($L=8$)
+và ngân sách $640\times 16=10\,240$~bit.
 
 \begin{costbox}
-\textbf{Ngân sách --- sliding M10K.} $L\times 16=640\times 16=10\,240$~bit, vừa khít \textbf{1 khối M10K} ($10\,240$~bit). Depth 1024 từ vẫn khoảng 1--2 M10K. ALM cho hai con trỏ + FSM đọc: khoảng $50$--$100$. 0 DSP. Đọc hết một khung: $L$ chu kỳ $+$ latency 1 hoặc 2 $=641$ hoặc $642$ --- rất nhỏ so với ngân sách $500\,000$ chu kỳ trong $10\,\text{ms}$ ở $50\,\text{MHz}$ (Chương~0). Vì sao True Dual-Port + Old Data: ghi và đọc song song mỗi chu kỳ; New Data không bảo đảm trên mixed-port Cyclone~V (bài tập~0.3). RTF phần đọc khung $\approx 642/500000 < 0{,}002$.
+\textbf{Ngân sách --- sliding M10K (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{M10K} (block RAM $\approx 10\,\text{kbit}$): $L\times 16=640\times 16=10\,240$~bit --- vừa khít \textbf{1 khối}. Depth 1024 từ vẫn khoảng 1--2 M10K. Không dùng \textbf{MLAB} cho $L=640$ (depth lớn, timing kém).
+\item \textbf{ALM}/\textbf{LUT}: khoảng $50$--$100$ cho hai con trỏ + FSM đọc. 0 \textbf{DSP}.
+\item \textbf{Latency} đọc: 1 hoặc 2 chu kỳ (cấu hình IP) $\Rightarrow$ đọc hết khung $641$ hoặc $642$ chu kỳ.
+\item \textbf{Fmax}: dễ $>150\,\text{MHz}$ khi ép \texttt{ramstyle=M10K}; RAM logic làm Fmax và hành vi Old Data lệch twin.
+\item \textbf{RTF}: $642/500\,000\approx 0{,}00128$ trên hop $10\,\text{ms}$ @ $50\,\text{MHz}$ --- nhớ không phải nút thắt; MAC Chương~7 mới là nút thắt.
+\item Vì sao True Dual-Port + Old Data: ghi/đọc song song mỗi chu kỳ; New Data không bảo đảm trên mixed-port Cyclone~V.
+\end{itemize}
 \end{costbox}
 
 
@@ -191,7 +201,7 @@ def read_frame_stable(wr_at_req):
 \end{verbatim}
 Ép map M10K, tránh công cụ phân tán MLAB khi depth lớn. Kiểm Fitter: $1$ M10K, không cảnh báo inferred ROM/RAM conflict. Nếu thấy ``RAM logic'', latency và Old Data có thể không còn đúng như block RAM --- phải sửa attribute hoặc dùng IP.
 
-\paragraph{Tóm tắt tám yếu tố Chương~5.} Hiện tượng khung trượt; toán modulo + ví dụ $L=8$; IP TDP Old Data + hình timing chu kỳ; RTL từng dòng + \texttt{ramstyle}; twin Old Data; costbox 10240~bit; năm bài tập. Điều kiện qua chương: verify script OK, Fitter báo 1 M10K, và waveform RDW khớp Old Data.
+Điều kiện qua chương: script \texttt{verify\_chuong\_05.py} OK, Fitter báo 1 M10K, và waveform RDW khớp Old Data.
 
 
 \subsection*{5.4. Bài tập và lời giải giải thích}

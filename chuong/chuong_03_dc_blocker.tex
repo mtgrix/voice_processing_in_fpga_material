@@ -217,15 +217,47 @@ endmodule
 
 \subsection*{3.3b. Hiện tượng limit-cycle và chọn $\alpha$ trên silicon}
 
-Khi phản hồi bị lượng tử hóa thô, bộ lọc IIR tuyến tính trên giấy có thể trở thành hệ phi tuyến trên silicon: sai số làm tròn bị khuếch đại quanh cực gần vòng đơn vị và tạo dao động biên độ nhỏ bền vững (\textbf{limit cycle}). DC-blocker với $\alpha$ sát 1 đặc biệt nhạy nếu $y$ chỉ 16~bit. Accumulator 32~bit đẩy nhiễu lượng tử xuống dưới LSB của Q1.15 ngõ ra, nên sau khi bão hòa $\ggg 15$ người nghe (và khối MAC) không còn thấy vòng dao động. Đó là lý do kỹ thuật --- không phải ``thói quen 32~bit'' --- đằng sau bề rộng thanh ghi.
+\begin{physicalinsight}
+Trên giấy, bộ lọc IIR tuyến tính với $|\alpha|<1$ luôn đưa trạng thái về 0 khi đầu vào tắt. Trên silicon, mỗi phép nhân/dịch bị \emph{lượng tử hóa}: sai số làm tròn không còn là nhiễu nhỏ thụ động mà bị khuếch đại quanh cực sát vòng đơn vị. Kết quả có thể là một dao động biên độ nhỏ \emph{bền vững} --- gọi là \textbf{limit cycle} (chu trình giới hạn). Hình dung quả lắc đồng hồ: nếu mỗi bước chỉnh kim chỉ được nhảy nguyên ``một vạch'' thô, kim có thể mãi mãi nhảy qua lại giữa hai vạch quanh vị trí nghỉ thay vì dừng hẳn. DC-blocker với $\alpha$ sát 1 (cực rất gần $z=1$) đặc biệt nhạy khi thanh ghi $y$ chỉ rộng 16~bit.
+\end{physicalinsight}
 
-Có thể chọn $\alpha=1-2^{-7}$ (cutoff gần gấp đôi) hoặc $1-2^{-9}$ (chậm hơn) chỉ bằng cách đổi hằng dịch trong RTL; không cần DSP. Lab khóa $2^{-8}$ để mọi twin và mọi hình trong sách dùng một số. Đổi $\alpha$ phải đổi cả bảng $f_c$ và bài tập.
+\paragraph{Hai mặt của cùng một lượng tử.} (1)~\textbf{Vùng chết (deadband):} với cập nhật $y\leftarrow y-(y\ggg 8)$ trên số nguyên, khi $|y|<256$ thì $y\ggg 8=0$, nên $y$ \emph{đứng im} dù vẫn còn residual --- offset nhỏ đọng lại, nuôi $\mathcal{R}[0]$ giả. (2)~\textbf{Limit cycle lưỡng cực:} nếu phép làm tròn kèm đổi dấu (mô hình toy của nhánh phản hồi lượng tử), trạng thái có thể nhảy $+\ell\leftrightarrow -\ell$ mãi mãi. Cả hai đều là hệ quả của lưới số nguyên quá thô so với cực gần vòng đơn vị.
 
-\paragraph{Mô phỏng tay thêm --- xung đơn vị quy mô nhỏ.} Đặt $x=[1,0,0,0,0]$, $\alpha=0{,}5$:
+\paragraph{Ví dụ tính tay --- deadband trên lưới dịch $8$ bit.} Giả sử sau khi DC lớn đã suy giảm, residual còn $y=255$ và đầu vào đã về 0. Mỗi bước
 \[
-y[0]=1,\ y[1]=-1+0{,}5\cdot 1=-0{,}5,\ y[2]=0+0{,}5\cdot(-0{,}5)=-0{,}25,\ y[3]=-0{,}125,\ y[4]=-0{,}0625.
+y\leftarrow y-(y\ggg 8).
 \]
-Đáp ứng xung đổi dấu rồi về 0 --- đúng HPF: tổng mẫu (xấp xỉ $H(1)$) tiến về 0. Trên Q1.15, xung $16384$ sẽ cho dãy tương tự sau khi nhân thang.
+Vì $255\ggg 8=0$, ta được $y=255$ ở \emph{mọi} bước tiếp theo. Cùng công thức với $y=256$:
+\begin{align*}
+y_0 &= 256,\\
+y_1 &= 256-(256\ggg 8)=256-1=255,\\
+y_2 &= 255-(255\ggg 8)=255.
+\end{align*}
+Residual kẹt ở $255$ LSB --- đó chính là vùng chết. Trên Q1.15, $255/32768\approx 0{,}0078$ vẫn đủ làm phình nhẹ $\mathcal{R}[0]$ nếu đọng xuyên khung.
+
+\paragraph{Ví dụ tính tay --- limit cycle lưỡng cực (mô hình làm tròn).} Xét ánh xạ đồ chơi $y\leftarrow -\mathrm{round}(0{,}875\cdot y)$ (minh họa phản hồi lượng tử có đổi dấu; không phải RTL lab). Xuất phát $y_0=5$:
+\begin{align*}
+y_1 &= -\mathrm{round}(0{,}875\cdot 5)=-\mathrm{round}(4{,}375)=-4,\\
+y_2 &= -\mathrm{round}(0{,}875\cdot(-4))=+4,\\
+y_3 &= -\mathrm{round}(0{,}875\cdot 4)=-4.
+\end{align*}
+Từ bước~1 trở đi dãy là $-4,+4,-4,+4,\ldots$ (biên độ không về~0): đó là limit cycle chu kỳ~2.
+
+Script \texttt{verify\_chuong\_03.py} khẳng định cả deadband~$255$ và dao động~$\pm 4$.
+
+\paragraph{Vì sao accumulator 32~bit triệt cả hai.} RTL lab giữ $y_{\mathrm{acc}}$ signed 32~bit; phép $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ làm việc trên lưới mịn hơn LSB ngõ ra Q1.15 khoảng $2^{15}$ lần. Nhiễu lượng tử bị đẩy xuống dưới LSB của mẫu 16~bit lấy ra bằng $y_{\mathrm{acc}}\ggg 15$ rồi bão hòa --- người nghe và khối MAC không còn thấy vòng dao động hay residual đứng im ở thang 16~bit. Đó là lý do kỹ thuật, không phải ``thói quen 32~bit''.
+
+\paragraph{Chọn $\alpha$ trên silicon.} Có thể lấy $\alpha=1-2^{-7}$ (cutoff gần gấp đôi) hoặc $1-2^{-9}$ (chậm hơn) chỉ bằng đổi hằng dịch trong RTL; không cần DSP. Lab khóa $2^{-8}$ để mọi twin và mọi hình dùng một số. Đổi $\alpha$ phải đổi cả bảng $f_c$ và bài tập.
+
+\paragraph{Ví dụ tính tay --- đáp ứng xung $\alpha=0{,}5$ (thấy nhanh cực xa).} Đặt $x=[1,0,0,0,0]$, $y[-1]=0$, $\alpha=0{,}5$:
+\begin{align*}
+y[0] &= (1-0)+0{,}5\cdot 0 = 1,\\
+y[1] &= (0-1)+0{,}5\cdot 1 = -0{,}5,\\
+y[2] &= (0-0)+0{,}5\cdot(-0{,}5) = -0{,}25,\\
+y[3] &= -0{,}125,\\
+y[4] &= -0{,}0625.
+\end{align*}
+Đáp ứng đổi dấu rồi về 0 --- đúng HPF: tổng mẫu tiến về 0 ($H(1)=0$). Trên Q1.15, xung $16384$ cho dãy tương tự sau khi nhân thang; với accumulator 32~bit, đuôi không kẹt deadband.
 
 \subsection*{3.4. Twin Python bit-exact}
 
@@ -250,7 +282,16 @@ def dc_blocker_q15(x, alpha_shift=8):
 Vòng lặp trên phải khớp từng LSB với dump simulation RTL. Đổi \texttt{np.int32} thành \texttt{int} Python không giới hạn bề rộng sẽ \emph{sai} khi gần tràn 32~bit --- twin phải giữ đúng modulo hai's complement 32~bit như silicon. Script \texttt{verify/verify\_chuong\_03.py} khẳng định $y[3{:}6]=[16384,16320,16256]$, $f_c(16\,\text{kHz})\approx 9{,}947\,\text{Hz}$, và sau $1600$ mẫu bước thì $|y|\,{<}\,50$.
 
 \begin{costbox}
-\textbf{Ngân sách --- DC-blocker.} Adder/sub 32~bit + dịch số học: khoảng $80$--$120$ ALM (thường vài chục đến $\sim 100$). 0 DSP (nhờ $\alpha=1-2^{-8}$). 0 M10K. Latency: 1 mẫu (pipeline Avalon-ST một nhịp). Fmax dễ $>200\,\text{MHz}$. Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng sai chức năng (deadband) --- đắt hơn mọi LUT trên đường $F_0$. Vì sao không FIR Compiler II: IIR phản hồi không map vào kiến trúc FIR taps.
+\textbf{Ngân sách --- DC-blocker (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{ALM} (\emph{Adaptive Logic Module}) / \textbf{LUT} (\emph{Look-Up Table}): khoảng $80$--$120$ ALM cho adder/sub 32~bit + dịch số học + bão hòa.
+\item \textbf{DSP} (\emph{Digital Signal Processing} block): 0 --- nhờ $\alpha=1-2^{-8}$ hiện thực bằng dịch, không nhân.
+\item \textbf{M10K} / \textbf{MLAB}: 0 (không cần đệm mẫu trong khối này).
+\item \textbf{Latency}: 1 mẫu (pipeline Avalon-ST một nhịp) $\approx 20{,}8\,\mu\mathrm{s}$ ở $48\,\text{kHz}$ hoặc $62{,}5\,\mu\mathrm{s}$ ở $16\,\text{kHz}$.
+\item \textbf{Fmax} (\emph{maximum frequency}): dễ $>200\,\text{MHz}$ trên tốc độ~6.
+\item \textbf{RTF} (\emph{real-time factor}): một mẫu vào / một mẫu ra mỗi lần bắt tay \texttt{valid}/\texttt{ready} $\Rightarrow$ RTF$=1$ khi không backpressure.
+\item Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng gây deadband/limit-cycle --- đắt hơn mọi LUT trên đường $F_0$. Vì sao không FIR Compiler II: IIR phản hồi không map vào kiến trúc FIR taps.
+\end{itemize}
 \end{costbox}
 
 
@@ -273,7 +314,7 @@ Trên đường tín hiệu, DC-blocker là khối streaming mẫu-đơn: mỗi 
 
 \paragraph{Kiểm chứng năng lượng sau khi chặn DC.} Lấy chuỗi step Q1.15 dài 1600 mẫu như script: năng lượng $\sum y^2$ tập trung ở đoạn đầu (đáp ứng HPF với bậc thang) rồi đuôi gần 0. Nếu quên \texttt{sat16} và tràn, năng lượng đuôi có thể bùng --- đó là tín hiệu debug. So sánh với twin float $\alpha=0{,}99609375$ trên cùng tín hiệu chuẩn hóa: sai số từng mẫu sau đoạn transient phải nằm trong vài LSB khi lượng tử đúng.
 
-\paragraph{Tóm tắt tám yếu tố Chương~3.} (1)~Hiện tượng: offset nuốt $\mathcal{R}[0]$. (2)~Toán $H(z)$ cực/zero. (3)~Bảng tay $\alpha=0{,}5$, $\alpha=0{,}75$, và bảng $y_{\mathrm{acc}}$ Q1.15. (4)~IP: không dùng FIR II cho IIR. (5)~RTL 32-bit từng dòng. (6)~Twin bit-exact. (7)~Costbox ALM, 0 DSP. (8)~Năm bài tập có lời giải. Người chấm lab đối chiếu dump RTL với bảng $y_{\mathrm{acc}}$ trong mục~3.3: lệch một LSB là chưa đạt. Người học chỉ được chuyển Chương~4 khi script \texttt{verify\_chuong\_03.py} chạy OK và RTL khớp dump.
+Người chấm lab đối chiếu dump RTL với bảng $y_{\mathrm{acc}}$ trong mục~3.3: lệch một LSB là chưa đạt. Người học chỉ được chuyển Chương~4 khi script \texttt{verify\_chuong\_03.py} chạy OK và RTL khớp dump.
 
 
 \subsection*{3.5. Bài tập và lời giải giải thích}

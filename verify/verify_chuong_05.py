@@ -1,4 +1,4 @@
-"""Verify Chương 5: M10K budget, circular L=8, hop, latency, L@100Hz, warm-up."""
+"""Verify Chương 5: M10K budget, circular L=8, hop, latency, L@100Hz, warm-up, RTF."""
 L, W = 640, 16
 bits = L * W
 assert bits == 10240
@@ -34,11 +34,15 @@ assert 100 * 640 == 64000  # reads/s
 assert abs(642 / 50e6 - 12.84e-6) < 1e-9
 assert abs(642 / 500_000 - 0.001284) < 1e-9
 
-# Old Data semantic
+# Old Data semantic — Ví dụ tính tay
 cell = 7
 new = 42
 old = cell
 cell = new
 assert old == 7 and cell == 42
 
-print("verify_chuong_05 OK", {"bits": bits, "frame": frame})
+# RTF memory portion (asserted in §5.1 / costbox)
+rtf_mem = 642 / 500_000
+assert abs(rtf_mem - 0.001284) < 1e-12
+
+print("verify_chuong_05 OK", {"bits": bits, "frame": frame, "rtf_mem": rtf_mem})

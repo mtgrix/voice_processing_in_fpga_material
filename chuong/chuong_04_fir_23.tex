@@ -26,39 +26,87 @@ CIC (\emph{Cascaded Integrator--Comb}) chỉ thắng khi tỷ lệ nguyên $R\gg
 
 \subsection*{4.1b. Ngân sách phổ trước và sau hạ mẫu}
 
-Trước hạ mẫu, phổ hữu ích của tiếng nói cho bài toán $F_0$ tập trung dưới khoảng $1\,\text{kHz}$ cho bản thân cao độ, nhưng formant và hài có thể kéo lên vài kHz. Nyquist $24\,\text{kHz}$ sau bước $\downarrow 2$ vẫn rộng; Nyquist $8\,\text{kHz}$ sau $16\,\text{kHz}$ là ngưỡng cuối. Mọi năng lượng từ $8\,\text{kHz}$ đến $24\,\text{kHz}$ trên tín hiệu trung gian phải bị stopband của FIR $2/3$ đè xuống trước khi bỏ mẫu --- nếu không, gập phổ biến nhiễu thành ``formant giả'' trong $0$--$8\,\text{kHz}$. Đó là lý do không được dùng ``chỉ lấy 2 mẫu bỏ 1'' thuần thiếu lọc, dù tỷ lệ đúng $2/3$.
+Trước hạ mẫu, phổ hữu ích của tiếng nói cho bài toán $F_0$ tập trung dưới khoảng $1\,\text{kHz}$ cho bản thân cao độ, nhưng formant và hài có thể kéo lên vài kHz. Sau bước $\downarrow 2$, Nyquist còn $12\,\text{kHz}$ (tần số lấy mẫu $24\,\text{kHz}$) --- vẫn rộng. Sau bước xuống $16\,\text{kHz}$, Nyquist còn $8\,\text{kHz}$: đó là ngưỡng cuối. Mọi năng lượng từ $8\,\text{kHz}$ đến $12\,\text{kHz}$ (và phần còn sót từ miền $48\,\text{kHz}$ trước đó) trên tín hiệu trung gian phải bị dải chặn của FIR $2/3$ đè xuống \emph{trước} khi bỏ mẫu.
 
-\paragraph{Ví dụ số --- suy giảm stopband.} Giả sử một tone $10\,\text{kHz}$ biên độ $0\,\text{dBFS}$ tại miền $24\,\text{kHz}$. Sau FIR stopband $-60\,\text{dB}$, biên độ còn $-60\,\text{dBFS}$ trước khi gập vào $6\,\text{kHz}$ (ví dụ gập). Tự tương quan của nhiễu đó nhỏ hơn tín hiệu tiếng nói thông thường hàng chục dB --- đủ để đỉnh $T_0$ không bị át. Nếu stopband chỉ $-20\,\text{dB}$, nhiễu còn lớn, đỉnh phụ có thể thắng ngưỡng voicing.
+\paragraph{Stopband là gì trong thực tế.} Bộ lọc số chia phổ thành ba vùng tên gọi chuẩn: \textbf{passband} (dải thông --- tần số đi qua gần như nguyên vẹn), \textbf{transition band} (dải chuyển --- suy giảm dần), và \textbf{stopband} (dải chặn --- nơi biên độ phải bị đè xuống dưới một ngưỡng, ví dụ $-60\,\text{dB}$). Stopband không phải ``chỗ không có tín hiệu''; nó là chỗ ta \emph{ép} năng lượng đủ nhỏ để khi gập phổ (alias) xuống dải thấp, phần còn lại không đủ mạnh để tạo đỉnh giả trên tự tương quan. Nếu chỉ ``lấy 2 mẫu bỏ 1'' mà không lọc, tỷ lệ $2/3$ vẫn đúng về số mẫu nhưng sai về phổ.
+
+\paragraph{Ví dụ tính tay --- tone $10\,\text{kHz}$ gập vào đâu.} Tại miền $24\,\text{kHz}$, một tone $f=10\,\text{kHz}$ biên độ $0\,\text{dBFS}$ (biên độ tuyến tính $1$). Khi hạ xuống $f_{s,\mathrm{out}}=16\,\text{kHz}$ mà \emph{không} lọc, tần số alias gần nhất là
+\[
+f_{\mathrm{alias}}=\lvert 10\,\text{kHz}-16\,\text{kHz}\rvert=6\,\text{kHz},
+\]
+nằm gọn trong Nyquist $8\,\text{kHz}$ --- đúng vùng formant/cạnh phổ có thể nhiễu đỉnh $T_0$. Sau FIR có stopband $-60\,\text{dB}$, biên độ tuyến tính còn
+\[
+A_{-60}=10^{-60/20}=10^{-3}=0{,}001
+\]
+(tức công suất còn $10^{-6}$ so với $0\,\text{dBFS}$). Tự tương quan của nhiễu đó nhỏ hơn tín hiệu tiếng nói thông thường hàng chục dB --- đủ để đỉnh $T_0$ không bị át. Nếu stopband chỉ $-20\,\text{dB}$:
+\[
+A_{-20}=10^{-20/20}=0{,}1,
+\]
+công suất còn $0{,}01$ --- nhiễu vẫn lớn, đỉnh phụ có thể thắng ngưỡng voicing. Lab khóa mục tiêu stopband $\le -60\,\text{dB}$ trước $8\,\text{kHz}$.
 
 \subsection*{4.2. Toán FIR, folding và lượng tử hệ số}
 
-Bộ lọc \textbf{FIR} (\emph{Finite Impulse Response}) tính
+Bộ lọc \textbf{FIR} (\emph{Finite Impulse Response} --- đáp ứng xung hữu hạn) là phép tích chập với một dãy hệ số dài hữu hạn $N$. Định nghĩa gốc, chưa rút gọn:
 \[
 y[n]=\sum_{k=0}^{N-1}h[k]\,x[n-k].
 \]
-Mỗi hệ số $h[k]$ là một \textbf{tap}. Khi thiết kế pha tuyến tính, $h[k]=h[N-1-k]$. \textbf{Symmetric folding} gộp cặp đối xứng, còn $\lceil N/2\rceil$ phép nhân:
-\[
-y[n]=\sum_{k=0}^{N/2-1}h[k]\bigl(x[n-k]+x[n-(N-1-k)]\bigr).
-\]
-Cyclone~V DSP có \textbf{pre-adder} cứng đúng cho phép cộng hai mẫu trước khi nhân --- FIR đối xứng map gọn vào silicon.
+Mỗi hệ số $h[k]$ gọi là một \textbf{tap} (``vòi'' lấy mẫu trễ $k$). Trên phần cứng, mỗi tap ứng với một phép nhân và một phép cộng vào accumulator --- trừ khi ta khai thác đối xứng.
 
-\paragraph{Ví dụ tính tay folding $N=4$.} $h=[1,2,2,1]$, cửa sổ $[a,b,c,d]=[3,4,5,6]$:
+\paragraph{Từ tổng đầy đủ đến folding.} Khi thiết kế pha tuyến tính (trễ nhóm không đổi theo tần số --- quan trọng để không méo dạng xung dây thanh), hệ số đối xứng:
 \[
-y=1\cdot(3+6)+2\cdot(4+5)=9+18=27,
+h[k]=h[N-1-k]\qquad(k=0,1,\ldots,N-1).
 \]
-trùng $\sum h[k]x[k]=27$ --- chỉ 2 nhân thay vì 4.
+Viết lại tổng bằng cách ghép từng cặp $(k,\,N-1-k)$. Với $N$ chẵn:
+\begin{align*}
+y[n]
+&=\sum_{k=0}^{N/2-1}\Bigl(h[k]\,x[n-k]+h[N-1-k]\,x[n-(N-1-k)]\Bigr)\\
+&=\sum_{k=0}^{N/2-1}h[k]\Bigl(x[n-k]+x[n-(N-1-k)]\Bigr),
+\end{align*}
+vì $h[N-1-k]=h[k]$. Đây là \textbf{symmetric folding}: chỉ còn $N/2$ phép nhân thay vì $N$. (Với $N$ lẻ còn thêm một tap giữa nhân một lần.)
 
-\paragraph{Ví dụ tính tay convolution 3-tap.} $h=[1,2,1]$, $x=[3,4,5,0,\ldots]$:
-\[
-y[0]=3,\quad y[1]=10,\quad y[2]=16.
-\]
-Với $h=[1,2,1]/4$ và $x=[4,0,4,0,4]$: $y=[1,2,2,2,2]$ --- thông thấp làm phẳng thành phần gần Nyquist.
+\paragraph{Pre-adder là gì trên silicon.} Khối \textbf{DSP} $18\times 19$ của Cyclone~V có sẵn một bộ cộng cứng ngay trước nhân, gọi là \textbf{pre-adder}: nó tính $x_a+x_b$ trong cùng chu kỳ rồi đưa tổng vào nhân với hệ số $h$. Đúng khớp công thức folding ở trên --- vì thế FIR đối xứng map gọn vào silicon mà không tốn ALM để cộng tay trước nhân. Nếu bỏ folding, mỗi cặp tốn hai nhân DSP thay vì một nhân + một pre-adder.
 
-\paragraph{Lượng tử hệ số Q1.15.} $h_q=\mathrm{round}(h\cdot 2^{15})$ rồi bão hòa vào $\pm(2^{15}-1)$. Ví dụ $h=[0{,}25,0{,}5,0{,}25]$ cho $h_q=[8192,16384,8192]$. Ví dụ dài hơn $h=[0{,}1,0{,}2,0{,}4,0{,}2,0{,}1]$:
+\paragraph{Ví dụ tính tay --- folding $N=4$ từng bước.} Cho $h=[h_0,h_1,h_2,h_3]=[1,2,2,1]$ (đối xứng) và cửa sổ mẫu $[x_0,x_1,x_2,x_3]=[a,b,c,d]=[3,4,5,6]$. Tổng thẳng, chưa folding:
+\begin{align*}
+y
+&=h_0 a+h_1 b+h_2 c+h_3 d\\
+&=1\cdot 3+2\cdot 4+2\cdot 5+1\cdot 6\\
+&=3+8+10+6=27
+\end{align*}
+(bốn phép nhân). Cùng $y$ theo folding ($N/2=2$ nhân):
+\begin{align*}
+y
+&=h_0(a+d)+h_1(b+c)\\
+&=1\cdot(3+6)+2\cdot(4+5)\\
+&=1\cdot 9+2\cdot 9\\
+&=9+18=27.
+\end{align*}
+Hai đường trùng nhau; pre-adder cứng chính là chỗ tính $(3+6)$ và $(4+5)$ trước khi nhân.
+
+\paragraph{Ví dụ tính tay --- convolution 3-tap từng số hạng.} $h=[1,2,1]$, $x=[3,4,5,0,0]$, quy ước $x[m]=0$ khi $m<0$:
+\begin{align*}
+y[0]&=1\cdot x[0]+2\cdot x[-1]+1\cdot x[-2]=1\cdot 3+2\cdot 0+1\cdot 0=3,\\
+y[1]&=1\cdot x[1]+2\cdot x[0]+1\cdot x[-1]=1\cdot 4+2\cdot 3+1\cdot 0=10,\\
+y[2]&=1\cdot x[2]+2\cdot x[1]+1\cdot x[0]=1\cdot 5+2\cdot 4+1\cdot 3=16.
+\end{align*}
+Với $h=[1,2,1]/4$ và $x=[4,0,4,0,4]$: $y=[1,2,2,2,2]$ --- thông thấp làm phẳng thành phần gần Nyquist (script kiểm).
+
+\paragraph{Lượng tử hệ số Q1.15 từng bước.} Đưa hệ số thực $h\in[-1,1)$ sang số nguyên có dấu $16$~bit:
 \[
-h_q=[3277,6554,13107,6554,3277],\qquad \sum h_q=32769
+h_q[k]=\mathrm{sat}_{16}\bigl(\mathrm{round}(h[k]\cdot 2^{15})\bigr),\qquad 2^{15}=32768.
 \]
-(gần $2^{15}=32768$; lệch 1 LSB do làm tròn --- lab ghi nhận và dùng đúng vector này trong IP lẫn twin). Twin, ROM và FIR IP phải dùng \emph{cùng} $h_q$.
+Ví dụ $h=[0{,}25,0{,}5,0{,}25]$:
+\[
+0{,}25\cdot 32768=8192,\quad 0{,}5\cdot 32768=16384
+\quad\Rightarrow\quad h_q=[8192,16384,8192].
+\]
+Ví dụ dài hơn $h=[0{,}1,0{,}2,0{,}4,0{,}2,0{,}1]$:
+\begin{align*}
+0{,}1\cdot 32768&=3276{,}8\to 3277,\\
+0{,}2\cdot 32768&=6553{,}6\to 6554,\\
+0{,}4\cdot 32768&=13107{,}2\to 13107,
+\end{align*}
+nên $h_q=[3277,6554,13107,6554,3277]$ và $\sum h_q=32769$ (lệch 1 LSB khỏi $32768$ do làm tròn --- lab ghi nhận và dùng đúng vector này trong IP lẫn twin). Twin, ROM và FIR IP phải dùng \emph{cùng} $h_q$.
 
 \subsection*{4.3. Polyphase $2/3$: từ $H(z)$ đến commutator $E_0,E_1$}
 
@@ -173,7 +221,16 @@ Phải mô phỏng \texttt{ready}=0: IP dừng tiến mẫu vào nhưng không �
 \paragraph{Stopband và nguy cơ alias vào $F_0$.} Thông số thiết kế tối thiểu: passband đến khoảng $5$--$6\,\text{kHz}$ (giữ formant thấp phục vụ phân tích), transition xuống stopband trước $8\,\text{kHz}$ (Nyquist $16\,\text{kHz}$). Độ sâu stopband khuyến nghị $\le -60\,\text{dB}$ trong lab để nhiễu alias sau hạ mẫu nằm dưới sàn tự tương quan điển hình. Hệ số Q1.15 với $N$ quá ngắn không đạt $-60\,\text{dB}$; đó là lúc tăng $N$ hoặc dùng half-band dài hơn chứ không phải ``tăng bit hệ số vô hạn''.
 
 \begin{costbox}
-\textbf{Ngân sách --- FIR $2/3$.} Số DSP $\propto$ (taps sau folding)${}/{}$(hệ số chia sẻ theo thời gian) --- đọc Fitter; mục tiêu giữ trong vài DSP để toàn hệ thống $\approx 3$ DSP như bảng Chương~0, hoặc ghi rõ nếu lab nới. M10K: hệ số + delay line (thường 1--2 khối). ALM: vài trăm (control + Avalon-ST). Vì sao polyphase: bỏ MAC của mẫu sẽ bị discard, tiết kiệm tới $\sim 66\%$ phép nhân so với FIR thẳng ở tỷ lệ $1/3$ pha không xuất. Vì sao không CIC: $2/3$ không phải $R$ nguyên lớn. Chu kỳ dư $\approx 2083$ mỗi mẫu @24\,kHz cho phép sharing mạnh. Fmax thường $>150\,\text{MHz}$.
+\textbf{Ngân sách --- FIR $2/3$ (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{DSP} (\emph{Digital Signal Processing} block $18\times 19$, có \textbf{pre-adder}): số DSP $\propto$ (taps sau folding)${}/{}$(hệ số chia sẻ theo thời gian) --- \emph{đọc Fitter}, không đoán. Mục tiêu vài DSP để toàn hệ $\approx 3$ DSP (bảng Chương~0), hoặc ghi rõ nếu lab nới.
+\item \textbf{M10K} (block RAM $\approx 10\,\text{kbit}$): hệ số + delay line, thường 1--2 khối. \textbf{MLAB}: có thể dùng cho delay ngắn; depth lớn nên ưu tiên M10K.
+\item \textbf{ALM}/\textbf{LUT}: vài trăm cho control + Avalon-ST (không kể soft-multiplier nếu hết DSP).
+\item \textbf{Latency}: độ trễ nhóm FIR + pipeline IP (ví dụ $\sim 40$ chu kỳ) --- cộng vào hop nhưng $\ll 500\,000$.
+\item \textbf{Fmax}: thường $>150\,\text{MHz}$ khi dùng DSP cứng; sụp nếu Fitter nhét nhân mềm vào ALM.
+\item \textbf{RTF}: với $\approx 2083$ chu kỳ dư mỗi mẫu @ $24\,\text{kHz}$/$50\,\text{MHz}$, sharing giữ RTF$\ll 1$ miễn không bỏ \texttt{valid}.
+\item Vì sao polyphase: bỏ MAC của pha bị discard, tiết kiệm tới $\sim 66\%$ nhân. Vì sao không CIC: $2/3$ không phải $R$ nguyên lớn.
+\end{itemize}
 \end{costbox}
 
 
@@ -212,7 +269,7 @@ assert len(decimate_2_over_3(range(6))) == 4
 \end{verbatim}
 Đoạn trên chỉ minh họa tỷ lệ; phase thật ($\mathrm{mod}\,3 = 0,1$ hay $1,2$) phải khớp dump IP. Sai phase làm lệch toàn bộ thời gian đến sliding RAM.
 
-\paragraph{Tóm tắt tám yếu tố Chương~4.} Hiện tượng alias; toán FIR + folding + polyphase; ví dụ 27, convolution, $h_q$; FIR II share DSP + hình timing; RTL/systolic thay thế; twin \texttt{convolve}+lịch; costbox DSP/M10K; năm bài tập. Điều kiện qua chương: verify script OK và đọc được số DSP từ báo cáo Generate (không bịa).
+Điều kiện qua chương: script \texttt{verify\_chuong\_04.py} OK và đọc được số DSP từ báo cáo Generate (không bịa).
 
 
 \subsection*{4.5. Bài tập và lời giải giải thích}

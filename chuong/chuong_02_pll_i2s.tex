@@ -14,7 +14,7 @@ Sau Chương~2, người học tạo được đúng xung nhịp âm thanh từ 
 Thạch anh trên bo mạch DE10 dao động cơ--điện rất ổn định (sai số thường chỉ vài phần triệu --- ppm). Chip codec \textbf{Wolfson WM8731} không dùng trực tiếp $50\,\text{MHz}$: nó cần một xung chủ riêng gọi là \textbf{MCLK} đúng $12{,}288\,\text{MHz}$ (bằng $256\times 48\,\text{kHz}$) để chạy bộ lọc oversampling và ADC delta-sigma bên trong. Nếu MCLK lệch vài chục ppm so với giá trị danh định, chu kỳ lấy mẫu sẽ trôi chậm theo thời gian; thuật toán $F_0$ vẫn ``đúng công thức'' nhưng đo trên một trục thời gian bị kéo giãn, tạo ra sai số cao độ giả. Ví dụ đời thường: một đồng hồ đeo tay chạy nhanh $50\,\text{ppm}$ sẽ lệch khoảng $4{,}3$ giây mỗi ngày --- với audio $16\,\text{kHz}$, cùng tỷ lệ đó làm trôi $48$ mẫu mỗi phút, đủ để lệch một phần bước nhảy khung $H=160$.
 \end{physicalinsight}
 
-Khối \textbf{PLL} (\emph{Phase-Locked Loop}) trên Cyclone~V khóa một dao động điều khiển bằng điện áp (VCO) vào thạch anh ngoài, rồi nhân/chia ra đúng MCLK. Đây là hiện tượng mạch thật: bộ so pha--tần số (\textbf{PFD}, \emph{Phase--Frequency Detector}) so sánh cạnh xung tham chiếu với cạnh feedback sau khi chia $M$; khi pha lệch, PFD bơm hoặc hút điện tích vào \textbf{loop filter}, điện áp lọc kéo tần số VCO tới khi hai cạnh khớp nhau. Chỉ khi đã khóa, chia $C$ mới cho ra MCLK sạch. Counter mềm bằng flip-flop không đạt jitter mức audio (jitter lớn làm méo bit I\textsuperscript{2}S và làm ADC delta-sigma ``run'' không đều); vì thế trên Quartus Standard/Lite bắt buộc dùng IP \textbf{Altera PLL} (ALTPLL / PLL Intel FPGA IP), không tự viết PLL bằng RTL.
+Khối \textbf{PLL} (\emph{Phase-Locked Loop} --- vòng khóa pha) trên Cyclone~V tạo ra MCLK bằng cách \emph{khóa} một dao động nội chip vào thạch anh ngoài. Trong vòng đó có ba khối vật lý cần gọi đúng tên. \textbf{VCO} (\emph{Voltage-Controlled Oscillator} --- dao động điều khiển bằng điện áp) là mạch LC/ring trên silicon: điện áp vào cao hơn thì tần số ra cao hơn, giống vặn núm radio nhưng bằng volt. \textbf{PFD} (\emph{Phase--Frequency Detector} --- bộ so pha--tần số) không phải phép trừ số trên giấy: mỗi lần cạnh xung tham chiếu ($f_{\mathrm{in}}$) và cạnh feedback (sau chia $M$) lệch nhau, PFD mở một khóa bơm điện tích (\emph{charge pump}) vào \textbf{loop filter} (tụ và điện trở lọc). Điện áp trên tụ kéo VCO tới khi hai cạnh khớp --- đó mới gọi là \emph{khóa}. Chỉ khi đã khóa, bộ chia $C$ mới cho ra MCLK sạch. Counter mềm bằng flip-flop không đạt jitter mức audio (jitter lớn làm méo bit I\textsuperscript{2}S và làm ADC delta-sigma ``run'' không đều); vì thế trên Quartus Standard/Lite bắt buộc dùng IP \textbf{Altera PLL} (ALTPLL / PLL Intel FPGA IP), không tự viết PLL bằng RTL.
 
 \paragraph{Toán từng bước --- integer-N.} Trong chế độ integer-N mọi hệ số đều nguyên:
 \[
@@ -36,7 +36,7 @@ Sai số tuyệt đối so với $12{,}288\,\text{MHz}$ là khoảng $2{,}61\,\t
 \varepsilon_{\mathrm{ppm}}=\frac{|f_{\mathrm{out}}-12{,}288|}{12{,}288}\cdot 10^{6}\approx 0{,}212\,\text{ppm}.
 \]
 
-\paragraph{Fractional PLL --- cách dạy chuẩn trên DE10.} MegaWizard/IP Catalog cho phép đặt ngõ ra đúng $12{,}288\,\text{MHz}$; phần mềm chọn hệ số phân số (fractional-$M$ hoặc tương đương tùy family) và ghi $M,N,C$ vào báo cáo Compilation. Một nghiệm phân số minh họa trên giấy: $N=5$, $M=61{,}44$, $C=50$ cho
+\paragraph{Fractional PLL trên DE10.} MegaWizard/IP Catalog cho phép đặt ngõ ra đúng $12{,}288\,\text{MHz}$; phần mềm chọn hệ số phân số (fractional-$M$ hoặc tương đương tùy family) và ghi $M,N,C$ vào báo cáo Compilation. Một nghiệm phân số minh họa trên giấy: $N=5$, $M=61{,}44$, $C=50$ cho
 \[
 f_{\mathrm{VCO}}=50\cdot\frac{61{,}44}{5}=614{,}4\,\text{MHz},\qquad
 f_{\mathrm{out}}=\frac{614{,}4}{50}=12{,}288\,\text{MHz}
@@ -82,7 +82,17 @@ t_n = \frac{n}{f_s}\bigl(1+\varepsilon_{\mathrm{ppm}}\cdot 10^{-6}\bigr)
 rồi nội suy sóng hình sin $F_0$ biết trước lên lưới $t_n$ lệch và quan sát độ lệch cao độ ước lượng khi $\varepsilon\neq 0$. Script \texttt{verify/verify\_chuong\_02.py} kiểm mọi số ppm/drift nêu trong chương.
 
 \begin{costbox}
-\textbf{Ngân sách --- PLL.} Một Fractional PLL cứng trên chip (Cyclone~V 5CSXFC6D6F31C6N có 6 PLL; luồng $F_0$ dùng 1, chiếm $16{,}7\%$ ngân sách PLL theo bảng Chương~0). Logic quanh \texttt{locked} và reset: vài ALM. 0 DSP, 0 M10K. Vì sao bắt buộc IP: soft-counter không đạt độ ổn định ppm và jitter của VCO silicon cho MCLK audio; tự viết PLL bằng RTL là lỗi thiết kế, không phải ``bài tập nâng cao''.
+\textbf{Ngân sách --- PLL (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{PLL} cứng: 1 / 6 trên Cyclone~V 5CSXFC6D6F31C6N ($\approx 16{,}7\%$ ngân sách PLL bảng Chương~0).
+\item \textbf{ALM} (\emph{Adaptive Logic Module} --- ô logic cơ bản của Cyclone~V, gồm LUT và flip-flop): vài ALM cho logic \texttt{locked}/reset. \textbf{LUT} (\emph{Look-Up Table}) là bảng chân lý nhỏ trong ALM.
+\item \textbf{DSP} (\emph{Digital Signal Processing} block --- khối nhân cứng $18\times 19$): 0.
+\item \textbf{M10K} (block RAM $\approx 10\,\text{kbit}$): 0. \textbf{MLAB} (\emph{Memory Logic Array Block} --- RAM nhỏ trong LAB): 0.
+\item \textbf{Fmax} (\emph{maximum frequency} --- tần số đồng hồ lớn nhất vẫn đạt timing): không phải nút thắt (PLL cứng chạy VCO hàng trăm MHz).
+\item \textbf{Latency}: thời gian từ lúc cấp clock đến khi \texttt{locked}=1 (hàng trăm $\mu\mathrm{s}$ đến vài ms tùy IP) --- FSM I\textsuperscript{2}S phải chờ.
+\item \textbf{RTF} (\emph{real-time factor} $=$ thời gian xử lý $/$ thời gian audio): khối PLL không đếm RTF theo mẫu; nó chỉ cung cấp nhịp.
+\item Vì sao bắt buộc IP: soft-counter không đạt ppm/jitter của VCO silicon cho MCLK audio.
+\end{itemize}
 \end{costbox}
 
 \subsection*{2.2. Giao thức I\textsuperscript{2}S với codec WM8731}
@@ -140,7 +150,7 @@ always @(posedge sclk) begin
   ws_ff2 <= ws_ff1;     // FF2: bit đã ổn định
   ws_prev <= ws_ff2;    // nhớ cạnh trước để phát hiện rising
 end
-wire ws_rise = ws_ff2 & ~ws_prev;  // cạnh lên = bắt đầu Left (tùy polarity)
+wire ws_rise = ws_ff2 & ~ws_prev;  // rising = start Left
 
 // FSM rút gọn: sau ws_rise chờ 1 SCLK (Philips), rồi dịch 16 bit
 // reg [4:0] bit_cnt; reg [15:0] shreg;
@@ -149,13 +159,20 @@ wire ws_rise = ws_ff2 & ~ws_prev;  // cạnh lên = bắt đầu Left (tùy pola
 Dòng \texttt{ws\_ff1 <= ws\_async} là chỗ metastability được phép xảy ra --- chỉ trên \emph{một} bit điều khiển. Dòng \texttt{ws\_ff2} cho bit thời gian ổn định trước khi dùng. \texttt{ws\_rise} phát hiện cạnh; sau đúng một SCLK (trễ Philips) mới lấy MSB. Khi đủ 16~bit, ghi DCFIFO phía \texttt{wrclk = sclk}. Phía \texttt{rdclk = 50\,MHz} đọc ra Avalon-ST (\texttt{valid}/\texttt{ready}) sang DC-blocker.
 
 \begin{costbox}
-\textbf{Ngân sách --- I\textsuperscript{2}S RX.} Vài chục đến khoảng $100$ ALM (shift register 16--32 bit + phát hiện cạnh WS + FSM), 0 DSP, 0 M10K cho khối RX thuần. Chọn mono Left vì ước lượng $F_0$ không cần stereo; stereo sẽ nhân đôi băng thông CDC và số từ FIFO mà không tăng độ chính xác đỉnh tự tương quan. Fmax miền SCLK $3{,}072\,\text{MHz}$ rất dư với silicon tốc độ 6.
+\textbf{Ngân sách --- I\textsuperscript{2}S RX (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{ALM}/\textbf{LUT}: khoảng $50$--$100$ ALM (shift 16--32 bit + cạnh WS + FSM). 0 \textbf{DSP}, 0 \textbf{M10K}/\textbf{MLAB}.
+\item \textbf{Fmax}: miền SCLK $3{,}072\,\text{MHz}$ rất dư so với silicon tốc độ~6.
+\item \textbf{Latency}: từ cạnh WS đến mẫu Left hợp lệ $\approx 1+16$ cạnh SCLK (Philips + 16 bit) $\approx 5{,}5\,\mu\mathrm{s}$.
+\item \textbf{RTF}: mỗi frame audio 64 cạnh SCLK mang đúng một mẫu Left hữu ích; FSM không bỏ mẫu $\Rightarrow$ RTF thu thập $=1$ (xử lý kịp thời gian thật).
+\item Vì sao mono Left: $F_0$ không cần stereo; stereo nhân đôi băng thông CDC mà không làm sắc đỉnh $\mathcal{R}[\tau]$.
+\end{itemize}
 \end{costbox}
 
 \subsection*{2.3. CDC: DCFIFO bất đồng bộ và mã Gray}
 
 \begin{physicalinsight}
-Miền đồng hồ âm thanh (MCLK $12{,}288\,\text{MHz}$, SCLK $3{,}072\,\text{MHz}$) và miền xử lý lõi ($50\,\text{MHz}$) dao động từ các nguồn độc lập --- chúng \textbf{bất đồng bộ}. Nếu nối một thanh ghi 16~bit từ miền SCLK sang miền $50\,\text{MHz}$ bằng dây thô, một số bit có thể chốt ở trạng thái trung gian khi hai miền ``đụng cạnh'', tạo \textbf{metastability}: giá trị đọc ra không phải 0 cũng không phải 1 ổn định trong thời gian hữu hạn. Hậu quả trên đường $F_0$ là mẫu rác đột biến, đỉnh tự tương quan nhảy lung tung, đôi khi FSM tưởng FIFO full/empty sai.
+Miền đồng hồ âm thanh (MCLK $12{,}288\,\text{MHz}$, SCLK $3{,}072\,\text{MHz}$) và miền xử lý lõi ($50\,\text{MHz}$) dao động từ các nguồn độc lập --- chúng \textbf{bất đồng bộ}. Nếu nối một thanh ghi 16~bit từ miền SCLK sang miền $50\,\text{MHz}$ bằng dây thô, một số bit có thể chốt đúng lúc tín hiệu đang ở vùng điện áp ``không phải 0 cũng không phải 1''. Hiện tượng đó gọi là \textbf{metastability} (bán ổn định): flip-flop đích đứng lình xình ở mức giữa trong một khoảng thời gian không đoán trước được, rồi mới đổ về 0 hoặc 1 --- giống quả bóng cân bằng trên đỉnh tường rồi rơi sang một bên. Hậu quả trên đường $F_0$ là mẫu rác đột biến, đỉnh tự tương quan nhảy lung tung, đôi khi FSM tưởng FIFO full/empty sai.
 \end{physicalinsight}
 
 Giải pháp chuẩn là bộ đệm \textbf{DCFIFO} (\emph{Dual-Clock FIFO} --- đã nêu ở Chương~0): cổng ghi chạy theo clock nguồn (SCLK), cổng đọc chạy theo clock đích ($50\,\text{MHz}$). Dữ liệu mẫu nằm trong RAM dual-port nội bộ; cái bắt chéo miền clock \emph{không} phải là word dữ liệu 16~bit mà là \textbf{con trỏ} ghi/đọc. Con trỏ khi bắt chéo miền phải được mã hóa \textbf{mã Gray}: mỗi lần tăng địa chỉ chỉ đúng một bit thay đổi. Nhờ đó, dù bên kia lấy mẫu lúc con trỏ đang chuyển, nó chỉ có thể đọc nhầm tối đa một bước địa chỉ liền kề --- không bao giờ đọc phải từ bit-pattern trung gian vô nghĩa của mã nhị phân thường.
@@ -241,12 +258,45 @@ for a, b in zip(grays, grays[1:]):
 Twin mức hệ thống: hàng đợi \texttt{collections.deque} với hai ``clock tick'' độc lập; assert không đọc khi empty và không ghi khi full --- tương ứng cờ IP.
 
 \begin{costbox}
-\textbf{Ngân sách --- CDC.} FIFO nông (8--16 từ $\times 16$~bit): thường map vào 1 MLAB hoặc một phần M10K tùy depth. Logic Gray + full/empty + 2FF: vài chục ALM. 0 DSP. Vì sao không đủ 2FF cho cả word dữ liệu: 2FF chỉ an toàn cho một bit điều khiển; word 16~bit cần FIFO/Gray để toàn bộ mẫu nhất quán theo đúng thứ tự ghi. Latency CDC: vài chu kỳ clock đích (2FF + logic empty) --- không đáng kể so với $500\,000$ chu kỳ/hop.
+\textbf{Ngân sách --- CDC / DCFIFO (mọi viết tắt).}
+\begin{itemize}[leftmargin=1.2em]
+\item \textbf{MLAB}/\textbf{M10K}: depth 8--16 từ $\times 16$~bit $=128$--$256$~bit --- thường 1 MLAB (hoặc mảnh M10K nếu tool gộp).
+\item \textbf{ALM}/\textbf{LUT}: vài chục ALM cho Gray + full/empty + chuỗi 2FF. 0 \textbf{DSP}.
+\item \textbf{Latency} CDC: khoảng $2$--$4$ chu kỳ clock đích ($50\,\text{MHz}$) $\approx 40$--$80\,\text{ns}$ --- so với hop $10\,\text{ms}$ ($500\,000$ chu kỳ) là $<0{,}001\%$.
+\item \textbf{Fmax}: phía \texttt{rdclk}=$50\,\text{MHz}$ dễ đạt; phía \texttt{wrclk}=$3{,}072\,\text{MHz}$ cũng dư.
+\item \textbf{RTF}: FIFO không ``tính toán'' mẫu; nó chỉ chuyển miền. RTF bị phá khi \texttt{wrfull}=1 (mất mẫu) --- depth 16 chính là bảo hiểm RTF$=1$.
+\item Vì sao không 2FF cho cả word 16~bit: 2FF chỉ an toàn từng bit điều khiển; word cần FIFO + Gray để mẫu nhất quán theo thứ tự ghi.
+\end{itemize}
 \end{costbox}
 
 \subsection*{2.4. Chi phí tổng hợp và chỗ đứng trong đường tín hiệu}
 
-Khối Chương~2 nằm ngay sau codec và trước DC-blocker (xem bản đồ Hình ở Chương~0). Toàn bộ PLL + I\textsuperscript{2}S RX + DCFIFO tiêu tốn khoảng 1 PLL cứng, $<150$ ALM, 0 DSP, và tối đa 1 MLAB/M10K cho FIFO --- cố tình giữ rẻ để dành DSP và M10K cho FIR (Chương~4) và MAC tự tương quan (Chương~7). Fmax phía sysclk dễ vượt $150\,\text{MHz}$; điểm nghẽn thật sự là kỷ luật CDC và việc chờ \texttt{locked}, không phải diện tích. RTF phần thu thập gần bằng $1$ nếu FSM không bỏ mẫu: mỗi mẫu audio vào đúng một mẫu ra phía DC-blocker khi \texttt{ready} luôn sẵn.
+Khối Chương~2 nằm ngay sau codec WM8731 và ngay trước DC-blocker trên bản đồ đường tín hiệu Chương~0: thạch anh $\to$ PLL $\to$ MCLK/SCLK $\to$ I\textsuperscript{2}S RX $\to$ DCFIFO $\to$ Avalon-ST $50\,\text{MHz}$. Nhiệm vụ của cả cụm là \emph{đưa đúng một mẫu PCM mỗi chu kỳ lấy mẫu sang miền xử lý}, không phải tự ước lượng $F_0$. Vì vậy ngân sách silicon phải cố tình rẻ: dành gần như toàn bộ \textbf{DSP} và phần lớn \textbf{M10K} cho FIR (Chương~4) và MAC tự tương quan (Chương~7).
+
+\begin{physicalinsight}
+Gom ba ô chi phí mục~2.1--2.3 lại thành một bức tranh. \textbf{ALM} (\emph{Adaptive Logic Module}) là ``gạch'' logic của Cyclone~V; mỗi ALM chứa vài \textbf{LUT} (\emph{Look-Up Table}) và flip-flop. \textbf{DSP} là khối nhân cứng. \textbf{M10K} là block RAM khoảng $10\,240$~bit; \textbf{MLAB} là RAM nhỏ hơn nằm trong logic array. \textbf{Fmax} là tần số đồng hồ lớn nhất còn thỏa timing. \textbf{Latency} là trễ mẫu/chu kỳ từ vào đến ra. \textbf{RTF} (\emph{real-time factor}) $=$ thời gian xử lý $/$ thời gian audio: RTF$\le 1$ nghĩa là kịp thời gian thật, không bỏ mẫu.
+\end{physicalinsight}
+
+\paragraph{Tổng hợp số liệu lab.} Trên 5CSXFC6D6F31C6N có khoảng $41\,910$ ALM và 6 PLL cứng. Cụm Chương~2 tiêu thụ:
+\begin{itemize}[leftmargin=1.2em]
+\item 1 PLL Fractional (MCLK $12{,}288\,\text{MHz}$),
+\item $<150$ ALM cho I\textsuperscript{2}S RX + Gray/2FF/cờ FIFO (tức $<0{,}4\%$ ALM chip),
+\item 0 DSP,
+\item tối đa 1 MLAB (hoặc mảnh M10K) cho DCFIFO depth 8--16.
+\end{itemize}
+Fmax phía \texttt{sysclk}=$50\,\text{MHz}$ dễ vượt $150\,\text{MHz}$ trên silicon tốc độ~6 --- điểm nghẽn \emph{không} phải diện tích hay Fmax, mà là kỷ luật CDC và việc AND tín hiệu \texttt{locked} vào enable FSM.
+
+\paragraph{Ví dụ tính tay --- RTF và phần trăm hop.} Giả sử phía đọc DCFIFO luôn \texttt{ready}=1. Mỗi mẫu Left vào ở $48\,\text{kHz}$ đi ra đúng một mẫu trên Avalon-ST $50\,\text{MHz}$: thời gian audio mỗi mẫu là $1/48000\approx 20{,}833\,\mu\mathrm{s}$, trong khi latency CDC chỉ khoảng $3$ chu kỳ $\times 20\,\text{ns}=60\,\text{ns}$. Tỷ số
+\[
+\mathrm{RTF}_{\mathrm{CDC}}=\frac{60\cdot 10^{-9}}{20{,}833\cdot 10^{-6}}\approx 0{,}0029 \ll 1.
+\]
+Trong một hop xử lý $10\,\text{ms}$ ở $50\,\text{MHz}$ có $500\,000$ chu kỳ; $3$ chu kỳ CDC chiếm
+\[
+\frac{3}{500\,000}=6\cdot 10^{-6}
+\]
+(tức $0{,}0006\%$) --- không bao giờ là lý do trễ $F_0$. Ngược lại, nếu FSM quên \texttt{locked} hoặc depth FIFO quá nông khiến \texttt{wrfull}=1, RTF ``vỡ'' theo nghĩa mất mẫu: một mẫu mất ở đây không sửa được bằng thêm DSP ở Chương~7.
+
+\paragraph{Vì sao thiết kế này khớp bài toán.} Ước lượng $F_0$ cần MAC hàng trăm nghìn phép nhân-cộng mỗi hop; cụm thu thập chỉ cần \emph{không làm hỏng mẫu}. Giữ $<150$ ALM và 0 DSP ở Chương~2 là lựa chọn có chủ đích, không phải ``chưa tối ưu''. Lab nghiệm thu cụm: (1)~PLL List ghi đúng $12{,}288\,\text{MHz}$ và \texttt{locked}=1 trước khi thu; (2)~Fitter báo 0 DSP cho khối này; (3)~không có warning timing CDC xuyên miền thô; (4)~script \texttt{verify\_chuong\_02.py} xanh trên mọi số ppm/Gray/SCLK.
 
 \subsection*{2.5. Bài tập và lời giải giải thích}
 
@@ -260,8 +310,12 @@ Từ thạch anh $f_{\mathrm{in}}=50\,\text{MHz}$, kỹ sư cần MCLK $=12{,}28
 \paragraph{Lời giải giải thích.}
 \begin{enumerate}[label=\alph*)]
   \item $M/(N\cdot C)=12{,}288/50=0{,}24576$.
-  \item $f_{\mathrm{out}}=50\cdot 1507/(73\cdot 84)\approx 12{,}28799739\,\text{MHz}$. Sai số
-  $\varepsilon_{\mathrm{ppm}}\approx 0{,}212\,\text{ppm}$ (script \texttt{verify\_chuong\_02.py}).
+  \item
+  \[
+  f_{\mathrm{out}}=50\cdot\frac{1507}{73\cdot 84}\approx 12{,}28799739\,\text{MHz},
+  \quad \varepsilon_{\mathrm{ppm}}\approx 0{,}212.
+  \]
+  (Script \texttt{verify\_chuong\_02.py}.)
   \item $\Delta N\approx 0{,}204$ mẫu/phút --- không đáng kể so với $48$ mẫu/phút khi sai $50\,\text{ppm}$. Fractional PLL vẫn tiện hơn vì MegaWizard điền đúng $12{,}288$.
 \end{enumerate}
 
