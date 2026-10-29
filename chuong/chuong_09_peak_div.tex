@@ -5,16 +5,18 @@
 \pdfbookmark[1]{Chương 9. Peak, parabolic và F0 = fs/τ (LPM_DIVIDE)}{chuong9}
 
 \begin{learningobj}
-Sau chương này bạn giải thích được vì sao đỉnh $\tau$ trên lưới mẫu nguyên chưa đủ; derive và tính tay nội suy parabolic; cấu hình LPM\_DIVIDE (hoặc divider non-restoring tự viết) để lấy $F_0=f_s/\tau$; viết twin chờ đúng latency; và đọc được từng dòng trong hộp chi phí silicon.
+Sau chương này bạn giải thích được vì sao đỉnh $\tau$ trên lưới mẫu nguyên chưa đủ cho độ phân giải cao độ; dẫn ra và tính tay nội suy parabolic ba điểm; cấu hình LPM\_DIVIDE (hoặc divider non-restoring tự viết) để lấy $F_0 = f_s/\tau_{\mathrm{fine}}$; đóng gói kết quả dạng Q12.4; viết twin chờ đúng latency chia; và đọc được từng dòng hộp chi phí silicon.
 \end{learningobj}
 
-\subsection*{Argmax trên $r_a[\tau]$ --- từ đỉnh trễ đến ứng viên}
+\subsection*{9.1. Hiện tượng thật: đỉnh tự tương quan = chu kỳ đóng/mở thanh môn}
 
-\begin{firstprin}{Vật lý: đỉnh tự tương quan = chu kỳ đóng/mở thanh môn}
-Sau chuẩn hóa Boersma, $r_a[\tau]$ gần $[0,1]$ đo mức ``khung giống chính mình'' tại trễ $\tau$. Với dây thanh gần tuần hoàn, đỉnh lớn nhất trong $[\tau_{\min},\tau_{\max}]$ ước lượng $T_0$ (số mẫu). \textbf{Argmax} là phép tìm chỉ số $\tau^*$ cho $r_a[\tau^*]$ lớn nhất --- thuật ngữ tính toán, nhưng nó bám sát hiện tượng vật lý: khoảng thời gian giữa hai lần đóng thanh môn.
-\end{firstprin}
+Sau chuẩn hóa Boersma (Chương~8), điểm số $S[\tau]$ (hay $r_a[\tau]$) gần thang $[0,1]$ đo mức ``khung giống chính mình'' tại trễ $\tau$. Với dây thanh gần tuần hoàn, đỉnh lớn nhất trong $[\tau_{\min},\tau_{\max}]$ ước lượng $T_0$ tính bằng số mẫu. \textbf{Argmax} là phép tìm chỉ số $\tau^*$ cho $S[\tau^*]$ lớn nhất --- thuật ngữ tính toán, nhưng nó bám sát hiện tượng vật lý: khoảng thời gian giữa hai lần đóng thanh môn.
 
-\noindent\textbf{Ví dụ tính tay.} Giả sử trên $[\tau_{\min},\tau_{\max}]$ có các cực đại cục bộ $(80,0{,}50)$, $(160,0{,}47)$, $(40,0{,}30)$. Voicing threshold $V=0{,}45$: loại $40$ vì $0{,}30<0{,}5\cdot V$ (ngưỡng cực đại Praat). Còn lại $80$ thắng $160$ $\Rightarrow\tau^*=80$. (Đỉnh $160\approx2T_0$ sẽ bị octave cost phạt ở tầng pathFinder nếu còn đa ứng viên.)
+Trên thiết kế này, mảng điểm số có 189 ô cho $\tau = 26\ldots 214$, nhưng argmax bị hạn chặt vào $[27,213]$ (187 ứng viên) để $\tau^*$ luôn còn hai láng giềng $\tau^*\pm 1$ phục vụ nội suy. Ngưỡng voicing Praat mặc định $V = 0{,}45$: nếu đỉnh tốt nhất $< 0{,}45\cdot\mathcal{R}_x[0]$ (so sánh nguyên: $\mathrm{best}\cdot 100 < 45\cdot R_x[0]$) thì khung vô thanh, $F_0 = 0$.
+
+\begin{physicalinsight}
+Đỉnh tại $\tau = 2T_0$ luôn tồn tại vì sóng chu kỳ $T_0$ cũng chu kỳ $2T_0$. Nếu biên độ đỉnh bội bị nhiễu đẩy cao hơn đỉnh chính, thuật toán báo $F_0/2$ --- \textbf{sai quãng tám (octave error)}. Octave-cost trong ROM điểm số (Chương~8) và cổng voicing (Chương~10) giảm rủi ro này; argmax một mình không đủ.
+\end{physicalinsight}
 
 \begin{figure}[H]
 \centering
@@ -26,59 +28,73 @@ Sau chuẩn hóa Boersma, $r_a[\tau]$ gần $[0,1]$ đo mức ``khung giống ch
   \fill[red!70] (3.2,2.6) circle (2pt) node[above]{$\tau^*$};
   \fill[orange!80] (5.5,2.2) circle (2pt) node[above]{$2T_0$?};
 \end{tikzpicture}
-\caption{Argmax chọn đỉnh cao nhất trên $[\tau_{\min},\tau_{\max}]$; đỉnh bội có thể còn nhưng thường thấp hơn sau chuẩn hóa + octave cost.}
+\caption{Argmax chọn đỉnh cao nhất trên $[\tau_{\min},\tau_{\max}]$; đỉnh bội có thể còn nhưng thường thấp hơn sau chuẩn hóa và octave-cost.}
+\label{fig:ch09_argmax}
 \end{figure}
 
-\subsection*{Nội suy parabolic --- từng ký hiệu}
+\subsection*{9.2. Nội suy parabolic --- từng ký hiệu}
 
-\begin{firstprin}{Vì sao ba điểm và một parabola?}
-$\mathcal{R}(\tau)$ (hay $r_a(\tau)$) là hàm của biến liên tục $\tau$, nhưng ta chỉ có mẫu tại số nguyên. Gần một đỉnh đơn, đồ thị trông giống một \textbf{parabola} $y=ax^2+bx+c$. Fit ba điểm $r_{-},r^{*},r_{+}$ tại $x=-1,0,+1$, lấy đỉnh parabola: đó là ước lượng sub-sample rẻ nhất còn đúng chiều. Sai số điển hình $\ll0{,}5$ mẫu trên đỉnh sắc --- đủ cho lab pitch trước khi nghĩ đến sinc.
-\end{firstprin}
+$\mathcal{R}(\tau)$ (hay $r_a(\tau)$) là hàm của biến liên tục $\tau$, nhưng phần cứng chỉ có mẫu tại số nguyên. Gần một đỉnh đơn, đồ thị trông giống một \textbf{parabola} $y = ax^2 + bx + c$. Khớp ba điểm $r_{-}, r^{*}, r_{+}$ tại $x = -1,0,+1$, lấy đỉnh parabola: đó là ước lượng dưới mẫu (sub-sample) rẻ nhất còn đúng chiều. Sai số điển hình $\ll 0{,}5$ mẫu trên đỉnh sắc --- đủ cho lab pitch trước khi nghĩ đến sinc (Chương~0 đã so sánh).
 
-\noindent\textbf{Công thức (đặt $x=0$ tại đỉnh nguyên $\tau^*$).}
+Đặt $x = 0$ tại đỉnh nguyên $\tau^*$:
 \[
-\Delta=\frac12\frac{r_{-}-r_{+}}{r_{-}-2r^{*}+r_{+}},\qquad
-\tau_{\mathrm{fine}}=\tau^{*}+\Delta,\qquad
-F_0=\frac{f_s}{\tau_{\mathrm{fine}}}.
+\Delta = \frac12\cdot\frac{r_{-}-r_{+}}{r_{-}-2r^{*}+r_{+}}, \qquad
+\tau_{\mathrm{fine}} = \tau^{*} + \Delta, \qquad
+F_0 = \frac{f_s}{\tau_{\mathrm{fine}}}.
 \]
 \begin{itemize}[leftmargin=1.4em]
-\item $r_{-}=r_a[\tau^{*}-1]$, $r^{*}=r_a[\tau^{*}]$, $r_{+}=r_a[\tau^{*}+1]$.
-\item Mẫu số $r_{-}-2r^{*}+r_{+}$ là xấp xỉ đạo hàm hai (độ cong); phải $<0$ tại đỉnh thật (cong xuống).
-\item $\Delta>0$ $\Rightarrow$ đỉnh hơi lệch phải; $\Delta<0$ lệch trái.
+\item $r_{-} = r_a[\tau^{*}-1]$, $r^{*} = r_a[\tau^{*}]$, $r_{+} = r_a[\tau^{*}+1]$.
+\item Mẫu số $r_{-}-2r^{*}+r_{+}$ xấp xỉ đạo hàm hai (độ cong); phải $<0$ tại đỉnh thật (cong xuống).
+\item $\Delta > 0$ nghĩa là đỉnh hơi lệch phải; $\Delta < 0$ lệch trái.
+\item Trên silicon fixed-point (Mode~B trong golden): $N = S_{-}-S_{+}$, $D = 2(S_{-}-2S^{*}+S_{+})$,
+\[
+\tau_{\mathrm{fine,Q16}} = (\tau^{*}\ll 16) + ((N\ll 16)//D),
+\]
+rồi chia $F_0$ bằng số nguyên có làm tròn.
 \end{itemize}
 
-\noindent\textbf{Ví dụ tính tay (đã kiểm Python).} $r_{-}=0{,}40$, $r^{*}=0{,}50$, $r_{+}=0{,}46$, $\tau^{*}=80$, $f_s=16000$:
+\subsection*{9.3. Ví dụ tính tay --- mọi số đã chạy Python}
+
+\paragraph{A. Argmax có ngưỡng.}
+Các cực đại cục bộ $(80,0{,}50)$, $(160,0{,}47)$, $(40,0{,}30)$; $V = 0{,}45$. Loại $40$ vì $0{,}30 < 0{,}5\cdot V$. Còn lại $80$ thắng $160$, nên $\tau^{*} = 80$.
+
+\paragraph{B. Parabolic và Q12.4.}
+Với $r_{-} = 0{,}40$, $r^{*} = 0{,}50$, $r_{+} = 0{,}46$, $\tau^{*} = 80$, $f_s = 16\,000$:
 \[
-\Delta=\frac12\frac{0{,}40-0{,}46}{0{,}40-1{,}00+0{,}46}=\frac12\frac{-0{,}06}{-0{,}14}\approx+0{,}2142857.
+\Delta = \frac12\cdot\frac{0{,}40-0{,}46}{0{,}40-1{,}00+0{,}46} = \frac12\cdot\frac{-0{,}06}{-0{,}14} = \frac{3}{14} \approx 0{,}2142857.
 \]
-$\tau_{\mathrm{fine}}\approx80{,}2142857$, $F_0\approx199{,}466$\,Hz. Q12.4: $\mathrm{round}(199{,}466\cdot16)=3191$ (lab thường round $199{,}5\cdot16=3192$ khi dùng $F_0$ làm tròn 1 chữ số). Bảng quét thêm:
+$\tau_{\mathrm{fine}} \approx 80{,}2142857$, $F_0 \approx 199{,}4657\,\text{Hz}$. Đóng gói \textbf{Q12.4} (12 bit phần nguyên, 4 bit thập phân; $1\,\text{Hz}\mapsto 16$):
+\[
+F_{0,\mathrm{Q12.4}} = \mathrm{round}(199{,}4657\cdot 16) = 3191.
+\]
+Bảng quét thêm (script \texttt{verify/verify\_chuong\_06\_09.py}):
 
 \begin{center}\scriptsize
 \begin{tabular}{@{}llllll@{}}\toprule
-$y_-$ & $y_*$ & $y_+$ & $\Delta$ & $\tau_{\mathrm{int}}$ & $F_0$ @16\,kHz \\
+$y_-$ & $y_*$ & $y_+$ & $\Delta$ & $\tau_{\mathrm{fine}}$ & $F_0$ @16\,kHz / Q12.4 \\
 \midrule
-0.40 & 0.50 & 0.46 & 0.2143 & 80.214 & 199.47 \\
-0.30 & 0.55 & 0.50 & 0.3333 & 100.333 & 159.47 \\
-0.48 & 0.50 & 0.40 & $-0.3333$ & 119.667 & 133.70 \\
-0.20 & 0.60 & 0.20 & 0.0000 & 64.000 & 250.00 \\
+0.40 & 0.50 & 0.46 & 0.214286 & 80.214286 & 199.4657 / 3191 \\
+0.30 & 0.55 & 0.50 & 0.333333 & 100.333333 & 159.4684 / 2551 \\
+0.48 & 0.50 & 0.40 & $-0.333333$ & 119.666667 & 133.7047 / 2139 \\
+0.20 & 0.60 & 0.20 & 0.000000 & 64.000000 & 250.0000 / 4000 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\subsection*{Chia $F_0=f_s/\tau$ --- LPM\_DIVIDE và non-restoring}
+\paragraph{C. Phép chia $13\div 3$ (minh họa non-restoring 4-bit).}
+Dividend $D = 13 = 1101_2$, divisor $V = 3 = 0011_2$. Sau 4 bước shift + (trừ nếu dư $\ge 0$, cộng nếu dư $< 0$): thương $= 4$, dư $= 1$ vì $3\cdot 4 + 1 = 13$. Testbench bắt buộc: assert $13/3 = 4$, $16000/80 = 200$.
 
-\begin{firstprin}{Phép chia trên FPGA là khối tuần tự, không phải một cổng}
-Trên laptop $16000/80$ là một lệnh. Trên Cyclone~V, chia nguyên thường làm bằng IP \textbf{LPM\_DIVIDE} (pipeline cố định $L$ chu kỳ) hoặc FSM \textbf{non-restoring} tự viết (khoảng $W$ chu kỳ cho thương $W$ bit). Latency là hợp đồng: twin và testbench phải chờ đúng số cạnh clock trước khi đọc quotient. Lệch một chu kỳ $\Rightarrow$ gắn $F_0$ khung trước vào khung sau --- lỗi thời gian, không phải lỗi toán.
-\end{firstprin}
+\subsection*{9.4. Ý nghĩa phần cứng --- LPM\_DIVIDE và non-restoring}
 
-\paragraph{Non-restoring --- trực giác.} Thay vì ``trừ thử, nếu âm thì cộng lại'' (restoring), non-restoring: nếu dư âm thì \emph{cộng} divisor ở bước sau và ghi bit thương 0. Ít mux hơn, phù hợp RTL thuần ALM.
+Trên laptop, $16000/80$ là một lệnh. Trên Cyclone~V, chia nguyên thường làm bằng IP \textbf{LPM\_DIVIDE} (pipeline cố định $L$ chu kỳ) hoặc FSM \textbf{non-restoring} tự viết (khoảng $W$ chu kỳ cho thương $W$ bit). Latency là hợp đồng: twin và testbench phải chờ đúng số cạnh clock trước khi đọc quotient. Lệch một chu kỳ gắn $F_0$ khung trước vào khung sau --- lỗi thời gian, không phải lỗi toán.
 
-\noindent\textbf{Ví dụ tính tay $13\div3$ (4-bit).} Dividend $D=13=1101_2$, divisor $V=3=0011_2$. Sau 4 bước shift + (trừ nếu dư $\ge0$ else cộng): thương $=4$, dư $=1$ vì $3\cdot4+1=13$. TB bắt buộc: assert \texttt{13/3=4}, \texttt{16000/80=200}.
+\paragraph{Non-restoring --- trực giác.}
+Thay vì ``trừ thử, nếu âm thì cộng lại'' (restoring), non-restoring: nếu dư âm thì \emph{cộng} divisor ở bước sau và ghi bit thương 0. Ít multiplex hơn, phù hợp RTL thuần ALM.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[auto, node distance=16mm,
-  state/.style={draw, circle, minimum size=13mm, align=center, font=\small\ttfamily},
+\begin{tikzpicture}[auto, node distance=15mm,
+  state/.style={draw, circle, minimum size=12mm, align=center, font=\small\ttfamily},
   arr/.style={->, thick, >=Stealth}]
   \node[state] (idle) {IDLE};
   \node[state, right=of idle] (load) {LOAD};
@@ -91,52 +107,71 @@ Trên laptop $16000/80$ là một lệnh. Trên Cyclone~V, chia nguyên thườn
   \draw[arr] (done) -- node[below,font=\scriptsize]{ack} (idle);
 \end{tikzpicture}
 \caption{FSM divider non-restoring: IDLE$\to$LOAD$\to$BUSY ($W$ vòng)$\to$DONE. LPM\_DIVIDE ẩn FSM này trong IP, nhưng latency vẫn phải khớp twin.}
+\label{fig:ch09_div_fsm}
 \end{figure}
 
-\paragraph{Cấu hình LPM\_DIVIDE (UG~683490).}
+\paragraph{Cấu hình LPM\_DIVIDE.}
 \begin{itemize}[leftmargin=1.4em]
-\item Numerator: đủ chứa $f_s$ (vd 32-bit), hoặc $f_s\cdot2^{f}$ nếu mang fractional $\tau$.
-\item Denominator: $\tau$ hoặc $\tau$ fixed-point sau parabolic (vd Q8.8).
-\item Pipeline stages = latency $L$ --- ghi vào comment RTL và twin.
-\item \textbf{Không} dùng tên IP bịa ALTDIV\_TENT.
+\item Numerator: đủ chứa $f_s$ đã scale (vd 32-bit), hoặc $f_s\cdot 2^{f}$ nếu mang fractional $\tau$.
+\item Denominator: $\tau_{\mathrm{fine}}$ fixed-point (vd Q16.16 sau parabolic).
+\item Pipeline stages $=$ latency $L$ --- ghi vào comment RTL và twin.
+\item Golden Mode~B: $f0_{\mathrm{Q12.4}} = (16000\cdot 16\cdot 65536 + (\tau_{\mathrm{fine,Q16}}\gg 1)) // \tau_{\mathrm{fine,Q16}}$ (chia có làm tròn).
 \end{itemize}
 
 \paragraph{RTL bọc (ý tưởng).}
 \begin{verbatim}
-// Sau khi có tau_fine (vd Q16.8) và fs=16000:
-// start_div pulse -> chờ L chu kỳ -> f0_quot hợp lệ
+// Sau tau_fine_q16 và fs=16000:
+// start_div pulse -> chờ L chu kỳ -> f0_quot hợp lệ (Q12.4)
 lpm_divide #(.LPM_WIDTHN(32), .LPM_WIDTHD(16), .LPM_PIPELINE(L))
-  u_div (.clock(clk), .numer(fs_scaled), .denom(tau_q), .quotient(f0_quot));
+  u_div (.clock(clk), .numer(fs_scaled), .denom(tau_q),
+         .quotient(f0_quot));
 \end{verbatim}
 
-\paragraph{Twin bit-exact.}
+\subsection*{9.5. Twin Python bit-exact}
+
 \begin{verbatim}
 import numpy as np
-def f0_from_tau(fs, tau_fine):
-    return fs / float(tau_fine)
-assert abs(f0_from_tau(16000, 80.2142857) - 199.466) < 0.01
-# TB: sau đúng Lposedge, so quotient với twin
+
+def parabolic_delta(ym1, y0, yp1):
+    denom = ym1 - 2.0 * y0 + yp1
+    return 0.5 * (ym1 - yp1) / denom
+
+def f0_q12_4(fs, tau_fine):
+    return int(round(fs / float(tau_fine) * 16))
+
+d = parabolic_delta(0.40, 0.50, 0.46)
+assert abs(d - 3/14) < 1e-12
+assert f0_q12_4(16000, 80 + d) == 3191
+# TB: sau đúng L posedge, so quotient với twin
 \end{verbatim}
 
+Định dạng xuất giao tiếp (Chương~12): $F_0$ Q12.4 đóng gói \texttt{uint16} little-endian; $0$ = vô thanh; trần biểu diễn $4095{,}9375\,\text{Hz}$.
+
+\subsection*{9.6. Chi phí silicon}
+
 \begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
+\textbf{Ngân sách peak + parabolic + divider.}
 \begin{itemize}[leftmargin=1.2em]
-\item Argmax quét $\approx182$ giá trị: vài ALM + comparator, 0 DSP, 0 M10K.
-\item Parabolic: 2 trừ + 1 chia ngắn + nhân $1/2$ --- 0--1 DSP hoặc soft, vài chu kỳ.
-\item LPM\_DIVIDE 32/16 pipeline: IP dùng ALM/DSP tùy cấu hình; \emph{nút thắt là latency $L$}, không phải diện tích (1 phép/khung).
-\item Non-restoring tự viết $W$-bit: $\approx W$ chu kỳ, thuần ALM, dễ twin từng bước.
-\item M10K: 0 cho khối này (trừ khi buffer kết quả nhiều khung).
-\item Vì sao chọn parabolic + 1 chia/khung: đủ cent cho lab; Sinc/Brent đắt hơn nhiều mà Viterbi đã tắt.
+\item \textbf{Argmax} quét $\approx 187$ giá trị: vài ALM + comparator, 0 DSP, 0 M10K.
+\item \textbf{Parabolic}: 2 trừ + 1 chia ngắn + nhân $1/2$ --- 0--1 DSP hoặc soft logic, vài chu kỳ.
+\item \textbf{LPM\_DIVIDE} 32/16 pipeline: IP dùng ALM (và tùy chọn DSP); \emph{nút thắt là latency $L$}, không phải diện tích (chỉ 1 phép/khung).
+\item \textbf{Non-restoring} tự viết $W$-bit: $\approx W$ chu kỳ, thuần ALM, dễ twin từng bước.
+\item \textbf{M10K}: 0 cho khối này (trừ khi đệm kết quả nhiều khung).
+\item Vì sao parabolic + 1 chia/khung: sai số $< 2\,\text{cent}$ điển hình (Chương~0); Sinc70/Sinc700 đắt hàng trăm phép nhân/đỉnh trong khi Viterbi đã tắt trên đường streaming.
 \end{itemize}
 \end{costbox}
 
-\subsection*{Thực hành}
+\subsection*{9.7. Bài tập và lời giải giải thích}
 
+\paragraph{Bài tập 9.1.} $r = [0{,}2,\ 0{,}6,\ 0{,}5]$ tại $\tau = 100,101,102$: tính $\Delta$, $\tau_{\mathrm{fine}}$, $F_0$ @ $16\,\text{kHz}$, mã Q12.4.
+
+\paragraph{Bài tập 9.2.} Testbench: $16000/80 = 200$. Cố ý đọc quotient sớm 1 chu kỳ --- quan sát triệu chứng gắn nhầm khung.
+
+\paragraph{Bài tập 9.3.} Với bộ $(0{,}40,0{,}50,0{,}46)$, so $\Delta$ parabolic với ý nghĩa ``đỉnh lệch phải''. Nếu mẫu số $r_{-}-2r^{*}+r_{+} > 0$, đó có còn là đỉnh không?
+
+\noindent\textbf{Lời giải giải thích.}
 \begin{enumerate}[leftmargin=1.4em]
-\item $r=[0{,}2,0{,}6,0{,}5]$ tại $\tau=100,101,102$: tính $\Delta$, $\tau_{\mathrm{fine}}$, $F_0$ @16\,kHz, Q12.4.
-\item TB: $16000/80=200$; cố ý đọc sớm 1 ck --- quan sát symtom gắn nhầm khung.
-\item So sánh $\Delta$ parabolic với $\hat y$ sinc 3 điểm cùng bộ $(0{,}40,0{,}50,0{,}46)$.
+\item Đỉnh nguyên tại $\tau^{*} = 101$ ($0{,}6$ lớn nhất). $\Delta = 0{,}5\cdot(0{,}2-0{,}5)/(0{,}2-1{,}2+0{,}5) = 0{,}5\cdot(-0{,}3)/(-0{,}5) = 0{,}3$. $\tau_{\mathrm{fine}} = 101{,}3$, $F_0 \approx 157{,}9467\,\text{Hz}$, Q12.4 $= 2527$.
+\item Đọc sớm 1 ck lấy thương của lần chia trước (hoặc giá trị chưa ổn định). Triệu chứng điển hình: đường $F_0$ ``trễ một hop'' so với twin, cent error nhảy có hệ thống theo thời gian chứ không theo biên độ.
+\item $\Delta = +3/14 > 0$: đỉnh thật hơi bên phải $\tau^{*}$. Nếu mẫu số $>0$ thì độ cong hướng lên --- đó là đáy (cực tiểu), không được lấy làm chu kỳ dây thanh; RTL phải kiểm tra mẫu số $<0$ hoặc dựa vào argmax đã chọn cực đại.
 \end{enumerate}
-
-\noindent\textbf{Mở rộng.} Peak scan phải tôn trọng $\tau_{\min}..\tau_{\max}$ (vd 32..213 @16\,kHz). Parabolic trên ba điểm $r[-1],r[0],r[+1]$ cho $\Delta$ dưới mẫu: $\Delta=(r_{-}-r_{+})/(2(r_{-}-2r_0+r_{+}))$. $F_0=f_s/(\tau+\Delta)$ --- trên silicon dùng LPM\_DIVIDE (UG) với số bị chia cố định hoặc bảng nghịch đảo. Twin so cent: $|1200\log_2(F_{\mathrm{hw}}/F_{\mathrm{ref}})|$.
-
