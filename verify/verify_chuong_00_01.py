@@ -372,6 +372,36 @@ def test_viterbi_perturbed_exercise():
     assert np.isclose(d_uv[2], 1.35)
 
 
+
+def test_integer_silence_voicing_gates():
+    """Derive Silence/Voicing integer compares from float rules (Ch.1 §1.10)."""
+    print("\n=== 16. Integer Silence / Voicing gates from float ===")
+    theta_sil = 0.03
+    theta_energy = theta_sil ** 2
+    assert np.isclose(theta_energy, 0.0009)
+    assert np.isclose(9 / 10000, theta_energy)
+
+    # Silence: R0/Eref < 0.0009 <=> R0*10000 < 9*Eref
+    R0, Eref = 500_000, 600_000_000
+    assert (R0 / Eref) < theta_energy
+    assert R0 * 10000 < 9 * Eref
+    R0_loud = int(0.8 * Eref)
+    assert not (R0_loud * 10000 < 9 * Eref)
+
+    # Voicing: best_score is S = r_a * R0 (C-compensated energy), NOT dimensionless r_a
+    theta_vox = 0.45
+    R0 = 1_000_000
+    S_voiced = int(round(0.78 * R0))
+    S_unvoiced = int(round(0.30 * R0))
+    assert S_voiced * 100 >= 45 * R0
+    assert S_unvoiced * 100 < 45 * R0
+    # exact boundary
+    assert 4500 * 100 == 45 * 10_000
+    # trap: dimensionless r_a must not enter the integer test
+    assert not (0.78 * 100 >= 45 * R0)
+    print("silence 9/10000 and voicing 45/100 gates OK; scale trap confirmed")
+
+
 def test_silence_energy_db():
     print("\n=== 14. Silence energy threshold dB ===")
     theta = 0.03 ** 2
@@ -407,5 +437,6 @@ if __name__ == "__main__":
     test_soft_upsample_nyquist_tone()
     test_viterbi_perturbed_exercise()
     test_silence_energy_db()
+    test_integer_silence_voicing_gates()
     test_median3_exercise()
     print("\nALL NUMERICAL TESTS PASSED SUCCESSFULLY!")
