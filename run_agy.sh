@@ -1,0 +1,9 @@
+#!/bin/bash
+cd /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus
+for grp in "chuong_00_mo_dau.tex chuong_01_praat.tex" "chuong_02_pll_i2s.tex chuong_03_dc_blocker.tex" "chuong_04_fir_23.tex chuong_05_sliding_ram.tex" "chuong_06_window.tex chuong_07_ac_mac_fft.tex" "chuong_08_norm_rom.tex chuong_09_peak_div.tex" "chuong_10_voicing.tex chuong_11_fsm_avalon.tex" "chuong_12_q124.tex chuong_13_verification.tex chuong_14_checklist.tex"; do
+  tag=$(echo $grp | cut -d_ -f2 | cut -c1-2)
+  P="You are the implementer in this repo (a Vietnamese LaTeX study document). Read STYLE_BRIEF.md fully and follow it exactly; it is the quality bar. Your assignment now: rewrite these files under chuong/: $grp. Each Praat step / hardware block must become a full lesson per the brief (real phenomenon with figure, step-by-step math, hand-worked example with every number verified by a Python script you run and save under verify/, real Intel IP internals, RTL explained, twin, cost box with every abbreviation explained and why the choice fits, exercises with explained answers). Do not edit the main tex before \\input{chuong/chuong_00...}. Compile with: xelatex -interaction=nonstopmode -output-directory=/tmp/build_$tag uoc_luong_f0_praat_fpga_quartus_vi.tex (twice); fix errors; render your chapters' pages with pdftoppm -r 60 and inspect each image for clipped titles, overflow, shorthand. When done, git add -A and git commit -m 'Rewrite $grp' (do not push). Finish with a short report: per-section table (section | terms explained | numbers verified | figure | prose), word counts before/after, remaining issues."
+  agy -p "$P" --dangerously-skip-permissions --effort high > /workspace/writing_material/agy_log_$tag.txt 2>&1
+  git push -q origin main 2>>/workspace/writing_material/agy_push.log
+done
+echo ALLDONE > /workspace/writing_material/agy_done.flag
