@@ -249,6 +249,13 @@ Trên silicon Cyclone~V, ROM 189×16 thường map vào 1 M10K dù chỉ dùng $
 
 Trên hop $10\,\text{ms}$, khối $C$ chỉ thêm khoảng 189 chu kỳ nhân (+ latency ROM). Tổng Pha~2 vẫn dễ nằm dưới $3\,\text{ms}$ nếu MAC là nút thắt chính. Lab nghiệm thu: dump $S[\tau]$ sau nhân $C$ phải khớp twin trên cùng hex --- lệch 1 LSB $C_q$ nhân với $R_x$ lớn có thể đẩy argmax sang $\tau$ láng giềng.
 
+
+Quay lại định nghĩa gốc một lần nữa bằng ngôn ngữ phần cứng: thanh ghi \texttt{acc} của MAC mang $\mathcal{R}_x[\tau]$; ROM mang $C_q[\tau]$; DSP nhân hai số đó rồi dịch 13 bit có làm tròn. Không có khối ``chia $\mathcal{R}_w$'' trên đường mặc định. Mọi tài liệu cũ nhắc ALTDIV\_TENT đều sai tên IP --- hãy xóa khỏi ghi chú cá nhân nếu còn. Đường chia chỉ hiện diện khi (a)~$\mathcal{R}_w$ động, hoặc (b)~Chương~9 tính $F_0=f_s/\tau_{\mathrm{fine}}$ bằng LPM\_DIVIDE / non-restoring --- đó là một phép chia duy nhất mỗi khung, không phải 189 phép.
+
+Khi viết báo cáo lab, hãy tách rõ ba lớp sai số: (1)~sai hex $C$ so twin; (2)~sai pipeline đọc ROM (lệch 1~ck); (3)~sai chọn scoring vs compensation. Ba lớp này cho triệu chứng khác nhau trên đồ thị $F_0$: (1)~lệch systematically theo $\tau$; (2)~trễ một hop hoặc $\tau$ lệch 1; (3)~octave error tăng trên nguyên âm ổn định. Biết tách lớp sẽ rút ngắn debug Chương~13 rất nhiều.
+
+Cuối cùng, nhớ rằng $r_a[\tau]=\mathcal{R}_x[\tau]/\mathcal{R}_x[0]\cdot C[\tau]$ còn phép chia $\mathcal{R}_x[0]$. Trên silicon thường so sánh nguyên tố với ngưỡng voicing mà không chia float: ví dụ $\mathrm{best}\cdot 100 < 45\cdot R_x[0]$ (Chương~9,~10). Twin phải cùng quy tắc so sánh nguyên --- đừng chuẩn hóa float rồi đối chiếu với RTL int.
+
 \subsection*{8.7. Bài tập và lời giải giải thích}
 
 \paragraph{Bài tập 8.1.} $w=[1,2,1]$: tính $C[2]$.
