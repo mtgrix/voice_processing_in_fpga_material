@@ -5,21 +5,30 @@
 \pdfbookmark[1]{Chương 4. FIR Compiler II — hạ mẫu 48→24→16 kHz (polyphase 2/3)}{chuong4}
 
 \begin{learningobj}
-Sau Chương~4, người học hạ mẫu đúng chuỗi $48\,\text{kHz}\to 24\,\text{kHz}\to 16\,\text{kHz}$: lọc chống alias trước mỗi lần bỏ mẫu, cấu hình FIR Compiler II fractional rate $I=2,D=3$ (polyphase $E_0/E_1$), giải thích folding/pre-adder trên DSP $18\times 19$, và viết twin Python dùng cùng hệ số Q1.15. Thuật ngữ FIR, taps, polyphase, transition band đã được giới thiệu ở ô Feynman~9 của Chương~0; aliasing ở ô~2.
+Sau Chương~4, người học hạ mẫu đúng chuỗi $48\,\text{kHz}\to 24\,\text{kHz}\to 16\,\text{kHz}$: lọc chống alias trước mỗi lần bỏ mẫu, cấu hình FIR Compiler II fractional rate $I=2,D=3$ (polyphase $E_0/E_1$), giải thích folding/pre-adder và cách IP chia sẻ DSP theo thời gian với số liệu cụ thể, viết twin Python cùng hệ số Q1.15. Thuật ngữ FIR, taps, polyphase, transition band đã có ở ô Feynman~9 của Chương~0; aliasing ở ô~2.
 \end{learningobj}
 
 \subsection*{4.1. Hiện tượng: bỏ mẫu không lọc sẽ nuốt $F_0$}
 
 \begin{physicalinsight}
-Codec WM8731 xuất PCM ở $48\,\text{kHz}$. Ngân sách Praat/FPGA làm việc ở $16\,\text{kHz}$ (Nyquist $8\,\text{kHz}$ đủ cho $F_0$ và vài formant thấp). \textbf{Hạ mẫu (decimation)} nghĩa là giữ lại một phần mẫu và bỏ phần còn lại. Nếu bỏ mẫu mà chưa lọc thông thấp, mọi thành phần trên nửa tần số mới sẽ \textbf{alias} (gương qua Nyquist --- Chương~0) đổ xuống vùng $75\ldots 600\,\text{Hz}$ đúng chỗ ta tìm cao độ. Vì thế trước mọi phép bỏ mẫu bắt buộc có bộ lọc chống alias.
+Codec WM8731 xuất PCM ở $48\,\text{kHz}$. Ngân sách Praat/FPGA làm việc ở $16\,\text{kHz}$ (Nyquist $8\,\text{kHz}$ đủ cho $F_0$ và vài formant thấp). \textbf{Hạ mẫu (decimation)} nghĩa là giữ lại một phần mẫu và bỏ phần còn lại. Nếu bỏ mẫu mà chưa lọc thông thấp, mọi thành phần trên nửa tần số mới sẽ \textbf{alias} (gương qua Nyquist --- Chương~0) đổ xuống vùng $75\ldots 600\,\text{Hz}$ đúng chỗ ta tìm cao độ. Ví dụ: một formant hoặc nhiễu ở $9\,\text{kHz}$ khi hạ thẳng xuống $16\,\text{kHz}$ sẽ hiện ra như thành phần $7\,\text{kHz}$ hoặc thấp hơn tùy phép gập --- đủ để tạo đỉnh giả trên phổ và làm nhiễu tự tương quan.
 \end{physicalinsight}
 
 Lộ trình thực tế trên đường pitch:
 \begin{enumerate}[leftmargin=1.4em]
-  \item $48\,\text{kHz}\xrightarrow{\downarrow 2}24\,\text{kHz}$: hạ nguyên lần 2 (FIR/half-band hoặc decimate có lọc), Nyquist mới $12\,\text{kHz}$.
+  \item $48\,\text{kHz}\xrightarrow{\downarrow 2}24\,\text{kHz}$: hạ nguyên lần 2 (FIR half-band hoặc decimate có lọc), Nyquist mới $12\,\text{kHz}$. Half-band tận dụng gần nửa hệ số bằng 0 xen kẽ --- tiết kiệm DSP.
   \item $24\,\text{kHz}\xrightarrow{2/3}16\,\text{kHz}$: tỉ số hữu tỉ --- dùng FIR Compiler II Fractional Rate $I=2,D=3$ (mỗi 3 mẫu vào tạo 2 mẫu ra).
 \end{enumerate}
 CIC (\emph{Cascaded Integrator--Comb}) chỉ thắng khi tỷ lệ nguyên $R\gg 1$; với $R$ hiệu dụng $1{,}5$, CIC méo $\mathrm{sinc}^N$ và cần bù --- loại khỏi lộ trình này.
+
+\paragraph{Ví dụ tính tay --- alias số học đơn giản.} Tín hiệu $x[n]=\cos(2\pi\cdot 9000\cdot n/48000)$ tại $48\,\text{kHz}$. Nếu lấy mỗi mẫu thứ ba mà không lọc (minh họa thô cho ý gập phổ), thành phần cao gập vào dải thấp; sau lọc thông thấp cắt trên $\sim 8\,\text{kHz}$ rồi mới bỏ mẫu, biên độ thành phần $9\,\text{kHz}$ bị suy giảm mạnh trước khi gập --- đúng vai trò anti-alias.
+
+
+\subsection*{4.1b. Ngân sách phổ trước và sau hạ mẫu}
+
+Trước hạ mẫu, phổ hữu ích của tiếng nói cho bài toán $F_0$ tập trung dưới khoảng $1\,\text{kHz}$ cho bản thân cao độ, nhưng formant và hài có thể kéo lên vài kHz. Nyquist $24\,\text{kHz}$ sau bước $\downarrow 2$ vẫn rộng; Nyquist $8\,\text{kHz}$ sau $16\,\text{kHz}$ là ngưỡng cuối. Mọi năng lượng từ $8\,\text{kHz}$ đến $24\,\text{kHz}$ trên tín hiệu trung gian phải bị stopband của FIR $2/3$ đè xuống trước khi bỏ mẫu --- nếu không, gập phổ biến nhiễu thành ``formant giả'' trong $0$--$8\,\text{kHz}$. Đó là lý do không được dùng ``chỉ lấy 2 mẫu bỏ 1'' thuần thiếu lọc, dù tỷ lệ đúng $2/3$.
+
+\paragraph{Ví dụ số --- suy giảm stopband.} Giả sử một tone $10\,\text{kHz}$ biên độ $0\,\text{dBFS}$ tại miền $24\,\text{kHz}$. Sau FIR stopband $-60\,\text{dB}$, biên độ còn $-60\,\text{dBFS}$ trước khi gập vào $6\,\text{kHz}$ (ví dụ gập). Tự tương quan của nhiễu đó nhỏ hơn tín hiệu tiếng nói thông thường hàng chục dB --- đủ để đỉnh $T_0$ không bị át. Nếu stopband chỉ $-20\,\text{dB}$, nhiễu còn lớn, đỉnh phụ có thể thắng ngưỡng voicing.
 
 \subsection*{4.2. Toán FIR, folding và lượng tử hệ số}
 
@@ -27,25 +36,29 @@ Bộ lọc \textbf{FIR} (\emph{Finite Impulse Response}) tính
 \[
 y[n]=\sum_{k=0}^{N-1}h[k]\,x[n-k].
 \]
-Mỗi hệ số $h[k]$ là một \textbf{tap} (vòi). Khi thiết kế pha tuyến tính, $h[k]=h[N-1-k]$. \textbf{Symmetric folding} gộp cặp đối xứng, còn $\lceil N/2\rceil$ phép nhân:
+Mỗi hệ số $h[k]$ là một \textbf{tap}. Khi thiết kế pha tuyến tính, $h[k]=h[N-1-k]$. \textbf{Symmetric folding} gộp cặp đối xứng, còn $\lceil N/2\rceil$ phép nhân:
 \[
 y[n]=\sum_{k=0}^{N/2-1}h[k]\bigl(x[n-k]+x[n-(N-1-k)]\bigr).
 \]
-Cyclone~V DSP có \textbf{pre-adder} cứng đúng cho phép cộng hai mẫu trước khi nhân --- đó là lý do FIR đối xứng map gọn.
+Cyclone~V DSP có \textbf{pre-adder} cứng đúng cho phép cộng hai mẫu trước khi nhân --- FIR đối xứng map gọn vào silicon.
 
-\paragraph{Ví dụ tính tay folding $N=4$.} $h=[1,2,2,1]$, cửa sổ mẫu $[a,b,c,d]=[3,4,5,6]$:
+\paragraph{Ví dụ tính tay folding $N=4$.} $h=[1,2,2,1]$, cửa sổ $[a,b,c,d]=[3,4,5,6]$:
 \[
 y=1\cdot(3+6)+2\cdot(4+5)=9+18=27,
 \]
-trùng $\sum h[k]x[k]=1\cdot3+2\cdot4+2\cdot5+1\cdot6=27$ --- chỉ 2 nhân thay vì 4.
+trùng $\sum h[k]x[k]=27$ --- chỉ 2 nhân thay vì 4.
 
-\paragraph{Ví dụ tính tay convolution 3-tap.} $h=[1,2,1]$, $x=[3,4,5,0,\ldots]$ (zero bên ngoài):
+\paragraph{Ví dụ tính tay convolution 3-tap.} $h=[1,2,1]$, $x=[3,4,5,0,\ldots]$:
 \[
-y[0]=3,\quad y[1]=1\cdot4+2\cdot3=10,\quad y[2]=1\cdot5+2\cdot4+1\cdot3=16.
+y[0]=3,\quad y[1]=10,\quad y[2]=16.
 \]
-Với $h=[1,2,1]/4$ và $x=[4,0,4,0,4]$: $y=[1,2,2,2,2]$ --- bộ lọc thông thấp làm phẳng thành phần gần Nyquist.
+Với $h=[1,2,1]/4$ và $x=[4,0,4,0,4]$: $y=[1,2,2,2,2]$ --- thông thấp làm phẳng thành phần gần Nyquist.
 
-\paragraph{Lượng tử hệ số Q1.15.} $h_q=\mathrm{round}(h\cdot 2^{15})$ rồi bão hòa vào $\pm(2^{15}-1)$. Ví dụ $h=[0{,}25,0{,}5,0{,}25]$ cho $h_q=[8192,16384,8192]$. Twin, ROM và FIR IP phải dùng \emph{cùng} vector $h_q$; sai một hệ số làm lệch toàn bộ phổ chống alias.
+\paragraph{Lượng tử hệ số Q1.15.} $h_q=\mathrm{round}(h\cdot 2^{15})$ rồi bão hòa vào $\pm(2^{15}-1)$. Ví dụ $h=[0{,}25,0{,}5,0{,}25]$ cho $h_q=[8192,16384,8192]$. Ví dụ dài hơn $h=[0{,}1,0{,}2,0{,}4,0{,}2,0{,}1]$:
+\[
+h_q=[3277,6554,13107,6554,3277],\qquad \sum h_q=32769
+\]
+(gần $2^{15}=32768$; lệch 1 LSB do làm tròn --- lab ghi nhận và dùng đúng vector này trong IP lẫn twin). Twin, ROM và FIR IP phải dùng \emph{cùng} $h_q$.
 
 \subsection*{4.3. Polyphase $2/3$: từ $H(z)$ đến commutator $E_0,E_1$}
 
@@ -56,41 +69,93 @@ E_r(z)=\sum_{m}h[mM+r]z^{-m}.
 \]
 Noble identity: sau khi hạ mẫu $\downarrow M$, các nhánh $E_r$ chạy ở tốc độ thấp hơn --- tiết kiệm tới hệ số $M$ số MAC so với FIR thẳng rồi bỏ mẫu.
 
-Với fractional $I/D=2/3$: upsample $\uparrow 2$ (chèn 0) $\to$ lọc $\to$ downsample $\downarrow 3$, được gộp thành polyphase. \textbf{Chiều đúng:} mỗi 3 mẫu vào $\Rightarrow$ 2 mẫu ra (không phải ``2 vào thành 3 ra''). Ví dụ tách $h=[h_0,\ldots,h_5]$, $M=3$:
+Với fractional $I/D=2/3$: upsample $\uparrow 2$ (chèn 0) $\to$ lọc $\to$ downsample $\downarrow 3$, được gộp thành polyphase. \textbf{Chiều đúng:} mỗi 3 mẫu vào tạo 2 mẫu ra. Ví dụ tách $h=[h_0,\ldots,h_5]$, $M=3$:
 \[
 E_0=[h_0,h_3],\quad E_1=[h_1,h_4],\quad E_2=[h_2,h_5].
 \]
-Commutator phân phối mẫu vào các nhánh; trên đường $24\to 16\,\text{kHz}$ chỉ cần xuất hai pha mỗi ba chu kỳ vào --- nhánh không dùng không tốn MAC.
+Với số nguyên $h=[1,2,3,4,5,6]$: $E_0=[1,4]$, $E_1=[2,5]$, $E_2=[3,6]$. Commutator phân phối mẫu vào các nhánh; trên đường $24\to 16\,\text{kHz}$ chỉ xuất hai pha mỗi ba chu kỳ vào.
 
-\paragraph{Ví dụ lịch mẫu.} Sáu mẫu vào ở $24\,\text{kHz}$ tạo bốn mẫu ra ở $16\,\text{kHz}$: $4/6=2/3$. Trên clock hệ thống $50\,\text{MHz}$, cờ \texttt{ast\_source\_valid} của FIR II \textbf{không đều} theo nhịp clock (ví dụ trên 6 nhịp sample-in có thể là $1,0,1,1,0,1$). FSM sau FIR bắt buộc đọc \texttt{valid} từng chu kỳ; đếm ``cứ 3 clock lấy 2'' sẽ vỡ khi có backpressure Avalon-ST.
+\paragraph{Ví dụ lịch mẫu và convolution đầy đủ.} Sáu mẫu vào $x=[1,2,3,4,5,6]$ qua $h=[1,2,3,4,5,6]$ cho
+\[
+y_{\mathrm{full}}=[1,4,10,20,35,56,70,76,73,60,36]
+\]
+(mode \texttt{full}). Lịch $2/3$ giữ 2 trong mỗi 3 chỉ số ra sau khi lọc (chi tiết lịch phụ thuộc phase của commutator trong IP). Tỉ số độ dài hữu ích: sáu vào $\to$ bốn ra cho đoạn ổn định tỷ lệ $4/6=2/3$.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Stealth]
   \node[draw,rounded corners,fill=blue!8] (xin) at (0,1.2) {$x[n]$ @24\,kHz};
   \node[draw,diamond,aspect=2,fill=orange!15,inner sep=1pt] (comm) at (2.4,1.2) {comm};
-  \node[draw,rounded corners,fill=teal!10] (e0) at (5.0,2.1) {MAC $E_0$};
+  \node[draw,rounded corners,fill=teal!10] (e0) at (5.0,2.2) {MAC $E_0$};
   \node[draw,rounded corners,fill=teal!10] (e1) at (5.0,1.2) {MAC $E_1$};
-  \node[draw,rounded corners,fill=gray!15] (e2) at (5.0,0.3) {$E_2$ (không xuất)};
-  \node[draw,rounded corners,fill=yellow!20] (dsp) at (5.0,-0.9) {DSP $18\times 19$ shared};
-  \node[draw,rounded corners,fill=green!12] (yout) at (8.6,1.2) {$y$ @16\,kHz + valid};
+  \node[draw,rounded corners,fill=gray!15] (e2) at (5.0,0.2) {$E_2$ (không xuất)};
+  \node[draw,rounded corners,fill=yellow!20] (dsp) at (5.0,-1.0) {DSP $18\times 19$ shared};
+  \node[draw,rounded corners,fill=green!12] (yout) at (8.8,1.2) {$y$ @16\,kHz + valid};
   \draw[->] (xin)--(comm);
-  \draw[->] (comm)|-(e0); \draw[->] (comm)--(e1); \draw[->] (comm)|-(e2);
-  \draw[->,dashed] (e0)--(dsp); \draw[->,dashed] (e1)--(dsp);
-  \draw[->] (e0)-|(yout); \draw[->] (e1)-|(yout);
-  \node[anchor=west,text width=12cm,font=\scriptsize] at (-0.2,-1.7)
-    {Commutator $=$ bộ đếm pha + mux. Chỉ $E_0,E_1$ đóng góp mẫu ra theo lịch $2/3$;
-     một DSP có thể time-mux phục vụ nhiều tap nhờ folding.};
+  \draw[->] (comm) |- (e0);
+  \draw[->] (comm)--(e1);
+  \draw[->] (comm) |- (e2);
+  \draw[->,dashed] (e0)--(dsp);
+  \draw[->,dashed] (e1)--(dsp);
+  \draw[->] (e0.east) -- ++(0.6,0) |- (yout.north west);
+  \draw[->] (e1)--(yout);
+  \node[anchor=west,align=left,font=\scriptsize] at (-0.2,-1.9)
+    {Commutator = bộ đếm pha + mux. Chỉ $E_0,E_1$ xuất theo lịch $2/3$;\\
+     một DSP time-mux nhiều tap nhờ folding và clock dư.};
 \end{tikzpicture}
 \caption{Polyphase fractional $I=2,D=3$: ba nhánh pha, hai nhánh xuất; DSP chia sẻ theo thời gian.}
 \label{fig:ch04_polyphase}
 \end{figure}
 
-\subsection*{4.4. Intel FIR Compiler II và DSP Cyclone~V}
+
+\subsection*{4.3b. Half-band $48\to 24$ trước bước $2/3$}
+
+Trước fractional $2/3$, bước $\downarrow 2$ từ $48\to 24\,\text{kHz}$ nên dùng FIR half-band: gần một nửa hệ số đúng bằng 0 (các tap xen kẽ), transition band đối xứng quanh $f_s/4$. Số nhân logic gần còn một nửa so với FIR thông thấp tổng quát cùng độ dài. FIR Compiler II có tùy chọn half-band decimator; lab có thể tách thành hai IP nối tiếp (half-band $\downarrow 2$ rồi fractional $2/3$) để báo cáo DSP từng khối rõ ràng. Twin Python: cùng $h_q$ half-band, \texttt{convolve} rồi lấy mẫu chẵn (hoặc lẻ --- khớp phase IP).
+
+\paragraph{Ngân sách chu kỳ toàn chuỗi.} Một mẫu ra $16\,\text{kHz}$ ``ăn'' trung bình $48/16=3$ mẫu vào gốc. Ở $50\,\text{MHz}$, mỗi mẫu ra có
+\[
+\frac{50\cdot 10^{6}}{16000}=3125\text{ chu kỳ}
+\]
+để toàn bộ half-band + $2/3$ + DC + MAC chạy xong trước mẫu tiếp theo nếu muốn pipeline sâu theo mẫu; thực tế hệ thống làm theo hop $10\,\text{ms}$ ($500\,000$ chu kỳ) nên FIR streaming chỉ cần không bỏ \texttt{valid} --- RTF phần FIR $\ll 1$.
+
+\paragraph{Ví dụ tính tay --- đếm MAC polyphase.} Cho $h$ dài 6 như trên, mỗi mẫu ra từ nhánh $E_0$ cần $|E_0|=2$ nhân, nhánh $E_1$ cần 2 nhân; nhánh $E_2$ không xuất nên 0 nhân cho mẫu ra. Trung bình mỗi mẫu vào ``gánh'' ít MAC hơn FIR 6-tap thẳng (6 nhân) rồi bỏ $1/3$ kết quả. Đúng tinh thần Noble identity: lọc sau khi đã giảm tốc.
+
+\subsection*{4.4. Intel FIR Compiler II --- folding, chia sẻ DSP và số liệu}
 
 FIR Compiler II (UG~683208) hỗ trợ Distributed Arithmetic, Mult-add hoặc Systolic. Trên Cyclone~V map vào khối DSP Variable Precision: mode $18\times 19$ (đủ Q1.15$\times$Q1.15) hoặc $27\times 27$ khi hệ số/accum rộng hơn. Cổng Avalon-ST: \texttt{data}/\texttt{valid}/\texttt{ready}; \texttt{sop}/\texttt{eop} là biên \emph{kênh} multi-channel --- \textbf{không} phải biên khung pitch $40\,\text{ms}$. Lab mono liên tục chỉ cần data/valid/ready.
 
-Cấu hình dạy: Fractional Rate $I=2$, $D=3$; ghi rõ rounding (truncate hoặc convergent) và saturation vào twin. Đọc báo cáo generate: số DSP, M10K (coeff + delay line), latency chu kỳ --- điền vào hộp chi phí, không đoán. Coefficient bit-width quá hẹp làm stopband nông (alias vào $F_0$); quá rộng lãng phí DSP. FIR $2/3$ là anti-alias hạ mẫu, \emph{không} thay high-pass $60\,\text{Hz}$ --- DC-blocker Chương~3 lo offset chậm.
+\paragraph{Cách IP gấp và chia sẻ DSP (số liệu lab).} Giả sử thiết kế FIR đối xứng $N=48$ taps cho nhánh $24\to 16\,\text{kHz}$. Folding còn $N/2=24$ phép nhân ``logic''. Polyphase $M=3$ với $I=2$ chỉ xuất 2 nhánh --- số MAC hữu ích mỗi mẫu ra thấp hơn FIR thẳng. Clock hệ thống $50\,\text{MHz}$ và tốc độ mẫu vào $24\,\text{kHz}$ cho
+\[
+\frac{50\cdot 10^{6}}{24000}\approx 2083\text{ chu kỳ clock mỗi mẫu vào}.
+\]
+FIR Compiler II khai thác dư địa này: một khối DSP $18\times 19$ được \textbf{time-multiplex} qua nhiều cặp $(h_k,x)$ trong cùng một khoảng giữa hai mẫu audio. Báo cáo generate điển hình cho order lab (vài chục tap, fractional $2/3$) ghi khoảng vài đến vài chục DSP --- \emph{phải đọc Fitter}, không đoán. Nếu bật ``Fully Parallel'', số DSP $\approx$ số nhân sau folding và tăng vọt; lab chọn chế độ cho phép folding/sharing để giữ ngân sách DSP toàn hệ thống khoảng 3 khối (bảng Chương~0) hoặc nới có kiểm soát nếu đo Fmax/RTF vẫn đạt.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.85cm, y=0.55cm]
+  \draw[->] (0,4.2) -- (12,4.2) node[right] {clk $50$\,MHz};
+  \foreach \x in {0,2,4,6,8,10} {
+    \draw[thick,blue!60] (\x,3.2) rectangle ++(1.5,0.8);
+  }
+  \node at (0.75,3.6) {mul $h_0$};
+  \node at (2.75,3.6) {mul $h_1$};
+  \node at (4.75,3.6) {mul $h_2$};
+  \node at (6.75,3.6) {$\cdots$};
+  \node at (8.75,3.6) {acc};
+  \node at (10.75,3.6) {sat};
+  \draw[thick,teal!70!black] (0,1.6) -- (0,2.4) -- (10.5,2.4) -- (10.5,1.6);
+  \node[teal!70!black] at (5.2,1.15) {sink\_valid (mẫu vào)};
+  \draw[thick,orange!80!black] (8.5,0.3) -- (8.5,1.0) -- (10.0,1.0) -- (10.0,0.3);
+  \node[orange!80!black] at (9.2,-0.25) {source\_valid};
+  \node[align=left,font=\tiny] at (5.5,5.15)
+    {Một DSP lần lượt phục vụ nhiều hệ số trong $\sim 2083$ chu kỳ dư;\\
+     valid ra theo lịch $2/3$ và backpressure (không đếm clock cứng).};
+\end{tikzpicture}
+\caption{Chia sẻ DSP theo thời gian giữa hai mẫu vào $24\,\text{kHz}$: IP gấp nhiều nhân vào một khối $18\times 19$; \texttt{source\_valid} theo lịch fractional.}
+\label{fig:ch04_dsp_share}
+\end{figure}
+
+\paragraph{Cấu hình dạy.} Fractional Rate $I=2$, $D=3$; ghi rõ rounding (truncate hoặc convergent) và saturation vào twin. Coefficient bit-width quá hẹp làm stopband nông (alias vào $F_0$); quá rộng lãng phí DSP. FIR $2/3$ là anti-alias hạ mẫu, \emph{không} thay high-pass $60\,\text{Hz}$ --- DC-blocker Chương~3 lo offset chậm.
 
 \paragraph{RTL thay thế.} Khi không gọi IP: systolic MAC + coeff ROM, folding tay nếu $N\le 32$. Không tự viết Distributed Arithmetic trừ khi tối ưu diện tích cực đoan --- DA khó bit-exact với IP. Luôn giữ cùng $h_q$ giữa ROM, IP và Python.
 
@@ -98,22 +163,89 @@ Cấu hình dạy: Fractional Rate $I=2$, $D=3$; ghi rõ rounding (truncate ho�
 \begin{verbatim}
 import numpy as np
 # h_q: int16 đã lượng tử giống FIR IP / ROM
-y = np.convolve(x.astype(np.int64), h_q.astype(np.int64), mode="full")
-# áp dụng đúng round/sat rồi decimate theo lịch 2/3
+acc = np.convolve(x.astype(np.int64), h_q.astype(np.int64), mode="full")
+# áp dụng đúng round/sat rồi lấy mẫu theo lịch 2/3 của IP
 # so dump Avalon-ST beat-by-beat; thêm test ready=0 vài chu kỳ
 \end{verbatim}
+Phải mô phỏng \texttt{ready}=0: IP dừng tiến mẫu vào nhưng không được làm twin ``tự đếm clock''.
+
+
+\paragraph{Stopband và nguy cơ alias vào $F_0$.} Thông số thiết kế tối thiểu: passband đến khoảng $5$--$6\,\text{kHz}$ (giữ formant thấp phục vụ phân tích), transition xuống stopband trước $8\,\text{kHz}$ (Nyquist $16\,\text{kHz}$). Độ sâu stopband khuyến nghị $\le -60\,\text{dB}$ trong lab để nhiễu alias sau hạ mẫu nằm dưới sàn tự tương quan điển hình. Hệ số Q1.15 với $N$ quá ngắn không đạt $-60\,\text{dB}$; đó là lúc tăng $N$ hoặc dùng half-band dài hơn chứ không phải ``tăng bit hệ số vô hạn''.
 
 \begin{costbox}
-\textbf{Ngân sách --- FIR $2/3$.} Số DSP $\propto$ (taps sau folding) $\times$ (số nhánh active)/folding factor --- đọc Fitter, điển hình vài đến vài chục DSP cho order lab. M10K: hệ số + delay line. ALM: vài trăm (control + Avalon-ST). Vì sao polyphase: bỏ MAC của mẫu sẽ bị discard, tiết kiệm tới $\sim 66\%$ phép nhân so với FIR thẳng. Vì sao không CIC: $2/3$ không phải $R$ nguyên. Fmax thường $>150\,\text{MHz}$ nếu không nhồi folding quá nông.
+\textbf{Ngân sách --- FIR $2/3$.} Số DSP $\propto$ (taps sau folding)${}/{}$(hệ số chia sẻ theo thời gian) --- đọc Fitter; mục tiêu giữ trong vài DSP để toàn hệ thống $\approx 3$ DSP như bảng Chương~0, hoặc ghi rõ nếu lab nới. M10K: hệ số + delay line (thường 1--2 khối). ALM: vài trăm (control + Avalon-ST). Vì sao polyphase: bỏ MAC của mẫu sẽ bị discard, tiết kiệm tới $\sim 66\%$ phép nhân so với FIR thẳng ở tỷ lệ $1/3$ pha không xuất. Vì sao không CIC: $2/3$ không phải $R$ nguyên lớn. Chu kỳ dư $\approx 2083$ mỗi mẫu @24\,kHz cho phép sharing mạnh. Fmax thường $>150\,\text{MHz}$.
 \end{costbox}
+
+
+\subsection*{4.4b. Từ báo cáo Generate đến bảng chi phí điền số}
+
+Sau khi Generate FIR Compiler II, mở file báo cáo (hoặc tab Resource Utilization trong IP GUI) và chép tay vào sổ lab các mục: Number of DSP blocks, Number of memory bits / M10K, Latency (clock cycles), Input/output data widths, Coefficient storage (logic/M10K). Ví dụ minh họa (số giả định để luyện đọc --- \emph{thay bằng số Fitter thật của bạn}):
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Mục báo cáo & Giá trị ví dụ lab $N\approx 48$, $I/D=2/3$ \\
+\midrule
+DSP ($18\times 19$) & 4 \\
+Memory bits & $\sim 2000$ (coeff + delay) \\
+Latency & 12--40 chu kỳ (phụ thuộc pipeline) \\
+Avalon-ST & sink/source valid/ready \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Latency IP phải cộng vào ngân sách hop: $40$ chu kỳ không đáng kể so với $500\,000$, nhưng FSM nối tiếp phải chờ \texttt{valid} thật, không trừ latency bằng đếm cứng trừ phi đã đo. Coefficient storage chọn M10K khi $N$ lớn để khỏi ăn ALM; với $N$ nhỏ logic đủ.
+
+\paragraph{So sánh Fully Parallel vs Multicycle.} Fully Parallel: mỗi nhân một DSP (sau folding) --- Fmax cao, diện tích lớn, dễ vượt ngân sách 3 DSP của bảng Chương~0. Multicycle/sharing: ít DSP, cần nhiều chu kỳ giữa hai mẫu; với $2083$ chu kỳ dư ở $24\,\text{kHz}$ thì sharing là lựa chọn mặc định dạy. Distributed Arithmetic: ít/không DSP, dùng LUT --- khó khớp bit với twin nhân trực tiếp; chỉ dùng khi hết DSP và chấp nhận viết lại twin theo DA.
+
+\paragraph{Twin mở rộng --- lịch $2/3$ giả lập.}
+\begin{verbatim}
+def decimate_2_over_3(y_full):
+    """Giữ 2 mẫu, bỏ 1 theo chu kỳ cố định (minh họa).
+    Twin khớp IP phải theo đúng phase report của FIR II."""
+    out = []
+    for i, yi in enumerate(y_full):
+        if i % 3 != 2:   # giữ i mod 3 in {0,1}
+            out.append(yi)
+    return out
+assert len(decimate_2_over_3(range(6))) == 4
+\end{verbatim}
+Đoạn trên chỉ minh họa tỷ lệ; phase thật ($\mathrm{mod}\,3 = 0,1$ hay $1,2$) phải khớp dump IP. Sai phase làm lệch toàn bộ thời gian đến sliding RAM.
+
+\paragraph{Tóm tắt tám yếu tố Chương~4.} Hiện tượng alias; toán FIR + folding + polyphase; ví dụ 27, convolution, $h_q$; FIR II share DSP + hình timing; RTL/systolic thay thế; twin \texttt{convolve}+lịch; costbox DSP/M10K; năm bài tập. Điều kiện qua chương: verify script OK và đọc được số DSP từ báo cáo Generate (không bịa).
+
 
 \subsection*{4.5. Bài tập và lời giải giải thích}
 
 \paragraph{Bài tập 4.1 (Folding).} Với $h=[1,2,2,1]$, $x=[3,4,5,6]$, chứng minh folding cho cùng kết quả và đếm số nhân.
-\paragraph{Lời giải.} Thẳng: $3+8+10+6=27$ (4 nhân). Folding: $1\cdot(3+6)+2\cdot(4+5)=27$ (2 nhân).
+\paragraph{Lời giải.} Thẳng: $3+8+10+6=27$ (4 nhân). Folding: $1\cdot(3+6)+2\cdot(4+5)=27$ (2 nhân). Pre-adder DSP làm đúng phép cộng trước nhân.
 
 \paragraph{Bài tập 4.2 (Polyphase split).} $h=[0,1,2,3,4,5]$, $M=3$. Viết $E_0,E_1,E_2$. Tỉ số ra/vào của lịch $2/3$ trên 6 mẫu vào là bao nhiêu?
 \paragraph{Lời giải.} $E_0=[0,3]$, $E_1=[1,4]$, $E_2=[2,5]$. Sáu vào $\to$ bốn ra: $4/6=2/3$.
 
 \paragraph{Bài tập 4.3 (Valid không đều).} Vì sao FSM sau FIR II fractional không được đếm clock cố định ``cứ 3 ck lấy 2''?
-\paragraph{Lời giải.} Backpressure Avalon-ST (\texttt{ready}=0) làm giãn khoảng cách mẫu vào; lịch valid ra phụ thuộc trạng thái IP chứ không phải nhịp clock hệ thống. Chỉ được bắt mẫu khi \texttt{valid}=1.
+\paragraph{Lời giải.} Backpressure Avalon-ST (\texttt{ready}=0) làm giãn khoảng cách mẫu vào; lịch valid ra phụ thuộc trạng thái IP. Chỉ bắt mẫu khi \texttt{valid}=1.
+
+\paragraph{Bài tập 4.4 (Chu kỳ dư và DSP share).}
+\begin{enumerate}[label=\alph*)]
+  \item Tính số chu kỳ clock $50\,\text{MHz}$ giữa hai mẫu vào $24\,\text{kHz}$.
+  \item Với $N=48$ đối xứng, sau folding còn bao nhiêu nhân logic? Vì sao một DSP vẫn có thể đủ nếu IP time-mux?
+\end{enumerate}
+\paragraph{Lời giải.} (a)~$50\cdot10^{6}/24000\approx 2083$ chu kỳ. (b)~$24$ nhân logic; $2083\gg 24$ nên một DSP có thể lần lượt thực hiện nhiều nhân trong khoảng giữa hai mẫu --- đúng cơ chế sharing của FIR Compiler II ở chế độ không Fully Parallel.
+
+\paragraph{Bài tập 4.5 (Lượng tử hệ số).} Cho $h=[0{,}1,0{,}2,0{,}4,0{,}2,0{,}1]$, tính $h_q=\mathrm{round}(h\cdot 2^{15})$ và $\sum h_q$. Vì sao twin phải dùng đúng vector này?
+\paragraph{Lời giải.} $h_q=[3277,6554,13107,6554,3277]$, tổng $32769$ (lệch 1 LSB khỏi $32768$ do làm tròn). Sai một hệ số làm lệch stopband --- alias có thể xuyên vào dải $F_0$.
+
+\paragraph{Bài tập 4.6 (Half-band và chu kỳ ở $16\,\text{kHz}$).}
+\begin{enumerate}[label=\alph*)]
+  \item Vì sao half-band phù hợp bước $48\to 24$ hơn CIC?
+  \item Mỗi mẫu ra $16\,\text{kHz}$ tương ứng bao nhiêu chu kỳ clock $50\,\text{MHz}$? So với $500\,000$ chu kỳ/hop thì FIR streaming chiếm tỷ lệ nào nếu latency IP $=40$ chu kỳ mỗi mẫu ra và hop có $160$ mẫu ra?
+\end{enumerate}
+\paragraph{Lời giải.} (a)~Half-band tận dụng hệ số 0 xen kẽ và transition quanh $f_s/4$ đúng cho $\downarrow 2$; CIC cần $R\gg 1$ và méo $\mathrm{sinc}$. (b)~$3125$ chu kỳ/mẫu ra. $160\times 40=6400$ chu kỳ latency tích lũy theo pipeline mẫu (thực tế pipeline chồng nên wall-clock gần latency một mẫu + thời gian streaming); dù đếm tối đa $6400/500000\approx 1{,}3\%$ --- FIR không phải nút thắt so với MAC.
+
+\paragraph{Ghi chú triển khai Platform Designer.} Khi kéo FIR Compiler II vào Platform Designer, nối Avalon-ST từ DC-blocker (hoặc từ half-band) sang \texttt{avalon\_streaming\_sink}, và từ \texttt{avalon\_streaming\_source} sang khối sau. Đừng nối MM (memory-mapped) trừ khi cấu hình hệ số động --- lab hệ số tĩnh dùng ROM trong IP. Reset của IP phải đồng bộ miền $50\,\text{MHz}$; không reset bằng tín hiệu async thô từ nút bấm.
+
+\paragraph{Lỗi thường gặp khi nối FIR II.} (1)~\texttt{ready} phía sink luôn gắn 1 nhưng quên kiểm \texttt{valid} nguồn --- mất mẫu khi IP tạm dừng. (2)~Dùng \texttt{sop}/\texttt{eop} như biên khung pitch --- sai ngữ nghĩa multi-channel. (3)~Hệ số nạp Q2.14 trong khi twin Q1.15 --- lệch 6~dB toàn cục. (4)~Fully Parallel trên $N=128$ làm hết DSP kit, Fitter nhét soft-multiplier vào ALM, Fmax sụp. Mỗi lỗi trên đều có triệu chứng riêng trên waveform: học viên nên ghi checklist trước khi hỏi ``sao $F_0$ sai''.
+
+
+\paragraph{Ôn lại tỷ lệ hữu tỉ.} $16/24=2/3$ là phân số tối giản; mọi lịch valid ra dài hạn phải có đúng 2 nhịp có dữ liệu trên mỗi 3 mẫu vào (khi ready luôn 1). Đo trên simulation: đếm $N_{in}$ và $N_{out}$ trong $0{,}1\,\text{s}$ lý thuyết --- $N_{out}/N_{in}$ phải $\approx 2/3$ với sai số biên pipeline. Sai lệch lớn báo phase commutator hoặc backpressure không mô phỏng đúng trong twin.

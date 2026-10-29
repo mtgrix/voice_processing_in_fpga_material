@@ -5,13 +5,13 @@
 \pdfbookmark[1]{Chương 3. DC-blocker IIR (cực/zero, accumulator 32-bit)}{chuong3}
 
 \begin{learningobj}
-Sau Chương~3, người học giải thích được vì sao offset một chiều phá đỉnh tự tương quan, viết đúng hàm truyền một cực--một zero với $\alpha=1-2^{-8}$, hiện thực RTL accumulator 32~bit theo công thức $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ rồi $\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$, và đối chiếu bit-exact với twin Python. Khái niệm điểm cực/điểm không và Avalon-ST đã có ở ô Feynman~12 của Chương~0.
+Sau Chương~3, người học giải thích được vì sao offset một chiều phá đỉnh tự tương quan, viết đúng hàm truyền một cực--một zero với $\alpha=1-2^{-8}$, hiện thực RTL accumulator 32~bit theo công thức $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ rồi $\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$, đối chiếu bit-exact với twin Python, và tính tay từng chu kỳ $y_{\mathrm{acc}}$. Khái niệm điểm cực/điểm không và Avalon-ST đã có ở ô Feynman~12 của Chương~0.
 \end{learningobj}
 
 \subsection*{3.1. Hiện tượng: offset DC nuốt đỉnh chu kỳ}
 
 \begin{physicalinsight}
-Micro, codec WM8731 và đường dây analog luôn cộng thêm một thành phần gần đứng yên: điện áp offset một chiều (DC), cộng thêm trôi chậm do nhiệt. Trong miền mẫu, đó là một hằng $A$ cộng vào mọi $x[n]$. Phép tự tương quan (ô Feynman~5, Chương~0) không phân biệt năng lượng hữu ích và năng lượng offset. Nếu $A$ lớn, đỉnh tại độ trễ $\tau=0$ phình theo $A^2$ và có thể át hoàn toàn đỉnh chu kỳ $T_0$ của dây thanh --- thuật toán sẽ báo vô thanh hoặc treo ở cao độ sai.
+Micro, codec WM8731 và đường dây analog luôn cộng thêm một thành phần gần đứng yên: điện áp offset một chiều (DC), cộng thêm trôi chậm do nhiệt. Trong miền mẫu, đó là một hằng $A$ cộng vào mọi $x[n]$. Phép tự tương quan (ô Feynman~5, Chương~0) không phân biệt năng lượng hữu ích và năng lượng offset. Nếu $A$ lớn, đỉnh tại độ trễ $\tau=0$ phình theo $A^2$ và có thể át hoàn toàn đỉnh chu kỳ $T_0$ của dây thanh --- thuật toán sẽ báo vô thanh hoặc treo ở cao độ sai. Đời thường: đo chiều cao sóng trên mặt biển khi mực nước thủy triều đang dâng --- nếu không trừ mực nước trung bình, ``đỉnh sóng'' chỉ là mực nước chứ không phải sóng.
 \end{physicalinsight}
 
 Viết tường minh với tín hiệu $x[n]+A$:
@@ -21,7 +21,11 @@ Viết tường minh với tín hiệu $x[n]+A$:
 &=\sum_{n=0}^{N-1}x[n]^2 + 2A\sum_{n=0}^{N-1}x[n] + N A^2
 =\mathcal{R}_x[0]+2A\sum_n x[n]+N A^2.
 \end{align*}
-Số hạng $N A^2$ luôn dương và tỉ lệ với bình phương offset. Praat trừ mean cục bộ từng khung; trên FPGA streaming ta dùng bộ lọc IIR liên tục gọi là \textbf{DC-blocker}: một bộ thông cao rất nhẹ, ổn định, rẻ silicon, đặt ngay sau I\textsuperscript{2}S/CDC.
+Số hạng $N A^2$ luôn dương và tỉ lệ với bình phương offset. Với độ trễ $\tau\neq 0$:
+\[
+\mathcal{R}_{x+A}[\tau]=\mathcal{R}_x[\tau]+A\sum_n x[n]+A\sum_n x[n+\tau]+N A^2,
+\]
+nên toàn bộ hàm tự tương quan bị nâng một ``bệ'' DC --- đỉnh chu kỳ bị che. Praat trừ mean cục bộ từng khung; trên FPGA streaming ta dùng bộ lọc IIR liên tục gọi là \textbf{DC-blocker}: một bộ thông cao rất nhẹ, ổn định, rẻ silicon, đặt ngay sau I\textsuperscript{2}S/CDC và trước FIR hạ mẫu (hoặc ngay sau CDC ở $48\,\text{kHz}$, tùy lab --- cutoff vẫn dưới $F_{0,\min}$).
 
 \begin{figure}[H]
 \centering
@@ -44,7 +48,11 @@ Số hạng $N A^2$ luôn dương và tỉ lệ với bình phương offset. Pra
 \label{fig:ch03_dc_before_after}
 \end{figure}
 
-\paragraph{Ví dụ tính tay --- DC thuần phá $\mathcal{R}[0]$.} Chuỗi $x=[1,1,1,1]$ (toàn DC) cho $\mathcal{R}[0]=\sum x_n^2=4$. Sau khi trừ mean (mọi mẫu về 0) thì $\mathcal{R}[0]=0$: DC thuần phải đi tiếp như tín hiệu vô thanh, không được nuôi FSM cao độ bằng năng lượng giả.
+\paragraph{Ví dụ tính tay --- DC thuần và offset cộng vào sóng.} Chuỗi $x=[1,1,1,1]$ (toàn DC) cho $\mathcal{R}[0]=\sum x_n^2=4$. Sau khi trừ mean (mọi mẫu về 0) thì $\mathcal{R}[0]=0$: DC thuần phải đi tiếp như tín hiệu vô thanh. Chuỗi $x_0=[1,-1,1,-1]$ cộng $A=2$ thành $[3,1,3,1]$:
+\[
+\sum(x_0+A)^2=9+1+9+1=20,\qquad \sum x_0^2=4.
+\]
+Offset đã nhân năng lượng $\tau=0$ lên năm lần --- đủ để ngưỡng voicing và so sánh đỉnh $T_0$ lệch hoàn toàn nếu không chặn DC.
 
 \subsection*{3.2. Toán: cực, zero và chọn $\alpha=1-2^{-8}$}
 
@@ -56,6 +64,7 @@ H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}},\qquad 0<\alpha<1.
 \[
 y[n]=x[n]-x[n-1]+\alpha\, y[n-1].
 \]
+Đáp ứng tần số gần DC: $|H(e^{j\omega})|$ tăng gần tuyến tính với $\omega$ khi $\omega$ nhỏ; hằng thời gian xấp xỉ $1/(1-\alpha)$ mẫu.
 
 \begin{figure}[H]
 \centering
@@ -70,8 +79,8 @@ y[n]=x[n]-x[n-1]+\alpha\, y[n-1].
   \filldraw[red!70!black] (1.494,0) circle (0.055);
   \node[below,red!70!black,font=\small] at (1.35,-0.18) {cực $z=\alpha=1-2^{-8}$};
   \node[align=left, font=\small] at (-0.15,-2.35)
-    {Zero trên vòng đơn vị tại DC $\Rightarrow H(1)=0$.\\
-     Cực gần zero (trong vòng) $\Rightarrow$ HPF nhẹ, ổn định.};
+    {Zero trên vòng đơn vị tại DC: $H(1)=0$.\\
+     Cực gần zero (trong vòng): HPF nhẹ, ổn định.};
 \end{tikzpicture}
 \caption{DC-blocker trên mặt phẳng $z$: zero tại $z=1$, cực tại $\alpha=1-2^{-8}=0{,}99609375$.}
 \label{fig:ch03_zplane}
@@ -81,13 +90,13 @@ Trên silicon ta chọn $\alpha=1-2^{-8}=0{,}99609375$ vì phép nhân $\alpha\c
 \[
 \alpha y = y - (y\ggg 8) = y\cdot(1-2^{-8}),
 \]
-không tốn khối DSP. Hằng thời gian xấp xỉ $1/(1-\alpha)=256$ mẫu. Tại $f_s=16\,\text{kHz}$ (sau FIR), cutoff xấp xỉ
+không tốn khối DSP. Hằng thời gian $1/(1-\alpha)=256$ mẫu. Tại $f_s=16\,\text{kHz}$ (sau FIR), cutoff xấp xỉ
 \[
 f_c\approx\frac{1-\alpha}{2\pi}f_s=\frac{2^{-8}}{2\pi}\cdot 16000\approx 9{,}95\,\text{Hz},
 \]
-nằm dưới $F_{0,\min}=75\,\text{Hz}$ và trên DC --- đúng chỗ cần chặn. (Ở $48\,\text{kHz}$ ngay sau codec, $f_c\approx 29{,}8\,\text{Hz}$, vẫn an toàn trước khi hạ mẫu.)
+nằm dưới $F_{0,\min}=75\,\text{Hz}$ và trên DC --- đúng chỗ cần chặn. Ở $48\,\text{kHz}$ ngay sau codec, $f_c\approx 29{,}84\,\text{Hz}$, vẫn an toàn trước khi hạ mẫu.
 
-\paragraph{Ví dụ tính tay --- đáp ứng xung với $\alpha=0{,}5$ (cực xa để thấy nhanh).} Cho $x=\delta[n]$ hiệu dụng qua công thức $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ với đầu vào hằng $x=[1,1,1,1,1]$, $y[-1]=0$:
+\paragraph{Ví dụ tính tay --- đáp ứng với $\alpha=0{,}5$ (cực xa để thấy nhanh).} Đầu vào hằng $x=[1,1,1,1,1]$, $y[-1]=0$:
 \begin{center}\small
 \begin{tabular}{@{}rlll@{}}
 \toprule
@@ -101,22 +110,66 @@ $n$ & $x[n]$ & $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ & giá trị \\
 \bottomrule
 \end{tabular}
 \end{center}
-Năng lượng bị nuốt theo cấp số nhân về 0 --- đúng trực giác HPF nhớ trạng thái. Với $\alpha=0{,}99609375$ suy giảm chậm hơn khoảng $256$ lần mẫu.
+Năng lượng bị nuốt theo cấp số nhân về 0. Với $\alpha=0{,}75$ trên cùng đầu vào hằng: $1$, $0{,}75$, $0{,}5625$, $0{,}421875$, $0{,}31640625$, \ldots --- chậm hơn $\alpha=0{,}5$ nhưng vẫn về 0. Với $\alpha=0{,}99609375$ suy giảm chậm khoảng $256$ mẫu cho một hằng số thời gian.
 
-\subsection*{3.3. Phần cứng: vì sao accumulator 32-bit và RTL}
+\subsection*{3.3. Phần cứng: accumulator 32-bit, ví dụ chu kỳ và RTL}
 
 FIR Compiler II không thay thế được IIR có phản hồi: kiến trúc FIR không có vòng $y[n-1]$. Viết khoảng mười dòng Verilog với accumulator 32~bit là lựa chọn dạy và lab.
 
-Nếu giữ $y$ chỉ 16~bit Q1.15, mỗi lần nhân $\alpha$ (hay dịch $\ggg 8$) sẽ cắt mất phần thập phân khi $|y|$ nhỏ, tạo vùng chết (deadband) hoặc dao động limit-cycle. Giải pháp: giữ thanh ghi phản hồi \texttt{y\_acc} signed 32~bit; mẫu vào Q1.15 được kéo lên cùng thang bằng dịch trái 15~bit trước khi trừ; ngõ ra lấy lại Q1.15 bằng dịch phải 15~bit rồi bão hòa.
+Nếu giữ $y$ chỉ 16~bit Q1.15, mỗi lần dịch $\ggg 8$ sẽ cắt mất phần thập phân khi $|y|$ nhỏ, tạo vùng chết (deadband) hoặc dao động limit-cycle. Giải pháp: giữ thanh ghi phản hồi \texttt{y\_acc} signed 32~bit; mẫu vào Q1.15 được kéo lên cùng thang bằng dịch trái 15~bit trước khi trừ; ngõ ra lấy lại Q1.15 bằng dịch phải 15~bit rồi bão hòa.
 
-\paragraph{Phương trình bit-exact (khớp assignment và twin).}
+\paragraph{Phương trình bit-exact.}
 \begin{align*}
 x_{\Delta} &= (x[n]\ll 15)-(x[n-1]\ll 15),\\
 y_{\mathrm{acc}}[n] &= y_{\mathrm{acc}}[n-1] + x_{\Delta} - (y_{\mathrm{acc}}[n-1]\ggg 8),\\
 y_{\mathrm{out}} &= \mathrm{sat}_{16}(y_{\mathrm{acc}}[n]\ggg 15),
 \end{align*}
-với $\mathrm{sat}_{16}$ ghim vào $[-32768,+32767]$. Trên số có dấu, toán tử Python/NumPy \texttt{>>} và Verilog \texttt{>>>} cùng là arithmetic floor shift.
+với $\mathrm{sat}_{16}$ ghim vào $[-32768,+32767]$. Trên số có dấu, Python/NumPy \texttt{>>} và Verilog \texttt{>>>} cùng là arithmetic floor shift.
 
+\paragraph{Ví dụ tính tay --- từng chu kỳ sau bước Q1.15.} Đầu vào $[0,0,0]$ rồi bước DC $16384$ ($0{,}5$ trong Q1.15). Bảng trung gian (đã chạy script):
+
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$n$ & $x$ & $x_{\Delta}$ & $y_{\mathrm{acc}}$ trước & $y_{\mathrm{acc}}$ sau & $y_{\mathrm{out}}$ \\
+\midrule
+0..2 & 0 & 0 & 0 & 0 & 0 \\
+3 & 16384 & 536870912 & 0 & 536870912 & 16384 \\
+4 & 16384 & 0 & 536870912 & 534773760 & 16320 \\
+5 & 16384 & 0 & 534773760 & 532684800 & 16256 \\
+6 & 16384 & 0 & 532684800 & 530604000 & 16192 \\
+7 & 16384 & 0 & 530604000 & 528531329 & 16129 \\
+8 & 16384 & 0 & 528531329 & 526466754 & 16066 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Tại $n=3$: $x_{\Delta}=16384\ll 15=536870912$, $y_{\mathrm{acc}}=536870912$, $y_{\mathrm{out}}=536870912\ggg 15=16384$. Tại $n=4$:
+\[
+y_{\mathrm{acc}}\leftarrow 536870912 + 0 - (536870912\ggg 8)=534773760,\quad
+y_{\mathrm{out}}=16320.
+\]
+Mỗi bước đầu $|y_{\mathrm{out}}|$ giảm khoảng $64$ --- đúng $(y\ggg 8)\ggg 15 = y_{\mathrm{out}}\ggg 8$ khi chưa bão hòa. Sau khoảng $5\cdot 256$ mẫu, đầu ra tụt dưới $50$ LSB.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \tikzset{box/.style={draw,rounded corners=2pt,align=center,inner sep=3pt}}
+  \node[box,fill=blue!8] (xin) {$x[n]$ Q1.15};
+  \node[box,fill=orange!12,right=1.2cm of xin] (xz) {$x_{z1}$};
+  \node[box,fill=yellow!18,right=1.4cm of xz] (dx) {$x_{\Delta}=(x\ll15)-(x_{z1}\ll15)$};
+  \node[box,fill=teal!12,below=1.0cm of dx] (acc) {$y_{\mathrm{acc}}$ 32-bit};
+  \node[box,fill=purple!12,left=1.2cm of acc] (sh) {$-(y_{\mathrm{acc}}\ggg 8)$};
+  \node[box,fill=green!12,below=1.0cm of acc] (sat) {$\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$};
+  \draw[->] (xin)--(xz); \draw[->] (xin)|-(dx); \draw[->] (xz)--(dx);
+  \draw[->] (dx)--(acc); \draw[->] (acc)--(sh); \draw[->] (sh)--(acc);
+  \draw[->] (acc)--(sat);
+\end{tikzpicture}
+\caption{Datapath DC-blocker: sai phân kéo thang $\ll 15$, phản hồi 32~bit với $\ggg 8$, ngõ ra bão hòa Q1.15.}
+\label{fig:ch03_rtl_datapath}
+\end{figure}
+
+\paragraph{RTL giải thích từng nhóm.}
 \begin{verbatim}
 module dc_blocker (
   input  wire               clk, rst_n,
@@ -127,14 +180,15 @@ module dc_blocker (
   input  wire               out_ready,
   output reg  signed [15:0] y_out
 );
-  reg signed [15:0] x_z1;
-  reg signed [31:0] y_acc;              // 32-bit feedback (NOT 16)
-  assign in_ready = out_ready | ~out_valid;
+  reg signed [15:0] x_z1;               // trễ 1 mẫu
+  reg signed [31:0] y_acc;              // phản hồi 32-bit (KHÔNG cắt 16)
+  assign in_ready = out_ready | ~out_valid;  // Avalon-ST backpressure
 
   wire signed [31:0] x_delta =
       ($signed({x_in, 15'b0})) - ($signed({x_z1, 15'b0}));
+  // {x,15'b0} = x<<15 trong cùng bề rộng 31+1 bit có dấu
   wire signed [31:0] y_next =
-      y_acc + x_delta - (y_acc >>> 8);
+      y_acc + x_delta - (y_acc >>> 8);  // >>> = arithmetic shift
   wire signed [31:0] y_shift = y_next >>> 15;
 
   function automatic signed [15:0] sat16;
@@ -150,7 +204,7 @@ module dc_blocker (
     if (!rst_n) begin
       x_z1 <= 0; y_acc <= 0; y_out <= 0; out_valid <= 0;
     end else if (in_valid && in_ready) begin
-      y_acc <= y_next;
+      y_acc <= y_next;     // update feedback
       x_z1  <= x_in;
       y_out <= sat16(y_shift);
       out_valid <= 1'b1;
@@ -158,8 +212,22 @@ module dc_blocker (
   end
 endmodule
 \end{verbatim}
+\texttt{in\_ready = out\_ready | \textasciitilde out\_valid} cho phép nhận mẫu mới khi đầu ra trống hoặc bên dưới đã lấy. \texttt{x\_delta} dùng nối bit \texttt{\{x,15'b0\}} thay vì dịch có dấu để tránh mở rộng sai. \texttt{y\_acc >>> 8} là chỗ hiện thực $\alpha=1-2^{-8}$. \texttt{sat16} bắt buộc: nếu bỏ bão hòa, tràn 32$\to$16 tạo tiếng click giả đỉnh $F_0$.
 
-\subsection*{3.4. Twin Python bit-exact và ví dụ step Q1.15}
+
+\subsection*{3.3b. Hiện tượng limit-cycle và chọn $\alpha$ trên silicon}
+
+Khi phản hồi bị lượng tử hóa thô, bộ lọc IIR tuyến tính trên giấy có thể trở thành hệ phi tuyến trên silicon: sai số làm tròn bị khuếch đại quanh cực gần vòng đơn vị và tạo dao động biên độ nhỏ bền vững (\textbf{limit cycle}). DC-blocker với $\alpha$ sát 1 đặc biệt nhạy nếu $y$ chỉ 16~bit. Accumulator 32~bit đẩy nhiễu lượng tử xuống dưới LSB của Q1.15 ngõ ra, nên sau khi bão hòa $\ggg 15$ người nghe (và khối MAC) không còn thấy vòng dao động. Đó là lý do kỹ thuật --- không phải ``thói quen 32~bit'' --- đằng sau bề rộng thanh ghi.
+
+Có thể chọn $\alpha=1-2^{-7}$ (cutoff gần gấp đôi) hoặc $1-2^{-9}$ (chậm hơn) chỉ bằng cách đổi hằng dịch trong RTL; không cần DSP. Lab khóa $2^{-8}$ để mọi twin và mọi hình trong sách dùng một số. Đổi $\alpha$ phải đổi cả bảng $f_c$ và bài tập.
+
+\paragraph{Mô phỏng tay thêm --- xung đơn vị quy mô nhỏ.} Đặt $x=[1,0,0,0,0]$, $\alpha=0{,}5$:
+\[
+y[0]=1,\ y[1]=-1+0{,}5\cdot 1=-0{,}5,\ y[2]=0+0{,}5\cdot(-0{,}5)=-0{,}25,\ y[3]=-0{,}125,\ y[4]=-0{,}0625.
+\]
+Đáp ứng xung đổi dấu rồi về 0 --- đúng HPF: tổng mẫu (xấp xỉ $H(1)$) tiến về 0. Trên Q1.15, xung $16384$ sẽ cho dãy tương tự sau khi nhân thang.
+
+\subsection*{3.4. Twin Python bit-exact}
 
 \begin{verbatim}
 import numpy as np
@@ -168,9 +236,7 @@ def sat16(v):
     return int(np.clip(v, -32768, 32767))
 
 def dc_blocker_q15(x, alpha_shift=8):
-    """x: int16 Q1.15. y_acc int32.
-    y_acc += x_delta - (y_acc >> 8); out = sat16(y_acc >> 15)
-    với x_delta = (x<<15) - (x_z1<<15)."""
+    """Bit-exact với RTL: y_acc int32, x Q1.15 int16."""
     y_acc = np.int32(0)
     x_z1 = np.int32(0)
     out = np.empty(len(x), dtype=np.int16)
@@ -181,28 +247,61 @@ def dc_blocker_q15(x, alpha_shift=8):
         out[i] = sat16(int(y_acc >> 15))
     return out
 \end{verbatim}
-
-\paragraph{Ví dụ tính tay khớp bit.} Đầu vào $[0,0,0]$ rồi bước DC $16384$ ($0{,}5$ trong Q1.15). Ba mẫu đầu ra $0$. Tại mẫu bước ($n=3$): $x_{\Delta}=16384\ll 15=536870912$, $y_{\mathrm{acc}}=536870912$, $y_{\mathrm{out}}=16384$. Mẫu kế:
-\[
-y_{\mathrm{acc}}\leftarrow 536870912 + 0 - (536870912\ggg 8)=534773760,\quad
-y_{\mathrm{out}}=534773760\ggg 15=16320.
-\]
-Mẫu tiếp: $y_{\mathrm{out}}=16256$. Dãy $16384,16320,16256,\ldots$ giảm khoảng $64$ mỗi bước lúc đầu --- đúng $\alpha=1-2^{-8}$. Sau khoảng $5\cdot 256$ mẫu, đầu ra tụt dưới $50$ LSB (script \texttt{verify/verify\_chuong\_03.py}).
+Vòng lặp trên phải khớp từng LSB với dump simulation RTL. Đổi \texttt{np.int32} thành \texttt{int} Python không giới hạn bề rộng sẽ \emph{sai} khi gần tràn 32~bit --- twin phải giữ đúng modulo hai's complement 32~bit như silicon. Script \texttt{verify/verify\_chuong\_03.py} khẳng định $y[3{:}6]=[16384,16320,16256]$, $f_c(16\,\text{kHz})\approx 9{,}947\,\text{Hz}$, và sau $1600$ mẫu bước thì $|y|\,{<}\,50$.
 
 \begin{costbox}
-\textbf{Ngân sách --- DC-blocker.} Adder/sub 32~bit + dịch số học: khoảng $80$--$120$ ALM (thường vài chục đến $\sim 100$). 0 DSP (nhờ $\alpha=1-2^{-8}$). 0 M10K. Latency: 1 mẫu (pipeline Avalon-ST một nhịp). Fmax dễ $>200\,\text{MHz}$. Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng sai chức năng (deadband) --- đắt hơn mọi LUT trên đường $F_0$.
+\textbf{Ngân sách --- DC-blocker.} Adder/sub 32~bit + dịch số học: khoảng $80$--$120$ ALM (thường vài chục đến $\sim 100$). 0 DSP (nhờ $\alpha=1-2^{-8}$). 0 M10K. Latency: 1 mẫu (pipeline Avalon-ST một nhịp). Fmax dễ $>200\,\text{MHz}$. Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng sai chức năng (deadband) --- đắt hơn mọi LUT trên đường $F_0$. Vì sao không FIR Compiler II: IIR phản hồi không map vào kiến trúc FIR taps.
 \end{costbox}
+
+
+\paragraph{Đạo hàm cutoff từ cực.} Với $H(z)=(1-z^{-1})/(1-\alpha z^{-1})$, trên vòng đơn vị $z=e^{j\omega}$ và $\omega\ll 1$ ta xấp xỉ $1-e^{-j\omega}\approx j\omega$ và $1-\alpha e^{-j\omega}\approx (1-\alpha)+j\alpha\omega$. Biên độ
+\[
+|H|\approx\frac{\omega}{\sqrt{(1-\alpha)^2+(\alpha\omega)^2}}.
+\]
+Đặt $|H|=1/\sqrt{2}$ và $\alpha\approx 1$ cho $\omega_c\approx 1-\alpha$, tức $f_c\approx (1-\alpha)f_s/(2\pi)$ --- đúng công thức đã dùng. Sai số của xấp xỉ này ở $\alpha=1-2^{-8}$ dưới vài phần trăm so với nghiệm đúng phương trình $|H|=1/\sqrt{2}$; đủ cho chọn tham số lab, không đủ thay đo đạc nếu đổi $\alpha$ lớn.
+
+\paragraph{Vị trí trên datapath và quan hệ với FIR.} Có hai chỗ hợp lệ: (1)~ngay sau CDC ở $48\,\text{kHz}$ rồi mới vào chuỗi hạ mẫu; (2)~sau FIR $16\,\text{kHz}$. Chỗ (1) triệt DC sớm, MAC và cửa sổ không bao giờ thấy offset; chỗ (2) rẻ chu kỳ hơn một chút vì chạy chậm hơn nhưng FIR/half-band phải ``chở'' DC qua. Tài liệu này mặc định \textbf{sau CDC, trước FIR} --- khớp bản đồ Chương~0. DC-blocker \emph{không} thay high-pass $60\,\text{Hz}$ kiểu telephone nếu lab cần cắt rumble mạnh; $\alpha=1-2^{-8}$ chỉ là HPF rất nhẹ.
+
+\paragraph{Tràn 32-bit và chọn bề rộng.} Với $|x|\le 32767$, $|x_{\Delta}|\le 32767\cdot 2^{15}\cdot 2 < 2^{31}$, và nhánh $-(y\ggg 8)$ cùng Magnitut, tổng $y_{\mathrm{acc}}+x_{\Delta}-(y\ggg 8)$ trong vận hành bình thường (sau reset, có Avalon-ST) không vượt signed 32~bit nếu đầu vào không phải xung full-scale xen kẽ dấu liên tục ở tần số cực đại. Lab vẫn giữ \texttt{sat16} ở ngõ ra; nếu muốn chắc hơn nữa có thể bão hòa $y_{\mathrm{acc}}$ vào $\pm(2^{31}-1)$ trước khi ghi thanh ghi --- hiếm khi kích hoạt trên tiếng nói thật.
+
+\paragraph{So sánh với trừ mean theo khung.} Trừ mean Praat: $\tilde x[n]=x[n]-\frac{1}{L}\sum_{k=0}^{L-1}x[k]$ trên từng khung $L=640$. Cách đó cần cộng $640$ mẫu rồi chia (hoặc nhân $1/L$) mỗi hop --- tốn MAC và trễ một khung. IIR DC-blocker cập nhật mỗi mẫu với hai phép cộng/trừ và một dịch, latency một mẫu, phù hợp streaming FPGA. Sai khác: IIR có ``đuôi'' bộ nhớ $y_{\mathrm{acc}}$ xuyên khung; trừ mean không. Trên tiếng nói, đuôi 256 mẫu ($16\,\text{ms}$ ở $16\,\text{kHz}$) chấp nhận được so với hop $10\,\text{ms}$.
+
+
+\subsection*{3.4b. Avalon-ST quanh DC-blocker và đo latency}
+
+Trên đường tín hiệu, DC-blocker là khối streaming mẫu-đơn: mỗi khi \texttt{in\_valid \& in\_ready} nhận đúng một $x[n]$, đúng một nhịp sau (hoặc cùng nhịp pipeline tổ hợp + latch) phát \texttt{out\_valid} với $y[n]$. Không dùng \texttt{sop}/\texttt{eop} vì không có biên khung ở đây --- biên khung chỉ xuất hiện khi sliding RAM (Chương~5) phát burst $L$ mẫu. Backpressure: nếu FIR phía dưới kéo \texttt{out\_ready}=0, DC-blocker hạ \texttt{in\_ready}, DCFIFO phía trên dần đầy; depth 16 đã tính ở Chương~2 hấp thụ vài trăm microgiây. Đo latency lab: đếm chu kỳ từ cạnh lên \texttt{in\_valid} đến cạnh lên \texttt{out\_valid} trên ModelSim/Questa với testbench twin --- phải ra đúng 1 (theo RTL trên) hoặc đúng số pipeline đã chèn.
+
+\paragraph{Kiểm chứng năng lượng sau khi chặn DC.} Lấy chuỗi step Q1.15 dài 1600 mẫu như script: năng lượng $\sum y^2$ tập trung ở đoạn đầu (đáp ứng HPF với bậc thang) rồi đuôi gần 0. Nếu quên \texttt{sat16} và tràn, năng lượng đuôi có thể bùng --- đó là tín hiệu debug. So sánh với twin float $\alpha=0{,}99609375$ trên cùng tín hiệu chuẩn hóa: sai số từng mẫu sau đoạn transient phải nằm trong vài LSB khi lượng tử đúng.
+
+\paragraph{Tóm tắt tám yếu tố Chương~3.} (1)~Hiện tượng: offset nuốt $\mathcal{R}[0]$. (2)~Toán $H(z)$ cực/zero. (3)~Bảng tay $\alpha=0{,}5$, $\alpha=0{,}75$, và bảng $y_{\mathrm{acc}}$ Q1.15. (4)~IP: không dùng FIR II cho IIR. (5)~RTL 32-bit từng dòng. (6)~Twin bit-exact. (7)~Costbox ALM, 0 DSP. (8)~Năm bài tập có lời giải. Người chấm lab đối chiếu dump RTL với bảng $y_{\mathrm{acc}}$ trong mục~3.3: lệch một LSB là chưa đạt. Người học chỉ được chuyển Chương~4 khi script \texttt{verify\_chuong\_03.py} chạy OK và RTL khớp dump.
+
 
 \subsection*{3.5. Bài tập và lời giải giải thích}
 
 \paragraph{Bài tập 3.1 (Phình $\mathcal{R}[0]$.)}
 Cho $x_0=[1,-1,1,-1]$ và offset $A=2$. Tính $\sum(x_0[n]+A)^2$ và giải thích vì sao DC-blocker phải đứng trước MAC.
-\paragraph{Lời giải.} $\sum(x_0+A)^2=(3)^2+(1)^2+(3)^2+(1)^2=9+1+9+1=20$, trong khi $\sum x_0^2=4$. Offset đã nhân năng lượng $\tau=0$ lên năm lần; không chặn DC thì ngưỡng voicing và đỉnh $T_0$ đều lệch.
+\paragraph{Lời giải.} $\sum(x_0+A)^2=20$, trong khi $\sum x_0^2=4$. Offset nhân năng lượng $\tau=0$ lên năm lần; không chặn DC thì ngưỡng voicing và đỉnh $T_0$ đều lệch.
 
-\paragraph{Bài tập 3.2 (Đệ quy $\alpha=0{,}5$).}
-Với $x=[1,1,1,1,1]$, $\alpha=0{,}5$, $y[-1]=0$, lập bảng $y[0..4]$. Nhận xét giới hạn khi $n\to\infty$.
-\paragraph{Lời giải.} $1,\ 0{,}5,\ 0{,}25,\ 0{,}125,\ 0{,}0625$ --- cấp số nhân công bội $1/2$, tiến về $0$: DC thuần bị nuốt hết.
+\paragraph{Bài tập 3.2 (Đệ quy $\alpha=0{,}5$ và $\alpha=0{,}75$).}
+\begin{enumerate}[label=\alph*)]
+  \item Với $x=[1,1,1,1,1]$, $\alpha=0{,}5$, lập bảng $y[0..4]$.
+  \item Lặp lại với $\alpha=0{,}75$; nhận xét tốc độ về 0.
+\end{enumerate}
+\paragraph{Lời giải.} (a)~$1,0{,}5,0{,}25,0{,}125,0{,}0625$. (b)~$1,0{,}75,0{,}5625,0{,}421875,0{,}31640625$ --- $\alpha$ lớn hơn (cực sát vòng đơn vị hơn) suy giảm chậm hơn; $\alpha=1-2^{-8}$ còn chậm hơn nữa ($\sim 256$ mẫu).
 
-\paragraph{Bài tập 3.3 (Bit-exact step).}
-Dùng công thức $y_{\mathrm{acc}}\mathrel{+}=x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$, $x_{\Delta}=(x\ll 15)-(x_{z1}\ll 15)$, tính $y_{\mathrm{out}}$ tại hai mẫu đầu của bước $16384$ (sau ba số 0).
-\paragraph{Lời giải.} $y_{\mathrm{out}}[3]=16384$, $y_{\mathrm{out}}[4]=16320$ (đã kiểm script). Sai số một LSB ở đây đồng nghĩa twin và RTL lệch thang cố định điểm --- bắt buộc khớp trước khi nối FIR.
+\paragraph{Bài tập 3.3 (Bit-exact step từng chu kỳ).}
+Dùng công thức $y_{\mathrm{acc}}\mathrel{+}=x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$, tính $y_{\mathrm{out}}$ tại $n=3,4,5$ của bước $16384$ (sau ba số 0). Viết cả $y_{\mathrm{acc}}$ trung gian ở $n=4$.
+\paragraph{Lời giải.} $y_{\mathrm{out}}[3]=16384$, $y_{\mathrm{acc}}[4]=534773760$, $y_{\mathrm{out}}[4]=16320$, $y_{\mathrm{out}}[5]=16256$ (script). Sai một LSB đồng nghĩa twin và RTL lệch thang.
+
+\paragraph{Bài tập 3.4 (Cutoff và $F_{0,\min}$).}
+Tính $f_c$ tại $16\,\text{kHz}$ và $48\,\text{kHz}$ với $\alpha=1-2^{-8}$. Vì sao cả hai đều chấp nhận được trước $F_{0,\min}=75\,\text{Hz}$?
+\paragraph{Lời giải.} $f_c\approx 9{,}95\,\text{Hz}$ và $29{,}84\,\text{Hz}$ --- cả hai dưới $75\,\text{Hz}$ nên không ăn vào dải cao độ; vẫn trên DC nên triệt offset.
+
+\paragraph{Bài tập 3.5 (Deadband 16-bit).}
+Giả sử ai đó giữ phản hồi chỉ 16~bit và làm $y\leftarrow y-(y\ggg 8)$ trên Q1.15. Khi $|y|<256$, giải thích hiện tượng vùng chết.
+\paragraph{Lời giải.} $y\ggg 8=0$ khi $|y|<256$, nên $y$ dừng cập nhật dù vẫn còn offset nhỏ --- residual DC đọng lại, nuôi $\mathcal{R}[0]$ giả. Accumulator 32~bit giữ phần thập phân dưới ngưỡng 16~bit nên không chết.
+
+\paragraph{Bài tập 3.6 (Trừ mean vs IIR).}
+So sánh chi phí: trừ mean trên khung $L=640$ mỗi hop $H=160$ ở $50\,\text{MHz}$ cần tối thiểu bao nhiêu phép cộng mỗi hop? DC-blocker cần bao nhiêu phép cộng/trừ mỗi mẫu? Trong $10\,\text{ms}$ có bao nhiêu mẫu ở $48\,\text{kHz}$?
+\paragraph{Lời giải.} Trừ mean: $\ge 640$ phép cộng + 1 phép nhân/chia mỗi hop (cộng thêm $L$ phép trừ để tách mean). DC-blocker: 2--3 phép cộng/trừ mỗi mẫu. Trong $10\,\text{ms}$ ở $48\,\text{kHz}$ có $480$ mẫu --- khoảng $480\times 3\approx 1440$ phép, vẫn rẻ hơn nhiều so với MAC tự tương quan ($\sim 189\times 640$ nhân-cộng mỗi hop, Chương~0), và latency một mẫu thay vì một khung.
+

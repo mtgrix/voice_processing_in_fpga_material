@@ -5,13 +5,13 @@
 \pdfbookmark[1]{Chương 5. Bộ nhớ trượt M10K (True Dual-Port, Old Data)}{chuong5}
 
 \begin{learningobj}
-Sau Chương~5, người học dựng bộ đệm vòng $L=640$ mẫu trên M10K True Dual-Port, chọn đúng mixed-port read-during-write = Old Data, khớp latency đọc 1 hoặc 2 chu kỳ với twin và FSM, và tính ngân sách bit/M10K. Thuật ngữ M10K, True Dual-Port, Old Data, ALM, Fmax đã có ở ô Feynman~10 và bài tập~0.3 của Chương~0 --- chương này triển khai datapath.
+Sau Chương~5, người học dựng bộ đệm vòng $L=640$ mẫu trên M10K True Dual-Port, chọn đúng mixed-port read-during-write = Old Data, khớp latency đọc 1 hoặc 2 chu kỳ với twin và FSM trên sơ đồ timing chu kỳ-cụ-thể, và tính ngân sách bit/M10K. Thuật ngữ M10K, True Dual-Port, Old Data, ALM, Fmax đã có ở ô Feynman~10 và bài tập~0.3 của Chương~0 --- chương này triển khai datapath.
 \end{learningobj}
 
 \subsection*{5.1. Hiện tượng: vì sao phải nhớ $L$ mẫu trên chip}
 
 \begin{physicalinsight}
-Giọng nói là sóng theo thời gian liên tục. Praat cắt khung $L$ mẫu (ví dụ $L=640$ tại $16\,\text{kHz}$ với $F_{0,\min}=75\,\text{Hz}$, khoảng $40\,\text{ms}$) rồi trượt theo bước nhảy $H=160$ ($10\,\text{ms}$). Trên FPGA, mỗi mẫu từ FIR chỉ đến một lần rồi biến mất khỏi thanh ghi vào --- không thể ``tua lại'' micro. \textbf{Bộ nhớ trượt} (circular buffer) giữ đúng $L$ mẫu gần nhất: cổng A ghi mẫu mới mỗi beat audio hợp lệ, cổng B đọc burst $L$ mẫu khi FSM cần một khung để nhân cửa sổ và MAC.
+Giọng nói là sóng theo thời gian liên tục. Praat cắt khung $L$ mẫu (ví dụ $L=640$ tại $16\,\text{kHz}$ với $F_{0,\min}=75\,\text{Hz}$, khoảng $40\,\text{ms}$) rồi trượt theo bước nhảy $H=160$ ($10\,\text{ms}$). Trên FPGA, mỗi mẫu từ FIR chỉ đến một lần rồi biến mất khỏi thanh ghi vào --- không thể ``tua lại'' micro. \textbf{Bộ nhớ trượt} (circular buffer) giữ đúng $L$ mẫu gần nhất: cổng A ghi mẫu mới mỗi beat audio hợp lệ, cổng B đọc burst $L$ mẫu khi FSM cần một khung để nhân cửa sổ và MAC. Đời thường: hộp đen máy bay chỉ giữ $L$ giờ ghi gần nhất; mỗi phút mới đè lên phút cũ nhất --- đúng phép modulo trên địa chỉ.
 \end{physicalinsight}
 
 \begin{figure}[H]
@@ -30,8 +30,22 @@ Giọng nói là sóng theo thời gian liên tục. Praat cắt khung $L$ mẫu
 \label{fig:ch05_sliding_datapath}
 \end{figure}
 
-Công thức chọn $L$ theo tinh thần Praat: $L\approx 3\cdot f_s/F_{0,\min}$. Với $f_s=16\,\text{kHz}$, $F_{0,\min}=75\,\text{Hz}$: $L\approx 3\cdot 16000/75=640$ mẫu.
+Công thức chọn $L$ theo tinh thần Praat: $L\approx 3\cdot f_s/F_{0,\min}$. Với $f_s=16\,\text{kHz}$, $F_{0,\min}=75\,\text{Hz}$:
+\[
+L\approx 3\cdot\frac{16000}{75}=640\text{ mẫu}.
+\]
+Nếu lab nâng $F_{0,\min}$ lên $100\,\text{Hz}$ thì $L\approx 480$ --- tiết kiệm RAM nhưng giảm độ bền đỉnh với giọng trầm. Không chọn $L$ tùy hứng: quá ngắn làm đỉnh $\mathcal{R}[\tau]$ nông; quá dài tốn M10K và tăng MAC.
 
+\paragraph{Vì sao on-chip, không SDRAM.} Đọc $640$ mẫu liên tiếp mỗi hop $10\,\text{ms}$ đòi băng thông và latency Deterministic. SDRAM/HPS có refresh, arbitration, cache --- RTF và jitter địa chỉ phá deadline $500\,000$ chu kỳ. Một khối M10K cho đúng $10240$~bit là vừa khít và hoàn toàn Deterministic.
+
+
+\subsection*{5.1b. So sánh với FIFO tuyến tính và với bộ đệm phần mềm}
+
+FIFO tuyến tính (chỉ đẩy mẫu mới, đọc tuần tự từ đầu) không đủ cho khung trượt chồng lấp: sau khi đọc hết $L$ mẫu một lần, dữ liệu cũ mất; trong khi hop chỉ tiến $H<L$ nên cần giữ lại $L-H$ mẫu. Circular buffer giải quyết bằng cách \emph{không} xóa khi đọc --- đọc không phá nội dung, chỉ ghi mới đè mẫu cũ nhất. Trong phần mềm Praat, mảng vòng hoặc copy $L$ mẫu mỗi hop làm cùng việc; trên FPGA, copy $640$ mẫu mỗi $10\,\text{ms}$ vào BRAM khác sẽ nhân đôi M10K và thêm $640$ chu kỳ chép --- lãng phí so với đọc tại chỗ từ circular.
+
+\paragraph{An toàn đa khung.} Nếu FSM chậm và yêu cầu khung mới khi khung trước chưa đọc xong, cần hoặc chặn \texttt{frame\_req} (backpressure) hoặc double-buffer hai vùng $L$ (tốn 2 M10K). Lab mặc định backpressure: một burst tại một thời điểm, đơn giản và đủ vì $642\ll 500000$. Double-buffer chỉ cần khi pipeline MAC quá sâu đến mức đọc khung chồng nhau --- không phải trường hợp thiết kế DE10 ở Chương~0.
+
+\paragraph{Liên hệ RTF.} Thời gian đọc khung $642/50\times 10^{6}\approx 12{,}8\,\mu\mathrm{s}$ trên $10\,\text{ms}$ audio cho RTF riêng phần nhớ $\approx 0{,}00128$. Toàn hệ thống RTF bị chi phối bởi MAC (Chương~7), không bởi M10K --- đúng chỗ đặt ngân sách silicon.
 \subsection*{5.2. Toán con trỏ vòng và ví dụ tính tay}
 
 Con trỏ ghi $n_w\in\{0,\ldots,L-1\}$ chạy modulo $L$: mỗi beat \texttt{valid} ghi $\mathrm{mem}[n_w]\leftarrow x_{\mathrm{in}}$ rồi $n_w\leftarrow(n_w+1)\bmod L$. Khi FSM cần khung (sau khi đã có đủ mẫu mới theo hop $H$), đọc oldest-first:
@@ -53,65 +67,170 @@ sau ghi 9 & \textbf{9} & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
 \end{center}
 Khi $n_w=1$ (vừa ghi 9 vào addr~0 rồi tăng ptr), khung oldest$\to$newest lấy tuần tự addr $1{,}2{,}3{,}4{,}5{,}6{,}7{,}0$, tức dãy mẫu $2{,}3{,}4{,}5{,}6{,}7{,}8{,}9$.
 
-\subsection*{5.3. Old Data, latency 1/2 và Intel On-Chip Memory}
+\paragraph{Ví dụ tính tay --- quan hệ hop và số mẫu mới.} Mỗi hop $H=160$ mẫu ở $16\,\text{kHz}$ tương ứng $10\,\text{ms}$. Bộ đệm $L=640$ giữ $4$ hop lịch sử. Sau mỗi hop, chỉ $160$ ô bị ghi đè; $480$ ô còn lại vẫn là quá khứ hữu ích cho cửa sổ chồng lấp (overlap) --- đúng tinh thần phân tích khung trượt Praat.
+
+
+\subsection*{5.2b. Overlap, hop và số lần đọc mỗi giây}
+
+Với $H=160$, $f_s=16\,\text{kHz}$, số khung mỗi giây là $16000/160=100$ khung/s (đúng $10\,\text{ms}$/khung). Mỗi khung đọc $L=640$ mẫu từ M10K $\Rightarrow$ $64000$ phép đọc/giây --- với clock $50\,\text{MHz}$ là tầm thường. Overlap $L-H=480$ mẫu ($75\%$ overlap) làm liền mạch đường $F_0$ theo thời gian: hai khung liên tiếp chia sẻ $480$ mẫu, nên đỉnh cao độ ít nhảy hơn so với hop không chồng. Trên silicon, overlap \emph{không} tốn thêm RAM: circular buffer vốn đã giữ $L$; chỉ cần phát \texttt{frame\_req} thường hơn.
+
+\paragraph{Ví dụ tính tay --- địa chỉ sau nhiều hop.} $L=8$, $H=2$ (minh họa thu nhỏ). Bắt đầu $n_w=0$ sau khi đã đầy $1..8$. Sau một hop ghi thêm 2 mẫu (giá trị 9,10): $n_w=2$, mem$=[9,10,3,4,5,6,7,8]$, khung $=[3,4,5,6,7,8,9,10]$. Sau hop nữa (11,12): $n_w=4$, khung $=[5,6,7,8,9,10,11,12]$. Quan sát: mỗi hop khung trượt đúng $H$ mẫu trên dòng thời gian --- đúng định nghĩa hop Praat.
+
+\paragraph{Đọc đồng thời với ghi --- định mức chu kỳ.} Trong $10\,\text{ms}$ có $160$ mẫu cần ghi và một burst $640$ đọc. Tổng giao dịch bộ nhớ $\approx 800$ mỗi hop, vẫn $\ll 500\,000$. True Dual-Port cho phép ghi và đọc cùng chu kỳ trên hai địa chỉ khác nhau mà không mất mẫu; chỉ khi trùng địa chỉ mới cần quy tắc Old Data đã phân tích.
+
+\subsection*{5.3. Old Data, latency 1/2 và timing chu kỳ-cụ-thể}
 
 Như Chương~0 đã khẳng định: trên Cyclone~V, khi Port~A ghi địa chỉ $a$ mà Port~B đọc \emph{cùng} $a$ trong cùng chu kỳ (mixed-port read-during-write), silicon \textbf{không hỗ trợ New Data}; chỉ bảo đảm \textbf{Old Data} (đọc giá trị trước lần ghi) hoặc Don't Care. Twin Python phải trả về giá trị cũ trong cùng ``delta-cycle''; nếu không, testbench xanh trên mô hình tưởng tượng nhưng đỏ trên chip thật.
 
-\paragraph{Cấu hình IP.} On-Chip Memory (RAM: 2-PORT), True Dual-Port, width 16 (Q1.15), depth $\ge L$ (có thể làm tròn 1024). Mixed-port RDW = \textbf{Old Data}. Không dùng MLAB cho $L=640$ (depth lớn, timing kém).
+\paragraph{Cấu hình IP.} On-Chip Memory (RAM: 2-PORT), True Dual-Port, width 16 (Q1.15), depth $\ge L$ (có thể làm tròn 1024). Mixed-port RDW = \textbf{Old Data}. Không dùng MLAB cho $L=640$ (depth lớn, timing kém). Single-port + time-mux ghi/đọc sẽ buộc FSM không ghi trong lúc đọc khung --- phức tạp hóa và dễ mất mẫu audio.
 
 \paragraph{Latency đọc --- điểm dễ lệch khung.}
 \begin{itemize}[leftmargin=1.4em]
   \item RTL inferred \texttt{dout <= mem[rd\_ptr]}: latency \textbf{1 chu kỳ} sau \texttt{rd\_en}.
   \item MegaWizard bật Output Registers: thường \textbf{2 chu kỳ} (block RAM register + output register).
 \end{itemize}
-FSM Chương~11 và twin \textbf{phải} cùng model. Lệch một chu kỳ $\Rightarrow$ lệch cả 640 mẫu cửa sổ và toàn bộ MAC.
+FSM Chương~11 và twin \textbf{phải} cùng model. Lệch một chu kỳ làm lệch cả 640 mẫu cửa sổ và toàn bộ MAC.
 
+\paragraph{Sơ đồ timing --- Old Data cùng địa chỉ.} Giả sử tại chu kỳ $T$ Port~A ghi giá trị mới $42$ vào địa chỉ $a$ đang giữ $7$, đồng thời Port~B đọc $a$ với \texttt{rd\_en}=1, cấu hình Old Data, latency 1:
+
+\begin{center}\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Chu kỳ & Port A (write) & Port B (read addr) & \texttt{dout} (lat~1) \\
+\midrule
+$T-1$ & --- & --- & (giá trị cũ hơn) \\
+$T$ & ghi $42$ vào $a$ (cũ $=7$) & đọc $a$ & --- (chưa ra) \\
+$T+1$ & --- & --- & $7$ (Old Data) \\
+$T+2$ & --- & đọc $a$ lại & $42$ (đã là nội dung mới) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=1.1cm, y=0.65cm]
+  \draw[->] (0,5.0) -- (9.2,5.0) node[right] {clk};
+  \foreach \x in {0,1,2,3,4,5,6,7,8} {\draw (\x,4.85)--(\x,5.15);}
+  \node at (1,5.45) {$T-1$}; \node at (3,5.45) {$T$}; \node at (5,5.45) {$T{+}1$}; \node at (7,5.45) {$T{+}2$};
+  \draw[thick,blue!70!black] (0,3.8) -- (2.0,3.8) -- (2.0,3.0) -- (3.6,3.0) -- (3.6,3.8) -- (9,3.8);
+  \node[blue!70!black,left] at (0,3.4) {wr\_en};
+  \node[blue!70!black,font=\tiny] at (2.8,2.55) {din=42 @ $a$};
+  \draw[thick,teal!70!black] (0,1.9) -- (2.0,1.9) -- (2.0,1.1) -- (3.6,1.1) -- (3.6,1.9)
+    -- (6.0,1.9) -- (6.0,1.1) -- (7.6,1.1) -- (7.6,1.9) -- (9,1.9);
+  \node[teal!70!black,left] at (0,1.5) {rd\_en};
+  \draw[thick,orange!80!black] (0,0.2) -- (3.6,0.2) -- (3.6,-0.5) -- (5.6,-0.5) -- (5.6,0.2)
+    -- (7.6,0.2) -- (7.6,-0.5) -- (9,-0.5);
+  \node[orange!80!black,left] at (0,-0.1) {dout};
+  \node[orange!80!black,font=\tiny] at (4.6,-0.95) {7 (old)};
+  \node[orange!80!black,font=\tiny] at (8.2,-0.95) {42};
+  \node[align=left,font=\tiny] at (4.5,6.15)
+    {Cùng addr $a$: ghi 42 đè 7 tại $T$; dout latency 1 trả 7 ở $T{+}1$ (Old Data).\\
+     New Data không được mixed-port Cyclone~V bảo đảm.};
+\end{tikzpicture}
+\caption{Timing chu kỳ-cụ-thể mixed-port read-during-write = Old Data, latency đọc 1:dout ở $T{+}1$ là giá trị trước khi ghi.}
+\label{fig:ch05_olddata_timing}
+\end{figure}
+
+Nếu IP bật output register (latency 2), mọi cạnh \texttt{dout} trong hình dịch thêm một chu kỳ --- FSM phải chờ đúng 2 nhịp sau \texttt{rd\_en} đầu trước khi lấy mẫu đầu khung.
+
+\paragraph{RTL inferred (latency 1) giải thích từng dòng.}
 \begin{verbatim}
 localparam int L = 640;
-reg signed [15:0] mem [0:L-1];
+reg signed [15:0] mem [0:L-1];  // M10K via ramstyle
 reg [$clog2(L)-1:0] wr_ptr, rd_ptr;
 reg signed [15:0] dout;
 always @(posedge clk) begin
   if (valid_i) begin
-    mem[wr_ptr] <= din;            // Port A
+    mem[wr_ptr] <= din;              // Port A: ghi mẫu audio mới
     wr_ptr <= (wr_ptr == L-1) ? '0 : wr_ptr + 1'b1;
   end
   if (rd_en) begin
-    dout <= mem[rd_ptr];           // Port B, Old Data semantics
+    dout <= mem[rd_ptr];        // Port B Old Data
     rd_ptr <= (rd_ptr == L-1) ? '0 : rd_ptr + 1'b1;
   end
 end
 \end{verbatim}
+Dòng \texttt{dout <= mem[rd\_ptr]} tạo thanh ghi ngõ ra --- latency 1. Hai tiến trình trong cùng \texttt{always} là True Dual-Port khi công cụ suy diễn được; để chắc, lab dùng IP 2-PORT và nối tay hai con trỏ. Không ghi \texttt{dout = mem[...]} (blocking tổ hợp) nếu muốn khớp M10K đồng bộ.
 
-\paragraph{Twin địa chỉ.}
+\paragraph{Twin địa chỉ khớp Old Data.}
 \begin{verbatim}
 L = 640
 mem = [0] * L
 wr = 0
 def write(x):
     global wr
-    old = mem[wr]
+    old = mem[wr]       # giá trị trước khi đè --- Old Data
     mem[wr] = int(x)
     wr = (wr + 1) % L
-    return old          # Old Data nếu đọc cùng addr
+    return old
 def read_frame():
     return [mem[(wr + k) % L] for k in range(L)]  # oldest-first
 \end{verbatim}
+Hàm \texttt{write} trả về \texttt{old} khớp dout silicon khi đọc trùng địa chỉ đang ghi. Script \texttt{verify/verify\_chuong\_05.py} kiểm khung $[2,\ldots,9]$ ($L=8$) và ngân sách $640\times 16=10240$~bit.
 
 \begin{costbox}
-\textbf{Ngân sách --- sliding M10K.} $L\times 16=640\times 16=10\,240$~bit, vừa khít \textbf{1 khối M10K} ($10\,240$~bit). Depth 1024 từ vẫn khoảng 1--2 M10K. ALM cho hai con trỏ + FSM đọc: khoảng $50$--$100$. 0 DSP. Đọc hết một khung: $L$ chu kỳ $+$ latency 1 hoặc 2 $=642$ chu kỳ max --- rất nhỏ so với ngân sách $500\,000$ chu kỳ trong $10\,\text{ms}$ ở $50\,\text{MHz}$ (Chương~0). Vì sao True Dual-Port + Old Data: ghi và đọc song song mỗi chu kỳ audio; New Data không bảo đảm trên mixed-port Cyclone~V.
+\textbf{Ngân sách --- sliding M10K.} $L\times 16=640\times 16=10\,240$~bit, vừa khít \textbf{1 khối M10K} ($10\,240$~bit). Depth 1024 từ vẫn khoảng 1--2 M10K. ALM cho hai con trỏ + FSM đọc: khoảng $50$--$100$. 0 DSP. Đọc hết một khung: $L$ chu kỳ $+$ latency 1 hoặc 2 $=641$ hoặc $642$ --- rất nhỏ so với ngân sách $500\,000$ chu kỳ trong $10\,\text{ms}$ ở $50\,\text{MHz}$ (Chương~0). Vì sao True Dual-Port + Old Data: ghi và đọc song song mỗi chu kỳ; New Data không bảo đảm trên mixed-port Cyclone~V (bài tập~0.3). RTF phần đọc khung $\approx 642/500000 < 0{,}002$.
 \end{costbox}
+
+
+\subsection*{5.3b. Khởi động ấm máy và đồng bộ hop}
+
+Sau reset, bộ đệm chứa $0$ (hoặc don't care). Nếu FSM phát khung ngay, MAC sẽ nhân cửa sổ với chuỗi toàn 0 hoặc rác --- đỉnh $F_0$ vô nghĩa. Quy trình ấm máy: chờ ít nhất $L=640$ mẫu \texttt{valid} từ FIR (khoảng $40\,\text{ms}$ ở $16\,\text{kHz}$) trước khung đầu tiên; sau đó mỗi $H=160$ mẫu phát một khung mới. Cờ \texttt{warm} trong FSM: đếm mẫu ghi cho tới $L$, rồi cho phép \texttt{frame\_req}. Twin Python phải có cùng quy tắc nếu so sánh bit-exact từng khung.
+
+\paragraph{Xung đột ghi/đọc khi burst dài.} Trong lúc Port~B đọc $640$ chu kỳ, Port~A vẫn có thể nhận mẫu audio mới mỗi $\approx 3125$ chu kỳ hệ thống (một mẫu $16\,\text{kHz}$). Xác suất trùng địa chỉ đúng lúc đang đọc địa chỉ đó là có thật: đó chính là lúc Old Data quyết định đúng/sai. New Data ``hy vọng đọc giá trị vừa ghi'' sẽ làm một mẫu trong khung mang giá trị tương lai --- lệch cửa sổ một cách không lặp lại theo seed, cực khó debug. Old Data bảo đảm khung là ảnh nhất quán của quá khứ tại thời điểm bắt đầu burst (plus các ô chưa bị đè trong lúc đọc --- đúng mô hình circular đang trôi).
+
+\paragraph{Hai con trỏ đọc: oldest và tuần tự.} Có thể khởi $\mathrm{rd\_ptr}\leftarrow n_w$ khi bắt burst (oldest), rồi tăng mỗi chu kỳ; hoặc giữ $\mathrm{rd\_base}$ cố định trong burst và $\mathrm{rd\_ptr}=\mathrm{rd\_base}+k$. Cách hai tránh lệch nếu $n_w$ bị ghi tăng trong lúc đọc --- khuyến nghị lab: \textbf{chốt $\mathrm{rd\_base}=n_w$ lúc nhận \texttt{frame\_req}}, rồi đọc $\mathrm{rd\_base}+k\bmod L$, trong khi $n_w$ vẫn tăng trên Port~A. Twin:
+\begin{verbatim}
+def read_frame_stable(wr_at_req):
+    return [mem[(wr_at_req + k) % L] for k in range(L)]
+\end{verbatim}
+
+\paragraph{Thuộc tính \texttt{ramstyle} và suy diễn.}
+\begin{verbatim}
+(* ramstyle = "M10K" *) reg signed [15:0] mem [0:L-1];
+\end{verbatim}
+Ép map M10K, tránh công cụ phân tán MLAB khi depth lớn. Kiểm Fitter: $1$ M10K, không cảnh báo inferred ROM/RAM conflict. Nếu thấy ``RAM logic'', latency và Old Data có thể không còn đúng như block RAM --- phải sửa attribute hoặc dùng IP.
+
+\paragraph{Tóm tắt tám yếu tố Chương~5.} Hiện tượng khung trượt; toán modulo + ví dụ $L=8$; IP TDP Old Data + hình timing chu kỳ; RTL từng dòng + \texttt{ramstyle}; twin Old Data; costbox 10240~bit; năm bài tập. Điều kiện qua chương: verify script OK, Fitter báo 1 M10K, và waveform RDW khớp Old Data.
+
 
 \subsection*{5.4. Bài tập và lời giải giải thích}
 
-\paragraph{Bài tập 5.1 (Ngân sách bit).} $L=640$, width 16: bao nhiêu bit? Cần tối thiểu bao nhiêu M10K?
-\paragraph{Lời giải.} $640\times 16=10\,240$~bit $\le 10\,240$ (1 M10K). Vừa khít một khối; không cần MLAB.
+\paragraph{Bài tập 5.1 (Ngân sách bit).} $L=640$, width 16: bao nhiêu bit? Cần tối thiểu bao nhiêu M10K? Nếu $L=480$ ($F_{0,\min}=100\,\text{Hz}$) thì sao?
+\paragraph{Lời giải.} $640\times 16=10\,240$~bit $=1$ M10K vừa khít. $480\times 16=7680$~bit vẫn 1 M10K (không chia nhỏ khối) nhưng dư chỗ --- có thể dùng dual-purpose lưu thêm hệ số cửa sổ nếu cần.
 
-\paragraph{Bài tập 5.2 (Old Data).} Cùng địa chỉ: Port~A ghi $42$ vào ô đang giữ $7$, Port~B đọc cùng ô trong cùng chu kỳ. Dout là gì nếu cấu hình Old Data? Nếu ai đó tưởng New Data trên Cyclone~V thì rủi ro gì?
-\paragraph{Lời giải.} Old Data $\Rightarrow$ dout $=7$. New Data không được silicon mixed-port bảo đảm; Quartus có thể chèn bypass ALM làm giảm Fmax, hoặc hành vi Don't Care --- twin xanh / chip đỏ.
+\paragraph{Bài tập 5.2 (Old Data timing).} Cùng địa chỉ: Port~A ghi $42$ vào ô đang giữ $7$, Port~B đọc cùng ô trong cùng chu kỳ, latency 1, Old Data. Dout ở chu kỳ sau là gì? Ở hai chu kỳ sau nếu đọc lại?
+\paragraph{Lời giải.} Chu kỳ $T{+}1$: dout $=7$. Chu kỳ $T{+}2$ nếu đọc lại addr đó: dout $=42$. New Data không được mixed-port Cyclone~V bảo đảm.
 
 \paragraph{Bài tập 5.3 (Đọc khung).} Sau khi ghi mẫu 9 vào $L=8$ như bảng trên ($n_w=1$), liệt kê khung oldest-first.
 \paragraph{Lời giải.} $[2,3,4,5,6,7,8,9]$ --- khớp script \texttt{verify/verify\_chuong\_05.py}.
 
-\paragraph{Bài tập 5.4 (Latency).} Vì sao lab phải ghi rõ ``inferred 1 ck'' hay ``IP output register 2 ck'' trước khi viết FSM?
-\paragraph{Lời giải.} Mỗi mẫu cửa sổ lệch một chu kỳ làm lệch toàn bộ tích MAC $\mathcal{R}[\tau]$; sai số không phải ngẫu nhiên mà là dịch cả khung --- đỉnh $F_0$ lệch hệ thống.
+\paragraph{Bài tập 5.4 (Latency 1 vs 2).} Vì sao lab phải ghi rõ ``inferred 1 ck'' hay ``IP output register 2 ck'' trước khi viết FSM? Hậu quả lệch một chu kỳ lên MAC là gì?
+\paragraph{Lời giải.} Mỗi mẫu cửa sổ lệch một chu kỳ làm lệch toàn bộ tích $\mathcal{R}[\tau]$; sai số là dịch cả khung --- đỉnh $F_0$ lệch hệ thống, khódebug vì ``có vẻ có đỉnh'' nhưng sai cao độ.
+
+\paragraph{Bài tập 5.5 (Ngân sách chu kỳ hop).}
+\begin{enumerate}[label=\alph*)]
+  \item Trong $10\,\text{ms}$ ở $50\,\text{MHz}$ có bao nhiêu chu kỳ?
+  \item Đọc $L=640$ với latency 2 mất bao nhiêu chu kỳ? Tỷ lệ so với ngân sách hop?
+\end{enumerate}
+\paragraph{Lời giải.} (a)~$500\,000$ chu kỳ. (b)~$642$ chu kỳ $\approx 0{,}128\%$ ngân sách hop --- đọc khung gần như ``miễn phí'' so với MAC $189\times 640$.
+
+\paragraph{Bài tập 5.6 (Warm-up và chốt $\mathrm{rd\_base}$).}
+\begin{enumerate}[label=\alph*)]
+  \item Sau reset, cần tối thiểu bao nhiêu mẫu \texttt{valid} trước khung đầu? Tương đương bao nhiêu ms ở $16\,\text{kHz}$?
+  \item Vì sao phải chốt $\mathrm{rd\_base}=n_w$ lúc \texttt{frame\_req} thay vì luôn đọc theo $n_w$ đang chạy trong lúc burst?
+\end{enumerate}
+\paragraph{Lời giải.} (a)~$640$ mẫu $=40\,\text{ms}$. (b)~Trong burst $640$ chu kỳ, $n_w$ có thể tăng khi có mẫu mới; nếu $\mathrm{rd\_ptr}$ bám $n_w$ động, tập địa chỉ bị trượt trong lúc đọc, khung không còn là một cửa sổ nhất quán tại thời điểm yêu cầu. Chốt $\mathrm{rd\_base}$ đóng băng ảnh circular tại thời điểm req.
+
+\paragraph{Bài tập 5.7 (\texttt{ramstyle} và Fitter).}
+Fitter báo RAM suy diễn thành logic thay vì M10K. Hậu quả lên Old Data/latency? Cách ép?
+\paragraph{Lời giải.} RAM logic không còn hành vi block mixed-port Old Data chuẩn; timing và latency đổi, twin M10K không còn vàng. Ép \texttt{(* ramstyle = "M10K" *)} hoặc dùng IP On-Chip Memory 2-PORT, rồi đọc lại báo cáo Fitter xác nhận 1 M10K.
+
+\subsection*{5.5. Liên kết Chương~0 và chương sau}
+
+Bài tập~0.3 của Chương~0 đã cảnh báo New Data trên Cyclone~V: Chương~5 là chỗ hiện thực câu trả lời đó bằng IP + timing. Chương~6 (cửa sổ) sẽ nhân từng mẫu đọc từ Port~B với hệ số Hanning/Hamming từ ROM; lệch latency đọc sẽ lệch luôn tích cửa sổ. Chương~7 (MAC) giả định khung $L$ đã ổn định trên dây Avalon-ST --- mọi sai Old Data ở đây biến thành sai $\mathcal{R}[\tau]$ không sửa được bằng ``thêm DSP''.
+
+\paragraph{Checklist nghiệm thu Chương~5.} (1)~Fitter: đúng 1 M10K cho buffer $640\times 16$. (2)~Waveform: trùng địa chỉ ghi/đọc cho dout = Old Data. (3)~Latency đọc khớp ghi chú lab (1 hoặc 2). (4)~Warm-up $\ge 640$ mẫu. (5)~Khung oldest-first khớp twin trên vector $L=8$ và trên dump $L=640$ rút gọn. (6)~Trong một hop, số chu kỳ đọc $+$ ghi $\ll 500\,000$. Đủ sáu mục mới được coi là xong khối nhớ trượt.
+
+\paragraph{Định mức overlap 75\%.} Với $L=640$, $H=160$, tỷ lệ chồng $480/640=0{,}75$. Đây là lựa chọn cân bằng giữa mượt đường $F_0$ và chi phí MAC mỗi giây ($100$ khung/s). Giảm overlap (tăng $H$) làm thưa điểm cao độ; tăng overlap (giảm $H$) nhân tải MAC gần tuyến tính.
+

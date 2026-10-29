@@ -5,18 +5,18 @@
 \pdfbookmark[1]{Chương 2. PLL, MCLK, I2S và CDC mã Gray}{chuong2}
 
 \begin{learningobj}
-Sau Chương~2, người học tạo được đúng xung nhịp âm thanh từ thạch anh $50\,\text{MHz}$ trên DE10-Standard, thu mẫu PCM từ codec WM8731 qua I\textsuperscript{2}S, và đưa mẫu sang miền đồng hồ xử lý $50\,\text{MHz}$ bằng DCFIFO mã Gray mà không gây metastability. Các khái niệm PLL, MCLK, I\textsuperscript{2}S, DCFIFO và mã Gray đã được định nghĩa trực giác ở mục~0.4 (ô Feynman~8) của Chương~0 --- chương này đi sâu vào cấu hình, tính tay và RTL.
+Sau Chương~2, người học tạo được đúng xung nhịp âm thanh từ thạch anh $50\,\text{MHz}$ trên DE10-Standard, thu mẫu PCM từ codec WM8731 qua I\textsuperscript{2}S, và đưa mẫu sang miền đồng hồ xử lý $50\,\text{MHz}$ bằng DCFIFO mã Gray mà không gây metastability. Các khái niệm PLL, MCLK, I\textsuperscript{2}S, DCFIFO và mã Gray đã được định nghĩa trực giác ở mục~0.4 (ô Feynman~8) của Chương~0 --- chương này đi sâu vào cấu hình, tính tay, nội tại IP, RTL từng dòng và twin Python.
 \end{learningobj}
 
 \subsection*{2.1. Từ thạch anh $50\,\text{MHz}$ đến MCLK $12{,}288\,\text{MHz}$}
 
 \begin{physicalinsight}
-Thạch anh trên bo mạch DE10 dao động cơ--điện rất ổn định (sai số thường chỉ vài phần triệu --- ppm). Chip codec \textbf{Wolfson WM8731} không dùng trực tiếp $50\,\text{MHz}$: nó cần một xung chủ riêng gọi là \textbf{MCLK} đúng $12{,}288\,\text{MHz}$ (bằng $256\times 48\,\text{kHz}$) để chạy bộ lọc oversampling và ADC delta-sigma bên trong. Nếu MCLK lệch vài chục ppm so với giá trị danh định, chu kỳ lấy mẫu sẽ trôi chậm theo thời gian; thuật toán $F_0$ vẫn ``đúng công thức'' nhưng đo trên một trục thời gian bị kéo giãn, tạo ra sai số cao độ giả.
+Thạch anh trên bo mạch DE10 dao động cơ--điện rất ổn định (sai số thường chỉ vài phần triệu --- ppm). Chip codec \textbf{Wolfson WM8731} không dùng trực tiếp $50\,\text{MHz}$: nó cần một xung chủ riêng gọi là \textbf{MCLK} đúng $12{,}288\,\text{MHz}$ (bằng $256\times 48\,\text{kHz}$) để chạy bộ lọc oversampling và ADC delta-sigma bên trong. Nếu MCLK lệch vài chục ppm so với giá trị danh định, chu kỳ lấy mẫu sẽ trôi chậm theo thời gian; thuật toán $F_0$ vẫn ``đúng công thức'' nhưng đo trên một trục thời gian bị kéo giãn, tạo ra sai số cao độ giả. Ví dụ đời thường: một đồng hồ đeo tay chạy nhanh $50\,\text{ppm}$ sẽ lệch khoảng $4{,}3$ giây mỗi ngày --- với audio $16\,\text{kHz}$, cùng tỷ lệ đó làm trôi $48$ mẫu mỗi phút, đủ để lệch một phần bước nhảy khung $H=160$.
 \end{physicalinsight}
 
-Khối \textbf{PLL} (\emph{Phase-Locked Loop}) trên Cyclone~V khóa một dao động điều khiển bằng điện áp (VCO) vào thạch anh ngoài, rồi nhân/chia ra đúng MCLK. Đây là hiện tượng mạch thật (bộ so pha--tần số PFD bơm điện tích vào lọc vòng, kéo VCO tới khi pha khớp), không phải phép chia đếm thuần bằng flip-flop. Counter mềm không đạt jitter mức audio; vì thế trên Quartus Standard/Lite bắt buộc dùng IP \textbf{Altera PLL} (ALTPLL / PLL Intel FPGA IP), không tự viết PLL bằng RTL.
+Khối \textbf{PLL} (\emph{Phase-Locked Loop}) trên Cyclone~V khóa một dao động điều khiển bằng điện áp (VCO) vào thạch anh ngoài, rồi nhân/chia ra đúng MCLK. Đây là hiện tượng mạch thật: bộ so pha--tần số (\textbf{PFD}, \emph{Phase--Frequency Detector}) so sánh cạnh xung tham chiếu với cạnh feedback sau khi chia $M$; khi pha lệch, PFD bơm hoặc hút điện tích vào \textbf{loop filter}, điện áp lọc kéo tần số VCO tới khi hai cạnh khớp nhau. Chỉ khi đã khóa, chia $C$ mới cho ra MCLK sạch. Counter mềm bằng flip-flop không đạt jitter mức audio (jitter lớn làm méo bit I\textsuperscript{2}S và làm ADC delta-sigma ``run'' không đều); vì thế trên Quartus Standard/Lite bắt buộc dùng IP \textbf{Altera PLL} (ALTPLL / PLL Intel FPGA IP), không tự viết PLL bằng RTL.
 
-\paragraph{Toán từng bước.} Trong chế độ integer-N:
+\paragraph{Toán từng bước --- integer-N.} Trong chế độ integer-N mọi hệ số đều nguyên:
 \[
 f_{\mathrm{VCO}} = f_{\mathrm{in}}\cdot\frac{M}{N},\qquad
 f_{\mathrm{out}} = \frac{f_{\mathrm{VCO}}}{C} = f_{\mathrm{in}}\cdot\frac{M}{N\cdot C}.
@@ -25,9 +25,23 @@ Với $f_{\mathrm{in}}=50\,\text{MHz}$ và $f_{\mathrm{out}}=12{,}288\,\text{MHz
 \[
 \frac{M}{N\cdot C}=\frac{12{,}288}{50}=0{,}24576.
 \]
-Tỷ số $0{,}24576$ không phân tích thành bộ $(M,N,C)$ nguyên nhỏ nằm trong dải VCO Cyclone~V ($600$--$1600\,\text{MHz}$) với sai số đúng $0\,\text{ppm}$. Có thể tìm bộ nguyên lớn cho sai số khoảng $0{,}2\,\text{ppm}$ --- ví dụ $M=1507$, $N=73$, $C=84$ cho $f_{\mathrm{out}}\approx 12{,}287997$\,MHz. 
+Tỷ số $0{,}24576$ không phân tích thành bộ $(M,N,C)$ nguyên nhỏ nằm trong dải VCO Cyclone~V ($600$--$1600\,\text{MHz}$) với sai số đúng $0\,\text{ppm}$. Có thể tìm bộ nguyên lớn cho sai số khoảng $0{,}2\,\text{ppm}$ --- ví dụ $M=1507$, $N=73$, $C=84$:
+\begin{align*}
+f_{\mathrm{VCO}} &= 50\cdot\frac{1507}{73}\approx 1032{,}19178\,\text{MHz}
+\quad\text{(nằm trong }600\text{--}1600\text{)},\\
+f_{\mathrm{out}} &= \frac{f_{\mathrm{VCO}}}{84}=50\cdot\frac{1507}{73\cdot 84}\approx 12{,}28799739\,\text{MHz}.
+\end{align*}
+Sai số tuyệt đối so với $12{,}288\,\text{MHz}$ là khoảng $2{,}61\,\text{Hz}$, tương đương
+\[
+\varepsilon_{\mathrm{ppm}}=\frac{|f_{\mathrm{out}}-12{,}288|}{12{,}288}\cdot 10^{6}\approx 0{,}212\,\text{ppm}.
+\]
 
-Cách dạy chuẩn trên DE10 vẫn là dùng \textbf{Fractional PLL}: MegaWizard/IP Catalog đặt ngõ ra đúng $12{,}288\,\text{MHz}$, phần mềm chọn hệ số phân số và ghi $M,N,C$ vào báo cáo. Một nghiệm phân số minh họa: $N=5$, $M=61{,}44$, $C=50$ cho $f_{\mathrm{VCO}}=614{,}4\,\text{MHz}$ và $f_{\mathrm{out}}=12{,}288\,\text{MHz}$ đúng tuyệt đối trên giấy.
+\paragraph{Fractional PLL --- cách dạy chuẩn trên DE10.} MegaWizard/IP Catalog cho phép đặt ngõ ra đúng $12{,}288\,\text{MHz}$; phần mềm chọn hệ số phân số (fractional-$M$ hoặc tương đương tùy family) và ghi $M,N,C$ vào báo cáo Compilation. Một nghiệm phân số minh họa trên giấy: $N=5$, $M=61{,}44$, $C=50$ cho
+\[
+f_{\mathrm{VCO}}=50\cdot\frac{61{,}44}{5}=614{,}4\,\text{MHz},\qquad
+f_{\mathrm{out}}=\frac{614{,}4}{50}=12{,}288\,\text{MHz}
+\]
+đúng tuyệt đối theo số học. Trên silicon, ``$61{,}44$'' được hiện thực bằng bộ đếm phân số trung bình theo thời gian; jitter dư rất nhỏ so với yêu cầu audio nếu loop filter được cấu hình đúng trong IP.
 
 \begin{figure}[H]
 \centering
@@ -49,26 +63,32 @@ Cách dạy chuẩn trên DE10 vẫn là dùng \textbf{Fractional PLL}: MegaWiza
 \label{fig:ch02_pll_loop}
 \end{figure}
 
-\paragraph{Ví dụ tính tay --- trôi mẫu theo ppm.} Giả sử sai số MCLK là $\varepsilon=50\,\text{ppm}=50\cdot10^{-6}$. Trong $T=60\,\text{s}$ ở tần số lấy mẫu xử lý $f_s=16\,\text{kHz}$, số mẫu bị trôi tuyệt đối là:
+\paragraph{Ví dụ tính tay --- trôi mẫu theo ppm.} Giả sử sai số MCLK là $\varepsilon=50\,\text{ppm}=50\cdot10^{-6}$. Trong $T=60\,\text{s}$ ở tần số lấy mẫu xử lý $f_s=16\,\text{kHz}$, số mẫu bị trôi tuyệt đối là
 \[
 \Delta N = \varepsilon\cdot T\cdot f_s = 50\cdot10^{-6}\cdot 60\cdot 16000 = 48\text{ mẫu}.
 \]
-Bốn mươi tám mẫu ở $16\,\text{kHz}$ tương đương $3\,\text{ms}$ --- đủ để lệch một phần đáng kể của bước nhảy khung $H=160$ mẫu ($10\,\text{ms}$). Mục tiêu lab: giữ sai số audio dưới $5\,\text{ppm}$ ($\Delta N\approx 4{,}8$ mẫu/phút), và luôn chờ tín hiệu \texttt{locked} của PLL trước khi bật FSM I\textsuperscript{2}S.
+Bốn mươi tám mẫu ở $16\,\text{kHz}$ tương đương $3\,\text{ms}$ --- đủ để lệch một phần đáng kể của bước nhảy khung $H=160$ mẫu ($10\,\text{ms}$). Với sai số integer-N ở trên ($\approx 0{,}212\,\text{ppm}$):
+\[
+\Delta N \approx 0{,}212\cdot10^{-6}\cdot 60\cdot 16000 \approx 0{,}204\text{ mẫu/phút},
+\]
+không đáng kể so với $48$. Mục tiêu lab: giữ sai số audio dưới $5\,\text{ppm}$ ($\Delta N\approx 4{,}8$ mẫu/phút), và luôn chờ tín hiệu \texttt{locked} của PLL trước khi bật FSM I\textsuperscript{2}S. Nếu bỏ qua \texttt{locked}, vài trăm miligiây đầu sau reset MCLK chưa ổn định --- codec ghi rác vào FIFO và đỉnh tự tương quan nhảy lung tung.
 
-\paragraph{IP, RTL và twin.} Cấu hình Altera PLL: ngõ vào $50\,\text{MHz}$, ngõ ra $c0=12{,}288\,\text{MHz}$ (MCLK), có thể thêm $c1=50\,\text{MHz}$ hệ thống nếu muốn cùng nguồn khóa pha. RTL chỉ được \emph{chia} sau khi đã có MCLK (ví dụ tạo SCLK), không thay VCO bằng counter. Mô hình twin Python không mô phỏng jitter analog; nó chỉ giả lập trôi thời gian lấy mẫu:
+\paragraph{IP Altera PLL --- tham số thật.} Trong IP Catalog chọn PLL Intel FPGA IP (hoặc ALTPLL trên tool cũ): Reference Clock $50\,\text{MHz}$; Output $c0=12{,}288\,\text{MHz}$ (đưa chân MCLK codec); có thể thêm $c1=50\,\text{MHz}$ hệ thống nếu muốn cùng nguồn khóa pha với audio (giảm drift tương đối giữa datapath và MCLK). Bật cổng \texttt{locked}; nối \texttt{areset} về nút reset toàn cục đã đồng bộ. Báo cáo PLL List ghi rõ $M,N,C$, $f_{\mathrm{VCO}}$, ppm residual --- lab phải chép các số này vào sổ, không đoán.
+
+\paragraph{RTL và twin.} RTL chỉ được \emph{chia} sau khi đã có MCLK (ví dụ tạo SCLK $= \mathrm{MCLK}/4$ cho frame 64~bit), không thay VCO bằng counter. Mô hình twin Python không mô phỏng jitter analog; nó giả lập trôi thời gian lấy mẫu
 \[
 t_n = \frac{n}{f_s}\bigl(1+\varepsilon_{\mathrm{ppm}}\cdot 10^{-6}\bigr)
 \]
-và quan sát độ lệch $F_0$ ước lượng khi $\varepsilon\neq 0$.
+rồi nội suy sóng hình sin $F_0$ biết trước lên lưới $t_n$ lệch và quan sát độ lệch cao độ ước lượng khi $\varepsilon\neq 0$. Script \texttt{verify/verify\_chuong\_02.py} kiểm mọi số ppm/drift nêu trong chương.
 
 \begin{costbox}
-\textbf{Ngân sách --- PLL.} Một Fractional PLL cứng trên chip (Cyclone~V 5CSXFC6D6F31C6N có 6 PLL; luồng $F_0$ dùng 1). Logic quanh \texttt{locked}: vài ALM. 0 DSP, 0 M10K. Vì sao bắt buộc IP: soft-counter không đạt độ ổn định ppm và jitter của VCO silicon cho MCLK audio.
+\textbf{Ngân sách --- PLL.} Một Fractional PLL cứng trên chip (Cyclone~V 5CSXFC6D6F31C6N có 6 PLL; luồng $F_0$ dùng 1, chiếm $16{,}7\%$ ngân sách PLL theo bảng Chương~0). Logic quanh \texttt{locked} và reset: vài ALM. 0 DSP, 0 M10K. Vì sao bắt buộc IP: soft-counter không đạt độ ổn định ppm và jitter của VCO silicon cho MCLK audio; tự viết PLL bằng RTL là lỗi thiết kế, không phải ``bài tập nâng cao''.
 \end{costbox}
 
 \subsection*{2.2. Giao thức I\textsuperscript{2}S với codec WM8731}
 
 \begin{physicalinsight}
-Sau khi ADC trong WM8731 đã lượng tử hóa sóng âm, dữ liệu không nhảy sang FPGA dưới dạng mảng số nguyên song song, mà đi trên ba dây nối tiếp theo chuẩn \textbf{I\textsuperscript{2}S} (\emph{Inter-IC Sound} --- đã giới thiệu ở Chương~0): dây \textbf{SCLK}/BCLK chốt từng bit, dây \textbf{WS}/LRCK chọn kênh trái/phải, dây \textbf{SDAT} mang dòng bit. Đây là quy ước giao diện điện tử, không phải hiện tượng dây thanh; nhưng đếm sai một bit hoặc trễ sai một cạnh SCLK sẽ làm hỏng mẫu Q1.15 trước khi tín hiệu kịp vào DC-blocker.
+Sau khi ADC trong WM8731 đã lượng tử hóa sóng âm, dữ liệu không nhảy sang FPGA dưới dạng mảng số nguyên song song, mà đi trên ba dây nối tiếp theo chuẩn \textbf{I\textsuperscript{2}S} (\emph{Inter-IC Sound} --- đã giới thiệu ở Chương~0): dây \textbf{SCLK}/BCLK chốt từng bit, dây \textbf{WS}/LRCK chọn kênh trái/phải, dây \textbf{SDAT} mang dòng bit. Đây là quy ước giao diện điện tử, không phải hiện tượng dây thanh; nhưng đếm sai một bit hoặc trễ sai một cạnh SCLK sẽ làm hỏng mẫu Q1.15 trước khi tín hiệu kịp vào DC-blocker. Cấu hình thanh ghi codec (định dạng I\textsuperscript{2}S, độ dài word, master/slave clock) đi qua bus \textbf{I\textsuperscript{2}C} riêng --- lab phải khởi tạo I\textsuperscript{2}C trước khi kỳ vọng SDAT có nghĩa.
 \end{physicalinsight}
 
 \paragraph{Quan hệ đồng hồ.} Với cấu hình stereo phổ biến trên DE10 (mỗi slot 32~bit, hai kênh = 64 bit/frame) tại $f_s=48\,\text{kHz}$:
@@ -76,19 +96,17 @@ Sau khi ADC trong WM8731 đã lượng tử hóa sóng âm, dữ liệu không n
 \mathrm{MCLK} &= 256\cdot f_s = 256\cdot 48000 = 12{,}288{,}000\,\text{Hz},\\
 \mathrm{SCLK} &= 64\cdot f_s = 64\cdot 48000 = 3{,}072{,}000\,\text{Hz}.
 \end{align*}
-Nếu lab chỉ lấy 16~bit/kênh (32 bit/frame tổng cộng L+R) thì $\mathrm{SCLK}=32\cdot f_s=1{,}536{,}000\,\text{Hz}$. Chuẩn Philips I\textsuperscript{2}S: MSB đi trước, dữ liệu trễ đúng một cạnh SCLK sau cạnh đổi của WS. Trên đường ước lượng $F_0$ mono, FSM chỉ chốt kênh Left rồi bỏ Right --- đủ thông tin cao độ, tiết kiệm băng thông FIFO.
+Nếu lab chỉ lấy 16~bit/kênh (32 bit/frame tổng cộng L+R) thì $\mathrm{SCLK}=32\cdot f_s=1{,}536{,}000\,\text{Hz}$. Chuẩn Philips I\textsuperscript{2}S: MSB đi trước, dữ liệu hợp lệ bắt đầu sau đúng một cạnh SCLK kể từ cạnh đổi của WS. Trên đường ước lượng $F_0$ mono, FSM chỉ chốt kênh Left rồi bỏ Right --- đủ thông tin cao độ, tiết kiệm băng thông FIFO.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\scriptsize, x=0.55cm, y=0.55cm]
   \draw[->] (0,4) -- (18,4) node[right] {SCLK};
   \foreach \x in {0,...,16} {\draw (\x,3.85) -- (\x,4.15);}
-  % WS
   \draw[thick,teal!70!black] (0,2.5) -- (1,2.5) -- (1,1.2) -- (9,1.2) -- (9,2.5) -- (17,2.5);
   \node[left,teal!70!black] at (0,1.85) {WS/LRCK};
   \node[font=\tiny] at (5,0.55) {khung Left};
   \node[font=\tiny] at (13,0.55) {khung Right};
-  % SDAT bits
   \foreach \x/\b in {2/1,3/0,4/1,5/1,6/0,7/0,8/1} {
     \draw[blue!70!black,thick] (\x,3.2) -- (\x,3.6);
     \node[blue!70!black,font=\tiny] at (\x,3.0) {\b};
@@ -101,25 +119,46 @@ Nếu lab chỉ lấy 16~bit/kênh (32 bit/frame tổng cộng L+R) thì $\mathr
 \label{fig:ch02_i2s_timing}
 \end{figure}
 
-\paragraph{Ví dụ tính tay --- đóng gói nibble.} Bốn cạnh SCLK liên tiếp nhận các bit $1,0,1,1$ (MSB trước). Thanh ghi dịch trái lần lượt:
+\paragraph{Ví dụ tính tay --- đóng gói nibble rồi word Q1.15.} Bốn cạnh SCLK liên tiếp nhận các bit $1,0,1,1$ (MSB trước). Thanh ghi dịch trái lần lượt:
 \[
 0 \to 1 \to 2 \to 5 \to 11 \quad (0\mathrm{b}1011 = 11_{10}).
 \]
-Trên frame 32-bit/slot, lab lấy 16 bit cao làm mẫu có dấu Q1.15 (dải $-32768\ldots +32767$), khớp định dạng đã giải thích ở ô Feynman~7 của Chương~0.
+Mười sáu bit MSB của slot Left mang mẫu có dấu. Ví dụ bit-stream $0100\,0000\,0000\,0000$ (MSB trước) đóng thành
+\[
+0\mathrm{b}0100\,0000\,0000\,0000 = 16384_{10},
+\]
+đúng mức $0{,}5$ trong Q1.15 (ô Feynman~7, Chương~0). Lab lấy 16 bit cao của slot 32~bit (bỏ 16 bit đệm thấp) rồi đẩy vào DCFIFO.
 
-\paragraph{Hai lộ trình phần cứng.} (1)~\textbf{University Program Audio Core}: IP Avalon bọc cấu hình I\textsuperscript{2}C của codec và FIFO L/R --- gắn nhanh Platform Designer nhưng che mất đường mẫu, khó đối chiếu bit-exact. (2)~\textbf{RTL tự viết (default dạy)}: FSM Idle$\to$Collect$\to$Push, đồng bộ cạnh WS sang miền SCLK bằng hai flip-flop, dịch 32~bit, nâng \texttt{valid} mỗi mẫu Left. Twin phần mềm: tệp \texttt{.wav} int16 little-endian chính là đầu ra bit-exact sau khi bỏ padding.
+\paragraph{Hai lộ trình phần cứng.} (1)~\textbf{University Program Audio Core}: IP Avalon bọc cấu hình I\textsuperscript{2}C của codec và FIFO L/R --- gắn nhanh Platform Designer nhưng che mất đường mẫu, khó đối chiếu bit-exact. (2)~\textbf{RTL tự viết (default dạy)}: FSM Idle$\to$WaitWS$\to$Skip1$\to$Shift16$\to$Push, đồng bộ cạnh WS sang miền SCLK bằng hai flip-flop, dịch 16~bit hữu ích, nâng \texttt{wrreq} mỗi mẫu Left. Twin phần mềm: tệp \texttt{.wav} int16 little-endian chính là đầu ra bit-exact sau khi bỏ padding slot.
+
+\paragraph{RTL giải thích từng nhóm lệnh.}
+\begin{verbatim}
+// Đồng bộ WS (async từ codec) sang miền SCLK bằng 2FF
+reg ws_ff1, ws_ff2, ws_prev;
+always @(posedge sclk) begin
+  ws_ff1 <= ws_async;   // FF1: hấp thụ metastability
+  ws_ff2 <= ws_ff1;     // FF2: bit đã ổn định
+  ws_prev <= ws_ff2;    // nhớ cạnh trước để phát hiện rising
+end
+wire ws_rise = ws_ff2 & ~ws_prev;  // cạnh lên = bắt đầu Left (tùy polarity)
+
+// FSM rút gọn: sau ws_rise chờ 1 SCLK (Philips), rồi dịch 16 bit
+// reg [4:0] bit_cnt; reg [15:0] shreg;
+// khi bit_cnt==15: data_left <= {shreg[14:0], sdat}; wrreq_fifo <= 1;
+\end{verbatim}
+Dòng \texttt{ws\_ff1 <= ws\_async} là chỗ metastability được phép xảy ra --- chỉ trên \emph{một} bit điều khiển. Dòng \texttt{ws\_ff2} cho bit thời gian ổn định trước khi dùng. \texttt{ws\_rise} phát hiện cạnh; sau đúng một SCLK (trễ Philips) mới lấy MSB. Khi đủ 16~bit, ghi DCFIFO phía \texttt{wrclk = sclk}. Phía \texttt{rdclk = 50\,MHz} đọc ra Avalon-ST (\texttt{valid}/\texttt{ready}) sang DC-blocker.
 
 \begin{costbox}
-\textbf{Ngân sách --- I\textsuperscript{2}S RX.} Vài chục đến khoảng $100$ ALM (shift register + phát hiện cạnh WS), 0 DSP, 0 M10K cho khối RX thuần. Chọn mono Left vì ước lượng $F_0$ không cần stereo; stereo sẽ nhân đôi băng thông CDC mà không tăng độ chính xác cao độ.
+\textbf{Ngân sách --- I\textsuperscript{2}S RX.} Vài chục đến khoảng $100$ ALM (shift register 16--32 bit + phát hiện cạnh WS + FSM), 0 DSP, 0 M10K cho khối RX thuần. Chọn mono Left vì ước lượng $F_0$ không cần stereo; stereo sẽ nhân đôi băng thông CDC và số từ FIFO mà không tăng độ chính xác đỉnh tự tương quan. Fmax miền SCLK $3{,}072\,\text{MHz}$ rất dư với silicon tốc độ 6.
 \end{costbox}
 
 \subsection*{2.3. CDC: DCFIFO bất đồng bộ và mã Gray}
 
 \begin{physicalinsight}
-Miền đồng hồ âm thanh (MCLK $12{,}288\,\text{MHz}$, SCLK $3{,}072\,\text{MHz}$) và miền xử lý lõi ($50\,\text{MHz}$) dao động từ các nguồn độc lập --- chúng \textbf{bất đồng bộ}. Nếu nối một thanh ghi 16~bit từ miền SCLK sang miền $50\,\text{MHz}$ bằng dây thô, một số bit có thể chốt ở trạng thái trung gian khi hai miền ``đụng cạnh'', tạo \textbf{metastability}: giá trị đọc ra không phải 0 cũng không phải 1 ổn định. Hậu quả trên đường $F_0$ là mẫu rác đột biến, đỉnh tự tương quan nhảy lung tung.
+Miền đồng hồ âm thanh (MCLK $12{,}288\,\text{MHz}$, SCLK $3{,}072\,\text{MHz}$) và miền xử lý lõi ($50\,\text{MHz}$) dao động từ các nguồn độc lập --- chúng \textbf{bất đồng bộ}. Nếu nối một thanh ghi 16~bit từ miền SCLK sang miền $50\,\text{MHz}$ bằng dây thô, một số bit có thể chốt ở trạng thái trung gian khi hai miền ``đụng cạnh'', tạo \textbf{metastability}: giá trị đọc ra không phải 0 cũng không phải 1 ổn định trong thời gian hữu hạn. Hậu quả trên đường $F_0$ là mẫu rác đột biến, đỉnh tự tương quan nhảy lung tung, đôi khi FSM tưởng FIFO full/empty sai.
 \end{physicalinsight}
 
-Giải pháp chuẩn là bộ đệm \textbf{DCFIFO} (\emph{Dual-Clock FIFO} --- đã nêu ở Chương~0): cổng ghi chạy theo clock nguồn (SCLK hoặc clock đã đồng bộ từ I\textsuperscript{2}S), cổng đọc chạy theo clock đích ($50\,\text{MHz}$). Con trỏ ghi và con trỏ đọc khi bắt chéo miền clock phải được mã hóa \textbf{mã Gray}: mỗi lần tăng địa chỉ chỉ đúng một bit thay đổi. Nhờ đó, dù bên kia lấy mẫu lúc con trỏ đang chuyển, nó chỉ có thể đọc nhầm tối đa một bước địa chỉ liền kề --- không bao giờ đọc phải từ bit-pattern trung gian vô nghĩa của mã nhị phân thường.
+Giải pháp chuẩn là bộ đệm \textbf{DCFIFO} (\emph{Dual-Clock FIFO} --- đã nêu ở Chương~0): cổng ghi chạy theo clock nguồn (SCLK), cổng đọc chạy theo clock đích ($50\,\text{MHz}$). Dữ liệu mẫu nằm trong RAM dual-port nội bộ; cái bắt chéo miền clock \emph{không} phải là word dữ liệu 16~bit mà là \textbf{con trỏ} ghi/đọc. Con trỏ khi bắt chéo miền phải được mã hóa \textbf{mã Gray}: mỗi lần tăng địa chỉ chỉ đúng một bit thay đổi. Nhờ đó, dù bên kia lấy mẫu lúc con trỏ đang chuyển, nó chỉ có thể đọc nhầm tối đa một bước địa chỉ liền kề --- không bao giờ đọc phải từ bit-pattern trung gian vô nghĩa của mã nhị phân thường.
 
 \paragraph{Toán mã Gray.} Với số nguyên không dấu $n$, mã Gray phản xạ là
 \[
@@ -144,28 +183,70 @@ $n$ (thập phân) & Nhị phân & Gray $G(n)$ \\
 \end{tabular}
 \end{center}
 
-Hai mã Gray liên tiếp luôn khác đúng một bit: ví dụ $G(3)=010$ và $G(4)=110$ chỉ khác bit cao. Trên Quartus, IP \textbf{FIFO} (DCFIFO) bật chế độ dual-clock và gray coding; depth 8--16 từ đủ hấp thụ jitter vài mẫu. RTL kiểm tra cờ \texttt{wrfull}/\texttt{rdempty} trước khi ghi/đọc; giao thức Avalon-ST ở phía đọc (cặp \texttt{valid}/\texttt{ready} --- ô Feynman~12) phải tôn trọng backpressure khi FIFO gần cạn.
+Hai mã Gray liên tiếp luôn khác đúng một bit: ví dụ $G(3)=010$ và $G(4)=110$ chỉ khác bit cao. Đảo ngược Gray$\to$binary trên giấy: $b_2=g_2$, $b_1=g_2\oplus g_1$, $b_0=g_2\oplus g_1\oplus g_0$.
+
+\paragraph{Nội tại DCFIFO Intel --- đồng bộ con trỏ.} IP FIFO (dcfifo) thực hiện đúng chuỗi sau mỗi lần ghi/đọc:
+\begin{enumerate}[leftmargin=1.4em]
+  \item Tăng con trỏ nhị phân phía local clock ($wrptr$ hoặc $rdptr$).
+  \item Đổi sang Gray: $wrptr\_gray = G(wrptr)$.
+  \item Đưa $wrptr\_gray$ qua chuỗi \textbf{hai flip-flop} sang miền clock bên kia (đúng chuẩn 2FF CDC cho từng bit Gray --- vì mỗi bit Gray chỉ đổi đơn lẻ, metastability trên một bit không kéo theo bit khác).
+  \item Ở miền đích, đổi Gray$\to$binary rồi so với con trỏ local để tính \texttt{wrfull}/\texttt{rdempty}/\texttt{rdusedw}.
+\end{enumerate}
+Word dữ liệu 16~bit \emph{không} đi qua 2FF: nó nằm trong dual-port RAM, được ghi theo địa chỉ binary phía write và đọc theo địa chỉ binary phía read; chỉ có ``vé địa chỉ'' (con trỏ Gray) là tín hiệu bất đồng bộ cần đồng bộ hóa.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth, node distance=0.55cm and 0.7cm]
+  \tikzset{box/.style={draw,rounded corners=2pt,align=center,inner sep=3pt}}
+  \node[box,fill=blue!8] (wclk) {wrclk\\(SCLK)};
+  \node[box,fill=orange!12,right=of wclk] (wbin) {wrptr\\binary};
+  \node[box,fill=yellow!20,right=of wbin] (wgray) {$G(wrptr)$};
+  \node[box,fill=red!12,right=of wgray] (ff1) {2FF\\CDC};
+  \node[box,fill=yellow!20,right=of ff1] (wsync) {Gray\\synced};
+  \node[box,fill=orange!12,right=of wsync] (wdec) {bin\\decode};
+  \node[box,fill=green!12,below=1.1cm of wdec] (cmp) {so khớp\\full/empty};
+  \node[box,fill=teal!12,left=of cmp] (rbin) {rdptr\\(rdclk)};
+  \node[box,fill=purple!10,below=1.1cm of wbin] (ram) {DP-RAM\\data[15:0]};
+  \draw[->] (wclk)--(wbin)--(wgray)--(ff1)--(wsync)--(wdec)--(cmp);
+  \draw[->] (rbin)--(cmp);
+  \draw[->] (wbin)|-(ram);
+  \draw[->] (rbin)|-(ram);
+  \node[font=\tiny,align=left,anchor=west] at (-0.2,-2.6)
+    {Chỉ con trỏ Gray đi qua 2FF; mẫu PCM nằm trong DP-RAM theo địa chỉ binary local.};
+\end{tikzpicture}
+\caption{Luồng CDC trong DCFIFO: mã hóa Gray $\to$ đồng bộ 2FF từng bit $\to$ giải mã binary $\to$ so full/empty; dữ liệu mẫu không bắt chéo thô.}
+\label{fig:ch02_dcfifo_gray}
+\end{figure}
 
 \paragraph{Ví dụ tính tay --- vì sao nhị phân thường nguy hiểm.} Con trỏ nhị phân từ $3$ ($011$) lên $4$ ($100$) đổi \emph{cả ba bit} cùng lúc. Bên đọc bắt chéo miền có thể chốt thành $000$, $111$, $001$,\ldots --- địa chỉ giả cách xa hàng đợi thật, đọc nhầm mẫu cũ hoặc đè cờ full/empty. Với Gray, bước $010\to 110$ chỉ một bit; sai lệch tối đa là $\pm 1$ ô.
 
+\paragraph{Ví dụ tính tay --- chọn depth.} Tốc độ ghi mono $=48\,\text{kHz}$. Giả sử jitter tương đối và burst đọc phía hệ thống tạo độ trễ hấp thụ tối đa $100\,\mu\mathrm{s}$. Số mẫu cần đệm:
+\[
+N_{\mathrm{depth}}\ge 48000\cdot 100\cdot 10^{-6}=4{,}8 \quad\Rightarrow\quad \text{chọn depth }8\text{ hoặc }16.
+\]
+Depth 8 từ $\times 16$~bit $=128$~bit --- vừa một MLAB; không cần M10K. Lab mặc định depth~16 để dư margin khi FSM phía đọc thỉnh thoảng \texttt{ready}=0.
+
+\paragraph{Twin Python (mô hình logic, không mô phỏng metastability analog).}
 \begin{verbatim}
-// Đồng bộ WS sang SCLK domain (2FF) rồi dịch mẫu Left
-reg ws_ff1, ws_ff2, ws_prev;
-always @(posedge sclk) begin
-  ws_ff1 <= ws_async; ws_ff2 <= ws_ff1; ws_prev <= ws_ff2;
-end
-wire ws_rise = ws_ff2 & ~ws_prev;
-// ... shift SDAT 32 bit, khi đủ Left: ghi DCFIFO (wrclk=sclk)
-// Phía sysclk=50 MHz: đọc DCFIFO -> Avalon-ST valid/ready sang DC-blocker
+def bin_to_gray(n):
+    return n ^ (n >> 1)
+
+# Kiểm bảng 0..7 và tính chất một bit
+grays = [bin_to_gray(i) for i in range(8)]
+assert [format(g, "03b") for g in grays] == [
+    "000","001","011","010","110","111","101","100"]
+for a, b in zip(grays, grays[1:]):
+    assert bin(a ^ b).count("1") == 1
 \end{verbatim}
+Twin mức hệ thống: hàng đợi \texttt{collections.deque} với hai ``clock tick'' độc lập; assert không đọc khi empty và không ghi khi full --- tương ứng cờ IP.
 
 \begin{costbox}
-\textbf{Ngân sách --- CDC.} FIFO nông (8--16 từ $\times 16$~bit): thường map vào 1 MLAB hoặc một phần M10K tùy depth. Logic Gray + full/empty: vài chục ALM. 0 DSP. Vì sao không đủ 2FF cho cả word dữ liệu: 2FF chỉ an toàn cho một bit điều khiển; word 16~bit cần FIFO/Gray để toàn bộ mẫu nhất quán.
+\textbf{Ngân sách --- CDC.} FIFO nông (8--16 từ $\times 16$~bit): thường map vào 1 MLAB hoặc một phần M10K tùy depth. Logic Gray + full/empty + 2FF: vài chục ALM. 0 DSP. Vì sao không đủ 2FF cho cả word dữ liệu: 2FF chỉ an toàn cho một bit điều khiển; word 16~bit cần FIFO/Gray để toàn bộ mẫu nhất quán theo đúng thứ tự ghi. Latency CDC: vài chu kỳ clock đích (2FF + logic empty) --- không đáng kể so với $500\,000$ chu kỳ/hop.
 \end{costbox}
 
 \subsection*{2.4. Chi phí tổng hợp và chỗ đứng trong đường tín hiệu}
 
-Khối Chương~2 nằm ngay sau codec và trước DC-blocker (xem bản đồ Hình ở Chương~0). Toàn bộ PLL + I\textsuperscript{2}S RX + DCFIFO tiêu tốn khoảng 1 PLL cứng, $<150$ ALM, 0 DSP, và tối đa 1 M10K/MLAB cho FIFO --- cố tình giữ rẻ để dành DSP và M10K cho FIR (Chương~4) và MAC tự tương quan (Chương~7). Fmax phía sysclk dễ vượt $150\,\text{MHz}$; điểm nghẽn thật sự là kỷ luật CDC và việc chờ \texttt{locked}, không phải diện tích.
+Khối Chương~2 nằm ngay sau codec và trước DC-blocker (xem bản đồ Hình ở Chương~0). Toàn bộ PLL + I\textsuperscript{2}S RX + DCFIFO tiêu tốn khoảng 1 PLL cứng, $<150$ ALM, 0 DSP, và tối đa 1 MLAB/M10K cho FIFO --- cố tình giữ rẻ để dành DSP và M10K cho FIR (Chương~4) và MAC tự tương quan (Chương~7). Fmax phía sysclk dễ vượt $150\,\text{MHz}$; điểm nghẽn thật sự là kỷ luật CDC và việc chờ \texttt{locked}, không phải diện tích. RTF phần thu thập gần bằng $1$ nếu FSM không bỏ mẫu: mỗi mẫu audio vào đúng một mẫu ra phía DC-blocker khi \texttt{ready} luôn sẵn.
 
 \subsection*{2.5. Bài tập và lời giải giải thích}
 
@@ -176,15 +257,12 @@ Từ thạch anh $f_{\mathrm{in}}=50\,\text{MHz}$, kỹ sư cần MCLK $=12{,}28
   \item Nếu dùng integer-N với $M=1507$, $N=73$, $C=84$, tần số thực tế là bao nhiêu và sai số so với $12{,}288\,\text{MHz}$ tính bằng ppm?
   \item Trong 60 giây ở $16\,\text{kHz}$, sai số đó làm trôi bao nhiêu mẫu? So với trường hợp $50\,\text{ppm}$ thuần.
 \end{enumerate}
-
 \paragraph{Lời giải giải thích.}
 \begin{enumerate}[label=\alph*)]
   \item $M/(N\cdot C)=12{,}288/50=0{,}24576$.
-  \item $f_{\mathrm{out}}=50\cdot 1507/(73\cdot 84)=12{,}2879973907\ldots\,\text{MHz}$. Sai số tuyệt đối $\approx 0{,}002609\,\text{kHz}$, tức
-  \[
-  \varepsilon_{\mathrm{ppm}}=\frac{|f_{\mathrm{out}}-12{,}288|}{12{,}288}\cdot 10^{6}\approx 0{,}212\,\text{ppm}.
-  \]
-  \item $\Delta N=0{,}212\cdot 10^{-6}\cdot 60\cdot 16000\approx 0{,}204$ mẫu/phút --- không đáng kể so với $48$ mẫu/phút khi sai $50\,\text{ppm}$. Bộ số integer lớn này chấp nhận được, nhưng Fractional PLL vẫn tiện hơn vì MegaWizard điền đúng $12{,}288$ mà không cần dò tay.
+  \item $f_{\mathrm{out}}=50\cdot 1507/(73\cdot 84)\approx 12{,}28799739\,\text{MHz}$. Sai số
+  $\varepsilon_{\mathrm{ppm}}\approx 0{,}212\,\text{ppm}$ (script \texttt{verify\_chuong\_02.py}).
+  \item $\Delta N\approx 0{,}204$ mẫu/phút --- không đáng kể so với $48$ mẫu/phút khi sai $50\,\text{ppm}$. Fractional PLL vẫn tiện hơn vì MegaWizard điền đúng $12{,}288$.
 \end{enumerate}
 
 \paragraph{Bài tập 2.2 (SCLK và nibble I\textsuperscript{2}S).}
@@ -192,14 +270,15 @@ Codec chạy $f_s=48\,\text{kHz}$, frame stereo 64 bit.
 \begin{enumerate}[label=\alph*)]
   \item Tính SCLK.
   \item Dịch bốn bit $1,0,1,1$ (MSB trước) --- giá trị thập phân?
+  \item Bit-stream 16 bit $0100\,0000\,0000\,0000$ đóng thành số Q1.15 nào?
   \item Vì sao lab mono Left đủ cho $F_0$?
 \end{enumerate}
-
 \paragraph{Lời giải giải thích.}
 \begin{enumerate}[label=\alph*)]
-  \item $\mathrm{SCLK}=64\cdot 48000=3{,}072{,}000\,\text{Hz}=3{,}072\,\text{MHz}$.
-  \item $0\mathrm{b}1011=11_{10}$ (đã kiểm bằng script \texttt{verify/verify\_chuong\_02.py}).
-  \item Cao độ là thuộc tính của nguồn kích thích dây thanh, gần như đồng nhất trên hai kênh micro gần nhau; lấy thêm Right chỉ nhân đôi băng thông CDC và bộ nhớ mà không cải thiện đỉnh tự tương quan.
+  \item $\mathrm{SCLK}=64\cdot 48000=3{,}072{,}000\,\text{Hz}$.
+  \item $0\mathrm{b}1011=11_{10}$.
+  \item $16384$ --- đúng mức $0{,}5$ trong Q1.15.
+  \item Cao độ là thuộc tính nguồn kích thích dây thanh, gần như đồng nhất trên hai kênh micro gần nhau; lấy thêm Right chỉ nhân đôi băng thông CDC.
 \end{enumerate}
 
 \paragraph{Bài tập 2.3 (Gray và metastability).}
@@ -208,9 +287,30 @@ Con trỏ FIFO 3~bit tăng từ $3$ lên $4$.
   \item Viết mã nhị phân và mã Gray của hai giá trị.
   \item Giải thích tại sao bắt chéo miền clock trên mã nhị phân có thể đọc ra địa chỉ xa, còn Gray thì không.
 \end{enumerate}
-
 \paragraph{Lời giải giải thích.}
 \begin{enumerate}[label=\alph*)]
   \item Nhị phân: $3=011$, $4=100$ (đổi 3 bit). Gray: $G(3)=010$, $G(4)=110$ (đổi 1 bit).
-  \item Khi nhiều bit đổi cùng lúc, bên đọc bất đồng bộ có thể chốt tổ hợp trung gian bất kỳ (ví dụ $000$ hoặc $111$), tương ứng địa chỉ cách xa hàng đợi thật và làm vỡ cờ full/empty. Gray bảo đảm mọi thời điểm trung gian chỉ sai tối đa một bước liền kề --- đó là lý do DCFIFO Intel bắt buộc gray-code hóa con trỏ xuyên miền.
+  \item Nhiều bit đổi cùng lúc cho phép tổ hợp trung gian bất kỳ (địa chỉ xa). Gray bảo đảm mọi thời điểm trung gian chỉ sai tối đa một bước liền kề --- lý do DCFIFO Intel gray-code hóa con trỏ xuyên miền.
+\end{enumerate}
+
+\paragraph{Bài tập 2.4 (Depth FIFO và 2FF).}
+\begin{enumerate}[label=\alph*)]
+  \item Với mono $48\,\text{kHz}$ và jitter hấp thụ $100\,\mu\mathrm{s}$, depth tối thiểu lý thuyết là bao nhiêu? Lab chọn 8 hay 16 thì vì sao?
+  \item Vì sao chuỗi 2FF áp dụng cho từng bit Gray chứ không cho cả word mẫu 16~bit?
+\end{enumerate}
+\paragraph{Lời giải giải thích.}
+\begin{enumerate}[label=\alph*)]
+  \item $48000\cdot 100\cdot 10^{-6}=4{,}8$ --- tối thiểu 5, chọn 8 hoặc 16 để dư margin khi \texttt{ready}=0 phía đọc. Depth 16 an toàn hơn khi FSM FIR/DC thỉnh thoảng dừng.
+  \item 2FF chỉ đảm bảo một bit điều khiển thoát metastability; 16 bit dữ liệu có thể mỗi bit ổn định ở giá trị khác nhau tạo word rác. FIFO giữ data trong RAM và chỉ đồng bộ con trỏ Gray.
+\end{enumerate}
+
+\paragraph{Bài tập 2.5 (\texttt{locked} và trôi $5\,\text{ppm}$).}
+\begin{enumerate}[label=\alph*)]
+  \item Tính $\Delta N$ trong 60~s ở $16\,\text{kHz}$ nếu sai số còn $5\,\text{ppm}$.
+  \item FSM I\textsuperscript{2}S có được phép chạy khi \texttt{locked}=0 không? Giải thích hậu quả.
+\end{enumerate}
+\paragraph{Lời giải giải thích.}
+\begin{enumerate}[label=\alph*)]
+  \item $\Delta N=5\cdot10^{-6}\cdot 60\cdot 16000=4{,}8$ mẫu/phút --- mục tiêu lab chấp nhận được.
+  \item Không. Khi chưa \texttt{locked}, MCLK lệch mạnh hoặc dừng; codec xuất bit vô nghĩa, FIFO đầy mẫu rác, đỉnh $\mathcal{R}[\tau]$ không ổn định. Phải AND \texttt{locked} vào tín hiệu enable của FSM thu.
 \end{enumerate}
