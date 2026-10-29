@@ -5,14 +5,16 @@
 \pdfbookmark[1]{Chương 7. Tự tương quan — MAC mặc định / FFT tùy chọn + BFP}{chuong7}
 
 \begin{learningobj}
-Sau chương này bạn viết được định nghĩa tự tương quan không vòng từ nguyên lý đầu tiên; tính tay từng giá trị $\mathcal{R}[\tau]$ trên chuỗi ngắn và trên khung cosin chu kỳ~8; thiết kế datapath MAC tuần tự bằng một khối DSP và bộ tích lũy rộng; giải thích khi nào mới bật FFT IP (UG~683374) với Block Floating Point và barrel shift $2^{2e}$ trước IFFT; viết twin Python bit-exact; và tính được ngân sách chu kỳ / RTF so với bước nhảy $10\,\text{ms}$.
+Sau chương này bạn viết được định nghĩa tự tương quan không vòng từ nguyên lý đầu tiên; tính tay từng giá trị $\mathcal{R}[\tau]$ trên chuỗi ngắn và trên khung cosin chu kỳ~8; thiết kế datapath MAC tuần tự bằng một khối DSP và bộ tích lũy rộng kèm bảng timing chu kỳ; giải thích FFT IP radix-4 / BFP từng tầng cánh bướm và barrel shift $2^{2e}$ trước IFFT; viết twin Python bit-exact; và tính được ngân sách chu kỳ / RTF so với bước nhảy $10\,\text{ms}$.
 \end{learningobj}
 
 \subsection*{7.1. Hiện tượng thật: đo mức ``giống chính mình''}
 
-Khi dây thanh quản rung gần tuần hoàn với chu kỳ cơ bản $T_0$ giây, sóng áp suất tại thời điểm $t$ gần trùng với sóng tại $t+T_0$. Trên lưới mẫu $f_s = 16\,\text{kHz}$, chu kỳ đó là $\tau_0 = f_s\cdot T_0$ mẫu. Phép \textbf{tự tương quan (autocorrelation)} đo mức giống nhau đó bằng cách trượt một bản sao đi $\tau$ mẫu (\textbf{độ trễ --- lag}), nhân từng cặp mẫu chồng nhau và cộng dồn. Tại $\tau = \tau_0$, các cặp cùng pha cho tích dương lớn, tạo đỉnh nổi trên đồ thị $\mathcal{R}_x[\tau]$. Đo được $\tau_0$ thì suy ra ngay $F_0 = f_s/\tau_0$.
+Khi dây thanh quản rung gần tuần hoàn với chu kỳ cơ bản $T_0$ giây, sóng áp suất tại thời điểm $t$ gần trùng với sóng tại $t+T_0$. Trên lưới mẫu $f_s = 16\,\text{kHz}$, chu kỳ đó là $\tau_0 = f_s\cdot T_0$ mẫu. Ví dụ giọng nam khoảng $100\,\text{Hz}$ cho $\tau_0 = 160$; giọng nữ khoảng $200\,\text{Hz}$ cho $\tau_0 = 80$. Phép \textbf{tự tương quan (autocorrelation)} đo mức giống nhau đó bằng cách trượt một bản sao đi $\tau$ mẫu (\textbf{độ trễ --- lag}), nhân từng cặp mẫu chồng nhau và cộng dồn. Tại $\tau = \tau_0$, các cặp cùng pha cho tích dương lớn, tạo đỉnh nổi trên đồ thị $\mathcal{R}_x[\tau]$. Đo được $\tau_0$ thì suy ra ngay $F_0 = f_s/\tau_0$.
 
-Đây là hiện tượng vật lý thật của sóng tuần hoàn, không chỉ là quy ước toán học. Định lý \textbf{Wiener--Khinchin} (Chương~0) chứng minh rằng $\mathcal{R}_x$ cũng bằng biến đổi Fourier ngược của mật độ phổ công suất $|X[k]|^2$, nên có hai đường silicon tương đương về toán: nhân--cộng trực tiếp (MAC) hoặc FFT $\to |X|^2 \to$ IFFT. Với dải trễ hẹp $\tau = 26 \ldots 214$ (189 giá trị, khớp \texttt{lab\_1\_3\_5.py} và bản đồ Chương~0), đường mặc định trên Cyclone~V là \textbf{MAC} (\emph{Multiply-ACcumulate}).
+Đây là hiện tượng vật lý thật của sóng tuần hoàn, không chỉ là quy ước toán học. Định lý \textbf{Wiener--Khinchin} (Chương~0) chứng minh rằng $\mathcal{R}_x$ cũng bằng biến đổi Fourier ngược của mật độ phổ công suất $|X[k]|^2$, nên có hai đường silicon tương đương về toán: nhân--cộng trực tiếp (MAC) hoặc FFT $\to |X|^2 \to$ IFFT. Với dải trễ hẹp $\tau = 26 \ldots 214$ (189 giá trị, khớp \texttt{lab\_1\_3\_5.py} và bản đồ Chương~0), đường mặc định trên Cyclone~V là \textbf{MAC} (\emph{Multiply-ACcumulate}): chỉ tính đúng những $\tau$ cần thiết, không tính toàn bộ phổ rồi mới cắt.
+
+Tại sao không lấy đỉnh phổ trực tiếp? Vì phổ biên độ của nguyên âm có đỉnh formant (cộng hưởng ống thanh) có thể cao hơn đỉnh $F_0$; tự tương quan thời gian ``nhìn'' chu kỳ lặp của toàn sóng, ít bị formant đánh lừa hơn --- đó là lý do Praat chọn ACF (sau chuẩn hóa) làm lõi đo cao độ.
 
 \begin{physicalinsight}
 Tự tương quan không ``tạo ra'' cao độ. Nó chỉ đo độ trùng pha giữa tín hiệu và bản sao trễ của chính nó. Nếu khung đã bị rò phổ hoặc còn DC (Chương~3,~6), đỉnh giả sẽ cạnh tranh với đỉnh thật --- MAC tính đúng công thức vẫn báo sai $F_0$.
@@ -34,14 +36,16 @@ Tự tương quan không ``tạo ra'' cao độ. Nó chỉ đo độ trùng pha 
 
 \subsection*{7.2. Toán từng bước --- định nghĩa gốc trước mọi phím tắt}
 
-Hàm tự tương quan \textbf{không vòng (linear / non-circular)} của khung $x[n]$ độ dài $L$ được định nghĩa:
+Hàm tự tương quan \textbf{không vòng (linear / non-circular)} của khung $x[n]$ độ dài $L$ được định nghĩa từ tích vô hướng của hai đoạn chồng:
 \[
 \mathcal{R}_x[\tau] = \sum_{n=0}^{L-1-\tau} x[n]\cdot x[n+\tau], \qquad \tau \ge 0.
 \]
+Từng bước: (1)~chọn $\tau$; (2)~lấy cặp $(x[0],x[\tau])$, $(x[1],x[\tau+1])$, \ldots, $(x[L-1-\tau],x[L-1])$; (3)~nhân từng cặp; (4)~cộng tất cả tích. Không được viết tắt thành ``chỉ một hạng $x[0]x[\tau]$''.
+
 Mỗi ký hiệu:
 \begin{itemize}[leftmargin=1.4em]
 \item $x[n]$: mẫu đã trừ mean và đã nhân cửa sổ Hanning (Chương~3,~6), định dạng Q1.15 trên silicon.
-\item $\tau$: độ trễ tính bằng số mẫu. Dải quét phần cứng: $\tau \in [26,214]$ (189 giá trị) để đỉnh tìm trong $[27,213]$ luôn có láng giềng cho nội suy parabolic (Chương~9).
+\item $\tau$: độ trễ tính bằng số mẫu. Dải quét phần cứng: $\tau \in [26,214]$ (189 giá trị) để đỉnh tìm trong $[27,213]$ luôn có láng giềng cho nội suy parabolic (Chương~9). Sàn $75\,\text{Hz}$ $\leftrightarrow$ $\tau\approx 213$; trần $600\,\text{Hz}$ $\leftrightarrow$ $\tau\approx 27$.
 \item Số hạng trong tổng đúng bằng $L-\tau$: trễ càng lớn, càng ít cặp chồng --- đây là thiên vị hình học sẽ được bù ở Chương~8.
 \item Tại $\tau=0$: $\mathcal{R}_x[0] = \sum_n x[n]^2$ là năng lượng khung (cực đại toàn cục).
 \end{itemize}
@@ -50,23 +54,24 @@ Mỗi ký hiệu:
 \[
 \mathcal{R}_x[\tau] = \mathcal{F}^{-1}\{|X[k]|^2\}.
 \]
-FFT mặc định tính tự tương quan \textbf{vòng (circular)}. Muốn khớp định nghĩa không vòng ở trên phải zero-pad đủ dài trước FFT. Đó là một trong những lý do đường mặc định pitch chọn MAC.
+FFT mặc định tính tự tương quan \textbf{vòng (circular)}: mẫu cuối ``quấn'' sang mẫu đầu. Muốn khớp định nghĩa không vòng ở trên phải zero-pad ít nhất thêm $L$ số 0 trước FFT (thường pad lên $N_{\mathrm{FFT}}=1024$ hoặc $2048$). Đó là một trong những lý do đường mặc định pitch chọn MAC.
 
-Trên silicon, mỗi tích $x[n]\cdot x[n+\tau]$ là Q1.15$\times$Q1.15 $=$ Q2.30 (32-bit). Cộng dồn đến $640$ hạng tử đòi hỏi bộ tích lũy rộng: thiết kế dùng \textbf{41-bit có dấu} (khớp stub \texttt{rtl/mac\_autocorr.v} và comment trong \texttt{lab\_1\_3\_5.py}).
+Trên silicon, mỗi tích $x[n]\cdot x[n+\tau]$ là Q1.15$\times$Q1.15 $=$ Q2.30 (32-bit). Cộng dồn đến $640$ hạng tử đòi hỏi bộ tích lũy rộng: thiết kế dùng \textbf{41-bit có dấu} (khớp stub \texttt{rtl/mac\_autocorr.v} và comment trong \texttt{lab\_1\_3\_5.py}). Ước lượng thô: $|x|\le 2^{15}$, $|x\cdot x|\le 2^{30}$, $640\cdot 2^{30} < 2^{40}$ --- 41 bit có dấu vừa đủ biên an toàn một bit.
 
 \subsection*{7.3. Ví dụ tính tay --- mọi số đã chạy Python}
 
 \paragraph{A. Chuỗi cực ngắn $x = [1,2,1,2]$.}
+Từng cặp:
 \begin{align*}
-\mathcal{R}[0] &= 1^2+2^2+1^2+2^2 = 10,\\
-\mathcal{R}[1] &= 1\cdot 2 + 2\cdot 1 + 1\cdot 2 = 6,\\
-\mathcal{R}[2] &= 1\cdot 1 + 2\cdot 2 = 5,\\
+\mathcal{R}[0] &= 1\cdot 1 + 2\cdot 2 + 1\cdot 1 + 2\cdot 2 = 1+4+1+4 = 10,\\
+\mathcal{R}[1] &= 1\cdot 2 + 2\cdot 1 + 1\cdot 2 = 2+2+2 = 6,\\
+\mathcal{R}[2] &= 1\cdot 1 + 2\cdot 2 = 1+4 = 5,\\
 \mathcal{R}[3] &= 1\cdot 2 = 2.
 \end{align*}
 Tỉ số thô $\mathcal{R}[2]/\mathcal{R}[0] = 0{,}5$. Sau khi nhân $C[\tau]$ (Chương~8) và chia theo số hạng, đỉnh chu kỳ được kéo về gần 1.
 
 \paragraph{B. Khung cosin chu kỳ 8 mẫu, $N=16$ (Q1.15).}
-$x[n] = \mathrm{sat}_{16}(\mathrm{round}(\cos(2\pi n/8)\cdot 32768))$, $n=0..15$:
+$x[n] = \mathrm{sat}_{16}(\mathrm{round}(\cos(2\pi n/8)\cdot 32768))$, $n=0..15$. Từng bước cho $n=0$: $\cos 0 = 1$, $\mathrm{round}(32768)=32768$, sat $\to 32767$. Cho $n=4$: $\cos\pi = -1$, $\mathrm{round}(-32768)=-32768$ (vừa khít min int16).
 \begin{center}\footnotesize
 \begin{tabular}{@{}lllllllll@{}}\toprule
 $n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
@@ -77,7 +82,7 @@ $x$ & 32767 & 23170 & 0 & $-23170$ & $-32768$ & $-23170$ & 0 & 23170 \\
 \bottomrule
 \end{tabular}
 \end{center}
-Tự tương quan không vòng:
+Tự tương quan không vòng (script):
 \begin{align*}
 \mathcal{R}[0] &= 8\,589\,627\,426,\\
 \mathcal{R}[8] &= 4\,294\,813\,713 \approx \tfrac12\mathcal{R}[0],\\
@@ -88,9 +93,10 @@ Tỉ số thô $\mathcal{R}[8]/\mathcal{R}[0] = 0{,}5$ vì chỉ còn 8 cặp; s
 \paragraph{C. Ngân sách chu kỳ trên đường MAC thật.}
 Với $\tau = 26\ldots 214$, tổng số phép nhân--cộng đúng bằng
 \[
-N_{\mathrm{MAC}} = \sum_{\tau=26}^{214}(640-\tau) = 98\,280
+N_{\mathrm{MAC}} = \sum_{\tau=26}^{214}(640-\tau).
 \]
-(không phải $189\times 640 = 120\,960$ --- công thức naïve đếm thừa vì bỏ qua việc mỗi $\tau$ chỉ có $L-\tau$ hạng). Tại $f_{\mathrm{clk}} = 50\,\text{MHz}$:
+Tính tổng cấp số: số hạng $189$; số hạng đầu $640-26=614$; số hạng cuối $640-214=426$; tổng $= 189\cdot(614+426)/2 = 98\,280$.
+Không phải $189\times 640 = 120\,960$ --- công thức naïve đếm thừa. Tại $f_{\mathrm{clk}} = 50\,\text{MHz}$:
 \[
 T_{\mathrm{compute}} = \frac{98\,280}{50\times 10^6} = 1{,}9656\,\text{ms}, \qquad
 \mathrm{RTF} = \frac{1{,}9656}{10} = 0{,}19656 \ll 1.
@@ -116,15 +122,32 @@ Hai con trỏ đọc khung trong BRAM True Dual-Port (Chương~5): một trỏ t
 \label{fig:ch07_mac_datapath}
 \end{figure}
 
+\paragraph{Bảng timing chu kỳ --- một $\tau$ cố định (ví dụ $\tau=2$, $L=4$).}
+\begin{center}\small
+\begin{tabular}{@{}cllll@{}}\toprule
+ck & Trạng thái & $n$ & $xa{=}x[n]$, $xb{=}x[n{+}\tau]$ & \texttt{acc} sau cạnh \\
+\midrule
+0 & IDLE$\to$LOAD & --- & --- & clear $0$ \\
+1 & RUN & 0 & $x[0],x[2]$ & $x[0]x[2]$ \\
+2 & RUN & 1 & $x[1],x[3]$ & $x[0]x[2]+x[1]x[3]$ \\
+3 & DONE & --- & --- & $=\mathcal{R}[2]$; \texttt{done\_tau}=1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Với $\tau=26$, $L=640$: pha RUN kéo dài đúng $614$ chu kỳ. FSM ngoài tăng $\tau$ và lặp. Không được clear \texttt{acc} giữa các $n$ của cùng một $\tau$.
+
 \paragraph{RTL lõi (ý tưởng, khớp stub \texttt{mac\_autocorr.v}).}
 \begin{verbatim}
 module mac_autocorr (
   input  wire               clk, rst_n, start,
   input  wire signed [15:0] xa, xb,   // x[n], x[n+tau] Q1.15
+  input  wire [9:0]         n_pairs,  // = L - tau
   output reg  signed [40:0] acc,      // 41-bit signed
   output reg                done_tau
 );
-  // FSM: IDLE -> RUN (L-tau cycles: acc <= acc + xa*xb) -> DONE
+  // FSM: IDLE -> RUN (n_pairs cycles: acc <= acc + xa*xb) -> DONE
+  // xa, xb phải ổn định đúng cạnh khi acc cập nhật (đồng bộ với
+  // latency đọc TDP RAM --- thường 1 ck registered).
 endmodule
 \end{verbatim}
 Không dùng \texttt{numpy.correlate} float làm chuẩn silicon: twin phải nhân--cộng int cùng độ rộng accum.
@@ -132,11 +155,28 @@ Không dùng \texttt{numpy.correlate} float làm chuẩn silicon: twin phải nh
 \subsection*{7.5. Đường tùy chọn: FFT IP + BFP + barrel shift trước IFFT}
 
 Chỉ bật sau khi MAC đã xanh bit-exact. Dùng \textbf{FFT Intel FPGA IP} (User Guide~683374):
+
 \begin{itemize}[leftmargin=1.4em]
-\item Kiến trúc radix-2/4; \textbf{twiddle factor} (hệ số xoay $W_N^k = e^{-j2\pi k/N}$) nằm trong ROM nội bộ; streaming hoặc buffered; SOP/EOP theo một block $N$ điểm.
-\item \textbf{Block Floating Point (BFP --- số chấm động khối)}: mọi bin chia sẻ một số mũ nguyên $e$; mantissa dịch sao cho $\max|m|$ vừa khít bit. Sau mỗi tầng cánh bướm (butterfly), nếu có nguy cơ tràn thì toàn vector dịch phải 1 bit và $e$ tăng 1. IP xuất \texttt{source\_exp}.
-\item BFP \textbf{không} có cổng nhập exponent vào IFFT --- kỹ sư phải scale bên ngoài.
+\item Kiến trúc \textbf{radix-4} (hoặc radix-2): mỗi tầng cánh bướm (\textbf{butterfly}) kết hợp 4 (hoặc 2) điểm với twiddle $W_N^k = e^{-j2\pi k/N}$ lấy từ ROM nội bộ. Với $N=1024$ radix-4 cần $\log_4 1024 = 5$ tầng; radix-2 cần 10 tầng.
+\item Streaming hoặc buffered; tín hiệu SOP/EOP đánh dấu một block $N$ điểm trên Avalon-ST.
+\item \textbf{Block Floating Point (BFP --- số chấm động khối)}: mọi bin chia sẻ một số mũ nguyên $e$; mantissa dịch sao cho $\max|m|$ vừa khít bit. Sau mỗi tầng butterfly, nếu có nguy cơ tràn thì toàn vector dịch phải 1 bit và $e$ tăng 1. IP xuất \texttt{source\_exp}.
+\item BFP \textbf{không} có cổng nhập exponent vào IFFT --- kỹ sư phải scale bên ngoài trước khi đưa mantissa vào IFFT.
 \end{itemize}
+
+\paragraph{BFP từng tầng --- ví dụ mantissa 8-bit, 2 tầng.}
+Bắt đầu stage~0: $m = [40,-30,10,-5]$, $e = 0$. Ngưỡng tràn minh họa $= 32$ (giả sử còn 1 bit đầu). Vì $\max|m| = 40 > 32$:
+\begin{center}\small
+\begin{tabular}{@{}clll@{}}\toprule
+Sự kiện & $e$ & Mantissa & Ghi chú \\
+\midrule
+Vào stage 0 & 0 & $[40,-30,10,-5]$ & $\max=40>32$ \\
+Sau scale stage 0 & 1 & $[20,-15,5,-2]$ & dịch phải 1 \\
+Sau stage 1 (không tràn) & 1 & $[20,-15,5,-2]$ & giữ $e$ \\
+Power bin 0 thô $|m|^2$ & --- & $400$ & quên $2^{2e}$ \\
+Power đúng $|m|^2\cdot 2^{2e}$ & --- & $1600$ & $=40^2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \begin{firstprin}{Sau $|X|^2$, số mũ nhân đôi thành $2e$}
 Mantissa $y = 3$, exponent $e = 2$ có giá trị thật $3\cdot 2^{-2}$. Bình phương:
@@ -145,6 +185,9 @@ Mantissa $y = 3$, exponent $e = 2$ có giá trị thật $3\cdot 2^{-2}$. Bình 
 \]
 --- số mũ thành $2e$. Đẩy mantissa $|y|^2$ thẳng vào IFFT (IP kỳ vọng fixed-point với exponent $=0$ ở lối vào) mà quên barrel-shift theo $2e$ sẽ làm cả dải động $\mathcal{R}[\tau]$ sai tỷ lệ, phá ngưỡng voicing.
 \end{firstprin}
+
+\paragraph{Barrel shift trước IFFT.}
+RTL bắt buộc: nếu \texttt{source\_exp}$=e$ sau FFT, sau khi tính $|X[k]|^2$ trên mantissa, dịch trái (hoặc nhân) kết quả theo $2e$ trước khi đưa vào IFFT --- hoặc dịch mantissa IFFT input tương đương. Twin phải dùng model \texttt{\_model} của variation FFT IP, không đoán $e$.
 
 \begin{figure}[H]
 \centering
@@ -165,15 +208,17 @@ Mantissa $y = 3$, exponent $e = 2$ có giá trị thật $3\cdot 2^{-2}$. Bình 
 \label{fig:ch07_fft_bfp}
 \end{figure}
 
-\paragraph{Ví dụ tính tay BFP hai tầng (mantissa 8-bit minh họa).}
-Vector sau stage~0: $m = [40,-30,10,-5]$, $e = 0$. Ngưỡng tràn giả $= 32$: vì $\max|m| = 40 > 32$, dịch phải 1, $e \leftarrow 1$, $m \leftarrow [20,-15,5,-2]$. Stage~1 giữ $e = 1$. Power bin~0:
-\[
-|m|^2\cdot 2^{2e} = 20^2\cdot 2^{2} = 400\cdot 4 = 1600
-\]
-bằng ``thật'' $40^2 = 1600$ --- khớp. Twin bắt buộc dùng model \texttt{\_model.m} của variation FFT IP, không đoán $e$.
-
 \paragraph{Vì sao MAC thắng khi $\tau_{\max}\ll L$.}
-MAC: $98\,280$ nhân thực/khung. FFT 1024 radix-2: khoảng $5120$ butterfly phức (hàng chục nghìn nhân thực) cộng IFFT tương tự cộng $|X|^2$, rồi vẫn phải cắt $\tau$. Thêm rủi ro bit-reverse và BFP. Chỉ mở FFT khi lab yêu cầu so khớp đường Praat FFT hoặc khi RTF MAC không đủ.
+MAC: $98\,280$ nhân thực/khung. FFT 1024 radix-4: 5 tầng, mỗi tầng $256$ butterfly phức (mỗi butterfly vài nhân thực) --- cộng IFFT tương tự cộng $|X|^2$, rồi vẫn phải cắt $\tau$. Thêm rủi ro bit-reverse và BFP. Chỉ mở FFT khi lab yêu cầu so khớp đường Praat FFT hoặc khi RTF MAC không đủ.
+
+
+\paragraph{Bit-reverse và thứ tự bin.}
+FFT IP có thể xuất dữ liệu theo thứ tự bit-reverse hoặc natural order tùy cấu hình. Twin và RTL sau $|X|^2$ phải cùng thứ tự trước IFFT. Sai thứ tự bin làm $\mathcal{R}[\tau]$ ``xáo'' --- đỉnh $\tau_0$ có thể biến mất hoặc nhảy chỗ. Lab nghiệm thu nhánh FFT bắt buộc so dump toàn bộ $|X[k]|^2$ với model IP trước khi nối IFFT.
+
+\paragraph{Zero-pad cụ thể.}
+Khung $L=640$ pad thêm ít nhất 640 số 0 lên $N_{\mathrm{FFT}}=2048$ (hoặc 1024 nếu chấp nhận circular leak nhỏ và đã đo sai số). Pad ngắn hơn $2L-1$ làm tự tương quan vòng ``đụng'' đuôi vào đầu --- $\mathcal{R}[\tau]$ tại $\tau$ lớn bị cộng thêm hạng giả. MAC không bao giờ gặp lỗi này vì định nghĩa gốc chỉ cộng $L-\tau$ hạng thật.
+
+Trên DE10-Standard, chọn MAC mặc định còn vì một lý do vận hành: khi debug cent-error ở Chương~13, kỹ sư chỉ cần so từng $\mathcal{R}[\tau]$ int với twin; không phải lần theo \texttt{source\_exp} từng block. FFT giữ trong tài liệu như đường tùy chọn để hiểu Wiener--Khinchin và để lab nâng cao so khớp Praat khi bật biến thể phổ.
 
 \subsection*{7.6. Twin Python bit-exact}
 
@@ -185,6 +230,7 @@ def acf_linear_int(x, tau_min, tau_max):
     L = len(x)
     out = {}
     for tau in range(tau_min, tau_max + 1):
+        # Khớp MAC: cộng dồn int, không float
         out[tau] = int(np.dot(x[: L - tau], x[tau:]))
     return out
 
@@ -192,7 +238,7 @@ def acf_linear_int(x, tau_min, tau_max):
 R = acf_linear_int(xw_q15, 26, 214)
 # So dump R[tau] với ModelSim: sai lệch 0 bit trên đường MAC
 \end{verbatim}
-Không lấy \texttt{numpy.correlate} float làm chuẩn silicon. Trên nhánh FFT, twin phải gồm cả barrel $2^{2e}$ giống RTL.
+Giải thích: \texttt{np.dot} trên \texttt{int64} tương đương vòng RUN của FSM; không lấy \texttt{numpy.correlate} float. Trên nhánh FFT, twin phải gồm cả barrel $2^{2e}$ giống RTL và so với \texttt{\_model} của IP.
 
 \subsection*{7.7. Chi phí silicon}
 
@@ -202,7 +248,7 @@ Không lấy \texttt{numpy.correlate} float làm chuẩn silicon. Trên nhánh F
 \item \textbf{DSP}: 1 khối MAC/chu kỳ; $98\,280$ phép/khung $\approx 1{,}97\,\text{ms}$ @ $50\,\text{MHz}$.
 \item \textbf{ALM}: $\sim 200$ cho FSM con trỏ $\tau$, $n$, handshake Avalon-ST.
 \item \textbf{M10K}: đệm khung dùng chung Chương~5; MAC không thêm BRAM.
-\item \textbf{RTF} $= 0{,}197 \ll 1$ (còn $>80\%$ thời gian rảnh mỗi hop $10\,\text{ms}$ $= 500\,000$ chu kỳ).
+\item \textbf{RTF} $= 0{,}197 \ll 1$ (còn $>80\%$ thời gian rảnh mỗi hop $10\,\text{ms}$ $= 500\,000$ chu kỳ). Vì sao vừa khít: ngay cả khi thêm cửa sổ + $C[\tau]$ + parabolic + chia, tổng vẫn dưới khoảng $3\,\text{ms}$, RTF $<0{,}3$.
 \item \textbf{FFT optional}: hàng nghìn ALM + nhiều M10K twiddle/buffer + DSP theo variation; barrel shifter vài chục ALM. Chỉ bật khi twin đã khóa và lab yêu cầu.
 \item Vì sao MAC mặc định: 0 rủi ro BFP/bit-reverse, 0-bit với golden \texttt{lab\_1\_3\_5.py}.
 \end{itemize}
@@ -218,10 +264,13 @@ Không lấy \texttt{numpy.correlate} float làm chuẩn silicon. Trên nhánh F
 
 \paragraph{Bài tập 7.4.} Tính $N_{\mathrm{MAC}}$ đúng bằng $\sum_{\tau=26}^{214}(640-\tau)$ và RTF @ $50\,\text{MHz}$. So với ước lượng naïve $189\times 640$.
 
+\paragraph{Bài tập 7.5.} Vẽ bảng timing 4 chu kỳ cho $\tau=1$, $L=4$, $x=[1,2,1,2]$: mỗi cạnh \texttt{acc} mang giá trị gì? \texttt{done\_tau} lên khi nào?
+
 \noindent\textbf{Lời giải giải thích.}
 \begin{enumerate}[leftmargin=1.4em]
 \item $\mathcal{R}[1] = 6$, $\mathcal{R}[2] = 5$. Không được chỉ lấy một hạng: định nghĩa cộng mọi cặp chồng, với $\tau=2$ còn đúng hai hạng $1\cdot 1 + 2\cdot 2$.
 \item Vì chỉ còn $N-\tau = 8$ cặp trong tổng không vòng, trong khi $\mathcal{R}[0]$ có 16 hạng. Chuẩn hóa unbiased chia cho số hạng, hoặc nhân $C[\tau] = \mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (Chương~8), kéo tỉ số về gần 1.
 \item Power $= 400\cdot 4 = 1600$. Quên $2^{2e}$ còn 400 --- sai đúng $4 = 2^{2e}$ lần (khoảng $+6\,\text{dB}$ nếu đo năng lượng sai chiều ngược), đủ phá ngưỡng voicing.
 \item $N_{\mathrm{MAC}} = 98\,280$, $T = 1{,}9656\,\text{ms}$, $\mathrm{RTF} \approx 0{,}197$. Naïve $120\,960$ lớn hơn khoảng $23\%$ vì đếm thừa các hạng không tồn tại khi $\tau>0$.
+\item ck1: \texttt{acc}=$1\cdot 2=2$; ck2: $2+2\cdot 1=4$; ck3: $4+1\cdot 2=6=\mathcal{R}[1]$; \texttt{done\_tau} sau đúng $L-\tau=3$ bước RUN.
 \end{enumerate}
