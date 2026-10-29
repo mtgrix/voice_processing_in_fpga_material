@@ -121,3 +121,120 @@ Twin mặc định \emph{bỏ qua} soft upsample và bắt đầu từ PCM đã 
 
 \paragraph{Lời giải.} (a)~$f_{\mathrm{alias}} = |16 - 9| = 7\,\text{kHz}$ (đã giải ở Chương~0). (b)~Soft upsample \emph{không} đảo ngược aliasing đã xảy ra trong ADC: thành phần $7\,\text{kHz}$ đã nằm trong dải gốc. Nó chỉ cắt/làm mềm phần phổ còn lại gần $f_N$ \emph{trước khi} nhân cửa sổ, giảm rò phổ xuống vùng $F_0$. Trên FPGA, việc chống alias thật sự phải làm bằng lọc analog + FIR trước hạ mẫu (Chương~4).
 
+\subsection*{1.2. Bước 2 --- Khung, time step và độ dài cửa sổ từ pitch floor}
+
+\begin{firstprin}{Hiện tượng thật: cần thấy ít nhất ba chu kỳ dây thanh trong một khung}
+Để hàm tự tương quan ``nhìn thấy'' đỉnh tại $\tau = T_0$ và cả đỉnh phụ tại $\tau = 2T_0$, khung phải dài hơn vài chu kỳ dây thanh. Dây thanh nam có thể chậm tới khoảng $75\,\text{Hz}$, tức $T_0 = 1/75 \approx 13{,}33\,\text{ms}$. Boersma chọn \texttt{periodsPerWindow} $= 3$ với cửa sổ Hanning: ba chu kỳ $= 40\,\text{ms}$ --- đủ dài để hai đỉnh nằm trong cửa sổ, nhưng không dài đến mức $F_0$ đổi nhiều trong một khung (giả định \emph{local-stationary}: cao độ gần như đứng yên trong cửa sổ). Tuỳ chọn Gaussian (\texttt{very\_accurate}) dùng 6 chu kỳ vì đuôi Gaussian dài hơn trong miền thời gian; mã nguồn nhân đôi \texttt{periodsPerWindow} rồi tăng độ sâu nội suy Brent (\texttt{Sound\_to\_Pitch.cpp}, khoảng dòng 405--415).
+\end{firstprin}
+
+\paragraph{Toán từng bước.}
+Với $F_{\min}$ (pitch floor, mặc định $75\,\text{Hz}$), $f_s$ (tần số lấy mẫu sau hạ mẫu, $16\,\text{kHz}$ trên DE10) và số chu kỳ trong cửa sổ $P = 3$:
+\begin{align*}
+L_{\mathrm{sec}} &= \frac{P}{F_{\min}} = \frac{3}{75} = 0{,}04\,\text{s},\\
+L &= L_{\mathrm{sec}} \cdot f_s = 0{,}04 \times 16000 = 640\,\text{mẫu}.
+\end{align*}
+Bước nhảy thời gian mặc định \texttt{time\_step} $= 0{,}01\,\text{s}$ cho hop
+\[
+H = 0{,}01 \times 16000 = 160\,\text{mẫu}.
+\]
+Tỉ lệ chồng lấn giữa hai khung liên tiếp:
+\[
+\frac{L - H}{L} = \frac{640 - 160}{640} = 0{,}75 = 75\%.
+\]
+Mỗi ước lượng $F_0$ mới tái sử dụng $480$ mẫu đã thấy ở khung trước --- đường cong mượt hơn, đổi lại gấp bốn lần số lần tính so với hop $= L$. Nếu \texttt{time\_step} $= 0$, Praat tự chọn $0{,}75/F_{\min}$ để có khoảng bốn phép đo trên mỗi cửa sổ.
+
+Khoảng trễ tìm kiếm cao độ:
+\begin{align*}
+\tau_{\min} &= \bigl\lfloor f_s / F_{\max}\bigr\rfloor
+  = \lfloor 16000/600\rfloor = 26
+  \quad\text{(lab thường lấy 27 hoặc 32)},\\
+\tau_{\max} &= \bigl\lfloor f_s / F_{\min}\bigr\rfloor
+  = \lfloor 16000/75\rfloor = 213.
+\end{align*}
+Ngoài đoạn $[\tau_{\min},\tau_{\max}]$ không có ứng viên $F_0$ hợp lệ. Trên fabric DE10, vòng MAC quét $\tau = 26\ldots 214$ (đúng $189$ giá trị trễ) để khớp ngân sách đã tính ở Chương~0.
+
+\paragraph{Ví dụ tính tay.}
+$F_{\min} = 75\,\text{Hz}$, $f_s = 16\,\text{kHz}$, Hanning 3 chu kỳ: $L = 640$, $H = 160$, chồng lấn $75\%$, $\tau_{\min} = 26$, $\tau_{\max} = 213$. Đổi $F_{\min}\to 50\,\text{Hz}$ sẽ cho $L = 960$, $\tau_{\max} = 320$ --- phải dựng lại toàn bộ ROM cửa sổ và bảng $C[\tau]$, không chỉ sửa một hằng số. (Đã kiểm: \texttt{verify\_chuong\_00\_01.py}, hàm \texttt{test\_hardware\_budget}.)
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 2 Frame/hop.}
+\begin{itemize}[leftmargin=1.2em]
+\item Giữ cố định $L = 640$, $H = 160$ trên FPGA: khớp đúng 1 khối M10K đệm khung ($640\times 16 = 10240\,\text{bit}$) cộng ROM $C[\tau]$ sâu khoảng $189$ từ.
+\item Đổi $F_{\min}$ $\Rightarrow$ đổi $L$, $\tau_{\max}$, và \emph{bắt buộc rebuild} ROM $w$ lẫn $C[\tau]$.
+\item RTF: mỗi $10\,\text{ms}$ phải xong một khung; tại $50\,\text{MHz}$ với 1 MAC/chu kỳ, $640\times 189 = 120960$ phép nhân mất $2{,}42\,\text{ms}$ ($\mathrm{RTF} = 0{,}242$), dư sức --- xem lại hộp RTF Chương~0.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.2.} Cho $F_{\min} = 100\,\text{Hz}$, $f_s = 16\,\text{kHz}$, Hanning 3 chu kỳ, \texttt{time\_step} $= 0{,}01\,\text{s}$. Tính $L$, $H$, tỉ lệ chồng lấn và $\tau_{\max}$. So sánh số phép MAC mỗi khung với cấu hình $F_{\min} = 75\,\text{Hz}$ (giả sử $\tau_{\min} = 26$ không đổi và $\tau$ quét đến $\tau_{\max}$).
+
+\paragraph{Lời giải.} $L = 3\cdot 16000/100 = 480$ mẫu; $H = 160$; chồng lấn $(480-160)/480 = 66{,}7\%$; $\tau_{\max} = \lfloor 16000/100\rfloor = 160$. Số lag $= 160-26+1 = 135$. MAC $= 480\times 135 = 64800$ --- khoảng một nửa so với $120960$ của cấu hình $75\,\text{Hz}$. Khung ngắn hơn và dải $\tau$ hẹp hơn đều giảm chi phí, nhưng mất khả năng đo giọng rất trầm dưới $100\,\text{Hz}$.
+
+\subsection*{1.3. Bước 3 --- Trừ mean cục bộ (local mean)}
+
+\begin{firstprin}{Hiện tượng thật: DC và trôi chậm phá đỉnh $\tau = 0$}
+Áp suất không khí trung bình, offset mạch mic và rung máy đều cộng một hằng số $A$ vào mọi mẫu. Nhắc lại định nghĩa tự tương quan không vòng trên khung $N$ mẫu (đã nêu ở Chương~0):
+\[
+\mathcal{R}_x[\tau] = \sum_{n=0}^{N-1-\tau} x[n]\,x[n+\tau].
+\]
+Tại $\tau = 0$ chỉ còn tổng bình phương: $\mathcal{R}_x[0] = \sum_{n=0}^{N-1} x[n]^2$ --- đúng bằng năng lượng khung. Nếu tín hiệu mang offset, đặt $y[n] = x[n] + A$:
+\begin{align*}
+\mathcal{R}_y[0]
+&= \sum_{n=0}^{N-1}(x[n]+A)^2
+= \sum x[n]^2 + 2A\sum x[n] + N A^2
+= \mathcal{R}_x[0] + 2A\sum x[n] + N A^2.
+\end{align*}
+Đỉnh tại $\tau = 0$ phình tỉ lệ với $A^2$ và dễ ``nuốt'' đỉnh chu kỳ khi so với ngưỡng voicing. Praat trừ mean cục bộ trên khoảng $\pm$ một chu kỳ dài nhất quanh tâm khung (\texttt{localMean /= 2*nsamp\_period} trong mã nguồn).
+\end{firstprin}
+
+\paragraph{Ví dụ tính tay 4 mẫu.}
+Cho $x = [3,5,3,5]$, mean $\mu = 4$, tín hiệu không mean $x_{\mathrm{zm}} = [-1,1,-1,1]$. Với $N = 4$:
+\begin{align*}
+\mathcal{R}_{\mathrm{zm}}[0]
+&= (-1)^2 + 1^2 + (-1)^2 + 1^2 = 4,\\
+\mathcal{R}_{\mathrm{zm}}[2]
+&= (-1)\cdot(-1) + 1\cdot 1 = 2
+\quad\text{(chỉ còn $N-\tau = 2$ cặp)}.
+\end{align*}
+Tỉ số thô $\mathcal{R}[2]/\mathcal{R}[0] = 2/4 = 0{,}5$ --- \emph{không} bằng 1, dù tín hiệu tuần hoàn chu kỳ 2. Muốn tỉ số về 1 phải chuẩn hóa theo số cặp (unbiased) $\frac{\mathcal{R}[\tau]/(N-\tau)}{\mathcal{R}[0]/N}$, hoặc theo đúng Praat chia thêm tự tương quan cửa sổ $\mathcal{R}_w$ (Bước~6). Với unbiased: $\frac{2/2}{4/4} = 1$.
+
+Nếu quên trừ mean, trên chính $x = [3,5,3,5]$:
+\begin{align*}
+\mathcal{R}_x[0] &= 3^2+5^2+3^2+5^2 = 68,\\
+\mathcal{R}_x[2] &= 3\cdot 3 + 5\cdot 5 = 34.
+\end{align*}
+Tỉ số thô $34/68 = 0{,}5$; sau unbiased vẫn ra 1 trên tín hiệu tuần hoàn này, nhưng đỉnh $\tau = 0$ đã phình gấp $68/4 = 17$ lần so với bản không mean --- đúng bệnh DC làm méo thang đo trước ngưỡng voicing trên tín hiệu thật. (Đã kiểm Python.)
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \draw[->] (0,0)--(5,0) node[right]{$\tau$};
+  \draw[->] (0,0)--(0,2.6) node[above]{$\mathcal{R}$};
+  \draw[thick, red!70!black] (0,2.3)--(0.2,2.3)--(0.5,0.5)--(1.5,1.8)--(2.5,0.4)--(3.5,1.5)--(4.5,0.3);
+  \node at (2.5,2.9) {\footnotesize Trước: DC phình $\mathcal{R}[0]$};
+  \begin{scope}[xshift=6.2cm]
+    \draw[->] (0,0)--(5,0) node[right]{$\tau$};
+    \draw[->] (0,0)--(0,2.6) node[above]{$\mathcal{R}$};
+    \draw[thick, teal!70!black] (0,1.2)--(0.3,0.2)--(1.5,1.9)--(2.5,0.2)--(3.5,1.7)--(4.5,0.2);
+    \node at (2.5,2.9) {\footnotesize Sau trừ mean: đỉnh $T_0$ lộ};
+  \end{scope}
+\end{tikzpicture}
+\caption{Cùng một tín hiệu có offset DC: trừ mean cục bộ trước cửa sổ là bắt buộc để đỉnh chu kỳ không bị nuốt bởi $\mathcal{R}[0]$.}
+\label{fig:ch01_mean_remove}
+\end{figure}
+
+\paragraph{Ý nghĩa phần cứng / Twin.}
+FPGA tách hai lớp: DC-blocker IIR streaming (Chương~3) nuốt offset chậm; thêm mean khung (cộng dồn $L$ mẫu rồi trừ) trước nhân cửa sổ nếu twin muốn khớp Praat chặt. Twin Python: \texttt{x = x - np.mean(x)} trên đúng cửa sổ $\pm$ một chu kỳ dài nhất quanh tâm, hoặc tương đương DC-blocker + mean khung.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 3 Local mean.}
+\begin{itemize}[leftmargin=1.2em]
+\item DC-blocker IIR 1-cực 1-zero (Chương~3): vài ALM, 0 DSP, 1 thanh ghi 32-bit.
+\item Mean khung: 1 adder tích lũy + nhân $1/L$ định dạng Q --- dưới $50$ ALM.
+\item Không trừ mean: $\mathcal{R}[0]$ phình, ngưỡng voicing và $r_a$ sai tỉ lệ --- hỏng cả chuỗi sau dù MAC đúng.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.3.} Cho $x = [2,4,2,4]$. Tính $\mu$, $x_{\mathrm{zm}}$, $\mathcal{R}_{\mathrm{zm}}[0]$, $\mathcal{R}_{\mathrm{zm}}[2]$, tỉ thô và tỉ unbiased. Tính thêm $\mathcal{R}_x[0]$ khi không trừ mean và hệ số phình $\mathcal{R}_x[0]/\mathcal{R}_{\mathrm{zm}}[0]$.
+
+\paragraph{Lời giải.} $\mu = 3$, $x_{\mathrm{zm}} = [-1,1,-1,1]$ --- trùng ví dụ trên: $\mathcal{R}_{\mathrm{zm}}[0] = 4$, $\mathcal{R}_{\mathrm{zm}}[2] = 2$, thô $0{,}5$, unbiased $1$. Không trừ: $\mathcal{R}_x[0] = 4+16+4+16 = 40$, $\mathcal{R}_x[2] = 4+16 = 20$, phình $40/4 = 10$ lần.
+
