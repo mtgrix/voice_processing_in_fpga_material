@@ -276,6 +276,8 @@ Quay lại bức tranh toàn đường tín hiệu: sau Chương~9, mỗi hop $1
 
 Một lưu ý vận hành: khi demo realtime trên DE10, đừng đánh giá bằng tai trước khi đối chiếu file dump với Praat. Tai người chịu được lệch vài chục cent; máy chấm Pearson thì không. Parabolic đúng toán nhưng $\tau^*$ sai (do quên $C[\tau]$ ở Chương~8) vẫn cho $F_0$ ``mượt mà sai''. Luôn debug theo lớp: MAC $\to$ $S[\tau]$ $\to$ $\tau^*$ $\to$ $\tau_{\mathrm{fine}}$ $\to$ Q12.4.
 
+Khi tích hợp với Avalon-ST, giữ nguyên endian của dump $\tau^*$ và $F_0$ giữa Python twin và SignalTap: little-endian 16-bit little-endian word order như lab\_1\_3\_5. Một byte đảo sẽ biến $180.0\,\text{Hz}$ thành số vô nghĩa nhưng vẫn ``trông hợp lệ'' trong hex viewer --- đó là lỗi dễ bỏ sót nhất ở biên phần mềm--phần cứng của chương này.
+
 \subsection*{9.7. Bài tập và lời giải giải thích}
 
 \paragraph{Bài tập 9.1.} $r = [0{,}2,\ 0{,}6,\ 0{,}5]$ tại $\tau = 100,101,102$: tính $\Delta$, $\tau_{\mathrm{fine}}$, $F_0$ @ $16\,\text{kHz}$, mã Q12.4.
