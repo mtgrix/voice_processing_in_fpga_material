@@ -84,7 +84,7 @@ Giải mã ngược: $3191/16=199{,}4375\,\text{Hz}$ (phần nguyên $199$, frac
 
 \paragraph{Bẫy endian.} Bytes LE của $200\,\text{Hz}$ là \texttt{80 0C}. Nếu server đọc nhầm big-endian:
 \[
-\texttt{0x0C80}=3200_{\mathrm{LE}}\ \text{đọc BE}\ \Rightarrow\ 0\text{x}0\text{C}80 = 32780,\qquad 32780/16=2048{,}75\,\text{Hz}.
+\texttt{0x0C80}=3200_{\mathrm{LE}}\ \text{đọc BE}\ \Rightarrow\ 0\text{x}800\text{C} = 32780,\qquad 32780/16=2048{,}75\,\text{Hz}.
 \]
 Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>2\,\text{kHz}$ --- GPE/FFE ở Chương~13 sẽ ``nổ'', trong khi RTL và twin pack vẫn xanh.
 
@@ -347,7 +347,7 @@ Vậy Q12.4 ``thô'' nhất ở tần số thấp nhưng vẫn không phải th�
 
 \paragraph{Bài tập 12.2.} Đổi big-endian cố ý trên $200\,\text{Hz}$: evaluator đọc ra bao nhiêu Hz?
 
-\paragraph{Lời giải.} Bytes thật \texttt{80 0C}; đọc BE cho $0\text{x}0\text{C}80=32780$, $32780/16=2048{,}75\,\text{Hz}$. Sai số hàng nghìn Hz --- rõ ràng là lỗi giao thức, không phải MAC.
+\paragraph{Lời giải.} Bytes thật \texttt{80 0C}; đọc BE cho $0\text{x}800\text{C}=32780$, $32780/16=2048{,}75\,\text{Hz}$. Sai số hàng nghìn Hz --- rõ ràng là lỗi giao thức, không phải MAC.
 
 \paragraph{Bài tập 12.3.} Vì sao UV phải là \texttt{00 00} chứ không phải $0{,}0625\,\text{Hz}$ ($q=1$)?
 
