@@ -5,7 +5,7 @@
 \pdfbookmark[1]{Chương 8. Chuẩn hóa C[τ] (ROM nhân thay chia)}{chuong8}
 
 \begin{learningobj}
-Sau chương này bạn giải thích được vì sao phải chia cho tự tương quan của cửa sổ; dẫn ra $C[\tau]$ từ nguyên lý đầu tiên; tính tay và kiểm Python một bảng nhỏ cùng các mốc trên khung $L=640$; cấu hình ROM M10K mang $C[\tau]$ dạng Q3.13; đối chiếu với LPM\_DIVIDE / bộ chia non-restoring khi $\mathcal{R}_w$ đổi lúc chạy; viết twin sinh \texttt{.hex} bit-exact; và đọc được hộp chi phí --- tại sao nhân thay chia runtime.
+Sau chương này bạn giải thích được vì sao phải chia cho tự tương quan của cửa sổ; dẫn ra $C[\tau]$ từ nguyên lý đầu tiên từng bước; tính tay và kiểm Python một bảng nhỏ cùng các mốc trên khung $L=640$; cấu hình ROM M10K mang $C[\tau]$ dạng Q3.13 kèm latency đăng ký; đối chiếu với LPM\_DIVIDE / bộ chia non-restoring khi $\mathcal{R}_w$ đổi lúc chạy; viết twin sinh \texttt{.hex} bit-exact; và đọc được hộp chi phí --- tại sao nhân thay chia runtime.
 \end{learningobj}
 
 \subsection*{8.1. Hiện tượng thật: đỉnh $\tau$ lớn bị ``đạp'' vì hai quả núi ít chồng}
@@ -14,22 +14,26 @@ Sau khi nhân cửa sổ Hanning (Chương~6), mỗi khung trở thành một ``
 \[
 \mathcal{R}_w[\tau] = \sum_{n=0}^{L-1-\tau} w[n]\, w[n+\tau].
 \]
-Nếu lấy $\mathcal{R}_x[\tau]$ thô làm điểm số, đỉnh ở $\tau$ lớn (giọng trầm, $T_0$ dài) bị đạp xuống chỉ vì hình học cửa sổ, không phải vì tín hiệu kém tuần hoàn. Ví dụ khung cosin ở Chương~7 cho $\mathcal{R}[8]/\mathcal{R}[0] = 0{,}5$ dù sóng lặp hoàn hảo --- đó đúng là hiệu ứng này.
+Nếu lấy $\mathcal{R}_x[\tau]$ thô làm điểm số, đỉnh ở $\tau$ lớn (giọng trầm, $T_0$ dài) bị đạp xuống chỉ vì hình học cửa sổ, không phải vì tín hiệu kém tuần hoàn. Ví dụ khung cosin ở Chương~7 cho $\mathcal{R}[8]/\mathcal{R}[0] = 0{,}5$ dù sóng lặp hoàn hảo --- đó đúng là hiệu ứng này: tám cặp chồng so với mười sáu hạng ở $\tau=0$.
+
+Trực giác đời thường: bạn so hai tờ giấy có hình quả núi in mực; kéo lệch chúng theo chiều ngang thì vùng mực chồng nhau nhỏ dần. Không phải vì hình vẽ xấu đi --- chỉ vì hình học chồng. $C[\tau]$ chính là hệ số ``kéo độ đậm'' lại cho công bằng giữa các vị trí lệch.
 
 Praat/Boersma nhân hệ số bù
 \[
 C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}
 \]
-để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy), nên tính offline, nạp ROM, rồi \emph{nhân} thay vì chia mỗi $\tau$.
+để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy), nên tính offline, nạp ROM, rồi \emph{nhân} thay vì chia mỗi $\tau$. Chia runtime 189 lần mỗi khung vừa tốn latency vừa khó khớp bit với round cố định.
+
+
+Trong giọng tiếng Việt, thanh huyền và thanh nặng thường có $F_0$ thấp hơn thanh sắc cùng nguyên âm --- nghĩa là $\tau_0$ lớn hơn. Nếu quên $C[\tau]$, hệ thống sẽ thiên về báo thanh cao hơn thật, làm hỏng đối sánh Pearson với Praat ở Chương~13 trên chính những thanh cần đo cẩn thận. Đó là lý do chuẩn hóa cửa sổ không phải ``trang trí toán học'' mà là điều kiện tiên quyết của độ trung thực cao độ.
 
 \begin{physicalinsight}
-Quên nhân $C[\tau]$ thiên lệch hệ thống về $\tau$ nhỏ (giọng cao giả): đỉnh trầm bị đạp, thuật toán thích đỉnh ngắn hơn. Đây là lỗi kiến trúc, không phải nhiễu ngẫu nhiên.
+Quên nhân $C[\tau]$ thiên lệch hệ thống về $\tau$ nhỏ (giọng cao giả): đỉnh trầm bị đạp, thuật toán thích đỉnh ngắn hơn. Đây là lỗi kiến trúc, không phải nhiễu ngẫu nhiên --- cent-error sẽ lệch một phía trên mọi câu nói trầm.
 \end{physicalinsight}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\small, >=Stealth]
-  % two overlapping mountains
   \draw[thick, teal, opacity=0.85] (0.5,0) .. controls (1.5,2.4) and (2.5,2.4) .. (3.5,0);
   \draw[thick, orange!80!black, opacity=0.85] (2.0,0) .. controls (3.0,2.4) and (4.0,2.4) .. (5.0,0);
   \draw[<->, gray] (1.8,0.15)--(3.2,0.15);
@@ -45,38 +49,48 @@ Quên nhân $C[\tau]$ thiên lệch hệ thống về $\tau$ nhỏ (giọng cao 
 
 \subsection*{8.2. Toán từng bước --- mọi ký hiệu}
 
-Công thức chuẩn hóa Boersma (sau khi đã có $\mathcal{R}_x[0]$):
+Bắt đầu từ định nghĩa Boersma sau khi đã có $\mathcal{R}_x[0]$:
 \[
 r_a[\tau] = \frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau], \qquad
 C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
 \]
+Từng bước dẫn $C$: (1)~tính $\mathcal{R}_w[0]=\sum_n w[n]^2$; (2)~với mỗi $\tau$, tính $\mathcal{R}_w[\tau]=\sum_{n=0}^{L-1-\tau} w[n]w[n+\tau]$; (3)~chia $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (float offline); (4)~lượng tử Q3.13.
+
 \begin{itemize}[leftmargin=1.4em]
 \item $\mathcal{R}_x[\tau]$: tự tương quan tín hiệu đã cửa sổ (Chương~7), int rộng trên silicon.
 \item $\mathcal{R}_w[\tau]$: tự tương quan cửa sổ --- mẫu số ``độ chồng'', tính offline từ $w_q$.
 \item $C[\tau]\ge 1$ và tăng theo $\tau$ (vì $\mathcal{R}_w$ giảm).
-\item Lượng tử silicon: $C_q[\tau] = \mathrm{sat}_{u16}\!\bigl(\mathrm{round}(C[\tau]\cdot 2^{13})\bigr)$ --- định dạng \textbf{Q3.13} (3 bit phần nguyên gồm đầu, 13 bit thập phân; $1{,}0\mapsto 8192$; dải đến gần $4{,}0$). Chọn Q3.13 vì trên $L=640$, $C[214]\approx 2{,}13$ vượt quá 1 (Q1.15 sẽ bão hòa sai).
+\item Lượng tử silicon: $C_q[\tau] = \mathrm{sat}_{u16}\!\bigl(\mathrm{round}(C[\tau]\cdot 2^{13})\bigr)$ --- định dạng \textbf{Q3.13} (3 bit phần nguyên gồm đầu, 13 bit thập phân; $1{,}0\mapsto 8192$; dải đến gần $4{,}0$). Chọn Q3.13 vì trên $L=640$, $C[214]\approx 2{,}13$ vượt quá 1 (Q1.15 sẽ bão hòa sai tại $1{,}0$).
 \item Bit-growth: $R_x$ (vd Q2.30 / accum) $\times C$ (Q3.13) rồi làm tròn về thang điểm số. Twin và RTL dùng cùng quy tắc:
 \[
 S[\tau] = (R_x[\tau]\cdot C_q[\tau] + 2^{12}) \gg 13
 \]
-(làm tròn gần nhất, khớp \texttt{lab\_1\_3\_5.py}).
+(làm tròn gần nhất bằng cộng $2^{12}=4096$ trước khi dịch 13, khớp \texttt{lab\_1\_3\_5.py}).
 \end{itemize}
 
-Dải ROM phần cứng: 189 từ cho $\tau = 26\ldots 214$. Tệp \texttt{hex/c\_tau\_rom.hex} trong gói này còn nhân thêm hệ số octave-cost của Praat (xem \texttt{scoring\_rom\_q13} trong golden) --- đó là tiện ích gộp ROM, không đổi bản chất $C[\tau]$ bù cửa sổ. Twin kiểm tra cửa sổ thuần dùng \texttt{compensation\_rom\_q13}.
+Dải ROM phần cứng: 189 từ cho $\tau = 26\ldots 214$. Tệp \texttt{hex/c\_tau\_rom.hex} trong gói này còn nhân thêm hệ số octave-cost của Praat (xem \texttt{scoring\_rom\_q13} trong golden) --- đó là tiện ích gộp ROM, không đổi bản chất $C[\tau]$ bù cửa sổ. Twin kiểm tra cửa sổ thuần dùng \texttt{compensation\_rom\_q13}; twin kiểm tra điểm số đầy đủ dùng scoring hex.
+
+\begin{firstprin}{Nhân nghịch đảo offline thay chia runtime}
+Chia số nguyên trên FPGA (LPM\_DIVIDE) có latency hàng chục chu kỳ và thương/dư phụ thuộc làm tròn IP. Vì mẫu số $\mathcal{R}_w[\tau]$ biết trước, nghịch đảo một lần trên Python rồi nhân là đủ --- 189 nhân cố định latency, bit-exact với twin.
+\end{firstprin}
 
 \subsection*{8.3. Ví dụ tính tay --- mọi số đã chạy Python}
 
-\paragraph{A. $L=4$, $w=[1,2,2,1]$.}
+\paragraph{A. $L=4$, $w=[1,2,2,1]$ --- từng hạng.}
 \begin{align*}
-\mathcal{R}_w[0] &= 1+4+4+1 = 10,\\
-\mathcal{R}_w[1] &= 1\cdot 2 + 2\cdot 2 + 2\cdot 1 = 8,\\
-\mathcal{R}_w[2] &= 1\cdot 2 + 2\cdot 1 = 4,\\
+\mathcal{R}_w[0] &= 1\cdot 1 + 2\cdot 2 + 2\cdot 2 + 1\cdot 1 = 1+4+4+1 = 10,\\
+\mathcal{R}_w[1] &= 1\cdot 2 + 2\cdot 2 + 2\cdot 1 = 2+4+2 = 8,\\
+\mathcal{R}_w[2] &= 1\cdot 2 + 2\cdot 1 = 2+2 = 4,\\
 \mathcal{R}_w[3] &= 1\cdot 1 = 1.
 \end{align*}
-Vậy $C = [1,\ 1{,}25,\ 2{,}5,\ 10]$. Q3.13: $1{,}25 \mapsto \mathrm{round}(1{,}25\cdot 8192) = 10240$. Giả sử $\mathcal{R}_x = [20,12,6,1]$ thì sau nhân $C$: $[20,\ 15,\ 15,\ 10]$ --- đỉnh phụ $\tau$ được nâng tương đối.
+Vậy $C = [10/10,\ 10/8,\ 10/4,\ 10/1] = [1,\ 1{,}25,\ 2{,}5,\ 10]$. Q3.13 từng bước cho $C=1{,}25$:
+\[
+1{,}25\cdot 8192 = 10\,240 \quad(\texttt{0x2800}).
+\]
+Giả sử $\mathcal{R}_x = [20,12,6,1]$ thì sau nhân $C$ (float): $[20,\ 15,\ 15,\ 10]$ --- đỉnh phụ $\tau$ được nâng tương đối. Trên int: $S[1]=(12\cdot 10240 + 4096)\gg 13 = 15$ (khớp).
 
 \paragraph{B. $w=[1,2,1]$, $\tau=2$.}
-$\mathcal{R}_w[0] = 6$, $\mathcal{R}_w[2] = 1$, $C[2] = 6$.
+$\mathcal{R}_w[0] = 1+4+1 = 6$, $\mathcal{R}_w[2] = 1\cdot 1 = 1$, $C[2] = 6$.
 
 \paragraph{C. Khung thật $N=640$ Praat (bù cửa sổ thuần).}
 \begin{center}\small
@@ -90,7 +104,7 @@ $\tau$ & $C$ float & $C_q$ Q3.13 & hex \\
 \bottomrule
 \end{tabular}
 \end{center}
-Hex triển khai (\texttt{scoring\_rom}, có octave-cost): $C_q[26] = 8283$, $C_q[214] = 17070$ --- lệch nhẹ so với bảng thuần, đúng thiết kế gộp phạt quãng tám vào cùng một lần nhân.
+Hex triển khai (\texttt{scoring\_rom}, có octave-cost): $C_q[26] = 8283$, $C_q[214] = 17070$ --- lệch nhẹ so với bảng thuần, đúng thiết kế gộp phạt quãng tám vào cùng một lần nhân. Script \texttt{verify\_chuong\_06\_09.py} assert cả hai bảng.
 
 \begin{figure}[H]
 \centering
@@ -108,17 +122,31 @@ Hex triển khai (\texttt{scoring\_rom}, có octave-cost): $C_q[26] = 8283$, $C_
 \subsection*{8.4. Ý nghĩa phần cứng --- ROM mặc định, chia chỉ khi bắt buộc}
 
 Đường mặc định: IP \textbf{On-Chip Memory} kiểu ROM (hoặc RAM khởi tạo \texttt{.hex}/\texttt{.mif}).
+
 \begin{itemize}[leftmargin=1.4em]
 \item Depth $= 189$ (hoặc $\tau_{\max}+1$ nếu lưu từ 0); width $= 16$ bit mang Q3.13.
 \item Registered output: 1 chu kỳ --- FSM Chương~11 chờ đúng latency trước khi nhân.
 \item Một khối DSP nhân $R_x\times C_q$ mỗi $\tau$ (có thể dùng chung nhịp với MAC).
+\item Init file: \texttt{c\_tau\_rom.hex} (scoring) hoặc \texttt{compensation} thuần --- ghi rõ trong README lab.
 \end{itemize}
 
-Khi nào mới chia runtime? Chỉ khi $\mathcal{R}_w$ \emph{đổi lúc chạy} (ví dụ đổi loại cửa sổ động). Khi đó dùng IP \textbf{LPM\_DIVIDE} (User Guide chia số nguyên của Intel) hoặc bộ chia \textbf{non-restoring} tự viết bằng ALM --- cùng họ chia sẽ gặp lại ở Chương~9 cho $F_0 = f_s/\tau$. Đường pitch chuẩn của tài liệu này \textbf{không} chia mỗi $\tau$: ROM đã nướng sẵn nghịch đảo.
+\paragraph{Bảng timing --- đọc ROM $C$ rồi nhân.}
+\begin{center}\small
+\begin{tabular}{@{}clll@{}}\toprule
+ck & Địa chỉ & $C_q$ & $S$ \\
+\midrule
+0 & $\tau-26$ đặt & --- & --- \\
+1 & giữ & $C_q$ ổn định & bắt đầu nhân (hoặc chốt nếu DSP 0-pipe) \\
+2 & $\tau$ kế & $C$ mới & $S$ của $\tau$ trước hợp lệ nếu DSP 1-pipe \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Khi nào mới chia runtime? Chỉ khi $\mathcal{R}_w$ \emph{đổi lúc chạy} (ví dụ đổi loại cửa sổ động). Khi đó dùng IP \textbf{LPM\_DIVIDE} (pipeline cố định $L$ chu kỳ; User Guide chia số nguyên Intel) hoặc bộ chia \textbf{non-restoring} tự viết bằng ALM --- cùng họ chia sẽ gặp lại ở Chương~9 cho $F_0 = f_s/\tau$. Đường pitch chuẩn của tài liệu này \textbf{không} chia mỗi $\tau$: ROM đã nướng sẵn nghịch đảo. Không tồn tại IP tên ``ALTDIV\_TENT''; chỉ dùng LPM\_DIVIDE hoặc RTL tự viết.
 
 Đổi $L$ hoặc công thức $w$ thì \textbf{rebuild file hex bắt buộc}; nạp ROM cũ sẽ sai im lặng và đỉnh $F_0$ thiên lệch.
 
-\paragraph{RTL (ý tưởng).}
+\paragraph{RTL (ý tưởng) --- từng dòng.}
 \begin{verbatim}
 (* ram_init_file = "c_tau_rom.hex" *)
 reg [15:0] C_rom [0:188];           // tau 26..214
@@ -126,9 +154,45 @@ reg [15:0] C_q;
 reg signed [42:0] S;                // score after *C
 always @(posedge clk) begin
   C_q <= C_rom[tau - 26];           // 1-cycle registered read
+  // Nhân signed: zero-extend C_q thành số không âm
   S   <= (R_x * $signed({1'b0,C_q}) + 43'sd4096) >>> 13;
 end
 \end{verbatim}
+Dòng \texttt{C\_q <= C\_rom[...]} là latency 1; dòng \texttt{S <= ...} dùng $C_q$ của chu kỳ trước nếu cùng always --- lab phải pipeline đúng: hoặc tách hai always, hoặc chấp nhận $S$ trễ thêm 1 ck so với $R_x$ mới.
+
+
+\subsection*{8.4b. LPM\_DIVIDE nội bộ khi bắt buộc chia $\mathcal{R}_w$}
+
+Khi lab cố tình đổi cửa sổ theo khung (ví dụ adaptive window), ROM cố định không còn đúng. Khi đó cấu hình \textbf{LPM\_DIVIDE}:
+
+\begin{itemize}[leftmargin=1.4em]
+\item \texttt{LPM\_WIDTHN}: độ rộng numerator --- đủ chứa $\mathcal{R}_w[0]$ (thường 32--48 bit int).
+\item \texttt{LPM\_WIDTHD}: độ rộng denominator $\mathcal{R}_w[\tau]$.
+\item \texttt{LPM\_PIPELINE}: số tầng pipeline $L$ --- mỗi tầng một hàng thanh ghi; latency đúng $L$ chu kỳ từ khi \texttt{numer}/\texttt{denom} ổn định đến khi \texttt{quotient} hợp lệ.
+\item \texttt{LPM\_NREPRESENTATION} / \texttt{LPM\_DREPRESENTATION}: unsigned hoặc signed; phải khớp twin.
+\end{itemize}
+
+\paragraph{Timing LPM\_DIVIDE (pipeline $L=4$ minh họa).}
+\begin{center}\small
+\begin{tabular}{@{}cll@{}}\toprule
+ck & Sự kiện & Ghi chú \\
+\midrule
+0 & nạp $\mathcal{R}_w[0]$, $\mathcal{R}_w[\tau]$ & start ngầm theo data \\
+1--3 & pipeline nội bộ & không đọc quotient \\
+4 & \texttt{quotient}$\approx C$ thô & mới được nhân với $\mathcal{R}_x$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+So với ROM 1~ck: chia chậm hơn và khó bit-exact vì IP có thể cắt thương khác \texttt{round} Python. Vì vậy tài liệu giữ ROM làm mặc định.
+
+\paragraph{Non-restoring tự viết --- ý tưởng ngắn.}
+Cùng thuật toán sẽ dùng lại ở Chương~9: mỗi chu kỳ dịch dư và trừ/cộng divisor, ghi 1 bit thương. Với thương 16-bit cần khoảng 16 chu kỳ --- vẫn chậm hơn ROM nhưng dễ khớp twin từng bước hơn LPM khi cần debug.
+
+\subsection*{8.4c. Octave-cost gộp vào cùng ROM}
+
+Praat phạt ứng viên gần bội của đỉnh mạnh (sai quãng tám) bằng hệ số $<1$ nhân thêm vào điểm số. Gói này nhân octave-cost vào cùng từ hex với $C[\tau]$ (scoring\_rom) để FSM chỉ một lần nhân DSP. Hệ quả: bảng ``thuần $C$'' và bảng ``scoring'' lệch vài LSB như mục 8.3.C --- không phải lỗi làm tròn. Lab phải chọn đúng tệp: so khớp Praat đầy đủ dùng scoring; chứng minh công thức bù cửa sổ dùng compensation thuần.
+
+Ví dụ số: tại $\tau=214$, thuần $C_q=17429$, scoring $17070$. Tỉ số $17070/17429\approx 0{,}979$ --- octave-cost khoảng vài phần trăm, đủ kéo đỉnh bội xuống dưới đỉnh chính trên nhiều khung hữu thanh.
 
 \subsection*{8.5. Twin Python bit-exact}
 
@@ -151,19 +215,39 @@ def apply_C(R_x, C_q):
 
 # assert: build_C([1,2,2,1], 0, 3)[1] == 10240  # C=1.25
 \end{verbatim}
+Giải thích: \texttt{max(Rwt, 1e-30)} tránh chia 0 khi cửa sổ suy biến; \texttt{round} rồi \texttt{clip} khớp sat u16; \texttt{apply\_C} cộng $2^{12}$ trước $\gg 13$ khớp RTL. Mọi thay đổi công thức octave-cost phải sửa cùng chỗ golden và hex.
+
+
+\subsection*{8.5b. Quy trình sinh hex và nghiệm thu}
+
+\begin{enumerate}[leftmargin=1.4em]
+\item Chạy twin \texttt{build\_C} trên đúng $w_q$ Praat $N=640$ (cùng hex cửa sổ Chương~6).
+\item Ghi \texttt{compensation\_rom\_q13.hex} (thuần) và/hoặc nhân octave-cost $\to$ \texttt{c\_tau\_rom.hex}.
+\item So 4 mốc $\tau\in\{26,80,160,214\}$ với bảng mục 8.3.C --- sai một mốc là dừng, không nạp bitstream.
+\item Trên ModelSim: kích $\tau$ tuần tự, so $S[\tau]$ với \texttt{apply\_C} trên cùng $R_x$ dump từ MAC.
+\item Chỉ khi dump xanh mới nối argmax Chương~9.
+\end{enumerate}
+
+Nếu đổi Hanning sang Hamming, toàn bộ $\mathcal{R}_w$ đổi --- hex cửa sổ và hex $C$ phải rebuild cùng commit. Git diff một mình \texttt{hanning\_rom.hex} mà quên \texttt{c\_tau\_rom.hex} là lỗi quy trình điển hình gây cent-error ``bí ẩn''.
+
+Độ nhạy: sai $1$ LSB trên $C_q[214]$ ($1/8192\approx 0{,}012\%$) nhân với $R_x$ lớn vẫn nhỏ; nhưng sai công thức (quên octave-cost hoặc dùng Q1.15) làm lệch hàng trăm LSB --- đủ đổi argmax. Vì vậy nghiệm thu theo mốc hex, không chỉ theo ``trông có vẻ tăng theo $\tau$''.
+
+Trên silicon Cyclone~V, ROM 189×16 thường map vào 1 M10K dù chỉ dùng $\approx 30\%$ bit. Không cố nhét thêm bảng khác vào cùng block nếu địa chỉ hóa phức tạp làm FSM khó đọc --- rõ ràng hơn một M10K sạch cho $C[\tau]$.
 
 \subsection*{8.6. Chi phí silicon}
 
 \begin{costbox}
 \textbf{Ngân sách chuẩn hóa $C[\tau]$.}
 \begin{itemize}[leftmargin=1.2em]
-\item \textbf{M10K}: $189\times 16 = 3\,024$\,bit $< 1$ M10K ($10\,240$\,bit).
-\item \textbf{DSP}: 1 nhân $R_x\times C$ mỗi $\tau$ (dùng chung hoặc ngay sau MAC).
+\item \textbf{M10K}: $189\times 16 = 3\,024$\,bit $< 1$ M10K ($10\,240$\,bit) --- dư chỗ ghép thêm bảng nhỏ nếu cần.
+\item \textbf{DSP}: 1 nhân $R_x\times C$ mỗi $\tau$ (dùng chung hoặc ngay sau MAC). 189 nhân/khung $\ll$ 98\,280 MAC.
 \item \textbf{ALM}: địa chỉ + đăng ký --- vài chục.
-\item So với LPM\_DIVIDE mỗi $\tau$: tiết kiệm 189 phép chia/khung và latency không đều --- lý do chọn ROM.
-\item Vì sao Q3.13: $C[214]\approx 2{,}13$ vừa trong 3 bit nguyên; Q1.15 sẽ bão hòa tại $1{,}0$ và phá bù.
+\item So với LPM\_DIVIDE mỗi $\tau$: tiết kiệm 189 phép chia/khung và latency không đều --- lý do chọn ROM. Một LPM\_DIVIDE 32/16 pipeline 16 ck sẽ thêm $189\times 16$ chu kỳ nếu tuần tự --- phá RTF.
+\item Vì sao Q3.13: $C[214]\approx 2{,}13$ vừa trong 3 bit nguyên; Q1.15 sẽ bão hòa tại $1{,}0$ và phá bù. Vì sao không Q4.12: đủ nhưng mất 1 bit thập phân không cần thiết khi $C<4$.
 \end{itemize}
 \end{costbox}
+
+Trên hop $10\,\text{ms}$, khối $C$ chỉ thêm khoảng 189 chu kỳ nhân (+ latency ROM). Tổng Pha~2 vẫn dễ nằm dưới $3\,\text{ms}$ nếu MAC là nút thắt chính. Lab nghiệm thu: dump $S[\tau]$ sau nhân $C$ phải khớp twin trên cùng hex --- lệch 1 LSB $C_q$ nhân với $R_x$ lớn có thể đẩy argmax sang $\tau$ láng giềng.
 
 \subsection*{8.7. Bài tập và lời giải giải thích}
 
@@ -175,7 +259,7 @@ def apply_C(R_x, C_q):
 
 \paragraph{Bài tập 8.4.} Quên nhân $C$: đỉnh $\tau$ lớn bị thiên lệch thế nào?
 
-\paragraph{Bài tập 8.5.} Liệt kê ba tham số IP ROM bắt buộc: width, depth, init file. Khi nào cân nhắc LPM\_DIVIDE thay ROM?
+\paragraph{Bài tập 8.5.} Liệt kê ba tham số IP ROM bắt buộc: width, depth, init file. Khi nào cân nhắc LPM\_DIVIDE thay ROM? Vẽ timeline 2 chu kỳ đọc registered.
 
 \noindent\textbf{Lời giải giải thích.}
 \begin{enumerate}[leftmargin=1.4em]
@@ -183,5 +267,5 @@ def apply_C(R_x, C_q):
 \item $1{,}5\cdot 8192 = 12288 = $\texttt{0x3000}.
 \item Floor thay round lệch tối đa $0{,}5$ LSB của thang Q3.13 trước khi ép kiểu nguyên.
 \item Quên $C$: đỉnh $\tau$ lớn bị đạp bởi hình học cửa sổ, thuật toán thiên về $\tau$ nhỏ (giọng cao giả).
-\item Width 16, depth 189 (hoặc $\tau_{\max}-\tau_{\min}+1$), init \texttt{c\_tau\_rom.hex}. LPM\_DIVIDE chỉ khi $\mathcal{R}_w$ đổi lúc chạy; đường mặc định pitch không chia mỗi $\tau$.
+\item Width 16, depth 189 (hoặc $\tau_{\max}-\tau_{\min}+1$), init \texttt{c\_tau\_rom.hex}. LPM\_DIVIDE chỉ khi $\mathcal{R}_w$ đổi lúc chạy; đường mặc định pitch không chia mỗi $\tau$. Timeline: ck0 đặt địa chỉ; ck1 $C_q$ hợp lệ --- mới được nhân với $R_x$.
 \end{enumerate}
