@@ -409,3 +409,101 @@ Với $w\approx[0{,}3455,0{,}9045,0{,}9045,0{,}3455]$ đã tính ở Bước~4: 
 
 \paragraph{Lời giải.} $\mathcal{R}_w[0] = 0{,}25+1+1+0{,}25 = 2{,}5$; $\mathcal{R}_w[1] = 0{,}5+1{,}0+0{,}5 = 2{,}0$; $\mathcal{R}_w[2] = 0{,}5+0{,}5 = 1{,}0$. $C[1] = 2{,}5/2 = 1{,}25$; $C[2] = 2{,}5/1 = 2{,}5$. $C$ tăng theo $\tau$ --- đúng thiên vị cần bù.
 
+\subsection*{1.7. Bước 7 --- Trích cực đại cục bộ và nội suy parabolic}
+
+\begin{firstprin}{Hiện tượng thật: nhiều đỉnh = $T_0,2T_0,\ldots$ cộng nhiễu formant}
+Tín hiệu tuần hoàn lý tưởng có đỉnh $\mathcal{R}$ tại mọi $kT_0$. Formant và nhiễu tạo đỉnh giả. Praat lấy tối đa 14 cực đại cục bộ thỏa $r[i] > r[i-1]$, $r[i]\ge r[i+1]$, và $r[i] > 0{,}5\cdot\texttt{voicingThreshold}$, cộng một ứng viên Unvoiced $\Rightarrow$ \texttt{maxnCandidates} $= 15$.
+
+Đỉnh thật thường nằm \emph{giữa} hai mẫu nguyên trên lưới $\tau\in\mathbb{Z}$. Nội suy parabolic khớp ba điểm quanh đỉnh bằng một parabola rồi lấy đỉnh của parabola --- rẻ về số học, đủ chính xác cho FPGA (sai số thường dưới vài cent trên sine sạch). Nội suy sinc/Brent tinh hơn nhưng cần nhiều MAC; silicon mặc định dừng ở parabolic (xem lại so sánh ở Chương~0).
+\end{firstprin}
+
+\paragraph{Toán từng bước.}
+Đặt ba mẫu quanh đỉnh nguyên $\tau^*$: $r_{-} = r[\tau^*-1]$, $r^{*} = r[\tau^*]$, $r_{+} = r[\tau^*+1]$. Đặt gốc tại $\tau^*$ ($x = 0$ ở đỉnh). Parabola $y = ax^2+bx+c$ đi qua $(-1,r_{-})$, $(0,r^{*})$, $(1,r_{+})$. Đỉnh parabola tại
+\[
+\Delta = \frac{1}{2}\cdot\frac{r_{-}-r_{+}}{r_{-}-2r^{*}+r_{+}}
+= \frac{r_{-}-r_{+}}{2(r_{-}-2r^{*}+r_{+})}.
+\]
+Trễ tinh: $\tau_{\mathrm{fine}} = \tau^* + \Delta$. Cao độ: $F_0 = f_s/\tau_{\mathrm{fine}}$.
+
+\paragraph{Ví dụ tính tay 3 điểm.}
+$r_{-} = 0{,}40$, $r^{*} = 0{,}50$, $r_{+} = 0{,}46$ tại $\tau^* = 80$:
+\begin{align*}
+\Delta
+&= \frac{0{,}40-0{,}46}{2\bigl(0{,}40-2\cdot 0{,}50+0{,}46\bigr)}
+= \frac{-0{,}06}{2(-0{,}14)}
+= \frac{-0{,}06}{-0{,}28}
+= 0{,}214286.
+\end{align*}
+$\tau_{\mathrm{fine}} = 80{,}214286$ mẫu; tại $f_s = 16\,\text{kHz}$: $F_0 = 16000/80{,}214286 \approx 199{,}466\,\text{Hz}$. So với ước lượng thô $16000/80 = 200\,\text{Hz}$: lệch khoảng $4{,}63\,\text{cent}$. (Đã kiểm Python.)
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 7 Peak/parabolic.}
+\begin{itemize}[leftmargin=1.2em]
+\item Argmax một đỉnh (K$=1$): comparator quét $\tau_{\min}..\tau_{\max}$, vài ALM, 0 DSP.
+\item Parabolic: 2 phép trừ, 1 chia (LPM\_DIVIDE), 1 nhân $\tfrac12$ --- vài chu kỳ, 0--1 DSP (Chương~9).
+\item Top-14 chỉ khi HPS cần đa ứng viên cho Viterbi; mặc định fabric K$=1$ + UV.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.7.} Cho $r = \{0{,}20,\,0{,}60,\,0{,}50\}$ tại $\tau^* = 100$. Tính $\Delta$, $\tau_{\mathrm{fine}}$ và $F_0$ @ $16\,\text{kHz}$.
+
+\paragraph{Lời giải.} $\Delta = (0{,}20-0{,}50)/\bigl(2(0{,}20-1{,}20+0{,}50)\bigr) = (-0{,}30)/(2(-0{,}50)) = 0{,}30$. $\tau_{\mathrm{fine}} = 100{,}3$; $F_0 = 16000/100{,}3 \approx 159{,}52\,\text{Hz}$.
+
+\subsection*{1.8. Bước 8 --- Nội suy Sinc / Brent (đỉnh phụ mẫu tinh)}
+
+\begin{firstprin}{Hiện tượng thật: lưới mẫu rời $\Rightarrow$ đỉnh liên tục nằm giữa hai mẫu}
+$\mathcal{R}(\tau)$ liên tục bị lấy mẫu tại $\tau\in\mathbb{Z}$. Nội suy $\mathrm{sinc}$ khôi phục tín hiệu band-limited. Praat: lần~1 parabolic; lần~2 \texttt{NUMimproveMaximum} với \texttt{NUM\_PEAK\_INTERPOLATE\_SINC70} (Hanning) hoặc \texttt{SINC700} (Gaussian / very accurate) --- \texttt{Sound\_to\_Pitch.cpp} khoảng dòng 247--254. ``Depth'' là bề rộng cửa sổ sinc quanh đỉnh: SINC70 lấy $\pm 35$ mẫu; SINC700 lấy $\pm 350$.
+\end{firstprin}
+
+\paragraph{Ví dụ tính tay sinc 3 điểm.}
+Giá trị tại $x\in\{-1,0,1\}$: $y = 0{,}40,\,0{,}50,\,0{,}46$. Xấp xỉ $\mathrm{sinc}$ cửa sổ 3 tại $t = 0{,}2$:
+\[
+\hat y(t) = \sum_{k=-1}^{1} y[k]\,\mathrm{sinc}(t-k),
+\quad \mathrm{sinc}(u) = \frac{\sin(\pi u)}{\pi u}\ (0\mapsto 1).
+\]
+$\mathrm{sinc}(1{,}2)\approx -0{,}155915$, $\mathrm{sinc}(0{,}2)\approx 0{,}935489$, $\mathrm{sinc}(-0{,}8)\approx 0{,}233872$
+$\Rightarrow \hat y\approx 0{,}40(-0{,}155915)+0{,}50(0{,}935489)+0{,}46(0{,}233872)\approx 0{,}512960 > y[0]$ --- đỉnh hơi lệch phải, khớp dấu $\Delta$ parabolic dương. (Đã kiểm \texttt{numpy.sinc}.)
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 8 Sinc/Brent.}
+\begin{itemize}[leftmargin=1.2em]
+\item Mặc định fabric: \textbf{dừng ở parabolic} (Chương~9) --- 0 MAC sinc.
+\item SINC70: $\sim 70$ MAC/đỉnh; 14 đỉnh $\sim 980$ MAC/khung --- vẫn nhỏ so với MAC ACF ($\sim 10^5$), nhưng thêm FSM địa chỉ và latency khó đóng timing $10\,\text{ms}$ nếu làm naive.
+\item SINC700: $\sim 700$ MAC/đỉnh --- chỉ optional lab trên HPS, không đưa vào fabric real-time.
+\item Twin: parabolic bắt buộc khớp bit với RTL; sinc chỉ khi so Praat \texttt{very\_accurate}.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.8.} Giải thích tại sao FPGA chọn parabolic dù SINC70 chỉ thêm $\sim 980$ MAC --- chưa đến $1\%$ ngân sách MAC ACF.
+
+\paragraph{Lời giải.} Chi phí không chỉ là số MAC: cần bộ đệm hàng chục mẫu quanh mỗi đỉnh, FSM địa chỉ, và (nếu đa ứng viên) lặp 14 lần. Trên đường K$=1$ real-time, parabolic cho sai số $< 2\,\text{cent}$ trên sine sạch --- đủ ngưỡng lab $20\,\text{cent}$ so Praat (Chương~13) --- trong khi thêm Sinc tăng độ phức tạp kiểm chứng mà lợi ích biên nhỏ trên giọng nói thật (nhiễu và formant đã chiếm phần lớn sai số).
+
+\subsection*{1.9. Bước 9 --- Octave cost: phạt thiên vị quãng tám}
+
+\begin{firstprin}{Hiện tượng thật: $2T_0$ cũng là chu kỳ hoàn hảo --- sai octave}
+Nếu $x(t) = x(t+T_0)$ thì cũng $x(t) = x(t+2T_0)$. Tự tương quan vì thế có đỉnh tại $2T_0$ gần bằng đỉnh tại $T_0$ sau khi đã bù cửa sổ. Không phạt thì thuật toán thích chọn $F_0/2$ (giọng trầm giả) --- đó là \textbf{sai octave} (\emph{octave error}): nhầm một quãng tám. Hiện tượng gốc là tính tuần hoàn toán học, không phải dây thanh thật sự rung chậm gấp đôi (đã nêu ở Chương~0).
+
+Boersma trừ một octave cost $\texttt{octave\_cost}\cdot\log_2(\mathrm{ceiling}/F_0)$ khỏi strength của mỗi ứng viên (\texttt{Pitch\_pathFinder}, mảng \texttt{delta[]}): ứng viên tần số thấp bị phạt nặng hơn một chút, đủ để phá thế cân bằng giả giữa $T_0$ và $2T_0$.
+\end{firstprin}
+
+\paragraph{Ví dụ tính tay.}
+$\texttt{octave\_cost} = 0{,}01$, ceiling $= 600$, hai ứng viên $200\,\text{Hz}$ và $100\,\text{Hz}$, cùng $r_a = 0{,}48$:
+\begin{align*}
+s_{200} &= 0{,}48 - 0{,}01\log_2(600/200) = 0{,}48 - 0{,}01\cdot 1{,}58496 \approx 0{,}46415,\\
+s_{100} &= 0{,}48 - 0{,}01\log_2(600/100) = 0{,}48 - 0{,}01\cdot 2{,}58496 \approx 0{,}45415.
+\end{align*}
+$200\,\text{Hz}$ thắng --- đúng $F_0$, không phải nửa. Tại $500\,\text{Hz}$: phạt chỉ $\approx 0{,}00263$; tại ceiling $600\,\text{Hz}$: phạt $= 0$. (Đã kiểm Python.)
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- Bước 9 Octave cost.}
+\begin{itemize}[leftmargin=1.2em]
+\item Fabric K$=1$: không tính delta đầy đủ (không có đa ứng viên để so). Ceiling/floor vẫn cắt dải $\tau$ tìm kiếm --- \emph{có} ảnh hưởng fabric qua giới hạn vòng MAC.
+\item HPS pathFinder: soft-float $\log_2$ hoặc LUT nhỏ.
+\item Twin: cùng công thức khi bật Viterbi soft; đường median-3 bỏ qua octave cost từng ứng viên nhưng vẫn dùng $\tau_{\min}/\tau_{\max}$.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Bài tập 1.9.} Cùng $r_a = 0{,}50$, ceiling $= 600$, $\texttt{octave\_cost} = 0{,}01$. So $s$ tại $150\,\text{Hz}$ và $300\,\text{Hz}$. Ai thắng? Đây có phải bẫy octave không?
+
+\paragraph{Lời giải.} $s_{150} = 0{,}50 - 0{,}01\log_2(600/150) = 0{,}50 - 0{,}02 = 0{,}48$; $s_{300} = 0{,}50 - 0{,}01\log_2(2) = 0{,}50 - 0{,}01 = 0{,}49$. Ứng viên $300\,\text{Hz}$ thắng trên strength đơn khung --- đúng thiên vị nhẹ về cao. Nếu $300\,\text{Hz}$ là bẫy octave của $150\,\text{Hz}$ thật, Bước~11--12 (jump cost + Viterbi) sẽ phạt chuyển $150\to 300$ giữa các khung bằng $0{,}35$ để kéo đường về $150\,\text{Hz}$.
+
