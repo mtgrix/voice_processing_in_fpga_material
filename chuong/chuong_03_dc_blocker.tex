@@ -1,11 +1,61 @@
 \clearpage
 \phantomsection
-\section*{Chương 3. DC-blocker IIR (cực/zero, bit-exact)}
-\addcontentsline{toc}{section}{Chương 3. DC-blocker IIR (cực/zero, bit-exact)}
-\pdfbookmark[1]{Chương 3. DC-blocker IIR (cực/zero, bit-exact)}{chuong3}
+\section*{Chương 3. DC-blocker IIR (cực/zero, accumulator 32-bit)}
+\addcontentsline{toc}{section}{Chương 3. DC-blocker IIR (cực/zero, accumulator 32-bit)}
+\pdfbookmark[1]{Chương 3. DC-blocker IIR (cực/zero, accumulator 32-bit)}{chuong3}
 
-\subsection*{Hình: mặt phẳng $z$ --- cực và zero của DC-blocker}
+\begin{learningobj}
+Sau Chương~3, người học giải thích được vì sao offset một chiều phá đỉnh tự tương quan, viết đúng hàm truyền một cực--một zero với $\alpha=1-2^{-8}$, hiện thực RTL accumulator 32~bit theo công thức $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ rồi $\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$, và đối chiếu bit-exact với twin Python. Khái niệm điểm cực/điểm không và Avalon-ST đã có ở ô Feynman~12 của Chương~0.
+\end{learningobj}
 
+\subsection*{3.1. Hiện tượng: offset DC nuốt đỉnh chu kỳ}
+
+\begin{physicalinsight}
+Micro, codec WM8731 và đường dây analog luôn cộng thêm một thành phần gần đứng yên: điện áp offset một chiều (DC), cộng thêm trôi chậm do nhiệt. Trong miền mẫu, đó là một hằng $A$ cộng vào mọi $x[n]$. Phép tự tương quan (ô Feynman~5, Chương~0) không phân biệt năng lượng hữu ích và năng lượng offset. Nếu $A$ lớn, đỉnh tại độ trễ $\tau=0$ phình theo $A^2$ và có thể át hoàn toàn đỉnh chu kỳ $T_0$ của dây thanh --- thuật toán sẽ báo vô thanh hoặc treo ở cao độ sai.
+\end{physicalinsight}
+
+Viết tường minh với tín hiệu $x[n]+A$:
+\begin{align*}
+\mathcal{R}_{x+A}[0]
+&=\sum_{n=0}^{N-1}(x[n]+A)^2\\
+&=\sum_{n=0}^{N-1}x[n]^2 + 2A\sum_{n=0}^{N-1}x[n] + N A^2
+=\mathcal{R}_x[0]+2A\sum_n x[n]+N A^2.
+\end{align*}
+Số hạng $N A^2$ luôn dương và tỉ lệ với bình phương offset. Praat trừ mean cục bộ từng khung; trên FPGA streaming ta dùng bộ lọc IIR liên tục gọi là \textbf{DC-blocker}: một bộ thông cao rất nhẹ, ổn định, rẻ silicon, đặt ngay sau I\textsuperscript{2}S/CDC.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \begin{scope}
+    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[thick, red!70!black] (0,2.4) -- (0.15,2.4) -- (0.3,0.4) -- (1,0.35) -- (2,0.9) -- (3,0.3) -- (4,0.25);
+    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Trước DC-block: $\mathcal{R}[0]$ phình};
+  \end{scope}
+  \begin{scope}[xshift=7.2cm]
+    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[thick, teal!70!black] (0,1.2) -- (0.2,0.3) -- (1,0.25) -- (2,1.8) -- (3,0.3) -- (4,0.25);
+    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Sau: đỉnh $T_0$ lộ rõ};
+    \node[teal!60!black, font=\scriptsize] at (2,2.15) {$T_0$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Cùng một tín hiệu có offset: bên trái đỉnh $\tau=0$ nuốt chu kỳ; bên phải sau DC-blocker đỉnh $T_0$ hiện ra để Chương~9 nội suy.}
+\label{fig:ch03_dc_before_after}
+\end{figure}
+
+\paragraph{Ví dụ tính tay --- DC thuần phá $\mathcal{R}[0]$.} Chuỗi $x=[1,1,1,1]$ (toàn DC) cho $\mathcal{R}[0]=\sum x_n^2=4$. Sau khi trừ mean (mọi mẫu về 0) thì $\mathcal{R}[0]=0$: DC thuần phải đi tiếp như tín hiệu vô thanh, không được nuôi FSM cao độ bằng năng lượng giả.
+
+\subsection*{3.2. Toán: cực, zero và chọn $\alpha=1-2^{-8}$}
+
+Hàm truyền chuẩn của DC-blocker bậc nhất:
+\[
+H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}},\qquad 0<\alpha<1.
+\]
+\textbf{Zero} (nghiệm tử số) tại $z=1$ --- đúng tần số $0\,\text{Hz}$ --- nên $H(1)=0$: mọi tín hiệu hoàn toàn đứng yên bị triệt tiêu. \textbf{Cực} (nghiệm mẫu số) tại $z=\alpha$, nằm sát zero nhưng vẫn trong vòng đơn vị nên bộ lọc ổn định. Phương trình sai phân tương đương:
+\[
+y[n]=x[n]-x[n-1]+\alpha\, y[n-1].
+\]
 
 \begin{figure}[H]
 \centering
@@ -14,59 +64,58 @@
   \draw[->] (-2.0,0) -- (2.2,0) node[right] {$\mathrm{Re}$};
   \draw[->] (0,-1.9) -- (0,1.9) node[above] {$\mathrm{Im}$};
   \node[below left] at (0,0) {$0$};
-  \draw[very thick] (1.5,0.12) -- (1.5,-0.12);
-  \draw[very thick] (1.38,0) -- (1.62,0);
-  \node[above right] at (1.5,0.15) {zero $z{=}1$};
-  \filldraw[black] (1.494,0) circle (0.06);
-  \node[below] at (1.494,-0.12) {cực $z{=}\alpha{\approx}0{,}996$};
-  \node[align=left, font=\small] at (-0.2,-2.3) {Zero trên vòng đơn vị tại DC $\Rightarrow$ $H(1){=}0$.\\
-  Cực gần zero (trong vòng) $\Rightarrow$ HPF nhẹ, ổn định ($|\alpha|{<}1$).};
+  \draw[very thick, blue!70!black] (1.5,0.12) -- (1.5,-0.12);
+  \draw[very thick, blue!70!black] (1.38,0) -- (1.62,0);
+  \node[above right,blue!70!black] at (1.5,0.15) {zero $z=1$};
+  \filldraw[red!70!black] (1.494,0) circle (0.055);
+  \node[below,red!70!black,font=\small] at (1.35,-0.18) {cực $z=\alpha=1-2^{-8}$};
+  \node[align=left, font=\small] at (-0.15,-2.35)
+    {Zero trên vòng đơn vị tại DC $\Rightarrow H(1)=0$.\\
+     Cực gần zero (trong vòng) $\Rightarrow$ HPF nhẹ, ổn định.};
 \end{tikzpicture}
-\caption{DC-blocker $H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}}$ trên mặt phẳng $z$: zero tại $z=1$, cực tại $z=\alpha=1-2^{-8}$.}
+\caption{DC-blocker trên mặt phẳng $z$: zero tại $z=1$, cực tại $\alpha=1-2^{-8}=0{,}99609375$.}
+\label{fig:ch03_zplane}
 \end{figure}
-\subsection*{DC-blocker --- cực/zero, bit-growth, Avalon}
 
-
-
-\subsubsection*{Vì sao phải chặn DC trước tự tương quan}
-
-\begin{firstprin}{Offset DC nuốt đỉnh chu kỳ}
-Micro, codec và đường dây analog luôn mang theo một thành phần gần đứng yên: offset điện áp một chiều (DC), cộng thêm trôi chậm do nhiệt và nhiễu 50/60\,Hz. Trong miền mẫu, đó là một hằng $A$ cộng vào mọi $x[n]$. Phép tự tương quan không phân biệt ``năng lượng hữu ích'' và ``năng lượng offset'':
+Trên silicon ta chọn $\alpha=1-2^{-8}=0{,}99609375$ vì phép nhân $\alpha\cdot y$ thu gọn thành một phép dịch và trừ:
 \[
-\mathcal{R}_{x+A}[0]=\sum_n(x[n]+A)^2=\mathcal{R}_x[0]+2A\sum_n x[n]+N A^2.
+\alpha y = y - (y\ggg 8) = y\cdot(1-2^{-8}),
 \]
-Đỉnh tại $\tau=0$ phình tỉ lệ với $A^2$ và có thể nuốt mất đỉnh chu kỳ $T_0$. Vì thế, trước khi nhân cửa sổ và MAC, ta bắt buộc phải đẩy thành phần gần DC xuống gần 0. Bộ lọc làm việc đó trên FPGA gọi là \textbf{DC-blocker}: một HPF rất nhẹ, ổn định, rẻ silicon.
-\end{firstprin}
-
-\subsubsection*{Toán: cực, zero và ví dụ tính tay}
-
-Hàm truyền chuẩn của DC-blocker bậc nhất là
+không tốn khối DSP. Hằng thời gian xấp xỉ $1/(1-\alpha)=256$ mẫu. Tại $f_s=16\,\text{kHz}$ (sau FIR), cutoff xấp xỉ
 \[
-H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}},\qquad 0<\alpha<1.
+f_c\approx\frac{1-\alpha}{2\pi}f_s=\frac{2^{-8}}{2\pi}\cdot 16000\approx 9{,}95\,\text{Hz},
 \]
-\textbf{Zero} (nghiệm tử số) đặt tại $z=1$, tức tần số 0\,Hz: mọi tín hiệu hoàn toàn đứng yên bị triệt tiêu ($H(1)=0$). \textbf{Cực} (nghiệm mẫu số) đặt tại $z=\alpha$, nằm sát zero nhưng vẫn \emph{trong} vòng đơn vị nên bộ lọc ổn định. Khoảng cách $1-\alpha$ quyết định độ dốc của HPF: $\alpha$ càng gần 1 thì chỉ chặn vùng rất gần DC, giữ nguyên cao độ giọng nói.
+nằm dưới $F_{0,\min}=75\,\text{Hz}$ và trên DC --- đúng chỗ cần chặn. (Ở $48\,\text{kHz}$ ngay sau codec, $f_c\approx 29{,}8\,\text{Hz}$, vẫn an toàn trước khi hạ mẫu.)
 
-Trên silicon ta chọn $\alpha=1-2^{-8}=0{,}99609375$ vì phép nhân $\alpha\cdot y$ thu gọn thành một phép dịch và trừ: $\alpha y = y-(y\ggg 8)$ --- không tốn DSP. Đáp ứng xung với $\alpha=0{,}5$ (chỉ để tính tay) cho $x=\delta[n]$ là $y=[1,-0{,}5,-0{,}25,-0{,}125,\ldots]$: năng lượng xung bị ``nuốt'' dần theo hình học, đúng trực giác của một HPF nhớ trạng thái.
+\paragraph{Ví dụ tính tay --- đáp ứng xung với $\alpha=0{,}5$ (cực xa để thấy nhanh).} Cho $x=\delta[n]$ hiệu dụng qua công thức $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ với đầu vào hằng $x=[1,1,1,1,1]$, $y[-1]=0$:
+\begin{center}\small
+\begin{tabular}{@{}rlll@{}}
+\toprule
+$n$ & $x[n]$ & $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ & giá trị \\
+\midrule
+0 & 1 & $1-0+0$ & $1$ \\
+1 & 1 & $0+0{,}5\cdot 1$ & $0{,}5$ \\
+2 & 1 & $0+0{,}5\cdot 0{,}5$ & $0{,}25$ \\
+3 & 1 & $0+0{,}5\cdot 0{,}25$ & $0{,}125$ \\
+4 & 1 & $0+0{,}5\cdot 0{,}125$ & $0{,}0625$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Năng lượng bị nuốt theo cấp số nhân về 0 --- đúng trực giác HPF nhớ trạng thái. Với $\alpha=0{,}99609375$ suy giảm chậm hơn khoảng $256$ lần mẫu.
 
-Trong dấu phẩy tĩnh, bắt buộc giữ thanh ghi phản hồi \texttt{y\_acc} rộng 32~bit. Nếu dịch $\ggg8$ ngay trên thanh ghi 16~bit, phần thập phân bị cắt sớm $\Rightarrow$ vùng chết (deadband) và dao động limit-cycle. Đầu ra lấy $\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg15)$ khớp twin Python ở mục sau.
+\subsection*{3.3. Phần cứng: vì sao accumulator 32-bit và RTL}
 
-\subsubsection*{Intel IP --- vì sao viết RTL thuần}
+FIR Compiler II không thay thế được IIR có phản hồi: kiến trúc FIR không có vòng $y[n-1]$. Viết khoảng mười dòng Verilog với accumulator 32~bit là lựa chọn dạy và lab.
 
-FIR Compiler~II \emph{không} thay thế được IIR có phản hồi rộng: kiến trúc FIR không có vòng $y[n-1]$. IP ``IIR II'' nếu có trong bản Standard thường quá nặng cho một cực/zero đơn. Khuyến nghị dạy và lab: viết khoảng mười dòng Verilog với accumulator 32~bit --- dễ bit-exact, dễ đọc, đủ cho đường pitch.
+Nếu giữ $y$ chỉ 16~bit Q1.15, mỗi lần nhân $\alpha$ (hay dịch $\ggg 8$) sẽ cắt mất phần thập phân khi $|y|$ nhỏ, tạo vùng chết (deadband) hoặc dao động limit-cycle. Giải pháp: giữ thanh ghi phản hồi \texttt{y\_acc} signed 32~bit; mẫu vào Q1.15 được kéo lên cùng thang bằng dịch trái 15~bit trước khi trừ; ngõ ra lấy lại Q1.15 bằng dịch phải 15~bit rồi bão hòa.
 
-\subsubsection*{RTL: accumulator 32-bit (bắt buộc)}
-Không được dịch \texttt{>>>8} trên thanh ghi $y$ 16-bit: phần thập phân bị truncate $\Rightarrow$ deadband / limit-cycle.
-Phải giữ \texttt{y\_acc} signed 32-bit (Q1.30 nội bộ khi $x$ được kéo trái 15 bit; ở đây dùng Q17.15: $x$ sign-extend lên 32, $\alpha=1-2^{-8}$).
-
-\textbf{Phương trình cập nhật (bit-exact):}
-\[
-\begin{aligned}
-x_{\Delta} &= \mathrm{sext}_{32}(x[n]) - \mathrm{sext}_{32}(x[n-1]), \\
-y_{\mathrm{acc}}[n] &= y_{\mathrm{acc}}[n-1] + x_{\Delta} - (y_{\mathrm{acc}}[n-1]\ggg 8), \\
-y_{\mathrm{out}} &= \mathrm{sat}_{16}\!\bigl(\mathrm{rnd}_{15}(y_{\mathrm{acc}}[n])\bigr),
-\end{aligned}
-\]
-với $\mathrm{rnd}_{15}$: lấy bit $[30:15]$ sau khi cộng bit làm tròn tại vị trí 14 (hoặc truncate nhất quán với twin --- chọn \textbf{truncate} $\ggg15$ trong bản mặc định lab).
+\paragraph{Phương trình bit-exact (khớp assignment và twin).}
+\begin{align*}
+x_{\Delta} &= (x[n]\ll 15)-(x[n-1]\ll 15),\\
+y_{\mathrm{acc}}[n] &= y_{\mathrm{acc}}[n-1] + x_{\Delta} - (y_{\mathrm{acc}}[n-1]\ggg 8),\\
+y_{\mathrm{out}} &= \mathrm{sat}_{16}(y_{\mathrm{acc}}[n]\ggg 15),
+\end{align*}
+với $\mathrm{sat}_{16}$ ghim vào $[-32768,+32767]$. Trên số có dấu, toán tử Python/NumPy \texttt{>>} và Verilog \texttt{>>>} cùng là arithmetic floor shift.
 
 \begin{verbatim}
 module dc_blocker (
@@ -76,19 +125,18 @@ module dc_blocker (
   input  wire signed [15:0] x_in,       // Q1.15
   output reg                out_valid,
   input  wire               out_ready,
-  output reg  signed [15:0] y_out       // Q1.15
+  output reg  signed [15:0] y_out
 );
   reg signed [15:0] x_z1;
   reg signed [31:0] y_acc;              // 32-bit feedback (NOT 16)
   assign in_ready = out_ready | ~out_valid;
 
-  wire signed [31:0] x_sext  = {{16{x_in[15]}}, x_in};
-  wire signed [31:0] xz_sext = {{16{x_z1[15]}}, x_z1};
-  wire signed [31:0] x_delta = x_sext - xz_sext;
-  // y_acc + x_delta - (y_acc>>>8)  ==  x_delta + y_acc * (1 - 2^{-8})
-  wire signed [31:0] y_next  = y_acc + x_delta - (y_acc >>> 8);
-  // output from high bits: truncate >>>15, then sat16
+  wire signed [31:0] x_delta =
+      ($signed({x_in, 15'b0})) - ($signed({x_z1, 15'b0}));
+  wire signed [31:0] y_next =
+      y_acc + x_delta - (y_acc >>> 8);
   wire signed [31:0] y_shift = y_next >>> 15;
+
   function automatic signed [15:0] sat16;
     input signed [31:0] v;
     begin
@@ -111,211 +159,50 @@ module dc_blocker (
 endmodule
 \end{verbatim}
 
-\subsubsection*{Twin Python (khớp RTL)}
+\subsection*{3.4. Twin Python bit-exact và ví dụ step Q1.15}
+
 \begin{verbatim}
 import numpy as np
 
+def sat16(v):
+    return int(np.clip(v, -32768, 32767))
+
 def dc_blocker_q15(x, alpha_shift=8):
-    """x: int16 Q1.15 ndarray. Returns int16 Q1.15.
-    y_acc is int32; update: y = y + dx - (y >> 8); out = sat16(y >> 15).
-    Python/numpy >> on signed int == Verilog arithmetic >>> (floor).
-    """
+    """x: int16 Q1.15. y_acc int32.
+    y_acc += x_delta - (y_acc >> 8); out = sat16(y_acc >> 15)
+    với x_delta = (x<<15) - (x_z1<<15)."""
     y_acc = np.int32(0)
     x_z1 = np.int32(0)
-    out = np.empty_like(x)
-    for i, xi in enumerate(x.astype(np.int32)):
-        dx = xi - x_z1
+    out = np.empty(len(x), dtype=np.int16)
+    for i, xi in enumerate(np.asarray(x, dtype=np.int32)):
+        dx = np.int32((xi << 15) - (x_z1 << 15))
         y_acc = np.int32(y_acc + dx - (y_acc >> alpha_shift))
         x_z1 = xi
-        y_shift = y_acc >> 15
-        if y_shift > 32767: y_shift = 32767
-        elif y_shift < -32768: y_shift = -32768
-        out[i] = np.int16(y_shift)
+        out[i] = sat16(int(y_acc >> 15))
     return out
-
-# Ví dụ tính tay: DC step 16384 -> y decays to 0
-x = np.array([0,0,0] + [16384]*29, dtype=np.int16)
-y = dc_blocker_q15(x)
-assert abs(int(y[-1])) < 100  # near 0 after ~32 samples with a=1-2^-8
 \end{verbatim}
 
-\noindent\textbf{Tương đương shift:} trên số nguyên có dấu, \texttt{numpy.int32} / Python~\texttt{>>} là \emph{arithmetic floor shift} (bit dấu nhân rộng) --- cùng nghĩa với Verilog \texttt{>>>} trên \texttt{signed}.
-Không cần đổi sang \texttt{//}~256: $\texttt{y\_acc >> 8}$ bit-exact với $\texttt{y\_acc >>> 8}$ trong RTL (miễn \texttt{y\_acc} giữ \texttt{np.int32}, không promote lên \texttt{int} vô hạn bit rồi cắt lệch).
-
-% -------------------- C*.4 FIR II --------------------
-\subsection*{DC-blocker / khử mean (NEW)}
-
-
-
-\begin{firstprin}{Vì sao DC phá tự tương quan?}
-Nếu mọi mẫu cộng thêm hằng $A$ (offset mic), thì
+\paragraph{Ví dụ tính tay khớp bit.} Đầu vào $[0,0,0]$ rồi bước DC $16384$ ($0{,}5$ trong Q1.15). Ba mẫu đầu ra $0$. Tại mẫu bước ($n=3$): $x_{\Delta}=16384\ll 15=536870912$, $y_{\mathrm{acc}}=536870912$, $y_{\mathrm{out}}=16384$. Mẫu kế:
 \[
-\mathcal{R}_x[0] = \sum (x_n+A)^2 = \sum x_n^2 + 2A\sum x_n + NA^2
+y_{\mathrm{acc}}\leftarrow 536870912 + 0 - (536870912\ggg 8)=534773760,\quad
+y_{\mathrm{out}}=534773760\ggg 15=16320.
 \]
-phình theo $A^2$. Đỉnh $\tau=0$ ``nuốt'' mọi đỉnh chu kỳ. Praat trừ mean cục bộ từng khung; streaming cần lọc liên tục.
-\end{firstprin}
-
-\noindent\textbf{Ví dụ tính tay.} Chuỗi $x=[1,1,1,1]$ $\Rightarrow$ $\mathcal{R}[0]=4$. Sau trừ mean ($0,0,0,0$) $\Rightarrow$ $\mathcal{R}[0]=0$. DC thuần phải ra unvoiced, không được treo FSM.
-
-\paragraph{Default dạy: RTL IIR DC-block.}
-\[
-y[n] = x[n] - x[n-1] + \alpha\, y[n-1], \quad \alpha \approx 1-\varepsilon
-\]
-(ví dụ $\alpha=1-1/256$). Quan hệ với HPF 60~Hz: DC-block là HPF cực gần 0~Hz diện tích nhỏ; HPF 60~Hz cắt thêm ù quạt/rung cơ học. Có thể gộp vai trò vào một FIR thông cao (IP), nhưng bài này dạy IIR riêng để thấy mean.
-
-\begin{firstprin}{Vì sao không giữ $y$ chỉ 16-bit Q1.15?}
-Ví dụ tính tay: $\alpha=1-2^{-8}=255/256$. Phản hồi $\alpha y[n-1]$ cần phần lẻ của $y$. Nếu cắt $y$ về 16-bit ngay mỗi chu kỳ, $\alpha y$ liên tục làm tròn về 0 khi $|y|$ nhỏ $\Rightarrow$ filter ``chết'' hoặc dao động limit-cycle. Giải pháp First-Principles: giữ \textbf{thanh ghi phản hồi rộng} (ví dụ Q8.23 / 32-bit signed), chỉ saturate xuống Q1.15 ở lối ra.
-\[
-y_{\text{acc}}[n] = y_{\text{acc}}[n-1] + \bigl(x[n]-x[n-1]\bigr)
- - \bigl(y_{\text{acc}}[n-1]\ggg 8\bigr),
-\quad
-y_{\text{out}} = \mathrm{sat}_{16}(y_{\text{acc}}\ggg 15).
-\]
-Với $\alpha=1-2^{-8}$ thay nhân bằng \texttt{y\_acc - (y\_acc>>>8)} --- 0 DSP. Thanh ghi phản hồi \textbf{32-bit}; chỉ lấy bit cao khi xuất 16-bit.
-\end{firstprin}
+Mẫu tiếp: $y_{\mathrm{out}}=16256$. Dãy $16384,16320,16256,\ldots$ giảm khoảng $64$ mỗi bước lúc đầu --- đúng $\alpha=1-2^{-8}$. Sau khoảng $5\cdot 256$ mẫu, đầu ra tụt dưới $50$ LSB (script \texttt{verify/verify\_chuong\_03.py}).
 
 \begin{costbox}
-DC IIR rộng 32-bit + shift-add $\alpha$: $\lesssim$80--120 LE, 0 DSP. Cắt 16-bit sớm: rẻ hơn $\sim$30 LE nhưng \textbf{sai chức năng} --- đắt hơn mọi LUT.
+\textbf{Ngân sách --- DC-blocker.} Adder/sub 32~bit + dịch số học: khoảng $80$--$120$ ALM (thường vài chục đến $\sim 100$). 0 DSP (nhờ $\alpha=1-2^{-8}$). 0 M10K. Latency: 1 mẫu (pipeline Avalon-ST một nhịp). Fmax dễ $>200\,\text{MHz}$. Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng sai chức năng (deadband) --- đắt hơn mọi LUT trên đường $F_0$.
 \end{costbox}
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[font=\small]
-  \begin{scope}
-    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
-    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
-    \draw[thick, red!70!black] (0,2.4) -- (0.15,2.4) -- (0.3,0.4) -- (1,0.35) -- (2,0.9) -- (3,0.3) -- (4,0.25);
-    \node[font=\footnotesize\bfseries] at (2.5,3.1) {Trước: DC phình $\mathcal{R}[0]$};
-  \end{scope}
-  \begin{scope}[xshift=7cm]
-    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
-    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
-    \draw[thick, teal!70!black] (0,1.2) -- (0.2,0.3) -- (1,0.25) -- (2,1.8) -- (3,0.3) -- (4,0.25);
-    \node[font=\footnotesize\bfseries] at (2.5,3.1) {Sau: đỉnh $T_0$ lộ ra};
-    \node[teal!60!black, font=\scriptsize] at (2,2.1) {$T_0$};
-  \end{scope}
-\end{tikzpicture}
-\caption{Cùng tín hiệu có offset: trái --- $\mathcal{R}[0]$ phình; phải --- sau DC-block, đỉnh chu kỳ hiện rõ. Đặt cạnh nhau để map từng bước.}
-\label{fig:dc_before_after}
-\end{figure}
+\subsection*{3.5. Bài tập và lời giải giải thích}
 
-\begin{costbox}
-Nhắc lại: phản hồi $\ge$24--32 bit; lối ra 16-bit. FIR HP IP thay thế: hàng trăm LE/DSP tùy taps.
-\end{costbox}
-\subsection*{DC-blocker IIR --- cực / zero từ first principles}
+\paragraph{Bài tập 3.1 (Phình $\mathcal{R}[0]$.)}
+Cho $x_0=[1,-1,1,-1]$ và offset $A=2$. Tính $\sum(x_0[n]+A)^2$ và giải thích vì sao DC-blocker phải đứng trước MAC.
+\paragraph{Lời giải.} $\sum(x_0+A)^2=(3)^2+(1)^2+(3)^2+(1)^2=9+1+9+1=20$, trong khi $\sum x_0^2=4$. Offset đã nhân năng lượng $\tau=0$ lên năm lần; không chặn DC thì ngưỡng voicing và đỉnh $T_0$ đều lệch.
 
+\paragraph{Bài tập 3.2 (Đệ quy $\alpha=0{,}5$).}
+Với $x=[1,1,1,1,1]$, $\alpha=0{,}5$, $y[-1]=0$, lập bảng $y[0..4]$. Nhận xét giới hạn khi $n\to\infty$.
+\paragraph{Lời giải.} $1,\ 0{,}5,\ 0{,}25,\ 0{,}125,\ 0{,}0625$ --- cấp số nhân công bội $1/2$, tiến về $0$: DC thuần bị nuốt hết.
 
-
-\begin{firstprin}{Vật lý: offset chậm $\neq$ dây thanh}
-Offset mic $\approx$ tần số $0$. Bộ chặn DC: zero tại $z=1$ (chặn DC hoàn hảo), cực gần $z=1$ để dải thông phẳng.
-\end{firstprin}
-
-\noindent\textbf{Đạo hàm.} $H(z)=\dfrac{1-z^{-1}}{1-\alpha z^{-1}}$. Tại $z=1$: $H=0$. Cực $z=\alpha$ ($\alpha=0{,}995$ $\Rightarrow$ cutoff rất thấp).
-Đáp ứng biên độ tại $\omega$:
-\[
-|H(e^{j\omega})|=\frac{|1-e^{-j\omega}|}{|1-\alpha e^{-j\omega}|}.
-\]
-
-\noindent\textbf{Ví dụ tính tay đệ quy 5 bước.} $x=[1,1,1,1,1]$ (DC thuần), $y[-1]=0$, $\alpha=0{,}5$ (cực xa để thấy nhanh):
-\begin{center}\small
-\begin{tabular}{@{}llll@{}}\toprule
-$n$ & $x[n]$ & $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ & \\
-\midrule
-0 & 1 & $1-0+0=1$ & \\
-1 & 1 & $0+0{,}5\cdot1=0{,}5$ & \\
-2 & 1 & $0+0{,}5\cdot0{,}5=0{,}25$ & \\
-3 & 1 & $0{,}125$ & \\
-4 & 1 & $0{,}0625$ & $\to0$ (đúng: chặn DC) \\
-\bottomrule
-\end{tabular}
-\end{center}
-Với $\alpha=0{,}995$ (thực tế) suy giảm chậm hơn --- cần $\sim1/(1-\alpha)\approx200$ mẫu để ổn định. \textbf{Bit-growth:} feedback gần 1 $\Rightarrow$ tích lũy; giữ Q1.30 nội bộ rồi làm tròn (C.3).
-\subsection*{DC-blocker --- mặt phẳng $z$, Bode skew, fixed-point}
-
-
-
-Zero tại $z=1=e^{j0}$. Cực tại $z=\alpha$ (cùng góc, bán kính $\alpha<1$).
-Khoảng cách zero$\to$điểm $e^{j\omega}$ trên vòng tròn đơn vị $\approx\omega$ (nhỏ); cực$\to$điểm $\approx|\omega|$ nhưng bán kính ngắn hơn $\Rightarrow$ $|H|\approx1$ ở giữa dải.
-
-Cutoff xấp xỉ $f_c\approx\frac{1-\alpha}{2\pi}f_s$. $\alpha=0{,}995$, $f_s=16\text{k}$ $\Rightarrow f_c\approx12{,}7\text{ Hz}$ --- dưới $F_{\min}=75$, trên DC.
-
-\textbf{Bit-growth ví dụ tính tay.} $\alpha=1-2^{-8}$, $x$ Q1.15 full-scale DC step 32767. $y$ nội bộ Q1.30; sau 256 mẫu vẫn còn $\sim1/e$ năng lượng transient. Accumulator 32-bit an toàn; cắt về 16 có bão hòa.
-\subsection*{Testbench zero / DC / clip}
-
-\begin{firstprin}{Ba vector bắt lỗi DC-blocker khác nhau}
-\texttt{zero}: mọi ra $=0$. \texttt{DC}: vào hằng $\Rightarrow$ ra $\to0$ sau transient. \texttt{clip}: vào $\pm$full-scale $\Rightarrow$ không wrap 16-bit ở ngõ ra (sat). Thiếu một vector = bỏ sót bão hòa hoặc cực không ổn định.
-\end{firstprin}
-
-\begin{costbox}
-\textbf{Xác minh.} Sim ngắn vài ms audio; so twin \texttt{dc\_blocker\_q15} từng mẫu.
-\end{costbox}
-
-\subsection*{DC-blocker bit-growth}
-
-\begin{firstprin}{Vì sao $y$ 32-bit?}
-IIR $y\leftarrow y+x_\Delta-(y\ggg8)$ tích lũy. Giữ $y$ 16-bit: mỗi bước truncation $\approx$ noise + offset giả $\Rightarrow$ phá $\mathcal{R}[0]$. 32-bit accumulator rồi sat xuôi 16 là tối thiểu an toàn cho Q1.15 in/out.
-\end{firstprin}
-
-\noindent\textbf{Ví dụ.} $\alpha\approx1-2^{-8}=0{,}996$: hằng thời gian $\approx1/(1-\alpha)\approx256$ mẫu @16\,kHz $\approx16$\,ms.
-
-\begin{costbox}
-\textbf{Silicon.} 32-bit add/shift: vài chục ALM; 0 DSP; 0 M10K.
-\end{costbox}
-
-\subsection*{DC-blocker --- 32 mẫu step response}
-
-
-
-$\alpha=0{,}875$, $x=[0]{*}4+[1]{*}28$.
-\begin{center}\scriptsize
-\begin{tabular}{@{}llllllll@{}}\toprule
-$n$ & $y$ & $n$ & $y$ & $n$ & $y$ & $n$ & $y$ \\
-\midrule
-0 & 0.00000 & 8 & 0.58618 & 16 & 0.20142 & 24 & 0.06921 \\
-1 & 0.00000 & 9 & 0.51291 & 17 & 0.17624 & 25 & 0.06056 \\
-2 & 0.00000 & 10 & 0.44880 & 18 & 0.15421 & 26 & 0.05299 \\
-3 & 0.00000 & 11 & 0.39270 & 19 & 0.13493 & 27 & 0.04636 \\
-4 & 1.00000 & 12 & 0.34361 & 20 & 0.11807 & 28 & 0.04057 \\
-5 & 0.87500 & 13 & 0.30066 & 21 & 0.10331 & 29 & 0.03550 \\
-6 & 0.76562 & 14 & 0.26308 & 22 & 0.09040 & 30 & 0.03106 \\
-7 & 0.66992 & 15 & 0.23019 & 23 & 0.07910 & 31 & 0.02718 \\
-\bottomrule
-\end{tabular}
-\end{center}
-Thấy $y\to0$ dù $x=1$ --- đúng chặn DC. Với $\alpha=0{,}995$ chậm hơn $\sim8\times$.
-\subsection*{DC-blocker 16 mẫu $\alpha=0{,}996$}
-\begin{center}\scriptsize\begin{tabular}{@{}llllllll@{}}\toprule $n$ & $y$ & $n$ & $y$ & $n$ & $y$ & $n$ & $y$ \\ \midrule
-0 & 0.0000 & 4 & 0.8100 & 8 & 0.5314 & 12 & 0.3487 \\
-1 & 0.0000 & 5 & 0.7290 & 9 & 0.4783 & 13 & 0.3138 \\
-2 & 1.0000 & 6 & 0.6561 & 10 & 0.4305 & 14 & 0.2824 \\
-3 & 0.9000 & 7 & 0.5905 & 11 & 0.3874 & 15 & 0.2542 \\
-\bottomrule\end{tabular}\end{center}
-
-\subsection*{Chi phí silicon --- giải thích từng mục}
-\begin{costbox}
-\textbf{Ngân sách silicon --- DC-blocker.}
-\begin{itemize}[leftmargin=1.2em]
-\item ALM: vài chục (adder 32-bit + shift); 0 DSP; 0 M10K.
-\item Thanh ghi $y$ 32-bit bắt buộc: giữ 16-bit sẽ tích lũy truncation $\Rightarrow$ offset giả.
-\item Vì sao IIR một cực: đủ nuốt DC mic chậm; mean khung (Ch.~1) bổ sung nếu twin muốn khớp Praat chặt.
-\end{itemize}
-
-\noindent\textit{Tóm tắt số liệu:} DC-blocker IIR: 1 phép nhân $\times\alpha$ (hoặc shift-add khi $\alpha=1-2^{-8}$) + 2 phép cộng. Với $\alpha=1-2^{-8}$ dùng \texttt{>>>8} --- 0 DSP, vài chục ALM, 0 M10K. Bit-growth nội bộ Q1.30; output truncate về Q1.15. Fmax dễ $>200$~MHz. Chi phí gần như miễn phí so với FIR/AC --- đây là lý do đặt DC trước mọi khối nặng.
-\end{costbox}
-
-\subsection*{Thực hành --- Phiếu bài tập (mỗi phiếu chỉ ở đây)}
-
-
-\subsubsection*{Phiếu 2 --- DC-block}
-
-\textbf{Câu hỏi:} Nếu cắt/sai khối ``DC-block, hiện tượng nào phá $F_0$?
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item \textbf{Vật lý:} DC phình $\mathcal{R}[0]$ nuốt đỉnh $T_0$.
-\item \textbf{Toán neo:} $H=(1-z^{-1})/(1-\alpha z^{-1})$.
-\item \textbf{Silicon:} 0 DSP, $\le120$ LE.
-\item \textbf{Pytest:} step$\to0$; DC in $\to F_0=0$.
-\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
-\end{itemize}
-\subsubsection*{Phiếu DC step}
-
-$\alpha=0{,}75$, $x=[0,0,0,8,8,8,8,8]$. Tính $y[0..7]$ đệ quy. Vẽ.
+\paragraph{Bài tập 3.3 (Bit-exact step).}
+Dùng công thức $y_{\mathrm{acc}}\mathrel{+}=x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$, $x_{\Delta}=(x\ll 15)-(x_{z1}\ll 15)$, tính $y_{\mathrm{out}}$ tại hai mẫu đầu của bước $16384$ (sau ba số 0).
+\paragraph{Lời giải.} $y_{\mathrm{out}}[3]=16384$, $y_{\mathrm{out}}[4]=16320$ (đã kiểm script). Sai số một LSB ở đây đồng nghĩa twin và RTL lệch thang cố định điểm --- bắt buộc khớp trước khi nối FIR.
