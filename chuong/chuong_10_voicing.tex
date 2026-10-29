@@ -1,81 +1,298 @@
 \clearpage
 \phantomsection
-\section*{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}
-\addcontentsline{toc}{section}{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}
-\pdfbookmark[1]{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}{chuong10}
+\section*{Chương 10. Quyết định voicing, chi phí rút gọn và median-3 trên FPGA}
+\addcontentsline{toc}{section}{Chương 10. Quyết định voicing, chi phí rút gọn và median-3 trên FPGA}
+\pdfbookmark[1]{Chương 10. Quyết định voicing, chi phí rút gọn và median-3 trên FPGA}{chuong10}
 
 \begin{learningobj}
-Sau chương này bạn thiết kế cổng voicing/silence từ $r_a$ và năng lượng; triển khai median-3 (trễ 1 khung); giải thích vì sao Viterbi mặc định tắt trên fabric; tính tay ví dụ số; và đọc hộp chi phí.
+Sau khi học xong Chương~10, người học sẽ:
+\begin{enumerate}[leftmargin=1.4em]
+    \item Giải thích được hiện tượng vật lý khi dây thanh quản ngừng rung (im lặng, phụ âm vô thanh, hơi thở) và vì sao vẫn báo $F_0$ trong các khung đó sẽ phá đường cong cao độ.
+    \item Viết và tính tay được cổng voicing/silence từ $r_a[\tau^*]$ và tỷ số năng lượng $P_{\mathrm{local}}/P_{\mathrm{global}}$, cùng ứng viên Unvoiced strength $s_{\mathrm{UV}}$ đúng công thức Praat trong \texttt{Pitch.cpp}.
+    \item Triển khai bộ lọc trung vị ba khung (median-3) có thanh ghi xuất trễ đúng một bước nhảy $H=160$ mẫu ($\approx 10\,\text{ms}$), và chứng minh nó đập được một xung nhiễu đơn mà không cần quy hoạch động Viterbi.
+    \item Tính tay chi phí chuyển trạng thái octave-jump / V$\leftrightarrow$UV và một bảng Viterbi $2\times 2$ (hoặc $3$ khung) để hiểu \texttt{Pitch\_pathFinder}, rồi nêu rõ vì sao mặc định trên fabric Cyclone~V \textbf{tắt} Viterbi và chỉ giữ soft-float trên HPS khi cần đường cong ``Praat đầy đủ''.
+    \item Đọc hộp chi phí silicon (ALM, DSP, M10K, latency, RTF) của khối voicing + median-3 và đối chiếu với ngân sách Chương~0.
+\end{enumerate}
 \end{learningobj}
 
-\begin{firstprin}{Vật lý: dây thanh không rung liên tục --- khi nào báo $F_0=0$?}
-Hơi thở, khoảng lặng, phụ âm vô thanh cho $r_a$ thấp. Nếu vẫn báo $F_0$, đường pitch ``rung'' vô nghĩa. Praat gắn cờ voiced/unvoiced rồi (tuỳ chọn) chạy Viterbi/\texttt{pathFinder} theo chi phí octave và V$\leftrightarrow$UV. Trên Cyclone~V: \textbf{voicing gate + median-3 trên fabric} (rẻ, trễ đúng 1 hop); \textbf{Viterbi tắt trên fabric}, soft-float trên HPS khi cần đường cong ``Praat đầy đủ''.
+\subsection*{10.1. Hiện tượng thật: dây thanh không rung liên tục}
+
+\begin{firstprin}{Khi nào cao độ phải bằng không?}
+Trong Chương~0 và Chương~1 ta đã thấy $F_0 = 1/T_0$ là tần số đóng/mở thanh môn khi dây thanh rung tuần hoàn. Nhưng trong một câu nói thật, dây thanh chỉ rung trong các đoạn \textbf{hữu thanh} (nguyên âm, phụ âm hữu thanh). Ba tình huống sau \emph{không} có chu kỳ dây thanh ổn định:
+\begin{itemize}[leftmargin=1.4em]
+    \item \textbf{Im lặng / hơi thở:} năng lượng khung rất nhỏ; hàm tự tương quan gần như nhiễu trắng, không có đỉnh $r_a$ nổi.
+    \item \textbf{Phụ âm vô thanh} (ví dụ $/s/$, $/f/$): có năng lượng cao tần nhưng không có chu kỳ $T_0$ của thanh môn.
+    \item \textbf{Khoảng chuyển tiếp ngắn:} đỉnh $r_a$ yếu, dễ bị nhiễu đẩy sang đỉnh giả.
+\end{itemize}
+Nếu phần cứng vẫn xuất một số Hz ``bịa'' trong các khung đó, đường cong cao độ sẽ nhảy lung tung và mọi chỉ số đối sánh với Praat (GPE, VDE ở Chương~13) đều xấu. Praat giải quyết bằng hai tầng: (1)~cổng silence/voicing + ứng viên Unvoiced ngay trên từng khung; (2)~tuỳ chọn thuật toán quy hoạch động \texttt{Pitch\_pathFinder} (Viterbi) với các chi phí octave và V$\leftrightarrow$UV. Trên FPGA DE10-Standard, thiết kế mặc định giữ tầng~(1) cộng bộ lọc median-3 trên fabric, và \textbf{tắt} tầng~(2) khỏi silicon logic --- chuyển sang HPS khi thật sự cần.
 \end{firstprin}
 
-\subsection*{Toán --- voicing, silence, median-3, Viterbi}
+Hình~\ref{fig:ch10_voicing_timeline} minh họa một đoạn sóng có nguyên âm xen khoảng lặng: chỉ các khung hữu thanh mới được phép mang $F_0>0$.
 
-\textbf{Voicing.} Sau chuẩn hóa $r_a[\tau^*]\in[0,1]$:
-\[
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth]
+  % waveform sketch
+  \draw[->] (0,0) -- (12.2,0) node[right]{Thời gian (khung $10\,\text{ms}$)};
+  \draw[->] (0,-1.6) -- (0,2.4) node[above]{Biên độ / $F_0$};
+  % silence - vowel - silence - vowel
+  \draw[thick, gray!70] (0.2,0.05) -- (1.8,0.05);
+  \draw[thick, teal!80!black, domain=1.8:4.2, samples=80]
+    plot (\x, {1.4*sin(deg(12*(\x-1.8)))*exp(-0.05*(\x-3)^2)});
+  \draw[thick, gray!70] (4.2,0.05) -- (5.5,0.05);
+  \draw[thick, teal!80!black, domain=5.5:8.2, samples=90]
+    plot (\x, {1.2*sin(deg(10*(\x-5.5)))*exp(-0.04*(\x-6.8)^2)});
+  \draw[thick, gray!70] (8.2,0.05) -- (11.5,0.05);
+  % F0 stairs
+  \draw[very thick, orange!85!black] (1.8,1.9) -- (4.2,1.9);
+  \draw[very thick, orange!85!black] (5.5,1.75) -- (8.2,1.75);
+  \draw[very thick, orange!85!black] (0.2,0.15) -- (1.8,0.15);
+  \draw[very thick, orange!85!black] (4.2,0.15) -- (5.5,0.15);
+  \draw[very thick, orange!85!black] (8.2,0.15) -- (11.5,0.15);
+  \node[orange!85!black, font=\scriptsize] at (3.0,2.15) {$F_0\approx 200\,\text{Hz}$ (V)};
+  \node[orange!85!black, font=\scriptsize] at (6.8,2.0) {$F_0\approx 180\,\text{Hz}$ (V)};
+  \node[font=\scriptsize, gray!60!black] at (1.0,-0.45){UV};
+  \node[font=\scriptsize, gray!60!black] at (4.85,-0.45){UV};
+  \node[font=\scriptsize, gray!60!black] at (9.8,-0.45){UV};
+  \node[font=\scriptsize, align=center] at (6.0,-1.35){Đường cam: chỉ báo $F_0$ khi cổng voicing = Hữu thanh;\\các khung UV xuất đúng $0$ (sẽ đóng gói Q12.4 $=0$ ở Chương~12).};
+\end{tikzpicture}
+\caption{Trực giác voicing: sóng có đoạn rung và đoạn im. Cổng voicing buộc $F_0=0$ trên khung vô thanh/im lặng trước khi median-3 và đóng gói.}
+\label{fig:ch10_voicing_timeline}
+\end{figure}
+
+\subsection*{10.2. Toán từng bước: cổng voicing và ứng viên Unvoiced}
+
+Sau Chương~8--9 ta đã có đỉnh chuẩn hóa $r_a[\tau^*]\in[0,1]$ và (tuỳ chọn) $F_0$ nội suy. Praat không chỉ nhìn $r_a$: nó còn so sánh \textbf{đỉnh biên độ cục bộ} của khung với một \textbf{đỉnh toàn cục chậm}.
+
+\paragraph{Định nghĩa ký hiệu.}
+\begin{itemize}[leftmargin=1.4em]
+    \item $r_a[\tau^*]$: độ mạnh tự tương quan tại đỉnh tốt nhất sau khi nhân ROM $C[\tau]$ (Chương~8).
+    \item $V = \texttt{voicingThreshold}\approx 0{,}45$: ngưỡng sàn để một đỉnh còn được coi là ứng viên hữu thanh.
+    \item $S = \texttt{silenceThreshold}\approx 0{,}03$: ngưỡng tỷ số năng lượng để nghi ngờ im lặng.
+    \item $P_{\mathrm{local}} = \max_n |x[n]|$ trên khung hiện tại (hoặc $\sqrt{\mathcal{R}_x[0]/L}$ --- lab dùng max-abs cho rẻ silicon).
+    \item $P_{\mathrm{global}}$: ước lượng đỉnh biên độ của cả phát ngôn. Offline Praat lấy max cả file; streaming FPGA dùng \textbf{max-hold} hoặc IIR chậm vì không nhìn trước cả câu (Chương~0 đã nhấn mạnh ràng buộc streaming).
+\end{itemize}
+
+\paragraph{Cổng hữu thanh rút gọn trên fabric.}
+\begin{equation}
+\label{eq:ch10_voiced}
 \mathrm{voiced}=\bigl(r_a[\tau^*]\ge V\bigr)\;\land\;
-\bigl(P_{\mathrm{local}}\ge S\cdot P_{\mathrm{global}}\bigr),
-\]
-với $V\approx0{,}45$ (voicingThreshold), $S$ = silenceThreshold (vd $0{,}03$). $P_{\mathrm{local}}=\max|x|$ trên khung; $P_{\mathrm{global}}$ = max chậm (IIR/max-hold) vì streaming không nhìn cả câu.
+\bigl(P_{\mathrm{local}}\ge S\cdot P_{\mathrm{global}}\bigr).
+\end{equation}
+Hai điều kiện đọc bằng lời: (1)~đỉnh tương quan đủ cao; (2)~khung không quá nhỏ so với đỉnh toàn cục. Nếu một trong hai sai, xuất $F_0=0$.
 
-\textbf{Ứng viên Unvoiced strength} (Praat-like):
-\[
+\paragraph{Ứng viên Unvoiced strength (đầy đủ Praat).}
+Trong \texttt{Pitch.cpp}, Praat còn tạo một ``ứng viên vô thanh'' cạnh tranh với mọi đỉnh hữu thanh:
+\begin{equation}
+\label{eq:ch10_suv}
 s_{\mathrm{UV}}=V+\max\Bigl(0,\ 2-\frac{P_{\mathrm{local}}/P_{\mathrm{global}}}{S/(1+V)}\Bigr).
-\]
-Nếu $s_{\mathrm{UV}}$ thắng mọi đỉnh $\Rightarrow F_0=0$.
+\end{equation}
+Khi khung gần im lặng, phân số năng lượng nhỏ, hạng $\max(0,\ldots)$ dương lớn, nên $s_{\mathrm{UV}}$ thắng mọi đỉnh $r_a$ yếu và pathFinder (nếu bật) chọn Unvoiced. Trên fabric mặc định, công thức~\eqref{eq:ch10_suv} được dùng để \emph{hiểu} và để twin Python đối chiếu Praat; RTL tối thiểu chỉ cần~\eqref{eq:ch10_voiced}.
 
-\textbf{Median-3.} Với ba giá trị liên tiếp $a,b,c$:
+\begin{physicalinsight}
+$V$ và $S$ là \textbf{ngưỡng quy ước tính toán}, không phải hằng số vật lý của dây thanh. Đổi $V$ từ $0{,}45$ xuống $0{,}30$ sẽ khiến nhiều khung nhiễu bị gắn nhầm hữu thanh (VDE tăng ở Chương~13). Đổi $S$ quá cao sẽ nuốt cả nguyên âm nhỏ lúc đầu câu khi $P_{\mathrm{global}}$ chưa kịp warmup.
+\end{physicalinsight}
+
+\subsection*{10.3. Ví dụ tính tay --- voicing và $s_{\mathrm{UV}}$ (đã kiểm Python)}
+
+\paragraph{Ngưỡng Q1.14.} Lab lưu $r_a$ dạng Q1.14 (15~bit có dấu dùng 14 bit frac). Đổi $V=0{,}45$ sang số nguyên:
 \[
-\mathrm{med}=\max\bigl(\min(a,b),\ \min\bigl(\max(a,b),c\bigr)\bigr).
+V_{\mathrm{int}}=\bigl\lfloor 0{,}45\cdot 2^{14}\bigr\rfloor=\bigl\lfloor 0{,}45\cdot 16384\bigr\rfloor=7372.
 \]
-RTL chốt median vào thanh ghi và xuất ở khung \emph{sau} --- trễ nhóm đúng 1 hop ($\approx10$\,ms).
+(Tập lệnh \texttt{verify/verify\_chuong\_10\_14.py} khẳng định đúng $7372$.)
 
-\textbf{Viterbi (HPS).} $V(t,j)=\delta(t,j)+\max_i[V(t-1,i)-c_{ij}]$; $c_{ij}$ gồm jumpCost$\cdot|\log_2(f_j/f_i)|$ và vuvCost. Không hiện thực DP này trên fabric mặc định.
-
-\subsection*{Ví dụ tính tay (đã kiểm Python)}
-
-\paragraph{Median-3.} Chuỗi $200,\ 210,\ 80,\ 205,\ 208$:
-cửa $(200,210,80)\to200$ (đập spike 80); $(210,80,205)\to205$; $(80,205,208)\to205$.
-
-\paragraph{Voicing Q1.14.} $V=\mathrm{floor}(0{,}45\cdot2^{14})=7372$. Khung sine $r_a=12000$, $P_{\mathrm{loc}}=3277$, $P_{\mathrm{glob}}=30000$: voiced. Khung nhỏ $P_{\mathrm{loc}}=200$: silence chặn dù $r_a$ tạm ổn.
-
-\paragraph{$s_{\mathrm{UV}}$.} $P_{\mathrm{local}}=0{,}02$, $P_{\mathrm{global}}=1$, $S=0{,}03$, $V=0{,}45$:
+\paragraph{Khung sine hữu thanh.} Cho $r_a=12000$ (tức $12000/16384\approx 0{,}732$), $P_{\mathrm{local}}=3277$, $P_{\mathrm{global}}=30000$, $S=0{,}03$:
 \[
-s_{\mathrm{UV}}=0{,}45+\max\bigl(0,\ 2-\tfrac{0{,}02}{0{,}03/1{,}45}\bigr)\approx1{,}483.
+S\cdot P_{\mathrm{global}}=0{,}03\cdot 30000=900.
 \]
+Vì $12000\ge 7372$ và $3277\ge 900$, cổng~\eqref{eq:ch10_voiced} cho \textbf{voiced $=1$}.
 
-\paragraph{Viterbi $2\times2$.} $\delta=\begin{bmatrix}0{,}50&0{,}40\\0{,}45&0{,}48\end{bmatrix}$; cost V--V$=0{,}05$, V--UV$=0{,}14$. Cum $t2$ V: $\max(0{,}50-0{,}05,\ 0{,}40-0{,}14)+0{,}45=0{,}90$ $\Rightarrow$ đường V$\to$V.
+\paragraph{Khung gần im lặng.} Cùng $r_a=12000$ (nhiễu có thể tạo đỉnh giả cao!) nhưng $P_{\mathrm{local}}=200$:
+\[
+200 < 900 \quad\Rightarrow\quad \mathrm{voiced}=0.
+\]
+Đây là lý do bắt buộc có nhánh silence: chỉ nhìn $r_a$ sẽ bị đánh lừa.
 
-\subsection*{RTL median-3 (ý tưởng)}
+\paragraph{Tính $s_{\mathrm{UV}}$.} Đặt $P_{\mathrm{local}}=0{,}02$, $P_{\mathrm{global}}=1$, $S=0{,}03$, $V=0{,}45$:
+\[
+\frac{S}{1+V}=\frac{0{,}03}{1{,}45}\approx 0{,}0206897,\qquad
+\frac{P_{\mathrm{local}}/P_{\mathrm{global}}}{S/(1+V)}=\frac{0{,}02}{0{,}0206897}\approx 0{,}96667.
+\]
+\[
+s_{\mathrm{UV}}=0{,}45+\max(0,\ 2-0{,}96667)=0{,}45+1{,}03333=1{,}48333.
+\]
+Một đỉnh $r_a=0{,}30$ thua hoàn toàn ứng viên Unvoiced $\Rightarrow F_0=0$. Nếu $P_{\mathrm{local}}=P_{\mathrm{global}}$ thì hạng $\max$ tắt và $s_{\mathrm{UV}}=V=0{,}45$: silence không kích.
+
+\subsection*{10.4. Median-3: làm sạch xung đơn với trễ đúng một hop}
+
+\begin{firstprin}{Vật lý / trực giác: lấy giá trị ``ở giữa'' ba khung}
+Giọng người không đổi cao độ một quãng tám rồi quay lại trong đúng $10\,\text{ms}$. Một xung $F_0$ đơn (do nhiễu thắng argmax một khung) gần như chắc là lỗi. Bộ lọc \textbf{trung vị ba điểm (median-3)} lấy giá trị nằm giữa của ba mẫu liên tiếp: xung lệch bị loại, còn đường cong đơn điệu được giữ. Đây là thao tác thống kê trên chuỗi $F_0$, không phải hiện tượng khí động học mới --- nhưng nó bám sát ràng buộc vật lý ``$F_0$ người biến thiên chậm''.
+\end{firstprin}
+
+Với ba số $a,b,c$, một công thức chỉ dùng $\min/\max$ (thuận RTL, không cần sắp xếp đầy đủ) là:
+\begin{equation}
+\label{eq:ch10_med3}
+\mathrm{med}(a,b,c)=\max\bigl(\min(a,b),\ \min\bigl(\max(a,b),c\bigr)\bigr).
+\end{equation}
+Trên silicon, ba thanh ghi trượt $f_1\leftarrow f_2\leftarrow f_3\leftarrow F_0^{\mathrm{(mới)}}$; mỗi khi \texttt{in\_valid}, tính $\mathrm{med}$ rồi \textbf{chốt vào} \texttt{m\_reg}. Ngõ ra \texttt{f\_out} chỉ cập nhật từ \texttt{m\_reg} ở nhịp \texttt{in\_valid} \emph{kế tiếp} --- tức trễ nhóm đúng một bước nhảy $H=160$ mẫu $\approx 10\,\text{ms}$ (đúng như Feynman box~11 ở Chương~0).
+
+\paragraph{Ví dụ tính tay.} Chuỗi cao độ thô (Hz): $200,\ 210,\ 80,\ 205,\ 208$. Các cửa sổ ba điểm:
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+Cửa sổ $(a,b,c)$ & Sắp xếp & $\mathrm{med}$ & Ý nghĩa \\
+\midrule
+$(200,210,80)$ & $80,200,210$ & $200$ & Đập spike $80$ \\
+$(210,80,205)$ & $80,205,210$ & $205$ & \\
+$(80,205,208)$ & $80,205,208$ & $205$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+Spike $80\,\text{Hz}$ (thường là bắt nhầm $2T_0$ hoặc nhiễu) biến mất khỏi chuỗi xuất. Kiểm chứng: \texttt{verify/verify\_chuong\_10\_14.py}.
+
+\paragraph{Bài tập nhỏ trong bài.} Với một cửa $(100,400,110)$, $\mathrm{med}=110$ (sắp $100,110,400$). Xung $400\,\text{Hz}$ (octave nhảy giả) bị loại; kết quả \emph{không} phải $100$ --- đó là min, không phải median.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth]
+  \draw[->] (0,0) -- (10.5,0) node[right]{Chỉ số khung};
+  \draw[->] (0,0) -- (0,3.6) node[above]{$F_0$ (Hz)};
+  % raw
+  \draw[thick, dashed, gray!70] (0.5,2.0)--(2,2.1)--(3.5,0.8)--(5,2.05)--(6.5,2.08)--(8,2.1);
+  \fill[gray!70] (0.5,2.0) circle (1.5pt);
+  \fill[gray!70] (2,2.1) circle (1.5pt);
+  \fill[red!70] (3.5,0.8) circle (2pt) node[below]{\scriptsize raw $80$};
+  \fill[gray!70] (5,2.05) circle (1.5pt);
+  \fill[gray!70] (6.5,2.08) circle (1.5pt);
+  % median (delayed by 1)
+  \draw[very thick, teal!80!black] (2,2.0)--(3.5,2.0)--(5,2.05)--(6.5,2.05)--(8,2.05);
+  \node[teal!80!black, font=\scriptsize, align=left] at (7.2,3.1){Median-3 (nét liền)\\trễ 1 khung};
+  \node[gray!60!black, font=\scriptsize] at (1.2,3.1){Thô (nét đứt)};
+\end{tikzpicture}
+\caption{Median-3 đập một xung thấp đơn; đường xuất trễ đúng một khung so với quyết định voicing tức thời.}
+\label{fig:ch10_median3}
+\end{figure}
+
+\subsection*{10.5. Chi phí rút gọn và Viterbi --- hiểu để biết vì sao tắt trên fabric}
+
+Praat gắn mỗi ứng viên một độ mạnh $\delta(t,j)$ (đã trừ \texttt{octaveCost}), rồi tìm đường cực đại:
+\begin{equation}
+\label{eq:ch10_viterbi}
+V(t,j)=\delta(t,j)+\max_i\bigl[V(t-1,i)-c_{ij}\bigr],
+\end{equation}
+trong đó chi phí chuyển $c_{ij}$ gồm:
+\begin{itemize}[leftmargin=1.4em]
+    \item \texttt{octaveJumpCost}$\cdot|\log_2(f_j/f_i)|$ khi cả hai hữu thanh (mặc định $0{,}35$);
+    \item \texttt{voicedUnvoicedCost} khi đổi V$\leftrightarrow$UV (mặc định $0{,}14$);
+    \item nhân \texttt{timeStepCorrection}$=0{,}01/\Delta t$ nếu đổi hop.
+\end{itemize}
+
+\paragraph{Ví dụ chi phí chuyển trạng thái.}
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+Từ $\to$ Sang & $f_1$ & $f_2$ & $c_{ij}$ \\
+\midrule
+V$\to$V & $150$ & $160$ & $0{,}35\cdot|\log_2(150/160)|\approx 0{,}03259$ \\
+V$\to$V & $150$ & $300$ & $0{,}35\cdot 1=0{,}35$ (đúng một quãng tám --- đắt) \\
+V$\to$UV & $150$ & $0$ & $0{,}14$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Ví dụ Viterbi $2$ khung $\times$ $2$ ứng viên.} Cho $\delta(t{=}1)=[V{:}0{,}50,\ \mathrm{UV}{:}0{,}40]$, $\delta(t{=}2)=[V{:}0{,}45,\ \mathrm{UV}{:}0{,}48]$, chi phí V--V $=0{,}05$, V--UV $=0{,}14$:
+\begin{align*}
+\mathrm{cum}(V_2)&=0{,}45+\max(0{,}50-0{,}05,\ 0{,}40-0{,}14)=0{,}45+0{,}45=0{,}90,\\
+\mathrm{cum}(\mathrm{UV}_2)&=0{,}48+\max(0{,}50-0{,}14,\ 0{,}40-0)=0{,}48+0{,}40=0{,}88.
+\end{align*}
+Đường thắng là V$\to$V dù $\delta(\mathrm{UV}_2)$ cao hơn $\delta(V_2)$ một chút --- đúng tinh thần pathFinder: phạt chuyển trạng thái. (Phiên bản $3$ khung với jump $0{,}02$ cho $\mathrm{cum}(V_2)=0{,}96>\mathrm{cum}(\mathrm{UV}_2)=0{,}90$; xem script verify.)
+
+\paragraph{Vì sao fabric tắt Viterbi?} Độ phức tạp $O(T K^2)$ với $K$ ứng viên/khung (Praat tới $15$), cần lưu path metric và backpointer --- tốn M10K và logic so sánh rộng. Lab chỉ giữ $K{=}1$ (argmax) + UV qua cổng~\eqref{eq:ch10_voiced} + median-3. Hai lý do không port \texttt{pathFinder} lên fabric ở lab này: (1)~median-3 đã đập đủ spike đơn cho đo thanh điệu/Pearson trên giọng sạch; (2)~HPS ARM Cortex-A9 có thể chạy soft-float pathFinder offline trên chuỗi $F_0$ thô nếu bài yêu cầu ``Praat đầy đủ'', không chiếm ALM thời gian thực.
+
+\subsection*{10.6. Phần cứng: thuần ALM, không IP voicing}
+
+Không có Intel IP cho voicing hay median. Toàn bộ là so sánh và $\min/\max$ trên Adaptive Logic Module (ALM).
 
 \begin{verbatim}
-// Khi in_valid: tinh med = median(f1,f2,f3); chốt m_reg <= med;
-// f_out <= m_reg chi khi in_valid ke (tre 1 khung)
+// Voicing gate + registered median-3 (tre dung 1 hop)
+// Gia su f0_in da la Hz nguyen hoac Q12.4 thô truoc pack.
+reg [15:0] f1, f2, f3, m_reg, f_out;
+reg        voiced_r, out_valid;
+wire       voiced = (ra_q14 >= V_Q14) && (p_local >= silence_floor);
+wire [15:0] med = max(min(f1,f2), min(max(f1,f2),f3));
+
+always @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
+    f1<=0; f2<=0; f3<=0; m_reg<=0; f_out<=0; out_valid<=0;
+  end else if (in_valid) begin
+    f1<=f2; f2<=f3;
+    f3<= voiced ? f0_in : 16'd0;   // UV ep 0 truoc median
+    m_reg <= med;                  // tinh tren cua so cu
+    f_out <= m_reg;                // xuat ban chot chu ky truoc = tre 1 khung
+    out_valid <= 1'b1;
+  end else out_valid <= 1'b0;
+end
 \end{verbatim}
 
-Không IP cho voicing/median --- thuần ALM. Viterbi: tiến trình HPS, shared memory / Avalon-MM.
+Giải thích từng ý: (1)~ép UV về $0$ \emph{trước} median để một khung vô thanh không bị ``kéo'' bởi hai hàng xóm hữu thanh thành một giá trị giả; (2)~\texttt{m\_reg} rồi \texttt{f\_out <= m\_reg} tạo pipeline trễ đúng một \texttt{in\_valid}; (3)~không dùng DSP, không dùng M10K.
+
+\subsection*{10.7. Twin Python khớp hành vi}
+
+\begin{verbatim}
+import numpy as np
+
+def med3(a, b, c):
+    return max(min(a, b), min(max(a, b), c))
+
+def voicing_gate(ra, V, P_local, P_global, S=0.03):
+    return (ra >= V) and (P_local >= S * P_global)
+
+def s_uv(P_local, P_global, S=0.03, V=0.45):
+    return V + max(0.0, 2.0 - (P_local / P_global) / (S / (1.0 + V)))
+
+def median3_stream(f0, voiced, delay=True):
+    """Ep UV=0, median-3, tre 1 khung neu delay=True."""
+    x = [float(f if v else 0.0) for f, v in zip(f0, voiced)]
+    y = []
+    for i in range(len(x)):
+        if i < 2:
+            m = x[i]  # warmup: xuat thô / 0 tuy chinh lab
+        else:
+            m = med3(x[i-2], x[i-1], x[i])
+        y.append(m)
+    if delay and y:
+        y = [0.0] + y[:-1]  # thanh ghi xuat tre 1
+    return np.asarray(y)
+\end{verbatim}
+
+Mọi số trong mục~10.3--10.5 được khẳng định bởi \texttt{verify/verify\_chuong\_10\_14.py}.
 
 \begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
+\textbf{Ngân sách silicon --- khối voicing + median-3 (giải thích từng mục).}
 \begin{itemize}[leftmargin=1.2em]
-\item Voicing gate: vài so sánh --- $<50$ ALM, 0 DSP, 0 M10K.
-\item Median-3: $<100$ ALM, trễ 1 hop, 0 DSP.
-\item Max-hold $P_{\mathrm{global}}$: vài ALM.
-\item Viterbi fabric: 0 (tắt). HPS soft nếu cần.
-\item Vì sao median thay Viterbi: đập spike đơn đủ lab; DP $O(TK^2)$ cần đa ứng viên và BRAM path metric.
+    \item \textbf{ALM} (\emph{Adaptive Logic Module}): đơn vị logic Cyclone~V. Cổng voicing (hai so sánh + AND) $\approx 20$--$40$ ALM; median-3 ($\min/\max$ trên $16$~bit + thanh ghi) $\approx 60$--$100$ ALM; max-hold $P_{\mathrm{global}}$ vài ALM. Tổng khối này $\ll 150$ ALM --- chỉ một phần nhỏ ngân sách $\approx 850$ ALM của cả luồng $F_0$ ở Chương~0.
+    \item \textbf{DSP / M10K:} $0$. Không nhân, không bảng lớn.
+    \item \textbf{Latency:} đúng $1$ hop $=10\,\text{ms}$ do thanh ghi xuất median. Không tăng RTF tính MAC (RTF vẫn do Chương~7 quyết định, $\approx 0{,}24$).
+    \item \textbf{Viterbi trên fabric:} $0$ ALM mặc định. Nếu bật đủ $K{=}15$, ước tính hàng nghìn ALM + vài M10K path metric --- phá ngân sách $2\%$ và không cần cho lab median-3.
+    \item \textbf{Vì sao chọn median thay Viterbi trên fabric:} đập spike đơn đủ cho đo thanh điệu tiếng Việt và Pearson với Praat trên giọng sạch; giữ RTF và diện tích; vẫn để cửa HPS chạy pathFinder khi bài yêu cầu.
 \end{itemize}
 \end{costbox}
 
-\subsection*{Thực hành}
+\subsection*{10.8. Bài tập và lời giải giải thích}
 
-\begin{enumerate}[leftmargin=1.4em]
-\item Chuỗi $100,400,110$: median-3 cửa đầu ra gì? (100 --- đập 400 octave jump giả).
-\item $s_{\mathrm{UV}}$ với $P_{\mathrm{local}}=P_{\mathrm{global}}$: chứng minh silence không kích.
-\item Liệt kê 2 lý do không port pathFinder lên fabric ở lab này.
-\end{enumerate}
+\paragraph{Bài tập 10.1 (Median-3 và octave spike).}
+Cho chuỗi thô $F_0 = \{100,\ 400,\ 110,\ 105\}$ Hz (giả sử tất cả đã voiced). Tính ngõ ra median-3 \emph{không} trễ thanh ghi cho các cửa ba điểm bắt đầu từ chỉ số $0$, rồi nêu cửa nào đập được spike $400$.
 
-\noindent\textbf{Mở rộng.} Ngưỡng voicing $r_a[\tau^*]\ge \theta$ (vd $\theta=0{,}45$ lab) quyết định voiced/unvoiced. Median-3 trên ba khung liên tiếp chống ``bật/tắt'' giả. Octave cost và VUV cost (Ch.~1) chỉ vào Viterbi pathFinder --- không sửa $r_a$ thô. Twin: dump cờ voiced + $F_0$ từng khung so Praat trên cùng wav.
+\paragraph{Lời giải.} Cửa $(100,400,110)$: sắp $100,110,400$ $\Rightarrow\mathrm{med}=110$. Cửa $(400,110,105)$: sắp $105,110,400$ $\Rightarrow\mathrm{med}=110$. Spike $400$ không bao giờ là trung vị khi hai hàng xóm nằm gần $100$---$110$. Nếu nhầm dùng $\min$ sẽ ra $100$ ở cửa đầu --- đó là lỗi khái niệm (min $\neq$ median).
 
+\paragraph{Bài tập 10.2 ($s_{\mathrm{UV}}$ khi không im lặng).}
+Chứng minh khi $P_{\mathrm{local}}=P_{\mathrm{global}}$ và $S=0{,}03$, $V=0{,}45$ thì $s_{\mathrm{UV}}=V$, tức nhánh silence trong~\eqref{eq:ch10_suv} không kích.
+
+\paragraph{Lời giải.}
+\[
+\frac{P_{\mathrm{local}}/P_{\mathrm{global}}}{S/(1+V)}=\frac{1}{0{,}03/1{,}45}=\frac{1{,}45}{0{,}03}\approx 48{,}333,
+\]
+nên $2-48{,}333<0$ và $\max(0,\cdot)=0$ $\Rightarrow s_{\mathrm{UV}}=V=0{,}45$. Ý nghĩa: khung đủ lớn so với đỉnh toàn cục thì Unvoiced chỉ còn sàn $V$, phải cạnh tranh sòng phẳng với $r_a$.
+
+\paragraph{Bài tập 10.3 (Hai lý do không port pathFinder).}
+Liệt kê hai lý do kỹ thuật/lab để mặc định tắt Viterbi trên fabric Cyclone~V của bài này.
+
+\paragraph{Lời giải.} (1)~\textbf{Tài nguyên và độ phức tạp:} $O(TK^2)$ với $K$ tới $15$ cần nhiều so sánh song song hoặc FSM dài + BRAM/M10K lưu metric --- đẩy chiếm dụng ALM/M10K vượt ngân sách $\approx 2\%$ trong khi median-3 $<150$ ALM đã đập spike đơn. (2)~\textbf{Phân tầng hệ thống:} đo thời gian thực trên FPGA chỉ cần cổng voicing + median; đường cong ``Praat đầy đủ'' có thể tính soft-float trên HPS từ chuỗi ứng viên thô, không chặn luồng $16\,\text{kHz}$. Thêm nữa, tắt Viterbi buộc lab giữ $K{=}1$, đơn giản hóa argmax Chương~9.
