@@ -1,0 +1,109 @@
+\clearpage
+\phantomsection
+\section*{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}
+\addcontentsline{toc}{section}{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}
+\pdfbookmark[1]{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}{chuong11}
+
+\begin{learningobj}
+Sau chương này bạn giải thích được handshake Avalon-ST; vì sao source phải giữ data khi ready$=0$; đếm beat đúng khi có gap; nối FSM pitch (idle$\to$fill$\to$window$\to$mac$\to$peak$\to$pack); và đọc hộp chi phí adapter.
+\end{learningobj}
+
+\begin{firstprin}{Vì sao cần \texttt{valid}/\texttt{ready}? --- ống nước có van hai đầu}
+\textbf{Avalon-ST} (Streaming) là quy ước Intel: mỗi nhịp đồng hồ, bên gửi (\emph{source}) khẳng định ``có data'' bằng \texttt{valid}; bên nhận (\emph{sink}) khẳng định ``tôi nhận được'' bằng \texttt{ready}. Một \textbf{beat} (một mẫu/từ thực sự chuyển) chỉ xảy ra khi \emph{cả hai} $=1$ trong cùng chu kỳ. Đây không phải hiện tượng âm thanh --- đây là hợp đồng silicon để hai khối khác tốc độ không làm mất hay nhân đôi mẫu. Mất một mẫu trong khung 640 $=$ lệch cửa sổ $=$ sai $\mathcal{R}_x$ $=$ sai $F_0$ im lặng.
+\end{firstprin}
+
+\subsection*{Quy ước từng tín hiệu}
+
+\begin{itemize}[leftmargin=1.4em]
+\item \texttt{valid}: source có data ổn định trên bus \emph{trong chu kỳ này}.
+\item \texttt{ready}: sink sẽ chốt data nếu \texttt{valid}$=1$.
+\item Beat: $\texttt{valid}\land\texttt{ready}$. Đếm beat trong TB phải khớp số mẫu gửi.
+\item \textbf{Backpressure:} sink kéo \texttt{ready}$=0$ $\Rightarrow$ source \emph{giữ nguyên} data và \texttt{valid} (không nhảy mẫu tiếp).
+\item \texttt{readyLatency}$=0$ (phổ biến): \texttt{ready} cùng chu kỳ với quyết định nhận. \texttt{readyLatency}$=1$: sink báo trước 1 ck --- đọc UG Avalon~683091 trước khi nối IP.
+\end{itemize}
+
+\subsection*{Ví dụ tính tay --- 6 chu kỳ có gap (đã kiểm logic)}
+
+Nguồn muốn gửi 4 mẫu $\{A,B,C,D\}$. Giữa $B$ và $C$, sink kéo \texttt{ready}$=0$ đúng 2 ck; sau đó source tự kéo \texttt{valid}$=0$ đúng 1 ck (gap chủ động):
+
+\begin{center}\small
+\begin{tabular}{@{}cllll@{}}\toprule
+ck & valid & ready & data & beat? \\
+\midrule
+1 & 1 & 1 & $A$ & có \\
+2 & 1 & 1 & $B$ & có \\
+3 & 1 & 0 & $B$ & không (giữ $B$) \\
+4 & 1 & 0 & $B$ & không \\
+5 & 1 & 1 & $B$? chờ --- thực ra sau ready lại: $C$ nếu đã advance & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Làm đúng: sau ck2 đã chuyển $B$; ck3--4 source giữ $C$ (mẫu tiếp) với valid$=1$ ready$=0$; ck5 ready$=1$ $\Rightarrow$ beat $C$; rồi valid gap 1 ck; rồi beat $D$. Tổng beat $=4$. Đếm 3 hoặc 5 $\Rightarrow$ bug backpressure.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  state/.style={draw, rounded corners, align=center, font=\small\ttfamily, minimum width=18mm, minimum height=9mm},
+  arr/.style={->, thick, >=Stealth}]
+  \node[state] (idle) {IDLE};
+  \node[state, right=12mm of idle] (fill) {FILL\\[-1pt]{\scriptsize wr mem}};
+  \node[state, right=12mm of fill] (win) {WINDOW};
+  \node[state, right=12mm of win] (mac) {MAC $\tau$};
+  \node[state, below=10mm of mac] (peak) {PEAK/DIV};
+  \node[state, left=12mm of peak] (pack) {PACK};
+  \node[state, left=12mm of pack] (out) {OUT};
+  \draw[arr] (idle)--(fill); \draw[arr] (fill)--(win); \draw[arr] (win)--(mac);
+  \draw[arr] (mac)--(peak); \draw[arr] (peak)--(pack); \draw[arr] (pack)--(out);
+  \draw[arr] (out) |- (idle);
+\end{tikzpicture}
+\caption{FSM pitch rút gọn: FILL đủ $L$ mẫu $\to$ WINDOW $\to$ MAC mọi $\tau$ $\to$ PEAK/DIV $\to$ PACK Q12.4 $\to$ OUT (Avalon-ST). Mỗi mũi tên tôn trọng valid/ready với khối sau.}
+\end{figure}
+
+\subsection*{RTL --- giữ data khi backpressure}
+
+\begin{verbatim}
+// Source side: do NOT advance rd_ptr unless (valid && ready)
+always @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin out_valid <= 0; out_data <= 0; end
+  else if (!out_valid || out_ready) begin
+    // can load new beat
+    if (have_sample) begin
+      out_data  <= next_sample;
+      out_valid <= 1'b1;
+    end else out_valid <= 1'b0;
+  end
+  // else: hold out_data and out_valid (== backpressure)
+end
+\end{verbatim}
+
+\subsection*{Twin đếm beat}
+
+\begin{verbatim}
+beats = 0
+for cycle in sim_trace:
+    if cycle["valid"] and cycle["ready"]:
+        beats += 1
+assert beats == n_samples_sent
+\end{verbatim}
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item Adapter valid/ready: $\sim0$--20 ALM; 0 DSP; 0 M10K.
+\item FSM tích hợp: vài trăm ALM tùy số trạng thái và datapath mux.
+\item Vì sao giữ data khi $\mathrm{ready}=0$: mất mẫu $=$ lệch khung $=$ sai $F_0$ không có warning synth.
+\item readyLatency: phải khớp IP FIR/FFT nếu nối --- lệch 1 $=$ mất beat đầu/cuối burst.
+\end{itemize}
+\end{costbox}
+
+\subsection*{Thực hành}
+
+\begin{enumerate}[leftmargin=1.4em]
+\item Vẽ waveform 8 ck: gửi 3 mẫu, ready$=0$ trong 3 ck giữa mẫu 1 và 2; đếm beat.
+\item Sửa bug cố ý: advance ptr khi valid dù ready$=0$ --- TB đếm beat kỳ vọng fail thế nào?
+\item Nối MAC$\to$peak: peak chậm hơn MAC; chứng minh source MAC giữ $\mathcal{R}_x[\tau]$ đúng.
+\end{enumerate}
+
+\noindent\textbf{Mở rộng.} Avalon-ST: nguồn chỉ đổi data khi \texttt{valid}\&\texttt{ready}; đích phải giữ data đã chấp nhận. Backpressure = \texttt{ready}=0 vài chu kỳ --- RTL không được mất mẫu. Twin đếm beat: số mẫu vào = số mẫu qua mỗi stage (trừ chỗ cố ý decimate). FSM pitch: IDLE$\to$FILL$\to$WINDOW$\to$MAC$\to$PEAK$\to$OUT.
+

@@ -1,0 +1,78 @@
+\clearpage
+\phantomsection
+\section*{Chương 13. Xác minh ba tầng (float $\to$ fixed $\to$ RTL)}
+\addcontentsline{toc}{section}{Chương 13. Xác minh ba tầng (float → fixed → RTL)}
+\pdfbookmark[1]{Chương 13. Xác minh ba tầng (float → fixed → RTL)}{chuong13}
+
+\begin{learningobj}
+Sau chương này bạn vận hành ba tầng xác minh; viết TB Avalon-ST có valid-gap; so cent với Praat; điền bảng tài nguyên từ Fitter (không bịa); và giải thích từng mục ngân sách xác minh.
+\end{learningobj}
+
+\begin{firstprin}{Ba tầng bắt ba lớp lỗi khác nhau}
+Silicon không chạy Python. Mỗi tầng khoanh một lớp:
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{Float} (Praat/NumPy): sai công thức / thứ tự bước.
+\item \textbf{Fixed} (twin integer): sai Q-format, round/sat, thứ tự shift.
+\item \textbf{RTL} (sim/Signal Tap): sai handshake, latency, reset, X-prop.
+\end{itemize}
+Ba vector bắt buộc: \texttt{zero}, \texttt{DC}, \texttt{clip}. Thêm \texttt{valid}-gap: source hạ \texttt{valid} khi sink vẫn \texttt{ready} --- bắt bug giữ data (Ch.~11). Nhảy thẳng RTL khi float sai = lãng phí ngày debug FSM.
+\end{firstprin}
+
+\subsection*{Toán --- ngân sách sai số cent}
+
+Sai số cao độ đo bằng cent: $\Delta=1200\log_2(F_{\mathrm{hw}}/F_{\mathrm{ref}})$. Mỗi stage (DC, FIR lượng tử, window Q1.15, MAC cắt bit, $C[\tau]$ Q3.13, parabolic, LPM\_DIVIDE) góp vài cent. Ngân sách lab tổng: thường $<20$--$30$ cent trên sine/giọng sạch so Praat cùng tham số. Vượt ngân sách $\Rightarrow$ lần ngược từ peak về FIR, không đoán.
+
+\subsection*{Ví dụ tính tay --- đếm beat khi gap}
+
+Giả sử stage nhận 10 beat \\texttt{valid}, xen kẽ \\texttt{ready}=0 trong 3 chu kỳ. Số mẫu phải ra vẫn là 10 --- không ``bù'' mẫu giả, không bỏ mẫu. Đếm beat vào $=$ đếm beat ra (trừ chỗ decimate cố ý). Twin TB: ép gap ngẫu nhiên; assert đếm.
+
+\subsection*{TB + twin (ý tưởng)}
+
+TB đọc \texttt{golden\_pcm.hex} / \texttt{golden\_f0.hex}; LFSR tạo valid-gap; scoreboard so Q12.4. Twin Python:
+\begin{verbatim}
+delta_cent = 1200 * np.log2(f_hw / f_praat)
+assert np.nanmax(np.abs(delta_cent[voiced])) < 20.0
+\end{verbatim}
+Trích UG đúng số: Avalon~683091, FIR~683208, FFT~683374, LPM\_DIVIDE handbook. Fmax/ALM lấy Fitter report.
+
+\begin{costbox}
+\textbf{Ngân sách xác minh --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item Sim time: giây--phút cho 1\,s audio @50\,MHz TB.
+\item Disk: golden hex vài MB --- commit cùng revision RTL.
+\item Người: không skip tầng float; mỗi fail gắn đúng tầng.
+\item Vì sao ba tầng: khoanh vùng; một TB ``tất cả'' không chỉ ra \emph{loại} lỗi.
+\end{itemize}
+\end{costbox}
+
+\subsection*{Bảng tài nguyên (điền từ Fitter)}
+
+\begin{center}\small
+\begin{tabular}{@{}lcccc@{}}\toprule
+Khối & ALM & DSP & M10K & Latency \\
+\midrule
+PLL+I2S &  &  &  & \\
+DC-blocker &  &  &  & \\
+FIR $2/3$ &  &  &  & \\
+Sliding RAM &  &  &  & \\
+Window &  &  &  & \\
+MAC ACF &  &  &  & \\
+ROM $C[\tau]$ &  &  &  & \\
+Peak+DIV &  &  &  & \\
+Voicing+med &  &  &  & \\
+\midrule
+\textbf{Tổng} &  &  &  & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Thực hành}
+
+\begin{enumerate}[leftmargin=1.4em]
+\item Chạy zero/DC/clip trên DC-blocker twin --- kỳ vọng?
+\item Cố ý đảo endian Q12.4: cent fail thế nào?
+\item Điền một dòng Fitter thật vào bảng trên (không để trống khi nộp).
+\end{enumerate}
+
+\noindent\textbf{Mở rộng.} Ngân sách sai số: mỗi stage (DC, FIR, window, MAC, $C$, parabolic, divide) góp vài cent; tổng mục tiêu $<20$--$30$ cent vs Praat trên giọng sạch. TB: kích DC, impulse, sine $F_0$ biết trước, wav thật. Khi gap \texttt{valid}, đếm beat không được ``bù'' giả. Điền bảng Fitter: ALM, DSP, M10K, Fmax --- đối chiếu costbox từng chương.
+

@@ -1,0 +1,81 @@
+\clearpage
+\phantomsection
+\section*{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}
+\addcontentsline{toc}{section}{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}
+\pdfbookmark[1]{Chương 10. Silence / voicing / median-3 (Viterbi trên HPS)}{chuong10}
+
+\begin{learningobj}
+Sau chương này bạn thiết kế cổng voicing/silence từ $r_a$ và năng lượng; triển khai median-3 (trễ 1 khung); giải thích vì sao Viterbi mặc định tắt trên fabric; tính tay ví dụ số; và đọc hộp chi phí.
+\end{learningobj}
+
+\begin{firstprin}{Vật lý: dây thanh không rung liên tục --- khi nào báo $F_0=0$?}
+Hơi thở, khoảng lặng, phụ âm vô thanh cho $r_a$ thấp. Nếu vẫn báo $F_0$, đường pitch ``rung'' vô nghĩa. Praat gắn cờ voiced/unvoiced rồi (tuỳ chọn) chạy Viterbi/\texttt{pathFinder} theo chi phí octave và V$\leftrightarrow$UV. Trên Cyclone~V: \textbf{voicing gate + median-3 trên fabric} (rẻ, trễ đúng 1 hop); \textbf{Viterbi tắt trên fabric}, soft-float trên HPS khi cần đường cong ``Praat đầy đủ''.
+\end{firstprin}
+
+\subsection*{Toán --- voicing, silence, median-3, Viterbi}
+
+\textbf{Voicing.} Sau chuẩn hóa $r_a[\tau^*]\in[0,1]$:
+\[
+\mathrm{voiced}=\bigl(r_a[\tau^*]\ge V\bigr)\;\land\;
+\bigl(P_{\mathrm{local}}\ge S\cdot P_{\mathrm{global}}\bigr),
+\]
+với $V\approx0{,}45$ (voicingThreshold), $S$ = silenceThreshold (vd $0{,}03$). $P_{\mathrm{local}}=\max|x|$ trên khung; $P_{\mathrm{global}}$ = max chậm (IIR/max-hold) vì streaming không nhìn cả câu.
+
+\textbf{Ứng viên Unvoiced strength} (Praat-like):
+\[
+s_{\mathrm{UV}}=V+\max\Bigl(0,\ 2-\frac{P_{\mathrm{local}}/P_{\mathrm{global}}}{S/(1+V)}\Bigr).
+\]
+Nếu $s_{\mathrm{UV}}$ thắng mọi đỉnh $\Rightarrow F_0=0$.
+
+\textbf{Median-3.} Với ba giá trị liên tiếp $a,b,c$:
+\[
+\mathrm{med}=\max\bigl(\min(a,b),\ \min\bigl(\max(a,b),c\bigr)\bigr).
+\]
+RTL chốt median vào thanh ghi và xuất ở khung \emph{sau} --- trễ nhóm đúng 1 hop ($\approx10$\,ms).
+
+\textbf{Viterbi (HPS).} $V(t,j)=\delta(t,j)+\max_i[V(t-1,i)-c_{ij}]$; $c_{ij}$ gồm jumpCost$\cdot|\log_2(f_j/f_i)|$ và vuvCost. Không hiện thực DP này trên fabric mặc định.
+
+\subsection*{Ví dụ tính tay (đã kiểm Python)}
+
+\paragraph{Median-3.} Chuỗi $200,\ 210,\ 80,\ 205,\ 208$:
+cửa $(200,210,80)\to200$ (đập spike 80); $(210,80,205)\to205$; $(80,205,208)\to205$.
+
+\paragraph{Voicing Q1.14.} $V=\mathrm{floor}(0{,}45\cdot2^{14})=7372$. Khung sine $r_a=12000$, $P_{\mathrm{loc}}=3277$, $P_{\mathrm{glob}}=30000$: voiced. Khung nhỏ $P_{\mathrm{loc}}=200$: silence chặn dù $r_a$ tạm ổn.
+
+\paragraph{$s_{\mathrm{UV}}$.} $P_{\mathrm{local}}=0{,}02$, $P_{\mathrm{global}}=1$, $S=0{,}03$, $V=0{,}45$:
+\[
+s_{\mathrm{UV}}=0{,}45+\max\bigl(0,\ 2-\tfrac{0{,}02}{0{,}03/1{,}45}\bigr)\approx1{,}483.
+\]
+
+\paragraph{Viterbi $2\times2$.} $\delta=\begin{bmatrix}0{,}50&0{,}40\\0{,}45&0{,}48\end{bmatrix}$; cost V--V$=0{,}05$, V--UV$=0{,}14$. Cum $t2$ V: $\max(0{,}50-0{,}05,\ 0{,}40-0{,}14)+0{,}45=0{,}90$ $\Rightarrow$ đường V$\to$V.
+
+\subsection*{RTL median-3 (ý tưởng)}
+
+\begin{verbatim}
+// Khi in_valid: tinh med = median(f1,f2,f3); chốt m_reg <= med;
+// f_out <= m_reg chi khi in_valid ke (tre 1 khung)
+\end{verbatim}
+
+Không IP cho voicing/median --- thuần ALM. Viterbi: tiến trình HPS, shared memory / Avalon-MM.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item Voicing gate: vài so sánh --- $<50$ ALM, 0 DSP, 0 M10K.
+\item Median-3: $<100$ ALM, trễ 1 hop, 0 DSP.
+\item Max-hold $P_{\mathrm{global}}$: vài ALM.
+\item Viterbi fabric: 0 (tắt). HPS soft nếu cần.
+\item Vì sao median thay Viterbi: đập spike đơn đủ lab; DP $O(TK^2)$ cần đa ứng viên và BRAM path metric.
+\end{itemize}
+\end{costbox}
+
+\subsection*{Thực hành}
+
+\begin{enumerate}[leftmargin=1.4em]
+\item Chuỗi $100,400,110$: median-3 cửa đầu ra gì? (100 --- đập 400 octave jump giả).
+\item $s_{\mathrm{UV}}$ với $P_{\mathrm{local}}=P_{\mathrm{global}}$: chứng minh silence không kích.
+\item Liệt kê 2 lý do không port pathFinder lên fabric ở lab này.
+\end{enumerate}
+
+\noindent\textbf{Mở rộng.} Ngưỡng voicing $r_a[\tau^*]\ge \theta$ (vd $\theta=0{,}45$ lab) quyết định voiced/unvoiced. Median-3 trên ba khung liên tiếp chống ``bật/tắt'' giả. Octave cost và VUV cost (Ch.~1) chỉ vào Viterbi pathFinder --- không sửa $r_a$ thô. Twin: dump cờ voiced + $F_0$ từng khung so Praat trên cùng wav.
+

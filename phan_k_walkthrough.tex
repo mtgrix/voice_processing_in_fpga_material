@@ -1,0 +1,134 @@
+\section*{Phần K. Walkthrough thuật toán Praat trên một câu sóng giả}
+\begin{firstprin}{Một utterance $\to$ mọi bước}
+Phần K đi từ mẫu thô đến $F_0$ từng khung, với số thật (thu nhỏ $f_s=2000$~Hz, $L=64$, hop$=20$ để bảng gọn). Nguyên lý giống $f_s=16$~kHz / $L=640$ / hop$=160$.
+\end{firstprin}
+\subsection*{K.1. Thông số thu nhỏ}
+$f_s=2000$, $L=64$, hop$=20$, $F_{\min}=75$, ceiling$=400$. Số khung $\approx22$.
+\subsection*{K.2. Soft upsample?}
+Trên utterance ngắn streaming: \textbf{bỏ}. Đã thêm DC $0{,}2$ để bước mean có việc.
+\subsection*{K.3--K.6. Bảng từng khung: mean, $E$, $\tau^*$, $r_a$, $F_0$}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrrr@{}}
+\toprule
+frame & $t$ (s) & mean & $E=\mathcal{R}[0]$ & $\tau^*$ & $r_a$ & $F_0$ \\
+\midrule
+0 & 0.000 & 0.2024 & 2.0211 & 13 & 0.952 & 153.8 \\
+1 & 0.010 & 0.1875 & 1.9323 & 26 & 0.984 & 76.9 \\
+2 & 0.020 & 0.2008 & 1.9983 & 13 & 0.955 & 153.8 \\
+3 & 0.030 & 0.1900 & 1.7856 & 26 & 0.976 & 76.9 \\
+4 & 0.040 & 0.2014 & 1.9176 & 13 & 0.938 & 153.8 \\
+5 & 0.050 & 0.1876 & 1.9509 & 13 & 0.961 & 153.8 \\
+6 & 0.060 & 0.2026 & 1.9776 & 13 & 0.956 & 153.8 \\
+7 & 0.070 & 0.1942 & 1.9313 & 13 & 0.963 & 153.8 \\
+8 & 0.080 & 0.2058 & 2.0014 & 13 & 0.952 & 153.8 \\
+9 & 0.090 & 0.1849 & 1.9519 & 13 & 0.966 & 153.8 \\
+10 & 0.100 & 0.1966 & 1.9901 & 13 & 0.902 & 153.8 \\
+11 & 0.110 & 0.1618 & 1.9808 & 11 & 0.931 & 181.8 \\
+12 & 0.120 & 0.1996 & 1.9890 & 22 & 0.953 & 90.9 \\
+13 & 0.130 & 0.2082 & 1.9961 & 22 & 1.005 & 90.9 \\
+14 & 0.140 & 0.1974 & 2.2071 & 11 & 0.976 & 181.8 \\
+15 & 0.150 & 0.1817 & 2.0835 & 22 & 0.975 & 90.9 \\
+16 & 0.160 & 0.1896 & 2.0082 & 11 & 0.972 & 181.8 \\
+17 & 0.170 & 0.2089 & 1.8936 & 22 & 0.984 & 90.9 \\
+18 & 0.180 & 0.2176 & 1.9351 & 11 & 0.976 & 181.8 \\
+19 & 0.190 & 0.2048 & 2.0130 & 22 & 0.963 & 90.9 \\
+20 & 0.200 & 0.1956 & 2.0985 & 11 & 0.968 & 181.8 \\
+21 & 0.210 & 0.2003 & 1.8446 & 22 & 1.022 & 90.9 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Cột mean $\approx0{,}2$ (seg thô). $F_0$ quanh 150 rồi 180 --- khớp synthetic.
+\subsection*{K.7. Octave cost trên khung có bẫy}
+Giả sử hai đỉnh: $\tau=11$ ($f\approx181$) $r_a=0{,}55$ và $\tau=22$ ($f\approx91$) $r_a=0{,}56$.
+\begin{align*}
+s_{181}&=0{,}55-0{,}01\log_2(400/181)\approx0{,}5386,\\
+s_{91}&=0{,}56-0{,}01\log_2(400/91)\approx0{,}5386.
+\end{align*}
+Hòa; jump cost giữa khung phá hòa theo lịch sử.
+\subsection*{K.8. Viterbi trên 8 khung đầu}
+\begin{center}\scriptsize\begin{tabular}{@{}rrrr@{}}
+\toprule frame & local $F_0$ & cum V & choose \\ \midrule
+0 & 153.8 & 0.938 & V \\
+1 & 76.9 & 1.898 & V \\
+2 & 153.8 & 2.840 & V \\
+3 & 76.9 & 3.793 & V \\
+4 & 153.8 & 4.717 & V \\
+5 & 153.8 & 5.664 & V \\
+6 & 153.8 & 6.605 & V \\
+7 & 153.8 & 7.555 & V \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{K.9. Ánh xạ sang FPGA default}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item K.3 mean $\to$ dc\_block + mean\_sub
+\item K.4 window $\to$ ROM
+\item K.5 MAC $\to$ ac\_mac
+\item K.6 $C$ + argmax $\to$ ROM + peak
+\item K.7--K.8 $\to$ tắt fabric / HPS
+\end{itemize}
+\subsection*{K.10. Sai số vs Praat đầy đủ}
+Không soft-upsample, không sinc, không Viterbi: RMSE $F_0$ vài Hz trên synthetic sạch --- chấp nhận cho Pearson. Đo bằng twin.
+\newpage\section*{Phần L. Nội thất Intel IP --- datapath}
+\subsection*{L.1. FIR Compiler II --- một tap folded}
+Sample vào delay M10K; pre-adder $x[n-k]+x[n-N+1+k]$; DSP $\times h[k]$; accum; round 16. Latency order-64 symmetric $\sim$40 clk (xem report).
+\subsection*{L.2. FFT IP --- radix-2 burst}
+Một butterfly tái sử dụng; stage $0..\log_2 N-1$; BFP OR-reduce MSB. $N=16$: 32 butterfly $\Rightarrow$ 32 clk nếu 1/clk.
+\subsection*{L.3. PLL}
+Pitch cố định 16~kHz: không cần reconfig. Đổi 48$\leftrightarrow$16: đổi $C$ hoặc dual PLL.
+\subsection*{L.4. LPM\_DIVIDE}
+Ports: numer, denom, quotient, remain, clock, clken. Pipeline $L$; TB random denom$\\neq0$.
+\subsection*{L.5. M10K RDW}
+Old Data bắt buộc. Sim ``New Data\'\' làm TB giả pass.
+\newpage\section*{Phần M. Phác RTL --- FSM}
+\subsection*{M.1. ac\_mac FSM}
+\texttt{IDLE$\to$LOAD\_FRAME$\to$TAU\_LOOP$\to$NORM$\to$PEAK$\to$DONE}. Trong TAU\_LOOP: acc += x[n]*x[n+tau].
+\subsection*{M.2. peak\_parabolic}
+Quét $r_a$; giữ top1; $\Delta$ fixed-point.
+\subsection*{M.3. i2s\_rx}
+2FF sync WS; shift 16; FIFO sang clk\_sys.
+\subsection*{M.4. Twin shadow FSM}
+Python cùng thứ tự acc; diff in $\tau,n$ lệch.
+\newpage\section*{Phần N. Vật lý bổ sung}
+\subsection*{N.1. Source-filter}
+Dây thanh = xung glottal $T_0$; thanh đạo = formant; $s=g*v$. Autocorr còn đỉnh $T_0$ nếu SNR đủ.
+\subsection*{N.2. Jitter / shimmer}
+Làm $\mathcal{R}$ thấp/lệch. Parabolic chịu vừa; Viterbi nối khung.
+\subsection*{N.3. Nhiễu}
+Trắng: sàn $\mathcal{R}$. Quạt tuần hoàn: đỉnh giả. Cần SNR + periodicity.
+\subsection*{N.4. Aliasing formant}
+Formant $>f_s/2$ gập. Soft upsample giảm; streaming tăng $f_s$ rồi decimate.
+\subsection*{N.5. Silence}
+Năng lượng + periodicity: Praat silence + voicing.
+\newpage\section*{Phần O. Chú giải từng dải $\tau$ (32--213) --- chọn lọc}
+Không in 182 trang; nhóm theo band vật lý:
+\begin{center}\small\begin{tabular}{@{}llp{6cm}@{}}
+\toprule Band $\tau$ & $F_0$ @16k & Ý nghĩa \\ \midrule
+32--40 & 400--500 Hz & Giọng nữ cao / ceiling gần \\
+40--53 & 300--400 Hz & Nữ cao \\
+53--80 & 200--300 Hz & Nữ / trẻ \\
+80--107 & 150--200 Hz & Trung \\
+107--160 & 100--150 Hz & Nam \\
+160--213 & 75--100 Hz & Nam trầm / floor \\
+\bottomrule\end{tabular}\end{center}
+Mỗi band: ROM $C[\tau]$ phải smooth (kiểm diff $C[\\tau]-C[\\tau-1]$). Đột biến $\Rightarrow$ gen hex lỗi.
+\newpage\section*{Phần P. DFT/FFT thêm đồ chơi}
+\subsection*{P.1. DFT 4 điểm đủ số}
+$x=[1,2,3,4]$. Đã có $X$ ở F.2. Power $|X|^2=[100,8,4,8]$. IFFT/4 $\Rightarrow$ circular $\mathcal{R}=[10,4,2?,...]$ --- tính:
+\begin{center}\small\begin{tabular}{@{}rr@{}}\toprule $\tau$ & $\mathcal{R}_{circ}$ \\ \midrule
+0 & 30.0000 \\
+1 & 24.0000 \\
+2 & 22.0000 \\
+3 & 24.0000 \\
+\bottomrule\end{tabular}\end{center}
+So linear $\mathcal{R}[0]=30$, circular khác vì không pad --- đúng bài học zero-pad Praat.
+\subsection*{P.2. Zero-pad $N=4\\to8$}
+\begin{center}\small\begin{tabular}{@{}rr@{}}\toprule $\tau$ & $\mathcal{R}$ padded \\ \midrule
+0 & 30.0000 \\
+1 & 20.0000 \\
+2 & 11.0000 \\
+3 & 4.0000 \\
+4 & -0.0000 \\
+5 & 4.0000 \\
+6 & 11.0000 \\
+7 & 20.0000 \\
+\bottomrule\end{tabular}\end{center}
+Linear $\mathcal{R}[0]=\|[1. 2. 3. 4.]\|^2=30$; padded $\mathcal{R}[0]=30$ khớp.

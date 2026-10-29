@@ -1,0 +1,219 @@
+\clearpage
+\phantomsection
+\section*{Chương 2. PLL, MCLK và I\textsuperscript{2}S}
+\addcontentsline{toc}{section}{Chương 2. PLL, MCLK và I2S}
+\pdfbookmark[1]{Chương 2. PLL, MCLK và I2S}{chuong2}
+
+\subsection*{PLL \& đồng hồ audio --- từ thạch anh đến SCLK}
+
+\begin{firstprin}{Vật lý: thạch anh ổn định nhưng codec cần đúng MCLK}
+Thạch anh 50\,MHz trên DE10 dao động cơ-điện rất ổn định (vài ppm). Codec WM8731 cần clock master \textbf{MCLK} (thường $256\times f_s=12{,}288$\,MHz khi $f_s=48$\,kHz) và clock bit \textbf{SCLK}/BCLK ($64\times f_s$). Khối \textbf{PLL} (\emph{Phase-Locked Loop}, vòng khóa pha) khóa một dao động trong silicon vào thạch anh ngoài rồi chia ra đúng MCLK/SCLK. Đây là hiện tượng điện tử thật (PFD so pha, lọc vòng, VCO). Không khóa pha $\Rightarrow$ thời điểm lấy mẫu trôi $\Rightarrow$ ``cao độ'' giả dù thuật toán $F_0$ đúng.
+\end{firstprin}
+
+\noindent\textbf{Toán.} Integer PLL: $f_{\mathrm{vco}}=f_{\mathrm{in}}\cdot M/N$, $f_{\mathrm{out}}=f_{\mathrm{vco}}/C$. Muốn $12{,}288$\,MHz từ $50$:
+\[
+\frac{M}{N\cdot C}=\frac{12{,}288}{50}=0{,}24576.
+\]
+Thực tế dùng MegaWizard Fractional: đặt output $12{,}288$\,MHz, đọc $M,N,C$ từ báo cáo. Sai số audio mục tiêu $<5$\,ppm; $50$\,ppm trong 1 phút @16\,kHz $\approx48$ mẫu trôi --- biên không chấp nhận cho lab dài.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,node distance=0.55cm]
+  \node[draw] (xin) {$f_{\mathrm{in}}$};
+  \node[draw,right=of xin] (pd) {PFD};
+  \node[draw,right=of pd] (lf) {LF};
+  \node[draw,right=of lf] (vco) {VCO};
+  \node[draw,right=of vco] (c) {$/C$};
+  \node[draw,below=0.9cm of vco] (m) {$/M$};
+  \node[draw,right=of c] (out) {$f_{\mathrm{out}}$};
+  \draw[->] (xin)--(pd)--(lf)--(vco)--(c)--(out);
+  \draw[->] (vco)|-(m);
+  \draw[->] (m)-|(pd);
+\end{tikzpicture}
+\caption{PLL: PFD so pha ref vs feedback $/M$; VCO chỉnh tới khóa; chia $C$ ra clock dùng.}
+\end{figure}
+
+\noindent\textbf{IP / RTL / twin.} Cyclone~V: ALTPLL / PLL IP (Integer-N hoặc Fractional). Chờ \texttt{locked} trước I\textsuperscript{2}S FSM. RTL chỉ chia sau MCLK --- không thay VCO bằng counter. Twin: $t_n=n/f_s\cdot(1+\varepsilon_{\mathrm{ppm}}\cdot10^{-6})$; quan sát bias $F_0$ khi $\varepsilon\neq0$.
+
+\begin{costbox}
+\textbf{Ngân sách.} PLL = 1 hard block (0 ALM logic lớn). Logic quanh lock-detect: ít ALM. 0 DSP, 0 M10K. Vì sao IP bắt buộc: jitter/accuracy counter thuần không đạt audio.
+\end{costbox}
+
+\subsection*{I2S RX --- bit timing và đóng gói mẫu}
+
+\begin{firstprin}{Âm thanh trên dây là dòng bit, không phải mảng float}
+Mỗi cạnh \textbf{SCLK} mang 1 bit; \textbf{WS}/LRCK chọn tai trái/phải. Chuẩn Philips I\textsuperscript{2}S: MSB first, data trễ 1 chu kỳ SCLK sau cạnh WS. Đây là quy ước điện --- không phải vật lý dây thanh --- nhưng sai một bit $\Rightarrow$ mẫu Q1.15 hỏng trước DC-blocker.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} Frame stereo 32-bit/slot, lấy 16 MSB làm Q1.15. Bốn cạnh SCLK nhận $1,0,1,1$ $\Rightarrow$ nibble $0\mathrm{b}1011=11$. @48\,kHz, 32 bit/frame: $SCLK=1{,}536$\,MHz.
+
+\noindent\textbf{IP / RTL / twin.} Không bắt buộc ``I2S IP'': RTL FSM + PLL clocks (University Audio IP là black-box tuỳ chọn). \texttt{i2s\_rx}: 2FF đồng bộ WS$\to$SCLK domain, shift 32, \texttt{valid} mỗi mẫu Left (mono pitch). Twin: \texttt{.wav} int16 LE = bit-exact đầu ra sau bỏ pad.
+
+\begin{costbox}
+\textbf{Ngân sách.} RX: vài chục ALM, 0 DSP, 0 M10K. Vì sao mono Left: đủ cho ước lượng $F_0$ lab; stereo gấp đôi bandwidth không cần.
+\end{costbox}
+
+\subsection*{PLL --- chỉ IP}
+
+
+
+
+\begin{firstprin}{Vì sao không tự viết PLL bằng RTL?}
+PLL khóa pha analog/digital trong silicon; tự ghép cổng không cho jitter đạt mức audio. Trên Quartus Standard/Lite với Cyclone~V: dùng \textbf{ALTPLL} (hoặc PLL IP trong IP Catalog). Mục tiêu dạy: tạo $50\text{ MHz}$ hệ thống từ clock board, và (nếu cần) clock bit I\textsuperscript{2}S.
+\end{firstprin}
+
+\begin{costbox}
+PLL: 1 hard block. Twin: chỉ kiểm tra \texttt{locked}. Không có mô hình bit-exact số học.
+\end{costbox}
+\subsection*{Audio vào --- cả hai lộ trình (default dạy: I\textsuperscript{2}S)}
+
+\begin{firstprin}{Âm thanh là gì trên dây?}
+Mic/codec WM8731 trên DE10 xuất chuỗi bit theo chuẩn I\textsuperscript{2}S: từng mẫu 16--32 bit, xen kẽ trái/phải, đồng bộ bằng LRCK và BCLK. Ta chỉ cần: (1)~đếm bit, (2)~chốt khi đủ word, (3)~đẩy vào FIFO. Không cần ``AI''.
+\end{firstprin}
+
+\paragraph{Lộ trình IP --- University Program Audio Core.}
+IP Avalon của University Program bọc codec: cấu hình I\textsuperscript{2}C, FIFO L/R, đọc qua Avalon-MM. \textbf{Bên trong (mức dạy):} FIFO bắt nhịp từ domain I\textsuperscript{2}S sang clock hệ thống; đóng gói mẫu signed thành word; host/HPS đọc thanh ghi. Khi nào chọn: muốn gắn nhanh Platform Designer / lab Terasic sẵn có. Chi phí: phụ thuộc bản IP + cần cài University Program.
+
+\paragraph{Lộ trình RTL (default dạy) --- I\textsuperscript{2}S RX + FIFO.}
+Vài chục dòng Verilog: FSM Idle$\to$Collect$\to$Push. Mã mở, không phụ thuộc gói University Program.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.7cm, y=0.5cm]
+  \draw[->] (0,3) -- (14,3) node[right] {BCLK};
+  \draw[thick] (0,2) -- (2,2) -- (2,1) -- (8,1) -- (8,2) -- (14,2);
+  \node[left] at (0,1.5) {LRCK};
+  \node at (5,0.3) {khung Left (16 bit)};
+  \node at (11,0.3) {khung Right};
+  \foreach \x in {2,3,...,7} {\draw[blue!60] (\x,2.2) -- (\x,2.8);}
+  \node[blue!70!black] at (5,3.5) {bit 15$\ldots$0 chốt trên cạnh BCLK};
+\end{tikzpicture}
+\caption{I\textsuperscript{2}S đơn giản hóa: LRCK chọn tai, BCLK dịch bit. RTL chỉ cần dịch vào thanh ghi và đẩy FIFO --- map sang Q1.15.}
+\label{fig:i2s_timing}
+\end{figure}
+
+\begin{costbox}
+I\textsuperscript{2}S RX RTL: $\sim$100--300 LE + 1 M10K FIFO nông. Audio Core IP: nhanh hơn về tích hợp, nhưng che mất đường mẫu --- khó debug bit-exact với golden.
+\end{costbox}
+\subsection*{I2S bit timing --- vật lý dòng bit audio}
+
+
+
+
+\begin{firstprin}{Vật lý: đồng hồ bit, word select, data --- I\textsuperscript{2}S}
+\textbf{I\textsuperscript{2}S} (\emph{Inter-IC Sound}) là chuẩn nối tiếp đưa từng bit mẫu âm thanh giữa codec và FPGA. Ba dây chính: \textbf{SCLK}/BCLK chốt từng bit; \textbf{WS}/LRCLK chọn tai trái hay phải; SD mang data. Chuẩn Philips: data trễ đúng 1 cạnh SCLK sau khi WS đổi. Frame stereo 32~bit/slot $\times2$ = 64 SCLK là cấu hình phổ biến trên codec DE10. Đây là quy ước giao diện số, không phải sóng âm --- nhưng đếm sai bit hoặc trễ sai một cạnh sẽ đảo dấu/dịch mẫu và phá $F_0$.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay đếm.} $f_s=48\text{ kHz}$, 64 bit/frame $\Rightarrow$ SCLK $=48\text{k}\times64=3{,}072\text{ MHz}$. PLL từ 50~MHz crystal $\to$ 12{,}288~MHz MCLK ($256\times f_s$) rồi chia.
+\subsection*{PLL fractional/integer --- feedback math}
+
+
+
+
+\begin{firstprin}{Vật lý: VCO khóa pha với tham chiếu}
+$f_{\mathrm{out}}=f_{\mathrm{in}}\cdot\frac{M}{N\cdot C}$ (integer mode). Fractional: $M$ trung bình không nguyên nhờ SDM --- jitter phụ nhưng tần số mịn (cần cho MCLK audio đúng ppm).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $f_{\mathrm{in}}=50$\,MHz, muốn $12{,}288$\,MHz: $\frac{M}{N\cdot C}=\frac{12{,}288}{50}=0{,}24576$. MegaWizard Fractional tìm bộ $M,N,C$ hợp lệ trong dải VCO Cyclone~V; ghi đúng số từ báo cáo IP và kiểm tra ppm trên scope. Sai MCLK $\Rightarrow$ I2S trôi $\Rightarrow$ ``$F_0$ giả''.
+\subsection*{I2S --- đếm cạnh SCLK cho một frame 48~kHz}
+
+\begin{firstprin}{Một frame I\textsuperscript{2}S = một mẫu trái/phải}
+Ở 48\,kHz stereo 16-bit, \textbf{LRCK}/{WS} đảo mỗi mẫu; \textbf{SCLK} chạy 32--64 cạnh mỗi chu kỳ WS (tùy protocol). Đếm cạnh SCLK giữa hai cạnh WS xác nhận timing. Sai đếm $\Rightarrow$ lệch bit $\Rightarrow$ mẫu Q1.15 hỏng trước khi tới DC-blocker.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ.} 48\,kHz, 32 bit/frame (16 L + 16 R): $SCLK=48\mathrm{k}\times32=1{,}536$\,MHz. DE10 WM8731 thường dùng MCLK 12.288\,MHz với chia nội bộ --- khớp datasheet, không đoán.
+
+\begin{costbox}
+\textbf{Silicon.} RX shift-register: vài chục ALM. Sai MCLK (4.096 vs 12.288) = toàn bộ chuỗi sai --- checklist Ch.~14.
+\end{costbox}
+
+\subsection*{PLL --- chọn $M,N,C$ bằng tay (integer gần đúng)}
+
+\begin{firstprin}{$f_{\mathrm{out}}=f_{\mathrm{in}}\cdot M/(N\cdot C)$ --- khóa pha}
+PLL integer: VCO $=f_{\mathrm{in}}\cdot M/N$, rồi chia $C$ ra clock. Chọn $M,N,C$ sao cho MCLK $=12.288$\,MHz từ 50\,MHz thạch anh (hoặc gần đúng trong dải WM8731 chấp nhận). Fractional PLL mịn hơn nhưng phức tạp hơn --- lab dùng MegaWizard, ghi đúng $M,N,C$ vào báo cáo.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ gần đúng.} $50\cdot M/(N\cdot C)=12.288\Rightarrow M/(N C)=0{,}24576$. MegaWizard tìm bộ số hợp lệ trong VCO range Cyclone~V --- không tự bịa ngoài range.
+
+\begin{costbox}
+\textbf{Silicon.} PLL = hard block. ALM logic quanh lock-detect: ít. Phải chờ \texttt{locked} trước audio.
+\end{costbox}
+
+\subsection*{I2S clock cross}
+
+\begin{firstprin}{Hai miền clock khác nhau: không nối dây thô}
+Miền clock của SCLK (vài MHz, theo I\textsuperscript{2}S) khác miền clock hệ thống (thường 50\,MHz từ PLL). Nối thanh ghi thô giữa hai miền gây metastability. Cần \textbf{async FIFO}: ghi theo clock nguồn, đọc theo clock đích.
+\end{firstprin}
+
+Con trỏ ghi/đọc khi bắt chéo miền clock phải mã hóa \textbf{Gray} (mỗi bước chỉ đổi đúng 1 bit) để tránh đọc giá trị trung gian khi hai bit chuyển cùng lúc --- đây là quy ước số học bảo vệ metastability, không phải hiện tượng âm thanh. Trên Quartus: IP FIFO depth nhỏ (vd 8 từ) đủ jitter vài mẫu; bật gray coding / dual-clock; RTL kiểm \texttt{wrfull}/\texttt{rdempty}.
+
+\begin{costbox}
+\textbf{Ngân sách.} FIFO nhỏ: 1 MLAB hoặc vài ALM + M10K tùy depth. Vì sao bắt buộc: CDC SCLK$\to$sysclk không an toàn bằng 2FF đơn cho cả word data.
+\end{costbox}
+\subsection*{PLL từ PFD}
+
+\begin{firstprin}{PFD: so pha tham chiếu và feedback}
+\textbf{Phase-Frequency Detector} so sánh cạnh ref và feedback; bơm điện tích vào loop filter kéo VCO. Khi khóa, tần số (và pha trung bình) khớp. Đây là vật lý mạch PLL --- RTL không ``viết PFD''; dùng IP.
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Silicon.} 0 ALM cho PFD (hard). Soft-PLL bằng counter không thay hard PLL cho MCLK jitter thấp.
+\end{costbox}
+
+\subsection*{I2S đếm bit $16$~kHz}
+
+\begin{firstprin}{Sau hạ mẫu: đếm beat 16\,kHz trên clock hệ thống}
+Audio sau FIR là 16\,kHz --- chậm hơn clock 50\,MHz. FSM pitch đếm \texttt{valid} beat Avalon-ST, không giả định 1 mẫu/ck. Nhầm ``mỗi ck một mẫu'' $\Rightarrow$ MAC đọc rác.
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Silicon.} Bộ đếm beat: vài ALM. Hợp đồng: chỉ tiến khung khi đủ $H$ mẫu mới (hop).
+\end{costbox}
+
+\subsection*{Lấy mẫu và alias trên DE10}
+
+
+
+
+\subsubsection*{Vật lý: tín hiệu đồng hồ và sample rate}
+Codec SSM2603 (hoặc WM8731 trên một số bản DE10) dùng ADC delta-sigma rồi \textbf{decimation} nội bộ để ra chuỗi mẫu PCM. Dù vậy, nhiễu RF trên line-in vẫn có thể fold vào băng baseband nếu không lọc tương tự phía trước --- đó chính là \textbf{aliasing} vật lý trước khi bit nào xuất hiện trên I\textsuperscript{2}S.
+\subsubsection*{Toán: quan hệ MCLK/SCLK/$f_s$}
+Định lý Nyquist đòi hỏi $f_s>2B$ với $B$ bề rộng phổ hữu ích. Giọng nói lấy mẫu 16\,kHz đủ chứa $F_0$ và vài formant thấp; thành phần trên 8\,kHz sẽ bị gương qua Nyquist nếu không lọc. Quan hệ clock: thường $MCLK=256 f_s$, $SCLK=64 f_s$ (stereo 32-bit/slot). Ví dụ $f_s=48$\,kHz $\Rightarrow MCLK=12{,}288$\,MHz, $SCLK=3{,}072$\,MHz. Sau FIR hạ mẫu, beat pitch chạy ở 16\,kHz trên clock hệ thống 50\,MHz --- FSM đếm \texttt{valid}, không giả định 1 mẫu/ck.
+\subsubsection*{Ví dụ tính tay}
+Tone thật 9\,kHz lấy mẫu ở 16\,kHz trông giống tone 7\,kHz vì $|9-16|=7$. Công thức tổng quát: alias tại $|f-m f_s|$ với $m$ nguyên sao cho kết quả nằm trong $[0,f_s/2]$. Hệ quả pitch: một tone nhiễu 9\,kHz có thể giả thành đỉnh gần 7\,kHz --- không phải $F_0$ dây thanh --- nếu anti-alias trước ADC/FIR yếu.
+\subsubsection*{Phần cứng và twin}
+Giữ PLL MCLK đúng ppm; sinh SCLK/WS từ cùng PLL để không trôi tương đối; twin Python giả lập $t_n=n/f_s\cdot(1+\varepsilon_{\mathrm{ppm}}10^{-6})$ để thấy bias $F_0$ khi $\varepsilon\neq0$.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+
+\paragraph{Giao diện Avalon-ST.} Chuẩn streaming của Intel dùng hai tín hiệu bắt tay: nguồn nâng \texttt{valid} khi data có nghĩa; đích nâng \texttt{ready} khi còn chỗ nhận; chỉ khi \emph{cả hai} bằng 1 mới chuyển một beat. Quên giữ data khi \texttt{ready}=0 sẽ mất mẫu và làm hỏng chuỗi $F_0$. Lý thuyết và FSM đầy đủ xem Ch.~11.
+
+
+\subsection*{Chi phí silicon --- giải thích từng mục}
+\begin{costbox}
+\textbf{Ngân sách silicon --- PLL + I\textsuperscript{2}S.}
+\begin{itemize}[leftmargin=1.2em]
+\item PLL IP: hard block (không tốn ALM logic lớn); cần lock time trước khi lấy mẫu.
+\item I\textsuperscript{2}S RX: vài chục ALM (shift register + WS edge detect), 0 DSP, 0 M10K.
+\item Vì sao MCLK=12.288\,MHz: khớp WM8731 @48\,kHz; 4.096\,MHz là cấu hình khác --- không dùng trên gói DE10 này.
+\end{itemize}
+
+\noindent\textit{Tóm tắt số liệu:} Altera PLL: khối PLL cứng (0 ALM đáng kể). Soft I\textsuperscript{2}S RX: thường $<100$ ALM, 0 DSP, 0 M10K. Fmax bị giới hạn bởi CDC SCLK$\to$sysclk --- FIFO nhỏ. Giữ khối này rẻ để dành DSP/M10K cho FIR và AC.
+\end{costbox}
+
+\subsection*{Thực hành --- Phiếu bài tập (mỗi phiếu chỉ ở đây)}
+
+
+
+\subsubsection*{Phiếu PLL}
+
+$f_{in}=50$, $f_{out}=25{,}6$. Đề xuất $M,N,C$ integer với $f_{vco}\in[600,1600]$.
+\subsubsection*{Phiếu 1 --- I2S / PLL}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``I2S / PLL, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} SCLK trôi $\Rightarrow$ thời gian mẫu sai $\Rightarrow$ $F_0$ bias ppm.
+\item \textbf{Toán neo:} $f_{\mathrm{SCLK}}=f_s\cdot64$.
+\item \textbf{Silicon:} PLL+div, $\sim$0 DSP.
+\item \textbf{Pytest:} TB MCLK counter.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}

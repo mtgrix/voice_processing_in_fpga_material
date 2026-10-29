@@ -1,0 +1,113 @@
+\clearpage
+\phantomsection
+\section*{Chương 8. Chuẩn hóa $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (ROM nhân thay chia)}
+\addcontentsline{toc}{section}{Chương 8. Chuẩn hóa C[τ] (ROM nhân thay chia)}
+\pdfbookmark[1]{Chương 8. Chuẩn hóa C[τ] (ROM nhân thay chia)}{chuong8}
+
+\begin{learningobj}
+Sau chương này bạn giải thích được vì sao chia cho tự tương quan cửa sổ; derive $C[\tau]$ từ first principles; tính tay và kiểm Python một bảng nhỏ; cấu hình ROM M10K; viết twin sinh \texttt{.hex} bit-exact; và đọc được từng dòng hộp chi phí --- tại sao nhân thay chia runtime.
+\end{learningobj}
+
+\begin{firstprin}{Vật lý: đỉnh $\tau$ lớn bị đạp vì hai quả núi cửa sổ ít chồng}
+Sau khi nhân cửa sổ Hanning, hai ``quả núi'' $w[n]$ và $w[n+\tau]$ chồng nhau ít dần khi trễ $\tau$ tăng. Năng lượng chồng đó chính là tự tương quan của cửa sổ
+\[
+\mathcal{R}_w[\tau]=\sum_{n} w[n]w[n+\tau].
+\]
+Nếu lấy $\mathcal{R}_x[\tau]$ thô làm điểm số, đỉnh ở $\tau$ lớn (giọng trầm, $T_0$ dài) bị ``đạp'' chỉ vì hai quả núi ít chồng --- không phải vì tín hiệu kém tuần hoàn. Praat/Boersma nhân hệ số
+\[
+C[\tau]=\frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}
+\]
+để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy) $\Rightarrow$ tính offline, nạp ROM, \emph{nhân} thay vì chia mỗi $\tau$.
+\end{firstprin}
+
+\subsection*{Toán từ first principles --- từng ký hiệu}
+
+Công thức chuẩn hóa Boersma (sau khi đã chuẩn $\mathcal{R}_x[0]$):
+\[
+r_a[\tau]=\frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau],\qquad
+C[\tau]=\frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
+\]
+\begin{itemize}[leftmargin=1.4em]
+\item $\mathcal{R}_x[\tau]$: tự tương quan tín hiệu đã cửa sổ (Ch.~7).
+\item $\mathcal{R}_w[\tau]$: tự tương quan cửa sổ --- mẫu số ``độ chồng''.
+\item $C[\tau]\ge 1$ và tăng theo $\tau$ (vì $\mathcal{R}_w$ giảm).
+\item Lượng tử silicon: $C_q[\tau]=\mathrm{sat}_{u16}\!\bigl(\mathrm{round}(C[\tau]\cdot 2^{F})\bigr)$ với $F=13$ (Q3.13) trong gói này.
+\item Bit-growth: $r_x$ (vd Q2.30) $\times C$ (Q3.13) $\to$ cắt/làm tròn về Q1.15 theo twin --- ghi rõ \texttt{r\_shift} trong comment RTL và Python.
+\end{itemize}
+
+\subsection*{Ví dụ tính tay --- $L=4$, $w=[1,2,2,1]$ (đã kiểm Python)}
+
+\begin{align*}
+\mathcal{R}_w[0] &= 1{+}4{+}4{+}1=10, \\
+\mathcal{R}_w[1] &= 1\cdot2 + 2\cdot2 + 2\cdot1 = 8, \\
+\mathcal{R}_w[2] &= 1\cdot2 + 2\cdot1 = 4, \\
+\mathcal{R}_w[3] &= 1\cdot1 = 1.
+\end{align*}
+Vậy $C=[1,\ 1{,}25,\ 2{,}5,\ 10]$. Giả sử $\mathcal{R}_x=[20,12,6,1]$ thì sau nhân $C$: $[20,\ 15,\ 15,\ 10]$ --- đỉnh phụ $\tau$ được nâng tương đối. Q3.13: $1{,}25\to\mathrm{round}(1{,}25\cdot8192)=10240$ (exact). Thêm: $w=[2,2,2]$, $\tau=2$ $\Rightarrow\mathcal{R}_w[0]=12$, $\mathcal{R}_w[2]=4$, $C=3$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[box/.style={draw,align=center,font=\small,rounded corners,minimum height=9mm}, node distance=8mm]
+\node[box] (mac) {MAC $\mathcal{R}_x[\tau]$};
+\node[box, right=of mac] (rom) {ROM $C[\tau]$\\Q3.13};
+\node[box, right=of rom] (mul) {DSP $\times$};
+\node[box, right=of mul] (peak) {argmax / parabolic};
+\draw[->,thick] (mac)--(mul); \draw[->,thick] (rom)--(mul); \draw[->,thick] (mul)--(peak);
+\end{tikzpicture}
+\caption{Sau nhân $C$: đưa $r_a[\tau]$ vào peak (Ch.~9). Quên nhân $C$ $\Rightarrow$ thiên về $\tau$ nhỏ (giọng cao giả).}
+\end{figure}
+
+\subsection*{Intel IP --- ROM + cấu hình}
+
+Chọn IP \textbf{On-Chip Memory} kiểu ROM (hoặc RAM khởi tạo \texttt{.hex}/\texttt{.mif}). Depth = $\tau_{\max}+1$ (khoảng 214 khi $f_s=16$\,kHz và $F_{0,\min}=75$\,Hz). Width 16 bit mang Q3.13. Bật registered output: 1 chu kỳ --- FSM Ch.~11 phải chờ đúng latency này trước khi nhân. Đường mặc định: ROM $C[\tau]$ đã tính offline. Chỉ khi $\mathcal{R}_w$ thay đổi lúc chạy mới cân nhắc LPM\_DIVIDE runtime (UG~683490) --- \emph{không} dùng ALTDIV\_TENT. Đổi $L$ hoặc cửa sổ $w$ $\Rightarrow$ \textbf{rebuild file hex bắt buộc}; nạp ROM cũ sẽ sai im lặng và đỉnh $F_0$ thiên lệch.
+
+
+\subsection*{RTL + twin bit-exact}
+
+\begin{verbatim}
+(* ram_init_file = "c_tau_rom.hex" *)
+reg [15:0] C_rom [0:TAU_MAX];
+reg [15:0] C_q;
+reg signed [31:0] Rn;
+always @(posedge clk) begin
+  C_q <= C_rom[tau];              // 1-cycle
+  Rn  <= R_x * $signed(C_q);     // DSP; shift theo Q
+end
+\end{verbatim}
+
+\begin{verbatim}
+import numpy as np
+FRAC, SCALE = 13, 1 << 13
+def build_C(w, tau_max):
+    L = len(w)
+    Rw = np.array([np.dot(w[:L-t], w[t:L]) for t in range(tau_max+1)], float)
+    C = Rw[0] / np.maximum(Rw, 1e-30)
+    return np.clip(np.round(C * SCALE), 0, 65535).astype(np.uint16)
+def apply_C(R_x, C_q, r_shift=FRAC):
+    return (R_x.astype(np.int64) * C_q.astype(np.int64)) >> r_shift
+# assert build_C([1,2,2,1], 3) scaled: C[1]=10240 for 1.25
+\end{verbatim}
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item M10K: $<1$ cho $\approx182$ từ Q3.13 ($C[\tau_{\min}..\tau_{\max}]$).
+\item DSP: 1 nhân $r_x\times C$ mỗi $\tau$ (cùng nhịp MAC hoặc sau MAC).
+\item ALM: địa chỉ + đăng ký --- vài chục.
+\item So LPM\_DIVIDE mỗi $\tau$: tiết kiệm hàng trăm phép chia/khung và latency không xác định --- lý do chọn ROM.
+\item Vì sao Q3.13: $C$ đến $\sim10$ trên Hanning ngắn minh họa; trên $L=640$ $C[\tau_{\max}]$ vừa trong 3 bit nguyên + 13 frac.
+\end{itemize}
+\end{costbox}
+
+\subsection*{Thực hành}
+
+\begin{enumerate}[leftmargin=1.4em]
+\item $w=[1,2,1]$: tính $C[2]$ (đáp án $6$).
+\item Hex Q3.13 cho $C=1{,}5$: $\mathrm{round}(1{,}5\cdot8192)=12288=$ \texttt{3000}.
+\item Twin floor thay round: lệch tối đa bao nhiêu LSB? (worst $\sim0{,}5$).
+\item Quên nhân $C$: đỉnh $\tau$ lớn bị thiên lệch thế nào? (thiên về $\tau$ nhỏ).
+\item Liệt kê 3 tham số IP ROM: width, depth, init file.
+\end{enumerate}
+
+\noindent\textbf{Giải thích nhanh đáp án.} (1) $w=[1,2,1]$: $\mathcal{R}_w[0]=1+4+1=6$, $\mathcal{R}_w[2]=1\cdot1=1$, $C[2]=6$. (2) $1{,}5\cdot8192=12288=$\texttt{0x3000}. (3) Floor thay round lệch tối đa $0{,}5$ LSB trước khi cắt. (4) Quên $C$: đỉnh $\tau$ lớn bị đạp $\Rightarrow$ thiên giọng cao giả. (5) Width 16, depth $\tau_{\max}+1$, init \texttt{.hex}.
+

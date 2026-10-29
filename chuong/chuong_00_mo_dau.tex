@@ -1,0 +1,131 @@
+\phantomsection
+\section*{Chương 0. Mục tiêu học và bản đồ đọc}
+\addcontentsline{toc}{section}{Chương 0. Mục tiêu học và bản đồ đọc}
+\pdfbookmark[1]{Chương 0. Mục tiêu học và bản đồ đọc}{chuong0}
+
+\begin{learningobj}
+Sau khi đọc phần mới (Ch.~1--14), bạn giải thích được từng bước thuật toán Praat từ hiện tượng vật lý thật (dây thanh rung) sang công thức toán, rồi sang ý nghĩa khi chạy trên silicon FPGA.
+Bạn cấu hình được từng khối IP Intel trên Quartus Prime Standard/Lite cho kit DE10-Standard (chip Cyclone~V); viết được datapath RTL tự làm; viết được chương trình Python ``sinh đôi'' (\emph{twin}) khớp từng bit với phần cứng (\emph{bit-exact}); ước lượng được tài nguyên LUT/DSP/M10K và số chu kỳ đồng hồ; làm được bài tập có đáp án.
+\end{learningobj}
+
+\begin{firstprin}{Bản đồ trước khi đi vào rừng chi tiết}
+Phần mới (Ch.~1--14) không thay thế Phụ lục~A (v10). Nó dịch cùng thuật toán Praat sang silicon: mỗi khối trả lời ``vật lý $\to$ toán $\to$ ví dụ $\to$ IP $\to$ RTL $\to$ twin $\to$ chi phí''. Đọc Ch.~1 hết trước khi đụng Quartus --- nếu chưa hiểu vì sao trừ mean và nhân Hanning, mọi M10K sau này chỉ là trang trí.
+\end{firstprin}
+
+
+\subsection*{Cách đọc}
+
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item Chương~1 (Praat) --- đọc hết trước khi đụng FPGA. Mỗi bước: hiện tượng vật lý, toán kèm ví dụ tính tay đã kiểm Python, rồi ý nghĩa phần cứng (IP/RTL/twin/chi phí).
+\item Chương~2 đến~12 --- đi đúng đường tín hiệu: PLL+I\textsuperscript{2}S $\to$ DC $\to$ FIR $2/3$ $\to$ RAM trượt $\to$ cửa sổ $\to$ MAC $\to$ $C[\tau]$ $\to$ peak+$f_s/\tau$ $\to$ voicing $\to$ FSM Avalon $\to$ Q12.4.
+\item Chương~13 --- xác minh ba tầng (float $\to$ fixed $\to$ RTL).
+\item Chương~14 --- checklist một lần trước khi nộp.
+\item Phụ lục A (v10) --- giữ nguyên; phần mới không thay thế v10.
+\end{enumerate}
+Mỗi chương phần cứng nhắm đủ tám yếu tố (mục sau). Nếu một mục chỉ còn gạch đầu dòng không giải thích thuật ngữ lần đầu, đó là dấu hiệu chưa đạt thanh chất lượng bài cửa sổ/local-mean.
+
+\subsection*{Quy ước tám yếu tố mỗi chương phần cứng}
+
+\begin{firstprin}{Mỗi khối phần cứng được kể theo cùng tám yếu tố}
+Để học viên không gặp ``công thức không giải thích'', mỗi chương phần cứng (Ch.~2--14) đi theo cùng khung: (1)~vật lý/trực giác; (2)~toán first principles với mọi ký hiệu; (3)~ví dụ tính tay (và kiểm Python khi có số); (4)~Intel IP / cấu hình Quartus; (5)~RTL thay hoặc bổ sung; (6)~twin bit-exact; (7)~hộp chi phí silicon (ALM/DSP/M10K/latency) giải thích từng mục; (8)~thực hành ngắn. Thiếu một yếu tố = chưa đạt chuẩn bài cửa sổ Hanning (Ch.~6).
+\end{firstprin}
+
+Mục tiêu không phải ``checklist máy móc'' mà là cùng độ sâu: đọc xong một mục, bạn kể lại được \emph{vì sao} có khối đó trên đường $F_0$, không chỉ tên IP.
+
+\subsection*{Phần cứng mục tiêu}
+
+\begin{firstprin}{DE10-Standard + codec: ngân sách thật, không kit tưởng tượng}
+Phần cứng mục tiêu là kit \textbf{DE10-Standard} (Cyclone~V SX), codec WM8731/SSM2603 qua I\textsuperscript{2}S, clock thạch anh 50\,MHz. Mọi con số ALM/DSP/M10K trong hộp chi phí phải đối chiếu được với Fitter trên kit này. Không giả định Arria/Stratix dư DSP; không giả định board khác có sẵn ``Audio IP'' bắt buộc.
+\end{firstprin}
+
+Đường tín hiệu lab: mic/line $\to$ codec ADC $\to$ I\textsuperscript{2}S RX $\to$ DC-blocker $\to$ FIR $24\to16$\,kHz $\to$ sliding M10K $\to$ window $\to$ MAC ACF $\to$ nhân $C[\tau]$ $\to$ peak/parabolic $\to$ $F_0$ (Q12.4) + voicing. PLL tạo MCLK/SCLK; FSM + Avalon-ST nối các stage.
+
+\subsection*{Từ điển trực giác --- giải thích lần đầu các khái niệm xuyên suốt}
+
+Đoạn dưới đây định nghĩa, bằng câu đầy đủ và ví dụ số, những thuật ngữ sẽ xuất hiện ngay từ Ch.~1. Mỗi mục trả lời ba câu: \emph{nó là gì}, \emph{nó là hiện tượng vật lý thật hay chỉ là tên tính toán}, và \emph{vì sao nó đụng tới ước lượng $F_0$}.
+
+\begin{feynmanbox}{Tín hiệu liên tục (continuous-time), ADC và lấy mẫu}
+Không khí dao động áp suất là sóng \textbf{liên tục theo thời gian}: tại mọi khoảnh khắc đều có một giá trị áp suất, không ``nhảy cóc''. Micro biến áp suất thành điện áp liên tục. Khối \textbf{ADC} (\emph{Analog-to-Digital Converter}, bộ chuyển đổi tương tự--số) \textbf{lấy mẫu}: cứ mỗi $T_s=1/f_s$ giây nó đo một số và bỏ quên phần giữa hai lần đo. Đây là thao tác kỹ thuật số, không phải hiện tượng tự nhiên; nhưng nó có hệ quả vật lý thật: phổ tần số của tín hiệu lấy mẫu \textbf{lặp lại mỗi $f_s$ hertz} (bản sao ``ma'' của phổ gốc đặt tại $\pm f_s,\pm 2f_s,\ldots$). Nếu trước khi lấy mẫu bạn không lọc bỏ thành phần cao hơn $f_s/2$, các bản sao sẽ chồng lên nhau --- đó chính là \textbf{aliasing} (xem mục sau). Với bài $F_0$: ta thường làm việc ở $f_s=16$\,kHz sau chuỗi hạ mẫu, nên mọi tần số ``thật'' trên dây thanh phải nằm dưới 8\,kHz mới còn phân biệt được.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Nyquist, aliasing và hình ảnh ``gương''}
+\textbf{Tần số Nyquist} là $f_s/2$: ngưỡng lý thuyết. Định lý lấy mẫu (Shannon--Nyquist) nói: muốn khôi phục được một tín hiệu có bề rộng phổ $B$, phải lấy mẫu nhanh hơn $2B$. \textbf{Aliasing} là hiện tượng vật lý/toán của tín hiệu lấy mẫu: một tone thật $f$ và một tone $f_s-f$ (hay $mf_s\pm f$) cho \emph{đúng cùng một chuỗi mẫu}. Ví dụ cụ thể: $f_s=16$\,kHz, tone 9\,kHz sau ADC trông giống tone 7\,kHz ($16-9=7$). Trên phổ, các bản sao quanh $\pm f_s$ gập vào như \textbf{gương} qua điểm Nyquist --- nên tài liệu hay viết ``gương Nyquist''. Hệ quả với $F_0$: năng lượng cao gần mép Nyquist, sau khi qua cửa sổ và tự tương quan, có thể giả thành chu kỳ dài (tần số thấp) trong vùng ta đang tìm cao độ giọng nói (khoảng 75--600\,Hz). Đó là lý do Boersma và phần cứng đều phải dọn sạch vùng gần Nyquist trước khi tin đỉnh trễ $\tau$.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Cửa sổ (window), Hanning, mainlobe, sidelobe, rò phổ (leakage), đơn vị dB}
+Để ước lượng $F_0$ theo từng khoảng thời gian ngắn, ta \textbf{cắt} một đoạn $L$ mẫu gọi là \emph{khung}. Phép cắt đột ngột bằng cửa sổ chữ nhật tương đương nhân phổ với hàm sinc: năng lượng một tone ``tràn'' sang các bin lân cận --- gọi là \textbf{rò phổ} (\emph{spectral leakage}). Phổ của cửa sổ có một đỉnh giữa gọi là \textbf{mainlobe} (thùy chính) và các gợn hai bên gọi là \textbf{sidelobe} (thùy phụ). Cửa sổ \textbf{Hanning} làm mềm hai đầu khung về gần 0, hạ sidelobe xuống khoảng $-32$\,dB so với đỉnh (cửa sổ chữ nhật chỉ khoảng $-13$\,dB). \textbf{Decibel (dB)} là thước log: $-32$\,dB $\approx$ biên độ còn $10^{-32/20}\approx 1/40$ lần đỉnh --- vẫn đủ lớn để một tone mạnh 7\,kHz để lại ``bóng ma'' ở vùng thấp và làm lệch tự tương quan. Đây là hiện tượng toán của tín hiệu bị cắt (không phải dây thanh tự tạo sidelobe); nhưng hệ quả nghe được trên $F_0$ là rất thật.
+\end{feynmanbox}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth]
+  % frequency axis
+  \draw[->] (-0.2,0) -- (11.2,0) node[right]{$f$};
+  \draw[->] (0,-0.15) -- (0,3.4) node[above]{$|W(f)|$ (log)};
+  % mainlobe
+  \draw[thick, blue!70!black, domain=-1.6:1.6, samples=60]
+    plot (\x+3.5, {max(0.05, 3.0*exp(-(\x)*(\x)/0.55))});
+  % sidelobes right
+  \foreach \c/\h in {5.4/0.55, 6.5/0.38, 7.6/0.28, 8.7/0.22} {
+    \draw[thick, orange!80!black] (\c-0.35,0) .. controls (\c-0.15,\h) and (\c+0.15,\h) .. (\c+0.35,0);
+  }
+  % sidelobes left
+  \foreach \c/\h in {1.6/0.55, 0.5/0.38} {
+    \draw[thick, orange!80!black] (\c-0.35,0) .. controls (\c-0.15,\h) and (\c+0.15,\h) .. (\c+0.35,0);
+  }
+  \node[blue!70!black] at (3.5,3.15) {\textbf{mainlobe}};
+  \node[orange!80!black] at (6.5,1.05) {\textbf{sidelobe}};
+  \draw[<->] (5.4,0.7) -- (5.4,3.0);
+  \node[right, font=\footnotesize, align=left] at (5.5,1.85) {$\sim$32\,dB\\(Hanning)};
+  \node[font=\footnotesize, align=left] at (9.3,2.6) {Tone mạnh gần\\Nyquist ``rò''\\xuống vùng $F_0$};
+  \draw[->, dashed] (8.0,2.2) -- (5.6,0.6);
+\end{tikzpicture}
+\caption{Phổ biên độ của cửa sổ: thùy chính (mainlobe) ở giữa và các thùy phụ (sidelobe). Hanning hạ sidelobe $\sim$32\,dB so với chữ nhật $\sim$13\,dB --- nhưng năng lượng gần mép Nyquist vẫn có thể ``quăng'' xuống vùng tìm $F_0$ nếu không được lọc trước.}
+\label{fig:mainlobe_sidelobe}
+\end{figure}
+
+\begin{feynmanbox}{Utterance, FFT/IFFT, mask phổ, zero-padding}
+Trong giọng nói, một \textbf{utterance} là một phát ngôn liền (một câu hoặc đoạn thu), không phải thuật ngữ vật lý mà là đơn vị dữ liệu âm thanh. \textbf{FFT} (\emph{Fast Fourier Transform}) là thuật toán tính nhanh biến đổi Fourier rời rạc: đưa chuỗi thời gian $x[n]$ thành phổ phức $X[k]$. \textbf{IFFT} là chiều ngược. \textbf{Mask phổ} là hàm trọng số $G[k]$ nhân vào $|X[k]|$ (hoặc $X[k]$) để làm suy giảm có chủ đích một dải tần --- ví dụ hạ dần về 0 từ $0{,}95\cdot f_s/2$ tới $f_s/2$. \textbf{Zero-padding} là thêm số 0 vào đuôi (hoặc giữa phổ) trước IFFT để chuỗi ra dài hơn: không thêm thông tin mới nhưng nội suy dày hơn trên lưới tần số/thời gian. Boersma Step~1 dùng FFT cả utterance, nhân mask, rồi IFFT dài $2N$ để ``upsample mềm'' $\times2$.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Tự tương quan, trễ (lag) $\tau$, Wiener--Khinchin}
+\textbf{Tự tương quan} $\mathcal{R}_x[\tau]=\sum_n x[n]x[n+\tau]$ đo mức ``giống chính mình'' khi trượt đi $\tau$ mẫu. $\tau$ gọi là \textbf{lag} (trễ). Với tín hiệu tuần hoàn chu kỳ $T_0$ mẫu, $\mathcal{R}_x$ có đỉnh tại $\tau=0,\pm T_0,\pm 2T_0,\ldots$. Cao độ $F_0=f_s/T_0$. Đây là công cụ tính toán bám sát hiện tượng vật lý: dây thanh đóng/mở gần tuần hoàn. Định lý \textbf{Wiener--Khinchin} nói $\mathcal{R}_x$ chính là IFFT của $|X|^2$: có thể tính tự tương quan bằng FFT $\to$ bình phương phổ $\to$ IFFT. Trên FPGA ta thường chọn MAC trực tiếp (nhân--cộng) vì chỉ cần $\tau$ trong một dải hẹp; FFT là tùy chọn.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Butterfly, twiddle, BFP}
+Trong FFT radix-2, mỗi bước nhỏ lấy hai số $a,b$, nhân $b$ với hệ số xoay $W=e^{-j2\pi k/N}$ rồi ra $a\pm Wb$. Hình đó gọi là \textbf{butterfly} (cánh bướm). $W$ gọi là \textbf{twiddle factor}. Đây là thuật ngữ tính toán, không phải sóng vật lý. \textbf{BFP} (\emph{Block Floating Point}) là cách Intel FFT IP giữ dải động: cả một vector chia sẻ một số mũ $e$; mantisa cố định. Khi bình phương phổ rồi IFFT, phải nhân lại đúng $2^{2e}$ (vì $|X|^2$ nhân đôi số mũ) --- quên bước này thì toàn bộ $\mathcal{R}[\tau]$ sai tỉ lệ, đỉnh $F_0$ lệch.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Dấu phẩy tĩnh Q$m.n$, bão hòa (saturation), twin bit-exact}
+Số \textbf{Q$m.n$} dùng $m$ bit cho phần nguyên (kể cả dấu) và $n$ bit cho phần thập phân: ví dụ Q1.15 trên 16~bit có khoảng $[-1,1-2^{-15}]$, LSB $=2^{-15}$. Đây là quy ước biểu diễn, không phải hiện tượng vật lý. \textbf{Bão hòa}: nếu kết quả vượt khỏi khoảng biểu diễn thì kẹp về max/min thay vì wrap quanh (wrap sẽ tạo tiếng lách cách và phá $F_0$). \textbf{Twin bit-exact} là chương trình Python/C++ mô phỏng \emph{đúng từng phép} của RTL (cùng Q-format, cùng chiều dịch, cùng làm tròn): đầu ra phải trùng từng bit với mô phỏng Verilog trên cùng vector. Không ``gần đúng'' --- phải khớp mới tin silicon.
+\end{feynmanbox}
+
+\begin{feynmanbox}{PLL, MCLK, I\textsuperscript{2}S, FIFO bất đồng bộ, mã Gray}
+\textbf{PLL} (\emph{Phase-Locked Loop}) khóa pha một dao động trong chip vào thạch anh ngoài, rồi chia ra các clock cần dùng --- hiện tượng vật lý/điện tử thật (so pha, lọc vòng, VCO). \textbf{MCLK} là clock master nuôi codec (ở đây 12.288\,MHz $=256\times 48$\,kHz). \textbf{I\textsuperscript{2}S} là chuẩn nối tiếp đưa từng bit mẫu âm thanh (kèm WS/LRCK chọn tai trái--phải và SCLK/BCLK chốt bit). \textbf{FIFO bất đồng bộ} là hàng đợi chuyển dữ liệu giữa hai miền clock khác nhau; con trỏ thường mã hóa \textbf{Gray} (chỉ đổi 1 bit mỗi bước) để tránh đọc nhầm khi bắt chéo miền. Sai MCLK vài chục ppm làm trôi thời gian mẫu $\Rightarrow$ $F_0$ lệch chậm theo thời gian dù thuật toán đúng.
+\end{feynmanbox}
+
+\begin{feynmanbox}{FIR, taps, polyphase, decimation, transition band}
+\textbf{FIR} (\emph{Finite Impulse Response}) là bộ lọc tổng $\sum h[k]x[n-k]$; mỗi $h[k]$ gọi là một \textbf{tap} (vòi). \textbf{Decimation} (hạ mẫu) bỏ bớt mẫu sau khi đã lọc chống alias --- ví dụ từ 24\,kHz xuống 16\,kHz tỉ số $2/3$. \textbf{Polyphase} tách một FIR dài thành vài nhánh ngắn chạy xen kẽ, tiết kiệm nhân khi tỉ số hữu tỉ. \textbf{Transition band} là dải tần số nằm giữa passband (cho qua) và stopband (chặn): hẹp thì cần nhiều tap hơn. Với pitch: FIR $2/3$ vừa chống alias vừa đưa tín hiệu về 16\,kHz khớp ngân sách Praat/FPGA.
+\end{feynmanbox}
+
+\begin{feynmanbox}{M10K, dual-port, Old Data / read-during-write, latency, MAC, DSP, ALM, Fmax}
+\textbf{M10K} là khối BRAM $\sim$10\,kbít trên Cyclone~V. \textbf{True Dual-Port} cho phép hai cổng đọc/ghi độc lập trong cùng chu kỳ. Khi một cổng ghi một địa chỉ mà cổng kia đọc \emph{cùng địa chỉ cùng chu kỳ}, silicon Cyclone~V chỉ bảo đảm chế độ \textbf{Old Data} hoặc Don't Care --- \emph{không} New Data; thiết kế pitch phải chọn Old Data và hiểu rằng mẫu đọc ra là giá trị \emph{trước} lần ghi. \textbf{Latency} là số chu kỳ từ vào đến ra. \textbf{MAC} = Multiply-ACcumulate (nhân rồi cộng dồn) --- trái tim của tự tương quan. \textbf{DSP block} là nhân cứng $18\times19$ (hoặc $27\times27$). \textbf{ALM} là ô logic linh hoạt (đơn vị đếm LUT trên Intel). \textbf{Fmax} là tần số đồng hồ tối đa báo cáo sau place-and-route. Các khái niệm này là của silicon; chúng quyết định khung $L=640$ có vừa BRAM và có kịp tính xong mỗi 10\,ms hay không.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Nội suy parabolic/sinc, sai octave, voicing, Viterbi, cost, median}
+Đỉnh tự tương quan thường nằm \emph{giữa} hai mẫu nguyên: \textbf{parabolic} fit ba điểm quanh đỉnh để ước lượng $\tau$ không nguyên; \textbf{sinc}/Brent tinh hơn nhưng đắt --- FPGA mặc định dùng parabolic. \textbf{Sai octave}: nhầm $F_0$ thành $2F_0$ hoặc $F_0/2$ (đỉnh phụ hoặc hài). Praat gắn \textbf{octave cost} để phạt thiên vị này. \textbf{Voicing}: quyết định khung hữu thanh (có $F_0$) hay vô thanh ($F_0=0$) dựa trên độ mạnh đỉnh $r_a$ và ngưỡng silence. \textbf{Viterbi}/\texttt{pathFinder}: quy hoạch động chọn đường ứng viên theo thời gian với các \textbf{cost} chuyển trạng thái; trên Cyclone~V mặc định tắt trên fabric, chạy HPS nếu cần. \textbf{Median-3}: lấy trung vị ba khung liên tiếp để đập một spike nhiễu --- trễ đúng một khung, rẻ trên RTL.
+\end{feynmanbox}
+
+\begin{feynmanbox}{Avalon-ST \texttt{valid}/\texttt{ready}, cực/zero (pole/zero)}
+\textbf{Avalon-ST} là giao thức streaming của Intel: nguồn nâng \texttt{valid} khi data có nghĩa; đích nâng \texttt{ready} khi còn chỗ; chỉ khi cả hai bằng 1 mới chuyển một beat. Đây là quy ước giao diện, không phải sóng âm --- nhưng quên giữ data khi \texttt{ready}=0 sẽ \emph{mất mẫu} và làm hỏng $F_0$. \textbf{Cực} và \textbf{zero} là nghiệm của mẫu số/tử số hàm truyền $H(z)$: zero tại $z=1$ chặn DC; cực gần zero tạo HPF nhẹ ổn định --- đúng những gì DC-blocker cần trước tự tương quan.
+\end{feynmanbox}
+
+\begin{costbox}
+\textbf{Ngân sách học --- không phải ALM.}
+\begin{itemize}[leftmargin=1.2em]
+\item Thời gian đọc Ch.~1: nửa ngày đến một ngày (nhiều nhất).
+\item Ch.~2--12: mỗi chương 1--2 giờ nếu làm đủ phiếu.
+\item Ch.~13--14: nửa ngày xác minh + checklist.
+\item Vì sao thứ tự này: sai công thức ở Ch.~1 không sửa được bằng thêm DSP ở Ch.~7.
+\end{itemize}
+\end{costbox}

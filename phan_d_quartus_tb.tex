@@ -1,0 +1,98 @@
+
+\section*{Phần D. Dự án Quartus Standard + Testbench + Vector cạnh}
+
+\begin{firstprin}{Vì sao testbench đọc \texttt{golden\_vectors.hex}?}
+Hardware đúng nghĩa là ``máy tính chậm biết trước đáp án''. Golden laptop đã khóa từng bit $F_0$ Q12.4. TB chỉ việc: nhồi mẫu $\to$ đợi FSM $\to$ so sánh word-for-word. Nếu lệch 1 bit trên sin 200~Hz, dừng --- đừng tin Signal Tap.
+\end{firstprin}
+
+\subsection*{D.1. Cây dự án (Quartus Prime Standard/Lite)}
+
+\begin{verbatim}
+uoc_luong_f0_praat_fpga_quartus/
+  lab_1_3_5.py          # golden + export hex + selftest
+  test_lab_1_3_5.py     # pytest (kể cả zero/DC/clip)
+  hex/
+    hanning_rom.hex
+    c_tau_rom.hex
+    f0_lut.hex
+    golden_vectors.hex
+  rtl/
+    pitch_top.v         # top + FSM
+    i2s_rx.v            # default audio RTL
+    dc_block_iir.v
+    tdp_ram_640.v
+    mac_autocorr.v
+    peak_pack.v
+  ip/                   # generated: PLL, FIR II, (opt) FFT
+  tb/
+    tb_pitch_top.v      # đọc golden_vectors.hex
+    edge_vectors.hex    # zero / DC / clip / valid-toggle
+  uoc_luong_f0_praat_fpga_quartus_vi.tex
+\end{verbatim}
+
+Device: \texttt{5CSXFC6D6F31C6N}. Family: Cyclone~V. Edition: Standard hoặc Lite.
+
+\subsection*{D.2. Hợp đồng \texttt{pitch\_f0.bin} (nhắc lại, bất biến)}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Mỗi khung $10\text{ ms}$: một \texttt{uint16} little-endian.
+  \item Giá trị hữu thanh: Q12.4 --- $F_0\text{ Hz} = \texttt{raw}/16$. Ví dụ $200\text{ Hz}\Rightarrow\texttt{0x0C80}$.
+  \item Unvoiced / silence / DC / không vượt cổng: \texttt{0x0000}.
+  \item Không thêm header; độ dài file $= 2\times N_{\text{frames}}$ byte.
+\end{itemize}
+
+\subsection*{D.3. Testbench + edge tests}
+
+\paragraph{TB chính.} Đọc frame từ \texttt{golden\_vectors.hex}, đẩy vào ring buffer model, xung ``hop'', chờ \texttt{done}, so $F_0$ với từ golden.
+
+\paragraph{Edge (bắt buộc --- FSM không được treo).}
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Vector & Tín hiệu & Kỳ vọng \\
+\midrule
+zero & mọi mẫu $=0$ & mọi khung \texttt{0x0000}; FSM IDLE$\leftrightarrow$EDGE$\leftrightarrow$IDLE \\
+DC & hằng $A\neq 0$ (ví dụ $0.25$ Q1.15) & unvoiced (DC-block $\to$ gần 0 / cổng lặng) \\
+clip & mẫu bão hòa $\pm(2^{15}-1)$ xen kẽ & không tràn ACC gây $X$; có thể unvoiced hoặc $F_0$ ổn định; \textbf{không hang} \\
+valid-toggle & \texttt{sample\_valid} / FIR \texttt{source\_valid} bật-tắt giả ngẫu nhiên (LFSR) xen kẽ backpressure \texttt{ready} & không mất mẫu; FSM không kẹt PHA*; $F_0$ khớp golden trên cùng chuỗi mẫu hữu hiệu \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{lstlisting}[language=Python, caption={Ba vector cạnh bổ sung vào \texttt{test\_lab\_1\_3\_5.py} (rút gọn).}]
+def test_edge_zero_is_unvoiced():
+    x = [0] * 640
+    assert detect_f0_q12_4(x) == 0
+
+def test_edge_dc_is_unvoiced():
+    A = 1 << 13  # 0.25 in Q1.15
+    x = [A] * 640
+    assert detect_f0_q12_4(x) == 0
+
+def test_edge_clip_does_not_hang():
+    x = [32767 if (i % 2) == 0 else -32768 for i in range(640)]
+    f0 = detect_f0_q12_4(x)  # must return
+    assert isinstance(f0, int) and 0 <= f0 <= 0xFFFF
+
+# HDL TB (không phải pytest host): random valid-toggle
+# for ck in range(N):
+#     sample_valid <= lfsr[0]; ready <= lfsr[3];
+#     if (sample_valid & ready) push(next_sample);
+# assert !timeout_fsm; assert f0 == golden[frame];
+\end{lstlisting}
+
+\paragraph{Valid-toggle (bắt buộc trên HDL TB).}
+Mô phỏng FIR fractional / backpressure: LFSR kéo \texttt{valid} và \texttt{ready} ngẫu nhiên. Chỉ khi cả hai~1 mới tiến mẫu. Kỳ vọng: không treo FSM, không lệch con trỏ ring, $F_0$ khớp golden trên đúng chuỗi mẫu đã bắt. Đây bắt lỗi ``đếm clock thay vì đọc valid'' ở C.4.
+
+\subsection*{D.4. Signal Tap (optional)}
+Chỉ sau khi TB xanh: bắt \texttt{state}, \texttt{tau}, \texttt{acc}, \texttt{f0\_q12\_4}. Không dùng Signal Tap thay thế golden.
+
+\subsection*{D.5. Checklist biên dịch}
+\begin{enumerate}[itemsep=1pt]
+  \item Quartus Standard/Lite $\to$ New Project $\to$ Cyclone~V \texttt{5CSXFC6D6F31C6N}.
+  \item Add RTL + hex vào project; generate PLL (và FIR~II nếu dùng IP rate convert).
+  \item \texttt{python lab\_1\_3\_5.py --selftest} và \texttt{pytest test\_lab\_1\_3\_5.py} trên host.
+  \item ModelSim/Questa + \texttt{tb\_pitch\_top.v}.
+  \item Chỉ khi TB pass mới lập trình SOF lên DE10-Standard.
+\end{enumerate}

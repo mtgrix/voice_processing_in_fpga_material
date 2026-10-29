@@ -1,0 +1,29 @@
+
+\section*{Phần E. Tổng kết checklist \& thuật ngữ nhanh}
+
+\begin{verifygate}
+\begin{enumerate}[itemsep=2pt]
+  \item Hiểu vì sao Mel xóa $F_0$ và vì sao STFT-argmax thất bại.
+  \item Viết/chạy golden Q1.15$\to$Q12.4; \texttt{pitch\_f0.bin} LE; selftest xanh.
+  \item Nêu Avalon-ST ready/valid (doc 683091) trước khi nối FIR/FFT.
+  \item DC-block + HPF: giải thích trước/sau lên $\mathcal{R}[0]$.
+  \item $24\to16$: FIR~II fractional $2/3$ hoặc polyphase RTL --- \textbf{không CIC}.
+  \item TDP sliding-window map + MAC datapath 1 DSP.
+  \item (Optional) FFT IP: BFP + \texttt{\_model.m} (UG 683374) trước khi nhận twin.
+  \item $C[\tau]$ ROM default; peak/VUV/median/pack chỉ RTL.
+  \item TB + edge zero/DC/clip; FSM không treo.
+  \item Toolchain: Quartus \textbf{Standard/Lite}, board DE10-Standard Cyclone~V.
+\end{enumerate}
+\end{verifygate}
+
+\subsection*{Thuật ngữ (Anh giữ nguyên)}
+Avalon-ST, ready/valid, SOP/EOP, FIR Compiler II, polyphase, fractional rate, BFP, \texttt{source\_exp}, True Dual-Port, MAC, Q12.4, GPE/VDE/FFE, RTF.
+
+\subsection*{Tài liệu Intel được trích (không bịa thêm số liệu silicon)}
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \emph{Avalon Interface Specifications}, doc ID 683091 (MNL-AVABUSREF).
+  \item \emph{FIR II IP Core User Guide}, doc ID 683208.
+  \item \emph{FFT IP Core User Guide}, doc ID 683374 (UG-FFT) --- MATLAB \texttt{\_model.m}, BFP scaling.
+  \item Bảng so sánh Quartus Prime Pro / Standard / Lite (Cyclone~V chỉ Standard/Lite).
+\end{itemize}
+

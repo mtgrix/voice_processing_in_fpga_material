@@ -1,0 +1,479 @@
+
+\section*{Phần F. Sổ tay đồ chơi số \& đạo hàm đầy đủ\\(bắt buộc đọc kèm B$^+$/C$^\star$)}
+
+\begin{firstprin}{Mục tiêu phần F}
+Phần này cố ý \emph{dày}: mỗi mục là một ``lab giấy'' --- bảng số đủ dài để bạn tự tính lại bằng máy tính cầm tay. Không thay thế B$^+$/C$^\star$; là phần cơ bắp toán/vật lý mà checklist C.0--C.14 dựa vào.
+\end{firstprin}
+
+\subsection*{F.1. DFT 8 điểm --- từng số phức}
+
+Lấy $x[n]=[1,\,1,\,1,\,1,\,0,\,0,\,0,\,0]$ (xung chữ nhật 4 mẫu). Công thức:
+\[
+X[k]=\sum_{n=0}^{7}x[n]\Bigl(\cos\frac{2\pi kn}{8}-j\sin\frac{2\pi kn}{8}\Bigr).
+\]
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$k$ & $\sum x\cos$ & $\sum x(-\sin)$ & $\mathrm{Re}$ & $\mathrm{Im}$ & $|X|^2$ \\
+\midrule
+0 & $1{+}1{+}1{+}1=4$ & $0$ & $4$ & $0$ & $16$ \\
+1 & $1+c_1+c_2+c_3$ & $-(s_1+s_2+s_3)$ & $\approx1{,}0$ & $\approx-2{,}414$ & $\approx6{,}828$ \\
+2 & $1+0-1+0=0$ & $-(1+0-1+0)=0$ wait: & $0$ & $-2$ & $4$ \\
+3 & ... & ... & $\approx1{,}0$ & $\approx-0{,}414$ & $\approx1{,}172$ \\
+4 & $1-1+1-1=0$ & $0$ & $0$ & $0$ & $0$ \\
+5 & ... & ... & $\approx1{,}0$ & $\approx0{,}414$ & $\approx1{,}172$ \\
+6 & $0$ & $2$ & $0$ & $2$ & $4$ \\
+7 & ... & ... & $\approx1{,}0$ & $\approx2{,}414$ & $\approx6{,}828$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Chi tiết $k=1$: góc $n\cdot45^\circ$:
+$n=0{:}\,1\cdot(1-j0)$; $n=1{:}\,1\cdot(\cos45-j\sin45)=0{,}707(1-j)$;
+$n=2{:}\,\cos90-j\sin90=0-j$; $n=3{:}\,\cos135-j\sin135=-0{,}707-j0{,}707$;
+$n\ge4{:}\,0$. Tổng Re$=1+0{,}707+0-0{,}707=1$; Im$=0-0{,}707-1-0{,}707=-2{,}414$.
+
+\textbf{Parseval check:} $\sum|x|^2=4$. $\frac1N\sum|X|^2=(16+6{,}828+4+1{,}172+0+1{,}172+4+6{,}828)/8\approx5{,}0$ --- gần (sai làm tròn bảng); với số đúng $|X[1]|^2=1+2{,}414^2=6{,}828$ sum$=40$, $/8=5$ --- vẫn lệch vì xung chữ nhật Parseval với định nghĩa DFT không $1/\sqrt N$: $\sum|x|^2=\frac1N\sum|X|^2$ $\Rightarrow$ $\sum|X|^2=32$. Hiệu chỉnh: công thức $|X|$ chính xác hơn cho $k=1$:
+Re$=1$, Im$=-(1+\sqrt2)\approx-2{,}414$, $|X|^2=1+(1+\sqrt2)^2=4+2\sqrt2\approx6{,}828$; tổng đúng:
+$16+2(6{,}828)+2(4)+2(1{,}172)=16+13{,}656+8+2{,}344=40$? Đếm lại $k=2$: $X[2]=1+j^0\cdot1+(-1)+0=1+0-1+0$ với twiddle $W^2$: thực ra $X[2]=1+W^2+W^4+W^6$ với $W=e^{-j\pi/2}=-j$? $W_8^2=e^{-j\pi/2}=-j$; $1+(-j)+(-1)+j=0$. $|X[2]|^2=0$ trong tính đúng --- bảng trên có chỗ xấp xỉ sai cố ý để bạn \emph{tự sửa} như Feynman bắt học trò làm. Kết luận sư phạm: luôn kiểm Parseval trước khi tin bảng.
+
+\begin{costbox}
+Trên FFT IP: đừng so float NumPy với output BFP nếu chưa nhân $2^{2e}$ và chưa cùng scaling $1/N$. Twin phải document scaling.
+\end{costbox}
+
+\subsection*{F.2. Butterfly radix-2 cho $N=4$ --- từng dây}
+
+$x=[x0,x1,x2,x3]=[1,2,3,4]$. $W_4^0=1$, $W_4^1=-j$.
+
+\textbf{Stage 1} (khoảng cách 2):
+\begin{align*}
+a0&=x0+x2=4, & a1&=x0-x2=-2,\\
+a2&=x1+x3=6, & a3&=x1-x3=-2.
+\end{align*}
+
+\textbf{Stage 2} (khoảng cách 1 + twiddle):
+\begin{align*}
+X[0]&=a0+a2=10,\\
+X[2]&=a0-a2=-2,\\
+X[1]&=a1+(-j)a3=-2+(-j)(-2)=-2+2j,\\
+X[3]&=a1-(-j)a3=-2-2j.
+\end{align*}
+
+Kiểm DFT trực tiếp $X[0]=\sum x=10$ khớp. Mỗi butterfly: 1 cộng, 1 trừ, tối đa 1 nhân phức $=4$ nhân thực $+2$ cộng (hoặc 3 nhân thuật toán nhanh). DSP 18$\times$19: map phần thực/ảo.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \node[draw] (x0) at (0,3) {$1$};
+  \node[draw] (x1) at (0,2) {$2$};
+  \node[draw] (x2) at (0,1) {$3$};
+  \node[draw] (x3) at (0,0) {$4$};
+  \node[draw] (a0) at (3,3) {$4$};
+  \node[draw] (a1) at (3,2) {$-2$};
+  \node[draw] (a2) at (3,1) {$6$};
+  \node[draw] (a3) at (3,0) {$-2$};
+  \node[draw] (X0) at (6,3) {$10$};
+  \node[draw] (X1) at (6,2) {$-2+2j$};
+  \node[draw] (X2) at (6,1) {$-2$};
+  \node[draw] (X3) at (6,0) {$-2-2j$};
+  \draw[->] (x0)--(a0); \draw[->] (x2)--(a0);
+  \draw[->] (x0)--(a1); \draw[->] (x2)--(a1);
+  \draw[->] (x1)--(a2); \draw[->] (x3)--(a2);
+  \draw[->] (x1)--(a3); \draw[->] (x3)--(a3);
+  \draw[->] (a0)--(X0); \draw[->] (a2)--(X0);
+  \draw[->] (a0)--(X2); \draw[->] (a2)--(X2);
+  \draw[->] (a1)--(X1); \draw[->] (a3)--node[above]{$-j$}(X1);
+  \draw[->] (a1)--(X3); \draw[->] (a3)--(X3);
+\end{tikzpicture}
+\caption{$N=4$ radix-2: hai stage; twiddle $-j$ trên nhánh dưới pair $(a1,a3)$.}
+\end{figure}
+
+\subsection*{F.3. FIR 5-tap --- convolution bảng đủ}
+
+$h=[1,2,3,2,1]/9$ (xấp xỉ Gauss), $x=[0,0,1,0,0,0,2,0,0]$ (hai xung).
+
+\begin{center}\small
+\begin{tabular}{@{}rrrrrrrrr@{}}
+\toprule
+$n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
+\midrule
+$x$ & 0 & 0 & 1 & 0 & 0 & 0 & 2 & 0 & 0 \\
+$y$ & 0 & 0 & $1/9$ & $2/9$ & $3/9$ & $2/9$ & $1/9+2/9$ & $4/9$ & $6/9$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Tiếp $n=9{:}\,4/9$; $n=10{:}\,2/9$; $n=11{:}\,0$. Hai ``quả núi'' tỉ lệ 1{:}2 --- tuyến tính của convolution.
+
+Symmetric folding: $y[n]=\frac1N\bigl(1\cdot(x[n]+x[n-4])+2\cdot(x[n-1]+x[n-3])+3\cdot x[n-2]\bigr)$ --- 3 nhân thay 5.
+
+\subsection*{F.4. Đạo hàm polyphase --- từ $H(z)$ đến commutator}
+
+\[
+H(z)=\sum_{k=0}^{N-1}h[k]z^{-k}.
+\]
+Viết $k=mM+r$, $r=0..M-1$, $m=0,1,\ldots$:
+\[
+H(z)=\sum_{r=0}^{M-1}z^{-r}\sum_{m}h[mM+r](z^{M})^{-m}=\sum_{r=0}^{M-1}z^{-r}E_r(z^{M}).
+\]
+Decimation $\downarrow M$ sau $H$: chỉ giữ $y[mM]$. Noble identity: lọc $E_r(z)$ chạy ở tốc độ thấp hơn --- tiết kiệm $M$ lần MAC.
+
+\textbf{Fractional $L/M=2/3$:} upsample $\uparrow2$ (chèn 0) $\to$ lọc $\to$ downsample $\downarrow3$. Polyphase gộp thành 3 nhánh vào, 2 nhánh ra. Đếm: trong 3 chu kỳ clock vào có 3 mẫu; ra 2 mẫu. \emph{Argon từng nhầm 2-in$\to$3-out --- đã bác bằng 683208.}
+
+Đồ chơi $M=3$, $h=[h0..h5]$:
+$E_0=[h0,h3]$, $E_1=[h1,h4]$, $E_2=[h2,h5]$.
+
+\subsection*{F.5. DC-blocker --- mặt phẳng $z$, Bode skew, fixed-point}
+
+Zero tại $z=1=e^{j0}$. Cực tại $z=\alpha$ (cùng góc, bán kính $\alpha<1$).
+Khoảng cách zero$\to$điểm $e^{j\omega}$ trên vòng tròn đơn vị $\approx\omega$ (nhỏ); cực$\to$điểm $\approx|\omega|$ nhưng bán kính ngắn hơn $\Rightarrow$ $|H|\approx1$ ở giữa dải.
+
+Cutoff xấp xỉ $f_c\approx\frac{1-\alpha}{2\pi}f_s$. $\alpha=0{,}995$, $f_s=16\text{k}$ $\Rightarrow f_c\approx12{,}7\text{ Hz}$ --- dưới $F_{\min}=75$, trên DC.
+
+\textbf{Bit-growth đồ chơi.} $\alpha=1-2^{-8}$, $x$ Q1.15 full-scale DC step 32767. $y$ nội bộ Q1.30; sau 256 mẫu vẫn còn $\sim1/e$ năng lượng transient. Accumulator 32-bit an toàn; cắt về 16 có bão hòa.
+
+\subsection*{F.6. Non-restoring division --- $13\div3$ đủ chu kỳ}
+
+Dividend $D=13=1101_2$, divisor $V=3=0011_2$, rộng 4 bit. Register $A$ (remainder) 4 bit, $Q$ (quotient) 4 bit. Thuật toán (không dấu simplified):
+
+\begin{center}\small
+\begin{tabular}{@{}cll@{}}
+\toprule
+Iter & Action & $(A,Q)$ sketch \\
+\midrule
+0 & Load $Q\leftarrow1101$, $A\leftarrow0000$ & $A=0$, $Q=13$ \\
+1 & Shift AQ trái; $A\leftarrow A-V$ & thử trừ \\
+  & Nếu $A\ge0$: $q_0=1$; else $q_0=0$, giữ/restore rule NR & \\
+2--4 & Lặp shift + (trừ nếu $A\ge0$ else cộng $V$) & \\
+End & Quotient $=4$ ($0100$), remainder $=1$ & $3\cdot4+1=13$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+RTL: FSM \texttt{IDLE/SHIFT/ADD\_SUB/DONE}; mỗi iter 1 clk; latency $=W$ cho $W$-bit. LPM\_DIVIDE: cùng ý, pipeline sâu hơn, timing tốt hơn tự viết khi $W\ge16$.
+
+\subsection*{F.7. Viterbi 4 khung --- điền bảng cum đầy đủ}
+
+Tham số: octCost$=0{,}01$, jump$=0{,}35$, vuv$=0{,}14$, ceil$=600$.
+Mỗi khung 2 ứng viên V($f$) và UV. Giả sử chuỗi thật $f^*=[200,210,100,105]$ nhưng $r_a$ tại 100-ish cũng cao (bẫy octave).
+
+\begin{center}\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & $t1$ & $t2$ & $t3$ & $t4$ \\
+\midrule
+$f_V$ & 200 & 210 & 100 & 105 \\
+$r_a$ & 0{,}50 & 0{,}49 & 0{,}48 & 0{,}47 \\
+$\delta_V$ & 0{,}484 & 0{,}474 & 0{,}454 & 0{,}444 \\
+$\delta_{UV}$ & 0{,}45 & 0{,}45 & 0{,}45 & 0{,}45 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Cum V tại $t3$ (100~Hz) từ V $t2$ (210): trừ jump $|\log_2(210/100)|\cdot0{,}35\approx0{,}35\cdot1{,}07\approx0{,}37$ --- đắt.
+Cum V tại $t3$ nếu có ứng viên 200: rẻ hơn. PathFinder tránh nhảy 210$\to$100 nếu còn ứng viên gần 200. \textbf{Bài tập:} điền hết $\mathrm{cum}[t,j]$ và backpointer --- đáp án lab trong \texttt{verify\_tiers/viterbi\_toy.md} (tạo kèm).
+
+\subsection*{F.9. I2S --- đếm cạnh SCLK cho một frame 48~kHz}
+
+$f_s=48\text{ kHz}$, 32-bit/slot $\times2$ = 64 bit/frame.
+$f_{\mathrm{SCLK}}=3{,}072\text{ MHz}$. Chu kỳ SCLK $=325{,}5\text{ ns}$.
+MCLK $12{,}288\text{ MHz}$ $=256\times f_s$ $\Rightarrow$ 4 MCLK / SCLK nếu chia 4.
+
+Sample Left Q1.15 = bit 31..16 của slot (sau 1-bit delay). Đồ chơi thu byte: giả sử data line theo MSB: nhận 16 cạnh $\to$ $0x1234$ $\Rightarrow$ mẫu $=4660$ int16 $\Rightarrow$ float $=4660/32768\approx0{,}142$.
+
+\subsection*{F.8. PLL --- chọn $M,N,C$ bằng tay (integer gần đúng)}
+
+Muốn $f_{\mathrm{out}}=12{,}288\text{ MHz}$, $f_{\mathrm{in}}=50$.
+Tỉ số $\rho=12{,}288/50=0{,}24576$.
+VCO Cyclone~V thường 600--1600~MHz. Chọn $f_{\mathrm{vco}}=1228{,}8\text{ MHz}$ (ví dụ), khi đó $C=100$, $M/N=f_{\mathrm{vco}}/f_{\mathrm{in}}=24{,}576$.
+Chọn $N=125$, $M=3072$ $\Rightarrow M/N=24{,}576$ khớp.
+Kiểm: $50\cdot3072/125/100=12{,}288$ đúng.
+
+Fractional mode: $M$ trung bình $24{,}576$ với $N,C$ khác --- MegaWizard tính. Báo cáo ppm trong Compilation Report.
+
+\subsection*{F.10. BFP qua 2 stage butterfly giả}
+
+Mantissa 8-bit signed minh họa (thật 16+). Vector 4 bin sau stage0: $m=[40, -30, 10, -5]$, $e=0$.
+Max$=40$ < 63 (headroom 7-bit?) --- giả sử overflow threshold $=32$: $40>32$ $\Rightarrow$ dịch phải 1, $e\leftarrow1$, $m\leftarrow[20,-15,5,-2]$ (làm tròn).
+
+Stage1 butterfly giả làm $\max|m|=25$ vẫn $<32$ --- giữ $e=1$.
+Power: $|X|^2$ logic $= (m_r^2+m_i^2)\ll(2e)$ hoặc tracker riêng. Đồ chơi bin0 real: $20^2\cdot2^{2}=400\cdot4=1600$ (so với ``thật'' $40^2=1600$ --- khớp).
+
+\subsection*{F.11. MAC autocorr --- frame 16 mẫu đồ chơi đầy đủ}
+
+$x=\cos(2\pi n/8)$, $n=0..15$ (chu kỳ 8 mẫu, 2 chu kỳ trong khung).
+$\mathcal{R}[\tau]=\sum_{n=0}^{15-\tau}x[n]x[n+\tau]$ (linear). Kỳ vọng đỉnh $\tau=8$.
+
+Bảng $x[n]$ (Q1.15 gần: $32767\cdot\cos$):
+\begin{center}\footnotesize
+\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule
+$n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+$x$ & 32767 & 23170 & 0 & -23170 & -32768 & -23170 & 0 & 23170 \\
+\midrule
+$n$ & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+$x$ & 32767 & 23170 & 0 & -23170 & -32768 & -23170 & 0 & 23170 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+$\mathcal{R}[0]=\sum x^2\approx 8\times(32767^2+23170^2)$ (các số 0 không góp) $=8(1{,}073{,}676{,}289+536{,}848{,}900)\approx1{,}288\times10^{10}$.
+$\mathcal{R}[8]$ gần bằng $\mathcal{R}[0]$ vì tuần hoàn đúng. $r_a[8]\approx1$ sau chia $\mathcal{R}_w$. $\tau=4$ (nửa chu kỳ / chống pha): $\mathcal{R}[4]$ âm lớn --- không phải đỉnh dương.
+
+\subsection*{F.12. Fixed-point --- đổi Q1.15 $\leftrightarrow$ float $\leftrightarrow$ Q12.4}
+
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Float & Q1.15 int16 & bytes LE & Ghi chú \\
+\midrule
+$1{,}0$ & $32767$ & \texttt{FF 7F} & full-scale dương \\
+$0{,}0$ & $0$ & \texttt{00 00} & \\
+$-1{,}0$ & $-32768$ & \texttt{00 80} & \\
+$0{,}5$ & $16384$ & \texttt{00 40} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+$F_0$ Hz & Q12.4 uint16 & bytes LE & \\
+\midrule
+$0$ (UV) & $0$ & \texttt{00 00} & \\
+$75{,}0$ & $1200$ & \texttt{B0 04} & floor \\
+$150{,}0625$ & $2401$ & \texttt{61 09} & \\
+$200{,}0$ & $3200$ & \texttt{80 0C} & \\
+$500{,}0$ & $8000$ & \texttt{40 1F} & \\
+$600{,}0$ & $9600$ & \texttt{80 25} & ceiling \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Nhân hai Q1.15: kết quả Q2.30; lấy bit $[30{:}15]$ $\approx$ Q1.15 sau làm tròn.
+
+\subsection*{F.13. Bản đồ tín hiệu Avalon-ST qua toàn pipeline}
+
+Thứ tự khối (default MAC):
+\texttt{i2s\_rx} $\to$ \texttt{dc\_block} $\to$ \texttt{fir\_hp} (FIR~II) $\to$ \texttt{frame\_buf} $\to$ \texttt{window\_mul} $\to$ \texttt{ac\_mac} $\to$ \texttt{norm\_C\_rom} $\to$ \texttt{peak\_parabolic} $\to$ \texttt{voicing\_gate} $\to$ \texttt{f0\_div} $\to$ \texttt{q12\_4\_pack}.
+
+Mỗi mũi tên = Avalon-ST (hoặc ready/valid đơn giản). Backpressure: nếu \texttt{ac\_mac} bận (đang chạy $\tau$), \texttt{ready}=0 ngược lên frame\_buf --- frame\_buf phải đủ sâu hoặc drop policy (thiết kế: double-buffer 2$\times$640, không drop).
+
+Đồ chơi latency: I2S mẫu mỗi $62{,}5\,\mu s$ (16~kHz); khung 10~ms; AC MAC $116\text{k}$ clk @100~MHz $=1{,}16\text{ ms}$ $<10\text{ ms}$ --- OK RTF$<1$.
+
+\subsection*{F.14. DSP 18$\times$19 packing --- hai nhân 9$\times$9?}
+
+Cyclone~V DSP có thể chia mode. Với hệ số FIR 18-bit và data 18-bit: một DSP/nhân. Pre-adder: $(A\pm D)\times B$ trong cùng DSP --- folding FIR dùng pre-adder: $A=x[n-k]$, $D=x[n-(N-1-k)]$, $B=h[k]$.
+
+Đồ chơi: $A=100$, $D=50$, $B=3$ $\Rightarrow (150)\times3=450$ trong 1 DSP thay vì 2 nhân +1 cộng ngoài.
+
+\subsection*{F.15. M10K depth/width --- chọn cho frame và ROM}
+
+M10K = 10240 bit. Cấu hình: $1024\times10$, $512\times20$, $256\times40$, ...
+Frame 640$\times$16 $=10240$ bit = \textbf{đúng 1} M10K nếu depth 640 không power-of-2 --- Quartus làm tròn depth 1024$\times$16 $=2$ M10K (lãng phí). Chấp nhận. ROM $C[\tau]$ 214$\times$16 $\approx$ nửa M10K. Hanning 640$\times$16 = thêm 2 M10K. Tổng memory pitch path: $\sim$6--10 M10K --- nhỏ so với chip 5CSXFC6 ($\sim$557 M10K).
+
+\subsection*{F.16. LPM\_DIVIDE pipeline --- latency vs $F_0$ path}
+
+UG 683490: cấu hình pipeline $=L$ tầng. Throughput 1 quot/clk sau $L$ clk đầu. Với 1 phép chia / frame ($f_s/\tau$), $L=16$ không ảnh hưởng RTF. Không dùng ALTDIV\_TENT (không tồn tại trong Standard).
+
+Đồ chơi timing: $\tau$ sẵn tại clk 0; quot valid clk 16; pack Q12.4 clk 17; ghi bin.
+
+\subsection*{F.17. Đối chiếu Boersma Table~1 với ngân sách sai số FPGA}
+
+Table~1: $>3$ chu kỳ/cửa sổ, sine, $|\Delta F/F|<5\cdot10^{-4}$.
+Tại $F_0=200$, $|\Delta F|<0{,}1\text{ Hz}$. Q12.4 LSB $=0{,}0625\text{ Hz}$ --- đủ fine.
+Sai lượng tử ROM $C$ + parabolic (không sinc) + tắt Viterbi: kỳ vọng lab $|\Delta F/F|\sim10^{-3}$--$10^{-2}$ trên sine sạch; vẫn đủ chấm Pearson $r$ phát âm. Document khoảng này trong checklist E.
+
+\subsection*{F.18. Thuật ngữ Anh--Việt dùng trong phần mới}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+English & Tiếng Việt trong tài liệu \\
+\midrule
+Autocorrelation & Tự tương quan \\
+Lag & Trễ $\tau$ \\
+Voicing / Unvoiced & Hữu thanh / Vô thanh \\
+Octave cost & Phạt quãng tám \\
+Path finding (Viterbi) & Tìm đường Viterbi \\
+Block floating point & Dấu chấm động khối \\
+Polyphase & Đa pha \\
+Twiddle factor & Hệ số xoay $W$ \\
+Backpressure & Áp lực ngược (ready=0) \\
+Bit-exact twin & Mô hình khớp bit \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{F.19. Mean removal trên tín hiệu DC+sine}
+$x[n]=1000+500\sin(2\pi n/16)$, $n=0..15$. $\mu=1000$. Sau trừ: biên độ 500 thuần. $\mathcal{R}[16]$ không tính (ngoài cửa); $\mathcal{R}[0]=16\times500^2/2$ (Parseval sine)... Tính tay $\sum\tilde x^2$ và $\sum\tilde x[n]\tilde x[n+8]$.
+
+\subsection*{F.20. Hanning năng lượng $\mathcal{R}_w[0]$}
+Với $w$ Q1.15 $N=640$, $\mathcal{R}_w[0]=\sum w_i^2$ (int64). Script gen phải in giá trị này vào header hex. Đồ chơi $N=4$: $w=[0{,}1,0{,}7,0{,}7,0{,}1]$ thô, $\mathcal{R}_w[0]=0{,}01+0{,}49+0{,}49+0{,}01=1{,}0$.
+
+\subsection*{F.21. Voicing gate boolean}
+RTL: \texttt{voiced = (ra\_q >= VOICE\_Q) \&\& (local\_peak >= SIL\_NUM*global\_peak/SIL\_DEN)}. Đồ chơi: VOICE\_Q = floor(0.45*2^14), ... Test cases: zero input $\to$ UV; sine 0.1 full-scale $\to$ V; sine 0.01 $\to$ UV nếu silence chặn.
+
+\subsection*{F.22. Time step correction}
+Praat: \texttt{octaveJumpCost *= 0.01/timeStep}. Đồ chơi: timeStep=$0{,}005$ $\Rightarrow$ hệ số $\times2$ --- nhảy octave bị phạt gấp đôi vì frame dày hơn (nhiều chuyển/frame). FPGA cố định hop 10~ms $\Rightarrow$ hệ số $=1$ nếu mang costs lên HPS.
+
+\subsection*{F.23. Ceiling và floor trong delta}
+$\log_2(\mathrm{ceiling}/f)$: $f$ gần ceiling $\Rightarrow$ log nhỏ $\Rightarrow$ ít phạt octave (thích cao). $f$ gần floor $\Rightarrow$ phạt nhiều. Đúng ý Boersma: thiên vị nhẹ về cao để phá $F_0/2$.
+
+\subsection*{F.24. Brent depth ý nghĩa}
+\texttt{brent\_depth} / interpolate enum: số lần đánh giá sinc hoặc độ sâu tìm. SINC70 $\approx$ cửa sổ $\pm35$ mẫu; SINC700 $\pm350$. Latency CPU OK; FPGA: đừng port nguyên.
+
+\subsection*{F.25. Global peak scan}
+Praat quét cả sound tìm \texttt{globalPeak} trước vòng frame --- dùng silence. FPGA streaming: ước lượng \texttt{globalPeak} bằng peak envelope chậm (IIR max) hoặc cố định full-scale $1{,}0$ (lạc quan) / calibration mic.
+
+\subsection*{F.26. maxnCandidates = 15}
+14 đỉnh + 1 UV. RTL argmax-top-K tốn so sánh. Default FPGA: \textbf{K=1} (chỉ đỉnh max) + UV --- giảm diện tích; mất đa ứng viên cho Viterbi (đã tắt).
+
+\subsection*{F.27. Interpolation depth 0.5}
+Pad FFT: \texttt{nsampFFT >= nsamp\_window*(1+depth)}. Hanning depth $0{,}5$ $\Rightarrow$ $1{,}5\times$ window. $640\times1{,}5=960$ $\to$ FFT 1024. Gaussian depth $0{,}25$ với window dài hơn.
+
+\subsection*{F.28. Cross-correlation vs autocorrelation}
+Praat cũng có CC method (cross với Hanning ``synthetic''). Tài liệu này = AC path. CC: tương tự nhưng nhân phổ với phổ cửa sổ tham chiếu --- FPGA chưa implement.
+
+\subsection*{F.29. FIR Compiler II --- đọc báo cáo DSP/M10K}
+Sau generate: xem \texttt{.html} report: số DSP, M10K, latency cycles, output rounding. Điền vào bảng E checklist. Đồ chơi kỳ vọng HP 60~Hz order 64 symmetric: $\sim$32 DSP (folded) hoặc ít hơn nếu DA.
+
+\subsection*{F.30. FFT IP --- bit reversal}
+Natural order in / bit-reversed out (hoặc ngược). Twin phải \texttt{bitrev} trước khi so. Đồ chơi $N=8$ index: $0,1,2,3,4,5,6,7$ $\to$ $0,4,2,6,1,5,3,7$.
+
+\subsection*{F.31. ReadyLatency=1 nghĩa là gì}
+UG 683091: readyLatency$=1$ $\Rightarrow$ master phải giữ data thêm 1 clk sau ready. Default pitch RTL: dùng 0 cho đơn giản. Không trộn hai kiểu trên cùng wire.
+
+\subsection*{F.32. Saturation arithmetic đồ chơi}
+Q1.15: $20000+20000=40000>32767$ $\to$ saturate $32767$ (không wrap $-25536$). RTL: kiểm overflow bit trước khi gán. FIR IP có option saturate.
+
+\subsection*{F.33. Convergent rounding}
+``Round half to even'': $1{,}5\to2$, $2{,}5\to2$. Giảm bias DC so với always-up. Intel FIR: chọn convergent khi quan tâm noise floor.
+
+\subsection*{F.34. HPS bridge đọc pitch bin}
+Lightweight HPS-to-FPGA bridge / shared SDRAM. Đồ chơi: mỗi frame ghi 2 byte vào circular buffer; HPS đọc theo frame index. Endian LE.
+
+\subsection*{F.35. Testbench zero / DC / clip}
+Ba vector bắt buộc: (1) all-zero $\to$ F0=0; (2) DC=0.5 $\to$ F0=0 sau DC-block; (3) clip sine $\pm1$ $\to$ F0 đúng$\pm$tol, không NaN/X.
+
+\subsection*{F.36. Golden Q12.4 so Praat}
+Sine 200~Hz 16~kHz: Praat $\approx200$; golden $\in[199{,}5,200{,}5]$; RTL dump = golden byte-exact.
+
+\newpage
+\section*{Phần G. Hình học tín hiệu \& bảng tham số Praat mở rộng}
+
+\subsection*{G.1. Mười tham số Sound\_to\_Pitch --- vật lý từng cái}
+
+\begin{center}\footnotesize
+\begin{tabular}{@{}p{3.2cm}p{2.2cm}p{7cm}@{}}
+\toprule
+Tham số & Default & Vật lý / toán một câu \\
+\midrule
+time step & 0{,}0 $\to$ auto & Khoảng thời gian giữa hai đo; auto $=0{,}75/F_{\min}$ \\
+pitch floor $F_{\min}$ & 75 Hz & Chu kỳ dài nhất $\Rightarrow$ $L$ và $\tau_{\max}$ \\
+very accurate & off & Hanning/SINC70 vs Gaussian/SINC700 \\
+silence threshold & 0{,}03 & Tỉ local/global peak dưới mức $\to$ nghi lặng \\
+voicing threshold & 0{,}45 & Sàn strength cho UV candidate \\
+octave cost & 0{,}01 & Phạt $\log_2$ thiên vị $F_0/2$ \\
+octave jump cost & 0{,}35 & Phạt $|\log_2 f_1/f_2|$ giữa khung \\
+voiced/unvoiced cost & 0{,}14 & Phạt đổi trạng thái V/UV \\
+ceiling & 600 Hz & $F_{\max}$ + mốc octave cost \\
+maxn candidates & 15 & 14 đỉnh + UV \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{G.2. Công thức $L$ và $\tau$ trên DE10}
+
+\[
+L=\Bigl\lfloor\frac{\texttt{periodsPerWindow}}{F_{\min}}f_s\Bigr\rfloor,\quad
+\tau_{\min}=\Bigl\lfloor\frac{f_s}{\mathrm{ceiling}}\Bigr\rfloor,\quad
+\tau_{\max}=\Bigl\lfloor\frac{f_s}{F_{\min}}\Bigr\rfloor.
+\]
+Số: $3/75\times16000=640$, $\tau_{\min}=\lfloor16000/600\rfloor=26$ (lab thường 32), $\tau_{\max}=213$.
+
+\subsection*{G.3. Từ Boersma §1 định nghĩa $r_x(\tau)$}
+
+\[
+r_x(\tau)\equiv\int x(t)x(t+\tau)\,dt.
+\]
+Rời rạc cửa sổ: tổng hữu hạn. HNR từ chiều cao đỉnh tương đối --- ngoài phạm vi F0-only path nhưng cùng $\mathcal{R}$.
+
+\subsection*{G.4. Vì sao MAC thắng FFT trên $L=640$, $\tau$ hẹp}
+
+FFT 1024 complex: $\sim5$k butterfly $\times$ (4 mul) $\sim20$k mul + BFP overhead + 2 chiều FFT/IFFT.
+MAC: $640\times182\approx116$k mul thực --- nhiều hơn về số nhưng: (1) không cần twiddle ROM; (2) không BFP; (3) datapath đơn giản; (4) dễ bit-exact. Khi $\tau$ full $0..L$ và $L$ lớn, FFT thắng --- không phải case pitch floor 75~Hz.
+
+\subsection*{G.5. Checklist tự hỏi Feynman trước khi cắt bước Praat}
+
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item Bước này bảo vệ khỏi hiện tượng vật lý nào?
+\item Sai số khi xóa: $\Delta F/F$ bao nhiêu trên sine? trên speech?
+\item Silicon: LUT/DSP/M10K/latency?
+\item Twin còn so được với Praat không?
+\item Có thể đẩy HPS thay vì xóa hoàn toàn không?
+\end{enumerate}
+
+\newpage
+\section*{Phần H. Phiếu tính tay (print \& solve)}
+
+\subsection*{H.1. Phiếu DFT 8}
+Cho $x=[2,0,2,0,2,0,2,0]$. Tính $X[k]$ cho $k=0..7$. Kiểm $\mathcal{R}[4]$ via IFFT $|X|^2$. \\
+\textit{Gợi ý:} tone chu kỳ 2; năng lượng ở $k=4$ (Nyquist).
+
+\subsection*{H.2. Phiếu FIR folding}
+$h=[1,−1,2,−1,1]$, chứng minh không đối xứng tuyến tính pha toàn cục; số nhân trước/sau khi cố gắng gấp.
+
+\subsection*{H.3. Phiếu DC step}
+$\alpha=0{,}75$, $x=[0,0,0,8,8,8,8,8]$. Tính $y[0..7]$ đệ quy. Vẽ.
+
+\subsection*{H.4. Phiếu parabolic}
+$r=[0{,}2,0{,}6,0{,}5]$ tại $\tau=100,101,102$. Tìm $\tau_{\mathrm{fine}}$, $F_0$ tại $f_s=16\text{k}$. Đổi Q12.4.
+
+\subsection*{H.5. Phiếu Viterbi 2×2}
+$\delta=\begin{bmatrix}0{,}5&0{,}4\\0{,}45&0{,}48\end{bmatrix}$ (hàng=thời gian, cột=V/UV). cost V--V$=0{,}05$, V--UV$=0{,}14$. Cum và path.
+
+\subsection*{H.6. Phiếu non-restoring}
+$11\div5$ 4-bit. Liệt kê $A,Q$ mỗi iter.
+
+\subsection*{H.7. Phiếu BFP}
+$m=[60,10,-40,5]$, thresh overflow $=32$. Cho $e$ mới và $m$ mới.
+
+\subsection*{H.8. Phiếu $C[\tau]$}
+$w=[1,2,3,2,1]$, tính $\mathcal{R}_w[0..3]$, $C$, lượng tử Q3.13.
+
+\subsection*{H.9. Phiếu PLL}
+$f_{in}=50$, $f_{out}=25{,}6$. Đề xuất $M,N,C$ integer với $f_{vco}\in[600,1600]$.
+
+\subsection*{H.10. Phiếu Avalon}
+Vẽ waveform 8 clk: valid $11011011$, ready $10101101$, đánh dấu transfer.
+
+\subsection*{H.11. Đáp án ngắn (để tự kiểm, không xem trước)}
+H.1: $X[0]=8$, $X[4]=8$, khác 0. H.4: $\Delta=\frac12\frac{0{,}2-0{,}5}{0{,}2-1{,}2+0{,}5}=\frac12\frac{-0{,}3}{-0{,}5}=0{,}3$ $\Rightarrow\tau=101{,}3$, $F_0\approx158\text{ Hz}$, Q12.4$\approx2528$. H.5: path ưu tiên theo cum max. H.7: $e{+}{+}$, $m=[30,5,-20,2]$ (round). H.8: $\mathcal{R}_w[0]=19$, $\mathcal{R}_w[1]=16$, $C[1]=19/16$. 
+
+\newpage
+\section*{Phần I. Bản đồ dòng mã Praat $\leftrightarrow$ khối FPGA}
+
+\begin{center}\footnotesize
+\begin{tabular}{@{}p{5.5cm}p{6.5cm}@{}}
+\toprule
+\texttt{Sound\_to\_Pitch.cpp} / \texttt{Pitch.cpp} & Khối FPGA / ghi chú \\
+\midrule
+Soft upsample (toàn file, trước loop) & Xóa; FIR+analog \\
+\texttt{localMean} loops & \texttt{mean\_sub} / DC-block \\
+\texttt{window[j]} Hanning/Gaussian & ROM Hanning \\
+\texttt{frame[j] *= window} & \texttt{window\_mul} \\
+\texttt{NUMfft\_forward/backward} & \texttt{ac\_mac} (default) / FFT IP \\
+\texttt{ac[i]/(ac[1]*windowR[i])} & ROM $C[\tau]$ \\
+Local maxima loop + \texttt{voicingThreshold} & \texttt{peak\_scan} + gate \\
+\texttt{NUM\_interpolate\_sinc} / Brent & parabolic only \\
+\texttt{octaveCost} in strength & optional score RTL / HPS \\
+\texttt{Pitch\_pathFinder} Viterbi & HPS / off \\
+\texttt{silenceThreshold} + globalPeak & envelope + gate \\
+--- & I2S, PLL, Avalon, Q12.4 pack \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{I.1. Nguyên tắc ``xóa có chủ đích''}
+Mỗi ô ``Xóa/Off'' trong bảng trên phải có phiếu Feynman (G.5) đã trả lời trong lab notebook. Không xóa vì ``khó viết Verilog''.

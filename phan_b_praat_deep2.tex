@@ -1,0 +1,167 @@
+
+\section*{Phần B$^{\star\star}$. Mở rộng từng bước Praat\\(đồ chơi lớn + ánh xạ mã nguồn)}
+
+\begin{firstprin}{Cách dùng phần B$^{\star\star}$}
+Phần B$^+$ đã dựng xương. Phần này nhân đôi độ dày: đạo hàm dài hơn, bảng số lớn hơn, trích \texttt{Sound\_to\_Pitch.cpp} / \texttt{Pitch.cpp} / Boersma 1993. v10 vẫn nguyên văn phía trước.
+\end{firstprin}
+
+\subsection*{B$^{\star\star}$.1 Soft upsampling --- phổ và $\times2$}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Âm thanh continuous-time; sau ADC phổ lặp $f_s$. Cửa sổ Hanning tạo sidelobe $-32$~dB; năng lượng gần Nyquist ``quăng'' xuống vùng $F_0$. Boersma Step~1: FFT toàn utterance, nhân mask mềm từ $0{,}95 f_{\mathrm{Nyq}}\to0$, IFFT dài $2N$.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+Mask $G[k]=1$ dưới $0{,}95 f_N$, dốc tuyến tính về 0 tại $f_N$. Phổ pad giữa dương/âm = upsample $\times2$.
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{Đồ chơi $N=8$:} $|X|=[0,0,0,10,4,10,0,0]$; sau mask Nyquist $|X'|=[0,0,0,10,0,10,0,0]$; pad 16 rồi IFFT --- đứt năng lượng Nyquist.
+\begin{figure}[H]\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \draw[->] (0,0)--(6,0) node[right]{$f$};
+  \draw[->] (0,0)--(0,2.2) node[above]{$G(f)$};
+  \draw[thick,teal] (0,1.8)--(4.2,1.8)--(5.2,0)--(5.5,0);
+  \node at (4.2,-0.35){$0{,}95 f_N$}; \node at (5.2,-0.35){$f_N$};
+\end{tikzpicture}
+\caption{Soft spectral mask Boersma Step 1.}
+\end{figure}
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+FPGA streaming không FFT cả file. Thay anti-alias analog + FIR; optional HPS offline.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+Optional: FFT IP 4K + mask ROM + IFFT --- chỉ lab.
+\subsubsection*{Mô hình bit-exact (twin)}
+Twin: \texttt{np.fft.rfft} $\to$ nhân $G$ $\to$ \texttt{irfft} length $2N$.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.3 Local mean --- $\pm$ chu kỳ dài nhất}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Praat trừ mean trên $2\cdot\texttt{nsamp\_period}$ quanh tâm khung --- đủ một chu kỳ $F_{\min}$, không xóa rung $F_0$.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+$\mu_c=\frac{1}{2N_p}\sum x$; $\tilde x=(x-\mu)w$. $N_p=\lfloor f_s/F_{\min}\rfloor$.
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{Đồ chơi:} $x=[10,12,10,12,10,12,10,12]$, $\mu=11$, $\tilde x=\pm1$. $\mathcal{R}[0]=8=\mathcal{R}[2]$, $r=1$. Quên trừ: $r\approx0{,}992$ --- với DC lớn + nhiễu dễ dưới voicing threshold.
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+Accumulator + LPM\_DIVIDE hoặc nhân nghịch đảo ROM ($2N_p=426$ không phải power-of-2).
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+\texttt{mean\_sub.v}: sum 40-bit; quot; trừ khi nạp BRAM.
+\subsubsection*{Mô hình bit-exact (twin)}
+Twin int cùng công thức; so dump frame.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.4 Hanning vs Gaussian}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Hanning: 3 chu kỳ. Gaussian: sidelobe thấp hơn, cần 6 chu kỳ; mã \texttt{periodsPerWindow*=2}, \texttt{brent\_depth=SINC700}.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+Hanning: $w[i]=0{,}5-0{,}5\cos\frac{2\pi i}{N+1}$, $i=1..N$.
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{Bảng Hanning $N=8$} ($N+1=9$):
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$i$ & $2\pi i/9$ & $\cos$ & $w[i]$ \\
+\midrule
+1 & $40^\circ$ & $0{,}766$ & $0{,}117$ \\
+2 & $80^\circ$ & $0{,}174$ & $0{,}413$ \\
+3 & $120^\circ$ & $-0{,}5$ & $0{,}750$ \\
+4 & $160^\circ$ & $-0{,}940$ & $0{,}970$ \\
+5 & $200^\circ$ & $-0{,}940$ & $0{,}970$ \\
+6 & $240^\circ$ & $-0{,}5$ & $0{,}750$ \\
+7 & $280^\circ$ & $0{,}174$ & $0{,}413$ \\
+8 & $320^\circ$ & $0{,}766$ & $0{,}117$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Đối xứng --- ROM chỉ cần 4 giá trị.
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+ROM M10K 640$\times$16. Gaussian 1280: gấp đôi BRAM+MAC.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+\texttt{\$readmemh\{"hann640\_q15.hex"\}}; mirror addr optional.
+\subsubsection*{Mô hình bit-exact (twin)}
+Script gen hex; pytest max err 1 LSB.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.5 Autocorr qua FFT --- DFT 8 điểm}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Wiener--Khinchin: $\mathcal{R}=\mathcal{F}^{-1}\{|X|^2\}$. Zero-pad để circular $\approx$ linear trên lag quan tâm.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+$X[k]=\sum x[n]e^{-j2\pi kn/N}$; $P=|X|^2$; $\mathcal{R}=\mathrm{IFFT}(P)$ (scale theo NUMFourierTable).
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{DFT 8:} $x=[1,0,-1,0,1,0,-1,0]$ $\Rightarrow$ năng lượng $k=2,6$, $|X|^2=16$. IFFT: đỉnh $\tau=0$ và $\tau=4$. Radix-2: 3 stage, $N/2$ butterfly/stage, twiddle $W_8^k$.
+\begin{figure}[H]\centering
+\begin{tikzpicture}[font=\tiny,>=Stealth]
+  \foreach \i/\x in {0/0,1/0.8,2/1.6,3/2.4,4/3.2,5/4.0,6/4.8,7/5.6} {
+    \node[circle,draw,inner sep=1pt] (a\i) at (\x,2) {$x_\i$};
+  }
+  \node at (2.8,0.8){Radix-2 sketch $N=8$: 3 stages};
+\end{tikzpicture}
+\caption{Phác butterfly $N=8$.}
+\end{figure}
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+FFT IP Length 1024, BFP ON, Twiddle 16-bit. Pipelined $\approx$1 sample/clk.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+Default MAC. Optional \texttt{ac\_fft\_wrapper.v}.
+\subsubsection*{Mô hình bit-exact (twin)}
+Twin NumPy FFT + fake BFP; so MAC vs FFT trên cùng frame.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.6 Chia windowR --- $C[\tau]$}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Hai quả núi Hanning chồng ít khi $\tau$ lớn $\Rightarrow$ $\mathcal{R}_x$ nhỏ dù tuần hoàn. Chia phục hồi.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+$r[i]=\mathrm{ac}[i+1]/(\mathrm{ac}[1]\cdot\mathrm{windowR}[i+1])$. $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$.
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{Bảng minh họa $N=8$:}
+\begin{center}
+\small
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$\tau$ & $\mathcal{R}_w$ & $C$ & $C$ Q3.13 \\
+\midrule
+0 & $2{,}92$ & $1{,}000$ & $8192$ \\
+1 & $2{,}55$ & $1{,}145$ & $9380$ \\
+2 & $1{,}78$ & $1{,}640$ & $13435$ \\
+3 & $0{,}95$ & $3{,}074$ & $25180$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+ROM 214$\times$16. Alternative LPM\_DIVIDE runtime.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+Default ROM. Divider path optional.
+\subsubsection*{Mô hình bit-exact (twin)}
+\texttt{gen\_C\_tau.py}; so Parselmouth $r$.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.7--8 Candidates, parabolic, Sinc}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Cực đại cục bộ trong $(f_s/F_{\max},f_s/F_{\min})$. Nội suy phụ mẫu: sai 0{,}5 mẫu tại $\tau=80$ $\Rightarrow$ $0{,}625\%$ lỗi $F_0$.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+Parabolic: $\Delta=\frac12\frac{y_--y_+}{y_--2y_*+y_+}$. Sinc: $\sum r[k]\mathrm{sinc}(t-k)$; Brent tối ưu. Praat SINC70 / SINC700.
+\subsubsection*{Đồ chơi số làm tay}
+$y_-=0{,}40$, $y_*=0{,}50$, $y_+=0{,}46$ $\Rightarrow$ $\Delta\approx0{,}2143$, $y_{\mathrm{peak}}\approx0{,}5032$. Sinc tại $t=0{,}2$, $K=1$: $\hat y\approx0{,}5097$.
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+Fabric: parabolic. Sinc70 optional FIR. Sinc700 HPS.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+\texttt{peak\_parabolic.v}; optional sinc lab.
+\subsubsection*{Mô hình bit-exact (twin)}
+Golden parab/sinc3/sinc70 so Table~1-ish.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{B$^{\star\star}$.9--12 Costs + Viterbi $3\times3$}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Không nhảy octave mỗi frame; lặng không chu kỳ; V$\leftrightarrow$UV tốn công. PathFinder = Viterbi.
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+$\delta$ trừ octave cost; $c_{ij}=$ vuvCost hoặc jumpCost$|\log_2(f_i/f_j)|$. $\mathrm{cum}=\delta+\max(\mathrm{cum}_{-1}-c)$.
+\subsubsection*{Đồ chơi số làm tay}
+\textbf{3 khung $\times$ \{100~Hz, 200~Hz, UV\}.} $\delta(100)\approx0{,}454$, $\delta(200)\approx0{,}464$, $\delta_{UV}=0{,}45$. Cum $t2$ về 200 từ 200: $0{,}928$. Backtrace 200--200--200.
+\begin{figure}[H]\centering
+\begin{tikzpicture}[font=\tiny,>=Stealth]
+  \foreach \t in {1,2,3} {
+    \node[draw,fill=green!12] (a\t) at ({2.6*\t},2.0) {100Hz};
+    \node[draw,fill=green!20] (b\t) at ({2.6*\t},1.0) {200Hz};
+    \node[draw,fill=orange!15] (c\t) at ({2.6*\t},0.0) {UV};
+  }
+  \draw[->,thick,teal] (b1)--(b2)--(b3);
+\end{tikzpicture}
+\caption{Viterbi $3\times3$: đường teal = tối ưu (không nhảy octave).}
+\end{figure}
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+Fabric tắt. HPS: port pathFinder.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+Không RTL Viterbi default.
+\subsubsection*{Mô hình bit-exact (twin)}
+\texttt{viterbi\_path.py} so Parselmouth.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+
+\newpage

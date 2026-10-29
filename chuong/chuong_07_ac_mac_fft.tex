@@ -1,0 +1,226 @@
+\clearpage
+\phantomsection
+\section*{Chương 7. Tự tương quan --- MAC mặc định / FFT tùy chọn + BFP}
+\addcontentsline{toc}{section}{Chương 7. Tự tương quan — MAC mặc định / FFT tùy chọn + BFP}
+\pdfbookmark[1]{Chương 7. Tự tương quan — MAC mặc định / FFT tùy chọn + BFP}{chuong7}
+
+\subsection*{Autocorr MAC-first --- và FFT IP khi bật}
+
+
+
+\subsubsection*{Tự tương quan đo mức ``giống chính mình\'\'}
+
+Khi dây thanh rung gần tuần hoàn với chu kỳ $T_0$ mẫu, dạng sóng lặp lại: $x[n]\approx x[n-T_0]$. Phép \textbf{tự tương quan} đo mức giống nhau đó bằng cách trượt một bản sao đi $\tau$ mẫu (\textbf{lag}), nhân từng cặp và cộng dồn:
+\[
+\mathcal{R}_x[\tau]=\sum_{n=0}^{L-1-\tau}x[n]\,x[n+\tau].
+\]
+Tại $\tau=0$ ta luôn được năng lượng khung (cực đại toàn cục). Tại $\tau=T_0$ ta được đỉnh cục bộ đầu tiên --- đó chính là ứng viên cao độ $F_0=f_s/T_0$. Định lý \textbf{Wiener--Khinchin} nói rằng $\mathcal{R}_x$ cũng bằng IFFT của $|X|^2$, nên có thể đi đường FFT; nhưng định nghĩa gốc chỉ cần nhân--cộng. Trên Cyclone~V, đường mặc định là \textbf{MAC} (Multiply-ACcumulate) trực tiếp vì dải $\tau$ chỉ khoảng 187 giá trị, không cần FFT toàn khung.
+
+\subsubsection*{Toán và ví dụ tính tay MAC}
+
+Lấy $x=[1,2,1,2]$. Với $\tau=2$: chỉ còn hai cặp chồng nhau, $\mathcal{R}[2]=1\cdot1+2\cdot2=5$. Với $\tau=1$: $\mathcal{R}[1]=1\cdot2+2\cdot1+1\cdot2=6$. Năng lượng $\mathcal{R}[0]=1+4+1+4=10$. Hệ số chuẩn hóa thô $r[\tau]=\mathcal{R}[\tau]/\mathcal{R}[0]$ cho $r[2]=0{,}5$, $r[1]=0{,}6$. Trên đường thật ta còn nhân thêm $C[\tau]$ (Ch.~8) để bù thiên vị cửa sổ Hanning.
+
+\subsubsection*{MAC RTL (đường mặc định)}
+
+Hai con trỏ đọc khung trong BRAM True Dual-Port: một trỏ tới $x[n]$, một tới $x[n+\tau]$. Mỗi chu kỳ một khối \textbf{DSP} nhân $18\times18$, cộng vào bộ tích lũy rộng (thường 40--41~bit có dấu) để không tràn sau hàng trăm tích. Quét $\tau=32..213$ tuần tự (hoặc vài engine song song nếu dư DSP). Sau $(L-\tau)$ bước, thanh ghi accum chính là $\mathcal{R}_x[\tau]$.
+
+\subsubsection*{FFT IP (UG 683374) --- chỉ khi lab bật}
+
+Intel FFT IP hỗ trợ radix-2/4, burst hoặc streaming; twiddle sin/cos nằm trong ROM nội bộ; thứ tự bit có thể reverse ở vào hoặc ra. Chế độ \textbf{BFP} (Block Floating Point) xuất kèm số mũ $e$ cho cả block mantissa: biên độ thật là $m\cdot 2^{e}$. Khi lấy $|X|^2$ phải nhân $2^{2e}$ (barrel shift theo $2e$) trước IFFT --- quên bước này thì toàn bộ $\mathcal{R}[\tau]$ sai tỉ lệ. Model C/\texttt{\_model.m} của IP chỉ là golden ``gần float''; đường mặc định pitch vẫn lấy MAC bit-exact làm chuẩn.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \node[draw,align=center] (m) {mantissa\\$X$};
+  \node[draw,right=1.8cm of m,align=center] (sq) {$m_r^2+m_i^2$};
+  \node[draw,right=1.8cm of sq,align=center] (e) {exp $e$};
+  \node[draw,below=1.0cm of sq,align=center] (p) {power $=|m|^2\cdot 2^{2e}$};
+  \draw[->] (m)--(sq); \draw[->] (e)|-(p); \draw[->] (sq)--(p);
+\end{tikzpicture}
+\caption{BFP power: không quên nhân $2^{2e}$ --- barrel shift theo $2e$.}
+\end{figure}
+
+\subsubsection*{Twin MAC}
+Golden: \texttt{lab\_1\_3\_5.py} --- vòng \texttt{for tau} nhân-cộng int, cùng dải $\tau=32..213$, cùng độ rộng accum. So dump $R[\tau]$ từng lag: sai lệch 0 bit trên đường MAC. Không dùng \texttt{numpy.correlate} float làm chuẩn silicon.
+
+\begin{costbox}
+\textbf{Ngân sách MAC.} 1 DSP + $\sim$200 ALM điều khiển; 0 FFT IP trên đường mặc định. $\sim$98k chu kỳ @50\,MHz $\approx1{,}97$\,ms / khung 10\,ms (RTF$\approx0{,}2$). Vì sao không FFT mặc định: BFP + bit-reverse thêm rủi ro lệch twin.
+\end{costbox}
+
+% -------------------- C*.9 C[tau] ROM --------------------
+\subsection*{Autocorr --- MAC-first (default) / FFT optional}
+
+
+
+\subsubsection*{C.8.A Default: MAC trực tiếp (0-bit với golden)}
+
+\begin{firstprin}{Wiener--Khinchin có bắt buộc không?}
+Không. Định nghĩa $\mathcal{R}[\tau]=\sum_n x[n]x[n+\tau]$ chỉ cần nhân-cộng. FFT là phím tắt khi $N$ lớn và có sẵn IP --- nhưng thêm BFP, thứ tự bit-reverse, và rủi ro lệch twin. Musk: \emph{xóa FFT khỏi đường mặc định}.
+\end{firstprin}
+
+\noindent Datapath: TDP $\to$ nhân $18\times 18$ $\to$ accum 41-bit signed $\to$ sau $(640-\tau)$ bước nhân $C[\tau]$ ROM.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  \node[draw, rounded corners] (a) {RAM A $x[n]$};
+  \node[draw, rounded corners, below=0.6cm of a] (b) {RAM B $x[n{+}\tau]$};
+  \node[draw, rounded corners, fill=green!12, right=1.8cm of a] (m) {DSP $\times$};
+  \node[draw, rounded corners, fill=yellow!15, right=1.4cm of m] (acc) {ACC 41b};
+  \draw[->] (a) -| (m); \draw[->] (b) -| (m); \draw[->] (m) -- (acc);
+  \node[draw, rounded corners, below=1.2cm of m] (rom) {$C[\tau]$ ROM};
+  \node[draw, rounded corners, right=1.2cm of rom] (s) {$S[\tau]$};
+  \draw[->] (acc) |- (s); \draw[->] (rom) -- (s);
+\end{tikzpicture}
+\caption{Datapath MAC: hai toán hạng, một nhân, một tích lũy --- khớp \texttt{lab\_1\_3\_5.py}.}
+\label{fig:mac_datapath}
+\end{figure}
+
+\begin{costbox}
+Pha~2: $98\,280$ chu kỳ @50~MHz $\approx 1{,}97\text{ ms}$ / khung $10\text{ ms}$ $\Rightarrow$ RTF$\approx 0{,}2$. 1 DSP + $\sim$200 LE điều khiển.
+\end{costbox}
+
+\subsubsection*{C.8.B Optional: FFT IP + $|X|^2$ + IFFT (Wiener--Khinchin)}
+
+Chỉ sau khi MAC xanh. Dùng \textbf{FFT Intel FPGA IP} (UG~\textbf{683374}):
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Kiến trúc radix-2/4 DIF; twiddle ROM; streaming / buffered; SOP/EOP theo \emph{một} block $N$ điểm.
+  \item \textbf{Block Floating Point (BFP):} mỗi stage dịch để tránh tràn; IP xuất \texttt{source\_exp}. Biên độ thật $= y\cdot 2^{-e}$ (UG: Block Floating Point Scaling). BFP \textbf{không} có cổng nhập exponent --- bạn phải scale bên ngoài.
+  \item Twin bắt buộc: \texttt{<variation>\_model.m}; \texttt{[y,e]=variation\_model(...)} vs HDL --- không đoán $e$.
+\end{itemize}
+
+\begin{firstprin}{Sau $|X|^2$, số mũ đi đâu?}
+Ví dụ tính tay: mantisa $y=3$, $e=2$ $\Rightarrow$ giá trị thật $3\cdot 2^{-2}$. Bình phương: $(3\cdot 2^{-2})^2 = 9\cdot 2^{-4}$ --- số mũ \emph{nhân đôi} thành $2e$. Đẩy mantisa $|y|^2$ thẳng vào IFFT (IP kỳ vọng fixed-point ``exponent~$=$~0'' ở lối vào) mà quên barrel-shift $\Rightarrow$ cả dải động $\mathcal{R}[\tau]$ sai. UG mục Unity Gain IFFT+FFT cũng cảnh báo: cắt/trunc trung gian làm mất $e$.
+\end{firstprin}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  \node[draw] (x) {$x$};
+  \node[draw, right=0.55cm of x] (fft) {FFT};
+  \node[draw, fill=orange!12, right=0.55cm of fft] (sh1) {$\ll$/$\gg$ theo $e$};
+  \node[draw, right=0.55cm of sh1] (mag) {$|X|^2$};
+  \node[draw, fill=orange!12, right=0.55cm of mag] (sh2) {barrel / track $2e$};
+  \node[draw, right=0.55cm of sh2] (ifft) {IFFT};
+  \node[draw, right=0.55cm of ifft] (r) {$\mathcal{R}$};
+  \draw[->] (x)--(fft)--(sh1)--(mag)--(sh2)--(ifft)--(r);
+  \node[draw, dashed, below=0.85cm of fft, fill=gray!8] (exp) {\texttt{source\_exp}$=e$};
+  \draw[->, dashed] (fft) -- (exp);
+  \draw[->, dashed] (exp.east) -| (sh1.south);
+  \node[anchor=west, text width=12cm, font=\scriptsize] at (0,-2.0)
+    {\textbf{Cảnh báo dạy:} khối cam là RTL bắt buộc trên nhánh FFT. Không có chúng $\Rightarrow$ gần như chắc fail bit-exact.
+     Đây là lý do mặc định vẫn là \textbf{MAC} (0-bit với golden, không BFP).};
+\end{tikzpicture}
+\caption{BFP quanh $|X|^2$: scale theo $e$ trước/sau bình phương (barrel shifter hoặc theo dõi exponent $2e$). Twin = \texttt{\_model.m} + RTL scale.}
+\label{fig:fft_wk_bfp}
+\end{figure}
+
+\begin{costbox}
+FFT+IFFT IP: hàng nghìn ALM + nhiều M10K + DSP (theo variation). Barrel shifter $|e|_{\max}$~$\sim$5--6 bit: vài chục LE. Tổng nhánh FFT $\gg$ 1~DSP của MAC --- chỉ mở khi RTF MAC không đủ \emph{và} twin đã khóa.
+\end{costbox}
+\subsection*{Block Floating Point --- exponent của vector ví dụ tính tay}
+
+
+
+\begin{firstprin}{Vật lý số cố định: tránh tràn mà không mất LSB chung}
+FFT IP Intel dùng BFP: mọi bin cùng một exponent $e$; mantissa dịch sao cho max $|m|$ vừa khít bit. Sau mỗi stage butterfly, nếu có bit tràn $\to e{+}{+}$, dịch phải mantissa.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay vector 4 số Q1.15.} $v=[12000, -8000, 4000, -2000]$.
+$\max|v|=12000$ cần 14 bit. Giả sử datapath 16-bit signed: còn headroom 1 bit $\Rightarrow e=0$ (không dịch). Sau butterfly giả sử max thành $25000$ (>32767/2): set $e=1$, dịch phải 1 $\Rightarrow$ mantissa $[12500,-4000,\ldots]$, giá trị thật $=m\cdot2^{e}$.
+
+\begin{costbox}
+$|X|^2$ trên FPGA: nhân mantissa + \textbf{cộng $2e$} vào exponent tracker (hình barrel C.8.B). Bỏ $e$ $\Rightarrow$ sai hàng chục dB.
+\end{costbox}
+\subsection*{BFP qua 2 stage butterfly giả}
+
+
+
+Mantissa 8-bit signed minh họa (thật 16+). Vector 4 bin sau stage0: $m=[40, -30, 10, -5]$, $e=0$.
+Max$=40$ < 63 (headroom 7-bit?) --- giả sử overflow threshold $=32$: $40>32$ $\Rightarrow$ dịch phải 1, $e\leftarrow1$, $m\leftarrow[20,-15,5,-2]$ (làm tròn).
+
+Stage1 butterfly giả làm $\max|m|=25$ vẫn $<32$ --- giữ $e=1$.
+Power: $|X|^2$ logic $= (m_r^2+m_i^2)\ll(2e)$ hoặc tracker riêng. Ví dụ tính tay bin0 real: $20^2\cdot2^{2}=400\cdot4=1600$ (so với ``thật'' $40^2=1600$ --- khớp).
+\subsection*{MAC autocorr --- frame 16 mẫu ví dụ tính tay đầy đủ}
+
+
+
+$x=\cos(2\pi n/8)$, $n=0..15$ (chu kỳ 8 mẫu, 2 chu kỳ trong khung).
+$\mathcal{R}[\tau]=\sum_{n=0}^{15-\tau}x[n]x[n+\tau]$ (linear). Kỳ vọng đỉnh $\tau=8$.
+
+Bảng $x[n]$ (Q1.15 gần: $32767\cdot\cos$):
+\begin{center}\footnotesize
+\begin{tabular}{@{}lllllllll@{}}\toprule
+$n$ & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+$x$ & 32767 & 23170 & 0 & -23170 & -32768 & -23170 & 0 & 23170 \\
+\midrule
+$n$ & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+$x$ & 32767 & 23170 & 0 & -23170 & -32768 & -23170 & 0 & 23170 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Tự tương quan \emph{không vòng}: $\mathcal{R}[\tau]=\sum_{n=0}^{15-\tau}x[n]x[n+\tau]$. Đếm đúng số hạng:
+\begin{align*}
+\mathcal{R}[0]
+&=2\bigl(32767^2+32768^2\bigr)+8\cdot23170^2
+=8\,589\,627\,426
+\approx8{,}59\times10^{9}
+\end{align*}
+(không phải $8(32767^2+23170^2)\approx1{,}288\times10^{10}$ --- công thức đó đếm sai số lần xuất hiện và bỏ qua $32768\neq32767$). Tại $\tau=8$ chỉ còn $N-\tau=8$ cặp và $x[n]=x[n+8]$ trên đoạn đó, nên
+\[
+\mathcal{R}[8]=\sum_{n=0}^{7}x[n]^2=4\,294\,813\,713
+\]
+--- khoảng \emph{một nửa} $\mathcal{R}[0]$, không ``gần bằng''. Tỉ số thô $\mathcal{R}[8]/\mathcal{R}[0]\approx0{,}5$; sau chuẩn hóa unbiased $\frac{\mathcal{R}[8]/8}{\mathcal{R}[0]/16}=1$, hoặc sau chia $\mathcal{R}_w$ kiểu Praat cũng $\approx1$. Tại $\tau=4$ (nửa chu kỳ / chống pha): $\mathcal{R}[4]=-6\,442\,220\,568$ --- âm lớn, không phải đỉnh dương.
+\subsection*{FFT optional --- bit-reversal, BFP, burst, và vì sao MAC thắng}
+
+\begin{firstprin}{FFT trên đường pitch là tùy chọn đắt}
+Wiener--Khinchin cho phép $\mathcal{R}=\mathrm{IFFT}\{|X|^2\}$, nhưng với $L=640$ và chỉ $\sim182$ giá trị $\tau$, MAC trực tiếp thường ít chu kỳ hơn FFT 1024 + twiddle + BFP. \textbf{Bit-reversal}: địa chỉ đầu/cuối stage radix-2. \textbf{BFP} (block floating point): chung một exponent cho cả vector --- sau $|X|^2$ phải shift $2^{2e}$ \emph{trước} IFFT nếu không muốn lệch thang $\mathcal{R}$. \textbf{Burst vs stream}: FFT IP thường nuốt cả block; streaming audio phải đệm khung trước.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ quy mô.} MAC: $640\times182\approx1{,}16\cdot10^5$ nhân/khung. FFT 1024 radix-2: $\approx5120$ butterfly phức $\approx$ hàng chục nghìn nhân thực + IFFT tương tự + $|X|^2$ --- và vẫn cần nội suy/cắt $\tau$. Khi $\tau_{\max}\ll L$, MAC thắng.
+
+\noindent\textbf{Linear vs circular.} MAC non-circular: $\sum_{n=0}^{N-1-\tau} x_n x_{n+\tau}$ (Praat-like). FFT mặc định circular --- cần zero-pad đủ nếu muốn tuyến tính.
+
+\begin{costbox}
+\textbf{Default silicon.} MAC-first: 1 DSP MAC, dùng chung RAM khung. FFT IP: thêm M10K twiddle + logic BFP --- chỉ bật khi lab yêu cầu so khớp FFT Praat.
+\end{costbox}
+
+\subsection*{Chi phí silicon --- giải thích từng mục}
+\begin{costbox}
+\textbf{Ngân sách silicon --- MAC autocorr (default).}
+\begin{itemize}[leftmargin=1.2em]
+\item DSP: 1 MAC/chu kỳ; $\approx1{,}16\cdot10^5$ nhân/khung @ $L=640$, $\tau$ hẹp $\approx1{,}2$\,ms @100\,MHz.
+\item M10K: đệm khung (Ch.~5) dùng chung; FFT optional thêm BRAM twiddle + BFP.
+\item Vì sao MAC thắng FFT khi $\tau_{\max}\ll L$: FFT 1024 đắt hơn nhiều cho chỉ $\sim182$ trễ.
+\end{itemize}
+
+\noindent\textit{Tóm tắt số liệu:} MAC default: 1 DSP + accumulator ALM; duyệt $\tau$ tuần tự --- latency $\propto |\tau|$. FFT optional (UG 683374): nhiều DSP + M10K twiddle/buffer; chỉ bật khi lab đo so sánh. BFP barrel trước IFFT: vài ALM shift. Với $L=640$, $\tau$ hẹp, MAC thường thắng FFT về DSP và độ phức tạp twin.
+\end{costbox}
+
+\subsection*{Thực hành --- Phiếu bài tập (mỗi phiếu chỉ ở đây)}
+
+
+\subsubsection*{Phiếu 5 --- AC MAC}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``AC MAC, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Không $\mathcal{R}$ $\Rightarrow$ không $T_0$.
+\item \textbf{Toán neo:} $\sum x[n]x[n+\tau]$.
+\item \textbf{Silicon:} 1--4 DSP.
+\item \textbf{Pytest:} sine 200 Hz $\tau^*=80$.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsubsection*{Phiếu 14 --- BFP (FFT lab)}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``BFP (FFT lab), hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Sai hàng chục dB power.
+\item \textbf{Toán neo:} $|m|^2\cdot2^{2e}$.
+\item \textbf{Silicon:} FFT IP.
+\item \textbf{Pytest:} model.m so.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsubsection*{Phiếu BFP}
+
+$m=[60,10,-40,5]$, thresh overflow $=32$. Cho $e$ mới và $m$ mới.

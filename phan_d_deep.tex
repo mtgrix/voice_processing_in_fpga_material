@@ -1,0 +1,15 @@
+
+\newpage
+\section*{Phần D$^\star$. TB \& golden --- mở rộng first-principles}
+
+\subsection*{D$^\star$.1. Vì sao cần ba vector zero/DC/clip}
+Vật lý: (1) không có dây thanh $\Rightarrow F_0=0$; (2) DC không phải chu kỳ; (3) bão hòa ADC tạo hài lẻ --- thuật toán vẫn phải ra số hữu hạn gần $F_0$ thật, không X.
+
+\subsection*{D$^\star$.2. Đồ chơi TB ready toggle}
+Trong 20 chu kỳ, ready = $10110\,10110\,10110\,10110$. Đếm transfer khi valid=1. Waveform must match Avalon UG.
+
+\subsection*{D$^\star$.3. Integer golden = ``silicon bằng Python''}
+Mỗi phép RTL (nhân Q1.15, dịch, bão hòa) có một hàm Python cùng thứ tự. Không được \texttt{np.correlate} float rồi mới lượng tử cuối --- sai chỗ làm tròn.
+
+\subsection*{D$^\star$.4. Bảng coverage pytest}
+18 tests: remap thành: 3 smoke (zero/DC/clip), 5 sine frequencies, 4 speech snippets vs Praat tol, 3 ROM/$C$ integrity, 2 Avalon backpressure, 1 Q12.4 pack.

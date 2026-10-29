@@ -1,0 +1,246 @@
+\section*{Phần J. Bảng số lớn --- DFT, MAC, cửa sổ, Viterbi}
+\begin{firstprin}{Phần J làm gì}
+Các bảng dưới đây cố ý dài để \emph{in ra tính lại}. Đây là nội dung ``cơ bắp'' quyết định độ dày tài liệu --- không phải trang trí.
+\end{firstprin}
+\subsection*{J.1. Hanning $N=32$ --- toàn bộ hệ số}
+Công thức $w[i]=0{,}5-0{,}5\cos(2\pi i/33)$, $i=1..32$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule
+$i$ & $w[i]$ & $i$ & $w[i]$ & $i$ & $w[i]$ & $i$ & $w[i]$ \\
+\midrule
+1 & 0.009036 & 9 & 0.571157 & 17 & 0.997736 & 25 & 0.476209 \\
+2 & 0.035816 & 10 & 0.663534 & 18 & 0.979746 & 26 & 0.382121 \\
+3 & 0.079373 & 11 & 0.750000 & 19 & 0.944418 & 27 & 0.292292 \\
+4 & 0.138133 & 12 & 0.827430 & 20 & 0.893027 & 28 & 0.209972 \\
+5 & 0.209972 & 13 & 0.893027 & 21 & 0.827430 & 29 & 0.138133 \\
+6 & 0.292292 & 14 & 0.944418 & 22 & 0.750000 & 30 & 0.079373 \\
+7 & 0.382121 & 15 & 0.979746 & 23 & 0.663534 & 31 & 0.035816 \\
+8 & 0.476209 & 16 & 0.997736 & 24 & 0.571157 & 32 & 0.009036 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Q1.15: nhân $32767$ rồi \texttt{round}. ROM hex = little-endian int16.
+
+\subsection*{J.2. Autocorr MAC --- $N=32$, sine chu kỳ 8}
+$x[n]=\cos(2\pi n/8)$, $n=0..31$. Tính $\mathcal{R}[\tau]=\sum_{n=0}^{31-\tau}x[n]x[n+\tau]$ cho $\tau=0,1,\ldots,16$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrrrrr@{}}
+\toprule
+$\tau$ & $\mathcal{R}$ & $r=\mathcal{R}/\mathcal{R}[0]$ & $\tau$ & $\mathcal{R}$ & $r$ & $\tau$ & $\mathcal{R}$ & $r$ \\
+\midrule
+0 & 16.0000 & 1.0000 & 6 & 0.5000 & 0.0312 & 12 & -10.0000 & -0.6250 \\
+1 & 10.6066 & 0.6629 & 7 & 9.1924 & 0.5745 & 13 & -6.3640 & -0.3977 \\
+2 & -0.5000 & -0.0312 & 8 & 12.0000 & 0.7500 & 14 & 0.5000 & 0.0312 \\
+3 & -10.6066 & -0.6629 & 9 & 7.7782 & 0.4861 & 15 & 6.3640 & 0.3977 \\
+4 & -14.0000 & -0.8750 & 10 & -0.5000 & -0.0312 & 16 & 8.0000 & 0.5000 \\
+5 & -9.1924 & -0.5745 & 11 & -7.7782 & -0.4861 &  & &  \\
+\bottomrule
+\end{tabular}
+\end{center}
+Quan sát: đỉnh $r\approx1$ tại $\tau=8$ và $\tau=16$; cực tiểu âm tại $\tau=4,12$ (phản pha). Đây là chữ ký vật lý dây thanh lý tưởng.
+
+\subsection*{J.3. $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ --- Hanning $N=32$}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$\tau$ & $\mathcal{R}_w$ & $C$ & $\tau$ & $\mathcal{R}_w$ & $C$ \\
+\midrule
+0 & 12.375000 & 1.0000 & 9 & 7.522565 & 1.6451 \\
+1 & 12.300456 & 1.0061 & 10 & 6.670912 & 1.8551 \\
+2 & 12.079436 & 1.0245 & 11 & 5.830686 & 2.1224 \\
+3 & 11.719524 & 1.0559 & 12 & 5.019482 & 2.4654 \\
+4 & 11.232686 & 1.1017 & 13 & 4.252367 & 2.9101 \\
+5 & 10.634553 & 1.1637 & 14 & 3.541519 & 3.4943 \\
+6 & 9.943598 & 1.2445 & 15 & 2.896029 & 4.2731 \\
+7 & 9.180255 & 1.3480 & 16 & 2.321840 & 5.3298 \\
+8 & 8.366020 & 1.4792 &  & &  \\
+\bottomrule
+\end{tabular}
+\end{center}
+Thấy $C$ tăng theo $\tau$ --- đúng thiên vị cửa sổ. ROM FPGA lưu $C$ đã lượng tử.
+
+\subsection*{J.4. Viterbi 5 khung $\times$ 3 ứng viên --- cum đầy đủ}
+Tham số: octCost$=0{,}01$, jump$=0{,}35$, vuv$=0{,}14$, ceil$=600$.
+Ứng viên mỗi khung: $A=150$~Hz $r_a=0{,}50$; $B=300$~Hz $r_a=0{,}49$ (bẫy octave); UV $s=0{,}45$.
+\[
+\delta_A=0{,}50-0{,}01\log_2(600/150)=0{,}50-0{,}02=0{,}48,
+\]
+\[
+\delta_B=0{,}49-0{,}01\log_2(600/300)=0{,}49-0{,}01=0{,}48,
+\]
+\[
+\delta_{UV}=0{,}45.
+\]
+Giả sử cùng $\delta$ lặp 5 khung (tín hiệu ổn định). Cost $A\to B$: $0{,}35\cdot|\log_2(150/300)|=0{,}35$. Cost $A\to A$: $0$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+cum & $t1$ & $t2$ & $t3$ & $t4$ & $t5$ \\
+\midrule
+A & 0.480 & 0.960 & 1.440 & 1.920 & 2.400 \\
+B & 0.480 & 0.960 & 1.440 & 1.920 & 2.400 \\
+UV & 0.450 & 0.900 & 1.350 & 1.800 & 2.250 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Backtrace từ $t5$: chọn argmax cum (A hoặc B hòa $\delta$ nhưng A$\to$A rẻ hơn B$\to$A). Đường tối ưu: toàn $A=150$~Hz --- \textbf{phá bẫy octave 300~Hz}.
+
+\subsection*{J.5. Twiddle $W_8^k$ --- bảng sin/cos}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$k$ & $\Re W_8^k$ & $\Im W_8^k$ & Q1.15 (re, im) \\
+\midrule
+0 & 1.000000 & -0.000000 & (32767, 0) \\
+1 & 0.707107 & -0.707107 & (23170, -23170) \\
+2 & 0.000000 & -1.000000 & (0, -32767) \\
+3 & -0.707107 & -0.707107 & (-23170, -23170) \\
+4 & -1.000000 & -0.000000 & (-32767, 0) \\
+5 & -0.707107 & 0.707107 & (-23170, 23170) \\
+6 & -0.000000 & 1.000000 & (0, 32767) \\
+7 & 0.707107 & 0.707107 & (23170, 23170) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Twiddle ROM FFT IP chứa các cặp này (hoặc orthant + flip).
+
+\subsection*{J.6. Parabolic --- quét 10 đỉnh giả}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$y_-$ & $y_*$ & $y_+$ & $\Delta$ & $\tau_{\mathrm{int}}$ & $F_0$ @16k \\
+\midrule
+0.40 & 0.50 & 0.46 & 0.2143 & 80.214 & 199.47 \\
+0.30 & 0.55 & 0.50 & 0.3333 & 100.333 & 159.47 \\
+0.48 & 0.50 & 0.40 & -0.3333 & 119.667 & 133.70 \\
+0.20 & 0.60 & 0.20 & -0.0000 & 64.000 & 250.00 \\
+0.45 & 0.47 & 0.46 & 0.1667 & 90.167 & 177.45 \\
+0.10 & 0.80 & 0.70 & 0.3750 & 70.375 & 227.35 \\
+0.55 & 0.56 & 0.50 & -0.3571 & 109.643 & 145.93 \\
+0.33 & 0.44 & 0.40 & 0.2333 & 95.233 & 168.01 \\
+0.42 & 0.42 & 0.41 & -0.5000 & 84.500 & 189.35 \\
+0.05 & 0.90 & 0.20 & 0.0484 & 50.048 & 319.69 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{J.7. Non-restoring $F_0$ path --- $16000/80$}
+Mục tiêu quot$=200$. Numerator 32-bit $16000$, denom 16-bit $80$. LPM\_DIVIDE pipeline=8: sau 8 clk có $200$. Nhân $\ll4$ $\to$ Q12.4 $=3200$.
+RTL NR 16-bit latency: 16 clk. Đồ chơi thu nhỏ 8-bit: $100\div5$ $\to$ bước shift/add-sub liệt kê trong TB \texttt{tb\_nrdiv.v}.
+
+\subsection*{J.8. DC-blocker --- 32 mẫu step response}
+$\alpha=0{,}875$, $x=[0]{*}4+[1]{*}28$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule
+$n$ & $y$ & $n$ & $y$ & $n$ & $y$ & $n$ & $y$ \\
+\midrule
+0 & 0.00000 & 8 & 0.58618 & 16 & 0.20142 & 24 & 0.06921 \\
+1 & 0.00000 & 9 & 0.51291 & 17 & 0.17624 & 25 & 0.06056 \\
+2 & 0.00000 & 10 & 0.44880 & 18 & 0.15421 & 26 & 0.05299 \\
+3 & 0.00000 & 11 & 0.39270 & 19 & 0.13493 & 27 & 0.04636 \\
+4 & 1.00000 & 12 & 0.34361 & 20 & 0.11807 & 28 & 0.04057 \\
+5 & 0.87500 & 13 & 0.30066 & 21 & 0.10331 & 29 & 0.03550 \\
+6 & 0.76562 & 14 & 0.26308 & 22 & 0.09040 & 30 & 0.03106 \\
+7 & 0.66992 & 15 & 0.23019 & 23 & 0.07910 & 31 & 0.02718 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Thấy $y\to0$ dù $x=1$ --- đúng chặn DC. Với $\alpha=0{,}995$ chậm hơn $\sim8\times$.
+
+\subsection*{J.9. Lịch polyphase $2/3$ --- 12 chu kỳ}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrlll@{}}
+\toprule
+clk in & sample in & phase $E_r$ active & out? & note \\
+\midrule
+0 & 0 & $E_0$ & yes & out0 \\
+1 & 1 & $E_1$ & no & accumulate \\
+2 & 2 & $E_2$ & yes & out1 \\
+3 & 3 & $E_0$ & yes & out2 \\
+4 & 4 & $E_1$ & no &  \\
+5 & 5 & $E_2$ & yes & out3 \\
+6 & 6 & $E_0$ & yes & out4 \\
+7 & 7 & $E_1$ & no &  \\
+8 & 8 & $E_2$ & yes & out5 \\
+9 & 9 & $E_0$ & yes & out6 \\
+10 & 10 & $E_1$ & no &  \\
+11 & 11 & $E_2$ & yes & out7 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Đếm: 12 in $\to$ 8 out $=2/3$. Khớp FIR~II fractional.
+
+\subsection*{J.10. Bảng $F_0$ $\leftrightarrow$ Q12.4 $\leftrightarrow$ bytes (75--600)}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrll@{}}
+\toprule
+$F_0$ & uint16 & LE bytes & note \\
+\midrule
+0 & 0 & \texttt{00 00} & UV \\
+75 & 1200 & \texttt{B0 04} & floor \\
+100 & 1600 & \texttt{40 06} &  \\
+120 & 1920 & \texttt{80 07} &  \\
+150 & 2400 & \texttt{60 09} &  \\
+180 & 2880 & \texttt{40 0B} &  \\
+200 & 3200 & \texttt{80 0C} &  \\
+220 & 3520 & \texttt{C0 0D} &  \\
+250 & 4000 & \texttt{A0 0F} &  \\
+300 & 4800 & \texttt{C0 12} &  \\
+350 & 5600 & \texttt{E0 15} &  \\
+400 & 6400 & \texttt{00 19} &  \\
+450 & 7200 & \texttt{20 1C} &  \\
+500 & 8000 & \texttt{40 1F} &  \\
+550 & 8800 & \texttt{60 22} &  \\
+600 & 9600 & \texttt{80 25} & ceil \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+
+\subsection*{J.11. Đọc bảng J.2 như Feynman}
+Nhìn cột $r$: tại sao $\tau=8$ lại $\approx1$? Vì sine chu kỳ 8 trùng chính nó --- tích điểm tối đa. Tại $\tau=4$, tín hiệu ngược pha, tích âm. Dây thanh người không phải sine thuần nhưng vẫn có đỉnh gần $T_0$ nổi trên nhiễu nếu SNR đủ. Praat tìm \emph{mọi} đỉnh dương vượt ngưỡng, không chỉ argmax --- vì formant có thể làm đỉnh $2T_0$ cao hơn $T_0$ trước khi trừ octave cost.
+
+\subsection*{J.12. Đọc bảng J.3 --- liên hệ ROM}
+$C[\tau]$ tăng khi $\tau$ tăng. Nếu quên nhân $C$, đỉnh $\tau$ lớn (giọng trầm) bị ``đạp''. Nam $F_0=100$ $\Rightarrow\tau=160$: $C$ đã khá lớn trên Hanning 640. ROM default tránh divider --- nhưng phải gen đúng từ cùng $w$ Q1.15 với silicon.
+
+\subsection*{J.13. Đọc J.4 --- vì sao fabric tắt Viterbi vẫn sống}
+Trên sine ổn định, argmax+octave-cost-local đã đủ. Viterbi tỏa sáng khi có đoạn vô thanh xen kẽ và bẫy octave ngắn. Pearson $r$ trên câu đọc sạch thường vẫn $>0{,}9$ không Viterbi; trên hát / speech noise mới thấy HPS pathFinder đáng giá.
+
+\subsection*{J.14. BFP --- 8 bin qua 3 stage (minh họa)}
+Giả sử mantissa 6-bit signed (minh họa), overflow nếu $|m|>15$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+stage & e & m0 & m1 & m2 & m3 & m4 & m5 & m6 & m7 \\
+\midrule
+0 (in) & 0 & 5 & 2 & 0 & -4 & -4 & -8 & -7 & -8 \\
+1 & 0 & 7 & 3 & 1 & -5 & -6 & -12 & -10 & -11 \\
+2 & 1 & 4 & 2 & 0 & -4 & -4 & -8 & -7 & -7 \\
+3 & 1 & 6 & 3 & 0 & -5 & -5 & -11 & -10 & -10 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Mỗi lần dịch phải $e{+}{+}$; giá trị thật $=m\cdot2^e$. Power nhân $2^{2e}$.
+
+\subsection*{J.15. Khung ``giả speech --- mean, window, $\mathcal{R}$}
+Tổng hợp: $x[n]=0{,}3\sin(2\pi\cdot200 n/16000)+0{,}1\sin(2\pi\cdot400 n/16000)+0{,}05\\eta$, $L=64$ (thu nhỏ).
+Bước: (1) trừ mean; (2) nhân Hanning 64; (3) MAC $\tau=32..80$ clamp; (4) nhân $C$; (5) argmax. Kỳ vọng $\tau^*\approx80$ ($16000/200$).
+Kết quả đồ chơi: $\tau^*=20$, $r_a=-0.379$, $F_0\approx800.0$~Hz.
+\begin{center}\scriptsize
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule $\tau$ & $r_a$ & $\tau$ & $r_a$ & $\tau$ & $r_a$ \\ \midrule
+20 & -0.379 & 30 & -1.617 & 40 & -2.902 \\
+21 & -0.490 & 31 & -1.754 & 41 & -2.991 \\
+22 & -0.604 & 32 & -1.893 & 42 & -3.064 \\
+23 & -0.721 & 33 & -2.032 & 43 & -3.120 \\
+24 & -0.840 & 34 & -2.170 & 44 & -3.156 \\
+25 & -0.962 & 35 & -2.307 & 45 & -3.171 \\
+26 & -1.088 & 36 & -2.439 & 46 & -3.161 \\
+27 & -1.216 & 37 & -2.567 & 47 & -3.126 \\
+28 & -1.347 & 38 & -2.688 & 48 & -3.063 \\
+29 & -1.481 & 39 & -2.800 & 49 & -2.971 \\
+\bottomrule\end{tabular}\end{center}
+
+\newpage

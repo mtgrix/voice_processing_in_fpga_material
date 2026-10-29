@@ -1,0 +1,1053 @@
+\phantomsection
+\section*{Chương 1. Nguyên lý Praat từ vật lý đến toán (Boersma 1993)}
+\addcontentsline{toc}{section}{Chương 1. Nguyên lý Praat từ vật lý đến toán (Boersma 1993)}
+\pdfbookmark[1]{Chương 1. Nguyên lý Praat từ vật lý đến toán (Boersma 1993)}{chuong1}
+
+\subsection*{Bản đồ 12 bước: giấy Boersma $\leftrightarrow$ C++ $\leftrightarrow$ silicon}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  box/.style={draw, rounded corners, align=center, inner sep=2pt}]
+  \foreach \i/\lab/\y in {
+    1/{Soft upsample (FFT$\times$filter)}/0,
+    2/{Frame + window length from $F_{\min}$}/-0.7,
+    3/{Local mean remove}/-1.4,
+    4/{Hanning or Gaussian window}/-2.1,
+    5/{FFT$\to|X|^2\to$IFFT $=\mathcal{R}_x$}/-2.8,
+    6/{Divide by $\mathcal{R}_w[\tau]$}/-3.5,
+    7/{Local maxima + parabolic}/-4.2,
+    8/{Sinc or Brent refine}/-4.9,
+    9/{Octave cost score}/-5.6,
+    10/{Silence + voicing + UV cand}/-6.3,
+    11/{Octave-jump + V--UV costs}/-7.0,
+    12/{Viterbi pathFinder}/-7.7} {
+    \node[box, fill=blue!6, minimum width=7.2cm] (s\i) at (0,\y) {\i. \lab};
+  }
+  \foreach \i in {1,...,11} {\pgfmathtruncatemacro{\j}{\i+1}\draw[->] (s\i)--(s\j);}
+  \node[box, fill=teal!10, minimum width=5.5cm, text width=5.2cm, align=left] at (8.2,-2.0)
+    {\textbf{Nguồn:} Boersma 1993 §§1--4;\\
+     \texttt{Sound\_to\_Pitch.cpp} (AC path);\\
+     \texttt{Pitch\_pathFinder} in \texttt{Pitch.cpp}.\\[2pt]
+     \textbf{FPGA default (Phần C):} giữ 3--7,9--10 dạng MAC+ROM+ngưỡng; xóa 1 (soft upsample toàn file), 8 (Sinc$\to$parab), 11--12 (Viterbi$\to$HPS/off).};
+\end{tikzpicture}
+\caption{Chuỗi đầy đủ Praat AC. Phần cứng streaming xóa/xấp xỉ có chủ đích --- nhưng kỹ sư phải hiểu bước đã xóa trước khi xóa.}
+\label{fig:bp_map}
+\end{figure}
+\subsection*{Soft upsampling trước khung --- chống alias mép Nyquist}
+
+\begin{firstprin}{Vật lý: vì sao cần ``upsample mềm''?}
+Âm thanh trong không khí là sóng \textbf{liên tục theo thời gian} (continuous-time): áp suất đổi mượt, không có ``khe trống'' giữa hai khoảnh khắc. Micro biến áp suất thành điện áp liên tục. Khối \textbf{ADC} lấy mẫu tại tần số $f_s$ (ví dụ 16\,kHz): cứ mỗi $T_s=1/f_s$ giây nó đo một số. Hệ quả toán của phép lấy mẫu là \textbf{phổ lặp} --- các bản sao của phổ gốc xuất hiện quanh $\pm f_s,\pm 2f_s,\ldots$.
+
+Khi ta cắt một khung bằng cửa sổ \textbf{Hanning}, phổ của cửa sổ có \textbf{mainlobe} hẹp và các \textbf{sidelobe} khoảng $-32$\,dB (xem hình~\ref{fig:mainlobe_sidelobe} ở Ch.~0). Năng lượng thật nằm gần tần số \textbf{Nyquist} $f_s/2$ bị sidelobe ``quăng'' xuống vùng thấp --- đúng chỗ ta đang tìm $F_0$ (75--600\,Hz). Đó là hiện tượng \textbf{rò phổ} (leakage) kết hợp với \textbf{aliasing}/gương qua mép Nyquist, không phải dây thanh tự tạo ra tần số giả đó.
+
+Boersma (1993, Step~1) xử lý cả một \textbf{utterance} (một phát ngôn liền) như sau: (1)~tính \textbf{FFT} toàn chuỗi; (2)~nhân phổ với một \textbf{mask} mềm $G[k]$ giảm tuyến tính từ $0{,}95\cdot f_s/2$ xuống 0 tại $f_s/2$; (3)~chèn zero ở giữa phổ dương/âm (\textbf{zero-padding} trong miền tần số) rồi \textbf{IFFT} dài $2N$ --- được upsample ``mềm'' $\times2$, đồng thời đã dọn sạch mép Nyquist.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay phổ 8 điểm.} Lấy tín hiệu $x=[1,0,-1,0,1,0,-1,0]$ --- đây là sóng vuông ``cứng'' đúng tại tần số Nyquist của lưới 8 điểm. DFT 8 điểm (bỏ hệ số chuẩn hóa) cho:
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+$k$ & $\mathrm{Re}\,X[k]$ & $\mathrm{Im}\,X[k]$ & $|X|^2$ \\
+\midrule
+0 & 0 & 0 & 0 \\
+1 & 0 & 0 & 0 \\
+2 & 4 & 0 & 16 \\
+3 & 0 & 0 & 0 \\
+4 (Nyquist) & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Soft filter: nhân mỗi bin với trọng số $g[k]=1$ khi $k/N < 0{,}95\cdot\tfrac12$, rồi giảm tuyến tính về 0 đúng tại bin Nyquist. Sau đó IFFT dài 16 mẫu --- tương đương nội suy dày gấp đôi trên lưới thời gian. Trên \textbf{FPGA streaming} ta không thể FFT cả file theo thời gian thực; thay bằng bộ lọc chống alias analog trước ADC cộng FIR/decimation sạch (Ch.~4). Nguyên lý giữ nguyên: \emph{đừng để năng lượng gần Nyquist giả thành chu kỳ thấp trong vùng tìm $F_0$}.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- soft upsample.}
+\begin{itemize}[leftmargin=1.2em]
+\item Trên fabric streaming: \textbf{không} FFT cả utterance (0 ALM cho Step~1).
+\item Thay thế: anti-alias analog + FIR/decimation (Ch.~4) --- vài chục DSP, vài M10K hệ số.
+\item Twin đối chiếu Praat: có thể soft-upsample offline trên Python/HPS trước khi đưa PCM vào đường fixed --- không vào RTF.
+\item Quên dọn Nyquist: tone $\sim7$--8\,kHz giả thành chu kỳ dài trong vùng 75--600\,Hz $\Rightarrow$ sai $F_0$ dù MAC đúng.
+\end{itemize}
+\end{costbox}
+
+\subsection*{Khung, time step, độ dài cửa sổ từ pitch floor}
+
+\begin{firstprin}{Vật lý: ba chu kỳ dây thanh trong một cửa sổ}
+Để tự tương quan ``nhìn thấy'' ít nhất vài lần lặp của chu kỳ dây thanh, khung phải dài hơn $T_0$. Dây thanh nam có thể chậm $\approx 75\text{ Hz}$ $\Rightarrow T_0=1/75\approx 13{,}3\text{ ms}$. Boersma chọn \texttt{periodsPerWindow}$=3$ với Hanning: ba chu kỳ $=40\text{ ms}$ --- đủ để đỉnh $\tau=T_0$ và cả $\tau=2T_0$ nằm trong cửa sổ, nhưng không dài đến mức $F_0$ đổi nhiều trong một khung (giả định local-stationary). Gaussian (\texttt{very\_accurate}) dùng 6 chu kỳ vì đuôi Gaussian dài hơn --- mã nhân đôi \texttt{periodsPerWindow} rồi đặt \texttt{brent\_depth} sâu hơn (\texttt{Sound\_to\_Pitch.cpp} $\approx$405--415).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $F_{\min}=75\text{ Hz}$, $f_s=16\text{ kHz}$, Hanning 3 chu kỳ:
+\[
+L_{\text{sec}} = \frac{3}{75}=0{,}04\text{ s},\quad
+L = 0{,}04\times 16000 = 640\text{ mẫu}.
+\]
+\texttt{time\_step}$=0{,}01\text{ s}$ $\Rightarrow$ hop $H=0{,}01\times16000=160$ mẫu. Chồng lấn $(L-H)/L=(640-160)/640=75\%$: mỗi ước lượng $F_0$ mới dùng 480 mẫu đã thấy ở khung trước --- đường cong mượt hơn, đổi lại gấp bốn lần tính toán so với hop $=L$. Nếu \texttt{time\_step}$=0$, Praat tự chọn $0{,}75/F_{\min}$ để có $\approx4$ phép đo trên mỗi cửa sổ.
+
+Khoảng trễ tìm kiếm: $\tau_{\min}=\lfloor f_s/\mathrm{ceiling}\rfloor$ (ceiling mặc định 600\,Hz $\Rightarrow\tau_{\min}=26$, lab thường 32) và $\tau_{\max}=\lfloor f_s/F_{\min}\rfloor=213$. Ngoài $[\tau_{\min},\tau_{\max}]$ không có ứng viên $F_0$.
+
+\begin{costbox}
+\textbf{Silicon --- từng tham số.}
+\begin{itemize}[leftmargin=1.2em]
+\item Giữ $L=640$, $H=160$ cố định trên FPGA: khớp một M10K đệm khung + ROM $C[\tau]$ depth~$\approx182$.
+\item Đổi $F_{\min}$ $\Rightarrow$ đổi $L$, $\tau_{\max}$, và \emph{phải rebuild} ROM $w$ lẫn $C[\tau]$ (không chỉ sửa hằng số).
+\item RTF: mỗi 10\,ms phải xong một khung; @50--100\,MHz và MAC 1/clk vẫn dư cho $640\times182$ phép nhân.
+\end{itemize}
+\end{costbox}
+\subsection*{Trừ mean cục bộ (local mean)}
+
+\begin{firstprin}{Vật lý: DC và trôi chậm phá đỉnh $\tau=0$}
+Áp suất không khí trung bình, offset mic và rung máy đều cộng một hằng $A$ vào mọi mẫu. Trước khi thấy hệ quả, nhắc lại định nghĩa tự tương quan \emph{không vòng} trên khung $N$ mẫu:
+\[
+\mathcal{R}_x[\tau]=\sum_{n=0}^{N-1-\tau}x[n]\,x[n+\tau].
+\]
+Tại $\tau=0$ chỉ còn bình phương: $\mathcal{R}_x[0]=\sum_{n=0}^{N-1}x[n]^2$ --- đúng bằng năng lượng khung. Nếu tín hiệu mang offset, đặt $y[n]=x[n]+A$:
+\begin{align*}
+\mathcal{R}_y[0]
+&=\sum_{n=0}^{N-1}(x[n]+A)^2
+=\sum x[n]^2 + 2A\sum x[n] + N A^2
+=\mathcal{R}_x[0]+2A\sum x[n]+NA^2.
+\end{align*}
+Đỉnh tại $\tau=0$ phình tỉ lệ với $A^2$ và dễ nuốt đỉnh chu kỳ. Praat trừ mean cục bộ trên $\pm$ một chu kỳ dài nhất quanh tâm khung (\texttt{localMean /= 2*nsamp\_period}).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay 4 mẫu (tự tương quan không vòng).} Cho $x=[3,5,3,5]$, mean $\mu=4$, tín hiệu không mean $x_{\mathrm{zm}}=[-1,1,-1,1]$. Với $N=4$:
+\begin{align*}
+\mathcal{R}_{\mathrm{zm}}[0]
+&=(-1)^2+1^2+(-1)^2+1^2=4
+&&\text{(4 cặp)},\\
+\mathcal{R}_{\mathrm{zm}}[2]
+&=(-1)\cdot(-1)+1\cdot 1=1+1=2
+&&\text{(chỉ còn $N-\tau=2$ cặp)}.
+\end{align*}
+Tỉ số thô $\mathcal{R}[2]/\mathcal{R}[0]=2/4=0{,}5$ --- \emph{không} bằng 1, dù tín hiệu tuần hoàn chu kỳ 2. Muốn tỉ số về 1 phải chuẩn hóa theo số cặp (unbiased) $\frac{\mathcal{R}[\tau]/(N-\tau)}{\mathcal{R}[0]/N}$, hoặc theo đúng Praat chia thêm tự tương quan cửa sổ $\mathcal{R}_w$ (công thức $r_a$ ở mục sau). Với unbiased: $\frac{2/2}{4/4}=1$.
+
+Nếu quên trừ mean, trên chính $x=[3,5,3,5]$:
+\begin{align*}
+\mathcal{R}_x[0]&=3^2+5^2+3^2+5^2=9+25+9+25=68,\\
+\mathcal{R}_x[2]&=3\cdot3+5\cdot5=9+25=34
+\end{align*}
+(không phải 52). Tỉ số thô $34/68=0{,}5$; sau unbiased vẫn ra 1 trên tín hiệu tuần hoàn này, nhưng đỉnh $\tau=0$ đã phình gấp $68/4=17$ lần so với bản không mean --- đúng bệnh DC làm ``nuốt'' thang đo trước khi qua ngưỡng voicing trên tín hiệu thật (không hoàn toàn tuần hoàn).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \draw[->] (0,0)--(5,0) node[right]{$\tau$};
+  \draw[->] (0,0)--(0,2.6) node[above]{$\mathcal{R}$};
+  \draw[thick, red!70] (0,2.3)--(0.2,2.3)--(0.5,0.5)--(1.5,1.8)--(2.5,0.4)--(3.5,1.5)--(4.5,0.3);
+  \node at (2.5,2.9) {\footnotesize Trước: DC phình $\mathcal{R}[0]$};
+  \begin{scope}[xshift=6.2cm]
+    \draw[->] (0,0)--(5,0) node[right]{$\tau$};
+    \draw[->] (0,0)--(0,2.6) node[above]{$\mathcal{R}$};
+    \draw[thick, teal!70] (0,1.2)--(0.3,0.2)--(1.5,1.9)--(2.5,0.2)--(3.5,1.7)--(4.5,0.2);
+    \node at (2.5,2.9) {\footnotesize Sau trừ mean: đỉnh $T_0$ lộ};
+  \end{scope}
+\end{tikzpicture}
+\caption{Cùng tín hiệu có offset: trừ mean cục bộ trước cửa sổ --- bắt buộc trước mọi đỉnh.}
+\end{figure}
+\subsection*{Cửa sổ Hanning vs Gaussian --- framing là gì, vì sao nhân ``quả núi''}
+
+\begin{firstprin}{Câu hỏi mở đầu: framing nhân cả file hay từng miếng?}
+\textbf{Framing} (cắt khung) \emph{không} phải lấy kéo cắt đứt tín hiệu gốc rồi bỏ phần còn lại. Cách đúng: giữ nguyên chuỗi dài $x[n]$, và với \emph{mỗi} khung $k$ ta nhân cả chuỗi với một hàm cửa sổ $w_k[n]$ chỉ khác 0 trên đúng $L$ mẫu của khung đó:
+\[
+x_k[n]=x[n]\,w[n-kH],
+\qquad
+w[m]=\begin{cases}
+w_{\mathrm{shape}}[m], & 0\le m\le L-1,\\
+0, & \text{ngược lại}.
+\end{cases}
+\]
+Ở đây $H$ là \textbf{hop} (bước nhảy giữa hai tâm khung, Praat mặc định $0{,}01$\,s $\Rightarrow H=160$ mẫu @16\,kHz), $L$ là độ dài khung (640 mẫu với Hanning 3 chu kỳ @ $F_{\min}=75$\,Hz), và $w_{\mathrm{shape}}$ là dạng ``quả núi'' (chữ nhật, Hanning, Gaussian,\ldots). Mỗi khung là một bản sao cục bộ của $x$; các khung chồng lên nhau vì $H<L$ (75\% overlap khi $H=160$, $L=640$).
+\end{firstprin}
+
+\paragraph{Hình: tín hiệu dài, cửa sổ trượt, khung kết quả.}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  % long signal
+  \draw[->] (0,2.8)--(11.2,2.8) node[right]{$n$};
+  \draw[thick,blue!70!black,smooth,tension=0.7]
+    plot coordinates {
+      (0.3,2.95)(0.7,2.55)(1.1,3.05)(1.5,2.60)(1.9,3.00)(2.3,2.50)
+      (2.7,2.95)(3.1,2.55)(3.5,3.05)(3.9,2.60)(4.3,2.95)(4.7,2.50)
+      (5.1,3.00)(5.5,2.55)(5.9,2.95)(6.3,2.50)(6.7,3.00)(7.1,2.55)
+      (7.5,3.05)(7.9,2.60)(8.3,2.95)(8.7,2.50)(9.1,3.00)(9.5,2.55)
+      (9.9,2.95)(10.3,2.60)(10.7,2.90)
+    };
+  \node[blue!70!black,left] at (0,2.8) {$x[n]$};
+  % windows
+  \draw[thick,teal,opacity=0.85] (0.5,1.6) .. controls (1.3,2.5) and (2.7,2.5) .. (3.5,1.6);
+  \draw[thick,orange!80!black,opacity=0.85] (2.5,1.6) .. controls (3.3,2.5) and (4.7,2.5) .. (5.5,1.6);
+  \draw[thick,purple!70!black,opacity=0.85] (4.5,1.6) .. controls (5.3,2.5) and (6.7,2.5) .. (7.5,1.6);
+  \node[teal] at (2.0,1.35) {$w[n]$};
+  \node[orange!80!black] at (4.0,1.35) {$w[n-H]$};
+  \node[purple!70!black] at (6.0,1.35) {$w[n-2H]$};
+  \draw[<->] (0.5,1.15)--(3.5,1.15) node[midway,below]{$L$};
+  \draw[<->] (0.5,0.85)--(2.5,0.85) node[midway,below]{$H$};
+  % resulting frames
+  \draw[->] (0,-0.1)--(3.6,-0.1) node[right]{$n$};
+  \draw[thick,teal] (0.2,0) .. controls (1.0,0.9) and (2.2,0.9) .. (3.2,0);
+  \node[teal] at (1.7,-0.45) {$x_0[n]=x\,w$};
+  \begin{scope}[xshift=3.8cm]
+    \draw[->] (0,-0.1)--(3.6,-0.1) node[right]{$n$};
+    \draw[thick,orange!80!black] (0.2,0) .. controls (1.0,0.9) and (2.2,0.9) .. (3.2,0);
+    \node[orange!80!black] at (1.7,-0.45) {$x_1[n]=x\,w[\,\cdot-H]$};
+  \end{scope}
+  \begin{scope}[xshift=7.6cm]
+    \draw[->] (0,-0.1)--(3.6,-0.1) node[right]{$n$};
+    \draw[thick,purple!70!black] (0.2,0) .. controls (1.0,0.9) and (2.2,0.9) .. (3.2,0);
+    \node[purple!70!black] at (1.7,-0.45) {$x_2[n]=x\,w[\,\cdot-2H]$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Framing = nhân toàn bộ $x[n]$ với một cửa sổ trượt $w[n-kH]$ (zero ngoài khung). Mỗi quả núi cho một khung $x_k$; hop $H$ dịch cửa sổ, không cắt đứt tín hiệu gốc.}
+\label{fig:framing_windows}
+\end{figure}
+
+\paragraph{Vì sao nhân thời gian = tích chập tần số?}
+Định lý nhân--tích chập: nếu $y[n]=x[n]\,w[n]$ thì
+\[
+Y(e^{j\omega})=\frac{1}{2\pi}\int_{-\pi}^{\pi} X(e^{j\theta})\,W(e^{j(\omega-\theta)})\,d\theta
+= X * W.
+\]
+Trực giác: một tone thuần $x[n]=\cos(\omega_0 n)$ có phổ hai vạch Dirac tại $\pm\omega_0$. Nhân với cửa sổ ``bôi'' mỗi vạch bằng hình dạng phổ của cửa sổ $W$. Nếu $w$ là \textbf{chữ nhật} (cắt đột ngột: 1 trong khung, 0 ngoài), $W$ là hàm $\mathrm{sinc}$: một \textbf{mainlobe} rộng ở giữa và các \textbf{sidelobe} sóng gợn hai bên (hình~\ref{fig:mainlobe_sidelobe}). Năng lượng một tone ``tràn'' sang các bin lân cận --- đó là \textbf{rò phổ} (spectral leakage). Không phải dây thanh tự tạo ra các tần số giả; đó là hệ quả toán của việc cắt đoạn hữu hạn.
+
+\noindent\textbf{Ví dụ số trực giác.} Tone đúng bin: $x[n]=\cos(2\pi\cdot 4\,n/32)$, $n=0..31$. DFT 32 điểm cho hai đỉnh sạch tại bin $\pm4$, mọi bin khác $\approx0$. Tone lệch nửa bin $x[n]=\cos(2\pi\cdot 4{,}5\,n/32)$: năng lượng lan ra nhiều bin (rò). Nhân thêm Hanning trước DFT: đuôi sidelobe thấp hơn rõ --- đỉnh lân cận bị dập, đúng việc ``vuốt biên'' đang làm.
+
+\paragraph{Chữ nhật vs Hanning: cạnh cắt và $-32$\,dB.}
+\begin{itemize}[leftmargin=1.4em]
+\item \textbf{Chữ nhật:} $w=1$ trên $L$ mẫu, nhảy xuống 0 ở hai đầu. Phổ $\mathrm{sinc}$ có sidelobe đầu khoảng $-13$\,dB (biên độ còn $\approx1/4{,}5$ lần đỉnh) --- rò mạnh, tone 7\,kHz để lại ``bóng ma'' trong vùng tìm $F_0$.
+\item \textbf{Hanning:} vuốt hai đầu về gần 0 bằng một nửa chu kỳ cosine. Sidelobe đầu khoảng $-32$\,dB. Đơn vị \textbf{dB} là thước log trên biên độ: $-32$\,dB $=20\log_{10}(A_{\mathrm{side}}/A_{\mathrm{main}})$ $\Rightarrow A_{\mathrm{side}}/A_{\mathrm{main}}=10^{-32/20}\approx1/40$. Vẫn chưa bằng không, nhưng yếu hơn chữ nhật khoảng 19\,dB --- đủ để lab pitch mặc định tin được.
+\end{itemize}
+
+\paragraph{Công thức Hanning --- từng ký hiệu, vì sao Praat dùng $N+1$.}
+Praat (\texttt{Sound\_to\_Pitch.cpp}) định nghĩa trên $N$ mẫu của khung:
+\[
+w[i]=0{,}5-0{,}5\cos\frac{2\pi i}{N+1},\qquad i=1,2,\ldots,N.
+\]
+\begin{itemize}[leftmargin=1.4em]
+\item $i$: chỉ số mẫu \emph{trong} khung, chạy $1..N$ (không phải $0..N-1$).
+\item $N$: số mẫu của khung (640 trên DE10 với Hanning 3 chu kỳ).
+\item $N+1$ ở mẫu số: giáo trình cổ điển thường dùng $N-1$ hoặc $N$ và cho $w[0]=w[N-1]=0$ đúng bằng không. Praat cố ý dùng $N+1$ để $w[1]$ và $w[N]$ vẫn $>0$ nhỏ --- mọi ô trong BRAM đều đóng góp năng lượng, không ``chết'' hai mẫu biên.
+\item $0{,}5-0{,}5\cos(\cdot)$: nửa dưới của cosine nâng lên, tạo quả núi đối xứng, đỉnh 1 ở giữa.
+\end{itemize}
+
+\noindent\textbf{Ví dụ tính tay $N=4$ (đã kiểm bằng Python).}
+\[
+w[i]=0{,}5-0{,}5\cos\frac{2\pi i}{5},\quad i=1,2,3,4.
+\]
+\begin{align*}
+i=1&:\; 0{,}5-0{,}5\cos(2\pi/5)=0{,}5-0{,}5(-0{,}309)=0{,}345,\\
+i=2&:\; 0{,}5-0{,}5\cos(4\pi/5)=0{,}5-0{,}5(-0{,}809)=0{,}905,\\
+i=3&:\; 0{,}5-0{,}5\cos(6\pi/5)=0{,}905,\\
+i=4&:\; 0{,}5-0{,}5\cos(8\pi/5)=0{,}345.
+\end{align*}
+Vậy $w\approx[0{,}345,\,0{,}905,\,0{,}905,\,0{,}345]$ --- \emph{đối xứng}, không phải dãy lệch $[0{,}095,0{,}655,0{,}905,0{,}345]$ (dãy đó sai công thức). Từ đây
+\[
+\mathcal{R}_w[0]=\sum_{i=1}^{4}w_i^2\approx1{,}875,\quad
+\mathcal{R}_w[1]=\sum_{i=1}^{3}w_i w_{i+1}\approx1{,}443,\quad
+C[1]=\mathcal{R}_w[0]/\mathcal{R}_w[1]\approx1{,}299.
+\]
+Tích $w[n]w[n+\tau]$ suy giảm khi $\tau$ tăng --- đúng gốc của bảng $C[\tau]$ (mục chuẩn hóa sau, và Ch.~8).
+
+\paragraph{Tuỳ chọn Gaussian (\texttt{very\_accurate}).}
+Gaussian $w[n]\propto\exp\bigl(-\tfrac12(n/\sigma)^2\bigr)$ hẹp hơn trong tần số (sidelobe thấp hơn Hanning) nhưng đuôi dài hơn trong thời gian. Praat khi bật \texttt{very\_accurate} nhân đôi \texttt{periodsPerWindow} ($3\to6$ chu kỳ) và dùng nội suy SINC700 --- chính xác hơn trên sine sạch, nhưng trên FPGA nghĩa là $\approx2\times$ BRAM cửa sổ + $\approx2\times$ MAC tự tương quan. Mặc định silicon: Hanning 3 chu kỳ; Gaussian chỉ khi lab đối chiếu ``very accurate''.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item \texttt{very\_accurate=off} (Praat default): cửa sổ Hanning, 3 chu kỳ dây thanh trong một khung $\Rightarrow L=\lfloor 3\,f_s/F_{\min}\rfloor=640$ @16\,kHz, $F_{\min}=75$\,Hz.
+\item ROM Hanning trên FPGA: 640 hệ số $\times$ 16-bit (Q1.15) $=10\,240$ bit $\approx$ 1 khối M10K; thực tế chỉ cần nửa bảng nhờ đối xứng $w[n]=w[L-1-n]$.
+\item Hop $H=160$ mẫu (10\,ms): chồng lấn $(640-160)/640=75\%$; mỗi 10\,ms có một ước lượng $F_0$ mới.
+\item Gaussian 6 chu kỳ: $L\approx1280$, ROM+MAC roughly $\times2$ --- chỉ bật khi cần sai số kiểu Table~1 Boersma, không phải đường real-time mặc định.
+\item Sau nhân $w$: tín hiệu vào MAC tự tương quan là $\tilde x[n]=(x[n]-\mu)\,w[n]$ (mean đã trừ ở bước trước).
+\end{itemize}
+\end{costbox}
+\subsection*{Tự tương quan qua FFT (Wiener--Khinchin) --- ví dụ tính tay DFT 8 điểm + butterfly}
+
+\begin{firstprin}{Vật lý / định lý: năng lượng phổ $\leftrightarrow$ tương quan thời gian}
+\textbf{Tự tương quan} $\mathcal{R}_x[\tau]=\sum_n x[n]x[n+\tau]$ đo mức khung ``giống chính mình'' khi trượt đi $\tau$ mẫu; $\tau$ gọi là \textbf{lag} (trễ). Dây thanh đóng/mở gần tuần hoàn nên $\mathcal{R}_x$ có đỉnh tại $\tau=0,\pm T_0,\pm 2T_0,\ldots$ và $F_0=f_s/T_0$.
+
+Định lý \textbf{Wiener--Khinchin} khẳng định $\mathcal{R}_x = \mathcal{F}^{-1}\{|X|^2\}$: bình phương phổ rồi \textbf{IFFT} ``đổ'' năng lượng về đúng các trễ bội chu kỳ. Đây là đẳng thức toán (không phải sóng mới); trên FPGA ta có thể tính MAC trực tiếp hoặc đi đường FFT --- cùng $\mathcal{R}_x$, khác ngân sách DSP/latency.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay DFT 8 điểm thủ công.} $x=[1,1,-1,-1,1,1,-1,-1]$ (chu kỳ 4).
+Bước (a) DFT radix-2: tách chẵn/lẻ.
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+Butterfly & $a$ & $b$ & $a\pm W b$ (ví dụ $W=1$ ở stage 1) \\
+\midrule
+stage-1 pair0 & $x[0]=1$ & $x[4]=1$ & $2$, $0$ \\
+pair1 & $1$ & $1$ & $2$, $0$ \\
+pair2 & $-1$ & $-1$ & $-2$, $0$ \\
+pair3 & $-1$ & $-1$ & $-2$, $0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Mỗi hàng trên là một \textbf{butterfly} (cánh bướm): lấy cặp $a,b$, nhân $b$ với hệ số xoay \textbf{twiddle} $W=e^{-j2\pi k/N}$, rồi ra $a\pm Wb$. Ở stage~1 ta cố tình lấy $W=1$ để thấy lõi ``cộng/trừ''; stage sau mới nhân twiddle phức. Sau khi có $X[k]$, bình phương $|X|^2$, rồi IFFT cho $\mathcal{R}[\tau]$ lớn tại $\tau=0$ và $\tau=4$ --- đúng chu kỳ của $x$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \node[draw] (x) {$x[n]$};
+  \node[draw,right=0.6cm of x] (fft) {FFT};
+  \node[draw,right=0.6cm of fft] (p) {$|X|^2$};
+  \node[draw,right=0.6cm of p] (ifft) {IFFT};
+  \node[draw,right=0.6cm of ifft] (r) {$\mathcal{R}_x[\tau]$};
+  \draw[->] (x)--(fft)--(p)--(ifft)--(r);
+  \node[below=0.8cm of p, align=center] {Praat: pad 0 đến $nsampFFT=2^{\lceil\log_2(N\cdot1{,}5)\rceil}$\\
+    (Hanning depth $0{,}5$: $638\times1{,}5\to1024$).};
+\end{tikzpicture}
+\caption{Đường AC trong \texttt{Sound\_to\_Pitch.cpp}: FFT $\to$ power $\to$ IFFT. FPGA default thay bằng MAC trực tiếp (cùng $\mathcal{R}$, khác đường sai số).}
+\end{figure}
+
+\paragraph{Butterfly 4 điểm (định nghĩa ký hiệu).}
+Với $W_4^0=1$, $W_4^1=-j$:
+\[
+X[0]=x[0]+x[2]+x[1]+x[3],\quad
+X[1]=(x[0]-x[2])-j(x[1]-x[3]),\ldots
+\]
+Mỗi butterfly: 1 cộng, 1 trừ, 1 nhân twiddle --- ánh xạ thẳng sang khối DSP + adder trên FFT IP. Intel FFT IP còn dùng \textbf{BFP} (Block Floating Point): cả vector chia sẻ một số mũ $e$; khi lấy $|X|^2$ phải nhân lại $2^{2e}$ trước IFFT, nếu không toàn bộ $\mathcal{R}[\tau]$ sai tỉ lệ (xem Ch.~0 và Ch.~7 tùy chọn FFT).
+\subsection*{Chuẩn hóa cho tự tương quan cửa sổ $\mathcal{R}_w[\tau]$}
+
+\begin{firstprin}{Toán Boersma: chuẩn hóa khỏi thiên vị cửa sổ}
+\[
+r_a[\tau]=\frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]\,\mathcal{R}_w[\tau]/\mathcal{R}_w[0]}
+=\frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau],\quad
+C[\tau]=\frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
+\]
+Không chia $\Rightarrow$ đỉnh $\tau$ lớn bị ``đạp'' vì hai quả núi Hanning ít chồng. Mã: \texttt{r[i] = ac[i+1] / (ac[1] * windowR[i+1])} (\texttt{Sound\_to\_Pitch.cpp}).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay $N=4$, $\tau=1$.} Với $w\approx[0{,}345,0{,}905,0{,}905,0{,}345]$ đã tính ở mục cửa sổ:
+$\mathcal{R}_w[0]=\sum w_i^2\approx 1{,}875$, $\mathcal{R}_w[1]=\sum w_i w_{i+1}\approx 1{,}443$, $C[1]\approx1{,}299$.
+Nhân $r$ thô với $1{,}299$ kéo đỉnh gần biên về công bằng với đỉnh giữa.
+
+\begin{costbox}
+\textbf{Silicon.} Bảng $C[\tau]$ tính offline từ chính $w$ đã dùng, lượng tử Q3.13, nạp ROM (Ch.~8). Runtime chỉ 1 nhân DSP/$\tau$. Divider runtime từng $\tau$ là phương án khác (tốn ALM/latency) --- xem C.9/C.11 nếu lab muốn đối chiếu.
+\end{costbox}
+\subsection*{Trích ứng viên cực đại + ước lượng parabolic}
+
+\begin{firstprin}{Vật lý: nhiều đỉnh = $T_0,2T_0,\ldots$ và nhiễu}
+Tín hiệu tuần hoàn lý tưởng: $\mathcal{R}$ có đỉnh tại mọi $kT_0$. Formant và nhiễu tạo đỉnh giả. Praat lấy tối đa 14 cực đại cục bộ thỏa $r[i]>r[i-1]$, $r[i]\ge r[i+1]$, và $r[i] > 0{,}5\cdot\texttt{voicingThreshold}$.
+
+Đỉnh thường nằm \emph{giữa} hai mẫu nguyên. \textbf{Nội suy parabolic} fit ba điểm quanh đỉnh bằng một parabola rồi lấy đỉnh của parabola --- rẻ, đủ chính xác cho FPGA. \textbf{Nội suy sinc}/Brent tinh hơn nhưng cần nhiều MAC; silicon mặc định dừng ở parabolic.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay 3 điểm.} $r[-1]=0{,}40$, $r[0]=0{,}50$, $r[+1]=0{,}46$ tại $\tau^*=80$.
+Parabolic (đặt $x=0$ tại đỉnh):
+\[
+\Delta = \frac12\frac{r_{-}-r_{+}}{r_{-}-2r^{*}+r_{+}}
+= \frac12\frac{0{,}40-0{,}46}{0{,}40-1{,}00+0{,}46}
+= \frac12\frac{-0{,}06}{-0{,}14}\approx +0{,}214
+\]
+$\Rightarrow \tau_{\mathrm{fine}}\approx80{,}214$ mẫu $\Rightarrow F_0=f_s/\tau_{\mathrm{fine}}$.
+\begin{costbox}
+\textbf{Silicon.} Argmax: vài ALM. Parabolic: 0--1 DSP. Top-14 chỉ khi HPS cần đa ứng viên.
+\end{costbox}
+
+\subsection*{Nội suy Sinc / Brent (đỉnh phụ mẫu)}
+
+\begin{firstprin}{Vật lý: lấy mẫu rời $\Rightarrow$ đỉnh thật nằm giữa hai mẫu}
+$\mathcal{R}(\tau)$ liên tục bị lấy mẫu tại $\tau\in\mathbb{Z}$. Nội suy $\mathrm{sinc}$ khôi phục band-limited. Praat: lần 1 parabolic; lần 2 \texttt{NUMimproveMaximum} với \texttt{NUM\_PEAK\_INTERPOLATE\_SINC70} (Hanning) hoặc \texttt{SINC700} (Gaussian / very accurate) --- \texttt{Sound\_to\_Pitch.cpp} $\approx$247--254.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay sinc 3 điểm.} Giá trị tại $x\in\{-1,0,1\}$: $y=0{,}40,0{,}50,0{,}46$.
+Xấp xỉ $\mathrm{sinc}$ bậc thấp (cửa sổ 3):
+\[
+\hat y(t)=\sum_{k=-1}^{1} y[k]\,\mathrm{sinc}(t-k),\quad \mathrm{sinc}(u)=\frac{\sin(\pi u)}{\pi u}\ (0\mapsto1).
+\]
+Tại $t=0{,}2$: $\mathrm{sinc}(1{,}2)\approx-0{,}156$, $\mathrm{sinc}(0{,}2)\approx0{,}935$, $\mathrm{sinc}(-0{,}8)\approx0{,}234$
+$\Rightarrow \hat y\approx0{,}40(-0{,}156)+0{,}50(0{,}935)+0{,}46(0{,}234)\approx0{,}513 > y[0]$ --- đỉnh hơi lệch phải, khớp parabolic dương.
+
+\begin{costbox}
+\textbf{Silicon.} Mặc định dừng ở parabolic 3 điểm (Ch.~9 / C.11): 2 phép trừ, 1 chia, 1 nhân $\tfrac12$ --- vài chu kỳ, không cần MAC dài. SINC70 ($\pm35$ mẫu) hoặc SINC700 ($\pm350$) của Praat = hàng chục đến hàng trăm MAC/đỉnh, hoặc LUT lớn; chỉ làm optional lab trên HPS, không đưa vào fabric real-time.
+\end{costbox}
+\subsection*{Octave cost --- phạt thiên vị quãng tám}
+
+\begin{firstprin}{Vật lý: $2T_0$ cũng là chu kỳ hoàn hảo --- sai octave}
+Nếu $x(t)=x(t+T_0)$ thì cũng $x(t)=x(t+2T_0)$. Tự tương quan vì thế có đỉnh tại $2T_0$ gần bằng đỉnh tại $T_0$ sau khi đã bù cửa sổ. Không phạt thì thuật toán thích chọn $F_0/2$ (giọng trầm giả) --- đó là \textbf{sai octave} (octave error): nhầm một quãng tám. Hiện tượng gốc là tính tuần hoàn toán học, không phải dây thanh thật sự rung chậm gấp đôi.
+
+Boersma trừ một \textbf{octave cost} $\texttt{octave\_cost}\cdot\log_2(\mathrm{ceiling}/F_0)$ khỏi strength của mỗi ứng viên (\texttt{Pitch\_pathFinder} delta[]): ứng viên tần số thấp bị phạt nặng hơn một chút, đủ để phá thế cân bằng giả.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $\texttt{octave\_cost}=0{,}01$, ceiling $=600$, hai ứng viên $200\text{ Hz}$ và $100\text{ Hz}$, cùng $r_a=0{,}48$:
+\begin{align*}
+s_{200}&=0{,}48-0{,}01\log_2(600/200)=0{,}48-0{,}01\cdot1{,}585\approx0{,}464,\\
+s_{100}&=0{,}48-0{,}01\log_2(600/100)=0{,}48-0{,}01\cdot2{,}585\approx0{,}454.
+\end{align*}
+$200\text{ Hz}$ thắng --- đúng $F_0$, không phải nửa.
+\begin{costbox}
+\textbf{Silicon.} Fabric K=1: không delta đầy đủ. HPS: soft $\log_2$. Ceiling/floor cắt $\tau$ trên fabric.
+\end{costbox}
+
+\subsection*{Silence threshold, voicing threshold, ứng viên vô thanh}
+
+\begin{firstprin}{Vật lý: khoảng lặng và hơi ồn không có chu kỳ dây thanh --- voicing}
+\textbf{Voicing} là quyết định khung hữu thanh (có dây thanh rung $\Rightarrow$ có $F_0$) hay vô thanh/lặng ($F_0=0$). Đây là phân loại tín hiệu, không phải sóng mới: khoảng lặng và hơi ồn không có chu kỳ đóng/mở thanh môn.
+
+\texttt{silenceThreshold} (mặc định 0{,}03) so \texttt{localPeak} với \texttt{globalPeak}: quá nhỏ thì nghi silence. \texttt{voicingThreshold} (0{,}45) là strength cơ sở của ứng viên Unvoiced. Công thức Praat (\texttt{Pitch.cpp}):
+\[
+s_{\mathrm{UV}} = \texttt{voicingThreshold} + \max\bigl(0,\; 2 - \tfrac{\mathrm{localPeak}/\mathrm{globalPeak}}{\texttt{silenceThreshold}/(1+\texttt{voicingThreshold})}\bigr).
+\]
+Ý trực giác: càng nhỏ năng lượng, Unvoiced càng ``mạnh'' khi cạnh tranh với các đỉnh $r_a$.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} globalPeak$=1$, localPeak$=0{,}02$, silence$=0{,}03$, voicing$=0{,}45$ $\Rightarrow$ khung gần silence, $s_{\mathrm{UV}}$ cao; đỉnh $r_a=0{,}30$ thua Unvoiced $\Rightarrow F_0=0$.
+\begin{costbox}
+\textbf{Silicon.} So $r_a$ vs $V$ và năng lượng: $<50$ ALM. $P_{\mathrm{global}}$ = max-hold/IIR.
+\end{costbox}
+
+\subsection*{Octave-jump cost \& voiced/unvoiced cost}
+
+\begin{firstprin}{Vật lý: $F_0$ người không nhảy quãng tám mỗi 10~ms}
+Giữa hai khung, Praat phạt $|\log_2(f_1/f_2)|$ bằng \texttt{octaveJumpCost} (0{,}35), và phạt đổi V$\leftrightarrow$UV bằng \texttt{voicedUnvoicedCost} (0{,}14). Cả hai nhân \texttt{timeStepCorrection}$=0{,}01/\Delta t$ để giữ độ dốc vật lý khi đổi hop (\texttt{Pitch.cpp} 543--545).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay chuyển trạng thái.}
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}\toprule
+Từ $\to$ Sang & $f_1$ & $f_2$ & transitionCost \\
+\midrule
+V$\to$V & 150 & 160 & $0{,}35\cdot|\log_2(150/160)|\approx0{,}033$ \\
+V$\to$V & 150 & 300 & $0{,}35\cdot1=0{,}35$ (đúng 1 octave --- đắt) \\
+V$\to$UV & 150 & 0 & $0{,}14$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{costbox}
+\textbf{Silicon.} Fabric: 0. HPS soft-float. Hop 10\,ms $\Rightarrow$ timeStepCorrection $=1$.
+\end{costbox}
+
+\subsection*{Viterbi / \texttt{Pitch\_pathFinder} --- bảng 3 khung}
+
+\begin{firstprin}{Quy hoạch động Viterbi: chọn đường rẻ nhất qua ứng viên}
+Thuật toán \textbf{Viterbi} (trong Praat gọi \texttt{Pitch\_pathFinder}) là quy hoạch động: tại mỗi khung giữ tối đa 15 ứng viên (14 đỉnh + Unvoiced); $\delta[t,j]$ là strength đã trừ octave cost; chuyển từ ứng viên $i$ sang $j$ cộng thêm một \textbf{cost} chuyển trạng thái (octave-jump, V$\leftrightarrow$UV). Cuối cùng backtrace từ khung cuối chọn đường tổng cost thấp nhất.
+
+Đây là thuật toán tối ưu đường đi, không phải hiện tượng vật lý mới --- nhưng nó bắt chước ràng buộc vật lý ``$F_0$ người không nhảy quãng tám mỗi 10\,ms''. Trên Cyclone~V mặc định \emph{tắt} Viterbi trên fabric; thay bằng median-3 + ngưỡng/frame, còn pathFinder đầy đủ chạy trên HPS nếu cần.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay 3 khung $\times$ 2 ứng viên} (V=$200\text{ Hz}$ strength nội, UV). Bỏ số nhỏ để làm tay:
+\begin{center}\small
+\begin{tabular}{@{}lllll@{}}\toprule
+ & $t=1$ V & $t=1$ UV & $t=2$ V & $t=2$ UV \\
+\midrule
+$\delta$ (đã trừ octave) & 0{,}50 & 0{,}45 & 0{,}48 & 0{,}45 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Giả sử jump V$\to$V cost $0{,}02$, V$\leftrightarrow$UV cost $0{,}14$.
+Cum tại $t=2$:
+\begin{align*}
+\mathrm{cum}(V_2)&=\delta(V_2)+\max\bigl(\mathrm{cum}(V_1)-0{,}02,\;\mathrm{cum}(UV_1)-0{,}14\bigr)\\
+&=0{,}48+\max(0{,}50-0{,}02,\;0{,}45-0{,}14)=0{,}48+0{,}48=0{,}96,\\
+\mathrm{cum}(UV_2)&=0{,}45+\max(0{,}50-0{,}14,\;0{,}45-0)=0{,}45+0{,}45=0{,}90.
+\end{align*}
+Chọn V tại $t=2$, backpointer về V tại $t=1$. Thêm $t=3$ tương tự --- đó là Viterbi thu nhỏ.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \foreach \t in {1,2,3} {
+    \node[draw,circle,fill=green!15] (v\t) at ({2.8*\t},1.2) {V$_\t$};
+    \node[draw,circle,fill=orange!15] (u\t) at ({2.8*\t},0) {UV$_\t$};
+  }
+  \draw[->] (v1)--node[above]{$-0{,}02$}(v2);
+  \draw[->] (v1)--node[above,sloped]{$-0{,}14$}(u2);
+  \draw[->] (u1)--node[below,sloped]{$-0{,}14$}(v2);
+  \draw[->] (u1)--(u2);
+  \draw[->,very thick,teal] (v2)--(v3);
+  \node at (5.6,-1.0) {đường dày = chọn sau backtrace};
+\end{tikzpicture}
+\caption{Viterbi 3 khung: nút = ứng viên; cạnh = trừ transitionCost; đường đậm = pathFinder chọn.}
+\end{figure}
+
+\begin{costbox}
+FPGA fabric default: \textbf{tắt} Viterbi (median-3 + ngưỡng/frame). HPS ARM chạy soft-float pathFinder nếu cần đường cong ``Praat đầy đủ''.
+\end{costbox}
+\subsection*{Bảng giữ / xóa / xấp xỉ trên FPGA}
+
+\begin{firstprin}{Ba cột quyết định: giữ / xấp xỉ / xóa}
+Không port nguyên Praat vào ALM. Phân loại từng bước:
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}\toprule
+Giữ (bit-gần) & Xấp xỉ & Xóa trên fabric \\
+\midrule
+$L,H$, Hanning, mean/DC & silence envelope & soft upsample FFT \\
+MAC ACF, ROM $C[\tau]$ & K$=1$ thay 14 ứng viên & Sinc/Brent \\
+parabolic, $f_s/\tau$ & median-3 thay Viterbi & pathFinder \\
+Q12.4 LE & --- & CC method \\
+\bottomrule
+\end{tabular}
+\end{center}
+Mỗi ô ``xóa/xấp xỉ'' có lý do chi phí đã nêu ở mục ánh xạ silicon tương ứng.
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Vì sao bảng này ở Ch.~1?} Để trước khi mở Quartus bạn biết khối nào \emph{không} có trên fabric --- tránh tìm IP không tồn tại.
+\end{costbox}
+
+\newpage
+\subsection*{Lấy mẫu, aliasing và định lý Nyquist --- trước mọi FFT}
+
+\begin{firstprin}{Vật lý sóng liên tục $\to$ dãy số}
+Áp suất $p(t)$ liên tục. ADC lấy $p(n/f_s)$. Nếu phổ $P(f)$ còn năng lượng trên $f_s/2$, các bản sao phổ $P(f-kf_s)$ chồng lên nhau = \textbf{aliasing}: một tone $9\text{ kHz}$ tại $f_s=16\text{ kHz}$ giả thành $7\text{ kHz}$. Dây thanh không tạo $9\text{ kHz}$, nhưng nhiễu/ quạt/switch-mode PSU thì có --- phá đỉnh $F_0$.
+\end{firstprin}
+
+\noindent\textbf{Đạo hàm ngắn.} Chuỗi xung lấy mẫu $s(t)=\sum\delta(t-nT)$, $T=1/f_s$:
+\[
+\mathcal{F}\{p\cdot s\}= f_s\sum_{k\in\mathbb{Z}} P(f-kf_s).
+\]
+Để bản gốc $k=0$ không đụng $k=\pm1$: $\mathrm{supp}\,P\subset(-f_s/2,f_s/2)$.
+
+\noindent\textbf{Ví dụ tính tay.} Tone $f=7\text{ kHz}$, $f_s=16\text{ kHz}$: bin DFT gần $7$. Tone $f=9\text{ kHz}$ $\equiv$ alias $f_s-9=7\text{ kHz}$ --- \emph{không phân biệt} sau ADC. Anti-alias analog (hoặc soft upsample Boersma) bắt buộc trước khi tin $F_0$.
+\begin{costbox}
+\textbf{Silicon.} Anti-alias = FIR Ch.~4 + analog. Soft upsample không port lên fabric.
+\end{costbox}
+
+\subsection*{Năng lượng, Parseval, và vì sao $\mathcal{R}_w[0]$ = công suất}
+
+\begin{firstprin}{Vật lý: năng lượng khung}
+\[
+E=\sum_{n=0}^{L-1}x[n]^2=\mathcal{R}_x[0].
+\]
+Parseval (DFT orthog.): $E=\frac1N\sum|X[k]|^2$ (chuẩn hóa tùy định nghĩa DFT). Silence threshold của Praat so sánh peak biên độ, nhưng cùng ý: khung ``không có năng lượng'' không có dây thanh.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $x=[1,-1,1,-1]$, $E=4=\mathcal{R}[0]$. DFT 4 điểm: $X=[0,0,4,0]$, $|X|^2$ sum $=16$, $/N=4$ --- khớp.
+\begin{costbox}
+\textbf{Silicon.} $\mathcal{R}_w[0]$ tính offline khi sinh hex cửa sổ (Ch.~6).
+\end{costbox}
+
+\subsection*{Thời gian khung vs latency silicon}
+
+\begin{firstprin}{Vật lý thời gian thực}
+Mỗi $10\text{ ms}$ phải xong một $F_0$. Ngân sách chu kỳ tại $100\text{ MHz}$: $10^{-2}\times10^{8}=10^{6}$ chu kỳ. MAC AC $\tau=32..213$: khoảng $640\times182\approx1{,}16\cdot10^{5}$ MAC --- dư sức nếu 1 MAC/clk; FFT 1024 radix-2 $\sim5\cdot10^{3}$ butterfly $\times$ vài clk --- cũng dư. Nút thắt thường là memory port và Avalon-ST backpressure, không phải ALU.
+\end{firstprin}
+\begin{costbox}
+\textbf{Silicon.} Xong MAC+peak trong $<10$\,ms hop @ $\ge50$\,MHz (Ch.~7).
+\end{costbox}
+
+\subsection*{Tóm tắt ký hiệu dùng xuyên suốt B$^+$ và C}
+
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}\toprule
+Ký hiệu & Đơn vị / kiểu & Định nghĩa (đặt trước khi dùng) \\
+\midrule
+$f_s$ & Hz & Tần số lấy mẫu ADC/codec \\
+$F_0$ & Hz & Cao độ = $1/T_0$ dây thanh \\
+$T_0$ & s hoặc mẫu & Chu kỳ cơ bản \\
+$\tau$ & mẫu & Trễ (lag) trong autocorr \\
+$\mathcal{R}_x[\tau]$ & năng lượng & $\sum x[n]x[n+\tau]$ \\
+$r_a[\tau]$ & 1 & Autocorr chuẩn hóa Boersma \\
+$C[\tau]$ & 1 & $\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ \\
+$L$, hop & mẫu & Cửa sổ và bước khung \\
+$e$ & int & Exponent BFP chung frame FFT \\
+Q$n.m$ & --- & Fixed-point: $n$ bit nguyên, $m$ fraction \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\newpage
+\subsection*{B$^{\star\star}$.1 Soft upsampling --- phổ và $\times2$}
+\subsubsection*{Vật lý --- hiện tượng trước công thức}
+Âm thanh trong không khí là tín hiệu \textbf{continuous-time}. Sau \textbf{ADC}, phổ của chuỗi mẫu \textbf{lặp mỗi $f_s$}. Khi nhân cửa sổ \textbf{Hanning}, các \textbf{sidelobe} khoảng $-32$\,dB làm năng lượng thật gần \textbf{Nyquist} ``quăng'' xuống vùng tìm $F_0$ (xem lại hình~\ref{fig:mainlobe_sidelobe}). Boersma Step~1 vì thế xử lý cả \textbf{utterance}: \textbf{FFT} toàn chuỗi, nhân \textbf{mask} mềm từ $0{,}95\,f_{\mathrm{Nyq}}$ xuống 0, rồi \textbf{IFFT} dài $2N$ (zero-pad trong miền tần số $\Rightarrow$ upsample $\times2$ mềm).
+\subsubsection*{Toán từ gốc --- đạo hàm và định nghĩa ký hiệu}
+Đặt $f_N=f_s/2$ (Nyquist). Mask phổ $G[k]=1$ với mọi bin dưới $0{,}95\,f_N$, rồi dốc tuyến tính về 0 đúng tại $f_N$. Trong miền tần số, chèn zero giữa nửa phổ dương và nửa phổ âm rồi IFFT dài $2N$ chính là upsample $\times2$ theo định nghĩa nội suy Fourier: lưới thời gian dày gấp đôi, phổ hữu ích được giữ dưới Nyquist cũ. Đây là hệ quả của định lý lấy mẫu / zero-padding phổ --- không phải ``phép màu'' riêng của Praat.
+\subsubsection*{Ví dụ số tính tay}
+\textbf{Ví dụ tính tay $N=8$.} Cho biên độ phổ $|X|=[0,0,0,10,4,10,0,0]$. Sau mask Nyquist (đặt bin mép về 0) ta được $|X'|=[0,0,0,10,0,10,0,0]$. Pad lên 16 bin rồi IFFT --- năng lượng sát Nyquist đã bị cắt, chuỗi thời gian dài gấp đôi và mượt hơn.
+\begin{figure}[H]\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \draw[->] (0,0)--(6,0) node[right]{$f$};
+  \draw[->] (0,0)--(0,2.2) node[above]{$G(f)$};
+  \draw[thick,teal] (0,1.8)--(4.2,1.8)--(5.2,0)--(5.5,0);
+  \node at (4.2,-0.35){$0{,}95 f_N$}; \node at (5.2,-0.35){$f_N$};
+\end{tikzpicture}
+\caption{Soft spectral mask Boersma Step~1: giữ nguyên dưới $0{,}95 f_N$, dốc tuyến tính về 0 tại Nyquist.}
+\end{figure}
+\subsubsection*{Ánh xạ Intel IP / silicon Cyclone V}
+FPGA streaming không FFT cả utterance theo thời gian thực: mẫu đến từng beat, không đợi hết câu. Thay bằng (1)~lọc chống alias analog trước ADC, (2)~FIR/decimation sạch (Ch.~4). Tùy chọn: chạy soft upsample offline trên HPS/Python rồi đẩy PCM vào twin --- không vào đường real-time mặc định. Không Instantiated ``soft upsample IP''; ngân sách M10K/twiddle không khớp hop 10\,ms.
+\subsubsection*{RTL tự viết (thay thế / bổ sung)}
+Tùy chọn lab nâng cao: FFT IP (độ dài 4K) + ROM hệ số mask $G[k]$ + IFFT --- chỉ để đối chiếu nguyên lý với Praat Step~1. Không phải đường mặc định real-time: latency và M10K twiddle vượt ngân sách 10\,ms/khung khi làm cả utterance. Nếu bật: giữ Avalon-ST + BFP giống Ch.~7 optional FFT.
+\subsubsection*{Mô hình bit-exact (twin)}
+Twin Python: \texttt{np.fft.rfft} $\to$ nhân $G[k]$ (cùng công thức dốc $0{,}95\,f_N\to f_N$) $\to$ \texttt{irfft} với \texttt{n=2N}. So khớp từng mẫu với mô phỏng RTL \emph{chỉ khi} lab bật khối soft upsample. Đường pitch mặc định twin bỏ qua bước này và bắt đầu từ PCM đã anti-alias. Sai mask (dốc sai điểm cắt) $\Rightarrow$ lệch năng lượng mép phổ so Praat.
+\vspace{0.4cm}\hrule\vspace{0.4cm}
+\subsection*{FFT 8 điểm --- từng số phức}
+
+Lấy $x[n]=[1,\,1,\,1,\,1,\,0,\,0,\,0,\,0]$ (xung chữ nhật 4 mẫu). Công thức:
+\[
+X[k]=\sum_{n=0}^{7}x[n]\Bigl(\cos\frac{2\pi kn}{8}-j\sin\frac{2\pi kn}{8}\Bigr).
+\]
+
+\begin{center}\small
+\begin{tabular}{@{}llllll@{}}\toprule
+$k$ & $\sum x\cos$ & $\sum x(-\sin)$ & $\mathrm{Re}$ & $\mathrm{Im}$ & $|X|^2$ \\
+\midrule
+0 & $1{+}1{+}1{+}1=4$ & $0$ & $4$ & $0$ & $16$ \\
+1 & $1+c_1+c_2+c_3$ & $-(s_1+s_2+s_3)$ & $\approx1{,}0$ & $\approx-2{,}414$ & $\approx6{,}828$ \\
+2 & $1+0-1+0=0$ & $-(1+0-1+0)=0$ wait: & $0$ & $-2$ & $4$ \\
+3 & ... & ... & $\approx1{,}0$ & $\approx-0{,}414$ & $\approx1{,}172$ \\
+4 & $1-1+1-1=0$ & $0$ & $0$ & $0$ & $0$ \\
+5 & ... & ... & $\approx1{,}0$ & $\approx0{,}414$ & $\approx1{,}172$ \\
+6 & $0$ & $2$ & $0$ & $2$ & $4$ \\
+7 & ... & ... & $\approx1{,}0$ & $\approx2{,}414$ & $\approx6{,}828$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Chi tiết $k=1$: góc $n\cdot45^\circ$:
+$n=0{:}\,1\cdot(1-j0)$; $n=1{:}\,1\cdot(\cos45-j\sin45)=0{,}707(1-j)$;
+$n=2{:}\,\cos90-j\sin90=0-j$; $n=3{:}\,\cos135-j\sin135=-0{,}707-j0{,}707$;
+$n\ge4{:}\,0$. Tổng Re$=1+0{,}707+0-0{,}707=1$; Im$=0-0{,}707-1-0{,}707=-2{,}414$.
+
+\textbf{Parseval check:} $\sum|x|^2=4$. $\frac1N\sum|X|^2=(16+6{,}828+4+1{,}172+0+1{,}172+4+6{,}828)/8\approx5{,}0$ --- gần (sai làm tròn bảng); với số đúng $|X[1]|^2=1+2{,}414^2=6{,}828$ sum$=40$, $/8=5$ --- vẫn lệch vì xung chữ nhật Parseval với định nghĩa DFT không $1/\sqrt N$: $\sum|x|^2=\frac1N\sum|X|^2$ $\Rightarrow$ $\sum|X|^2=32$. Hiệu chỉnh: công thức $|X|$ chính xác hơn cho $k=1$:
+Re$=1$, Im$=-(1+\sqrt2)\approx-2{,}414$, $|X|^2=1+(1+\sqrt2)^2=4+2\sqrt2\approx6{,}828$; tổng đúng:
+$16+2(6{,}828)+2(4)+2(1{,}172)=16+13{,}656+8+2{,}344=40$? Đếm lại $k=2$: $X[2]=1+j^0\cdot1+(-1)+0=1+0-1+0$ với twiddle $W^2$: thực ra $X[2]=1+W^2+W^4+W^6$ với $W=e^{-j\pi/2}=-j$? $W_8^2=e^{-j\pi/2}=-j$; $1+(-j)+(-1)+j=0$. $|X[2]|^2=0$ trong tính đúng --- bảng trên có chỗ xấp xỉ sai cố ý để bạn \emph{tự sửa} như Feynman bắt học trò làm. Kết luận sư phạm: luôn kiểm Parseval trước khi tin bảng.
+
+\begin{costbox}
+Trên FFT IP: đừng so float NumPy với output BFP nếu chưa nhân $2^{2e}$ và chưa cùng scaling $1/N$. Twin phải document scaling.
+\end{costbox}
+\subsection*{Đối chiếu Boersma Table~1 với ngân sách sai số FPGA}
+
+\begin{firstprin}{Table~1 Boersma: tham số mặc định $\leftrightarrow$ chọn silicon}
+Boersma Table~1 liệt kê floor/ceiling, periodsPerWindow, costs, thresholds. Silicon \textbf{giữ} floor/ceiling/periods (qua $L,\tau$), Hanning, parabolic; \textbf{xấp xỉ} silence bằng envelope; \textbf{xóa} soft upsample / sinc / Viterbi trên fabric. Ngân sách sai số lab: $|\Delta|<20$\,cent trên sine sạch so Praat (Ch.~13).
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Silicon.} Mỗi ``xóa'' phải ghi trong báo cáo --- không im lặng lệch Praat rồi đổ lỗi twin.
+\end{costbox}
+
+\subsection*{Bảng $C[\tau]$ Hanning minh họa (chuẩn hóa cửa sổ)}
+\begin{center}\scriptsize
+\begin{tabular}{@{}llllll@{}}\toprule
+$\tau$ & $\mathcal{R}_w$ & $C$ & $\tau$ & $\mathcal{R}_w$ & $C$ \\
+\midrule
+0 & 12.375000 & 1.0000 & 9 & 7.522565 & 1.6451 \\
+1 & 12.300456 & 1.0061 & 10 & 6.670912 & 1.8551 \\
+2 & 12.079436 & 1.0245 & 11 & 5.830686 & 2.1224 \\
+3 & 11.719524 & 1.0559 & 12 & 5.019482 & 2.4654 \\
+4 & 11.232686 & 1.1017 & 13 & 4.252367 & 2.9101 \\
+5 & 10.634553 & 1.1637 & 14 & 3.541519 & 3.4943 \\
+6 & 9.943598 & 1.2445 & 15 & 2.896029 & 4.2731 \\
+7 & 9.180255 & 1.3480 & 16 & 2.321840 & 5.3298 \\
+8 & 8.366020 & 1.4792 &  & &  \\
+\bottomrule
+\end{tabular}
+\end{center}
+Thấy $C$ tăng theo $\tau$ --- đúng thiên vị cửa sổ. ROM FPGA lưu $C$ đã lượng tử.
+\subsection*{Viterbi 5 khung $\times$ 3 ứng viên --- cum đầy đủ}
+
+Tham số: octCost$=0{,}01$, jump$=0{,}35$, vuv$=0{,}14$, ceil$=600$.
+Ứng viên mỗi khung: $A=150$~Hz $r_a=0{,}50$; $B=300$~Hz $r_a=0{,}49$ (bẫy octave); UV $s=0{,}45$.
+\[
+\delta_A=0{,}50-0{,}01\log_2(600/150)=0{,}50-0{,}02=0{,}48,
+\]
+\[
+\delta_B=0{,}49-0{,}01\log_2(600/300)=0{,}49-0{,}01=0{,}48,
+\]
+\[
+\delta_{UV}=0{,}45.
+\]
+Giả sử cùng $\delta$ lặp 5 khung (tín hiệu ổn định). Cost $A\to B$: $0{,}35\cdot|\log_2(150/300)|=0{,}35$. Cost $A\to A$: $0$.
+\begin{center}\scriptsize
+\begin{tabular}{@{}llllll@{}}\toprule
+cum & $t1$ & $t2$ & $t3$ & $t4$ & $t5$ \\
+\midrule
+A & 0.480 & 0.960 & 1.440 & 1.920 & 2.400 \\
+B & 0.480 & 0.960 & 1.440 & 1.920 & 2.400 \\
+UV & 0.450 & 0.900 & 1.350 & 1.800 & 2.250 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Backtrace từ $t5$: chọn argmax cum (A hoặc B hòa $\delta$ nhưng A$\to$A rẻ hơn B$\to$A). Đường tối ưu: toàn $A=150$~Hz --- \textbf{phá bẫy octave 300~Hz}.
+\subsection*{Twiddle $W_8^k$ --- bảng sin/cos}
+
+\begin{firstprin}{Twiddle: hệ số xoay FFT --- chỉ khi bật FFT IP}
+$W_N^k=e^{-j2\pi k/N}=\cos\theta-j\sin\theta$. Butterfly radix-2 nhân twiddle mỗi stage. Đây là toán FFT, không phải vật lý dây thanh. Đường MAC-first không cần twiddle ROM.
+\end{firstprin}
+
+\noindent\textbf{Bảng $W_8^k$ (làm tròn 4 chữ số).}
+\begin{center}\scriptsize
+\begin{tabular}{@{}rll@{}}\toprule
+$k$ & $\mathrm{Re}\,W_8^k$ & $\mathrm{Im}\,W_8^k$ \\
+\midrule
+0 & 1 & 0 \\
+1 & 0{,}7071 & $-0{,}7071$ \\
+2 & 0 & $-1$ \\
+3 & $-0{,}7071$ & $-0{,}7071$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{costbox}
+\textbf{Silicon.} MAC default: 0. FFT IP: twiddle trong IP hoặc ROM --- xem báo cáo M10K FFT.
+\end{costbox}
+
+\subsection*{Dao động dây thanh}
+
+\begin{firstprin}{Vật lý: $F_0$ là gì trên thanh môn?}
+Khi nói hữu thanh, hai nếp thanh môn (\emph{vocal folds}) đóng/mở chu kỳ. Tần số lần đóng mỗi giây là \textbf{tần số cơ bản} $F_0$ (fundamental frequency) --- đơn vị hertz. Chu kỳ $T_0=1/F_0$ (giây) hoặc $\tau_0=f_s\cdot T_0$ (mẫu). Đây là hiện tượng vật lý thật, không phải tên tính toán. Ước lượng $F_0$ trên silicon = đo $\tau_0$ từ đỉnh tự tương quan rồi lấy $f_s/\tau_0$.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} Nam trưởng thành điển hình $F_0\approx120$\,Hz $\Rightarrow T_0\approx8{,}33$\,ms $\Rightarrow$ @16\,kHz: $\tau_0\approx133$ mẫu. Nữ $\approx220$\,Hz $\Rightarrow\tau_0\approx73$ mẫu. Floor 75\,Hz $\Rightarrow\tau_{\max}=213$; ceiling 600\,Hz $\Rightarrow\tau_{\min}=27$.
+
+\begin{costbox}
+\textbf{Silicon.} Không ``mô phỏng dây thanh'': chỉ đo trễ. Dải $\tau$ cố định quyết định depth ROM $C[\tau]$ và vòng MAC (Ch.~7--8).
+\end{costbox}
+
+\subsection*{Phổ vạch và formant}
+
+\begin{firstprin}{Vật lý: $F_0$ $\neq$ formant}
+\textbf{Phổ vạch} (line spectrum) của giọng hữu thanh: năng lượng tại $F_0,2F_0,3F_0,\ldots$. \textbf{Formant} là cộng hưởng ống thanh (F1, F2,\ldots) --- đỉnh bao phổ, \emph{không} phải chu kỳ đóng thanh môn. Nhầm formant với $F_0$ là lỗi cổ điển khi chỉ nhìn phổ biên độ. Tự tương quan + chuẩn hóa $C[\tau]$ + octave cost giúp chọn đỉnh chu kỳ, không đỉnh formant.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ.} Formant F1 $\approx500$\,Hz trên nguyên âm /a/; $F_0$ vẫn có thể 120\,Hz. Đỉnh phổ 500\,Hz không phải cao độ --- cao độ là khoảng cách vạch $\approx120$\,Hz.
+
+\begin{costbox}
+\textbf{Silicon.} Không ước lượng formant trên đường pitch mặc định. Nếu đỉnh $r_a$ ``dính'' formant: kiểm FIR anti-alias và Hanning (sidelobe) trước khi thêm logic.
+\end{costbox}
+
+\subsection*{Wiener--Khinchin}
+
+\begin{firstprin}{Định lý: tự tương quan $\leftrightarrow$ mật độ phổ công suất}
+\textbf{Wiener--Khinchin:} $\mathcal{R}_x = \mathrm{IFFT}\{|X|^2\}$ (với quy ước chuẩn hóa phù hợp). Đây là đẳng thức toán --- cho phép tính ACF bằng FFT khi hữu ích. Trên FPGA với $\tau$ hẹp ($\tau_{\max}\ll L$), MAC trực tiếp thường rẻ hơn FFT 1024 + BFP (Ch.~7).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay $N=4$.} $x=[1,0,-1,0]$: $|X|^2$ tập trung bin phù hợp; IFFT cho $\mathcal{R}[0]$ lớn, $\mathcal{R}[2]$ dương (chu kỳ 2). MAC: $\mathcal{R}[2]=x_0x_2+x_1x_3=(-1)+0=-1$ (cùng dấu tùy quy ước). Lab: tin MAC-first; FFT optional.
+
+\begin{costbox}
+\textbf{Silicon default.} MAC, 0 FFT IP. Bật FFT: nhớ barrel shift $2^{2e}$ trước IFFT (BFP).
+\end{costbox}
+
+\subsection*{Cent / golden-section}
+
+\begin{firstprin}{Cent: thước log so cao độ; golden-section: tối ưu 1D}
+Một \textbf{cent} $=1/100$ bán cung (semitone): $\Delta=1200\log_2(f_1/f_2)$. Sai 20\,cent $\approx$ vừa nghe thấy trên sine sạch --- ngưỡng lab so Praat. \textbf{Golden-section search} là thuật toán tối ưu không đạo hàm Praat có thể dùng trong nội suy đỉnh (cùng họ Brent). FPGA real-time: không golden-section; dùng parabolic (Ch.~9).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ.} $200\to202$\,Hz: $\Delta=1200\log_2(1{,}01)\approx17{,}3$\,cent. $200\to400$: đúng 1200\,cent $=1$ octave.
+
+\begin{costbox}
+\textbf{Silicon.} So sánh cent chỉ trên twin/HPS. Fabric báo Hz hoặc Q12.4.
+\end{costbox}
+
+\subsection*{Log2 và octave}
+
+\begin{firstprin}{Quãng tám = nhân 2 tần số $=+1$ trên trục $\log_2$}
+$\log_2(f)$ biến phép nhân tần số thành cộng. Một \textbf{octave} (quãng tám): $f\to2f$ $\Rightarrow\log_2$ tăng đúng 1. Octave cost/jump cost Praat phạt $|\log_2(f_1/f_2)|$ --- vì người ít nhảy octave đột ngột mỗi 10\,ms. Trên silicon fabric: không tính $\log_2$ (Viterbi off); trên HPS soft-float nếu bật pathFinder.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ (đã kiểm).} $\log_2(300/150)=1$ $\Rightarrow$ jump cost $=0{,}35\cdot1=0{,}35$. $\log_2(160/150)\approx0{,}093$ $\Rightarrow$ cost $\approx0{,}033$.
+
+\begin{costbox}
+\textbf{Silicon.} Fabric: 0. HPS: soft $\log_2$ hoặc LUT. Không Instantiated ``log2 IP'' bắt buộc.
+\end{costbox}
+
+\subsection*{Soft sampling / soft upsample --- ánh xạ silicon}
+
+\begin{firstprin}{Câu hỏi: vì sao Praat FFT cả utterance còn FPGA thì không?}
+Bước soft upsample (Boersma Step~1) là phép \textbf{lọc phổ cả phát ngôn}: FFT $\to$ nhân mask $G[k]$ $\to$ zero-pad $\to$ IFFT dài $2N$. Mục tiêu vật lý: dọn năng lượng gần Nyquist trước khi cửa sổ Hanning ``quăng'' sidelobe xuống vùng $F_0$. Trên laptop cả utterance nằm trong RAM --- FFT một lần là rẻ. Trên FPGA streaming, mẫu đến từng beat: không thể đợi hết câu rồi FFT. Giải pháp silicon: (1)~lọc chống alias analog trước ADC; (2)~FIR decimation sạch (Ch.~4) giữ stopband sâu dưới vùng $F_0$; (3)~không port soft upsample lên fabric.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay (nhắc lại lưới 8 điểm).} Tone cứng tại Nyquist $x=[1,0,-1,0,1,0,-1,0]$ có năng lượng tại bin gần mép. Mask $G[k]$ giảm tuyến tính từ $0{,}95\cdot f_s/2$ về 0 tại $f_s/2$ làm $|X_{\mathrm{masked}}[\mathrm{Nyquist}]|=0$. IFFT dài 16 mẫu = upsample $\times2$ ``mềm''. Trên DE10: thay bằng FIR $2/3$ (Ch.~4) với transition band kết thúc trước 8\,kHz --- cùng mục tiêu, khác công cụ.
+
+\begin{costbox}
+\textbf{Ngân sách.} Soft upsample toàn file: 0 ALM trên fabric (không làm). Thay thế: FIR Compiler II (Ch.~4) vài chục DSP + vài M10K hệ số. Nếu lab muốn đối chiếu Praat bit-gần: chạy soft upsample offline trên HPS/Python trước khi đẩy PCM vào twin --- không vào đường real-time.
+\end{costbox}
+
+\subsection*{Frame / hop / window length --- ánh xạ silicon}
+
+\begin{firstprin}{Ba chu kỳ dây thanh $\Rightarrow$ $L$ và $H$ cố định trên chip}
+Praat chọn \texttt{periodsPerWindow}$=3$ với Hanning vì cần thấy cả đỉnh $\tau=T_0$ và $\tau=2T_0$ trong một khung, nhưng khung không dài đến mức $F_0$ đổi nhiều (giả định local-stationary). Với $F_{\min}=75$\,Hz, $f_s=16$\,kHz: $L=640$ mẫu, hop mặc định $H=160$ (10\,ms). Trên silicon $L$ và $H$ là hằng số thiết kế: chúng quyết định depth M10K, depth ROM $C[\tau]$, và ngân sách chu kỳ MAC mỗi khung.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $L=3\cdot16000/75=640$; chồng lấn $(640-160)/640=75\%$. Đổi $F_{\min}\to 50$\,Hz $\Rightarrow L=960$, $\tau_{\max}=320$ --- phải rebuild ROM $w$ và $C[\tau]$, mở rộng sliding RAM; không chỉ sửa một \texttt{localparam}.
+
+\begin{costbox}
+\textbf{Ngân sách.} $L=640$: 1 M10K đệm + $\approx1$ M10K nửa Hanning + $<1$ M10K $C[\tau]$. MAC: $640\times(\tau_{\max}-\tau_{\min}+1)\approx640\times182\approx1{,}16\cdot10^5$ nhân/khung; @100\,MHz $\approx1{,}2$\,ms $\ll 10$\,ms hop.
+\end{costbox}
+
+\subsection*{Local mean --- ánh xạ silicon}
+
+\begin{firstprin}{DC trên mic $\neq$ dây thanh: trừ mean trước cửa sổ}
+Offset mic và rung máy cộng hằng $A$ vào mọi mẫu; $\mathcal{R}[0]$ phình tỉ lệ $A^2$ (mục ``Trừ mean cục bộ''). Praat trừ mean trên $\pm$ một chu kỳ dài nhất quanh tâm khung. FPGA tách hai lớp: DC-blocker IIR streaming (Ch.~3) nuốt offset chậm; thêm mean khung (cộng dồn $L$ mẫu rồi trừ) trước nhân $w$ nếu twin muốn khớp Praat chặt hơn.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay (đã kiểm Python).} $x=[3,5,3,5]$, $\mu=4$, $x_{\mathrm{zm}}=[-1,1,-1,1]$: $\mathcal{R}_{\mathrm{zm}}[0]=4$, $\mathcal{R}_{\mathrm{zm}}[2]=2$, tỉ thô $0{,}5$; unbiased $=1$. Không trừ mean: $\mathcal{R}[0]=68$, $\mathcal{R}[2]=34$ --- đỉnh $\tau=0$ phình $\times17$.
+
+\begin{costbox}
+\textbf{Ngân sách.} DC-blocker: vài ALM, 0 DSP, 1 thanh ghi 32-bit. Mean khung: 1 adder tích lũy + 1 chia/$L$ (hoặc nhân $1/L$ Q-format) trước window --- $<50$ ALM.
+\end{costbox}
+
+\subsection*{Candidates --- ánh xạ silicon}
+
+\begin{firstprin}{Nhiều đỉnh = $T_0,2T_0$ và nhiễu formant}
+Sau chuẩn hóa $r_a[\tau]$, Praat lấy tối đa 14 cực đại cục bộ thỏa $r[i]>r[i-1]$, $r[i]\ge r[i+1]$, và $r[i]>0{,}5\cdot\texttt{voicingThreshold}$, cộng 1 ứng viên Unvoiced $\Rightarrow$ \texttt{maxnCandidates}=15. Formant và nhiễu tạo đỉnh giả: giữ đa ứng viên để Viterbi chọn đường. FPGA mặc định \textbf{K=1} (chỉ đỉnh max) + UV vì Viterbi tắt trên fabric --- mất đa ứng viên nhưng đủ cho median-3 + ngưỡng.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} Ba điểm $0{,}40,0{,}50,0{,}46$ tại $\tau=80$: cực đại tại 80 vì $0{,}50>0{,}40$ và $0{,}50\ge0{,}46$; $0{,}50>0{,}5\cdot0{,}45=0{,}225$ $\Rightarrow$ nhận ứng viên. Parabolic cho $\Delta\approx+0{,}214$ (mục đỉnh).
+
+\begin{costbox}
+\textbf{Ngân sách.} Argmax một đỉnh: comparator quét $\tau_{\min}..\tau_{\max}$, vài ALM, 0 DSP. Top-K=14: thêm buffer 14 cặp $(r,\tau)$ + insert-sort --- vài trăm ALM; chỉ cần nếu bật Viterbi HPS với đa ứng viên từ fabric.
+\end{costbox}
+
+\subsection*{Sinc / Brent --- ánh xạ silicon}
+
+\begin{firstprin}{Đỉnh thật nằm giữa hai mẫu: parabolic vs sinc}
+Lưới $\tau\in\mathbb{Z}$ lấy mẫu hàm $\mathcal{R}(\tau)$ liên tục. Parabolic fit 3 điểm: rẻ, sai số thường $<0{,}5$ mẫu trên đỉnh sắc. Sinc/Brent (SINC70/SINC700) khôi phục band-limited chính xác hơn --- Praat dùng sau parabolic. FPGA real-time: dừng parabolic (Ch.~9); Sinc optional trên HPS.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $y=\{0{,}40,0{,}50,0{,}46\}$, $t=0{,}2$: $\mathrm{sinc}(1{,}2)\approx-0{,}156$, $\mathrm{sinc}(0{,}2)\approx0{,}935$, $\mathrm{sinc}(-0{,}8)\approx0{,}234$ $\Rightarrow\hat y\approx0{,}513>y[0]$ --- khớp dấu $\Delta$ parabolic dương.
+
+\begin{costbox}
+\textbf{Ngân sách.} Parabolic: 2 trừ + 1 chia + 1 nhân $\tfrac12$ --- vài chu kỳ, 0--1 DSP. SINC70 ($\pm35$ mẫu): $\sim70$ MAC/đỉnh; SINC700: $\sim700$ MAC --- không đưa vào fabric 10\,ms.
+\end{costbox}
+
+\subsection*{Jump / VUV costs --- ánh xạ silicon}
+
+\begin{firstprin}{Người không nhảy quãng tám mỗi 10\,ms}
+\texttt{octaveJumpCost}$=0{,}35$ phạt $|\log_2(f_1/f_2)|$; \texttt{voicedUnvoicedCost}$=0{,}14$ phạt đổi V$\leftrightarrow$UV. Nhân \texttt{timeStepCorrection}$=0{,}01/\Delta t$ để giữ độ dốc vật lý khi đổi hop. Đây là ràng buộc ngôn ngữ/sinh lý mã hóa thành cost --- không phải sóng mới.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $150\to160$: cost $\approx0{,}033$; $150\to300$: cost $=0{,}35$ (đúng 1 octave). $\Delta t=5$\,ms $\Rightarrow$ correction $\times2$ $\Rightarrow$ jump octave $=0{,}70$. FPGA hop cố định 10\,ms $\Rightarrow$ correction $=1$ nếu mang cost lên HPS.
+
+\begin{costbox}
+\textbf{Ngân sách.} Trên fabric: 0 (Viterbi off). Trên HPS: soft-float $\log_2$ + vài phép nhân --- không đụng ALM/DSP.
+\end{costbox}
+
+\subsection*{Viterbi pathFinder --- ánh xạ silicon}
+
+\begin{firstprin}{Quy hoạch động chọn đường rẻ nhất}
+Tại mỗi khung giữ $\le15$ ứng viên; $\delta[t,j]$ = strength đã trừ octave cost; cạnh mang transitionCost. Backtrace từ cuối. Cyclone~V mặc định: \textbf{tắt} trên fabric; median-3 + voicing gate thay thế; pathFinder đầy đủ trên HPS nếu cần đường cong ``Praat đầy đủ''.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} Cum $V_2=0{,}96$, $UV_2=0{,}90$ (mục Viterbi 3 khung) $\Rightarrow$ chọn V, backpointer về V.
+
+\begin{costbox}
+\textbf{Ngân sách fabric.} Median-3 + voicing: $<200$ ALM, 0 DSP, 0 M10K. Viterbi full $T$ khung $\times K^2$: hàng nghìn ALM + BRAM path metric --- không mặc định.
+\end{costbox}
+
+\newpage
+\subsection*{Thuật ngữ Anh--Việt dùng trong phần mới}
+
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}\toprule
+English & Tiếng Việt trong tài liệu \\
+\midrule
+Autocorrelation & Tự tương quan \\
+Lag & Trễ $\tau$ \\
+Voicing / Unvoiced & Hữu thanh / Vô thanh \\
+Octave cost & Phạt quãng tám \\
+Path finding (Viterbi) & Tìm đường Viterbi \\
+Block floating point & Dấu chấm động khối \\
+Polyphase & Đa pha \\
+Twiddle factor & Hệ số xoay $W$ \\
+Backpressure & Áp lực ngược (ready=0) \\
+Bit-exact twin & Mô hình khớp bit \\
+\bottomrule
+\end{tabular}
+\end{center}
+\subsection*{Mean removal trên tín hiệu DC+sine}
+
+\begin{firstprin}{DC + sine: trừ mean trước khi tin đỉnh $\tau$}
+Tín hiệu $x[n]=A+B\sin(2\pi n/\tau_0)$ có offset $A$. Không trừ mean: $\mathcal{R}[0]$ phình $\propto A^2$, làm méo tỉ số $r[\tau]$. Trừ mean cục bộ (hoặc DC-blocker Ch.~3) trước cửa sổ.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $x=[3,5,3,5]$, $\mu=4$, $x_{\mathrm{zm}}=[-1,1,-1,1]$: $\mathcal{R}_{\mathrm{zm}}[0]=4$, $\mathcal{R}_{\mathrm{zm}}[2]=2$, $r=0{,}5$; unbiased $=1$. Không trừ: $\mathcal{R}[0]=68$, $\mathcal{R}[2]=34$.
+
+\begin{costbox}
+\textbf{Silicon.} DC-blocker streaming (Ch.~3) + tuỳ chọn mean khung trước window --- $<50$ ALM thêm.
+\end{costbox}
+
+\subsection*{Time step correction --- phạt theo mật độ khung}
+
+\begin{firstprin}{Vật lý: cùng một nhảy $F_0$, hop dày hơn phải phạt nặng hơn}
+Nếu đo $F_0$ mỗi 5\,ms thay vì 10\,ms, giữa hai khung liên tiếp cùng một cú nhảy octave sẽ xuất hiện \emph{nhiều lần hơn} trên đường đi. Praat nhân \texttt{octaveJumpCost} và \texttt{voicedUnvoicedCost} với \texttt{timeStepCorrection}$=0{,}01/\texttt{timeStep}$ (\texttt{Pitch.cpp}) để giữ ``độ dốc vật lý'' --- cost theo giây, không theo số khung.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay (đã kiểm).} Mặc định \texttt{octaveJumpCost}$=0{,}35$. Với \texttt{timeStep}$=0{,}01$: hệ số $=1$, nhảy đúng 1 octave bị phạt $0{,}35$. Với \texttt{timeStep}$=0{,}005$: hệ số $=2$, cùng nhảy bị phạt $0{,}70$. FPGA cố định hop 10\,ms $\Rightarrow$ hệ số $=1$ khi port costs lên HPS; nếu đổi hop phải sửa twin cùng chỗ.
+
+\begin{costbox}
+\textbf{Silicon.} Chỉ ảnh hưởng mềm trên HPS. Fabric median-3 không dùng cost này. Đổi hop trên FPGA $\Rightarrow$ đổi ngân sách MAC/khung và phải cập nhật twin --- không chỉ một hằng số.
+\end{costbox}
+
+\subsection*{Ceiling và floor trong delta --- thiên vị nhẹ về cao}
+
+\begin{firstprin}{Vì sao phạt $\log_2(\mathrm{ceiling}/f)$ phá sai $F_0/2$?}
+Ứng viên tần số thấp ($f$ gần floor) có $\log_2(\mathrm{ceiling}/f)$ lớn $\Rightarrow$ trừ nhiều khỏi strength. Ứng viên gần ceiling gần như không bị phạt. Boersma cố ý thiên vị nhẹ về cao: khi đỉnh $T_0$ và $2T_0$ gần hòa sau bù cửa sổ, ứng viên $F_0$ (cao hơn) thắng $F_0/2$.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $\texttt{octave\_cost}=0{,}01$, ceiling $=600$: tại $100$\,Hz phạt $0{,}01\cdot\log_2(6)\approx0{,}0259$; tại $200$\,Hz $\approx0{,}0158$; tại $500$\,Hz $\approx0{,}0026$; tại $600$\,Hz $=0$. Cùng $r_a=0{,}48$ thì $s_{200}\approx0{,}464 > s_{100}\approx0{,}454$ (khớp mục octave cost).
+
+\begin{costbox}
+\textbf{Silicon.} Trên fabric (K=1): không tính delta đầy đủ. Trên HPS pathFinder: cần $\log_2$ mềm hoặc LUT. Ceiling/floor cũng cắt dải $\tau$ tìm kiếm ($\tau_{\min},\tau_{\max}$) --- \emph{có} ảnh hưởng fabric qua giới hạn vòng MAC.
+\end{costbox}
+
+\subsection*{Brent depth và SINC70/SINC700 --- độ sâu nội suy}
+
+\begin{firstprin}{Độ sâu = bề rộng cửa sổ sinc quanh đỉnh}
+Sau parabolic, Praat gọi \texttt{NUMimproveMaximum} với nội suy sinc. \texttt{SINC70} lấy khoảng $\pm35$ mẫu quanh đỉnh (Hanning / very\_accurate off); \texttt{SINC700} lấy $\pm350$ (Gaussian / very\_accurate). ``Depth'' lớn hơn = khớp band-limited tốt hơn trên sine sạch, đổi lại hàng chục đến hàng trăm MAC mỗi đỉnh.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay quy mô.} Một đỉnh: SINC70 $\approx70$ nhân--cộng; 14 đỉnh $\approx980$ MAC/khung --- vẫn nhỏ so với MAC tự tương quan ($\sim10^5$), nhưng trên fabric thêm FSM, địa chỉ, và latency khó đóng timing 10\,ms nếu làm naive. Lab: parabolic only.
+
+\begin{costbox}
+\textbf{Silicon.} Default: 0 MAC sinc (parabolic). Optional HPS: NumPy/\texttt{scipy.interpolate} hoặc port C. Không Instantiated ``Brent IP''.
+\end{costbox}
+
+\subsection*{Global peak scan --- tham chiếu silence}
+
+\begin{firstprin}{Vật lý: ``nhỏ'' phải so với cả câu, không chỉ trong khung}
+\texttt{silenceThreshold} so $P_{\mathrm{local}}/P_{\mathrm{global}}$. Praat quét cả sound một lần lấy \texttt{globalPeak} trước vòng frame. Streaming FPGA không nhìn tương lai: ước lượng bằng envelope max chậm (IIR/max-hold) hoặc calibration mic cố định (full-scale giả định).
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $P_{\mathrm{global}}=1$, $P_{\mathrm{local}}=0{,}02$, silence $=0{,}03$, voicing $=0{,}45$:
+\[
+s_{\mathrm{UV}}=0{,}45+\max\bigl(0,\,2-\tfrac{0{,}02/1}{0{,}03/(1+0{,}45)}\bigr)\approx1{,}483.
+\]
+Đỉnh $r_a=0{,}30$ thua Unvoiced $\Rightarrow F_0=0$.
+
+\begin{costbox}
+\textbf{Silicon.} Max-hold/IIR envelope: vài ALM, 0 DSP. Sai $P_{\mathrm{global}}$ (quá lạc quan) $\Rightarrow$ khung nhỏ vẫn voiced giả; quá bi quan $\Rightarrow$ nuốt hết giọng nhỏ.
+\end{costbox}
+
+\subsection*{maxnCandidates = 15 --- 14 đỉnh + Unvoiced}
+
+\begin{firstprin}{Vì sao 15, và vì sao FPGA hạ xuống 2?}
+Praat giữ tối đa 14 cực đại cục bộ + 1 UV để Viterbi còn đường chọn khi đỉnh giả formant cạnh tranh. Silicon tắt Viterbi $\Rightarrow$ đa ứng viên gần như vô ích: đủ \textbf{K=1} (đỉnh max) + UV cho voicing gate. Muốn pathFinder HPS ``đầy đủ'': fabric phải gửi top-K hoặc HPS tự tính lại $r_a$ từ PCM.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay bộ nhớ.} Lưu 15 cặp $(r,\tau)$ Q1.15+9-bit: $15\times(16+9)=375$ bit --- không đáng kể; đắt là insert-sort mỗi $\tau$ và Viterbi $O(TK^2)$.
+
+\begin{costbox}
+\textbf{Silicon default.} K=1: comparator chạy, vài register. K=14: thêm logic insert --- chỉ bật khi có HPS consumer.
+\end{costbox}
+
+\subsection*{Interpolation depth 0.5 --- pad FFT Praat}
+
+\begin{firstprin}{Zero-pad phổ trước IFFT = nội suy dày $\mathcal{R}_x[\tau]$}
+Praat AC path: \texttt{nsampFFT} $\ge$ \texttt{nsamp\_window}$\times(1+\texttt{depth})$. Hanning depth $0{,}5$ $\Rightarrow$ hệ số $1{,}5$. Với $L=640$: $960$ $\to$ làm tròn lên lũy thừa 2 $=1024$ điểm FFT. Depth không thêm thông tin mới nhưng làm lưới $\tau$ mịn hơn trước parabolic/sinc.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay.} $640\times1{,}5=960$; $2^{\lceil\log_2 960\rceil}=1024$. Gaussian very\_accurate: window dài hơn, depth thường $0{,}25$. FPGA MAC-first: không FFT $\Rightarrow$ không pad; độ mịn $\tau$ đến từ parabolic trên lưới mẫu nguyên.
+
+\begin{costbox}
+\textbf{Silicon MAC default.} 0 FFT, 0 pad. Nếu bật FFT IP (Ch.~7): chọn length 1024, nhớ BFP $2^{2e}$ trước IFFT.
+\end{costbox}
+
+\subsection*{Cross-correlation vs autocorrelation --- phạm vi tài liệu}
+
+\begin{firstprin}{Hai method trong Praat, một đường trên FPGA}
+Praat còn \texttt{to\_Pitch\_cc}: tương quan chéo với một cửa sổ ``synthetic'' thay vì tự tương quan. Tài liệu và đường silicon này = \textbf{AC path} (\texttt{Sound\_to\_Pitch.cpp} autocorrelation). CC cùng ý ``đo chu kỳ'' nhưng phổ nhân với phổ tham chiếu --- chưa implement trên DE10.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ phân biệt.} AC: $\mathcal{R}_x=\mathrm{IFFT}\{|X|^2\}$. CC: $\mathrm{IFFT}\{X\cdot W_{\mathrm{ref}}^*\}$ (dạng giản lược). Cùng tìm đỉnh $\tau$, khác bias cửa sổ.
+
+\begin{costbox}
+\textbf{Silicon.} Chỉ AC + ROM $C[\tau]$. Port CC $\Rightarrow$ thêm ROM phổ tham chiếu + nhân phức --- ngoài phạm vi lab mặc định.
+\end{costbox}
+
+\subsection*{Mười tham số Sound\_to\_Pitch --- vật lý từng cái}
+
+\begin{center}\footnotesize
+\begin{tabular}{@{}lll@{}}\toprule
+Tham số & Default & Vật lý / toán một câu \\
+\midrule
+time step & 0{,}0 $\to$ auto & Khoảng thời gian giữa hai đo; auto $=0{,}75/F_{\min}$ \\
+pitch floor $F_{\min}$ & 75 Hz & Chu kỳ dài nhất $\Rightarrow$ $L$ và $\tau_{\max}$ \\
+very accurate & off & Hanning/SINC70 vs Gaussian/SINC700 \\
+silence threshold & 0{,}03 & Tỉ local/global peak dưới mức $\to$ nghi lặng \\
+voicing threshold & 0{,}45 & Sàn strength cho UV candidate \\
+octave cost & 0{,}01 & Phạt $\log_2$ thiên vị $F_0/2$ \\
+octave jump cost & 0{,}35 & Phạt $|\log_2 f_1/f_2|$ giữa khung \\
+voiced/unvoiced cost & 0{,}14 & Phạt đổi trạng thái V/UV \\
+ceiling & 600 Hz & $F_{\max}$ + mốc octave cost \\
+maxn candidates & 15 & 14 đỉnh + UV \\
+\bottomrule
+\end{tabular}
+\end{center}
+\subsection*{Công thức $L$ và $\tau$ trên DE10}
+
+\begin{firstprin}{Ba chu kỳ tại $F_{\min}$ quyết định $L$}
+Praat: $L \approx \mathtt{periodsPerWindow}\cdot f_s / F_{\min}$. Với Hanning, $\mathtt{periodsPerWindow}=3$, $f_s=16$\,kHz, $F_{\min}=75$\,Hz:
+\[
+L=3\cdot16000/75=640,\quad
+\tau_{\max}=\lfloor f_s/F_{\min}\rfloor=213,\quad
+\tau_{\min}=\lceil f_s/F_{\max}\rceil=\lceil16000/600\rceil=27.
+\]
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Silicon.} $L$, $\tau_{\min}$, $\tau_{\max}$ là localparam --- đổi $F_{\min}$ phải rebuild ROM $w$, $C[\tau]$, depth RAM.
+\end{costbox}
+
+\subsection*{Từ Boersma §1 định nghĩa $r_x(\tau)$}
+
+\begin{firstprin}{Định nghĩa Boersma: tương quan chuẩn hóa}
+Boersma định nghĩa tương quan (dạng rút gọn) $r_x(\tau)$ từ tự tương quan có trừ mean và chuẩn hóa năng lượng, sao cho $r_x(0)=1$ và $|r_x|\le1$ trên tín hiệu có năng lượng. Trên đường FPGA: sau mean + window + MAC + nhân $C[\tau]$ ta được $r_a[\tau]$ cùng vai trò --- điểm số gần $[0,1]$ để so với voicing threshold.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ.} Sau chuẩn hóa, đỉnh $\tau=80$ với $r_a=0{,}50$ so $V=0{,}45$ $\Rightarrow$ voiced ứng viên.
+
+\begin{costbox}
+\textbf{Silicon.} Không lưu tên $r_x$ vs $r_a$ trên dây --- chỉ Q1.15 sau khối $C[\tau]$.
+\end{costbox}
+
+\subsection*{Checklist tự hỏi Feynman trước khi cắt bước Praat}
+
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item Bước này bảo vệ khỏi hiện tượng vật lý nào?
+\item Sai số khi xóa: $\Delta F/F$ bao nhiêu trên sine? trên speech?
+\item Silicon: LUT/DSP/M10K/latency?
+\item Twin còn so được với Praat không?
+\item Có thể đẩy HPS thay vì xóa hoàn toàn không?
+\end{enumerate}
+
+\newpage
+\subsection*{Đáp án ngắn (để tự kiểm, không xem trước)}
+
+H.1: $X[0]=8$, $X[4]=8$, khác 0. H.4: $\Delta=\frac12\frac{0{,}2-0{,}5}{0{,}2-1{,}2+0{,}5}=\frac12\frac{-0{,}3}{-0{,}5}=0{,}3$ $\Rightarrow\tau=101{,}3$, $F_0\approx158\text{ Hz}$, Q12.4$\approx2528$. H.5: path ưu tiên theo cum max. H.7: $e{+}{+}$, $m=[30,5,-20,2]$ (round). H.8: $\mathcal{R}_w[0]=19$, $\mathcal{R}_w[1]=16$, $C[1]=19/16$. 
+
+\newpage
+\subsection*{Lấy mẫu và alias trên DE10}
+
+\begin{firstprin}{Chuỗi 48\,kHz $\to$ 16\,kHz phải sạch alias}
+DE10: ADC WM8731 @48\,kHz $\to$ hạ $\times2$ $\to$ 24\,kHz $\to$ FIR $2/3$ $\to$ 16\,kHz. Mọi năng lượng $>8$\,kHz sau cùng phải bị chặn --- nếu không, gương Nyquist giả chu kỳ dài trong vùng $F_0$. Soft upsample Praat cùng mục tiêu trên laptop; silicon dùng FIR (Ch.~4), không FFT cả utterance.
+\end{firstprin}
+
+\begin{costbox}
+\textbf{Silicon.} Ngân sách nằm ở FIR Compiler II (Ch.~4), không ở khối pitch.
+\end{costbox}
+
+\subsection*{Thực hành --- Phiếu bài tập (mỗi phiếu chỉ ở đây)}
+\subsubsection*{Phiếu DFT 8}
+
+Cho $x=[2,0,2,0,2,0,2,0]$. Tính $X[k]$ cho $k=0..7$. Kiểm $\mathcal{R}[4]$ via IFFT $|X|^2$. \\
+\textit{Gợi ý:} tone chu kỳ 2; năng lượng ở $k=4$ (Nyquist).
+\subsubsection*{Phiếu 16 --- Soft upsample}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Soft upsample, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Sidelobe Nyquist bẩn $F_0$.
+\item \textbf{Toán neo:} mask $G[k]$.
+\item \textbf{Silicon:} offline/HPS.
+\item \textbf{Pytest:} optional.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsubsection*{Phiếu 17 --- Sinc refine}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Sinc refine, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Bias parabolic còn.
+\item \textbf{Toán neo:} $\sum r\mathrm{sinc}$.
+\item \textbf{Silicon:} optional MAC.
+\item \textbf{Pytest:} Table1-ish.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsubsection*{Phiếu 19 --- timeStepCorrection}
+
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``timeStepCorrection, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Cost lệch khi đổi hop.
+\item \textbf{Toán neo:} $\times0{,}01/\Delta t$.
+\item \textbf{Silicon:} HPS.
+\item \textbf{Pytest:} hop 5 ms $\times2$.
+\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}

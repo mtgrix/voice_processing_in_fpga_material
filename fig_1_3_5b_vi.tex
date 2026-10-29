@@ -1,0 +1,92 @@
+% Figure 1.3.5b, generated from scratch/fbuild (mk_panels.py -> v60.tex).
+% Included by sec_1_3_5_vi.tex; do not hand-edit.
+\begin{tikzpicture}[>=Stealth, font=\small]
+
+% ================= A: one Hanning hump, the shifted copy sticks out =================
+  \node[anchor=west, font=\bfseries\sffamily] at (-0.30, 12.55) {A. Hai quả núi Hanning trượt nhau: bản sao lệch $\tau$ mẫu ở đuôi};
+  \begin{scope}[shift={(0.50,9.55)}, x=2.55cm, y=1.35cm]
+    \draw[->, thick, black!55] (0,0) -- (3.90,0);
+    \draw[->, thick, black!55] (0,0) -- (0,1.45);
+    \node[font=\footnotesize, black!55, anchor=north] at (3.88,-0.06) {$n$ (mẫu)};
+    \fill[blue!12] (0,0) parabola (1.2,1.40) parabola[bend pos=0.5] (2.4,0) -- cycle;
+    \draw[very thick, blue!75!black] (0,0) parabola (1.2,1.40) parabola (2.4,0);
+    \draw[very thick, orange!90!black]
+      (0.55,0) parabola (1.2,1.39) parabola (1.85,0);
+    \draw[very thick, black!60, dashed] (2.4,0) -- (2.4,1.40);
+    \node[blue!70!black, font=\footnotesize, anchor=south] at (1.20,1.45) {quả thứ nhất};
+    \node[orange!75!black, font=\footnotesize, align=center] at (0.95,0.28) {quả thứ hai};
+    \draw[<->, thick] (0,-0.15) -- node[below, font=\scriptsize] {$\tau$} (0.55,-0.15);
+    \draw[<->, thick] (2.4,-0.15) -- node[below, font=\scriptsize] {$L$} (2.95,-0.15);
+    \draw[->, thick, red!65!black] (3.10,1.55) -- (2.86,0.46);
+    \node[red!60!black, font=\scriptsize, align=left, anchor=west] at (3.18,1.60) {phần thò ra: $\tau$ mẫu không có mẫu đối diện};
+    \node[font=\scriptsize, black!55, anchor=north west] at (2.92,0.42) {khung chỉ gồm $L$ mẫu};
+  \end{scope}
+
+% ================= B: pair by pair, the overlap narrows =================
+  \node[anchor=west, font=\bfseries\sffamily] at (-0.30, 7.55) {B. Mỗi cặp là hai mảnh quả núi kẹp vào nhau};
+  \begin{scope}[shift={(1.05,5.85)}, x=2.55cm, y=1.30cm]
+    \foreach \d/\a/\b in {0.20/0.66/0.66, 0.85/0.52/0.48, 1.50/0.40/0.33, 2.15/0.30/0.21}{
+      \fill[blue!45] (\d,0) rectangle (\d+0.20,\a);
+      \fill[orange!60] (\d+0.28,0) rectangle (\d+0.48,\b);
+      \draw[black!45, thin] (\d+0.20,\a) -- (\d+0.28,\b);
+    }
+    \node[font=\scriptsize, align=center, text width=0.85cm] at (0.30,-0.34) {${\tau}{=}0$
+640 cặp};
+    \node[font=\scriptsize, align=center, text width=0.85cm] at (0.93,-0.34) {${\tau}{=}80$
+560 cặp};
+    \node[font=\scriptsize, align=center, text width=0.85cm] at (1.56,-0.34) {${\tau}{=}160$
+480 cặp};
+    \node[font=\scriptsize, align=center] at (2.40,-0.34) {$\cdots$};
+    \node[font=\scriptsize\bfseries, blue!70!black, anchor=east] at (0.18,0.10) {trái};
+    \node[font=\scriptsize\bfseries, orange!75!black, anchor=west] at (0.58,0.10) {phải};
+    \draw[<->, thick, black!60] (0.20,0.72) -- (0.28,0.72);
+    \node[font=\scriptsize, black!60, anchor=south] at (0.24,0.74) {kẹp};
+    \draw[->, thick] (2.86,0.16) -- (2.70,-0.10);
+    \node[font=\scriptsize, align=left, anchor=west] at (2.90,0.22) {mỗi trọng số tự rơi dần về 0};
+  \end{scope}
+
+% ================= C: three curves, 1T0 beats 2T0 =================
+  \node[anchor=west, font=\bfseries\sffamily, align=left] at (-0.30, 4.38) {C. Khung $F_0 = 200$ Hz ($T_0 = 80$ mẫu) --- Tín hiệu tuần hoàn lý tưởng (Minh họa)};
+  \node[anchor=west, font=\scriptsize, black!60] at (-0.30, 4.08) {Chưa bù: cả hai dưới ngưỡng ($0{,}433$ và $0{,}317$). Đã bù: cả hai lên $0{,}480$ (vượt ngưỡng $0{,}45$, hòa nhau). Octave cost phá thế hòa: $1T_0 = 0{,}4748 > 2T_0 = 0{,}4715$.};
+  \begin{scope}[shift={(1.60,0.72)}, x=2.45cm, y=1.20cm]
+    \draw[->, thick, black!55] (0,0) -- (4.35,0);
+    \draw[->, thick, black!55] (0,0) -- (0,1.55);
+    \node[font=\scriptsize, black!55, anchor=north] at (4.20,-0.38) {$\tau$ (mẫu)};
+    \node[font=\scriptsize, black!55, anchor=south west] at (0.02,1.52) {$R/R_x[0]$};
+    \draw[dashed, thick, red!70!black] (0,1.125) -- (3.72,1.125);
+    \node[font=\scriptsize, red!70!black, anchor=south west] at (0.04,1.14) {ngưỡng $0{,}45$};
+    \draw[very thick, gray!60!black, dashed] plot [smooth] coordinates {(0.55,0.36) (0.60,0.30) (0.64,0.23) (0.69,0.15) (0.73,0.10) (0.78,0.07) (0.82,0.08) (0.87,0.10) (0.92,0.11) (0.96,0.09) (1.01,0.07) (1.05,0.08) (1.10,0.16) (1.14,0.30) (1.19,0.50) (1.23,0.71) (1.28,0.89) (1.33,1.02) (1.38,1.08) (1.42,1.06) (1.46,0.96) (1.51,0.80) (1.55,0.59) (1.60,0.38) (1.65,0.21) (1.69,0.10) (1.74,0.06) (1.78,0.06) (1.83,0.08) (1.87,0.07) (1.92,0.05) (1.96,0.02) (2.01,0.00) (2.06,0.02) (2.10,0.05) (2.15,0.09) (2.19,0.10) (2.24,0.10) (2.28,0.11) (2.33,0.16) (2.38,0.27) (2.42,0.41) (2.47,0.56) (2.51,0.68) (2.56,0.75) (2.60,0.79) (2.64,0.79) (2.69,0.77) (2.74,0.72) (2.79,0.62) (2.83,0.49) (2.88,0.34) (2.92,0.21) (2.97,0.13) (3.01,0.10) (3.06,0.10) (3.10,0.10) (3.15,0.07) (3.20,0.04) (3.24,0.01) (3.29,0.00) (3.33,0.03) (3.38,0.06) (3.42,0.08) (3.47,0.06)};
+    \draw[very thick, blue!75!black] plot [smooth] coordinates {(0.55,0.36) (0.60,0.30) (0.64,0.23) (0.69,0.16) (0.73,0.10) (0.78,0.07) (0.82,0.09) (0.87,0.11) (0.92,0.11) (0.96,0.10) (1.01,0.08) (1.05,0.09) (1.10,0.17) (1.14,0.33) (1.19,0.55) (1.23,0.78) (1.28,0.99) (1.33,1.14) (1.38,1.20) (1.42,1.18) (1.46,1.07) (1.51,0.89) (1.55,0.66) (1.60,0.43) (1.65,0.23) (1.69,0.11) (1.74,0.07) (1.78,0.08) (1.83,0.10) (1.87,0.10) (1.92,0.06) (1.96,0.02) (2.01,0.00) (2.06,0.02) (2.10,0.07) (2.15,0.12) (2.19,0.14) (2.24,0.14) (2.28,0.16) (2.33,0.24) (2.38,0.40) (2.42,0.62) (2.47,0.84) (2.51,1.02) (2.56,1.14) (2.60,1.19) (2.64,1.20) (2.69,1.17) (2.74,1.10) (2.79,0.96) (2.83,0.75) (2.88,0.52) (2.92,0.32) (2.97,0.20) (3.01,0.16) (3.06,0.17) (3.10,0.17) (3.15,0.13) (3.20,0.07) (3.24,0.01) (3.29,0.01) (3.33,0.06) (3.38,0.13) (3.42,0.16) (3.47,0.13)};
+    \draw[very thick, orange!85!black] plot [smooth] coordinates {(0.55,0.36) (0.60,0.30) (0.64,0.23) (0.69,0.16) (0.73,0.10) (0.78,0.07) (0.82,0.09) (0.87,0.11) (0.92,0.11) (0.96,0.10) (1.01,0.08) (1.05,0.09) (1.10,0.17) (1.14,0.33) (1.19,0.54) (1.23,0.78) (1.28,0.98) (1.33,1.12) (1.38,1.19) (1.42,1.16) (1.46,1.06) (1.51,0.88) (1.55,0.66) (1.60,0.43) (1.65,0.23) (1.69,0.11) (1.74,0.07) (1.78,0.08) (1.83,0.10) (1.87,0.10) (1.92,0.06) (1.96,0.02) (2.01,0.00) (2.06,0.02) (2.10,0.07) (2.15,0.12) (2.19,0.14) (2.24,0.14) (2.28,0.16) (2.33,0.24) (2.38,0.40) (2.42,0.61) (2.47,0.83) (2.51,1.01) (2.56,1.12) (2.60,1.17) (2.64,1.18) (2.69,1.15) (2.74,1.08) (2.79,0.94) (2.83,0.74) (2.88,0.51) (2.92,0.31) (2.97,0.19) (3.01,0.16) (3.06,0.16) (3.10,0.17) (3.15,0.13) (3.20,0.06) (3.24,0.01) (3.29,0.01) (3.33,0.06) (3.38,0.12) (3.42,0.15) (3.47,0.12)};
+    \foreach \x/\lab in {0.55/27, 1.38/80, 2.64/160, 3.47/213}
+      \draw[thick] (\x,0) -- (\x,-0.05) node[below, font=\scriptsize] {\lab};
+    \fill[gray!55!black] (1.38,1.08) circle (1.6pt);
+    \fill[blue!75!black] (1.38,1.20) circle (1.4pt);
+    \fill[orange!85!black] (1.38,1.19) circle (1.8pt);
+    \draw[->, thick, red!70!black] (1.38,1.08) -- (1.38,1.20);
+    \node[font=\scriptsize\bfseries, blue!75!black, anchor=south] at (1.38,1.25) {$1T_0: 0{,}480$};
+    \node[font=\tiny, orange!85!black, anchor=west] at (1.42,1.16) {$+ \text{oct}: 0{,}4748$};
+    \node[font=\tiny, gray!60!black, anchor=north east] at (1.36,1.06) {$0{,}433$};
+
+    \fill[gray!55!black] (2.64,0.79) circle (1.6pt);
+    \fill[blue!75!black] (2.64,1.20) circle (1.4pt);
+    \fill[orange!85!black] (2.64,1.18) circle (1.8pt);
+    \draw[->, thick, red!70!black] (2.64,0.79) -- (2.64,1.20);
+    \node[font=\scriptsize\bfseries, blue!75!black, anchor=south] at (2.64,1.25) {$2T_0: 0{,}480$};
+    \node[font=\tiny, orange!85!black, anchor=west] at (2.68,1.16) {$+ \text{oct}: 0{,}4715$};
+    \node[font=\tiny, gray!60!black, anchor=north east] at (2.62,0.77) {$0{,}317$};
+\end{scope}
+
+% ================= legend + headline claim =================
+  \begin{scope}[shift={(1.60,-1.30)}, x=2.45cm, y=1.10cm]
+    \draw[very thick, gray!60!black, dashed] (0.00,1.30) -- (0.22,1.30);
+    \node[font=\scriptsize, anchor=west] at (0.24,1.30) {chưa bù $\mathcal{R}_x[\tau]$};
+    \draw[very thick, blue!75!black] (1.60,1.30) -- (1.82,1.30);
+    \node[font=\scriptsize, anchor=west] at (1.84,1.30) {bù $C[\tau]$};
+    \draw[very thick, orange!85!black] (3.10,1.30) -- (3.32,1.30);
+    \node[font=\scriptsize, anchor=west] at (3.34,1.30) {bù $+$ oct.};
+    \node[font=\scriptsize\bfseries, blue!60!black, anchor=west, align=left]
+      at (0.00,0.90) {Đỉnh $1T_0$ (80 mẫu) thắng đỉnh $2T_0$ (160 mẫu) nhờ $\texttt{octave\_cost}$ phá thế hòa};
+  \end{scope}
+
+\end{tikzpicture}

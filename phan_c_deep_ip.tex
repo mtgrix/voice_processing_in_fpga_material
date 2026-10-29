@@ -1,0 +1,345 @@
+
+% =====================================================================
+% PHẦN C-DEEP — NEW: Mỗi IP/khối: Vật lý → Toán+đồ chơi → Intel IP → RTL → Twin
+% Bổ sung cho phan_c_fpga_ip_rtl.tex (giữ nguyên); đọc sau C.0 overview.
+% =====================================================================
+
+\section*{Phần C$^\star$. Đào sâu từng khối IP/RTL\\(Vật lý $\to$ Toán $\to$ Silicon $\to$ Twin)}
+
+\begin{firstprin}{Luật đọc phần này}
+Mỗi khối dưới đây lặp cùng nhịp Feynman: (1)~hiện tượng vật lý / vì sao cần khối; (2)~toán từ gốc + đồ chơi số làm tay; (3)~nội thất Intel IP trên Cyclone~V (DSP 18$\times$19/27$\times$27, M10K, PLL, FIR~II, FFT, LPM\_DIVIDE); (4)~RTL tự viết thay thế; (5)~mô hình bit-exact (Python/C++) bắt chước silicon. Phần~C gốc (C.0--C.14) giữ nguyên như checklist triển khai; phần này là ``sách giáo khoa'' bên dưới checklist.
+\end{firstprin}
+
+% -------------------- C*.1 PLL / CLOCK --------------------
+\subsection*{C$^\star$.1. PLL \& đồng hồ audio --- từ thạch anh đến SCLK}
+
+\subsubsection*{1. Vật lý}
+Thạch anh 50~MHz trên DE10 dao động cơ-điện ổn định ppm. Codec SSM2603 cần MCLK (thường $256\times f_s$) và SCLK ($64\times f_s$). Không khóa pha $\Rightarrow$ trôi mẫu $\Rightarrow$ ``cao độ'' giả trên thang thời gian dài.
+
+\subsubsection*{2. Toán + đồ chơi}
+Integer PLL: $f_{\mathrm{vco}}=f_{\mathrm{in}}\cdot M/N$, $f_{\mathrm{out}}=f_{\mathrm{vco}}/C$.
+Đồ chơi muốn $12{,}288\text{ MHz}$ từ $50$:
+\[
+\frac{M}{N\cdot C}=\frac{12{,}288}{50}=245{,}76.
+\]
+Chọn $N=25$, $C=5$, khi đó $M=245{,}76\times25\times5/(\text{scale})$ --- thực tế dùng fractional MegaWizard: đặt output $12{,}288$ và đọc báo cáo $M_{\mathrm{frac}}$. Sai số cho phép audio: $<50\text{ ppm}$ để trong 1~phút không trôi quá nửa mẫu tại 16~kHz ($50\cdot10^{-6}\times60\times16000\approx48$ mẫu/phút --- biên; thiết kế tốt $<5\text{ ppm}$).
+
+\subsubsection*{3. Intel IP (Cyclone V Altera PLL)}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Mode: Integer-N hoặc Fractional (Fractional PLL trên Cyclone~V SX).
+\item Counters: $N$ (pre), $M$ (feedback), $C_i$ (post).
+\item Jitter: fractional SDM thêm spur --- vẫn chấp nhận được cho MCLK.
+\item Reset: \texttt{locked} phải chờ trước khi chạy I2S FSM.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth,node distance=0.55cm]
+  \node[draw] (xin) {$f_{\mathrm{in}}$};
+  \node[draw,right=of xin] (pd) {PFD};
+  \node[draw,right=of pd] (lf) {LF};
+  \node[draw,right=of lf] (vco) {VCO};
+  \node[draw,right=of vco] (c) {$/C$};
+  \node[draw,below=0.9cm of vco] (m) {$/M$};
+  \node[draw,right=of c] (out) {$f_{\mathrm{out}}$};
+  \draw[->] (xin)--(pd)--(lf)--(vco)--(c)--(out);
+  \draw[->] (vco)|-(m);
+  \draw[->] (m)-|(pd);
+\end{tikzpicture}
+\caption{PLL integer: PFD so pha ref vs feedback $/M$; VCO chỉnh tới khóa; chia $C$ ra clock dùng.}
+\end{figure}
+
+\subsubsection*{4. RTL thay}
+Có thể dùng PLL IP bắt buộc (silicon analog). RTL chỉ chia clock sau MCLK (\texttt{clk\_div} đếm 0..3 cho SCLK edge) --- không thay VCO bằng counter thuần (jitter/accuracy kém).
+
+\subsubsection*{5. Twin}
+Python: giả lập thời điểm mẫu $t_n=n/f_s\cdot(1+\varepsilon_{\mathrm{ppm}}\cdot10^{-6})$; kiểm tra $F_0$ bias khi $\varepsilon\neq0$.
+
+% -------------------- C*.2 I2S --------------------
+\subsection*{C$^\star$.2. I2S RX --- bit timing và đóng gói mẫu}
+
+\subsubsection*{1. Vật lý}
+Dòng bit nối tiếp: mỗi cạnh SCLK mang 1 bit; WS chọn tai trái/phải. Chuẩn: MSB first, data trễ 1 chu kỳ SCLK sau đổi WS (Philips I2S).
+
+\subsubsection*{2. Toán + đồ chơi}
+Frame stereo 32-bit/slot, dùng 16 MSB làm Q1.15:
+\begin{center}\small
+\begin{tabular}{@{}rrl@{}}
+\toprule
+SCLK \# trong nửa frame & WS & Ý nghĩa \\
+\midrule
+0 & $\uparrow$ L & pad / delay \\
+1--16 & L & bit 15$\to$0 của mẫu Left \\
+17--31 & L & pad / unused \\
+32 & $\downarrow$ R & ... \\
+\bottomrule
+\end{tabular}
+\end{center}
+Đồ chơi thu 4 bit giả: SCLK cạnh lên lần lượt nhận $1,0,1,1$ $\Rightarrow$ nibble $0b1011=11$.
+
+\subsubsection*{3. Intel IP / soft}
+Không có ``I2S IP'' bắt buộc trên Standard --- RTL FSM + PLL clocks. Có thể dùng University IP ``Audio'' trên DE10 như black-box, nhưng tài liệu này viết FSM tự chủ.
+
+\subsubsection*{4. RTL}
+\texttt{i2s\_rx.v}: đồng bộ WS vào SCLK domain (2FF), shift-register 32, pulse \texttt{valid} mỗi mẫu Left (mono pitch).
+
+\subsubsection*{5. Twin}
+File \texttt{.wav} $\to$ int16 LE = bit-exact với đầu ra I2S sau khi bỏ 16 LSB pad.
+
+% -------------------- C*.3 DC BLOCK --------------------
+\subsection*{C$^\star$.3. DC-blocker --- cực/zero, bit-growth, Avalon}
+
+\subsubsection*{1. Vật lý} (xem B$^+$.16) Offset + rung $\to$ phình $\mathcal{R}[0]$.
+
+\subsubsection*{2. Toán + đồ chơi pole/zero}
+$H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}}$, $\alpha=1-2^{-8}=0{,}99609375$ (dễ shift-add).
+Impulse response: $h[n]=\delta[n]-\delta[n-1]+\alpha h[n-1]\cdots$ suy giảm hình học.
+Đồ chơi $\alpha=0{,}5$, $x=\delta[n]$: $y=[1,-0{,}5,-0{,}25,-0{,}125,\ldots]$.
+
+Fixed-point: $y$ giữ Q1.30; $\alpha y$ = $(y\gg8)$ trừ khỏi $y$ khi $\alpha=1-2^{-8}$.
+
+\subsubsection*{3. Intel IP}
+Có thể FIR Compiler IIR? --- FIR~II \emph{không} làm IIR feedback rộng. Dùng RTL thuần hoặc IP ``IIR II'' (nếu có trong Standard). Khuyến nghị: RTL 10 dòng.
+
+\subsubsection*{4. RTL} \texttt{dc\_block.v}: 
+\begin{verbatim}
+y = (x - x_z1) + y_z1 - (y_z1>>>8);
+\end{verbatim}
+Bão hòa 16-bit ra.
+
+\subsubsection*{5. Twin} NumPy \texttt{lfilter([1,-1],[1,-alpha],x)} so khớp LSB với dump RTL.
+
+% -------------------- C*.4 FIR II --------------------
+\subsection*{C$^\star$.4. FIR Compiler II --- polyphase, folding, lượng tử hệ số}
+
+\subsubsection*{1. Vật lý}
+Lọc chống alias trước decimate; lọc ảnh sau upsample; HPF 60~Hz tiền xử lý. Mỗi hệ số = trọng số xung lực.
+
+\subsubsection*{2. Toán}
+$y[n]=\sum_{k=0}^{N-1}h[k]x[n-k]$. Đối xứng tuyến tính pha: $h[k]=h[N-1-k]$ $\Rightarrow$ $y[n]=\sum_{k=0}^{N/2-1}h[k](x[n-k]+x[n-(N-1-k)])$ --- \textbf{symmetric folding}: còn $\lceil N/2\rceil$ nhân.
+
+\noindent\textbf{Đồ chơi folding $N=4$, $h=[1,2,2,1]$, $x$ cửa sổ $[a,b,c,d]$:}
+\[
+y=1\cdot(a+d)+2\cdot(b+c)
+\]
+2 nhân thay vì 4.
+
+\noindent\textbf{Lượng tử hệ số.} $h_{\mathrm{float}}\to$ Q1.15: $h_q=\mathrm{round}(h\cdot2^{15})$, bão hòa $\pm(2^{15}-1)$. Sai số hệ số $\Rightarrow$ sai đáp ứng $\Delta H(e^{j\omega})=\sum\Delta h[k]e^{-j\omega k}$.
+
+\noindent\textbf{Fractional rate $2/3$.} Polyphase: 3 phase vào, commutator chọn 2 phase ra / 3 chu kỳ vào. \textbf{Không} phải 2 vào $\to$3 ra.
+
+\subsubsection*{3. Intel FIR Compiler II (UG 683208)}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Architectures: Distributed Arithmetic / Mult-add / Systolic.
+\item Cyclone~V: dùng DSP 18$\times$19 (hoặc 27$\times$27 nếu coeff rộng).
+\item Avalon-ST: \texttt{valid}/\texttt{ready}; \texttt{sop}/\texttt{eop} = biên \emph{kênh} (multi-channel), \textbf{không} phải biên khung pitch. Mono liên tục: chỉ data/valid/ready.
+\item Rounding: truncation / convergent; saturation optional.
+\item M10K lưu coeff + delay line khi N lớn.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,>=Stealth]
+  \node[draw] (in) {in};
+  \node[draw,right=0.5cm of in] (c) {commutator $\downarrow3/\uparrow2$};
+  \node[draw,right=0.5cm of c] (e0) {$E_0$};
+  \node[draw,above=0.35cm of e0] (e1) {$E_1$};
+  \node[draw,below=0.35cm of e0] (e2) {$E_2$};
+  \node[draw,right=1.2cm of e0] (out) {out};
+  \draw[->] (in)--(c);
+  \draw[->] (c)|-(e1); \draw[->] (c)--(e0); \draw[->] (c)|-(e2);
+  \draw[->] (e1)-|(out); \draw[->] (e0)--(out); \draw[->] (e2)-|(out);
+\end{tikzpicture}
+\caption{Polyphase fractional: 3 phase filter $E_r$; commutator ghép đúng lịch 2 out / 3 in.}
+\end{figure}
+
+\subsubsection*{4. RTL thay}
+Systolic MAC thuần + coeff ROM; folding tay nếu $N$ nhỏ. Không tự viết DA trừ khi tối ưu diện tích cực đoan.
+
+\subsubsection*{5. Twin}
+\texttt{scipy.signal.lfilter} với \emph{cùng} $h_q$ int16; so dump Avalon-ST beat-by-beat (ready backpressure test).
+
+% -------------------- C*.5 DSP BLOCK --------------------
+\subsection*{C$^\star$.5. DSP block Cyclone V --- 18$\times$19 và 27$\times$27}
+
+\subsubsection*{1. Vật lý silicon}
+Transistor nhân tổ hợp đắt hơn cộng. DSP block cứng: nhân + pre-adder + accumulator bypass register --- một chu kỳ, ít routing.
+
+\subsubsection*{2. Toán}
+Sản phẩm $P=A\times B$. Mode 18$\times$19: $A$ 18-bit, $B$ 19-bit (signed) $\to$ 37-bit. Mode 27$\times$27: 54-bit ra. Pre-adder: $(A\pm D)\times B$ --- khớp symmetric FIR folding.
+
+\noindent\textbf{Đồ chơi.} $A=5$ (Q1.3 giả), $B=3$ $\Rightarrow P=15$. Pre-add $A+D=5+7=12$, $\times3=36$.
+
+\subsubsection*{3. Intel}
+Cyclone~V Variable Precision DSP (UG). Quartus map \texttt{*} trong Verilog thành DSP nếu pipeline register đúng pattern. \texttt{multstyle="dsp"} attribute.
+
+\subsubsection*{4. RTL} Viết \texttt{y <= a * b;} + register; tránh logic reset đồng bộ phá inference.
+
+\subsubsection*{5. Twin} int64 tích lũy giống độ rộng DSP trước khi cắt về Q1.15.
+
+% -------------------- C*.6 M10K --------------------
+\subsection*{C$^\star$.6. M10K --- mixed-port RDW, Old Data}
+
+\subsubsection*{1. Vật lý}
+SRAM 10~kbit block: hàng transistor lưu 0/1. Hai port (A/B) độc lập địa chỉ. Conflict đọc/ghi cùng địa chỉ = hành vi silicon cụ thể.
+
+\subsubsection*{2. Toán / quy tắc}
+Mixed-port read-during-write: Cyclone~V M10K chỉ bảo đảm \textbf{Old Data} hoặc \textbf{Don't Care} --- \emph{không} New Data (UG 683375). Đồ chơi: chu kỳ $t$ ghi \texttt{addr=5, data=0xAA}; port kia đọc \texttt{addr=5} cùng $t$ $\Rightarrow$ nhận giá trị \emph{cũ} (hoặc X trong sim Don't Care mode).
+
+\subsubsection*{3. Intel IP}
+RAM 1-port / 2-port MegaWizard; đặt Mixed Port Read-During-Write = Old Data. Dùng cho frame buffer 640$\times$16, ROM Hanning, ROM $C[\tau]$.
+
+\subsubsection*{4. RTL} \texttt{(* ramstyle="M10K" *)} + đồng bộ read; không giả định New Data.
+
+\subsubsection*{5. Twin} NumPy array; khi model ``cùng lúc write/read'', trả giá trị cũ.
+
+% -------------------- C*.7 WINDOW ROM --------------------
+\subsection*{C$^\star$.7. Hanning ROM --- lượng tử và đối xứng}
+
+\subsubsection*{1. Vật lý} Cửa sổ = quả núi biên độ; xem B$^+$.4.
+
+\subsubsection*{2. Toán}
+$w[i]=0{,}5-0{,}5\cos(2\pi i/(L+1))$, $i=1..L$. Đối xứng: chỉ lưu $L/2$ rồi mirror.
+Đồ chơi $L=8$: $w\approx[0{,}012,0{,}117,0{,}323,0{,}55,0{,}75,0{,}88,0{,}95,0{,}98]$ (minh họa); Q1.15 = $\mathrm{round}(w\cdot32767)$.
+
+\subsubsection*{3. IP} ROM 1-port M10K hoặc LUT nếu $L$ nhỏ.
+
+\subsubsection*{4. RTL} \texttt{case(addr)} hoặc \texttt{\$readmemh("hann640.hex")}.
+
+\subsubsection*{5. Twin} Cùng file \texttt{.hex} nạp cho NumPy và synthesis.
+
+% -------------------- C*.8 AC MAC vs FFT --------------------
+\subsection*{C$^\star$.8. Autocorr MAC-first --- và FFT IP khi bật}
+
+\subsubsection*{1. Vật lý} $\mathcal{R}[\tau]=\sum x[n]x[n+\tau]$ = đo ``giống nhau sau $\tau$ mẫu''.
+
+\subsubsection*{2. Toán + đồ chơi MAC}
+$x=[1,2,1,2]$, $\tau=2$: $\mathcal{R}=1\cdot1+2\cdot2=5$. $\tau=1$: $1\cdot2+2\cdot1+1\cdot2=6$.
+Chuẩn hóa $r=\mathcal{R}[\tau]/\mathcal{R}[0]$; $\mathcal{R}[0]=1+4+1+4=10$.
+
+\subsubsection*{3a. MAC RTL (default)}
+Hai con trỏ vào frame BRAM; tích lũy 40-bit; $\tau=32..213$ tuần tự hoặc song song vài engine.
+
+\subsubsection*{3b. FFT IP (UG 683374) --- khi lab bật}
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item Radix-2/4 burst hoặc pipelined streaming.
+\item Twiddle ROM nội bộ (sin/cos lượng tử).
+\item BFP: exponent ra kèm mantissa; $|X|^2$ scale $2^{2e}$.
+\item Bit-reversal input hoặc output.
+\item Model: \texttt{\_model.m} / C model từ IP --- golden float-near.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \node[draw,align=center] (m) {mantissa\\$X$};
+  \node[draw,right=1.8cm of m,align=center] (sq) {$m_r^2+m_i^2$};
+  \node[draw,right=1.8cm of sq,align=center] (e) {exp $e$};
+  \node[draw,below=1.0cm of sq,align=center] (p) {power $=|m|^2\cdot 2^{2e}$};
+  \draw[->] (m)--(sq); \draw[->] (e)|-(p); \draw[->] (sq)--(p);
+\end{tikzpicture}
+\caption{BFP power: không quên nhân $2^{2e}$ --- barrel shift theo $2e$.}
+\end{figure}
+
+\subsubsection*{4. Twin MAC} int64 accum; Twin FFT: gọi model IP hoặc NumPy FFT + fake BFP quantizer từng stage.
+
+% -------------------- C*.9 C[tau] ROM --------------------
+\subsection*{C$^\star$.9. ROM $C[\tau]$ --- thay phép chia $\mathcal{R}_w$}
+
+\subsubsection*{1. Vật lý/toán} B$^+$.6: $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$.
+
+\subsubsection*{2. Đồ chơi}
+$w=[0{,}5,1,0{,}5]$, $\mathcal{R}_w[0]=1{,}5$, $\mathcal{R}_w[1]=0{,}5+0{,}5=1$, $C[1]=1{,}5$. Q3.13: $\mathrm{round}(1{,}5\cdot2^{13})=12288$.
+
+\subsubsection*{3. IP} ROM M10K; không cần divider.
+
+\subsubsection*{4. RTL} \texttt{ra_q <= (R_tau * C_tau) >> FRAC;} cẩn thận độ rộng.
+
+\subsubsection*{5. Twin} Cùng \texttt{C\_tau.hex}; so $r_a$ với Praat float (sai số lượng tử).
+
+% -------------------- C*.10 PEAK / THRESH --------------------
+\subsection*{C$^\star$.10. Argmax, parabolic, silence/voicing}
+
+\subsubsection*{1. Vật lý} Đỉnh $\mathcal{R}$ = ứng viên $T_0$; năng lượng thấp = silence.
+
+\subsubsection*{2. Toán parabolic} B$^+$.7. Ngưỡng: $r_a\ge V=0{,}45$; silence nếu $\mathrm{localPeak}<S\cdot\mathrm{globalPeak}$.
+
+\noindent\textbf{Đồ chơi đầy đủ.} $r[\tau]$ quanh 80: $\{0{,}42,0{,}51,0{,}47\}$, $V=0{,}45$ $\Rightarrow$ nhận; $\Delta=+0{,}214$; $F_0=16000/80{,}214\approx199{,}5\text{ Hz}$. Q12.4: $\mathrm{round}(199{,}5\cdot16)=3192=0{,}x0C78$.
+
+\subsubsection*{3--5.} RTL comparator tree + 3-tap parabolic; twin in Python golden.
+
+% -------------------- C*.11 DIVIDER --------------------
+\subsection*{C$^\star$.11. LPM\_DIVIDE \& non-restoring --- $F_0=f_s/\tau$}
+
+\subsubsection*{1. Vật lý} $F_0$ tỉ lệ nghịch $T_0$; silicon cần $f_s/\tau_{\mathrm{fine}}$.
+
+\subsubsection*{2. Toán non-restoring 4-bit} B$^+$.20. LPM\_DIVIDE (UG 683490): pipeline latency cấu hình được; \textbf{không} tồn tại ALTDIV\_TENT.
+
+\noindent\textbf{Đồ chơi Q12.4.} $\tau=80$, $f_s=16000$ $\Rightarrow$ quot$=200$; $\ll4$ $\Rightarrow$ $3200$ raw Q12.4. Với $\tau_{\mathrm{fine}}=80{,}25$: chia fixed $16000\cdot2^{4}/(80\cdot2^{4}+4)$ tùy format nội suy.
+
+\subsubsection*{3. IP} \texttt{lpm\_divide}: numerator 32, denominator 16, pipeline 8--16.
+
+\subsubsection*{4. RTL} Non-restoring 16 chu kỳ; hình trạng thái: \texttt{INIT$\to$SUB/ADD$\to$SHIFT$\times$W$\to$DONE}.
+
+\subsubsection*{5. Twin} Python \texttt{//} và remainder khớp từng chu kỳ TB.
+
+% -------------------- C*.12 VITERBI OFF / HPS --------------------
+\subsection*{C$^\star$.12. Viterbi --- vì sao mặc định tắt trên fabric}
+
+\subsubsection*{1. Vật lý} B$^+$.11--12: đường cong mượt qua thời gian.
+
+\subsubsection*{2. Toán} DP $\mathrm{cum}[t,j]=\delta[t,j]+\max_i(\mathrm{cum}[t-1,i]-\mathrm{cost}_{ij})$.
+
+\noindent\textbf{Đồ chơi 3 khung} đã làm ở B$^+$.12.
+
+\subsubsection*{3. Silicon cost} $T$ khung $\times K^2$ cạnh ($K=15$) $\times$ log/abs: hàng nghìn LUT + BRAM path; latency cả utterance --- phá streaming 10~ms.
+\subsubsection*{4. RTL} Không implement trên fabric default.
+\subsubsection*{5. Twin / HPS} Soft-float \texttt{pathFinder} trên ARM nếu cần; golden Python Viterbi so khớp.
+
+% -------------------- C*.13 AVALON-ST --------------------
+\subsection*{C$^\star$.13. Avalon-ST ready/valid --- đồ chơi backpressure}
+
+\subsubsection*{1. Vật lý giao thức} Hai bên không chung nhịp sản xuất/tiêu thụ. Ready/valid: transfer khi \emph{cả hai} =1 (readyLatency=0).
+
+\subsubsection*{2. Đồ chơi 6 chu kỳ}
+\begin{center}\small
+\begin{tabular}{@{}rrrrr@{}}
+\toprule
+clk & valid & ready & data & transfer? \\
+\midrule
+0 & 1 & 0 & A & no \\
+1 & 1 & 1 & A & \textbf{yes} \\
+2 & 0 & 1 & - & no \\
+3 & 1 & 1 & B & yes \\
+4 & 1 & 0 & C & no \\
+5 & 1 & 1 & C & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsubsection*{3. Intel (UG 683091)} readyLatency=0 phổ biến; không đảo nghĩa valid.
+
+\subsubsection*{4. RTL} Mọi khối pitch pipeline tuân thủ; TB phải toggle ready.
+
+\subsubsection*{5. Twin} Queue Python có pause --- so sequence data khi consumer chậm.
+
+% -------------------- C*.14 Q12.4 PACK --------------------
+\subsection*{C$^\star$.14. Đóng gói Q12.4 + little-endian bin}
+
+\subsubsection*{1. Vật lý tệp} HPS/Server đọc uint16 LE: giá trị $=F_0\cdot16$.
+
+\subsubsection*{2. Đồ chơi} $F_0=150{,}0625\text{ Hz}$ $\to$ $2401$ = \texttt{0x0961} $\to$ bytes \texttt{61 09}. Unvoiced: \texttt{00 00}.
+
+\subsubsection*{3--5.} RTL \texttt{assign out = f0\_q12\_4;}; twin \texttt{struct.pack('<H', ...)}.
+
+% -------------------- C*.15 BIT-EXACT STRATEGY --------------------
+\subsection*{C$^\star$.15. Chiến lược twin ba tầng}
+
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Float reference:} Praat / Parselmouth / NumPy --- đúng thuật toán, sai số lượng tử.
+\item \textbf{Integer golden:} đúng Q-format, ROM hex giống silicon --- \texttt{pytest} 18 case.
+\item \textbf{RTL TB:} dump Avalon beat = golden vector.
+\end{enumerate}
+Mỗi khối C$^\star$ phải có ít nhất tầng 2 trước khi tin tầng 3.
+
+\newpage

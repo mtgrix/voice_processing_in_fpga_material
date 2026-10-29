@@ -1,0 +1,459 @@
+
+% =====================================================================
+% PHẦN C — NEW (additive). Style: Feynman + Musk first-principles.
+% =====================================================================
+
+\section*{Phần C. Hiện thực trên FPGA: Quartus Prime Standard/Lite (DE10-Standard)}
+
+\begin{firstprin}{Vì sao cần một phần riêng sau mô hình golden?}
+Phần~B đã chứng minh: trên laptop, số nguyên Q1.15$\to$Q12.4 khớp bit với Float Twin. Nhưng silicon không chạy Python. Câu hỏi Musk: \emph{``Khối nào bắt buộc phải tồn tại trên fabric? Khối nào có thể xóa?''} Trả lời bằng một quy tắc duy nhất: \textbf{mọi khối streaming phải tôn trọng handshake Avalon-ST trước khi nối IP}; mọi khối tính toán phải có \textbf{hai lộ trình} (IP Catalog và RTL tự viết) và một \textbf{mô hình twin bit-khớp} (vendor \texttt{\_model.m} hoặc golden MAC). Board đích: Terasic DE10-Standard, FPGA Intel Cyclone~V SX SoC \texttt{5CSXFC6D6F31C6N}. Toolchain: \textbf{Quartus Prime Standard hoặc Lite} --- \textbf{không dùng Pro} (Pro không hỗ trợ Cyclone~V; xem bảng so sánh edition của Intel).
+\end{firstprin}
+
+\subsection*{C.0. Bản đồ pipeline: màu IP vs RTL}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[>=Stealth, font=\footnotesize,
+  ip/.style={draw=teal!80!black, fill=teal!12, thick, rounded corners=2pt, align=center, inner sep=3pt, minimum width=2.4cm},
+  rtl/.style={draw=blue!80!black, fill=blue!8, thick, rounded corners=2pt, align=center, inner sep=3pt, minimum width=2.4cm},
+  both/.style={draw=orange!80!black, fill=orange!10, thick, rounded corners=2pt, align=center, inner sep=3pt, minimum width=2.4cm},
+  arr/.style={->, thick, black!70}]
+  \node[ip] (pll) at (0,0) {C.1 PLL\\{\scriptsize IP}};
+  \node[both] (aud) at (2.8,0) {C.2 Audio\\{\scriptsize IP+RTL}};
+  \node[rtl] (dc) at (5.6,0) {C.3 DC\\{\scriptsize RTL}};
+  \node[both] (fir) at (8.4,0) {C.4 $24{\to}16$\\{\scriptsize FIR II / RTL}};
+  \node[both] (hpf) at (11.2,0) {C.5 HPF\\{\scriptsize both}};
+  \node[rtl] (ram) at (2.8,-2.0) {C.6 TDP RAM\\{\scriptsize RTL}};
+  \node[both] (win) at (5.6,-2.0) {C.7 Window\\{\scriptsize DSP}};
+  \node[rtl] (mac) at (8.4,-2.0) {C.8 MAC\\{\scriptsize default}};
+  \node[ip] (fft) at (11.2,-2.0) {C.8.B FFT\\{\scriptsize optional}};
+  \node[rtl] (ctau) at (2.8,-4.0) {C.9 $C[\tau]$\\{\scriptsize ROM}};
+  \node[rtl] (peak) at (5.6,-4.0) {C.10 Peak\\{\scriptsize RTL}};
+  \node[both] (parab) at (8.4,-4.0) {C.11 Parab\\{\scriptsize $\div$}};
+  \node[rtl] (fsm) at (11.2,-4.0) {C.13 FSM\\{\scriptsize RTL}};
+  \foreach \a/\b in {pll/aud,aud/dc,dc/fir,fir/hpf,hpf/ram,ram/win,win/mac,mac/ctau,ctau/peak,peak/parab,parab/fsm}
+    {\draw[arr] (\a) -- (\b);}
+  \draw[arr, dashed, orange!70!black] (mac) -- (fft);
+  \node[anchor=west, font=\scriptsize] at (0,-5.2) {\textcolor{teal!70!black}{\rule{0.35cm}{0.25cm}} IP default\quad
+    \textcolor{blue!70!black}{\rule{0.35cm}{0.25cm}} RTL default\quad
+    \textcolor{orange!70!black}{\rule{0.35cm}{0.25cm}} cả hai (chọn theo lab)};
+\end{tikzpicture}
+\caption{Bản đồ Phần~C: mặc định dạy \textbf{MAC trực tiếp} (khớp golden 0-bit). FFT IP chỉ là nhánh tùy chọn sau khi MAC đã xanh.}
+\label{fig:c0_pipeline_map}
+\end{figure}
+
+\paragraph{Chiến lược (delete $\to$ simplify $\to$ accelerate).}
+(1)~Xóa Viterbi trên fabric (Phần~B đã đo median-3 đủ). (2)~Xóa CIC cho $24\to16$ (tỷ lệ $2/3$ không phải decimation nguyên lớn). (3)~Giữ MAC 1~DSP làm đường chính. (4)~Chỉ mở FFT IP khi cần thông lượng cao hơn và đã có twin \texttt{\_model.m}.
+
+\subsection*{C.0b. Avalon-ST: handshake trước mọi IP streaming}
+
+\begin{firstprin}{Vì sao cần \texttt{ready}/\texttt{valid}?}
+Hai khối nối bằng dây \texttt{data} thôi thì giống hai người nói chuyện không nhìn nhau: bên gửi cứ đẩy, bên nhận đang bận $\Rightarrow$ mất mẫu. Avalon Streaming (Avalon-ST) thêm hai bit điều khiển. Nguồn (\emph{source}) nâng \texttt{valid} khi data có nghĩa; đích (\emph{sink}) nâng \texttt{ready} khi còn chỗ. \textbf{Chỉ khi cả hai cùng 1} mới chốt một beat. Tài liệu gốc: \emph{Avalon Interface Specifications}, Intel doc~ID~\textbf{683091} (MNL-AVABUSREF).
+\end{firstprin}
+
+\noindent\textbf{Đồ chơi số (readyLatency~$=$~0).} Chu kỳ 0--5:
+
+\begin{center}
+\small
+\begin{tabular}{@{}cccccl@{}}
+\toprule
+ck & ready & valid & data & chuyển? & Ghi chú \\
+\midrule
+0 & 1 & 0 & -- & không & sink rảnh, source chưa có \\
+1 & 1 & 1 & $d_0$ & \textbf{có} & beat đầu \\
+2 & 0 & 1 & $d_1$ & không & sink backpressure; source \textbf{giữ} valid+data \\
+3 & 1 & 1 & $d_1$ & \textbf{có} & gửi lại đúng $d_1$ (không nhảy sang $d_2$) \\
+4 & 1 & 1 & $d_2$ & \textbf{có} & \\
+5 & 1 & 0 & -- & không & hết gói \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.85cm, y=0.55cm]
+  \draw[->] (0,4.5) -- (12.5,4.5) node[right] {ck};
+  \foreach \x in {0,...,11} {\draw (\x,4.4) -- (\x,4.6) node[above] {\x};}
+  % ready
+  \draw[thick, teal!70!black] (0,3.2) -- (2,3.2) -- (2,2.2) -- (3,2.2) -- (3,3.2) -- (11,3.2);
+  \node[left] at (0,2.7) {\texttt{ready}};
+  % valid (high from ck1; held through backpressure at ck2 — matches table above)
+  \draw[thick, blue!70!black] (0,0.5) -- (1,0.5) -- (1,1.5) -- (11,1.5);
+  \node[left] at (0,1.0) {\texttt{valid}};
+  % data labels under transfer / hold beats
+  \node at (1.5, -0.2) {$d_0$};
+  \node at (2.5, -0.2) {$d_1$ giữ};
+  \node at (3.5, -0.2) {$d_1$};
+  \node at (4.5, -0.2) {$d_2$};
+  \draw[orange!80!black, thick] (1.1,-0.6) rectangle (1.9,3.5);
+  \draw[orange!80!black, thick] (3.1,-0.6) rectangle (3.9,3.5);
+  \draw[orange!80!black, thick] (4.1,-0.6) rectangle (4.9,3.5);
+  \node[font=\scriptsize\bfseries, orange!70!black] at (6.5,-0.9) {ô cam $=$ beat thật sự chuyển};
+\end{tikzpicture}
+\caption{Timing Avalon-ST khi \texttt{ready} hạ ở ck~2: source \emph{không} được hạ \texttt{valid} hay đổi data --- nếu không, FIR/FFT IP mất mẫu; FFT còn có thể kẹt biên SOP/EOP của block.}
+\label{fig:avalon_st_timing}
+\end{figure}
+
+\begin{costbox}
+Adapter ready/valid thuần tổ hợp: $\sim$0--20 LUT. Sai handshake có thể làm ``mất'' cả khung 640 mẫu --- đắt hơn hàng nghìn LUT của chính bộ lọc.
+\end{costbox}
+
+\noindent\textbf{CẢNH BÁO (FIR~II --- luồng âm thanh liên tục):} \textbf{KHÔNG} dùng \texttt{startofpacket}/\texttt{endofpacket} (SOP/EOP) để ``đóng gói'' mỗi khung pitch 640~mẫu vào FIR Compiler~II. Theo \emph{FIR II IP Core User Guide} (doc~ID~\textbf{683208}), SOP đánh dấu mẫu kênh~0 và EOP đánh dấu kênh cuối của \emph{nhóm kênh} (multichannel packet) --- không phải biên khung phân tích. Lọc FIR là bộ nhớ lịch sử (delay line) chạy liên tục; nếu bạn dựng packet giả theo hop 10~ms, handshake lỗi (\texttt{ast\_sink\_error}: missing/unexpected SOP/EOP) và trạng thái kênh lệch. Với mono liên tục: chỉ cần \texttt{data}/\texttt{valid}/\texttt{ready}; nếu IP bắt buộc SOP/EOP, khẳng định cả hai cùng 1 trên \emph{mỗi} mẫu (packet size~$=1$), không theo biên khung pitch. FFT IP (683374) dùng SOP/EOP theo \emph{transform block} --- khác FIR: chỉ bật khi đẩy đúng $N$ mẫu một FFT.
+
+\noindent Tài liệu: Avalon-ST 683091; FIR~II 683208; FFT 683374.
+
+\subsection*{C.1. PLL --- chỉ IP}
+
+\begin{firstprin}{Vì sao không tự viết PLL bằng RTL?}
+PLL khóa pha analog/digital trong silicon; tự ghép cổng không cho jitter đạt mức audio. Trên Quartus Standard/Lite với Cyclone~V: dùng \textbf{ALTPLL} (hoặc PLL IP trong IP Catalog). Mục tiêu dạy: tạo $50\text{ MHz}$ hệ thống từ clock board, và (nếu cần) clock bit I\textsuperscript{2}S.
+\end{firstprin}
+
+\begin{costbox}
+PLL: 1 hard block. Twin: chỉ kiểm tra \texttt{locked}. Không có mô hình bit-exact số học.
+\end{costbox}
+
+\subsection*{C.2. Audio vào --- cả hai lộ trình (default dạy: I\textsuperscript{2}S RTL)}
+
+\begin{firstprin}{Âm thanh là gì trên dây?}
+Mic/codec WM8731 trên DE10 xuất chuỗi bit theo chuẩn I\textsuperscript{2}S: từng mẫu 16--32 bit, xen kẽ trái/phải, đồng bộ bằng LRCK và BCLK. Ta chỉ cần: (1)~đếm bit, (2)~chốt khi đủ word, (3)~đẩy vào FIFO. Không cần ``AI''.
+\end{firstprin}
+
+\paragraph{Lộ trình IP --- University Program Audio Core.}
+IP Avalon của University Program bọc codec: cấu hình I\textsuperscript{2}C, FIFO L/R, đọc qua Avalon-MM. \textbf{Bên trong (mức dạy):} FIFO bắt nhịp từ domain I\textsuperscript{2}S sang clock hệ thống; đóng gói mẫu signed thành word; host/HPS đọc thanh ghi. Khi nào chọn: muốn gắn nhanh Platform Designer / lab Terasic sẵn có. Chi phí: phụ thuộc bản IP + cần cài University Program.
+
+\paragraph{Lộ trình RTL (default dạy) --- I\textsuperscript{2}S RX + FIFO.}
+Vài chục dòng Verilog: FSM Idle$\to$Collect$\to$Push. Mã mở, không phụ thuộc gói University Program.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.7cm, y=0.5cm]
+  \draw[->] (0,3) -- (14,3) node[right] {BCLK};
+  \draw[thick] (0,2) -- (2,2) -- (2,1) -- (8,1) -- (8,2) -- (14,2);
+  \node[left] at (0,1.5) {LRCK};
+  \node at (5,0.3) {khung Left (16 bit)};
+  \node at (11,0.3) {khung Right};
+  \foreach \x in {2,3,...,7} {\draw[blue!60] (\x,2.2) -- (\x,2.8);}
+  \node[blue!70!black] at (5,3.5) {bit 15$\ldots$0 chốt trên cạnh BCLK};
+\end{tikzpicture}
+\caption{I\textsuperscript{2}S đơn giản hóa: LRCK chọn tai, BCLK dịch bit. RTL chỉ cần dịch vào thanh ghi và đẩy FIFO --- map sang Q1.15.}
+\label{fig:i2s_timing}
+\end{figure}
+
+\begin{costbox}
+I\textsuperscript{2}S RX RTL: $\sim$100--300 LE + 1 M10K FIFO nông. Audio Core IP: nhanh hơn về tích hợp, nhưng che mất đường mẫu --- khó debug bit-exact với golden.
+\end{costbox}
+
+\subsection*{C.3. DC-blocker / khử mean (NEW)}
+
+\begin{firstprin}{Vì sao DC phá tự tương quan?}
+Nếu mọi mẫu cộng thêm hằng $A$ (offset mic), thì
+\[
+\mathcal{R}_x[0] = \sum (x_n+A)^2 = \sum x_n^2 + 2A\sum x_n + NA^2
+\]
+phình theo $A^2$. Đỉnh $\tau=0$ ``nuốt'' mọi đỉnh chu kỳ. Praat trừ mean cục bộ từng khung; streaming cần lọc liên tục.
+\end{firstprin}
+
+\noindent\textbf{Đồ chơi.} Chuỗi $x=[1,1,1,1]$ $\Rightarrow$ $\mathcal{R}[0]=4$. Sau trừ mean ($0,0,0,0$) $\Rightarrow$ $\mathcal{R}[0]=0$. DC thuần phải ra unvoiced, không được treo FSM.
+
+\paragraph{Default dạy: RTL IIR DC-block.}
+\[
+y[n] = x[n] - x[n-1] + \alpha\, y[n-1], \quad \alpha \approx 1-\varepsilon
+\]
+(ví dụ $\alpha=1-1/256$). Quan hệ với HPF 60~Hz: DC-block là HPF cực gần 0~Hz diện tích nhỏ; HPF 60~Hz cắt thêm ù quạt/rung cơ học. Có thể gộp vai trò vào một FIR thông cao (IP), nhưng bài này dạy IIR riêng để thấy mean.
+
+\begin{firstprin}{Vì sao không giữ $y$ chỉ 16-bit Q1.15?}
+Đồ chơi: $\alpha=1-2^{-8}=255/256$. Phản hồi $\alpha y[n-1]$ cần phần lẻ của $y$. Nếu cắt $y$ về 16-bit ngay mỗi chu kỳ, $\alpha y$ liên tục làm tròn về 0 khi $|y|$ nhỏ $\Rightarrow$ filter ``chết'' hoặc dao động limit-cycle. Giải pháp First-Principles: giữ \textbf{thanh ghi phản hồi rộng} (ví dụ Q8.23 / 32-bit signed), chỉ saturate xuống Q1.15 ở lối ra.
+\[
+y_{\text{acc}}[n] = \big((x[n]-x[n-1])\ll f\big) + \alpha\cdot y_{\text{acc}}[n-1],\quad
+y_{\text{out}} = \mathrm{sat}_{16}(y_{\text{acc}}\gg f).
+\]
+Với $\alpha=1-2^{-k}$ có thể thay nhân bằng \texttt{y - (y>>k)} --- 0 DSP.
+\end{firstprin}
+
+\begin{costbox}
+DC IIR rộng 32-bit + shift-add $\alpha$: $\lesssim$80--120 LE, 0 DSP. Cắt 16-bit sớm: rẻ hơn $\sim$30 LE nhưng \textbf{sai chức năng} --- đắt hơn mọi LUT.
+\end{costbox}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \begin{scope}
+    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[thick, red!70!black] (0,2.4) -- (0.15,2.4) -- (0.3,0.4) -- (1,0.35) -- (2,0.9) -- (3,0.3) -- (4,0.25);
+    \node[font=\footnotesize\bfseries] at (2.5,3.1) {Trước: DC phình $\mathcal{R}[0]$};
+  \end{scope}
+  \begin{scope}[xshift=7cm]
+    \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[thick, teal!70!black] (0,1.2) -- (0.2,0.3) -- (1,0.25) -- (2,1.8) -- (3,0.3) -- (4,0.25);
+    \node[font=\footnotesize\bfseries] at (2.5,3.1) {Sau: đỉnh $T_0$ lộ ra};
+    \node[teal!60!black, font=\scriptsize] at (2,2.1) {$T_0$};
+  \end{scope}
+\end{tikzpicture}
+\caption{Cùng tín hiệu có offset: trái --- $\mathcal{R}[0]$ phình; phải --- sau DC-block, đỉnh chu kỳ hiện rõ. Đặt cạnh nhau để map từng bước.}
+\label{fig:dc_before_after}
+\end{figure}
+
+\begin{costbox}
+Nhắc lại: phản hồi $\ge$24--32 bit; lối ra 16-bit. FIR HP IP thay thế: hàng trăm LE/DSP tùy taps.
+\end{costbox}
+
+\subsection*{C.4. Hạ mẫu $24\text{ kHz}\to 16\text{ kHz}$ --- KHÔNG CIC}
+
+\begin{firstprin}{Tỷ lệ $2/3$ là gì?}
+$24/16 = 3/2$, nên cần \textbf{nội suy $\times 2$} rồi \textbf{decimate $\div 3$} (hoặc ngược lại có tiền lọc). Đây là \emph{fractional rate}, không phải decimation nguyên $R=10,20,\ldots$ nơi CIC (Cascaded Integrator--Comb) tỏa sáng. CIC bỏ nhân nhưng đáp ứng $\mathrm{sinc}^N$ tệ ở tỷ lệ nhỏ và cần bù --- \textbf{loại khỏi lộ trình $24\to16$}.
+\end{firstprin}
+
+\paragraph{Hộp ``CIC dùng khi nào?'' (để khỏi nhầm).}
+CIC hữu ích khi $R\gg 1$ (ví dụ ADC $\Delta\Sigma$ 10~MHz $\to$ 48~kHz). Ở đây $R$ hiệu dụng chỉ $1{,}5$ --- FIR polyphase thắng về méo phổ và diện tích có nhân sẵn trên Cyclone~V.
+
+\paragraph{IP default: FIR Compiler II Fractional Rate $I=2$, $D=3$.}
+Theo UG~683208: output rate / input rate $= I/D = 2/3$ khớp $16/24$. Nghĩa đúng: \textbf{mỗi 3 mẫu vào $\Rightarrow$ 2 mẫu ra} (không phải ``2 vào $\Rightarrow$ 3 ra''). IP tối ưu polyphase; chọn truncation / saturation / rounding ở lối ra. Twin: cùng hệ số, cùng round/sat với mô hình Python cố định điểm.
+
+\begin{firstprin}{Valid ra có đều theo clock không?}
+Không. Clock hệ thống (ví dụ 50~MHz) nhanh hơn sample rate. FIR fractional nhả mẫu theo nhịp $I/D$: \texttt{ast\_source\_valid} \textbf{bật/tắt không đều}. Đồ chơi: trên 6 nhịp sample-in, valid-out có thể là \texttt{1,0,1,1,0,1} --- FSM/FIFO sau FIR \textbf{bắt buộc} đọc cờ \texttt{valid} từng chu kỳ; đếm clock ``cứ 3 ck lấy 2'' là bẫy khi có backpressure.
+\end{firstprin}
+
+\paragraph{RTL: FIR polyphase --- mạch số, không Z-transform suông.}
+Commutator (mux pha) đưa mẫu vào đúng nhánh; các nhánh chia sẻ một DSP theo thời gian; sau đó decimate.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  % Input commutator
+  \node[draw, rounded corners, fill=blue!8] (xin) at (0,1.2) {$x[n]$ @24k};
+  \node[draw, diamond, aspect=2, fill=orange!15, inner sep=1pt] (comm) at (2.2,1.2) {comm};
+  \node[font=\tiny, above] at (2.2,1.9) {pha $0..I{-}1$};
+  % Branches
+  \node[draw, rounded corners, fill=teal!10] (e0) at (4.6,2.0) {MAC $E_0$};
+  \node[draw, rounded corners, fill=teal!10] (e1) at (4.6,0.4) {MAC $E_1$};
+  \node[draw, rounded corners, fill=yellow!20] (dsp) at (4.6,-1.2) {1$\times$DSP shared};
+  \draw[->] (xin) -- (comm);
+  \draw[->] (comm) |- (e0);
+  \draw[->] (comm) |- (e1);
+  \draw[->, dashed] (e0) -- (dsp);
+  \draw[->, dashed] (e1) -- (dsp);
+  % Sum + decimate mux
+  \node[draw, circle, inner sep=1pt] (sum) at (7.0,1.2) {$+$};
+  \node[draw, rounded corners, fill=orange!12] (dec) at (9.0,1.2) {mux $\downarrow 3$};
+  \node[draw, rounded corners, fill=green!12] (yout) at (11.2,1.2) {$y$ @16k + valid};
+  \draw[->] (e0) -| (sum);
+  \draw[->] (e1) -| (sum);
+  \draw[->] (sum) -- (dec);
+  \draw[->] (dec) -- (yout);
+  \node[anchor=west, text width=11.5cm, font=\scriptsize] at (0,-2.2)
+    {First-Principles: anti-alias analog trước ADC $\leftrightarrow$ polyphase số sau ADC.
+     Commutator $=$ bộ đếm pha + mux; ``shared DSP'' $=$ một nhân $18\times18$ lần lượt phục vụ $E_0$, $E_1$.
+     Lối ra: chỉ bắt mẫu khi \texttt{valid}$=1$ (xem cảnh báo fractional ở trên).};
+\end{tikzpicture}
+\caption{Polyphase fractional $I{=}2,D{=}3$ mức mạch số: commutator $\to$ nhánh MAC $\to$ DSP chia sẻ $\to$ mux decimate. Không còn block $\uparrow2$/$\downarrow3$ sách giáo khoa.}
+\label{fig:polyphase_familiar}
+\end{figure}
+
+\begin{costbox}
+FIR II fractional (vài chục taps, 16-bit): cỡ $1$--$4$ DSP + vài trăm ALM (UG 683208 --- đo lại trên variation). RTL polyphase 2 nhánh, 1 DSP time-mux: $\sim$1 DSP + vài trăm LE điều khiển; twin bằng cùng chuỗi \texttt{>>}/saturate.
+\end{costbox}
+
+\subsection*{C.5. HPF $60\text{ Hz}$}
+
+\begin{firstprin}{Ù 50/60 Hz từ đâu?}
+Nguồn điện và rung cơ học tạo tone thấp. Pitch floor $75\text{ Hz}$ nằm ngay trên --- nếu không cắt, đỉnh giả có thể thắng \texttt{argmax}.
+\end{firstprin}
+IP: FIR~II high-pass (có thể gộp DC+HP). RTL: FIR đối xứng hoặc IIR bilinear. Twin: cùng hệ số Q1.15, cùng round.
+
+\subsection*{C.6. Memory --- True Dual-Port sliding window}
+
+\begin{firstprin}{Vì sao cần hai cổng?}
+Mỗi tích $x[n]\,x[n+\tau]$ cần \emph{hai} mẫu/cycle nếu muốn 1~MAC/ck. True Dual-Port (TDP) M10K: port~A đọc $n$, port~B đọc $n+\tau$ cùng chu kỳ.
+\end{firstprin}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \draw[thick] (0,0) rectangle (8,2.2);
+  \foreach \i in {0,1,...,7} {
+    \draw (\i,0) -- (\i,2.2);
+    \node at (\i+0.5,1.1) {$n{=}\i$};
+  }
+  \draw[blue!70!black, very thick] (1.0,2.4) -- (1.0,2.8) node[above] {port A: $n$};
+  \draw[orange!70!black, very thick] (4.0,2.4) -- (4.0,2.8) node[above] {port B: $n{+}\tau$};
+  \node[anchor=west, text width=11cm, font=\footnotesize] at (0,-1.0)
+    {Ring 640 ô. Con trỏ ghi cuốn vòng; khi đủ 160 mẫu mới $\to$ kích Pha~1.
+     \textbf{Cấu hình bắt buộc (mixed-port RDW): ``Old Data''} --- xem hộp dưới.};
+\end{tikzpicture}
+\caption{Bản đồ bộ nhớ cửa sổ trượt: hai cổng, một MAC.}
+\label{fig:tdp_sliding}
+\end{figure}
+
+\begin{firstprin}{Read-during-write trên M10K chọn gì?}
+Khi port~A \emph{ghi} địa chỉ $k$ và port~B \emph{đọc} cùng $k$ trong một chu kỳ (mixed-port RDW), Cyclone~V M10K chỉ cho \textbf{``Old Data''} hoặc \textbf{``Don't Care''} --- \emph{không} có ``New Data'' ở mixed-port (``New Data'' mixed-port là chuyện MLAB; handbook 683375 mục Mixed-Port Read-During-Write).
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \textbf{Old Data (chọn cái này):} đọc ra giá trị \emph{trước} khi ghi. MAC thấy cửa sổ ổn định; sim khớp silicon.
+  \item \textbf{Don't Care:} bit có thể X/unknown --- TB ``xanh giả'', silicon lệch 1 mẫu $\Rightarrow$ lệch pha toàn bộ Pha~2.
+\end{itemize}
+Same-port RDW trên M10K: New Data hoặc Don't Care (Old Data \emph{không} hỗ trợ same-port) --- tránh đọc/ghi cùng port cùng địa chỉ trong thiết kế sliding window.
+\end{firstprin}
+
+\begin{costbox}
+$640\times 16$ TDP: 1 M10K. Infer 2-port hoặc On-Chip RAM IP; parameter mixed-port RDW $=$ Old Data. Chi phí logic bypass: 0 nếu chọn Old Data thuần block.
+\end{costbox}
+
+\subsection*{C.7. Window $\times$ sample}
+
+Pha~1a: $x_{\text{win}}[n] = (x[n]\cdot w[n] + 16384) \gg 15$ (Q1.15$\times$Q1.15 $\to$ Q1.15, round-nearest). IP: LPM\_MULT / DSP builder. RTL: 1 DSP shared. Cyclone~V DSP block nền $18\times 18$ --- vừa khít 16$\times$16.
+
+\begin{costbox}
+640 chu kỳ $\times$ 1 DSP. ROM Hanning 640$\times$16: 1 M10K, nạp \texttt{hanning\_rom.hex}.
+\end{costbox}
+
+\subsection*{C.8. Autocorr --- MAC-first (default) / FFT optional}
+
+\subsubsection*{C.8.A Default: MAC trực tiếp (0-bit với golden)}
+
+\begin{firstprin}{Wiener--Khinchin có bắt buộc không?}
+Không. Định nghĩa $\mathcal{R}[\tau]=\sum_n x[n]x[n+\tau]$ chỉ cần nhân-cộng. FFT là phím tắt khi $N$ lớn và có sẵn IP --- nhưng thêm BFP, thứ tự bit-reverse, và rủi ro lệch twin. Musk: \emph{xóa FFT khỏi đường mặc định}.
+\end{firstprin}
+
+\noindent Datapath: TDP $\to$ nhân $18\times 18$ $\to$ accum 41-bit signed $\to$ sau $(640-\tau)$ bước nhân $C[\tau]$ ROM.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  \node[draw, rounded corners] (a) {RAM A $x[n]$};
+  \node[draw, rounded corners, below=0.6cm of a] (b) {RAM B $x[n{+}\tau]$};
+  \node[draw, rounded corners, fill=green!12, right=1.8cm of a] (m) {DSP $\times$};
+  \node[draw, rounded corners, fill=yellow!15, right=1.4cm of m] (acc) {ACC 41b};
+  \draw[->] (a) -| (m); \draw[->] (b) -| (m); \draw[->] (m) -- (acc);
+  \node[draw, rounded corners, below=1.2cm of m] (rom) {$C[\tau]$ ROM};
+  \node[draw, rounded corners, right=1.2cm of rom] (s) {$S[\tau]$};
+  \draw[->] (acc) |- (s); \draw[->] (rom) -- (s);
+\end{tikzpicture}
+\caption{Datapath MAC: hai toán hạng, một nhân, một tích lũy --- khớp \texttt{lab\_1\_3\_5.py}.}
+\label{fig:mac_datapath}
+\end{figure}
+
+\begin{costbox}
+Pha~2: $98\,280$ chu kỳ @50~MHz $\approx 1{,}97\text{ ms}$ / khung $10\text{ ms}$ $\Rightarrow$ RTF$\approx 0{,}2$. 1 DSP + $\sim$200 LE điều khiển.
+\end{costbox}
+
+\subsubsection*{C.8.B Optional: FFT IP + $|X|^2$ + IFFT (Wiener--Khinchin)}
+
+Chỉ sau khi MAC xanh. Dùng \textbf{FFT Intel FPGA IP} (UG~\textbf{683374}):
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Kiến trúc radix-2/4 DIF; twiddle ROM; streaming / buffered; SOP/EOP theo \emph{một} block $N$ điểm.
+  \item \textbf{Block Floating Point (BFP):} mỗi stage dịch để tránh tràn; IP xuất \texttt{source\_exp}. Biên độ thật $= y\cdot 2^{-e}$ (UG: Block Floating Point Scaling). BFP \textbf{không} có cổng nhập exponent --- bạn phải scale bên ngoài.
+  \item Twin bắt buộc: \texttt{<variation>\_model.m}; \texttt{[y,e]=variation\_model(...)} vs HDL --- không đoán $e$.
+\end{itemize}
+
+\begin{firstprin}{Sau $|X|^2$, số mũ đi đâu?}
+Đồ chơi: mantisa $y=3$, $e=2$ $\Rightarrow$ giá trị thật $3\cdot 2^{-2}$. Bình phương: $(3\cdot 2^{-2})^2 = 9\cdot 2^{-4}$ --- số mũ \emph{nhân đôi} thành $2e$. Đẩy mantisa $|y|^2$ thẳng vào IFFT (IP kỳ vọng fixed-point ``exponent~$=$~0'' ở lối vào) mà quên barrel-shift $\Rightarrow$ cả dải động $\mathcal{R}[\tau]$ sai. UG mục Unity Gain IFFT+FFT cũng cảnh báo: cắt/trunc trung gian làm mất $e$.
+\end{firstprin}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  \node[draw] (x) {$x$};
+  \node[draw, right=0.55cm of x] (fft) {FFT};
+  \node[draw, fill=orange!12, right=0.55cm of fft] (sh1) {$\ll$/$\gg$ theo $e$};
+  \node[draw, right=0.55cm of sh1] (mag) {$|X|^2$};
+  \node[draw, fill=orange!12, right=0.55cm of mag] (sh2) {barrel / track $2e$};
+  \node[draw, right=0.55cm of sh2] (ifft) {IFFT};
+  \node[draw, right=0.55cm of ifft] (r) {$\mathcal{R}$};
+  \draw[->] (x)--(fft)--(sh1)--(mag)--(sh2)--(ifft)--(r);
+  \node[draw, dashed, below=0.85cm of fft, fill=gray!8] (exp) {\texttt{source\_exp}$=e$};
+  \draw[->, dashed] (fft) -- (exp);
+  \draw[->, dashed] (exp.east) -| (sh1.south);
+  \node[anchor=west, text width=12cm, font=\scriptsize] at (0,-2.0)
+    {\textbf{Cảnh báo dạy:} khối cam là RTL bắt buộc trên nhánh FFT. Không có chúng $\Rightarrow$ gần như chắc fail bit-exact.
+     Đây là lý do mặc định vẫn là \textbf{MAC} (0-bit với golden, không BFP).};
+\end{tikzpicture}
+\caption{BFP quanh $|X|^2$: scale theo $e$ trước/sau bình phương (barrel shifter hoặc theo dõi exponent $2e$). Twin = \texttt{\_model.m} + RTL scale.}
+\label{fig:fft_wk_bfp}
+\end{figure}
+
+\begin{costbox}
+FFT+IFFT IP: hàng nghìn ALM + nhiều M10K + DSP (theo variation). Barrel shifter $|e|_{\max}$~$\sim$5--6 bit: vài chục LE. Tổng nhánh FFT $\gg$ 1~DSP của MAC --- chỉ mở khi RTF MAC không đủ \emph{và} twin đã khóa.
+\end{costbox}
+
+\subsection*{C.9. $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ --- default ROM}
+
+Cửa sổ cố định $\Rightarrow$ bảng offline Q3.13 trong \texttt{c\_tau\_rom.hex} (\textbf{default --- không đổi}). Phương án thay: runtime chia bằng \textbf{LPM\_DIVIDE} (Integer Arithmetic IP, UG~683490; vẫn là tên chính thức trên Quartus Standard/Lite cho Cyclone~V --- \emph{không} tồn tại IP tên ``ALTDIV\_TENT'' trong catalog Intel). Latency $\approx$ bề rộng bit tử số; FSM chờ. Chỉ dùng khi ROM không đủ linh hoạt.
+
+\subsection*{C.10. Peak / V-UV / median-3 / pack Q12.4 --- chỉ RTL}
+\texttt{argmax}, cổng lặng, cổng thanh tính, median-3, đóng gói \texttt{uint16} LE Q12.4 (\texttt{Hz = raw/16}, $0=$ unvoiced). Không có IP tương ứng --- phải viết.
+
+\subsection*{C.11. Nội suy parabolic}
+\[
+\tau_{\text{fine}} = \tau^* + \tfrac12\frac{S_{-}-S_{+}}{S_{-}-2S^{*}+S_{+}}.
+\]
+Tử số/mẫu số nguyên: tính $N=(S_{-}-S_{+})\ll 16$, $D=S_{-}-2S^{*}+S_{+}$, thương Q16 rồi cộng vào $\tau^*$.
+
+\paragraph{IP (optional).} \textbf{LPM\_DIVIDE} / Integer Arithmetic IP (683490) --- \emph{giữ tên này}; megafunction \texttt{divide} cũ chỉ để tương thích. Không dùng tên bịa ``ALTDIV\_TENT''.
+
+\paragraph{RTL alternative (First-Principles): non-restoring divider.} Lặp $W$ bước (shift + cộng/trừ theo dấu phần dư). Default sản phẩm vẫn ROM $C[\tau]$; divider chỉ cho parabolic / thử nghiệm.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  \node[draw, rounded corners, fill=blue!8] (n) at (0,1.5) {$N=(S_{-}-S_{+})$};
+  \node[draw, rounded corners, fill=yellow!20] (sh) at (3.2,1.5) {$N\ll 16$};
+  \node[draw, rounded corners, fill=orange!12, align=center] (nr) at (6.6,1.5) {non-restoring\\$W$ vòng shift$\pm$};
+  \node[draw, rounded corners, fill=green!12] (q) at (10.0,1.5) {$q$ Q16};
+  \node[draw, rounded corners] (d) at (6.6,0.0) {$D=S_{-}-2S^{*}+S_{+}$};
+  \node[draw, rounded corners] (tau) at (10.0,0.0) {$\tau^* + (q\gg 1)$};
+  \draw[->] (n)--(sh)--(nr)--(q);
+  \draw[->] (d)--(nr);
+  \draw[->] (q)--(tau);
+  \node[anchor=west, text width=11.5cm] at (0,-1.2)
+    {Mỗi vòng: \texttt{R = (R<<1) | N[msb]}; nếu $R\ge 0$ thì $R:=R-D$, bit thương~$=$1; ngược lại $R:=R+D$, bit~$=$0 (non-restoring).
+     Chi phí: $\sim W$ chu kỳ, vài chục LE, 0 DSP. LPM\_DIVIDE: IP pipeline, latency cấu hình được.};
+\end{tikzpicture}
+\caption{Datapath chia parabolic: dịch $N\ll 16$ rồi non-restoring (RTL) hoặc LPM\_DIVIDE (IP). $C[\tau]$ vẫn ROM-default.}
+\label{fig:parab_div_nrd}
+\end{figure}
+
+\begin{costbox}
+Non-restoring 32/16: $\sim$32 ck + $\lesssim$100 LE. LPM\_DIVIDE pipeline: trade LE vs latency (xem wizard). ROM $C[\tau]$: 1 M10K, 1 ck --- vẫn rẻ nhất cho cửa sổ cố định.
+\end{costbox}
+ALTSQRT: \textbf{N/A} đường mặc định. Sinc: optional (FIR taps).
+
+\subsection*{C.12. Viterbi}
+Mặc định: tắt trên fabric; soft-float trên HPS nếu cần. RTL fixed-lag = phụ lục nâng cao.
+
+\subsection*{C.13. FSM + tài nguyên}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  \node[draw, rounded corners, fill=gray!15, align=center] (idle) at (0,2.2)
+    {IDLE\\{\tiny $ena\_mac{=}0$}};
+  \node[draw, rounded corners, fill=blue!10, align=center] (p1) at (4.2,2.2)
+    {PHA1\\{\tiny $ena\_win$, $addr++$}};
+  \node[draw, rounded corners, fill=green!10, align=center] (p2) at (8.4,2.2)
+    {PHA2\\{\tiny $ena\_mac{=}1$, $\tau$}};
+  \node[draw, rounded corners, fill=yellow!20, align=center] (post) at (8.4,0.0)
+    {POST\\{\tiny $argmax$, pack}};
+  \node[draw, rounded corners, fill=orange!15, align=center] (edge) at (0,0.0)
+    {EDGE\\{\tiny $f0{\gets}0$}};
+  \draw[->] (idle) -- node[above, font=\tiny, align=center] {$hop\_fire$\\\& $sample\_valid$} (p1);
+  \draw[->] (p1) -- node[above, font=\tiny] {$addr\_cnt{=}639$} (p2);
+  \draw[->] (p2) -- node[right, font=\tiny] {$\tau>\tau_{\max}$} (post);
+  \draw[->] (post) -| node[below left, font=\tiny, pos=0.2] {$f0\_valid{=}1$} (idle);
+  \draw[->] (idle) -- node[left, font=\tiny, align=right] {$r0{<}thr$\\/ DC / clip} (edge);
+  \draw[->] (edge) -- node[below, font=\tiny] {$f0\_valid{=}1$ (0x0000)} (idle);
+  \node[anchor=west, text width=12cm] at (0,-1.6)
+    {Tín hiệu điều khiển datapath: \texttt{ena\_mac}, \texttt{ena\_win}, \texttt{addr\_cnt[9:0]}, \texttt{tau\_cnt},
+     \texttt{sample\_valid}/\texttt{ready}, \texttt{f0\_valid}. Chuyển trạng thái luôn kèm điều kiện boolean --- không ``bong bóng trừu tượng''.};
+\end{tikzpicture}
+\caption{FSM mức RTL: điều kiện chuyển + tín hiệu \texttt{ena\_*}/\texttt{addr\_cnt}/\texttt{valid}. EDGE bảo đảm zero/DC/clip không treo.}
+\label{fig:fsm_edge}
+\end{figure}
+
+\begin{costbox}
+Đường MAC @50~MHz: RTF$\approx 0{,}2$ (Phần~B). Đường FFT-IP: đo lại sau generate (latency FFT+IFFT + mag$^2$ + ST pacing). Ngân sách sơ bộ Cyclone~V SX 5CSXFC6: DSP và M10K dư cho 1 pipeline pitch.
+\end{costbox}
+
+\subsection*{C.14. Cổng T2b --- sau khi có IP}
+Khi generate FIR/FFT: chạy \texttt{\_model.m} / HDL sim vs twin; khóa bảng sai số chấp nhận. Đường MAC vẫn T3 $=$ 0-bit với golden. Edge vectors bắt buộc: \textbf{zero, DC thuần, clipping} (cùng zero/DC/clip trong testbench Phần~D).
+

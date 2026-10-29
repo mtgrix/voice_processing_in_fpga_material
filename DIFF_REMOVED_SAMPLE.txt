@@ -1,0 +1,63 @@
+        \item \emph{Nhánh Pitch (Mục 1.3.5):} Thực thi thuật toán tự tương quan trên khung $40\text{ ms}$ ($640$ mẫu) với bước nhảy $10\text{ ms}$ ($160$ mẫu) bằng 1 bộ MAC tuần tự duy nhất.
+        help="export .hex files to directory (default: chapter01/hex)",
+    Khung $400$ mẫu ($25\text{ ms}$) của STFT ở Mục 1.3 chỉ chứa được $1{,}8$ chu kỳ của giọng nam $75\text{ Hz}$, hoàn toàn không đủ không gian để bản trượt $x[n+\tau]$ bao trọn chu kỳ lặp lại thứ hai. Vì vậy độ dài $L = 640\text{ mẫu}$ là bắt buộc về mặt toán học.
+    \item \textbf{Cột 1 --- FPGA RTL Fabric (Phần cứng xử lý tín hiệu số):} Tiếp nhận đầu vào chính là tệp âm thanh WAV được nạp qua bộ đệm HPS/DMA (hoặc tùy chọn từ microphone I\textsuperscript{2}S $24\text{ kHz}$). Tín hiệu đi qua bộ hạ mẫu đa nhịp FIR $24\text{ kHz} \to 16\text{ kHz}$ (phù hợp chuẩn tiếng nói) và bộ lọc thông cao HPF $60\text{ Hz}$ kèm thuật toán cắt khoảng lặng (Mục 1.1.5). Sau đó, dữ liệu rẽ thành 2 nhánh:
+    \item \textbf{Khi triển khai thực tế trên vi mạch FPGA (Hệ thống mục tiêu):} Bo mạch FPGA DE10-Standard gánh trọn vẹn khâu tiền xử lý (HPF 60 Hz và cắt lặng) và khối đo cao độ tự tương quan Mục 1.3.5, xuất ra tệp âm thanh sạch và mảng nhị phân \texttt{pitch\_f0.bin} ra Thư mục dùng chung (Shared Folder). Máy chủ tiếp nhận âm thanh sạch để chạy Whisper (hoặc trích Log-Mel) lấy mốc từ, rồi đọc trực tiếp \texttt{pitch\_f0.bin} để căn chỉnh và chấm điểm $r$, \textbf{hoàn toàn không cần cài đặt hay chạy Praat/Parselmouth}.
+    \item \textbf{Mục 1.2 \& 1.3} định nghĩa không gian đặc trưng Log-Mel 80 chiều đại diện cho khẩu hình và cộng hưởng thanh đạo, phục vụ trực tiếp bộ mã hóa Whisper ASR (chạy trên Server).
+    \item \textbf{Mục 1.3.5} hoàn thiện thiết kế phần cứng đo cao độ $F_0$ thời gian thực trên FPGA DE10-Standard, xuất mảng nhị phân \texttt{pitch\_f0.bin} và tệp âm thanh sạch sang thư mục chia sẻ.
+    \node (hpf) at (0, -3.6) [rtl] {HPF $60\text{ Hz}$ + Cắt lặng\\(Mục 1.1.5)};
+    \node (pitch_hw) at (3.8, -6.2) [rtl] {\textbf{Nhánh Pitch (Mục 1.3.5)}\\Tự tương quan $F_0$\\khung $40\text{ ms}$ / bước $10\text{ ms}$};
+    \textit{Ví dụ số:} Nếu tổng của 427 mẫu là $21.350$, thì $\mu_{\text{local}} = 21.350 / 427 = 50$, và từng mẫu trong khung được trừ đi $50$ ($x_{\text{zm}}[n] = x[n] - 50$) để triệt tiêu hoàn toàn thành phần DC. Trong mã nguồn triển khai FPGA (\texttt{lab\_1\_3\_5.py}), ta chọn tính trung bình cục bộ trên toàn bộ $K = L = 640\text{ mẫu}$ ($\text{mean\_x} = (\sum x + 320) // 640$) nhằm đơn giản hóa vi kiến trúc (tránh việc quản lý thêm con trỏ đệm con $427$ mẫu so với Praat), trong khi bộ lọc thông cao HPF $60\text{ Hz}$ ở Mục 1.1.5 đã triệt tiêu hầu hết hiện tượng trôi DC từ đầu vào.
+1. python chapter01/lab_1_3_5.py --selftest
+2. python chapter01/lab_1_3_5.py --export-hex chapter01/hex
+3. python -m pytest chapter01/test_lab_1_3_5.py
+4. python chapter01/verify_tiers.py
+Bảng~\ref{tab:verification_tiers} tổng hợp kết quả chạy thực nghiệm từ tập lệnh \texttt{chapter01/verify\_tiers.py}:
+Con số $16\text{ kHz}$ trong \texttt{evaluator.py} trùng với tần số $f_s$ ở Mục 1.3 của tài liệu, nhưng chỉ phục vụ cho mạng nơ-ron Whisper. Whisper biến đổi âm thanh $16\text{ kHz}$ thành vector \textbf{Log-Mel Spectrogram} để nhận diện từ --- chính là loại đặc trưng đã xóa bỏ cao độ. Ngược lại, luồng đo cao độ Praat giữ nguyên tín hiệu $24\text{ kHz}$ để bảo toàn độ phân giải chu kỳ thanh quản. Đây là minh chứng thực tế rõ nét cho mô hình \textbf{Hai Luồng Xử Lý Song Song} mà tài liệu đã đề xuất ở Mục 1.3.5, phần 0.
+Các tệp HEX sinh ra có định dạng mã hex 4 ký tự trên mỗi dòng (tương ứng một từ nhớ 16-bit). Trích đoạn 5 dòng đầu tiên của 4 tệp trong \texttt{chapter01/hex/}:
+Dưới đây là toàn bộ mã nguồn triển khai chuẩn mực bằng \textbf{C++20} (\path{chapter01/lab_1_3_5.cpp}), hoàn toàn độc lập, sử dụng số nguyên 64-bit và phép chia floor chuẩn, bảo đảm kết quả đầu ra khớp $100\%$ từng bit với mô hình Python và phần cứng FPGA:
+Exported .hex files to chapter01\hex
+HEX_DIR = Path("chapter01/hex")
+Khung phân tích & Frame & Đoạn gồm $L$ mẫu tín hiệu liên tiếp dùng để tính một giá trị $F_0$ (Mục 1.3.5, phần 2). \\
+Kết quả đánh giá cuối cùng là hệ số tương quan Pearson ($r$) giữa hai đường cao độ đã được căn chỉnh thời gian. Đây chính là dạng bài toán mà Mục 1.3.5 (phần 0) đã khẳng định: \textit{``đối sánh tương quan Pearson ($r$) với các công cụ âm học chuẩn mực phòng thí nghiệm như Praat''}.
+Mục 1.3 đã biến 400 mẫu áp suất không khí thành 80 con số Log-Mel để phục vụ các mạng nơ-ron nhận dạng từ khóa. Nhưng các con số đó hoàn toàn câm lặng trước một đặc trưng sinh lý học cơ bản của con người: \textbf{Cao độ (Pitch / Tần số cơ bản $F_0$)} --- tần số rung của dây thanh quản. Mục này giải thích tại sao không thể dùng phổ STFT để đo $F_0$, bóc tách bản chất giải thuật tự tương quan thời gian theo tinh thần mã nguồn Praat (\texttt{Sound\_to\_Pitch.cpp}, Boersma 1993), tối giản hóa các phép toán giải tích phức tạp thành các khối phần cứng thân thiện (chỉ dùng nhân-cộng và so sánh), và định lượng tài nguyên silicon trên kit FPGA DE10-Standard (Intel Cyclone V).
+Phương pháp trực giác ngây thơ nhất là: \textit{Mục 1.3 đã tính sẵn biến đổi Fourier rời rạc (FFT 512 điểm), vậy tại sao không tìm bin có biên độ lớn nhất ($\text{argmax}$) ở dải tần số thấp để làm $F_0$?}
+Tiền xử lý lọc thông cao & Bắt buộc bộ lọc HPF 60 Hz (Mục 1.1.5) & Không có bước lọc nào trước Praat & Lệch quy trình, chấp nhận được với TTS \\
+Trong Mục 4 (khung ``Cổng kiểm chứng phần mềm''), tài liệu yêu cầu tín hiệu trước khi tính tương quan phải đi qua bộ lọc HPF 60 Hz (Mục 1.1.5) để dập tắt trôi DC và nhiễu cơ học. Mã nguồn Python đưa thẳng tín hiệu tổng hợp vào Praat mà không lọc. Do Kokoro là âm thanh tổng hợp sạch nên ảnh hưởng không lớn, nhưng đây là một điểm lệch quy trình so với chuẩn thiết kế vi mạch.
+Trong chuỗi xử lý tiếng nói ở biên (Edge Voice AI), các kỹ sư thường mắc một ngộ nhận kinh điển: nghĩ rằng vector Log-Mel Spectrogram ở Mục 1.3 đã chứa đủ mọi thông tin để giải quyết mọi bài toán.
+Trước khi đưa thiết kế lên FPGA, bắt buộc phải dựng một mô hình Python tối giản (Bit-accurate Fixed-Point Model) mô phỏng đúng khung 640 mẫu, cửa sổ Hanning và 187 lag số nguyên. Đem mô hình này chạy trên tập dữ liệu âm thanh đã lọc tiền xử lý (HPF 60 Hz ở Mục 1.1.5) để đối sánh trực tiếp với đường Pitch chuẩn của Praat (đo sai số lệch chuẩn Hz và hệ số tương quan Pearson $r$). Chỉ khi phiên bản Python tối giản này chứng minh được độ suy giảm chất lượng nằm trong ngưỡng chấp nhận được của bài toán nhận diện thanh điệu/ngữ điệu, các con số hạch toán phần cứng bên dưới mới có giá trị thực tiễn.
+Tài liệu Mục 1.3.5 dùng ký hiệu $r_x[\tau]$ cho \textbf{hàm tự tương quan chuẩn hóa theo độ trễ $\tau$} (Công thức~\eqref{eq:rx_approx_bar_r}--\eqref{eq:c_tau_def}), trong khi mã nguồn Python dùng biến \texttt{r}, \texttt{mean\_r} để chỉ \textbf{hệ số tương quan tuyến tính Pearson} giữa hai đường cao độ. Hai đại lượng này hoàn toàn khác nhau về bản chất toán học:
+Tổng tự tương quan $\mathcal{R}_x[\tau]$ & Autocorrelation sum & Công thức~\eqref{eq:raw_autocorr} của Mục 1.3.5: tổng tích các cặp mẫu trễ $\tau$, \textbf{không phải là tích chập}. \\
+\begin{lstlisting}[language=C++, caption={Mã nguồn C++20 chuẩn mực bit-accurate triển khai giải thuật đo cao độ FPGA (trích đoạn các hàm lõi từ \texttt{chapter01/lab\_1\_3\_5.cpp}).}]
+\caption{Bảng tổng hợp đối chiếu toàn diện giữa thiết kế lý thuyết Mục 1.3.5 và mã nguồn thực tế.}
+\caption{Đối chiếu chi tiết giữa lệnh gọi \texttt{snd.to\_pitch()} và các công thức của Mục 1.3.5.}
+\noindent\textbf{Kết luận:} Dòng mã \texttt{pitch\_object = snd.to\_pitch()} chính là sự hiện thực hóa trọn vẹn của Thẻ công thức Mục 1.3.5, nhưng ở phiên bản phần mềm máy tính đầy đủ (sử dụng Viterbi 15 ứng viên, nội suy Sinc dưới mẫu, nhánh phần mềm trong Hình~\ref{fig:viterbi_vs_fpga}), chứ không phải phiên bản FPGA streaming rút gọn ở Mục 4 và Mục 6.
+\renewcommand{\thefigure}{1.3.5\alph{figure}}
+\renewcommand{\thetable}{1.3.5\alph{table}}
+\section*{1.3.5 Đo Cao Độ Tiếng Nói (\texorpdfstring{$F_0$}{F0} / Pitch): Từ Bản Chất Praat Đến Vi Kiến Trúc FPGA}
+\section*{Phụ lục 1.3.5-A: Áp dụng lý thuyết 1.3.5 vào mã nguồn Python\\(\texttt{audio\_processing.py} và \texttt{evaluator.py})}
+\setmainfont{Times New Roman}
+\setmonofont{Consolas}
+\setsansfont{Segoe UI}
+\subsection*{3. \texttt{extract\_features\_praat}: Một Dòng Code Chứa Toàn Bộ Mục 1.3.5}
+\subsection*{9. Bảng Tổng Hợp So Sánh Toàn Diện: Lý Thuyết Mục 1.3.5 vs. Mã Nguồn Python}
+\textbf{Phạm vi và Mục tiêu:} Phụ lục này đối chiếu hai tệp mã nguồn xử lý âm thanh trong thư mục \texttt{Pronunciation\_Final\_Master} của kho lưu trữ \texttt{DucDocDao/Pitch-Project} (nhánh \texttt{main}) với hệ thống lý thuyết đo cao độ $F_0$ bằng thuật toán tự tương quan ở Mục 1.3.5 (chuẩn Praat, Boersma 1993). Để làm sáng tỏ toàn bộ luồng gọi hàm, phụ lục khảo sát thêm các đoạn mã liên kết trong \texttt{main.py}, \texttt{visualizer.py}, \texttt{generate\_audio.py} và \texttt{sentence\_data.py}. Mọi hành vi mô tả dưới đây đều được truy xuất trực tiếp từ mã nguồn thực tế và đối chiếu tường minh với mã nguồn C++ gốc của Praat (\texttt{fon/Sound\_to\_Pitch.cpp} và \texttt{fon/Pitch.cpp}).
+\textbf{Đặc tính kỹ thuật} & \textbf{Thiết kế Lý thuyết Mục 1.3.5} & \textbf{Mã nguồn Python (\texttt{Pitch-Project})} & \textbf{Đánh giá \& Hệ quả kỹ thuật} \\ \midrule
+chapter01/test_lab_1_3_5.py::test_boundary_interpolation_590hz_and_75hz PASSED [ 46%]
+chapter01/test_lab_1_3_5.py::test_compensation_table_is_monotone_and_fits_q3_13 PASSED [ 20%]
+chapter01/test_lab_1_3_5.py::test_export_hex_creates_valid_files PASSED  [ 93%]
+chapter01/test_lab_1_3_5.py::test_integer_detector_is_deterministic_across_repeated_runs PASSED [ 53%]
+chapter01/test_lab_1_3_5.py::test_integer_detector_matches_float_on_worked_example PASSED [ 33%]
+chapter01/test_lab_1_3_5.py::test_median3_preserves_monotone_run PASSED  [ 80%]
+chapter01/test_lab_1_3_5.py::test_median3_removes_a_single_frame_octave_spike PASSED [ 73%]
+chapter01/test_lab_1_3_5.py::test_octave_cost_sweep_matches_simulation PASSED [ 86%]
+chapter01/test_lab_1_3_5.py::test_parabolic_interpolation_sub_cent_accuracy PASSED [ 40%]
+chapter01/test_lab_1_3_5.py::test_pitch_f0_q12_4_protocol PASSED         [100%]
+chapter01/test_lab_1_3_5.py::test_scoring_rom_is_compensation_times_a_penalty_at_most_one PASSED [ 26%]
+chapter01/test_lab_1_3_5.py::test_silence_gate_rejects_quiet_frame PASSED [ 66%]
+chapter01/test_lab_1_3_5.py::test_silence_is_unvoiced PASSED             [ 60%]
+chapter01/test_lab_1_3_5.py::test_window_multiply_keeps_q15_scale PASSED [ 13%]
+chapter01/test_lab_1_3_5.py::test_window_rom_is_full_length_and_bounded PASSED [  6%]
+Đoạn mã dưới đây là phần lõi thực thi số nguyên thuần túy trong \texttt{chapter01/lab\_1\_3\_5.py}. Mã nguồn nạp sẵn các bảng ROM toàn cục, dùng đúng các phép toán bù hai, và không gọi bất kỳ hàm số thực hay thư viện ngoài nào trong vòng lặp khung:
+Để làm thước đo trung gian trước khi chuyển sang số nguyên, ta xây dựng mô hình dấu phẩy động gọi là \textbf{Float Twin} trong \texttt{chapter01/lab\_1\_3\_5.py}. Cần lưu ý rõ ràng: Float Twin \textbf{không phải} là bản sao nguyên si của mã nguồn Praat C++, mà là bản mô hình phần mềm song sinh được tinh giản có chủ đích với \textbf{5 điểm khác biệt} nhằm tương thích hoàn toàn với kiến trúc phần cứng FPGA:
+Để nạp các bảng tra Hanning, hệ số bù suy hao và bảng tra cao độ vào các khối nhớ M10K BRAM trên FPGA bằng chỉ thị tổng hợp \texttt{\$readmemh}, các hàm \texttt{f0\_rom\_hz()}, \texttt{export\_golden\_vectors()} và \texttt{export\_hex()} trong \texttt{chapter01/lab\_1\_3\_5.py} thực hiện xuất dữ liệu ra thư mục \texttt{chapter01/hex/} theo định dạng Intel HEX 16-bit. Đoạn mã dưới đây là \emph{phần cuối} của cùng một tập lệnh với đoạn mã ở Mục 4.2: chép nối tiếp hai đoạn theo đúng thứ tự trong tài liệu sẽ thu được một tệp \texttt{.py} chạy được nguyên vẹn, không cần sửa một ký tự nào.

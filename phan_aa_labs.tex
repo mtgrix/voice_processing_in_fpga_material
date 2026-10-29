@@ -1,0 +1,129 @@
+\newpage\section*{Phần AA. Lab giấy mở rộng --- 15 bài có đáp án số}
+\subsection*{AA.1. DFT 8 của xung chữ nhật --- lời giải đầy đủ}
+$x=[1,1,1,1,0,0,0,0]$. Từng $k$:
+\begin{center}\small\begin{tabular}{@{}rrrrr@{}}
+\toprule $k$ & Re & Im & $|X|$ & $|X|^2$ \\ \midrule
+0 & 4.0000 & 0.0000 & 4.0000 & 16.0000 \\
+1 & 1.0000 & -2.4142 & 2.6131 & 6.8284 \\
+2 & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+3 & 1.0000 & -0.4142 & 1.0824 & 1.1716 \\
+4 & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+5 & 1.0000 & 0.4142 & 1.0824 & 1.1716 \\
+6 & 0.0000 & 0.0000 & 0.0000 & 0.0000 \\
+7 & 1.0000 & 2.4142 & 2.6131 & 6.8284 \\
+\bottomrule\end{tabular}\end{center}
+Parseval: $\sum|x|^2=4$, $\frac1N\sum|X|^2=4$ --- khớp.
+\subsection*{AA.2. Linear vs circular autocorr}
+$x=[1,2,3]$. Linear $\mathcal{R}$: 
+$\tau=0: 14.0$; 
+$\tau=1: 8.0$; 
+$\tau=2: 3.0$; 
+. Circular (FFT): 
+$\tau=0: 14.0$; 
+$\tau=1: 11.0$; 
+$\tau=2: 11.0$; 
+. Pad 3 zero: 
+$\tau=0: 14.0$; 
+$\tau=1: 8.0$; 
+$\tau=2: 3.0$; 
+ --- padded khớp linear trên $\tau<3$.
+\subsection*{AA.3. Hanning năng lượng $N=16$}
+$\mathcal{R}_w[0]=\sum w^2=6.375000$. Coherent gain $\mathrm{mean}(w)=0.5312$.
+\begin{center}\scriptsize\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule $i$ & $w$ & $i$ & $w$ & $i$ & $w$ & $i$ & $w$ \\ \midrule
+1 & 0.0338 & 5 & 0.6368 & 9 & 0.9915 & 13 & 0.4539 \\
+2 & 0.1305 & 6 & 0.8013 & 10 & 0.9251 & 14 & 0.2771 \\
+3 & 0.2771 & 7 & 0.9251 & 11 & 0.8013 & 15 & 0.1305 \\
+4 & 0.4539 & 8 & 0.9915 & 12 & 0.6368 & 16 & 0.0338 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{AA.4. $C[\tau]$ $N=16$ bảng}
+\begin{center}\scriptsize\begin{tabular}{@{}rrrrrr@{}}
+\toprule $\tau$ & $C$ & $\tau$ & $C$ & $\tau$ & $C$ \\ \midrule
+0 & 1.0000 & 3 & 1.2287 & 6 & 2.3342 \\
+1 & 1.0230 & 4 & 1.4455 & 7 & 3.2337 \\
+2 & 1.0955 & 5 & 1.7880 & 8 & 4.7910 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{AA.5. Parabolic 5 case + Q12.4}
+\begin{center}\small\begin{tabular}{@{}rrrrrr@{}}
+\toprule $y_-$ & $y_*$ & $y_+$ & $\tau$ & $F_0$ & Q12.4 \\ \midrule
+0.4 & 0.5 & 0.46 & 80.214 & 199.47 & 3191 \\
+0.35 & 0.6 & 0.55 & 100.333 & 159.47 & 2551 \\
+0.5 & 0.52 & 0.4 & 119.643 & 133.73 & 2140 \\
+0.2 & 0.7 & 0.65 & 64.409 & 248.41 & 3975 \\
+0.45 & 0.48 & 0.47 & 90.250 & 177.29 & 2837 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{AA.6. DC-blocker 16 mẫu $\alpha=0{,}9$}
+\begin{center}\scriptsize\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule $n$ & $y$ & $n$ & $y$ & $n$ & $y$ & $n$ & $y$ \\ \midrule
+0 & 0.0000 & 4 & 0.8100 & 8 & 0.5314 & 12 & 0.3487 \\
+1 & 0.0000 & 5 & 0.7290 & 9 & 0.4783 & 13 & 0.3138 \\
+2 & 1.0000 & 6 & 0.6561 & 10 & 0.4305 & 14 & 0.2824 \\
+3 & 0.9000 & 7 & 0.5905 & 11 & 0.3874 & 15 & 0.2542 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{AA.7. FIR 3-tap folding}
+$h=[1,2,1]/4$, $x=[4,0,4,0,4,0,4]$. Folding: $y=\frac14(1\cdot(x[n]+x[n-2])+2x[n-1])$.
+Kết quả $y=$ 1.000, 2.000, 2.000, 2.000, 2.000, 2.000, 2.000, 2.000, 1.000.
+\subsection*{AA.8. Polyphase $2/3$ đếm 30 mẫu}
+30 in $\Rightarrow$ kỳ vọng 20 out. Lịch: out tại phase pattern lặp mỗi 3 clk với 2 yes.
+Assert pytest: \texttt{n\_out == 20}.
+\subsection*{AA.9. BFP vector}
+$m=[100,-80,40,-10]$, thresh 64. Dịch phải 1 lần: $e=1$, $m=[50,-40,20,-5]$. Power bin0 với $2e$: $50^2\cdot4=10000$ $=100^2$.
+\subsection*{AA.10. Non-restoring $19\div4$}
+Quotient 4 remainder 3. $4\cdot4+3=19$. TB in 5 iter A,Q.
+\subsection*{AA.11. Viterbi 4 khung số}
+$\delta_V=[0.5,0.48,0.3,0.47]$, $\delta_U=0.45$, jump V--V$=0.05$ nếu $|\\Delta f|$ lớn else 0, vuv$=0.14$.
+Cum thủ công: ưu tiên giữ V trừ khung 3 ($\\delta_V=0.3$ thua UV+vuv từ V). Path: V V UV V hoặc V V V V tùy jump --- bài tập điền.
+\subsection*{AA.12. I2S đếm bit $16$~kHz}
+$f_s=16$k, 64 bit/frame $\Rightarrow$ SCLK$=1.024$~MHz. MCLK $256\times=4.096$~MHz. PLL từ 50~MHz: tỉ số $4.096/50=0.08192$.
+\subsection*{AA.13. Octave cost bảng}
+\begin{center}\small\begin{tabular}{@{}rrrr@{}}
+\toprule $f$ & $\log_2(600/f)$ & $0.01\cdot\log$ & $s$ nếu $r_a=0.5$ \\ \midrule
+75 & 3.0000 & 0.0300 & 0.4700 \\
+100 & 2.5850 & 0.0258 & 0.4742 \\
+150 & 2.0000 & 0.0200 & 0.4800 \\
+200 & 1.5850 & 0.0158 & 0.4842 \\
+300 & 1.0000 & 0.0100 & 0.4900 \\
+400 & 0.5850 & 0.0058 & 0.4942 \\
+500 & 0.2630 & 0.0026 & 0.4974 \\
+600 & 0.0000 & 0.0000 & 0.5000 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{AA.14. Q1.15 nhân cắt}
+$a=b=\mathrm{round}(0.1\cdot32767)=3277$. $a\cdot b=10738729$. Q2.30; lấy bit $[30:15]$: $\gg15 =327$; float lại $327/32767\\approx0.01$ --- khớp $0.1^2$.
+\subsection*{AA.15. Ready/valid 12 clk}
+valid=111011101111, ready=110110111011. Transfers tại clk nơi cả 1: liệt kê.
+Transfer clk: 0, 1, 4, 6, 8, 10, 11 (tổng 7).
+\newpage\section*{Phần AB. Ánh xạ cyclne V DSP --- ví dụ số}
+\subsection*{AB.1. Pre-adder FIR}
+Hai mẫu $x_0=1000$, $x_{N-1}=800$, $h=0{,}25$ Q1.15$=8192$.
+Pre-add $1800$; $\times8192=14745600$; scale $\gg15=450$. So $0{,}25*(1000+800)=450$ khớp.
+
+\subsection*{AB.2. 18$\times$19 vs 27$\times$27}
+Data 16 + coeff 16: đủ 18$\times$19. Accum cần 16+16+$\log_2(N)$ bit --- order 64: +6 = 38 bit; DSP 64-bit accum OK.
+
+\subsection*{AB.3. Infer fail khi nào}
+Reset async trên thanh ghi nhân; hoặc biến intermediate chưa đăng ký giữa $*$ và $+$. Fix: pipeline reg sau mọi DSP out.
+
+\newpage\section*{Phần AC. Checklist đọc mã Praat --- dòng neo}
+\begin{center}\small\begin{tabular}{@{}p{2.2cm}p{9cm}@{}}
+\toprule Vùng (xấp xỉ) & Việc \\
+\midrule
+60--90 & localMean loops \\
+100--160 & window apply + zero pad \\
+146--155 & FFT forward, power, IFFT \\
+162--163 & chia windowR \\
+185--200 & local maxima + voicingThreshold/2 \\
+200--260 & sinc / Brent refine \\
+268--303 & method Hanning/Gaussian params \\
+363+ & globalPeak \\
+407--421 & build window + windowR \\
+Pitch.cpp 524+ & pathFinder Viterbi \\
+\bottomrule
+\end{tabular}\end{center}
+Số dòng theo bản nguồn trên box \texttt{/workspace/praat\_src}; khi upstream đổi, tìm theo chuỗi khóa.
+
+
+\newpage
+\begin{firstprin}{Sang Phụ lục A (v10 nguyên văn)}
+Phụ lục~A ngay sau đây giữ nguyên nội dung ứng dụng Python/Whisper/Pearson từ bản v10.
+Nhật ký selftest/pytest nằm cuối phụ lục --- chạy lại trên thư mục gói này trước khi tin bitstream.
+\end{firstprin}

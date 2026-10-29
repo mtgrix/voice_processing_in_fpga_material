@@ -1,0 +1,464 @@
+\section*{Phần Q. Chuyên đề đào sâu (Physics$\to$Math$\to$Toy$\to$HW)}
+\begin{firstprin}{Phần Q}
+Mỗi chuyên đề Q.$i$ là một bài giảng ngắn theo nhịp Physics / Math / Toy / HW.
+\end{firstprin}
+\subsection*{Q.1. Dao động dây thanh}
+\subsubsection*{Vật lý}
+Hai nếp dây thanh khép/mở nhờ luồng khí và Bernoulli. Chu kỳ $T_0$ = cao độ. Xung glottal giàu hài, không phải sine. Breathy $\Rightarrow$ đỉnh autocorr thấp $\Rightarrow$ voicing threshold.
+\subsubsection*{Toán}
+Mô hình: $g(t)=\sum_k a_k \delta(t-kT_0)$ lọc lowpass. Thêm nhiễu: $\mathbb{E}[r_a[T_0]]\approx 1/(1+\mathrm{SNR}^{-1})$.
+\subsubsection*{Đồ chơi}
+$T_0=8$, xung dài 64, $\sigma=0{,}1$: ước $r_a[8]$ trước/sau nhiễu.
+\subsubsection*{Phần cứng / twin}
+FPGA không mô hình glottal. Breathy speech $\Rightarrow$ UV nhiều không phải lỗi RTL.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.2. Phổ vạch và formant}
+\subsubsection*{Vật lý}
+Source-filter: $s=g*v$. Formant = envelope phổ. Autocorr vẫn thường còn đỉnh $T_0$.
+\subsubsection*{Toán}
+Khi $V(f)$ chậm so với khoảng $F_0$, đỉnh $T_0$ sống. $F_0$ cao + formant thấp $\Rightarrow$ khó hơn.
+\subsubsection*{Đồ chơi}
+Sine 200+500~Hz vs chỉ 200: so $\mathcal{R}$ tại $\tau=f_s/200$.
+\subsubsection*{Phần cứng / twin}
+Tol checklist E phải có speech case, không chỉ sine.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.3. Lấy mẫu và alias trên DE10}
+\subsubsection*{Vật lý}
+SSM2603 delta-sigma + decimate nội bộ. Vẫn tránh RF vào line-in.
+\subsubsection*{Toán}
+Nyquist $f_s>2B$. Speech 16~kHz đủ cho $F_0$ + formant thấp.
+\subsubsection*{Đồ chơi}
+Tone 9~kHz sample 16~kHz $\to$ alias 7~kHz. Công thức $|f-mf_s|$.
+\subsubsection*{Phần cứng / twin}
+PLL MCLK đúng ppm; I2S từ cùng PLL.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.4. Cửa sổ --- chính lob và rò}
+\subsubsection*{Vật lý}
+Nhân cửa sổ $=$ tích chập phổ. Hanning sidelobe $\sim-31$~dB; rectangular $-13$~dB.
+\subsubsection*{Toán}
+Chính lob Hanning $\sim4$ bin. $L$ gấp đôi $\Rightarrow$ độ phân giải tần số mịn $\times2$.
+\subsubsection*{Đồ chơi}
+DFT Hanning $N=32$ pad 256: đo sidelobe đầu (dB).
+\subsubsection*{Phần cứng / twin}
+ROM gen offline; không CORDIC trừ lab.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.5. Wiener--Khinchin}
+\subsubsection*{Vật lý}
+Tích chập $x(-t)*x(t)$ $\leftrightarrow$ $|X(f)|^2$.
+\subsubsection*{Toán}
+DFT circular; zero-pad $\approx$ linear trên lag ngắn.
+\subsubsection*{Đồ chơi}
+$x=[1,1]$ pad 2 zero: IFFT $|X|^2$ so linear $\mathcal{R}$.
+\subsubsection*{Phần cứng / twin}
+FFT path = định lý; MAC = định nghĩa trực tiếp.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.6. Brent / golden-section}
+\subsubsection*{Vật lý}
+Tối ưu $\hat r(t)$ trên $(\tau-1,\tau+1)$ không đạo hàm.
+\subsubsection*{Toán}
+Golden ratio $\phi=(1+\sqrt5)/2$; Brent xen parabolic.
+\subsubsection*{Đồ chơi}
+$f(t)=-(t-0{,}3)^2$ trên $[-1,1]$: 3 vòng thu hẹp.
+\subsubsection*{Phần cứng / twin}
+Fabric: parabolic một shot. Brent $\to$ HPS.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.7. Log2 và octave}
+\subsubsection*{Vật lý}
+Cảm nhận cao độ $\approx$ log. Octave $=\times2=+12$ semitone.
+\subsubsection*{Toán}
+Semitone $=12\log_2(f_2/f_1)$. Jump cost $0{,}35$/octave.
+\subsubsection*{Đồ chơi}
+220$\to$247 vs 220$\to$440: tính $|\log_2|$ và cost.
+\subsubsection*{Phần cứng / twin}
+LUT log2 hoặc HPS; không IP log bắt buộc.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.8. Viterbi = longest path}
+\subsubsection*{Vật lý}
+Nút (frame,cand); cạnh = transitionCost; max cum score.
+\subsubsection*{Toán}
+$V(t,j)=\delta(t,j)+\max_i[V(t-1,i)-c_{ij}]$.
+\subsubsection*{Đồ chơi}
+2 khung 2 nút: điền bảng và khoanh path.
+\subsubsection*{Phần cứng / twin}
+$O(TK^2)$; fabric streaming tắt; HPS OK.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.9. Lỗi lượng tử fixed-point}
+\subsubsection*{Vật lý}
+Làm tròn $\approx$ nhiễu LSB. SNR $\approx6n$ dB.
+\subsubsection*{Toán}
+Q1.15 $\sim$98~dB lý thuyết. Nguy hiểm: trừ gần bằng, chia nhỏ.
+\subsubsection*{Đồ chơi}
+$0{,}1\times0{,}1$ Q1.15 cắt lại: sai số tương đối?
+\subsubsection*{Phần cứng / twin}
+Wide accum 40-bit; FIR full-precision accum.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\subsection*{Q.10. Avalon-ST handshake}
+\subsubsection*{Vật lý}
+valid/ready như AXI-Stream. Backpressure = FIFO đầy.
+\subsubsection*{Toán}
+readyLatency=0: transfer khi cả hai 1.
+\subsubsection*{Đồ chơi}
+Vẽ 10 clk; đếm beat vs FIR $2/3$.
+\subsubsection*{Phần cứng / twin}
+UG 683091 --- học một lần cho mọi IP.
+\vspace{0.25cm}\hrule\vspace{0.25cm}
+\newpage\section*{Phần R. Mười hai bước Praat --- trang neo}
+\subsection*{R.1. Resampling / soft upsample}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} aliasing gần Nyquist
+\item \textbf{Toán:} mask phổ $G[k]$
+\item \textbf{FPGA:} bỏ streaming; FIR+analog
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.2. Frame / hop / window length}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} 3 chu kỳ dây thanh
+\item \textbf{Toán:} $L=3f_s/F_{\min}$
+\item \textbf{FPGA:} 640/160 cố định
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.3. Local mean}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} DC phá $\mathcal{R}[0]$
+\item \textbf{Toán:} $\mu$ trên $\pm N_p$
+\item \textbf{FPGA:} mean\_sub + DC-block
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.4. Hanning / Gaussian}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} rò phổ
+\item \textbf{Toán:} $w=0{,}5-0{,}5\cos$
+\item \textbf{FPGA:} ROM Hanning
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.5. FFT autocorr}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} Wiener--Khinchin
+\item \textbf{Toán:} $\mathcal{R}=\mathcal{F}^{-1}|X|^2$
+\item \textbf{FPGA:} MAC default
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.6. Chia windowR}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} thiên vị cửa sổ
+\item \textbf{Toán:} $C=\mathcal{R}_w[0]/\mathcal{R}_w$
+\item \textbf{FPGA:} ROM $C[\tau]$
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.7. Candidates}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} đỉnh giả formant
+\item \textbf{Toán:} cực đại cục bộ
+\item \textbf{FPGA:} argmax K=1
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.8. Sinc / Brent}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} đỉnh giữa mẫu
+\item \textbf{Toán:} sinc / Brent
+\item \textbf{FPGA:} parabolic
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.9. Octave cost}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} bẫy $F_0/2$
+\item \textbf{Toán:} $\log_2$ penalty
+\item \textbf{FPGA:} optional/HPS
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.10. Silence / voicing}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} lặng / thở
+\item \textbf{Toán:} threshold
+\item \textbf{FPGA:} gate RTL
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.11. Jump / VUV costs}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} nhảy đột ngột
+\item \textbf{Toán:} transitionCost
+\item \textbf{FPGA:} HPS Viterbi
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\subsection*{R.12. Viterbi pathFinder}
+\begin{itemize}\setlength{\itemsep}{2pt}
+\item \textbf{Vật lý:} đường mượt
+\item \textbf{Toán:} DP cum
+\item \textbf{FPGA:} off fabric
+\item Trả lời phiếu G.5 trước khi xóa.
+\end{itemize}
+\newpage\section*{Phần S. Intel IP --- chuyên đề triển khai}
+\subsection*{S.1. FIR II coefficient bit-width}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} float$\to$Q1.15.
+\item \textbf{Đánh giá:} đáp ứng lệch.
+\item \textbf{Việc Quartus:} DSP 18$\times$19.
+\end{enumerate}
+\subsection*{S.2. FIR II order vs 60~Hz HP}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} transition width.
+\item \textbf{Đánh giá:} order 64 đủ?.
+\item \textbf{Việc Quartus:} đọc report.
+\end{enumerate}
+\subsection*{S.3. FFT twiddle width}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} phase noise.
+\item \textbf{Đánh giá:} 16-bit.
+\item \textbf{Việc Quartus:} M10K ROM.
+\end{enumerate}
+\subsection*{S.4. FFT burst vs stream}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} area vs latency.
+\item \textbf{Đánh giá:} burst OK pitch.
+\item \textbf{Việc Quartus:} lab.
+\end{enumerate}
+\subsection*{S.5. BFP vs soft float}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} exponent.
+\item \textbf{Đánh giá:} MAC vs FFT.
+\item \textbf{Việc Quartus:} twin scale.
+\end{enumerate}
+\subsection*{S.6. DSP inference}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} pipeline reg.
+\item \textbf{Đánh giá:} multstyle.
+\item \textbf{Việc Quartus:} avoid async reset trên DSP path.
+\end{enumerate}
+\subsection*{S.7. I2S clock cross}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} async FIFO.
+\item \textbf{Đánh giá:} gray.
+\item \textbf{Việc Quartus:} depth 8.
+\end{enumerate}
+\subsection*{S.8. Reset}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} PLL locked$\to$sync reset.
+\item \textbf{Đánh giá:} tránh X.
+\item \textbf{Việc Quartus:} TB.
+\end{enumerate}
+\subsection*{S.9. Timing 100~MHz}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} reg DSP out.
+\item \textbf{Đánh giá:} false path I2S.
+\item \textbf{Việc Quartus:} report slack.
+\end{enumerate}
+\subsection*{S.10. LPM\_DIVIDE latency}
+\begin{enumerate}\setlength{\itemsep}{2pt}
+\item \textbf{Vấn đề:} pipeline L.
+\item \textbf{Đánh giá:} 1 div/frame.
+\item \textbf{Việc Quartus:} UG 683490.
+\end{enumerate}
+\newpage\section*{Phần T. Hai mươi phiếu tự hỏi --- có hướng đáp}
+\begin{firstprin}{Không phải trang trống}
+Mỗi phiếu dưới đây kèm \emph{hướng đáp} ngắn (vật lý / toán / silicon / pytest). Học viên vẫn phải tự viết đồ chơi số.
+\end{firstprin}
+\subsection*{T.1. Phiếu #1 --- I2S / PLL}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``I2S / PLL, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} SCLK trôi $\Rightarrow$ thời gian mẫu sai $\Rightarrow$ $F_0$ bias ppm.
+\item \textbf{Toán neo:} $f_{\mathrm{SCLK}}=f_s\cdot64$.
+\item \textbf{Silicon:} PLL+div, $\sim$0 DSP.
+\item \textbf{Pytest:} TB MCLK counter.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.2. Phiếu #2 --- DC-block}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``DC-block, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} DC phình $\mathcal{R}[0]$ nuốt đỉnh $T_0$.
+\item \textbf{Toán neo:} $H=(1-z^{-1})/(1-\alpha z^{-1})$.
+\item \textbf{Silicon:} 0 DSP, $\le120$ LE.
+\item \textbf{Pytest:} step$\to0$; DC in $\to F_0=0$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.3. Phiếu #3 --- FIR HP/decimate}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``FIR HP/decimate, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Alias / hum 60 Hz phá đỉnh.
+\item \textbf{Toán neo:} polyphase $2/3$, folding.
+\item \textbf{Silicon:} FIR II DSP$\sim N/2$.
+\item \textbf{Pytest:} n\_out$\approx2n_{\mathrm{in}}/3$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.4. Phiếu #4 --- Mean + window}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Mean + window, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Thiên vị biên + DC cục bộ.
+\item \textbf{Toán neo:} $\tilde x=(x-\mu)w$.
+\item \textbf{Silicon:} ROM Hanning 2 M10K.
+\item \textbf{Pytest:} frame dump vs golden.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.5. Phiếu #5 --- AC MAC}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``AC MAC, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Không $\mathcal{R}$ $\Rightarrow$ không $T_0$.
+\item \textbf{Toán neo:} $\sum x[n]x[n+\tau]$.
+\item \textbf{Silicon:} 1--4 DSP.
+\item \textbf{Pytest:} sine 200 Hz $\tau^*=80$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.6. Phiếu #6 --- ROM $C[\tau]$}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``ROM $C[\tau]$, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Đạp đỉnh $\tau$ lớn (giọng trầm).
+\item \textbf{Toán neo:} $C=\mathcal{R}_w[0]/\mathcal{R}_w$.
+\item \textbf{Silicon:} 1 M10K.
+\item \textbf{Pytest:} C hex CRC; $r_a[\tau_{\max}]$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.7. Phiếu #7 --- Peak parabolic}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Peak parabolic, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Lỗi 0{,}5 mẫu $\sim0{,}6\%$ $F_0$.
+\item \textbf{Toán neo:} $\Delta=\frac12(y_--y_+)/(\cdots)$.
+\item \textbf{Silicon:} toán tổ hợp.
+\item \textbf{Pytest:} $|F_0-200|<1$ Hz.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.8. Phiếu #8 --- Voicing/silence}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Voicing/silence, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} UV/V nhầm $\Rightarrow$ Pearson sụt.
+\item \textbf{Toán neo:} $r_a\ge V$; peak vs silence.
+\item \textbf{Silicon:} cổng RTL.
+\item \textbf{Pytest:} zero/clip/noise cases.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.9. Phiếu #9 --- Divider $f_s/\tau$}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Divider $f_s/\tau$, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Sai quot $\Rightarrow$ sai Q12.4.
+\item \textbf{Toán neo:} non-restoring / LPM.
+\item \textbf{Silicon:} LPM pipeline.
+\item \textbf{Pytest:} $16000/80=200$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.10. Phiếu #10 --- Q12.4 pack}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Q12.4 pack, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Server đọc sai endian/thang.
+\item \textbf{Toán neo:} $\mathrm{round}(F_0\cdot16)$ LE.
+\item \textbf{Silicon:} wiring.
+\item \textbf{Pytest:} bytes 80 0C = 200 Hz.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.11. Phiếu #11 --- Octave cost}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Octave cost, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Bẫy $F_0/2$.
+\item \textbf{Toán neo:} $s-=c\log_2(\mathrm{ceil}/f)$.
+\item \textbf{Silicon:} HPS/optional.
+\item \textbf{Pytest:} cand 100 vs 200.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.12. Phiếu #12 --- Viterbi}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Viterbi, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Nhảy khung / UV rung.
+\item \textbf{Toán neo:} DP cum $-$ cost.
+\item \textbf{Silicon:} HPS only.
+\item \textbf{Pytest:} path vs Parselmouth.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.13. Phiếu #13 --- Avalon ready}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Avalon ready, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Overflow / mất mẫu.
+\item \textbf{Toán neo:} transfer iff $v\land r$.
+\item \textbf{Silicon:} handshake.
+\item \textbf{Pytest:} ready toggle TB.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.14. Phiếu #14 --- BFP (FFT lab)}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``BFP (FFT lab), hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Sai hàng chục dB power.
+\item \textbf{Toán neo:} $|m|^2\cdot2^{2e}$.
+\item \textbf{Silicon:} FFT IP.
+\item \textbf{Pytest:} model.m so.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.15. Phiếu #15 --- M10K RDW}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``M10K RDW, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Đọc nhầm New Data.
+\item \textbf{Toán neo:} Old Data only.
+\item \textbf{Silicon:} M10K.
+\item \textbf{Pytest:} sim conflict test.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.16. Phiếu #16 --- Soft upsample}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Soft upsample, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Sidelobe Nyquist bẩn $F_0$.
+\item \textbf{Toán neo:} mask $G[k]$.
+\item \textbf{Silicon:} offline/HPS.
+\item \textbf{Pytest:} optional.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.17. Phiếu #17 --- Sinc refine}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Sinc refine, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Bias parabolic còn.
+\item \textbf{Toán neo:} $\sum r\mathrm{sinc}$.
+\item \textbf{Silicon:} optional MAC.
+\item \textbf{Pytest:} Table1-ish.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.18. Phiếu #18 --- Global peak}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Global peak, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Silence sai.
+\item \textbf{Toán neo:} max $|x|$ utterance.
+\item \textbf{Silicon:} envelope IIR.
+\item \textbf{Pytest:} quiet frame UV.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.19. Phiếu #19 --- timeStepCorrection}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``timeStepCorrection, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} Cost lệch khi đổi hop.
+\item \textbf{Toán neo:} $\times0{,}01/\Delta t$.
+\item \textbf{Silicon:} HPS.
+\item \textbf{Pytest:} hop 5 ms $\times2$.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\subsection*{T.20. Phiếu #20 --- Twin 3-tầng}
+\textbf{Câu hỏi:} Nếu cắt/sai khối ``Twin 3-tầng, hiện tượng nào phá $F_0$?
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \textbf{Vật lý:} RTL ``đúng nhưng sai Praat.
+\item \textbf{Toán neo:} float / int / RTL.
+\item \textbf{Silicon:} pytest 18.
+\item \textbf{Pytest:} byte-exact dump.
+\item Tự làm: đồ chơi 4--8 mẫu + điền bảng E$^\star$.
+\end{itemize}
+\newpage\section*{Phần U. Bài giảng dài theo từng IP}
+\subsection*{U.1. FIR Compiler II từ đầu}
+Bắt đầu từ tích chập rời rạc. Mỗi hệ số là trọng số xung lực --- vật lý: đáp ứng xung của mạch analog tương đương. Đạo hàm symmetric folding tiết kiệm DSP. Polyphase: đổi biến tổng theo modulo $M$. Fractional $2/3$: lịch commutator 3-in/2-out (đã bảng J.9). Avalon-ST: SOP/EOP chỉ multi-channel; mono pitch dùng valid/ready. Rounding convergent giảm DC bias. Sau generate: đọc HTML report điền E$^\star$. Twin: cùng $h_q$, so dump khi ready toggle.
+
+\subsection*{U.2. FFT IP từ butterfly đầu tiên}
+DFT định nghĩa $O(N^2)$; Cooley--Tukey radix-2 $O(N\log N)$. Butterfly: 1 cộng, 1 trừ, 1 nhân $W$. Twiddle trên vòng tròn đơn vị --- ROM sin/cos. BFP: cùng exponent, tránh tràn từng bin. Power: $|m|^2\cdot 2^{2e}$. Pitch default không cần FFT nhưng lab phải bit-rev và scale đúng khi bật. Model \texttt{\_model.m} là golden gần IP.
+
+\subsection*{U.3. PLL từ PFD}
+PFD so cạnh ref và feedback. Lọc vòng (LF) tạo điện áp chỉnh VCO. Khóa khi pha ổn. Integer: $M/N/C$. Fractional: SDM làm giàu noise cao tần --- lọc vòng cắt. Audio MCLK cần ppm chặt; đo bằng counter dài trên TB hoặc scope. \texttt{locked} gate toàn hệ.
+
+\subsection*{U.4. M10K từ bit cell đến RDW}
+SRAM 6T cell. Port kép: hai addr. Conflict: silicon Cyclone V trả Old Data hoặc Don't Care --- không New Data. Frame buffer 640$\times$16: $\sim$2 M10K. ROM hex: \texttt{\$readmemh}. Twin: array Python, read-during-write trả cũ.
+
+\subsection*{U.5. LPM\_DIVIDE và non-restoring}
+Chia là trừ lặp có điều kiện. Non-restoring đổi dấu dư thay vì restore --- ít mux. LPM\_DIVIDE pipeline cho timing. $F_0=f_s/\\tau$ một lần/frame $\Rightarrow$ diện tích nhỏ vẫn OK tự viết. TB: $13\\div3$, $16000\\div80$. Không ALTDIV\_TENT.
+
+\subsection*{U.6. Avalon-ST xuyên pipeline pitch}
+Mỗi khối là producer/consumer. Backpressure lan ngược. Double-buffer frame tránh drop. Đồ chơi F.13 latency. TB bắt buộc ready toggle --- Argon fix đã yêu cầu.
+
+\subsection*{U.7. Q12.4 và hợp đồng với Server}
+Server đọc uint16 LE. Unvoiced $=0$. Không gửi float. Endian test trên HPS. Pearson $r$ dùng cùng thang --- nếu Server quên $/16$ sẽ sai hàng chục lần.
+
+\subsection*{U.8. DC-blocker bit-growth}
+Cực gần $z=1$ $\Rightarrow$ gain nội bộ lớn ở tần số thấp (trừ đúng DC zero). Giữ Q1.30. $\\alpha=1-2^{-8}$ shift-add. Twin \texttt{lfilter}. Step response bảng J.8.
+
+\subsection*{U.9. MAC autocorr engine}
+Hai port đọc BRAM (hoặc 1 port + reuse). Acc 40-bit. $\\tau$ tuần tự. Parallel 2--4 engine nếu RTF cần. So FFT: đơn giản, bit-exact dễ. Bảng J.2.
+
+\subsection*{U.10. Peak + voicing + pack}
+Argmax; parabolic; so VOICE\_Q; chia $f_s/\\tau$; $\\ll4$; LE bytes. Ba vector zero/DC/clip. Golden = RTL byte-exact.

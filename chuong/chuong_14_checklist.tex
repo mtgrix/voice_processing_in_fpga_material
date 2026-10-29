@@ -1,0 +1,61 @@
+\clearpage
+\phantomsection
+\section*{Chương 14. Checklist nộp bài (một lần duy nhất)}
+\addcontentsline{toc}{section}{Chương 14. Checklist nộp bài (một lần duy nhất)}
+\pdfbookmark[1]{Chương 14. Checklist nộp bài (một lần duy nhất)}{chuong14}
+
+\begin{learningobj}
+Trước khi nộp bài hoặc đóng gói bitfile, bạn đọc từng mục như một câu khẳng định có thể ký tên. Mỗi mục neo lại một quyết định thiết kế đã giải thích ở các chương trước; nếu mục nào chưa đúng, dừng và sửa trước khi sang mục sau.
+\end{learningobj}
+
+\begin{firstprin}{Checklist không phải nghi thức --- nó bắt lỗi hệ thống}
+Một đường pitch FPGA là chuỗi quyết định (MCLK, Old Data, Hanning $N-1$, ROM $C[\tau]$, parabolic, Q12.4 LE, Viterbi off\ldots). Sai một mắt xích thường không làm synth fail --- nó làm $F_0$ lệch im lặng. Checklist buộc bạn xác nhận lại từng mắt xích bằng chứng (twin xanh, Fitter report, Signal Tap), không chỉ ``nhớ là đã làm''.
+\end{firstprin}
+
+\subsection*{Chuỗi khẳng định (ký từng dòng)}
+
+\begin{enumerate}\setlength{\itemsep}{4pt}
+\item \textbf{Chuỗi đồng hồ và lấy mẫu.} PLL khóa thạch anh 50\,MHz tạo $MCLK=12.288$\,MHz; ADC codec chạy 48\,kHz; hạ mẫu $\times2$ xuống 24\,kHz; FIR polyphase tỉ số $2/3$ (chỉ nhánh $E_0$/$E_1$) đưa về 16\,kHz dành cho ước lượng cao độ. (Ch.~2, Ch.~4)
+\item \textbf{DC-blocker.} Thanh ghi phản hồi \texttt{y\_acc} rộng 32~bit; cập nhật $y\leftarrow y+x_\Delta-(y\ggg8)$; xuất $\mathrm{sat}_{16}(y\ggg15)$. Twin Python \texttt{dc\_blocker\_q15} khớp từng mẫu với RTL. (Ch.~3)
+\item \textbf{Bộ nhớ trượt.} On-Chip Memory True Dual-Port; chế độ mixed-port read-during-write = \textbf{Old Data}; twin mô phỏng đúng giá trị cũ khi hai cổng đụng cùng địa chỉ. (Ch.~5)
+\item \textbf{Cửa sổ.} ROM Hanning Q1.15 dạng cổ điển $N-1$, lưu nửa bảng nhờ đối xứng; nhân mẫu $\times$ hệ số trước MAC. (Ch.~6)
+\item \textbf{Tự tương quan.} Đường mặc định là MAC trực tiếp trên DSP; nếu lab bật FFT thì nhớ BFP và barrel shift $2^{2e}$ \emph{trước} IFFT. (Ch.~7)
+\item \textbf{Chuẩn hóa $C[\tau]$.} Dùng ROM $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (nhân thay chia runtime), trừ khi có lý do bắt buộc dùng LPM\_DIVIDE động. (Ch.~8)
+\item \textbf{Đỉnh và chia.} Argmax + nội suy parabolic; $F_0=f_s/\tau$ qua LPM\_DIVIDE; testbench chờ đúng latency đã cấu hình. (Ch.~9)
+\item \textbf{Voicing và làm mượt.} Cổng silence/voicing trên fabric; median-3 trên fabric (trễ một khung); Viterbi/\texttt{pathFinder} chỉ trên HPS nếu cần. (Ch.~10)
+\item \textbf{Avalon-ST.} Handshake \texttt{valid}/\texttt{ready} không làm mất mẫu: source giữ data khi bị backpressure. (Ch.~11)
+\item \textbf{Đóng gói.} Q12.4 little-endian; unvoiced $=0$; golden so với Praat trong dung sai đã ghi trong báo cáo. (Ch.~12)
+\item \textbf{Twin ba tầng.} Vector zero / DC / sine / clip đều xanh từ số thực $\to$ dấu phẩy tĩnh $\to$ RTL. (Ch.~13)
+\item \textbf{Báo cáo tài nguyên.} Ghi rõ ALM (hoặc LE), DSP, M10K, Fmax, và latency một khung --- lấy từ Fitter, không bịa.
+\item \textbf{Không dùng tên IP bịa.} Không ALTDIV\_TENT; không CIC cho tỉ số $2/3$; không MCLK 4.096\,MHz cho gói DE10 WM8731 này.
+\item \textbf{Giữ nguyên v10.} Phụ lục~A / các trang v10 (pp.1--38) không bị sửa nội dung.
+\end{enumerate}
+
+\subsection*{Bảng tự ký}
+
+\begin{center}\small\begin{tabular}{@{}lll@{}}\toprule
+Hạng mục & Người ký & Ngày \\
+\midrule
+RTL lint sạch & & \\
+Twin bit-exact & & \\
+Hardware smoke (DE10) & & \\
+Tài liệu đủ 8 yếu tố/chương & & \\
+\bottomrule
+\end{tabular}\end{center}
+
+\subsection*{Ví dụ ``đỏ $\to$ xanh'' trước khi nộp}
+
+\begin{firstprin}{Một triệu chứng, một nguyên nhân điển hình}
+Nếu golden sine 200\,Hz ra Q12.4 $=0$: thường voicing gate nuốt (silenceThreshold quá cao hoặc $P_{\mathrm{global}}$ chưa warmup). Nếu ra $\approx100$\,Hz: thường quên nhân $C[\tau]$ (đỉnh $2T_0$ thắng). Nếu ra $200$ nhưng bytes \texttt{0C 80}: đảo endian. Twin phải bắt từng lớp trước khi đụng Signal Tap.
+\end{firstprin}
+
+\noindent\textbf{Ví dụ tính tay đóng gói cuối.} $F_0=199{,}466$\,Hz (parabolic Ch.~9) $\to\mathrm{round}(199{,}466\cdot16)=3191$ $\to$ LE \texttt{77 0C}. UV $\to$ \texttt{00 00}.
+
+\begin{costbox}
+\textbf{Ngân sách ``ngày nộp'' --- giải thích từng mục.}
+\begin{itemize}[leftmargin=1.2em]
+\item Thời gian người: 30--60 phút đọc checklist + chạy lại suite twin; không phải tài nguyên silicon.
+\item Disk: giữ nguyên hex ROM $w$, $C[\tau]$, golden --- không regenerate phút chót trừ khi đổi $L$.
+\item Vì sao checklist một lần duy nhất: tránh lan checklist trùng ở nhiều chương; mọi khẳng định đã neo Ch.~2--13.
+\end{itemize}
+\end{costbox}

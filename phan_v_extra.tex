@@ -1,0 +1,90 @@
+\newpage\section*{Phần V. Bảng số bổ sung --- Hanning 64, $C[\tau]$, IIR}
+\subsection*{V.1. Hanning $N=64$ (mẫu mỗi 2)}
+\begin{center}\scriptsize\begin{tabular}{@{}rrrrrrrr@{}}
+\toprule $i$ & $w$ & $i$ & $w$ & $i$ & $w$ & $i$ & $w$ \\ \midrule
+1 & 0.00233 & 17 & 0.53622 & 33 & 0.99942 & 49 & 0.48792 \\
+3 & 0.02088 & 19 & 0.63135 & 35 & 0.98547 & 51 & 0.39211 \\
+5 & 0.05727 & 21 & 0.72160 & 37 & 0.95344 & 53 & 0.30032 \\
+7 & 0.11016 & 23 & 0.80358 & 39 & 0.90451 & 55 & 0.21597 \\
+9 & 0.17758 & 25 & 0.87426 & 41 & 0.84051 & 57 & 0.14220 \\
+11 & 0.25701 & 27 & 0.93098 & 43 & 0.76382 & 59 & 0.08176 \\
+13 & 0.34549 & 29 & 0.97166 & 45 & 0.67730 & 61 & 0.03691 \\
+15 & 0.43973 & 31 & 0.99475 & 47 & 0.58418 & 63 & 0.00931 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{V.2. $C[\tau]$ Hanning 64, $\tau=0..32$}
+\begin{center}\scriptsize\begin{tabular}{@{}rrrrrr@{}}
+\toprule $\tau$ & $C$ & $\tau$ & $C$ & $\tau$ & $C$ \\ \midrule
+0 & 1.0000 & 11 & 1.2084 & 22 & 2.1745 \\
+1 & 1.0016 & 12 & 1.2531 & 23 & 2.3449 \\
+2 & 1.0062 & 13 & 1.3036 & 24 & 2.5389 \\
+3 & 1.0141 & 14 & 1.3607 & 25 & 2.7605 \\
+4 & 1.0252 & 15 & 1.4251 & 26 & 3.0144 \\
+5 & 1.0397 & 16 & 1.4976 & 27 & 3.3063 \\
+6 & 1.0577 & 17 & 1.5792 & 28 & 3.6432 \\
+7 & 1.0794 & 18 & 1.6712 & 29 & 4.0338 \\
+8 & 1.1050 & 19 & 1.7750 & 30 & 4.4885 \\
+9 & 1.1348 & 20 & 1.8921 & 31 & 5.0205 \\
+10 & 1.1692 & 21 & 2.0245 & 32 & 5.6460 \\
+\bottomrule\end{tabular}\end{center}
+\subsection*{V.3. Non-restoring narrative 22$\div$5}
+Dividend 22, divisor 5, 6-bit. Quotient 4 remainder 2.
+Liệt kê ý: mỗi bước shift AQ; nếu A$\\ge0$ trừ V set bit 1; else cộng V set bit 0 (non-restoring).
+Sau 6 bước: chỉnh dấu dư nếu âm. Khớp $5\\cdot4+2=22$.
+RTL TB phải in A,Q mỗi iter --- golden Python class \texttt{NonRestoringDiv}.
+\subsection*{V.4. Avalon beat count FIR 2/3}
+1000 mẫu vào, ready luôn 1: kỳ vọng out $\approx 666$ hoặc $667$ (biên).
+1000 vào, ready $=1010$ lặp (50\\%): thời gian gấp đôi, số out vẫn $\sim666$.
+Pytest: assert abs(n\_out - 2*n\_in//3) <= 2.
+\newpage\section*{Phần W. So sánh MAC vs FFT --- ngân sách số}
+\begin{center}\small\begin{tabular}{@{}lrr@{}}
+\toprule Metric & MAC path & FFT-1024 path \\ \midrule
+Real multiplies / frame & $\sim$116000 & $\sim$2$\times$5k$\times$4 $\approx$40k + power \\
+DSP estimate & 1--4 & 4--12 \\
+M10K & frame+ROM & frame+twiddle+work \\
+BFP complexity & 0 & medium \\
+Bit-exact ease & high & medium \\
+Match Praat float & good w/ $C$ & good w/ pad \\
+\bottomrule\end{tabular}\end{center}
+Default: MAC. Lab FFT: chứng minh cùng $\tau^*$ trên sine.
+\newpage\section*{Phần X. Đọc \texttt{Sound\_to\_Pitch.cpp} theo khối}
+\subsection*{X.1. Signature và tham số}
+Hàm nhận pitchFloor, maxnCandidates, method, voicingThreshold, octaveCost, ...
+method chọn AC\_HANNING / AC\_GAUSS / CC\_...
+\subsection*{X.2. Vòng frame}
+Mỗi iframe: tính localMean; nhân window; pad FFT; FFT; power; IFFT; chia windowR; tìm maxima; nội suy; điền candidates.
+\subsection*{X.3. Sau vòng frame}
+Gọi Pitch\_pathFinder với silence/voicing/octave/jump/vuv costs.
+\subsection*{X.4. Điểm khác FPGA}
+Toàn bộ soft upsample trước vòng --- không có trong streaming.
+Gaussian very\_accurate --- không default.
+Sinc700 --- không default.
+pathFinder --- không default fabric.
+
+\newpage\section*{Phần Y. Boersma 1993 --- các mục cần nắm}
+\subsection*{Y.1. Định nghĩa autocorr §1}
+Công thức (1) liên tục. Ý: đỉnh max = period ứng viên tốt nhất; chiều cao = HNR.
+\subsection*{Y.2. Vấn đề sampling \& windowing}
+Đỉnh lệch mẫu; chiều cao thiên vị cửa sổ --- gốc của nội suy + chia $\mathcal{R}_w$.
+\subsection*{Y.3. Table 1 accuracy}
+$>3$ periods: $\\Delta F/F < 5\\cdot10^{-4}$ sine. Mục tiêu FPGA: không phá quá một bậc ($10^{-3}$).
+\subsection*{Y.4. Algorithm outline (paper)}
+Upsample soft; window; AC; normalize; interpolate; candidates; path --- khớp 12 bước B$^+$.0.
+
+\newpage
+\section*{Phần Z. Kết --- bản kiểm độ dày nội dung mới}
+\begin{center}
+\small
+\begin{tabular}{@{}lp{8cm}@{}}
+\toprule
+Phần mới & Nội dung chính \\
+\midrule
+B$^+$ / B$^{**}$ & Praat 12 bước physics/math/toy + map \\
+C / C$^\star$ & IP/RTL checklist + đào sâu từng khối \\
+D/D$^\star$ E/E$^\star$ & TB, golden, checklist số \\
+F--J & Handcalc, bảng số lớn \\
+K--P & Walkthrough utterance + DFT pad \\
+Q--U & Chuyên đề + phiếu + bài giảng IP \\
+V--Y & Bảng bổ sung + đọc source/paper \\
+\bottomrule
+\end{tabular}
+\end{center}
