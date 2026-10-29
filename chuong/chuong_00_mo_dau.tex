@@ -150,7 +150,6 @@ Hiện tượng năng lượng của một tần số đơn lẻ bị phát tán
   \foreach \c/\h in {5.1/1.0, 6.2/0.75, 7.3/0.58, 8.4/0.46, 9.5/0.38} {
     \draw[thick, dashed, gray!60] (\c-0.35,0) .. controls (\c-0.15,\h) and (\c+0.15,\h) .. (\c+0.35,0);
   }
-  \node[gray!75!black, font=\scriptsize, align=center] at (5.1,1.5) {Sidelobe chữ nhật\\($\sim -13\,\text{dB}$)};
 
   % Hanning window spectrum (solid blue and orange)
   \draw[very thick, blue!80!black, domain=-1.6:1.6, samples=60]
@@ -163,12 +162,17 @@ Hiện tượng năng lượng của một tần số đơn lẻ bị phát tán
   }
 
   % Annotations
-  \node[blue!80!black] at (3.5,3.35) {\textbf{Thùy chính (Mainlobe)}};
-  \node[orange!85!black, font=\scriptsize] at (7.2,0.65) {\textbf{Thùy phụ Hanning (Sidelobe)}};
+  \node[blue!80!black, font=\footnotesize] at (3.5,3.35) {\textbf{Thùy chính (Mainlobe)}};
+  \node[orange!85!black, font=\scriptsize] at (7.0,0.65) {\textbf{Thùy phụ Hanning (Sidelobe)}};
 
-  % Suppression arrow
-  \draw[<->, thick, teal] (4.6,0.3) -- (4.6,3.1);
-  \node[left, font=\scriptsize, teal, align=right] at (4.5,1.7) {Độ dập tắt: $\approx 32\,\text{dB}$\\(Biên độ còn $\approx 1/40$)};
+  % Rectangular sidelobe label
+  \node[gray!75!black, font=\scriptsize, align=center] at (5.2,1.55) {Sidelobe chữ nhật\\($\sim -13\,\text{dB}$)};
+
+  % Suppression arrow positioned cleanly on the left
+  \draw[dashed, teal!60] (1.4,3.1) -- (3.5,3.1);
+  \draw[dashed, teal!60] (1.4,0.48) -- (1.4,0.48);
+  \draw[<->, thick, teal] (1.9,0.48) -- (1.9,3.1);
+  \node[left, font=\scriptsize, teal, align=right] at (1.85,1.8) {Độ dập tắt: $\approx 32\,\text{dB}$\\(Biên độ còn $\approx 1/40$)};
 
   % High frequency leakage note
   \node[draw=red!60, fill=red!5, font=\scriptsize, align=center] (box_leak) at (9.2,2.5) {Tần số cao gần Nyquist\\tràn vào vùng $75 \ldots 600\,\text{Hz}$};
