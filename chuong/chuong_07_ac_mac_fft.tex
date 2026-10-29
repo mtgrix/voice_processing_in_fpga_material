@@ -108,7 +108,7 @@ Hai con trỏ đọc khung trong BRAM True Dual-Port (Chương~5): một trỏ t
   \node[draw, rounded corners, fill=green!12, right=1.6cm of a] (m) {DSP $\times$};
   \node[draw, rounded corners, fill=yellow!15, right=1.3cm of m] (acc) {ACC 41-bit};
   \draw[->] (a) -| (m); \draw[->] (b) -| (m); \draw[->] (m) -- (acc);
-  \node[draw, rounded corners, below=1.1cm of m] (rom) {$C[\tau]$ ROM\\(Ch.~8)};
+  \node[draw, rounded corners, below=1.1cm of m, align=center] (rom) {$C[\tau]$ ROM\\(Ch.~8)};
   \node[draw, rounded corners, right=1.1cm of rom] (s) {$S[\tau]$};
   \draw[->] (acc) |- (s); \draw[->] (rom) -- (s);
 \end{tikzpicture}
