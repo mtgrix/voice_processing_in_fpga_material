@@ -5,152 +5,113 @@
 \pdfbookmark[1]{Chương 5. Bộ nhớ trượt M10K (True Dual-Port, Old Data)}{chuong5}
 
 \begin{learningobj}
-Hiểu vì sao khung Praat cần bộ đệm vòng; chọn M10K True Dual-Port với mixed-port RDW = Old Data; viết con trỏ circular; đo chi phí M10K/cycles; twin địa chỉ khớp RTL.
+Sau Chương~5, người học dựng bộ đệm vòng $L=640$ mẫu trên M10K True Dual-Port, chọn đúng mixed-port read-during-write = Old Data, khớp latency đọc 1 hoặc 2 chu kỳ với twin và FSM, và tính ngân sách bit/M10K. Thuật ngữ M10K, True Dual-Port, Old Data, ALM, Fmax đã có ở ô Feynman~10 và bài tập~0.3 của Chương~0 --- chương này triển khai datapath.
 \end{learningobj}
 
-\begin{firstprin}{Vật lý: vì sao phải nhớ $L$ mẫu trên chip?}
-Giọng nói là sóng theo thời gian liên tục. Praat cắt khung $L$ mẫu rồi trượt --- nhưng trên FPGA mẫu mic chỉ đến một lần rồi biến mất. \textbf{Bộ nhớ trượt} (circular buffer trên M10K) giữ đúng $L$ mẫu gần nhất: cổng A ghi mẫu mới mỗi beat audio, cổng B đọc burst $L$ mẫu khi FSM cần khung. \textbf{Old Data} (mixed-port read-during-write) là hợp đồng silicon: khi hai cổng đụng cùng địa chỉ trong cùng chu kỳ, đọc ra giá trị \emph{trước} lần ghi --- twin phải mô phỏng đúng, không tưởng tượng New Data.
-\end{firstprin}
+\subsection*{5.1. Hiện tượng: vì sao phải nhớ $L$ mẫu trên chip}
 
-
-\subsection*{Vật lý: vì sao cần bộ nhớ trượt}
-
-
-Giọng nói là sóng theo thời gian. Praat lấy \emph{khung} $L$ mẫu (ví dụ $L{=}640$ @16\,kHz với pitch floor 75\,Hz) rồi trượt theo time step. Trên silicon không thể ``nhìn lại'' mic: phải lưu $L$ mẫu gần nhất trong RAM on-chip.
-M10K trên Cyclone~V là khối BRAM 10\,kbít. True Dual-Port cho phép cổng A ghi mẫu mới trong khi cổng B đọc tuần tự để nhân cửa sổ / MAC.
+\begin{physicalinsight}
+Giọng nói là sóng theo thời gian liên tục. Praat cắt khung $L$ mẫu (ví dụ $L=640$ tại $16\,\text{kHz}$ với $F_{0,\min}=75\,\text{Hz}$, khoảng $40\,\text{ms}$) rồi trượt theo bước nhảy $H=160$ ($10\,\text{ms}$). Trên FPGA, mỗi mẫu từ FIR chỉ đến một lần rồi biến mất khỏi thanh ghi vào --- không thể ``tua lại'' micro. \textbf{Bộ nhớ trượt} (circular buffer) giữ đúng $L$ mẫu gần nhất: cổng A ghi mẫu mới mỗi beat audio hợp lệ, cổng B đọc burst $L$ mẫu khi FSM cần một khung để nhân cửa sổ và MAC.
+\end{physicalinsight}
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[node distance=6mm, auto,
-  box/.style={draw, rounded corners, align=center, minimum height=8mm, font=\small},
+\begin{tikzpicture}[node distance=7mm, auto,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=8mm, font=\small, inner sep=3pt},
   arr/.style={->, thick}]
-\node[box] (adc) {mẫu mới\\Q1.15};
-\node[box, right=of adc] (wa) {Port A\\write ptr};
-\node[box, right=of wa] (ram) {M10K\\circular $L$};
-\node[box, right=of ram] (rb) {Port B\\read ptr};
-\node[box, right=of rb] (out) {xuất khung\\xuống window};
+\node[box,fill=blue!6] (adc) {mẫu mới\\Q1.15 @16\,kHz};
+\node[box,fill=orange!10, right=of adc] (wa) {Port A\\write ptr};
+\node[box,fill=teal!10, right=of wa] (ram) {M10K TDP\\circular $L=640$};
+\node[box,fill=orange!10, right=of ram] (rb) {Port B\\read ptr};
+\node[box,fill=green!10, right=of rb] (out) {khung $L$\\$\to$ cửa sổ};
 \draw[arr] (adc)--(wa); \draw[arr] (wa)--(ram); \draw[arr] (ram)--(rb); \draw[arr] (rb)--(out);
 \end{tikzpicture}
-\caption{Datapath sliding window: ghi một mẫu/chu kỳ audio, đọc burst $L$ mẫu khi FSM yêu cầu khung.}
+\caption{Datapath sliding window: ghi một mẫu mỗi beat audio, đọc burst $L$ mẫu khi FSM yêu cầu khung.}
+\label{fig:ch05_sliding_datapath}
 \end{figure}
-\subsection*{Toán: mọi ký hiệu khung và con trỏ}
 
-$f_s$ là tần số lấy mẫu sau FIR (16\,kHz trên đường pitch). Độ dài khung $L$ (mẫu) lấy theo Praat: $L \approx 3\cdot f_s / F_{0,\min}$ --- với $F_{0,\min}=75$\,Hz thì $L\approx640$. Con trỏ ghi $n_w\in\{0,\ldots,L-1\}$ chạy modulo $L$: mỗi beat \texttt{valid} ghi $x[n_w]\leftarrow x_{\mathrm{in}}$ rồi tăng $n_w$. Khi FSM cần một khung tại thời $t$, đọc
+Công thức chọn $L$ theo tinh thần Praat: $L\approx 3\cdot f_s/F_{0,\min}$. Với $f_s=16\,\text{kHz}$, $F_{0,\min}=75\,\text{Hz}$: $L\approx 3\cdot 16000/75=640$ mẫu.
+
+\subsection*{5.2. Toán con trỏ vòng và ví dụ tính tay}
+
+Con trỏ ghi $n_w\in\{0,\ldots,L-1\}$ chạy modulo $L$: mỗi beat \texttt{valid} ghi $\mathrm{mem}[n_w]\leftarrow x_{\mathrm{in}}$ rồi $n_w\leftarrow(n_w+1)\bmod L$. Khi FSM cần khung (sau khi đã có đủ mẫu mới theo hop $H$), đọc oldest-first:
 \[
-x_{\mathrm{frame}}[k]=\mathrm{mem}[(n_w-L+k)\bmod L],\qquad k=0..L-1.
+x_{\mathrm{frame}}[k]=\mathrm{mem}\bigl[(n_w+k)\bmod L\bigr],\qquad k=0,\ldots,L-1,
 \]
-Độ trễ đọc: inferred RTL = 1 chu kỳ; MegaWizard bật Output Register = 2 chu kỳ. Twin và FSM Ch.~11 \textbf{phải} cùng model --- lệch một chu kỳ $\Rightarrow$ lệch cả khung.
+với quy ước $n_w$ đang trỏ ô trống tiếp theo (mẫu cũ nhất nằm đúng tại $n_w$).
 
-\subsection*{Ví dụ tính tay --- circular 8 ô}
-
-
-Giả sử $L{=}8$, ghi lần lượt $1,2,3,4,5,6,7,8,9$ (mẫu 9 đè ô 0):
-\begin{center}\small\begin{tabular}{@{}lllllllll@{}}\toprule
+\paragraph{Ví dụ tính tay --- circular 8 ô.} $L=8$, ghi lần lượt $1,2,3,4,5,6,7,8,9$ (mẫu 9 đè ô 0):
+\begin{center}\small
+\begin{tabular}{@{}lllllllll@{}}
+\toprule
 addr & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
 \midrule
 sau 8 ghi & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
 sau ghi 9 & \textbf{9} & 2 & 3 & 4 & 5 & 6 & 7 & 8 \\
 \bottomrule
-\end{tabular}\end{center}
-Khi $n_w{=}1$ (vừa ghi 9 vào addr 0), khung ``cũ$\to$mới'': addr $1,2,3,4,5,6,7,0$ $\Rightarrow$ $2,3,4,5,6,7,8,9$.
+\end{tabular}
+\end{center}
+Khi $n_w=1$ (vừa ghi 9 vào addr 0 và tăng ptr), khung oldest$\to$newest: addr $1,2,3,4,5,6,7,0$ $\Rightarrow$ $2,3,4,5,6,7,8,9$.
 
-\paragraph{Old Data (mixed-port read-during-write).}
-\textbf{M10K} trên Cyclone~V là khối BRAM khoảng 10\,kbít; chế độ \textbf{True Dual-Port} cho phép hai cổng đọc/ghi độc lập trong cùng một chu kỳ đồng hồ. Khi Port~A ghi địa chỉ $a$ mà Port~B đọc \emph{cùng} địa chỉ $a$ trong cùng chu kỳ, silicon chỉ bảo đảm hai lựa chọn: \textbf{Old Data} (đọc ra giá trị \emph{trước} lần ghi) hoặc Don't Care --- \emph{không} bảo đảm New Data. Thiết kế pitch phải chọn Old Data trong MegaWizard và viết twin Python trả về đúng giá trị cũ trong cùng ``delta-cycle'', nếu không TB sẽ xanh trên mô hình tưởng tượng nhưng đỏ trên silicon thật.
-\subsection*{Intel IP --- On-Chip Memory (RAM)}
+\subsection*{5.3. Old Data, latency 1/2 và Intel On-Chip Memory}
 
-Chọn IP \textbf{On-Chip Memory} (RAM: 2-PORT) --- không dùng MLAB cho $L=640$ (depth lớn, MLAB lãng phí và timing kém). Cấu hình True Dual Port, width 16 (Q1.15), depth $\ge L$ (có thể làm tròn 1024). Mixed-port read-during-write: \textbf{Old Data} bắt buộc. Output registers tắt $\Rightarrow$ $\approx$1 cycle (gần inferred); bật $\Rightarrow$ \textbf{2 cycles}. Lab mặc định khớp inferred 1 cycle \emph{hoặc} ghi rõ 2 nếu bật output register. New Data trên mixed-port Cyclone~V không luôn hỗ trợ; Old Data an toàn và dễ twin.
+Như Chương~0 đã khẳng định: trên Cyclone~V, khi Port~A ghi địa chỉ $a$ mà Port~B đọc \emph{cùng} $a$ trong cùng chu kỳ (mixed-port read-during-write), silicon \textbf{không hỗ trợ New Data}; chỉ bảo đảm \textbf{Old Data} (đọc giá trị trước lần ghi) hoặc Don't Care. Twin Python phải trả về giá trị cũ trong cùng ``delta-cycle''; nếu không, testbench xanh trên mô hình tưởng tượng nhưng đỏ trên chip thật.
 
-\subsection*{RTL datapath + Verilog}
+\paragraph{Cấu hình IP.} On-Chip Memory (RAM: 2-PORT), True Dual-Port, width 16 (Q1.15), depth $\ge L$ (có thể làm tròn 1024). Mixed-port RDW = \textbf{Old Data}. Không dùng MLAB cho $L=640$ (depth lớn, timing kém).
 
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[box/.style={draw,align=center,font=\scriptsize,minimum height=7mm}, node distance=5mm]
-\node[box] (ptr) {wr\_ptr\\mod L};
-\node[box, right=of ptr] (mem) {mem[0:L-1]};
-\node[box, right=of mem] (rd) {rd\_addr\\+ dout};
-\draw[->,thick] (ptr)--(mem); \draw[->,thick] (mem)--(rd);
-\end{tikzpicture}
-\caption{RTL: con trỏ ghi, mảng/M10K, đọc tuần tự.}
-\end{figure}
+\paragraph{Latency đọc --- điểm dễ lệch khung.}
+\begin{itemize}[leftmargin=1.4em]
+  \item RTL inferred \texttt{dout <= mem[rd\_ptr]}: latency \textbf{1 chu kỳ} sau \texttt{rd\_en}.
+  \item MegaWizard bật Output Registers: thường \textbf{2 chu kỳ} (block RAM register + output register).
+\end{itemize}
+FSM Chương~11 và twin \textbf{phải} cùng model. Lệch một chu kỳ $\Rightarrow$ lệch cả 640 mẫu cửa sổ và toàn bộ MAC.
 
 \begin{verbatim}
 localparam int L = 640;
 reg signed [15:0] mem [0:L-1];
-reg [\\$clog2(L)-1:0] wr_ptr, rd_ptr;
+reg [$clog2(L)-1:0] wr_ptr, rd_ptr;
 reg signed [15:0] dout;
 always @(posedge clk) begin
   if (valid_i) begin
     mem[wr_ptr] <= din;            // Port A
-    wr_ptr <= (wr_ptr == L-1) ? 0 : wr_ptr + 1'b1;
+    wr_ptr <= (wr_ptr == L-1) ? '0 : wr_ptr + 1'b1;
   end
   if (rd_en) begin
-    dout <= mem[rd_ptr];           // Port B, Old Data
-    rd_ptr <= (rd_ptr == L-1) ? 0 : rd_ptr + 1'b1;
+    dout <= mem[rd_ptr];           // Port B, Old Data semantics
+    rd_ptr <= (rd_ptr == L-1) ? '0 : rd_ptr + 1'b1;
   end
 end
 \end{verbatim}
 
-\noindent\textbf{CẢNH BÁO --- read latency inferred vs IP.}
-Đoạn mã \emph{inferred} RAM ở trên (\texttt{dout <= mem[rd\_ptr]}) tạo độ trễ đọc \textbf{1 chu kỳ} sau \texttt{rd\_en}.
-Nếu instantiate M10K qua MegaWizard / On-Chip Memory IP (khuyến nghị mục~4): tùy chọn \textbf{Output Registers} bật $\Rightarrow$ thường \textbf{2 chu kỳ} (block RAM register + output register).
-FSM Ch.11 và twin TB \textbf{phải} khớp đúng 1 hay 2 --- đếm sai một chu kỳ $\Rightarrow$ lệch mẫu cả khung.
-
-\subsection*{Chi phí silicon --- giải thích từng mục}
-\begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
-\begin{itemize}[leftmargin=1.2em]
-\item M10K: 1 khối cho $L=640\times16$ bit ($\approx10$\,kb); không dùng MLAB vì depth lớn.
-\item ALM: con trỏ modulo + FSM đọc --- vài chục đến $\sim100$ ALM.
-\item DSP: 0 (chỉ RAM).
-\item Latency đọc: 1 ck (inferred) hoặc 2 ck (output register) --- phải khớp twin.
-\item Vì sao True Dual-Port + Old Data: ghi và đọc song song mỗi chu kỳ audio; New Data không bảo đảm trên Cyclone~V mixed-port.
-\end{itemize}
-
-\noindent\textit{Tóm tắt số liệu:} Một khung $L=640$ mẫu $\times 16$~bit $=10\,240$~bit, vừa khít khoảng một khối \textbf{M10K} (còn dư vài trăm bit). Nếu làm tròn depth lên 1024 từ cho dễ địa chỉ, vẫn chỉ tốn 1--2 M10K. Khối này không dùng DSP. Số \textbf{ALM} cho hai con trỏ và FSM đọc thường khoảng 50--100. Đọc hết một khung cần $L$ chu kỳ cộng thêm \textbf{latency} đọc 1 hoặc 2 chu kỳ (tùy output register) --- con số này phải khớp Fmax và ngân sách thời gian thực 10\,ms/khung.
-\end{costbox}
-
-\subsection*{Bài tập + đáp án}
-
-
-\begin{enumerate}\setlength{\itemsep}{2pt}
-\item $L{=}640$, width 16: bao nhiêu bit? Cần mấy M10K tối thiểu?
-\item Cùng addr R/W: Old Data trả gì?
-\item Đọc frame khi \texttt{wr\_ptr}=100: addr đầu là bao nhiêu?
-\end{enumerate}
-\paragraph{Đáp án.} (1) $10240$ bit $\Rightarrow$ 1 M10K. (2) Giá trị trước ghi. (3) $(100)\bmod 640=100$ là ô mới nhất vừa tăng ptr --- oldest $=100$ nếu ptr đã tăng sau ghi; theo code trên sau ghi ptr đã +1 nên oldest $=\texttt{wr}$.
-\subsection*{Ví dụ mở rộng, timing, Quartus, twin}
-
-\begin{firstprin}{Circular buffer: mỗi địa chỉ là một mẫu theo thời gian cuốn}
-Với $L=16$, ghi mẫu $1..20$: sau mẫu 20, 16 ô giữ $\{5..20\}$ theo thứ tự modulo (oldest$\to$newest tùy quy ước ptr). Đọc khung = $L$ địa chỉ liên tiếp modulo $L$ bắt đầu từ oldest. \textbf{Old Data:} cùng addr R/W trong một ck $\Rightarrow$ dout = giá trị trước ghi --- MegaWizard phải chọn đúng; twin trả old trong cùng delta-cycle.
-\end{firstprin}
-
-\noindent\textbf{Timing.} Inferred \texttt{dout <= mem[rd]}: latency 1 ck. IP Output Registers bật: thường 2 ck. FSM Ch.~11 và TB phải cùng model --- lệch 1 ck = lệch cả khung.
-
-\noindent\textbf{Quartus.} On-Chip Memory 2-PORT; width 16; depth $\ge L$ (1024 ok); mixed-port RDW = Old Data; đừng dùng MLAB cho $L=640$.
-
+\paragraph{Twin địa chỉ.}
 \begin{verbatim}
-L=640; mem=[0]*L; wr=0
+L = 640
+mem = [0] * L
+wr = 0
 def write(x):
     global wr
-    old=mem[wr]; mem[wr]=int(x); wr=(wr+1)%L; return old
+    old = mem[wr]
+    mem[wr] = int(x)
+    wr = (wr + 1) % L
+    return old          # Old Data nếu đọc cùng addr
 def read_frame():
-    return [mem[(wr+k)%L] for k in range(L)]  # oldest-first if wr points next empty
+    return [mem[(wr + k) % L] for k in range(L)]  # oldest-first
 \end{verbatim}
 
 \begin{costbox}
-\textbf{Chi tiết chip 5CSXFC6D6F31C6.} $640\times16=10240$ bit $\approx$ 1 M10K. Q2.30 depth 1024 $\Rightarrow\sim4$ M10K. ALM con trỏ $\sim50$--100. 0 DSP.
+\textbf{Ngân sách --- sliding M10K.} $L\times 16=640\times 16=10\,240$~bit, vừa khít \textbf{1 khối M10K} ($10\,240$~bit). Depth 1024 từ vẫn khoảng 1--2 M10K. ALM cho hai con trỏ + FSM đọc: khoảng $50$--$100$. 0 DSP. Đọc hết một khung: $L$ chu kỳ $+$ latency 1 hoặc 2 $=642$ chu kỳ max --- rất nhỏ so với ngân sách $500\,000$ chu kỳ trong $10\,\text{ms}$ ở $50\,\text{MHz}$ (Chương~0). Vì sao True Dual-Port + Old Data: ghi và đọc song song mỗi chu kỳ audio; New Data không bảo đảm trên mixed-port Cyclone~V.
 \end{costbox}
 
-\subsection*{Thực hành --- Phiếu bài tập (mỗi phiếu chỉ ở đây)}
+\subsection*{5.4. Bài tập và lời giải giải thích}
 
-\subsubsection*{Phiếu 15 --- M10K RDW}
+\paragraph{Bài tập 5.1 (Ngân sách bit).} $L=640$, width 16: bao nhiêu bit? Cần tối thiểu bao nhiêu M10K?
+\paragraph{Lời giải.} $640\times 16=10\,240$~bit $\le 10\,240$ (1 M10K). Vừa khít một khối; không cần MLAB.
 
-\textbf{Câu hỏi:} Nếu cắt/sai khối ``M10K RDW, hiện tượng nào phá $F_0$?
-\begin{itemize}\setlength{\itemsep}{1pt}
-\item \textbf{Vật lý:} Đọc nhầm New Data.
-\item \textbf{Toán neo:} Old Data only.
-\item \textbf{Silicon:} M10K.
-\item \textbf{Pytest:} sim conflict test.
-\item Tự làm: ví dụ tính tay 4--8 mẫu + điền bảng E$^\star$.
-\end{itemize}
+\paragraph{Bài tập 5.2 (Old Data).} Cùng địa chỉ: Port~A ghi $42$ vào ô đang giữ $7$, Port~B đọc cùng ô trong cùng chu kỳ. Dout là gì nếu cấu hình Old Data? Nếu ai đó tưởng New Data trên Cyclone~V thì rủi ro gì?
+\paragraph{Lời giải.} Old Data $\Rightarrow$ dout $=7$. New Data không được silicon mixed-port bảo đảm; Quartus có thể chèn bypass ALM làm giảm Fmax, hoặc hành vi Don't Care --- twin xanh / chip đỏ.
+
+\paragraph{Bài tập 5.3 (Đọc khung).} Sau khi ghi mẫu 9 vào $L=8$ như bảng trên ($n_w=1$), liệt kê khung oldest-first.
+\paragraph{Lời giải.} $[2,3,4,5,6,7,8,9]$ --- khớp script \texttt{verify/verify\_chuong\_05.py}.
+
+\paragraph{Bài tập 5.4 (Latency).} Vì sao lab phải ghi rõ ``inferred 1 ck'' hay ``IP output register 2 ck'' trước khi viết FSM?
+\paragraph{Lời giải.} Mỗi mẫu cửa sổ lệch một chu kỳ làm lệch toàn bộ tích MAC $\mathcal{R}[\tau]$; sai số không phải ngẫu nhiên mà là dịch cả khung --- đỉnh $F_0$ lệch hệ thống.
