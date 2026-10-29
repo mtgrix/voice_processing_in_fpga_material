@@ -271,6 +271,11 @@ Khi đóng gói Q12.4 ra HPS (Chương~12), nhớ little-endian uint16: byte th�
 
 Tổng Pha peak+div thường $<300$ chu kỳ/khung --- dưới $0{,}1\%$ hop $10\,\text{ms}$ @ $50\,\text{MHz}$. Nút thắt vẫn là MAC Chương~7. Lab nghiệm thu: (1)~parabolic float khớp bảng 9.3; (2)~Mode~B int khớp golden; (3)~testbench chờ đúng $L$ ck trước khi đọc quotient.
 
+
+Quay lại bức tranh toàn đường tín hiệu: sau Chương~9, mỗi hop $10\,\text{ms}$ đã có một ước lượng $F_0$ Q12.4 (hoặc 0 nếu vô thanh). Chương~10 sẽ quyết định hữu/vô thanh chặt hơn bằng năng lượng và ngưỡng $r_a$; Chương~11 bọc FSM Avalon-ST; Chương~12 đóng gói ra bộ nhớ. Sai ở parabolic hoặc latency chia sẽ lan thành cent-error có hệ thống ở Chương~13 --- vì vậy khóa script và testbench của chương này trước khi nối voicing.
+
+Một lưu ý vận hành: khi demo realtime trên DE10, đừng đánh giá bằng tai trước khi đối chiếu file dump với Praat. Tai người chịu được lệch vài chục cent; máy chấm Pearson thì không. Parabolic đúng toán nhưng $\tau^*$ sai (do quên $C[\tau]$ ở Chương~8) vẫn cho $F_0$ ``mượt mà sai''. Luôn debug theo lớp: MAC $\to$ $S[\tau]$ $\to$ $\tau^*$ $\to$ $\tau_{\mathrm{fine}}$ $\to$ Q12.4.
+
 \subsection*{9.7. Bài tập và lời giải giải thích}
 
 \paragraph{Bài tập 9.1.} $r = [0{,}2,\ 0{,}6,\ 0{,}5]$ tại $\tau = 100,101,102$: tính $\Delta$, $\tau_{\mathrm{fine}}$, $F_0$ @ $16\,\text{kHz}$, mã Q12.4.
