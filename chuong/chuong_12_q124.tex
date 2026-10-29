@@ -88,11 +88,12 @@ Một lỗi một dòng \texttt{struct.unpack} biến $200\,\text{Hz}$ thành $>
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\small, >=Stealth,
-  fbox/.style={draw, rounded corners, align=center, minimum height=1.0cm, inner sep=4pt}]
+  fbox/.style={draw, rounded corners, align=center, minimum height=1.0cm, inner sep=4pt},
+  arr/.style={->, thick, >=Stealth}]
   \node[fbox, fill=blue!8] (wav) {\texttt{audio\_16k.wav}\\PCM Q1.15 @ $16\,\text{kHz}$};
   \node[fbox, fill=teal!8, right=1.6cm of wav] (pipe) {DC$\to$FIR$\to$RAM\\Win$\to$MAC$\to$Peak\\Voice$\to$Med3};
   \node[fbox, fill=orange!10, right=1.6cm of pipe] (bin) {\texttt{pitch\_f0.bin}\\uint16 LE Q12.4\\$1/16\,\text{Hz}$};
-  \draw[arr/.style={->, thick, >=Stealth}, arr] (wav)-- (pipe);
+  \draw[arr] (wav)-- (pipe);
   \draw[arr] (pipe)-- node[above,font=\scriptsize]{1 từ / hop} (bin);
   \node[below=0.35cm of pipe, font=\scriptsize, align=center]
     {Đồng bộ: khung $k$ $\leftrightarrow$ byte $2k,2k+1$ trong bin};

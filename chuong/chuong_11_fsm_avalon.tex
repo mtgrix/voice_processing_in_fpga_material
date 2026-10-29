@@ -207,6 +207,6 @@ RTL advance \texttt{rd\_ptr} mỗi khi \texttt{valid}$=1$ dù \texttt{ready}$=0$
 \paragraph{Lời giải.} Source đã ``quên'' mẫu đang giữ: khi \texttt{ready} lên lại, bus đã sang mẫu kế. Số beat đếm được có thể vẫn bằng $N$ nếu sink chốt nhầm nội dung, nhưng scoreboard nội dung fail; hoặc nếu sink không chốt khi \texttt{ready}$=0$ mà source đã bỏ mẫu, tổng beat $<N$. Cả hai đều phải đỏ.
 
 \paragraph{Bài tập 11.3 (MAC chậm hơn peak).}
-Khối MAC phát $\mathcal{R}_x[\tau]$ từng $\tau$ sang peak. Peak cần vài chu kỳ xử lý một $\tau$ nên hạ \texttt{ready}$. Chứng minh source MAC phải giữ đúng $\mathcal{R}_x[\tau]$ hiện tại.
+Khối MAC phát $\mathcal{R}_x[\tau]$ từng $\tau$ sang peak. Peak cần vài chu kỳ xử lý một $\tau$ nên hạ \texttt{ready}. Chứng minh source MAC phải giữ đúng $\mathcal{R}_x[\tau]$ hiện tại.
 
 \paragraph{Lời giải.} Nếu MAC chuyển sang $\tau+1$ khi peak chưa nhận, peak sẽ bỏ $\tau$ hoặc gắn kết quả parabolic vào trễ sai. Luật Avalon-ST: không beat thì không đổi \texttt{data}. Twin đếm beat giữa MAC và peak phải bằng số $\tau$ trong $[\tau_{\min},\tau_{\max}]$ ($189$ giá trị).
