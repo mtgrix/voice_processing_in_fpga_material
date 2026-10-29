@@ -5,16 +5,16 @@
 \pdfbookmark[1]{Chương 6. Cửa sổ Hanning ROM × mẫu}{chuong6}
 
 \begin{learningobj}
-Sau chương này bạn giải thích được vì sao khung âm thanh phải nhân cửa sổ Hanning trước tự tương quan; viết đúng công thức Praat ($N{+}1$) và đối chiếu dạng cổ điển ($N{-}1$); lượng tử hóa hệ số sang Q1.15; sinh tệp \texttt{hanning\_rom.hex} bit-khớp với twin Python; hiện thực nhân ROM$\times$mẫu bằng một khối DSP trên Cyclone~V; và đọc được ngân sách M10K / DSP / ALM của khối cửa sổ.
+Sau chương này bạn giải thích được vì sao khung âm thanh phải nhân cửa sổ Hanning trước khi tự tương quan; viết đúng công thức Praat ($N{+}1$) và đối chiếu dạng cổ điển ($N{-}1$); lượng tử hóa hệ số sang định dạng Q1.15; sinh tệp \texttt{hanning\_rom.hex} khớp bit với twin Python; hiện thực phép nhân ROM$\times$mẫu bằng một khối DSP trên Cyclone~V; và đọc được ngân sách M10K / DSP / ALM của khối cửa sổ.
 \end{learningobj}
 
 \subsection*{6.1. Hiện tượng thật: cắt khung không được ``cắt đứt'' sóng}
 
-Giọng nói liên tục. Để đo chu kỳ rung dây thanh $T_0$, ta chỉ lấy một đoạn ngắn khoảng 40\,ms (640 mẫu ở $f_s=16$\,kHz). Nếu lấy đúng như cắt bằng kéo --- giữ nguyên biên độ đến mẫu cuối rồi nhảy đột ngột về 0 --- thì đoạn đó, nhìn từ miền tần số, giống một xung chữ nhật nhân với tín hiệu thật. Phép nhân trong miền thời gian tương đương \textbf{tích chập (convolution)} phổ tín hiệu với phổ của xung chữ nhật. Phổ xung chữ nhật là hàm $\mathrm{sinc}$: có một \textbf{mainlobe} (đỉnh chính) rộng và nhiều \textbf{sidelobe} (búp phụ) cao khoảng $-13$\,dB so với đỉnh. Năng lượng ``rò'' qua các búp phụ gọi là \textbf{rò phổ (spectral leakage)}.
+Giọng nói là một dòng sóng liên tục. Để đo chu kỳ rung dây thanh $T_0$, ta chỉ lấy một đoạn ngắn khoảng $40\,\text{ms}$ ($L = 640$ mẫu ở tần số lấy mẫu $f_s = 16\,\text{kHz}$), đúng như bản đồ khối ở Chương~0 đã ghi. Nếu lấy đoạn đó đúng kiểu cắt bằng kéo --- giữ nguyên biên độ đến mẫu cuối rồi nhảy đột ngột về 0 --- thì đoạn đó, nhìn từ miền tần số, giống một xung chữ nhật nhân với tín hiệu thật. Phép nhân trong miền thời gian tương đương \textbf{tích chập (convolution)} phổ tín hiệu với phổ của xung chữ nhật. Phổ xung chữ nhật là hàm $\mathrm{sinc}$: có một \textbf{thùy chính (mainlobe)} rộng và nhiều \textbf{thùy phụ (sidelobe)} cao khoảng $-13\,\text{dB}$ so với đỉnh (Chương~0 đã đổi $-13\,\text{dB}$ sang tỷ số biên độ $\approx 0{,}224$). Năng lượng ``rò'' qua các thùy phụ gọi là \textbf{rò phổ (spectral leakage)}.
 
-Hệ quả với cao độ: đỉnh tự tương quan $\mathcal{R}_x[\tau]$ bị méo vì năng lượng giả từ các tần số láng giềng tràn sang. Trực giác đời thường: bạn đang nghe một nốt đàn sạch, nhưng mỗi lần cắt đoạn lại ``vỗ'' hai đầu đoạn --- tiếng vỗ đó tạo thêm tiếng lách cách phổ, không có trong bản gốc.
+Hệ quả với cao độ: đỉnh tự tương quan $\mathcal{R}_x[\tau]$ bị méo vì năng lượng giả từ các tần số láng giềng tràn sang đúng vùng tìm $F_0$ ($75 \ldots 600\,\text{Hz}$). Trực giác đời thường: bạn đang nghe một nốt đàn sạch, nhưng mỗi lần cắt đoạn lại ``vỗ'' hai đầu đoạn --- tiếng vỗ đó tạo thêm tiếng lách cách phổ, không có trong bản gốc.
 
-Cửa sổ \textbf{Hanning} làm hai đầu khung về gần 0 một cách mượt, giống vuốt dần biên độ thay vì cắt đứt. Phổ Hanning có sidelobe khoảng $-31$ đến $-32$\,dB (thấp hơn chữ nhật khoảng 19\,dB, tức biên độ búp phụ chỉ còn khoảng $1/8$ lần so với chữ nhật). Mainlobe rộng hơn một chút (độ phân giải tần số kém hơn một ít), nhưng với bài đo $F_0$ bằng tự tương quan thời gian thì trade-off này rất đáng: ta cần đỉnh $\mathcal{R}_x$ sạch hơn là phổ sắc như dao.
+Cửa sổ \textbf{Hanning} làm hai đầu khung về gần 0 một cách mượt, giống vuốt dần biên độ thay vì cắt đứt. Phổ Hanning có thùy phụ khoảng $-32\,\text{dB}$ (biên độ còn khoảng $1/40$ so với thùy chính, Chương~0). Thùy chính rộng hơn một chút (độ phân giải tần số kém hơn một ít), nhưng với bài đo $F_0$ bằng tự tương quan thời gian thì đánh đổi này rất đáng: ta cần đỉnh $\mathcal{R}_x$ sạch hơn là phổ sắc như dao.
 
 \begin{physicalinsight}
 Nhân cửa sổ $x[n]\cdot w[n]$ trên silicon chỉ là một phép nhân mỗi mẫu. Toàn bộ ``phép màu'' giảm rò phổ đã được nướng sẵn vào bảng hệ số $w[n]$. Không cần CORDIC, không cần sinh $\cos$ lúc chạy.
@@ -32,59 +32,61 @@ Nhân cửa sổ $x[n]\cdot w[n]$ trên silicon chỉ là một phép nhân mỗ
   \node[teal, font=\scriptsize] at (4.0,2.6){Hanning};
   \draw[dashed, red!60] (0.3,0)--(0.3,2.2);
   \draw[dashed, red!60] (7.5,0)--(7.5,2.2);
-  \node[red!70, font=\scriptsize, align=center] at (1.1,1.1){cắt đột\\$\Rightarrow$ rò phổ};
+  \node[red!70, font=\scriptsize, align=center] at (1.2,1.1){cắt đột\\gây rò phổ};
 \end{tikzpicture}
-\caption{Cửa sổ chữ nhật giữ biên độ đến sát biên rồi cắt đứt; Hanning vuốt hai đầu về 0, hạ sidelobe từ khoảng $-13$\,dB xuống khoảng $-32$\,dB.}
+\caption{Cửa sổ chữ nhật giữ biên độ đến sát biên rồi cắt đứt; Hanning vuốt hai đầu về 0, hạ thùy phụ từ khoảng $-13\,\text{dB}$ xuống khoảng $-32\,\text{dB}$.}
 \label{fig:ch06_hanning_shape}
 \end{figure}
 
 \subsection*{6.2. Toán từng bước --- mọi ký hiệu trước khi dùng}
 
-Gọi $L$ (hoặc $N$) là số mẫu trong một khung phân tích. Với pitch floor $75$\,Hz ở $f_s=16$\,kHz, Praat chọn khung dài khoảng ba chu kỳ: $L=640$. Sau khi đã trừ mean cục bộ (Ch.~3), tín hiệu cửa sổ là
+Gọi $L$ (hoặc $N$) là số mẫu trong một khung phân tích. Với sàn cao độ $75\,\text{Hz}$ ở $f_s = 16\,\text{kHz}$, Praat chọn khung dài khoảng ba chu kỳ: $L = 640$. Sau khi đã trừ mean cục bộ (Chương~3), tín hiệu cửa sổ là
 \[
-\tilde{x}[n]=(x[n]-\mu)\,w[n],\qquad n=0,1,\ldots,L-1.
+\tilde{x}[n] = (x[n] - \mu)\, w[n], \qquad n = 0,1,\ldots,L-1.
 \]
 Hai định nghĩa Hanning hay gặp --- phải chọn một và ghi vào twin:
 
 \begin{enumerate}[leftmargin=1.4em]
 \item \textbf{Praat ($N{+}1$), dùng trong golden \texttt{lab\_1\_3\_5.py}:}
 \[
-w[i]=0{,}5-0{,}5\cos\Bigl(\frac{2\pi i}{N+1}\Bigr),\qquad i=1,2,\ldots,N.
+w[i] = 0{,}5 - 0{,}5\cos\Bigl(\frac{2\pi i}{N+1}\Bigr), \qquad i = 1,2,\ldots,N.
 \]
-Hai đầu $>0$ nhỏ (không đúng bằng 0). Với $N=640$, mẫu số là $641$.
+Hai đầu lớn hơn 0 một chút (không đúng bằng 0). Với $N = 640$, mẫu số là $641$.
 \item \textbf{Cổ điển / scipy ($N{-}1$):}
 \[
-w[n]=\frac12\Bigl(1-\cos\frac{2\pi n}{N-1}\Bigr),\qquad n=0,1,\ldots,N-1.
+w[n] = \frac12\Bigl(1 - \cos\frac{2\pi n}{N-1}\Bigr), \qquad n = 0,1,\ldots,N-1.
 \]
-Hai đầu đúng bằng 0; đối xứng $w[n]=w[N-1-n]$ sạch --- tiện lưu nửa bảng ROM.
+Hai đầu đúng bằng 0; đối xứng $w[n] = w[N-1-n]$ sạch --- tiện lưu nửa bảng ROM.
 \end{enumerate}
 
 Gói FPGA này lấy dạng \textbf{Praat $N{+}1$} làm hợp đồng bit-exact với \texttt{hanning\_rom.hex} (đầy đủ 640 từ). Dạng cổ điển chỉ dùng trong ví dụ tính tay nhỏ và khi muốn minh họa tối ưu nửa bảng.
 
-Lượng tử Q1.15 (một bit dấu/phần nguyên, 15 bit phần thập phân; $1{,}0\mapsto 2^{15}=32768$, nhưng số có dấu 16-bit bão hòa ở $+32767$):
+Lượng tử \textbf{Q1.15} (đã định nghĩa ở Chương~0: một bit dấu/phần nguyên, 15 bit phần thập phân; giá trị $1{,}0$ ánh xạ thành $2^{15} = 32768$, nhưng số có dấu 16-bit bão hòa tại $+32767$):
 \[
-w_q[n]=\mathrm{sat}_{16}\!\bigl(\mathrm{round}(w[n]\cdot 32768)\bigr)\in[0,32767]
+w_q[n] = \mathrm{sat}_{16}\!\bigl(\mathrm{round}(w[n]\cdot 32768)\bigr) \in [0,32767]
 \]
 (với hệ số Hanning không âm). Mẫu vào $x_q$ cũng Q1.15. Tích rồi kéo về Q1.15 bằng làm tròn gần nhất:
 \begin{align*}
-y_{\mathrm{acc}} &= x_q\cdot w_q &&\text{(Q2.30, 32-bit có dấu)},\\
-y_q &= \mathrm{sat}_{16}\!\bigl((y_{\mathrm{acc}}+2^{14})\ggg 15\bigr).
+y_{\mathrm{acc}} &= x_q \cdot w_q &&\text{(Q2.30, 32-bit có dấu)},\\
+y_q &= \mathrm{sat}_{16}\!\bigl((y_{\mathrm{acc}} + 2^{14}) \ggg 15\bigr).
 \end{align*}
-Cộng $2^{14}=16384$ trước khi dịch phải 15 bit chính là round-to-nearest trên số dương/âm theo số học hai's complement khi dùng arithmetic shift.
+Cộng $2^{14} = 16384$ trước khi dịch phải 15 bit chính là round-to-nearest trên số học hai's complement khi dùng arithmetic shift.
 
-Năng lượng cửa sổ (dùng ở Ch.~8):
+Năng lượng cửa sổ (dùng ở Chương~8 để chuẩn hóa):
 \[
-\mathcal{R}_w[0]=\sum_{n=0}^{N-1} w_q[n]^2
+\mathcal{R}_w[0] = \sum_{n=0}^{N-1} w_q[n]^2
 \]
 tính offline trên int64; twin in giá trị này vào header hex để đối chiếu.
 
 \subsection*{6.3. Ví dụ tính tay --- mọi số đã chạy Python}
 
+Mọi con số dưới đây được kiểm chứng bởi \texttt{verify/verify\_chuong\_06\_09.py}.
+
 \paragraph{A. Dạng cổ điển $N=8$ (đối xứng nửa bảng).}
-$w[n]=\tfrac12\bigl(1-\cos(2\pi n/7)\bigr)$, $n=0..7$:
+$w[n] = \tfrac12\bigl(1 - \cos(2\pi n/7)\bigr)$, $n = 0..7$, lượng tử bằng $\mathrm{round}(w\cdot 32767)$ để minh họa hệ số dương:
 \begin{center}\small
 \begin{tabular}{@{}rrl@{}}\toprule
-$n$ & $w[n]$ float & $w_q$ Q1.15 ($\mathrm{round}\times 32767$) \\
+$n$ & $w[n]$ float & $w_q$ \\
 \midrule
 0 & 0.000000 & 0 \\
 1 & 0.188255 & 6169 \\
@@ -93,13 +95,13 @@ $n$ & $w[n]$ float & $w_q$ Q1.15 ($\mathrm{round}\times 32767$) \\
 \bottomrule
 \end{tabular}
 \end{center}
-Đối xứng: $w_q[7]=w_q[0]$, $w_q[6]=w_q[1]$, \ldots --- ROM vật lý chỉ cần 4 từ. Nhân: $x_q=10000$, $w_q=20029$ cho tích $200290000$; làm tròn $({\rm acc}+2^{14})\ggg15=6112$. Đối chiếu float $10000\times0{,}611260=6112{,}6$ --- khớp trong 1 LSB.
+Đối xứng: $w_q[7] = w_q[0]$, $w_q[6] = w_q[1]$, \ldots --- ROM vật lý chỉ cần 4 từ. Nhân: $x_q = 10000$, $w_q = 20029$ cho tích $200\,290\,000$; làm tròn $({\rm acc}+2^{14})\ggg 15 = 6112$. Đối chiếu float $10000\times 0{,}611260 = 6112{,}6$ --- khớp trong 1 LSB.
 
 \paragraph{B. Dạng Praat $N=8$ (khớp tinh thần golden).}
-$w[i]=0{,}5-0{,}5\cos(2\pi i/9)$, $i=1..8$:
+$w[i] = 0{,}5 - 0{,}5\cos(2\pi i/9)$, $i = 1..8$, lượng tử $\mathrm{round}(w\cdot 32768)$ rồi bão hòa:
 \begin{center}\small
 \begin{tabular}{@{}rrl@{}}\toprule
-$i$ & $w$ float & $w_q$ ($\mathrm{round}\times32768$, sat) \\
+$i$ & $w$ float & $w_q$ \\
 \midrule
 1 & 0.116978 & 3833 \\
 2 & 0.413176 & 13539 \\
@@ -111,15 +113,15 @@ $i$ & $w$ float & $w_q$ ($\mathrm{round}\times32768$, sat) \\
 Hai đầu không về 0 tuyệt đối --- đúng hành vi Praat.
 
 \paragraph{C. Khung thật $N=640$ Praat.}
-Các mốc Q1.15 (script \texttt{verify/ch06\_09\_numbers.py}): $w_q[0]=1$, $w_q[1]=3$, $w_q[319]=w_q[320]=32767$, $w_q[638]=3$, $w_q[639]=1$. Tổng bình phương $\mathcal{R}_w[0]=\sum w_q^2=258\,100\,276\,868$ (int64).
+Các mốc Q1.15: $w_q[0] = 1$, $w_q[1] = 3$, $w_q[319] = w_q[320] = 32767$, $w_q[638] = 3$, $w_q[639] = 1$. Tổng bình phương $\mathcal{R}_w[0] = \sum w_q^2 = 258\,100\,276\,868$ (int64).
 
 \subsection*{6.4. Ý nghĩa phần cứng --- ROM On-Chip Memory + DSP}
 
 Cửa sổ Hanning \emph{không} cần FIR Compiler~II: hệ số bất biến với $L$ cố định. Chọn IP \textbf{On-Chip Memory} kiểu ROM (hoặc RAM 1-PORT khởi tạo \texttt{.hex}/\texttt{.mif}):
 \begin{itemize}[leftmargin=1.4em]
-\item Width $=16$ (Q1.15), depth $=640$ (đầy đủ, khớp Praat) hoặc $320$ nếu dùng dạng cổ điển nửa bảng.
+\item Width $= 16$ (Q1.15), depth $= 640$ (đầy đủ, khớp Praat) hoặc $320$ nếu dùng dạng cổ điển nửa bảng.
 \item Registered output: 1 chu kỳ đọc --- FSM phải chờ đúng latency này.
-\item Một khối \textbf{DSP} (Digital Signal Processing block) trên Cyclone~V nhân $18\times19$ mỗi mẫu: $x_q\times w_q$.
+\item Một khối \textbf{DSP} (\emph{Digital Signal Processing} block) trên Cyclone~V nhân $18\times 19$ mỗi mẫu: $x_q\times w_q$.
 \end{itemize}
 Không gọi FIR Compiler chỉ để nhân cửa sổ: lãng phí logic cấu hình systolic. Đổi $L$ hoặc công thức $w$ thì \textbf{bắt buộc rebuild hex} và nạp lại ROM; quên bước này thì $F_0$ sai im lặng.
 
@@ -162,7 +164,7 @@ module window_hanning #(
   end
 endmodule
 \end{verbatim}
-\texttt{in\_ready}/\texttt{out\_ready} là handshake Avalon-ST (sink/source): khi downstream chưa sẵn sàng, upstream phải giữ \texttt{valid} --- nếu không FIR/FFT phía sau sẽ mất mẫu. Hàm \texttt{sat16} bão hòa thay vì wrap, tránh đảo dấu khi tích lớn.
+\texttt{in\_ready}/\texttt{out\_ready} là handshake Avalon-ST (sink/source, Chương~0): khi downstream chưa sẵn sàng, upstream phải giữ \texttt{valid}. Hàm \texttt{sat16} bão hòa thay vì wrap, tránh đảo dấu khi tích lớn.
 
 Nếu muốn tiết kiệm một nửa BRAM với dạng cổ điển: địa chỉ \texttt{(n < 320) ? n : (639-n)} và ROM depth 320. Twin phải cùng công thức --- không trộn Praat hex với địa chỉ nửa bảng cổ điển.
 
@@ -182,36 +184,41 @@ def apply_window(xq, wq):
     return ((prod + (1 << 14)) >> 15).astype(np.int64)
 
 wq = hanning_praat_q15(640)
-# ghi hex một từ 16-bit / dòng (khớp loader lab_1_3_5.py)
 with open("hex/hanning_rom.hex", "w") as f:
     for v in wq:
         f.write(f"{int(v) & 0xFFFF:04X}\n")
 print("Rw0 =", int(np.sum(wq * wq)))
 \end{verbatim}
-Mọi thay đổi round/sat phải sửa \textbf{cùng chỗ} RTL và twin --- đó là hợp đồng bit-exact. Script kiểm số tay: \texttt{/workspace/writing\_material/verify/ch06\_09\_numbers.py}.
+Mọi thay đổi round/sat phải sửa \textbf{cùng chỗ} RTL và twin --- đó là hợp đồng bit-exact. Script kiểm số tay: \texttt{verify/verify\_chuong\_06\_09.py}.
 
-\subsection*{6.6. Chi phí silicon --- viết tắt mở rộng lần đầu}
+\subsection*{6.6. Chi phí silicon --- viết tắt mở rộng lần đầu trong chương}
 
 \begin{costbox}
 \textbf{Ngân sách khối cửa sổ.}
 \begin{itemize}[leftmargin=1.2em]
-\item \textbf{M10K} (khối BRAM 10\,kbít trên Cyclone~V): ROM đầy đủ $640\times16=10\,240$\,bit $=$ đúng 1 M10K. Nửa bảng cổ điển $320\times16=5\,120$\,bit vẫn chiếm 1 M10K (không chia nhỏ hơn một block).
-\item \textbf{DSP}: 1 nhân $18\times19$ mỗi mẫu cửa sổ (dùng chung với MAC ở Pha~2 nếu FSM tuần tự).
-\item \textbf{ALM} (Adaptive Logic Module --- đơn vị logic cơ bản Cyclone~V, gồm LUT look-up table + flip-flop): con trỏ $n$ + sat + handshake $\lesssim 80$ ALM.
-\item \textbf{Fmax} (tần số đồng hồ tối đa sau place-and-route): $\gg50$\,MHz --- đường nhân một chu kỳ không phải nút thắt.
-\item \textbf{Latency}: 1 chu kỳ đọc ROM (+ 0/1 chu kỳ nhân pipeline tùy suy diễn).
+\item \textbf{M10K} (khối BRAM nhúng $10\,240$ bit trên Cyclone~V, Chương~0): ROM đầy đủ $640\times 16 = 10\,240$\,bit $=$ đúng 1 M10K. Nửa bảng cổ điển $320\times 16 = 5\,120$\,bit vẫn chiếm 1 M10K (không chia nhỏ hơn một block).
+\item \textbf{DSP}: 1 nhân $18\times 19$ mỗi mẫu cửa sổ (có thể dùng chung với MAC ở Pha~2 nếu FSM tuần tự).
+\item \textbf{ALM} (\emph{Adaptive Logic Module} --- đơn vị logic cơ bản Cyclone~V, gồm LUT look-up table + flip-flop): con trỏ $n$ + sat + handshake $\lesssim 80$ ALM.
+\item \textbf{Fmax} (tần số đồng hồ tối đa sau place-and-route): $\gg 50\,\text{MHz}$ --- đường nhân một chu kỳ không phải nút thắt.
+\item \textbf{Latency}: 1 chu kỳ đọc ROM (cộng 0/1 chu kỳ nhân pipeline tùy suy diễn).
 \item Vì sao ROM chứ không CORDIC: $w[n]$ bất biến; tính offline một lần rẻ hơn sinh $\cos$ lúc chạy hàng nghìn lần mỗi giây.
 \end{itemize}
 \end{costbox}
 
-\subsection*{6.7. Bài tập và lời giải}
+\subsection*{6.7. Bài tập và lời giải giải thích}
 
+\paragraph{Bài tập 6.1.} Sinh hex Praat $N=8$; đối chiếu bốn từ đầu với bảng mục 6.3.B.
+
+\paragraph{Bài tập 6.2.} RTL sim: khung toàn mẫu $32767$ nhân Hanning --- mô tả biên độ $y$ ở hai đầu và giữa khung. Giải thích vì sao.
+
+\paragraph{Bài tập 6.3.} Cố ý dùng hex Praat nhưng địa chỉ nửa bảng cổ điển: $\mathcal{R}_x[\tau]$ lệch twin thế nào?
+
+\paragraph{Bài tập 6.4.} Tính tay $x_q = -10000$, $w_q = 20029$ với cùng quy tắc $+16384$ rồi $\ggg 15$. Kết quả?
+
+\noindent\textbf{Lời giải giải thích.}
 \begin{enumerate}[leftmargin=1.4em]
-\item Sinh hex Praat $N=8$; đối chiếu bốn từ đầu với bảng mục 6.3.B.
-\item RTL sim: khung all-$32767$ $\times$ Hanning --- biên $y$ nhỏ, giữa gần full-scale. Giải thích vì sao.
-\item Cố ý dùng hex Praat nhưng địa chỉ nửa bảng cổ điển: $\mathcal{R}_x[\tau]$ lệch twin thế nào?
-\item Tính tay $x_q=-10000$, $w_q=20029$ với cùng quy tắc $+16384$ rồi $\ggg15$. Kết quả?
+\item Kỳ vọng bốn từ đầu $3833$, $13539$, $24576$, $31780$ (script đã assert).
+\item Giữa khung $w\approx 1$ nên $y\approx 32767$; hai đầu $w$ nhỏ nên $y$ nhỏ --- đúng hình quả núi Hanning. Đây là hệ quả trực tiếp của công thức Praat, không phải lỗi bão hòa.
+\item Hệ số sai đối xứng làm méo $\mathcal{R}_x$, đỉnh $\tau$ lệch vài mẫu, dẫn đến sai vài chục cent khi đối chiếu Praat ở Chương~13.
+\item Tích $-200\,290\,000$; cộng $16384$ rồi arithmetic $\ggg 15$ cho $-6112$ (đối xứng với ví dụ dương ở mục 6.3.A). Script xác nhận \texttt{q15\_mul(-10000, 20029) == -6112}.
 \end{enumerate}
-
-\noindent\textbf{Lời giải.}
-(1) Kỳ vọng $3833,13539,24576,31780$. (2) Giữa khung $w\approx1$ nên $y\approx32767$; hai đầu $w$ nhỏ nên $y$ nhỏ --- đúng hình quả núi. (3) Hệ số sai đối xứng làm méo $\mathcal{R}_x$, đỉnh $\tau$ lệch vài mẫu $\Rightarrow$ sai vài chục cent ở Ch.~13. (4) Tích $-200290000$; $-200290000+16384=-200273616$; arithmetic $\ggg15$ cho $-6112$ (đối xứng với ví dụ dương).
