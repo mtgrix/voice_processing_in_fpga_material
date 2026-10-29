@@ -593,7 +593,7 @@ Xét hai khung âm thanh với $\theta_{\mathrm{sil}} = 0{,}03$, $\theta_{\mathr
     \]
     Sức mạnh vô thanh duy trì ở mức sàn: $s_{\mathrm{uv}} = 0{,}45$. Nếu đỉnh tự tương quan đạt $r_a[\tau^*] = 0{,}78$, do $0{,}78 > 0{,}45$, khung được gắn nhãn Hữu thanh (Voiced).
 \end{itemize}
-Toàn bộ các giá trị trên đã được kiểm chứng khớp chính xác từng chữ số trong tập lệnh \texttt{verify\_chuong\_00\_01.py} (thư mục \texttt{verify/}).
+Toàn bộ các giá trị trên đã được kiểm chứng khớp chính xác từng chữ số (tập lệnh trong thư mục \texttt{verify/}).
 
 \paragraph{Ý nghĩa phần cứng và Biến đổi số nguyên không cần chia.}
 Trên phần cứng FPGA streaming thời gian thực, ta không thể đợi thu xong toàn bộ phát ngôn mới đi tìm $E_{\mathrm{ref}}$ toàn cục. Thiết kế thực tế thay thế $E_{\mathrm{ref}}$ bằng ngưỡng năng lượng tuyệt đối hoặc bộ theo dõi đỉnh trượt (\emph{moving peak detector}). Hơn nữa, phép chia số thực $0{,}45$ hay so sánh phân số được chuyển đổi hoàn toàn sang phép so sánh tích số nguyên:
@@ -623,7 +623,8 @@ end
 \end{lstlisting}
 
 \paragraph{Mô hình song sinh phần mềm (Bit-Exact Twin).}
-Trong mô hình Python tham chiếu (\texttt{golden/lab\_1\_3\_5.py}, dòng 242--270), cổng voicing được lập trình khớp từng phép toán số nguyên 64-bit:
+Trong mô hình Python tham chiếu (tệp \texttt{lab\_1\_3\_5.py} thư mục \texttt{golden/}, dòng 242--270),
+cổng voicing khớp từng phép toán số nguyên 64-bit:
 \begin{lstlisting}[language=Python]
 # Kiem tra nguong im lang bang phep nhan so nguyen
 if ref_energy > 0 and r0 * 10000 < 9 * ref_energy:
