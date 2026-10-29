@@ -1,109 +1,212 @@
 \clearpage
 \phantomsection
-\section*{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}
-\addcontentsline{toc}{section}{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}
-\pdfbookmark[1]{Chương 11. FSM tích hợp và Avalon-ST (valid/ready)}{chuong11}
+\section*{Chương 11. FSM đỉnh và giao thức Avalon-ST (valid/ready/SOP/EOP)}
+\addcontentsline{toc}{section}{Chương 11. FSM đỉnh và giao thức Avalon-ST (valid/ready/SOP/EOP)}
+\pdfbookmark[1]{Chương 11. FSM đỉnh và giao thức Avalon-ST (valid/ready/SOP/EOP)}{chuong11}
 
 \begin{learningobj}
-Sau chương này bạn giải thích được handshake Avalon-ST; vì sao source phải giữ data khi ready$=0$; đếm beat đúng khi có gap; nối FSM pitch (idle$\to$fill$\to$window$\to$mac$\to$peak$\to$pack); và đọc hộp chi phí adapter.
+Sau Chương~11, người học sẽ:
+\begin{enumerate}[leftmargin=1.4em]
+    \item Giải thích được hợp đồng silicon Avalon Streaming (Avalon-ST): cặp \texttt{valid}/\texttt{ready}, khái niệm \textbf{beat}, tín hiệu gói \texttt{SOP}/\texttt{EOP}, và hiện tượng áp lực ngược (\emph{backpressure}).
+    \item Vẽ và đếm tay được một dạng sóng có khoảng nghỉ \texttt{ready}$=0$ và khoảng nghỉ \texttt{valid}$=0$, bảo đảm số beat vào bằng số beat ra.
+    \item Nối máy trạng thái hữu hạn (FSM) đỉnh của đường $F_0$: \texttt{IDLE}$\to$\texttt{FILL}$\to$\texttt{WINDOW}$\to$\texttt{MAC}$\to$\texttt{PEAK}$\to$\texttt{VOICE}$\to$\texttt{PACK}$\to$\texttt{OUT}, mỗi mũi tên tôn trọng handshake với khối sau.
+    \item Viết RTL nguồn không bao giờ tiến con trỏ khi chưa có beat, và twin Python đếm beat khớp testbench.
+    \item Đọc hộp chi phí adapter Avalon-ST và lý do một mẫu mất im lặng phá cả $F_0$.
+\end{enumerate}
 \end{learningobj}
 
-\begin{firstprin}{Vì sao cần \texttt{valid}/\texttt{ready}? --- ống nước có van hai đầu}
-\textbf{Avalon-ST} (Streaming) là quy ước Intel: mỗi nhịp đồng hồ, bên gửi (\emph{source}) khẳng định ``có data'' bằng \texttt{valid}; bên nhận (\emph{sink}) khẳng định ``tôi nhận được'' bằng \texttt{ready}. Một \textbf{beat} (một mẫu/từ thực sự chuyển) chỉ xảy ra khi \emph{cả hai} $=1$ trong cùng chu kỳ. Đây không phải hiện tượng âm thanh --- đây là hợp đồng silicon để hai khối khác tốc độ không làm mất hay nhân đôi mẫu. Mất một mẫu trong khung 640 $=$ lệch cửa sổ $=$ sai $\mathcal{R}_x$ $=$ sai $F_0$ im lặng.
+\subsection*{11.1. Hiện tượng thật: ống nước có van hai đầu}
+
+\begin{firstprin}{Vì sao cần \texttt{valid}/\texttt{ready}? --- không phải hiện tượng âm thanh}
+Trong Chương~0 (Feynman box~12) đã định nghĩa Avalon-ST là chuẩn điểm-nối-điểm một chiều của Intel cho DSP băng thông cao. Hãy gắn thêm trực giác đời thường: hai khối phần cứng như hai đoạn ống nước. Bên gửi (\emph{source}) có van ``tôi đang bơm'' (\texttt{valid}); bên nhận (\emph{sink}) có van ``tôi còn chỗ chứa'' (\texttt{ready}). Nước (một từ dữ liệu) chỉ chảy qua khớp nối khi \emph{cả hai} van mở trong cùng một chu kỳ xung nhịp. Đó không phải quy luật vật lý của sóng âm --- đó là \textbf{hợp đồng silicon} để hai khối khác tốc độ không làm mất mẫu, không nhân đôi mẫu, và không ghi đè bộ đệm.
 \end{firstprin}
 
-\subsection*{Quy ước từng tín hiệu}
+Nếu mất đúng một mẫu trong khung $L=640$, cửa sổ Hanning sẽ lệch một mẫu, hàm $\mathcal{R}_x[\tau]$ lệch, đỉnh $\tau^*$ lệch, và $F_0$ sai mà Quartus vẫn báo timing sạch. Lỗi handshake là lỗi \emph{im lặng} --- testbench phải đếm beat, không chỉ nhìn Fmax.
 
+\subsection*{11.2. Toán / quy ước từng tín hiệu}
+
+\paragraph{Beat.} Một \textbf{beat} là một lần chuyển dữ liệu thành công:
+\begin{equation}
+\mathrm{beat}[n] = \bigl(\texttt{valid}[n]=1\bigr)\ \land\ \bigl(\texttt{ready}[n]=1\bigr).
+\end{equation}
+Đếm số cạnh xung có $\mathrm{beat}=1$ trong cả phép mô phỏng phải bằng số mẫu (hoặc số từ) mà nguồn định gửi --- trừ các chỗ cố ý hạ mẫu (FIR $2/3$ ở Chương~4).
+
+\paragraph{\texttt{valid}.} Source khẳng định: dữ liệu trên bus \texttt{data} ổn định và có nghĩa trong chu kỳ này. Khi source chưa có gì, hạ \texttt{valid}$=0$ (khoảng nghỉ chủ động --- \emph{valid gap}).
+
+\paragraph{\texttt{ready}.} Sink khẳng định: nếu \texttt{valid}$=1$ thì mình sẽ chốt dữ liệu vào thanh ghi/FIFO. Khi bộ đệm đầy, hạ \texttt{ready}$=0$ --- đây là \textbf{backpressure}.
+
+\paragraph{Luật giữ dữ liệu.} Khi $\texttt{valid}=1$ và $\texttt{ready}=0$, source \textbf{bắt buộc giữ nguyên} cả \texttt{data} lẫn \texttt{valid}. Chỉ được đổi sang mẫu kế khi một beat đã xảy ra (hoặc khi tự hạ \texttt{valid}).
+
+\paragraph{\texttt{readyLatency}.} Tài liệu Avalon Interface Specifications (doc ID~683091) cho phép sink báo \texttt{ready} trước $0$ hoặc $1$ chu kỳ. Lab này dùng \texttt{readyLatency}$=0$: quyết định nhận nằm cùng chu kỳ với \texttt{valid}. Nếu nối IP FIR/FFT cấu hình latency~$1$ mà FSM của bạn giả định~$0$, beat đầu/cuối burst sẽ lệch --- đọc UG trước khi nối.
+
+\paragraph{SOP / EOP (Start of Packet / End of Packet).}
+Avalon-ST có thể đóng gói một \textbf{packet}: \texttt{SOP}$=1$ trên beat đầu, \texttt{EOP}$=1$ trên beat cuối. Với khung âm thanh $L=640$ mẫu Q1.15 đưa vào khối cửa sổ/MAC, quy ước lab:
 \begin{itemize}[leftmargin=1.4em]
-\item \texttt{valid}: source có data ổn định trên bus \emph{trong chu kỳ này}.
-\item \texttt{ready}: sink sẽ chốt data nếu \texttt{valid}$=1$.
-\item Beat: $\texttt{valid}\land\texttt{ready}$. Đếm beat trong TB phải khớp số mẫu gửi.
-\item \textbf{Backpressure:} sink kéo \texttt{ready}$=0$ $\Rightarrow$ source \emph{giữ nguyên} data và \texttt{valid} (không nhảy mẫu tiếp).
-\item \texttt{readyLatency}$=0$ (phổ biến): \texttt{ready} cùng chu kỳ với quyết định nhận. \texttt{readyLatency}$=1$: sink báo trước 1 ck --- đọc UG Avalon~683091 trước khi nối IP.
+    \item Beat chỉ số $0$: \texttt{SOP}$=1$, \texttt{EOP}$=0$;
+    \item Beat $1\ldots 638$: cả hai bằng $0$;
+    \item Beat $639$: \texttt{SOP}$=0$, \texttt{EOP}$=1$.
 \end{itemize}
+Khối nhận dùng \texttt{SOP} để reset con trỏ cửa sổ, dùng \texttt{EOP} để kích hoạt MAC/peak. Thiếu \texttt{EOP} $\Rightarrow$ FSM treo ở \texttt{FILL}; thừa \texttt{EOP} $\Rightarrow$ cắt khung sớm.
 
-\subsection*{Ví dụ tính tay --- 6 chu kỳ có gap (đã kiểm logic)}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=0.85cm, inner sep=3pt}]
+  \node[box, fill=blue!8] (src) {Source\\(MAC / pack)};
+  \node[box, fill=teal!8, right=3.2cm of src] (snk) {Sink\\(peak / HPS FIFO)};
+  \draw[<->, very thick] ([yshift=3mm]src.east) -- node[above]{\texttt{data[15:0]}} ([yshift=3mm]snk.west);
+  \draw[->, thick] ([yshift=-1mm]src.east) -- node[above]{\texttt{valid}} ([yshift=-1mm]snk.west);
+  \draw[<-, thick] ([yshift=-4mm]src.east) -- node[below]{\texttt{ready}} ([yshift=-4mm]snk.west);
+  \node[below=0.55cm of src, align=center] {\texttt{SOP}/\texttt{EOP}\\(kèm beat)};
+  \node[draw=orange!70, fill=orange!8, rounded corners, right=0.3cm of snk, align=left, font=\scriptsize]
+    {Beat chỉ khi\\valid $\land$ ready $=1$};
+\end{tikzpicture}
+\caption{Avalon-ST điểm-nối-điểm: data đi một chiều; valid từ source; ready từ sink; SOP/EOP đánh dấu biên gói khung.}
+\label{fig:ch11_avalon_st}
+\end{figure}
 
-Nguồn muốn gửi 4 mẫu $\{A,B,C,D\}$. Giữa $B$ và $C$, sink kéo \texttt{ready}$=0$ đúng 2 ck; sau đó source tự kéo \texttt{valid}$=0$ đúng 1 ck (gap chủ động):
+\subsection*{11.3. Ví dụ tính tay --- sáu/bảy chu kỳ có gap (đã kiểm logic)}
+
+Nguồn muốn gửi bốn mẫu $\{A,B,C,D\}$. Giữa $B$ và $C$, sink kéo \texttt{ready}$=0$ đúng hai chu kỳ; sau beat $C$, source tự kéo \texttt{valid}$=0$ đúng một chu kỳ (valid gap), rồi gửi $D$.
 
 \begin{center}\small
 \begin{tabular}{@{}cllll@{}}\toprule
-ck & valid & ready & data & beat? \\
+Chu kỳ & \texttt{valid} & \texttt{ready} & \texttt{data} trên bus & Beat? \\
 \midrule
-1 & 1 & 1 & $A$ & có \\
-2 & 1 & 1 & $B$ & có \\
-3 & 1 & 0 & $B$ & không (giữ $B$) \\
-4 & 1 & 0 & $B$ & không \\
-5 & 1 & 1 & $B$? chờ --- thực ra sau ready lại: $C$ nếu đã advance & --- \\
+1 & 1 & 1 & $A$ & có --- chuyển $A$ \\
+2 & 1 & 1 & $B$ & có --- chuyển $B$ \\
+3 & 1 & 0 & $C$ (giữ) & không \\
+4 & 1 & 0 & $C$ (giữ) & không \\
+5 & 1 & 1 & $C$ & có --- chuyển $C$ \\
+6 & 0 & 1 & --- & không (valid gap) \\
+7 & 1 & 1 & $D$ & có --- chuyển $D$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\noindent Làm đúng: sau ck2 đã chuyển $B$; ck3--4 source giữ $C$ (mẫu tiếp) với valid$=1$ ready$=0$; ck5 ready$=1$ $\Rightarrow$ beat $C$; rồi valid gap 1 ck; rồi beat $D$. Tổng beat $=4$. Đếm 3 hoặc 5 $\Rightarrow$ bug backpressure.
+Tổng beat $=4$, đúng bằng số mẫu gửi. Script \texttt{verify/verify\_chuong\_10\_14.py} đếm lại trace này. Nếu RTL tiến con trỏ ở chu kỳ~3 (khi \texttt{ready}$=0$), sink sẽ bỏ lỡ $C$ hoặc nhận trùng $B$ --- đếm beat thành $3$ hoặc $5$, testbench phải fail.
+
+\paragraph{Packet $640$ mẫu.} \texttt{SOP} trên beat~$0$, \texttt{EOP} trên beat~$639$. Mọi beat giữa không mang cờ gói. Twin đếm: số lần $\texttt{SOP}=1$ phải bằng số khung; mỗi \texttt{SOP} đi kèm đúng một \texttt{EOP} sau đúng $639$ beat (hoặc $L-1$ khoảng cách beat).
+
+\subsection*{11.4. FSM đỉnh của đường $F_0$}
+
+Hình~\ref{fig:ch11_top_fsm} là máy trạng thái tích hợp (rút gọn nhưng đủ lab). Mỗi trạng thái điều khiển một khối đã học ở các chương trước; mũi tên chỉ chuyển khi khối sau sẵn sàng (\texttt{ready}) hoặc khi điều kiện nội hoàn tất.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-  state/.style={draw, rounded corners, align=center, font=\small\ttfamily, minimum width=18mm, minimum height=9mm},
+  state/.style={draw, rounded corners, align=center, font=\small\ttfamily, minimum width=20mm, minimum height=10mm},
   arr/.style={->, thick, >=Stealth}]
   \node[state] (idle) {IDLE};
-  \node[state, right=12mm of idle] (fill) {FILL\\[-1pt]{\scriptsize wr mem}};
-  \node[state, right=12mm of fill] (win) {WINDOW};
-  \node[state, right=12mm of win] (mac) {MAC $\tau$};
-  \node[state, below=10mm of mac] (peak) {PEAK/DIV};
-  \node[state, left=12mm of peak] (pack) {PACK};
-  \node[state, left=12mm of pack] (out) {OUT};
-  \draw[arr] (idle)--(fill); \draw[arr] (fill)--(win); \draw[arr] (win)--(mac);
-  \draw[arr] (mac)--(peak); \draw[arr] (peak)--(pack); \draw[arr] (pack)--(out);
-  \draw[arr] (out) |- (idle);
+  \node[state, right=10mm of idle] (fill) {FILL\\[-1pt]{\scriptsize wr M10K}};
+  \node[state, right=10mm of fill] (win) {WINDOW};
+  \node[state, right=10mm of win] (mac) {MAC $\tau$};
+  \node[state, below=12mm of mac] (peak) {PEAK/DIV};
+  \node[state, left=10mm of peak] (voice) {VOICE\\[-1pt]{\scriptsize +med3}};
+  \node[state, left=10mm of voice] (pack) {PACK};
+  \node[state, left=10mm of pack] (out) {OUT};
+  \draw[arr] (idle)--node[above,font=\scriptsize]{SOP} (fill);
+  \draw[arr] (fill)--node[above,font=\scriptsize]{EOP/$L$} (win);
+  \draw[arr] (win)-- (mac);
+  \draw[arr] (mac)--node[right,font=\scriptsize]{$\tau$ xong} (peak);
+  \draw[arr] (peak)-- (voice);
+  \draw[arr] (voice)-- (pack);
+  \draw[arr] (pack)-- (out);
+  \draw[arr] (out) |- node[near start, below, font=\scriptsize]{beat $F_0$ + ready} (idle);
 \end{tikzpicture}
-\caption{FSM pitch rút gọn: FILL đủ $L$ mẫu $\to$ WINDOW $\to$ MAC mọi $\tau$ $\to$ PEAK/DIV $\to$ PACK Q12.4 $\to$ OUT (Avalon-ST). Mỗi mũi tên tôn trọng valid/ready với khối sau.}
+\caption{FSM pitch đỉnh: FILL đủ $L$ mẫu (bám SOP/EOP)$\to$ WINDOW$\to$ MAC mọi $\tau\to$ PEAK/DIV$\to$ VOICE/median-3$\to$ PACK Q12.4$\to$ OUT Avalon-ST. Quay lại IDLE khi sink đã nhận beat cao độ.}
+\label{fig:ch11_top_fsm}
 \end{figure}
 
-\subsection*{RTL --- giữ data khi backpressure}
+\paragraph{Vai trò từng trạng thái (neo chương trước).}
+\begin{itemize}[leftmargin=1.4em]
+    \item \texttt{IDLE}: chờ \texttt{SOP} từ FIR/$16\,\text{kHz}$ (Chương~4--5).
+    \item \texttt{FILL}: ghi True Dual-Port M10K, Old Data (Chương~5); đếm beat đến $L$ hoặc chờ \texttt{EOP}.
+    \item \texttt{WINDOW}: nhân ROM Hanning Q1.15 (Chương~6).
+    \item \texttt{MAC}: quét $\tau=26\ldots 214$ bằng 1 DSP (Chương~7); đây là trạng thái chiếm nhiều chu kỳ nhất ($\approx 120{,}960$ MAC).
+    \item \texttt{PEAK/DIV}: argmax + parabolic + LPM\_DIVIDE (Chương~9).
+    \item \texttt{VOICE}: cổng voicing + median-3 đăng ký (Chương~10).
+    \item \texttt{PACK}/\texttt{OUT}: đóng Q12.4 và handshake Avalon-ST ra HPS/Memory (Chương~12).
+\end{itemize}
+
+Nếu \texttt{OUT} gặp backpressure (\texttt{ready}$=0$), FSM \textbf{không} được nhảy về \texttt{FILL} và ghi đè bộ đệm đang chờ --- phải giữ \texttt{valid} và data Q12.4 như mục~11.2.
+
+\subsection*{11.5. RTL --- giữ data khi backpressure}
 
 \begin{verbatim}
-// Source side: do NOT advance rd_ptr unless (valid && ready)
+// Source side: KHONG duoc advance rd_ptr khi chua co beat
 always @(posedge clk or negedge rst_n) begin
-  if (!rst_n) begin out_valid <= 0; out_data <= 0; end
-  else if (!out_valid || out_ready) begin
-    // can load new beat
+  if (!rst_n) begin
+    out_valid <= 1'b0;
+    out_data  <= 16'd0;
+    out_sop   <= 1'b0;
+    out_eop   <= 1'b0;
+  end else if (!out_valid || out_ready) begin
+    // Duoc phep nap beat moi (idle hoa vua chuyen xong beat cu)
     if (have_sample) begin
       out_data  <= next_sample;
+      out_sop   <= next_is_first;
+      out_eop   <= next_is_last;
       out_valid <= 1'b1;
-    end else out_valid <= 1'b0;
+      // chi o day moi rd_ptr <= rd_ptr + 1
+    end else begin
+      out_valid <= 1'b0;
+      out_sop   <= 1'b0;
+      out_eop   <= 1'b0;
+    end
   end
-  // else: hold out_data and out_valid (== backpressure)
+  // else: giu nguyen out_data/out_valid/out_sop/out_eop  (== backpressure)
 end
 \end{verbatim}
 
-\subsection*{Twin đếm beat}
+Dòng then chốt là điều kiện \texttt{!out\_valid || out\_ready}: chỉ khi chưa cầm beat, hoặc sink vừa nhận beat, source mới được đổi bus. Mọi chỗ khác phải giữ nguyên --- kể cả \texttt{SOP}/\texttt{EOP}.
+
+\subsection*{11.6. Twin đếm beat và kiểm SOP/EOP}
 
 \begin{verbatim}
-beats = 0
-for cycle in sim_trace:
-    if cycle["valid"] and cycle["ready"]:
-        beats += 1
-assert beats == n_samples_sent
+def count_beats(trace):
+    return sum(1 for c in trace if c["valid"] and c["ready"])
+
+def check_packets(trace, L=640):
+    beats = [c for c in trace if c["valid"] and c["ready"]]
+    assert count_beats(trace) == len(beats)
+    # Moi goi: SOP tren beat dau, EOP tren beat cuoi, dung L beat
+    i = 0
+    while i < len(beats):
+        assert beats[i]["sop"] and not beats[i]["eop"]
+        assert i + L - 1 < len(beats)
+        for k in range(1, L - 1):
+            assert not beats[i+k]["sop"] and not beats[i+k]["eop"]
+        assert beats[i+L-1]["eop"] and not beats[i+L-1]["sop"]
+        i += L
 \end{verbatim}
 
+Testbench ModelSim/Questa: LFSR hạ \texttt{ready} ngẫu nhiên; LFSR tạo valid-gap phía source; scoreboard so số beat và nội dung Q1.15 từng mẫu với twin.
+
 \begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
+\textbf{Ngân sách silicon --- FSM + adapter Avalon-ST.}
 \begin{itemize}[leftmargin=1.2em]
-\item Adapter valid/ready: $\sim0$--20 ALM; 0 DSP; 0 M10K.
-\item FSM tích hợp: vài trăm ALM tùy số trạng thái và datapath mux.
-\item Vì sao giữ data khi $\mathrm{ready}=0$: mất mẫu $=$ lệch khung $=$ sai $F_0$ không có warning synth.
-\item readyLatency: phải khớp IP FIR/FFT nếu nối --- lệch 1 $=$ mất beat đầu/cuối burst.
+    \item \textbf{Adapter valid/ready/SOP/EOP:} khoảng $0$--$30$ ALM (mux giữ data, vài flip-flop); $0$ DSP; $0$ M10K.
+    \item \textbf{FSM đỉnh:} vài trăm ALM tùy số trạng thái và độ rộng bộ đếm địa chỉ ($10$~bit cho $640$), vẫn nằm trong ngân sách $\approx 850$ ALM toàn luồng.
+    \item \textbf{Latency điều khiển:} bản thân handshake thêm $0$--$1$ chu kỳ mỗi biên; không đổi RTF MAC $\approx 0{,}24$.
+    \item \textbf{Vì sao giữ data khi \texttt{ready}$=0$:} mất một mẫu $= $ lệch khung $= $ sai $\mathcal{R}_x$ $= $ sai $F_0$ --- không có cảnh báo synthesis.
+    \item \textbf{Vì sao cần SOP/EOP:} tách biên gói $640$ mẫu trong luồng liên tục $16\,\text{kHz}$; thiếu chúng FSM không biết lúc nào kết thúc \texttt{FILL}.
 \end{itemize}
 \end{costbox}
 
-\subsection*{Thực hành}
+\subsection*{11.7. Bài tập và lời giải giải thích}
 
-\begin{enumerate}[leftmargin=1.4em]
-\item Vẽ waveform 8 ck: gửi 3 mẫu, ready$=0$ trong 3 ck giữa mẫu 1 và 2; đếm beat.
-\item Sửa bug cố ý: advance ptr khi valid dù ready$=0$ --- TB đếm beat kỳ vọng fail thế nào?
-\item Nối MAC$\to$peak: peak chậm hơn MAC; chứng minh source MAC giữ $\mathcal{R}_x[\tau]$ đúng.
-\end{enumerate}
+\paragraph{Bài tập 11.1 (Waveform 8 chu kỳ).}
+Gửi $3$ mẫu $\{X,Y,Z\}$. Sau beat $X$, sink kéo \texttt{ready}$=0$ trong đúng $3$ chu kỳ, rồi nhận $Y$ và $Z$ liên tiếp. Vẽ bảng \texttt{valid}/\texttt{ready}/\texttt{data}/beat và đếm tổng beat.
 
-\noindent\textbf{Mở rộng.} Avalon-ST: nguồn chỉ đổi data khi \texttt{valid}\&\texttt{ready}; đích phải giữ data đã chấp nhận. Backpressure = \texttt{ready}=0 vài chu kỳ --- RTL không được mất mẫu. Twin đếm beat: số mẫu vào = số mẫu qua mỗi stage (trừ chỗ cố ý decimate). FSM pitch: IDLE$\to$FILL$\to$WINDOW$\to$MAC$\to$PEAK$\to$OUT.
+\paragraph{Lời giải.} Một lịch hợp lệ: ck1 beat $X$; ck2--4 \texttt{valid}$=1$, \texttt{ready}$=0$, giữ $Y$; ck5 beat $Y$; ck6 beat $Z$. Tổng beat $=3$. Mọi lịch tiến con trỏ sớm sẽ làm sink thấy sai mẫu trên ck5.
 
+\paragraph{Bài tập 11.2 (Bug cố ý).}
+RTL advance \texttt{rd\_ptr} mỗi khi \texttt{valid}$=1$ dù \texttt{ready}$=0$. Testbench kỳ vọng gì?
+
+\paragraph{Lời giải.} Source đã ``quên'' mẫu đang giữ: khi \texttt{ready} lên lại, bus đã sang mẫu kế. Số beat đếm được có thể vẫn bằng $N$ nếu sink chốt nhầm nội dung, nhưng scoreboard nội dung fail; hoặc nếu sink không chốt khi \texttt{ready}$=0$ mà source đã bỏ mẫu, tổng beat $<N$. Cả hai đều phải đỏ.
+
+\paragraph{Bài tập 11.3 (MAC chậm hơn peak).}
+Khối MAC phát $\mathcal{R}_x[\tau]$ từng $\tau$ sang peak. Peak cần vài chu kỳ xử lý một $\tau$ nên hạ \texttt{ready}$. Chứng minh source MAC phải giữ đúng $\mathcal{R}_x[\tau]$ hiện tại.
+
+\paragraph{Lời giải.} Nếu MAC chuyển sang $\tau+1$ khi peak chưa nhận, peak sẽ bỏ $\tau$ hoặc gắn kết quả parabolic vào trễ sai. Luật Avalon-ST: không beat thì không đổi \texttt{data}. Twin đếm beat giữa MAC và peak phải bằng số $\tau$ trong $[\tau_{\min},\tau_{\max}]$ ($189$ giá trị).
