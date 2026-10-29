@@ -353,6 +353,45 @@ def test_soft_upsample_nyquist_tone():
     print("k=2 |X|^2 = 16; k=4 Nyquist |X|^2 = 0 --- OK")
 
 
+
+def test_viterbi_perturbed_exercise():
+    print("\n=== 13. Viterbi exercise s2(V)=0.20 ===")
+    s_v = [0.50, 0.20, 0.49]
+    s_uv = [0.45, 0.45, 0.45]
+    c_vv, c_vuv, c_uvv, c_uvuv = 0.02, 0.14, 0.14, 0.0
+    d_v = [s_v[0]]
+    d_uv = [s_uv[0]]
+    d_v.append(s_v[1] + max(d_v[0] - c_vv, d_uv[0] - c_uvv))
+    d_uv.append(s_uv[1] + max(d_v[0] - c_vuv, d_uv[0] - c_uvuv))
+    d_v.append(s_v[2] + max(d_v[1] - c_vv, d_uv[1] - c_uvv))
+    d_uv.append(s_uv[2] + max(d_v[1] - c_vuv, d_uv[1] - c_uvuv))
+    print(f"d_v={d_v}, d_uv={d_uv}")
+    assert np.isclose(d_v[1], 0.68)
+    assert np.isclose(d_uv[1], 0.90)
+    assert np.isclose(d_v[2], 1.25)
+    assert np.isclose(d_uv[2], 1.35)
+
+
+def test_silence_energy_db():
+    print("\n=== 14. Silence energy threshold dB ===")
+    theta = 0.03 ** 2
+    db = 10.0 * np.log10(theta)
+    print(f"theta={theta}, dB={db:.6f}")
+    assert np.isclose(theta, 0.0009)
+    assert np.isclose(db, -30.457575, atol=1e-3)
+
+
+def test_median3_exercise():
+    print("\n=== 15. Median-3 exercise ===")
+    seq = [148, 150, 300, 152, 151]
+    meds = []
+    for i in range(1, 4):
+        w = sorted(seq[i - 1 : i + 2])
+        meds.append(w[1])
+    print("meds", meds)
+    assert meds == [150, 152, 152]
+
+
 if __name__ == "__main__":
     test_decibel_and_nyquist()
     test_local_mean_removal()
@@ -366,4 +405,7 @@ if __name__ == "__main__":
     test_ch01_synthesis_T1()
     test_ch01_hanning_n8_edges()
     test_soft_upsample_nyquist_tone()
+    test_viterbi_perturbed_exercise()
+    test_silence_energy_db()
+    test_median3_exercise()
     print("\nALL NUMERICAL TESTS PASSED SUCCESSFULLY!")
