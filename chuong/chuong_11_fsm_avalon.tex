@@ -9,7 +9,7 @@ Sau Chương~11, người học sẽ:
 \begin{enumerate}[leftmargin=1.4em]
     \item Giải thích được hợp đồng silicon Avalon Streaming (Avalon-ST): cặp \texttt{valid}/\texttt{ready}, khái niệm \textbf{beat}, tín hiệu gói \texttt{SOP}/\texttt{EOP}, và hiện tượng áp lực ngược (\emph{backpressure}).
     \item Vẽ và đếm tay được một dạng sóng có khoảng nghỉ \texttt{ready}$=0$ và khoảng nghỉ \texttt{valid}$=0$, bảo đảm số beat vào bằng số beat ra.
-    \item Nối máy trạng thái hữu hạn (FSM) đỉnh của đường $F_0$: \texttt{IDLE}$\to$\texttt{FILL}$\to$\texttt{WINDOW}$\to$\texttt{MAC}$ rồi \texttt{PEAK}$\to$\texttt{VOICE}$\to$\texttt{PACK}$\to$\texttt{OUT}; mỗi mũi tên tôn trọng handshake với khối sau.
+    \item Nối được FSM đỉnh đường $F_0$ (\texttt{IDLE}, \texttt{FILL}, \texttt{WINDOW}, \texttt{MAC}, \texttt{PEAK}, \texttt{VOICE}, \texttt{PACK}, \texttt{OUT}); mỗi chuyển trạng thái tôn trọng handshake với khối sau.
     \item Viết RTL nguồn không bao giờ tiến con trỏ khi chưa có beat, và twin Python đếm beat khớp testbench.
     \item Đọc hộp chi phí adapter Avalon-ST và lý do một mẫu mất im lặng phá cả $F_0$.
 \end{enumerate}
