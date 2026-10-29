@@ -312,6 +312,47 @@ def test_hardware_budget():
     assert np.isclose(time_mac_50_s * 1000, 2.4192)
     assert np.isclose(rtf_50, 0.24192)
 
+
+def test_ch01_synthesis_T1():
+    print("\n=== 10. Ch.1 Synthesis T1 (mean -> window -> ra) ===")
+    N = 4
+    i = np.arange(1, N + 1)
+    w = 0.5 - 0.5 * np.cos(2.0 * np.pi * i / (N + 1))
+    x_zm = np.array([-1.0, 1.0, -1.0, 1.0])
+    xt = x_zm * w
+    R0 = float(np.sum(xt ** 2))
+    R2 = float(np.sum(xt[: N - 2] * xt[2:]))
+    Rw0 = float(np.sum(w ** 2))
+    Rw2 = float(np.sum(w[: N - 2] * w[2:]))
+    C2 = Rw0 / Rw2
+    ra2 = (R2 / R0) * C2
+    print(f"R0={R0:.6f}, R2={R2:.6f}, C2={C2:.6f}, ra2={ra2:.6f}")
+    assert np.isclose(R0, 1.875)
+    assert np.isclose(R2, 0.625)
+    assert np.isclose(C2, 3.0)
+    assert np.isclose(ra2, 1.0)
+
+
+def test_ch01_hanning_n8_edges():
+    print("\n=== 11. Ch.1 Hanning N=8 edges ===")
+    N = 8
+    i = np.arange(1, N + 1)
+    w = 0.5 - 0.5 * np.cos(2.0 * np.pi * i / (N + 1))
+    print(f"w[1]={w[0]:.6f}, w[2]={w[1]:.6f}")
+    assert np.isclose(w[0], 0.116977778440511)
+    assert np.isclose(w[1], 0.4131759111665348)
+    assert np.allclose(w, w[::-1])
+
+
+def test_soft_upsample_nyquist_tone():
+    print("\n=== 12. Soft upsample Nyquist-grid tone DFT ===")
+    x = np.array([1, 0, -1, 0, 1, 0, -1, 0], dtype=np.float64)
+    X = np.fft.fft(x)
+    assert np.isclose(np.abs(X[2]) ** 2, 16.0)
+    assert np.isclose(np.abs(X[4]) ** 2, 0.0)
+    print("k=2 |X|^2 = 16; k=4 Nyquist |X|^2 = 0 --- OK")
+
+
 if __name__ == "__main__":
     test_decibel_and_nyquist()
     test_local_mean_removal()
@@ -322,4 +363,7 @@ if __name__ == "__main__":
     test_silence_and_voicing()
     test_viterbi_trellis()
     test_hardware_budget()
+    test_ch01_synthesis_T1()
+    test_ch01_hanning_n8_edges()
+    test_soft_upsample_nyquist_tone()
     print("\nALL NUMERICAL TESTS PASSED SUCCESSFULLY!")
