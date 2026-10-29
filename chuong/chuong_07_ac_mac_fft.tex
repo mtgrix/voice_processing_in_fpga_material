@@ -212,13 +212,8 @@ RTL bắt buộc: nếu \texttt{source\_exp}$=e$ sau FFT, sau khi tính $|X[k]|^
 MAC: $98\,280$ nhân thực/khung. FFT 1024 radix-4: 5 tầng, mỗi tầng $256$ butterfly phức (mỗi butterfly vài nhân thực) --- cộng IFFT tương tự cộng $|X|^2$, rồi vẫn phải cắt $\tau$. Thêm rủi ro bit-reverse và BFP. Chỉ mở FFT khi lab yêu cầu so khớp đường Praat FFT hoặc khi RTF MAC không đủ.
 
 
-\paragraph{Bit-reverse và thứ tự bin.}
-FFT IP có thể xuất dữ liệu theo thứ tự bit-reverse hoặc natural order tùy cấu hình. Twin và RTL sau $|X|^2$ phải cùng thứ tự trước IFFT. Sai thứ tự bin làm $\mathcal{R}[\tau]$ ``xáo'' --- đỉnh $\tau_0$ có thể biến mất hoặc nhảy chỗ. Lab nghiệm thu nhánh FFT bắt buộc so dump toàn bộ $|X[k]|^2$ với model IP trước khi nối IFFT.
-
-\paragraph{Zero-pad cụ thể.}
-Khung $L=640$ pad thêm ít nhất 640 số 0 lên $N_{\mathrm{FFT}}=2048$ (hoặc 1024 nếu chấp nhận circular leak nhỏ và đã đo sai số). Pad ngắn hơn $2L-1$ làm tự tương quan vòng ``đụng'' đuôi vào đầu --- $\mathcal{R}[\tau]$ tại $\tau$ lớn bị cộng thêm hạng giả. MAC không bao giờ gặp lỗi này vì định nghĩa gốc chỉ cộng $L-\tau$ hạng thật.
-
-Trên DE10-Standard, chọn MAC mặc định còn vì một lý do vận hành: khi debug cent-error ở Chương~13, kỹ sư chỉ cần so từng $\mathcal{R}[\tau]$ int với twin; không phải lần theo \texttt{source\_exp} từng block. FFT giữ trong tài liệu như đường tùy chọn để hiểu Wiener--Khinchin và để lab nâng cao so khớp Praat khi bật biến thể phổ.
+\paragraph{Bit-reverse, zero-pad --- hai bẫy của đường FFT.}
+\textbf{Bit-reverse} là thứ tự địa chỉ khi đảo từng bit của chỉ số bin (ví dụ bin $6=110_2$ thành $011_2=3$). FFT IP có thể xuất natural order hoặc bit-reverse tùy cấu hình; twin và RTL sau $|X|^2$ phải cùng một thứ tự trước IFFT, nếu không đỉnh $\tau_0$ sẽ ``nhảy chỗ''. \textbf{Zero-pad} nghĩa là thêm số 0 vào cuối khung trước FFT để tự tương quan vòng không ``quấn'' đuôi vào đầu: khung $L=640$ cần pad ít nhất thêm $640$ số 0 (thường lên $N_{\mathrm{FFT}}=2048$). MAC không bao giờ gặp hai bẫy này vì nó chỉ cộng đúng $L-\tau$ hạng thật.
 
 \subsection*{7.6. Twin Python bit-exact}
 
@@ -240,8 +235,8 @@ R = acf_linear_int(xw_q15, 26, 214)
 \end{verbatim}
 Giải thích: \texttt{np.dot} trên \texttt{int64} tương đương vòng RUN của FSM; không lấy \texttt{numpy.correlate} float. Trên nhánh FFT, twin phải gồm cả barrel $2^{2e}$ giống RTL và so với \texttt{\_model} của IP.
 
-
-Khi đo RTF thực tế trên board, đừng chỉ đếm chu kỳ MAC lý thuyết: thêm latency đọc TDP RAM (1~ck/mẫu), handshake Avalon-ST có thể chen \texttt{waitrequest}, và pha nhân $C[\tau]$ (Chương~8). Ngân sách an toàn lab: dành $3\,\text{ms}$ cho toàn bộ Pha~2 (cửa sổ + MAC + chuẩn hóa + peak), tương đương RTF $0{,}3$. Nếu sau place-and-route Fmax tụt dưới $40\,\text{MHz}$, phải pipeline thêm nhân DSP hoặc giảm $\tau_{\max}$ --- không được ``hy vọng'' timing tự hết.
+\paragraph{Ví dụ tính tay --- ngân sách RTF an toàn.}
+Với $N_{\mathrm{MAC}}=98\,280$ đã tính ở mục 7.3.C, thêm giả sử 640 chu kỳ cửa sổ + 189 chu kỳ nhân $C$ + 300 chu kỳ peak/chia $\approx 99\,409$ chu kỳ $\approx 1{,}988\,\text{ms}$ @ $50\,\text{MHz}$. Lab dành biên $3\,\text{ms}$ (RTF $0{,}3$) để chứa thêm latency đọc RAM đăng ký và handshake Avalon-ST. Script khóa các số lõi; biên $3\,\text{ms}$ là quy ước nghiệm thu, không phải assert tuyệt đối.
 
 \subsection*{7.7. Chi phí silicon}
 
@@ -256,9 +251,6 @@ Khi đo RTF thực tế trên board, đừng chỉ đếm chu kỳ MAC lý thuy�
 \item Vì sao MAC mặc định: 0 rủi ro BFP/bit-reverse, 0-bit với golden \texttt{lab\_1\_3\_5.py}.
 \end{itemize}
 \end{costbox}
-
-
-Tóm lại: đường MAC là hợp đồng bit-exact mặc định của gói này; đường FFT/BFP là bài học kiến trúc và bài lab nâng cao. Mọi số trong mục 7.3 đã chạy qua \texttt{verify/verify\_chuong\_06\_09.py} --- nếu sửa công thức pad hoặc độ rộng accum, sửa script trước rồi mới sửa RTL.
 
 \subsection*{7.8. Bài tập và lời giải giải thích}
 

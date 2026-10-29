@@ -24,9 +24,6 @@ C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}
 \]
 để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy), nên tính offline, nạp ROM, rồi \emph{nhân} thay vì chia mỗi $\tau$. Chia runtime 189 lần mỗi khung vừa tốn latency vừa khó khớp bit với round cố định.
 
-
-Trong giọng tiếng Việt, thanh huyền và thanh nặng thường có $F_0$ thấp hơn thanh sắc cùng nguyên âm --- nghĩa là $\tau_0$ lớn hơn. Nếu quên $C[\tau]$, hệ thống sẽ thiên về báo thanh cao hơn thật, làm hỏng đối sánh Pearson với Praat ở Chương~13 trên chính những thanh cần đo cẩn thận. Đó là lý do chuẩn hóa cửa sổ không phải ``trang trí toán học'' mà là điều kiện tiên quyết của độ trung thực cao độ.
-
 \begin{physicalinsight}
 Quên nhân $C[\tau]$ thiên lệch hệ thống về $\tau$ nhỏ (giọng cao giả): đỉnh trầm bị đạp, thuật toán thích đỉnh ngắn hơn. Đây là lỗi kiến trúc, không phải nhiễu ngẫu nhiên --- cent-error sẽ lệch một phía trên mọi câu nói trầm.
 \end{physicalinsight}
@@ -108,6 +105,23 @@ Hex triển khai (\texttt{scoring\_rom}, có octave-cost): $C_q[26] = 8283$, $C_
 
 \begin{figure}[H]
 \centering
+\begin{tikzpicture}[font=\small, >=Stealth]
+  \draw[->] (0,0)--(7.2,0) node[right]{$\tau$};
+  \draw[->] (0,0)--(0,3.2) node[above]{$C[\tau]$};
+  \draw[thick, teal] (0.8,0.9)--(2.2,1.05)--(4.0,1.55)--(6.2,2.7);
+  \fill[teal] (0.8,0.9) circle (1.5pt) node[below,font=\scriptsize]{26};
+  \fill[teal] (2.2,1.05) circle (1.5pt) node[below,font=\scriptsize]{80};
+  \fill[teal] (4.0,1.55) circle (1.5pt) node[below,font=\scriptsize]{160};
+  \fill[teal] (6.2,2.7) circle (1.5pt) node[right,font=\scriptsize]{214 ($\approx 2{,}13$)};
+  \draw[dashed, gray] (0,0.75)--(7,0.75) node[right,font=\scriptsize]{$1{,}0$};
+  \node[font=\scriptsize, align=left] at (3.5,2.8){tăng vì hai quả núi\\cửa sổ chồng ít dần};
+\end{tikzpicture}
+\caption{$C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ tăng theo $\tau$: càng trễ, vùng chồng cửa sổ càng nhỏ, hệ số bù càng lớn. Các mốc khớp bảng 8.3.C.}
+\label{fig:ch08_C_growth}
+\end{figure}
+
+\begin{figure}[H]
+\centering
 \begin{tikzpicture}[box/.style={draw,align=center,font=\small,rounded corners,minimum height=9mm}, node distance=7mm]
 \node[box] (mac) {MAC $\mathcal{R}_x[\tau]$};
 \node[box, right=of mac] (rom) {ROM $C[\tau]$\\Q3.13};
@@ -142,7 +156,7 @@ ck & Địa chỉ & $C_q$ & $S$ \\
 \end{tabular}
 \end{center}
 
-Khi nào mới chia runtime? Chỉ khi $\mathcal{R}_w$ \emph{đổi lúc chạy} (ví dụ đổi loại cửa sổ động). Khi đó dùng IP \textbf{LPM\_DIVIDE} (pipeline cố định $L$ chu kỳ; User Guide chia số nguyên Intel) hoặc bộ chia \textbf{non-restoring} tự viết bằng ALM --- cùng họ chia sẽ gặp lại ở Chương~9 cho $F_0 = f_s/\tau$. Đường pitch chuẩn của tài liệu này \textbf{không} chia mỗi $\tau$: ROM đã nướng sẵn nghịch đảo. Không tồn tại IP tên ``ALTDIV\_TENT''; chỉ dùng LPM\_DIVIDE hoặc RTL tự viết.
+Khi nào mới chia runtime? Chỉ khi $\mathcal{R}_w$ \emph{đổi lúc chạy} (cửa sổ adaptive). Dùng \textbf{LPM\_DIVIDE} hoặc bộ chia \textbf{non-restoring} tự viết bằng ALM (gặp lại ở Chương~9 cho $F_0=f_s/\tau$). Đường pitch mặc định \textbf{không} chia mỗi $\tau$: ROM đã nướng nghịch đảo. IP ``ALTDIV\_TENT\'\' không tồn tại.
 
 Đổi $L$ hoặc công thức $w$ thì \textbf{rebuild file hex bắt buộc}; nạp ROM cũ sẽ sai im lặng và đỉnh $F_0$ thiên lệch.
 
@@ -158,7 +172,8 @@ always @(posedge clk) begin
   S   <= (R_x * $signed({1'b0,C_q}) + 43'sd4096) >>> 13;
 end
 \end{verbatim}
-Dòng \texttt{C\_q <= C\_rom[...]} là latency 1; dòng \texttt{S <= ...} dùng $C_q$ của chu kỳ trước nếu cùng always --- lab phải pipeline đúng: hoặc tách hai always, hoặc chấp nhận $S$ trễ thêm 1 ck so với $R_x$ mới.
+Dòng \texttt{C\_q <= C\_rom[...]} là latency 1; dòng \texttt{S <= ...} dùng $C_q$ của chu kỳ trước nếu cùng \texttt{always}.
+Lab phải pipeline đúng: tách hai \texttt{always}, hoặc chấp nhận $S$ trễ thêm 1~ck so với $R_x$ mới.
 
 
 \subsection*{8.4b. LPM\_DIVIDE nội bộ khi bắt buộc chia $\mathcal{R}_w$}
@@ -168,8 +183,9 @@ Khi lab cố tình đổi cửa sổ theo khung (ví dụ adaptive window), ROM 
 \begin{itemize}[leftmargin=1.4em]
 \item \texttt{LPM\_WIDTHN}: độ rộng numerator --- đủ chứa $\mathcal{R}_w[0]$ (thường 32--48 bit int).
 \item \texttt{LPM\_WIDTHD}: độ rộng denominator $\mathcal{R}_w[\tau]$.
-\item \texttt{LPM\_PIPELINE}: số tầng pipeline $L$ --- mỗi tầng một hàng thanh ghi; latency đúng $L$ chu kỳ từ khi \texttt{numer}/\texttt{denom} ổn định đến khi \texttt{quotient} hợp lệ.
-\item \texttt{LPM\_NREPRESENTATION} / \texttt{LPM\_DREPRESENTATION}: unsigned hoặc signed; phải khớp twin.
+\item \texttt{LPM\_PIPELINE}: số tầng pipeline $L$ (mỗi tầng một hàng thanh ghi).
+Latency đúng $L$ chu kỳ sau khi \texttt{numer}/\texttt{denom} ổn định.
+\item \texttt{LPM\_NREPRESENTATION} / \texttt{LPM\_DREPRESENTATION}: unsigned hoặc signed; khớp twin.
 \end{itemize}
 
 \paragraph{Timing LPM\_DIVIDE (pipeline $L=4$ minh họa).}
@@ -185,8 +201,8 @@ ck & Sự kiện & Ghi chú \\
 \end{center}
 So với ROM 1~ck: chia chậm hơn và khó bit-exact vì IP có thể cắt thương khác \texttt{round} Python. Vì vậy tài liệu giữ ROM làm mặc định.
 
-\paragraph{Non-restoring tự viết --- ý tưởng ngắn.}
-Cùng thuật toán sẽ dùng lại ở Chương~9: mỗi chu kỳ dịch dư và trừ/cộng divisor, ghi 1 bit thương. Với thương 16-bit cần khoảng 16 chu kỳ --- vẫn chậm hơn ROM nhưng dễ khớp twin từng bước hơn LPM khi cần debug.
+\paragraph{Non-restoring tự viết --- giải thích thuật ngữ.}
+\textbf{Non-restoring division} là thuật toán chia số nguyên từng bit: mỗi chu kỳ đồng hồ dịch thanh ghi dư một bit, rồi \emph{trừ} hoặc \emph{cộng} số chia tùy dấu dư hiện tại, và ghi một bit thương. Khác restoring (trừ thử rồi cộng lại nếu âm), non-restoring không hoàn tác --- ít multiplex hơn, dễ viết bằng ALM thuần. Với thương 16-bit cần khoảng 16 chu kỳ. Vẫn chậm hơn đọc ROM một chu kỳ, nhưng khi lab bắt buộc chia $\mathcal{R}_w$ lúc chạy và muốn so từng bước với twin, non-restoring dễ quan sát hơn LPM\_DIVIDE (IP ``đen''). Chương~9 sẽ dùng lại đúng thuật toán này cho $F_0=f_s/\tau$.
 
 \subsection*{8.4c. Octave-cost gộp vào cùng ROM}
 
@@ -195,6 +211,8 @@ Praat phạt ứng viên gần bội của đỉnh mạnh (sai quãng tám) bằ
 Ví dụ số: tại $\tau=214$, thuần $C_q=17429$, scoring $17070$. Tỉ số $17070/17429\approx 0{,}979$ --- octave-cost khoảng vài phần trăm, đủ kéo đỉnh bội xuống dưới đỉnh chính trên nhiều khung hữu thanh.
 
 \subsection*{8.5. Twin Python bit-exact}
+
+\textbf{Twin} ở đây là mô hình Python nhân--cộng/lượng tử giống hệt RTL: cùng công thức, cùng làm tròn, cùng bão hòa. \textbf{Hợp đồng bit-exact} nghĩa là dump thanh ghi trên FPGA phải trùng từng bit với số twin in ra trên cùng vector vào --- không ``gần đúng''. Mọi thay đổi round/sat phải sửa cùng một chỗ ở twin và RTL, rồi sinh lại hex từ twin (không sửa hex tay).
 
 \begin{verbatim}
 import numpy as np
@@ -228,11 +246,7 @@ Giải thích: \texttt{max(Rwt, 1e-30)} tránh chia 0 khi cửa sổ suy biến;
 \item Chỉ khi dump xanh mới nối argmax Chương~9.
 \end{enumerate}
 
-Nếu đổi Hanning sang Hamming, toàn bộ $\mathcal{R}_w$ đổi --- hex cửa sổ và hex $C$ phải rebuild cùng commit. Git diff một mình \texttt{hanning\_rom.hex} mà quên \texttt{c\_tau\_rom.hex} là lỗi quy trình điển hình gây cent-error ``bí ẩn''.
-
-Độ nhạy: sai $1$ LSB trên $C_q[214]$ ($1/8192\approx 0{,}012\%$) nhân với $R_x$ lớn vẫn nhỏ; nhưng sai công thức (quên octave-cost hoặc dùng Q1.15) làm lệch hàng trăm LSB --- đủ đổi argmax. Vì vậy nghiệm thu theo mốc hex, không chỉ theo ``trông có vẻ tăng theo $\tau$''.
-
-Trên silicon Cyclone~V, ROM 189×16 thường map vào 1 M10K dù chỉ dùng $\approx 30\%$ bit. Không cố nhét thêm bảng khác vào cùng block nếu địa chỉ hóa phức tạp làm FSM khó đọc --- rõ ràng hơn một M10K sạch cho $C[\tau]$.
+Nếu đổi Hanning sang Hamming, toàn bộ $\mathcal{R}_w$ đổi --- hex cửa sổ và hex $C$ phải rebuild cùng commit. Sai một LSB công thức (quên octave-cost hoặc dùng nhầm Q1.15) lệch hàng trăm đơn vị trên $C_q$, đủ đổi argmax; vì vậy nghiệm thu theo bốn mốc hex mục 8.3.C, không chỉ theo ``trông có vẻ tăng theo $\tau$''.
 
 \subsection*{8.6. Chi phí silicon}
 
@@ -247,19 +261,14 @@ Trên silicon Cyclone~V, ROM 189×16 thường map vào 1 M10K dù chỉ dùng $
 \end{itemize}
 \end{costbox}
 
-Trên hop $10\,\text{ms}$, khối $C$ chỉ thêm khoảng 189 chu kỳ nhân (+ latency ROM). Tổng Pha~2 vẫn dễ nằm dưới $3\,\text{ms}$ nếu MAC là nút thắt chính. Lab nghiệm thu: dump $S[\tau]$ sau nhân $C$ phải khớp twin trên cùng hex --- lệch 1 LSB $C_q$ nhân với $R_x$ lớn có thể đẩy argmax sang $\tau$ láng giềng.
+Trên hop $10\,\text{ms}$, khối $C$ chỉ thêm khoảng 189 chu kỳ nhân (+ latency ROM). Tổng Pha~2 vẫn dễ nằm dưới $3\,\text{ms}$ nếu MAC là nút thắt chính. Lab nghiệm thu: dump $S[\tau]$ sau nhân $C$ phải khớp twin trên cùng hex.
 
+\paragraph{Ví dụ tính tay --- ba lớp sai số (cùng một khung).}
+Giả sử $\tau^*=80$ đúng trên twin. (1)~Hex $C_q[80]$ lệch $+200$ LSB so twin: $S[80]$ bị nâng giả, có thể thắng $\tau$ láng giềng --- đỉnh lệch có hệ thống theo $\tau$. (2)~FSM đọc ROM sớm 1 chu kỳ: $S[\tau]$ mang $C_q[\tau-1]$; đỉnh lệch đúng 1 mẫu. (3)~Dùng compensation thuần trong khi twin so scoring: lệch vài phần trăm như $17070/17429\approx 0{,}979$ ở $\tau=214$, dễ thành sai quãng tám trên nguyên âm ổn định. Ba lớp này cho triệu chứng khác nhau; đừng gộp thành ``$F_0$ sai''.
 
-Quay lại định nghĩa gốc một lần nữa bằng ngôn ngữ phần cứng: thanh ghi \texttt{acc} của MAC mang $\mathcal{R}_x[\tau]$; ROM mang $C_q[\tau]$; DSP nhân hai số đó rồi dịch 13 bit có làm tròn. Không có khối ``chia $\mathcal{R}_w$'' trên đường mặc định. Mọi tài liệu cũ nhắc ALTDIV\_TENT đều sai tên IP --- hãy xóa khỏi ghi chú cá nhân nếu còn. Đường chia chỉ hiện diện khi (a)~$\mathcal{R}_w$ động, hoặc (b)~Chương~9 tính $F_0=f_s/\tau_{\mathrm{fine}}$ bằng LPM\_DIVIDE / non-restoring --- đó là một phép chia duy nhất mỗi khung, không phải 189 phép.
-
-Khi viết báo cáo lab, hãy tách rõ ba lớp sai số: (1)~sai hex $C$ so twin; (2)~sai pipeline đọc ROM (lệch 1~ck); (3)~sai chọn scoring vs compensation. Ba lớp này cho triệu chứng khác nhau trên đồ thị $F_0$: (1)~lệch systematically theo $\tau$; (2)~trễ một hop hoặc $\tau$ lệch 1; (3)~octave error tăng trên nguyên âm ổn định. Biết tách lớp sẽ rút ngắn debug Chương~13 rất nhiều.
-
-Cuối cùng, nhớ rằng $r_a[\tau]=\mathcal{R}_x[\tau]/\mathcal{R}_x[0]\cdot C[\tau]$ còn phép chia $\mathcal{R}_x[0]$. Trên silicon thường so sánh nguyên tố với ngưỡng voicing mà không chia float: ví dụ $\mathrm{best}\cdot 100 < 45\cdot R_x[0]$ (Chương~9,~10). Twin phải cùng quy tắc so sánh nguyên --- đừng chuẩn hóa float rồi đối chiếu với RTL int.
+Trên đường mặc định không có khối chia $\mathcal{R}_w$: thanh ghi accum của MAC mang $\mathcal{R}_x[\tau]$, ROM mang $C_q[\tau]$, một DSP nhân rồi dịch 13 bit có làm tròn. IP tên ``ALTDIV\_TENT'' không tồn tại. Phép chia thật chỉ xuất hiện khi $\mathcal{R}_w$ đổi lúc chạy (LPM\_DIVIDE / non-restoring ở trên) hoặc khi Chương~9 tính $F_0=f_s/\tau_{\mathrm{fine}}$ --- một lần mỗi khung, không phải 189 lần. So sánh voicing với ngưỡng cũng làm bằng nhân nguyên ($\mathrm{best}\cdot 100 < 45\cdot R_x[0]$), không chia float --- twin phải cùng quy tắc.
 
 \subsection*{8.7. Bài tập và lời giải giải thích}
-
-
-Tóm tắt chương: hiện tượng hai quả núi chồng ít dần giải thích vì sao cần $C[\tau]$; toán Boersma dẫn ra công thức; ví dụ tay và hex $N=640$ đã khóa bằng script; phần cứng mặc định là ROM Q3.13 + một phép nhân DSP; LPM\_DIVIDE / non-restoring chỉ khi $\mathcal{R}_w$ động; twin \texttt{build\_C}/\texttt{apply\_C} là hợp đồng bit-exact; ngân sách dưới 1~M10K và 189 chu kỳ nhân mỗi hop. Sang Chương~9, điểm số $S[\tau]$ đã sẵn sàng cho argmax và parabolic. Mọi số trong mục 8.3 đã chạy \texttt{verify/verify\_chuong\_06\_09.py}; nếu bạn sửa $L$ hoặc công thức $w$, hãy sửa script assert trước, rồi mới commit hex mới. Không commit hex tay chỉnh từng dòng --- luôn sinh lại từ twin Python bit-exact.
 
 \paragraph{Bài tập 8.1.} $w=[1,2,1]$: tính $C[2]$.
 

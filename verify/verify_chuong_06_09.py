@@ -43,7 +43,9 @@ def test_ch06_classical_n8():
         assert wq == wq_exp
     assert q15_mul(10000, 20029) == 6112
     assert q15_mul(-10000, 20029) == -6112
-    print("mul +/-10000 * 20029 -> +/-6112 OK")
+    assert q15_mul(20000, 31145) == 19009
+    assert q15_mul(30000, 0) == 0
+    print("mul +/-10000 * 20029 -> +/-6112; 20000*31145->19009; *0->0 OK")
 
 
 def test_ch06_praat_n8_and_n640():
@@ -142,6 +144,7 @@ def test_ch08_C():
     print(f"C_pure[26]={int(comp[0])}, C_pure[214]={int(comp[-1])}")
     print(f"C_score[26]={hexc[0]}, C_score[214]={hexc[-1]} (matches hex)")
     assert 189 * 16 == 3024  # < 1 M10K
+    assert abs(17070 / 17429 - 0.9794021458488725) < 1e-12  # octave-cost ratio @214
 
 
 def test_ch09_parabolic_and_div():
@@ -168,7 +171,20 @@ def test_ch09_parabolic_and_div():
     assert 16000 // 80 == 200
     # cycles available per hop
     assert int(50e6 * 0.01) == 500_000
-    print("divider / Q12.4 OK")
+    # Mode-B numerics matching float 0.40/0.50/0.46
+    N_m, D_m = 400 - 460, 2 * (400 - 1000 + 460)
+    assert N_m == -60 and D_m == -280
+    assert abs(0.5 * N_m / (D_m / 2) - 3 / 14) < 1e-12
+    # little-endian pack of Q12.4=3191
+    q = 3191
+    lo, hi = q & 0xFF, (q >> 8) & 0xFF
+    assert (lo, hi) == (0x77, 0x0C)
+    assert ((lo << 8) | hi) == 0x770C == 30476  # BE mis-read of LE bytes
+    # Phase-2 cycle budget sketch (window+MAC+C+peak)
+    n_budget = 98_280 + 640 + 189 + 300
+    assert n_budget == 99_409
+    assert abs(n_budget / 50e6 * 1000 - 1.98818) < 1e-4
+    print("divider / Q12.4 / endian / Mode-B OK")
 
 
 def test_sidelobe_db():

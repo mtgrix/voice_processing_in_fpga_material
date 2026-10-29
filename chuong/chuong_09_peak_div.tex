@@ -14,10 +14,7 @@ Sau chuẩn hóa Boersma (Chương~8), điểm số $S[\tau]$ (hay $r_a[\tau]$) 
 
 Trên thiết kế này, mảng điểm số có 189 ô cho $\tau = 26\ldots 214$, nhưng argmax bị hạn chặt vào $[27,213]$ (187 ứng viên) để $\tau^*$ luôn còn hai láng giềng $\tau^*\pm 1$ phục vụ nội suy. Ngưỡng voicing Praat mặc định $V = 0{,}45$: nếu đỉnh tốt nhất $< 0{,}45\cdot\mathcal{R}_x[0]$ (so sánh nguyên: $\mathrm{best}\cdot 100 < 45\cdot R_x[0]$) thì khung vô thanh, $F_0 = 0$. So sánh nguyên tránh chia float trên silicon và khớp twin bit-exact.
 
-Vì sao không dừng ở $\tau^*$ nguyên? Vì $F_0 = f_s/\tau$: một mẫu lệch ở $\tau=80$ đổi $F_0$ khoảng $16000/80 - 16000/81 \approx 2{,}5\,\text{Hz}$ --- với giọng nữ đó đã là vài chục cent, đủ fail nghiệm thu Chương~13. Nội suy dưới mẫu kéo sai số xuống dưới 1~Hz điển hình với chi phí vài phép cộng/trừ.
-
-
-Trong phòng thu âm, kỹ sư chỉnh micro và gain để biên độ khung hữu thanh vào khoảng nửa thang Q1.15 --- tránh bão hòa làm méo đỉnh ACF. Parabolic giả định đỉnh đơn cục bộ; nếu bão hòa cắt ngọn sóng, đỉnh $\mathcal{R}_x$ phẳng và $\Delta$ nhảy loạn. Vì vậy nghiệm thu Chương~9 luôn kèm kiểm tra không bão hòa ở cửa sổ (Chương~6) trước khi đổ lỗi cho divider.
+Vì sao không dừng ở $\tau^*$ nguyên? Vì $F_0 = f_s/\tau$: một mẫu lệch ở $\tau=80$ đổi $F_0$ khoảng $16000/80 - 16000/81 \approx 2{,}5\,\text{Hz}$ --- với giọng nữ đó đã là vài chục cent, đủ fail nghiệm thu Chương~13. Nội suy dưới mẫu kéo sai số xuống dưới 1~Hz điển hình với chi phí vài phép cộng/trừ. Parabolic giả định đỉnh đơn cục bộ sắc; nếu sóng bão hòa cắt ngọn, đỉnh $\mathcal{R}_x$ phẳng và $\Delta$ nhảy loạn --- khi đó kiểm tra cửa sổ (Chương~6) trước khi đổ lỗi cho divider.
 
 \begin{physicalinsight}
 Đỉnh tại $\tau = 2T_0$ luôn tồn tại vì sóng chu kỳ $T_0$ cũng chu kỳ $2T_0$. Nếu biên độ đỉnh bội bị nhiễu đẩy cao hơn đỉnh chính, thuật toán báo $F_0/2$ --- \textbf{sai quãng tám (octave error)}. Octave-cost trong ROM điểm số (Chương~8) và cổng voicing (Chương~10) giảm rủi ro này; argmax một mình không đủ. Trên tiếng Việt, sai quãng tám biến thanh sắc thành ``trầm giả'' và phá tương quan Pearson với Praat.
@@ -63,6 +60,24 @@ rồi chia $F_0$ bằng số nguyên có làm tròn.
 \end{itemize}
 
 Sai số điển hình $\ll 0{,}5$ mẫu trên đỉnh sắc --- đủ cho lab pitch trước khi nghĩ đến sinc (Chương~0 đã so sánh Sinc70/Sinc700 đắt hàng trăm nhân).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth]
+  \draw[->] (-2.2,0)--(2.6,0) node[right]{$x$ ($\tau-\tau^*$)};
+  \draw[->] (0,-0.2)--(0,3.0) node[above]{$r$};
+  \draw[thick, teal, domain=-1.6:1.6, samples=60] plot (\x, {-0.7*\x*\x + 2.2});
+  \fill[red!70] (0.3,{ -0.7*0.3*0.3 + 2.2}) circle (2pt)
+    node[above right,font=\scriptsize]{đỉnh $\Delta$};
+  \fill[black] (-1,{ -0.7+2.2}) circle (1.6pt) node[below left,font=\scriptsize]{$r_-$};
+  \fill[black] (0,2.2) circle (1.6pt) node[below right,font=\scriptsize]{$r^*$};
+  \fill[black] (1,{ -0.7+2.2}) circle (1.6pt) node[below right,font=\scriptsize]{$r_+$};
+  \draw[dashed, gray] (0.3,0)--(0.3,{ -0.7*0.3*0.3 + 2.2});
+  \node[font=\scriptsize, align=left] at (-1.5,2.6){$\Delta=-b/(2a)$\\từ 3 điểm};
+\end{tikzpicture}
+\caption{Nội suy parabolic: khớp ba điểm $r_-,r^*,r_+$ bằng $y=ax^2+bx+c$, lấy đỉnh tại $x=\Delta$. $\Delta>0$ nghĩa là chu kỳ thật hơi dài hơn $\tau^*$ nguyên.}
+\label{fig:ch09_parabolic}
+\end{figure}
 
 \subsection*{9.3. Ví dụ tính tay --- mọi số đã chạy Python}
 
@@ -144,7 +159,7 @@ f0_{\mathrm{Q12.4}} = (16000\cdot 16\cdot 65536 + (\tau_{\mathrm{fine,Q16}}\gg 1
 (chia có làm tròn bằng cộng nửa mẫu số).
 
 \paragraph{Non-restoring --- trực giác và FSM.}
-Thay vì ``trừ thử, nếu âm thì cộng lại'' (restoring), non-restoring: nếu dư âm thì \emph{cộng} divisor ở bước sau và ghi bit thương 0. Ít multiplex hơn, phù hợp RTL thuần ALM. FSM: IDLE$\to$LOAD$\to$BUSY ($W$ vòng SUB/ADD+SHIFT)$\to$DONE.
+\textbf{Restoring division} trừ số chia khỏi dư; nếu kết quả âm thì cộng lại (``restore'') rồi ghi bit thương 0. \textbf{Non-restoring} bỏ bước hoàn tác: nếu dư âm thì ở chu kỳ sau \emph{cộng} số chia và ghi bit 0; nếu dư dương thì trừ và ghi bit 1. Ít multiplex hơn, phù hợp RTL thuần ALM trên Cyclone~V. FSM bốn trạng thái: IDLE (chờ start) $\to$ LOAD (chốt dividend/divisor) $\to$ BUSY ($W$ vòng dịch + trừ/cộng, mỗi vòng một bit thương) $\to$ DONE (giữ quotient đến khi ack).
 
 \begin{figure}[H]
 \centering
@@ -251,9 +266,13 @@ Một testbench tối thiểu phải:
 \item Case mẫu số $|D|$ nhỏ: $\Delta=0$, $F_0=\mathrm{round}(f_s/\tau^*\cdot 16)$.
 \end{enumerate}
 
-Trên board DE10-Standard, đo latency thực bằng SignalTap: gắn trigger vào \texttt{start\_div} và probe \texttt{out\_valid}. Nếu khoảng cách cạnh khác $L$ đã khai báo, đổi comment RTL và twin cùng lúc --- không ``vá'' bằng delay tùy hứng trong FSM top.
+Trên board DE10-Standard, đo latency thực bằng SignalTap: trigger \texttt{start\_div}, probe \texttt{out\_valid}.
+Nếu khoảng cách cạnh khác $L$ đã khai báo, sửa RTL và twin cùng lúc --- không vá delay tùy hứng trong FSM top.
 
-Khi đóng gói Q12.4 ra HPS (Chương~12), nhớ little-endian uint16: byte thấp trước. Đọc nhầm big-endian làm $F_0$ trông như số ngẫu nhiên dù divider đúng. Twin xuất file \texttt{pitch\_f0.bin} cùng endian để so dump bộ nhớ.
+Khi đóng gói Q12.4 ra HPS (Chương~12), nhớ \textbf{little-endian} uint16: byte thấp ghi trước
+(ví dụ $3191=0x0C77$ thành các byte \texttt{77 0C}).
+Đọc nhầm big-endian đảo thành $0x770C=30476$ --- divider đúng nhưng file sai.
+Twin xuất \texttt{pitch\_f0.bin} cùng endian để so dump.
 
 \subsection*{9.6. Chi phí silicon}
 
@@ -271,12 +290,8 @@ Khi đóng gói Q12.4 ra HPS (Chương~12), nhớ little-endian uint16: byte th�
 
 Tổng Pha peak+div thường $<300$ chu kỳ/khung --- dưới $0{,}1\%$ hop $10\,\text{ms}$ @ $50\,\text{MHz}$. Nút thắt vẫn là MAC Chương~7. Lab nghiệm thu: (1)~parabolic float khớp bảng 9.3; (2)~Mode~B int khớp golden; (3)~testbench chờ đúng $L$ ck trước khi đọc quotient.
 
-
-Quay lại bức tranh toàn đường tín hiệu: sau Chương~9, mỗi hop $10\,\text{ms}$ đã có một ước lượng $F_0$ Q12.4 (hoặc 0 nếu vô thanh). Chương~10 sẽ quyết định hữu/vô thanh chặt hơn bằng năng lượng và ngưỡng $r_a$; Chương~11 bọc FSM Avalon-ST; Chương~12 đóng gói ra bộ nhớ. Sai ở parabolic hoặc latency chia sẽ lan thành cent-error có hệ thống ở Chương~13 --- vì vậy khóa script và testbench của chương này trước khi nối voicing.
-
-Một lưu ý vận hành: khi demo realtime trên DE10, đừng đánh giá bằng tai trước khi đối chiếu file dump với Praat. Tai người chịu được lệch vài chục cent; máy chấm Pearson thì không. Parabolic đúng toán nhưng $\tau^*$ sai (do quên $C[\tau]$ ở Chương~8) vẫn cho $F_0$ ``mượt mà sai''. Luôn debug theo lớp: MAC $\to$ $S[\tau]$ $\to$ $\tau^*$ $\to$ $\tau_{\mathrm{fine}}$ $\to$ Q12.4.
-
-Khi tích hợp với Avalon-ST, giữ nguyên endian của dump $\tau^*$ và $F_0$ giữa Python twin và SignalTap: little-endian 16-bit little-endian word order như lab\_1\_3\_5. Một byte đảo sẽ biến $180.0\,\text{Hz}$ thành số vô nghĩa nhưng vẫn ``trông hợp lệ'' trong hex viewer --- đó là lỗi dễ bỏ sót nhất ở biên phần mềm--phần cứng của chương này.
+\paragraph{Ví dụ tính tay --- debug theo lớp, không theo tai.}
+Giả sử dump Q12.4 $=3191$ ($199{,}4375\,\text{Hz}$) nhưng Praat báo $\approx 100\,\text{Hz}$. Đừng nghe tai trước: kiểm tra lần lượt (a)~$\tau^*$ có phải $\approx 160$ thay vì $80$ không (sai quãng tám / quên $C$); (b)~$\tau_{\mathrm{fine}}$ có khớp parabolic twin không; (c)~quotient có được chốt đúng sau $L$ cạnh không; (d)~file \texttt{pitch\_f0.bin} có little-endian uint16 không --- đảo byte biến $3191=0x0C77$ thành $0x770C=30476$ ``trông hợp lệ'' trong hex viewer nhưng vô nghĩa. Script khóa các số (a)--(b); (c)--(d) là hợp đồng testbench và đóng gói Chương~12.
 
 \subsection*{9.7. Bài tập và lời giải giải thích}
 
@@ -298,8 +313,3 @@ Khi tích hợp với Avalon-ST, giữ nguyên endian của dump $\tau^*$ và $F
 \item Thêm 8 chu kỳ pipeline: $+8/500000$ trên hop --- RTF tăng không đáng kể ($\ll 0{,}001$). Tăng $L$ không phải lý do fail thời gian thực; fail thường do quên chờ $L$.
 \item Cần $\tau^*\pm 1$ luôn nằm trong mảng điểm số. Nếu cho phép $\tau^*=26$, thiếu $r_{-}$; $\tau^*=214$ thiếu $r_{+}$. Vì vậy biên argmax thụt vào một mẫu mỗi phía.
 \end{enumerate}
-
-
-Nếu bạn chỉ nhớ một câu của chương này: \emph{đỉnh nguyên chưa đủ --- cần $\tau_{\mathrm{fine}}$ và đúng latency chia}. Mọi công thức parabolic, mọi giá trị Q12.4 trong bảng 9.3, và mọi assert trong \texttt{verify/verify\_chuong\_06\_09.py} đều phục vụ câu đó. Khi mở rộng sau này sang sinc hoặc Viterbi, giữ nguyên hợp đồng Avalon-ST và định dạng Q12.4 để không phá Chương~12--13.
-
-Tóm tắt chương: argmax chọn $\tau^*$ trên điểm số đã chuẩn hóa; parabolic ba điểm cho $\tau_{\mathrm{fine}}$; một phép chia LPM\_DIVIDE / non-restoring mỗi khung cho $F_0$ Q12.4; latency chia là hợp đồng testbench; ngân sách vài trăm chu kỳ --- nhỏ trước MAC. Ngân sách vài trăm chu kỳ mỗi hop không bao giờ là lý do bỏ parabolic; lý do bỏ chỉ là khi đỉnh quá phẳng và voicing đã đánh vô thanh. Script verify phải vẫn xanh sau mọi sửa RTL. Mọi số mục 9.3 đã chạy \texttt{verify/verify\_chuong\_06\_09.py}.
