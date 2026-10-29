@@ -5,109 +5,183 @@
 \pdfbookmark[1]{Chương 8. Chuẩn hóa C[τ] (ROM nhân thay chia)}{chuong8}
 
 \begin{learningobj}
-Sau chương này bạn giải thích được vì sao chia cho tự tương quan cửa sổ; derive $C[\tau]$ từ first principles; tính tay và kiểm Python một bảng nhỏ; cấu hình ROM M10K; viết twin sinh \texttt{.hex} bit-exact; và đọc được từng dòng hộp chi phí --- tại sao nhân thay chia runtime.
+Sau chương này bạn giải thích được vì sao phải chia cho tự tương quan của cửa sổ; dẫn ra $C[\tau]$ từ nguyên lý đầu tiên; tính tay và kiểm Python một bảng nhỏ cùng các mốc trên khung $L=640$; cấu hình ROM M10K mang $C[\tau]$ dạng Q3.13; đối chiếu với LPM\_DIVIDE / bộ chia non-restoring khi $\mathcal{R}_w$ đổi lúc chạy; viết twin sinh \texttt{.hex} bit-exact; và đọc được hộp chi phí --- tại sao nhân thay chia runtime.
 \end{learningobj}
 
-\begin{firstprin}{Vật lý: đỉnh $\tau$ lớn bị đạp vì hai quả núi cửa sổ ít chồng}
-Sau khi nhân cửa sổ Hanning, hai ``quả núi'' $w[n]$ và $w[n+\tau]$ chồng nhau ít dần khi trễ $\tau$ tăng. Năng lượng chồng đó chính là tự tương quan của cửa sổ
+\subsection*{8.1. Hiện tượng thật: đỉnh $\tau$ lớn bị ``đạp'' vì hai quả núi ít chồng}
+
+Sau khi nhân cửa sổ Hanning (Chương~6), mỗi khung trở thành một ``quả núi'': biên độ lớn ở giữa, nhỏ ở hai đầu. Khi tính $\mathcal{R}_x[\tau]$, ta đang đo độ chồng giữa quả núi đó và bản sao trễ $\tau$ mẫu. Trễ càng lớn, hai quả núi chồng nhau càng ít --- năng lượng chồng đó chính là tự tương quan của \emph{chính cửa sổ}:
 \[
-\mathcal{R}_w[\tau]=\sum_{n} w[n]w[n+\tau].
+\mathcal{R}_w[\tau] = \sum_{n=0}^{L-1-\tau} w[n]\, w[n+\tau].
 \]
-Nếu lấy $\mathcal{R}_x[\tau]$ thô làm điểm số, đỉnh ở $\tau$ lớn (giọng trầm, $T_0$ dài) bị ``đạp'' chỉ vì hai quả núi ít chồng --- không phải vì tín hiệu kém tuần hoàn. Praat/Boersma nhân hệ số
+Nếu lấy $\mathcal{R}_x[\tau]$ thô làm điểm số, đỉnh ở $\tau$ lớn (giọng trầm, $T_0$ dài) bị đạp xuống chỉ vì hình học cửa sổ, không phải vì tín hiệu kém tuần hoàn. Ví dụ khung cosin ở Chương~7 cho $\mathcal{R}[8]/\mathcal{R}[0] = 0{,}5$ dù sóng lặp hoàn hảo --- đó đúng là hiệu ứng này.
+
+Praat/Boersma nhân hệ số bù
 \[
-C[\tau]=\frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}
+C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}
 \]
-để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy) $\Rightarrow$ tính offline, nạp ROM, \emph{nhân} thay vì chia mỗi $\tau$.
-\end{firstprin}
+để kéo mọi đỉnh về cùng thước gần $[0,1]$. \textbf{$C[\tau]$ không phải hiện tượng dây thanh}: nó là hiệu chỉnh hình học của cửa sổ. Trên FPGA, $\mathcal{R}_w$ chỉ phụ thuộc $w$ và $L$ (bất biến lúc chạy), nên tính offline, nạp ROM, rồi \emph{nhân} thay vì chia mỗi $\tau$.
 
-\subsection*{Toán từ first principles --- từng ký hiệu}
-
-Công thức chuẩn hóa Boersma (sau khi đã chuẩn $\mathcal{R}_x[0]$):
-\[
-r_a[\tau]=\frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau],\qquad
-C[\tau]=\frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
-\]
-\begin{itemize}[leftmargin=1.4em]
-\item $\mathcal{R}_x[\tau]$: tự tương quan tín hiệu đã cửa sổ (Ch.~7).
-\item $\mathcal{R}_w[\tau]$: tự tương quan cửa sổ --- mẫu số ``độ chồng''.
-\item $C[\tau]\ge 1$ và tăng theo $\tau$ (vì $\mathcal{R}_w$ giảm).
-\item Lượng tử silicon: $C_q[\tau]=\mathrm{sat}_{u16}\!\bigl(\mathrm{round}(C[\tau]\cdot 2^{F})\bigr)$ với $F=13$ (Q3.13) trong gói này.
-\item Bit-growth: $r_x$ (vd Q2.30) $\times C$ (Q3.13) $\to$ cắt/làm tròn về Q1.15 theo twin --- ghi rõ \texttt{r\_shift} trong comment RTL và Python.
-\end{itemize}
-
-\subsection*{Ví dụ tính tay --- $L=4$, $w=[1,2,2,1]$ (đã kiểm Python)}
-
-\begin{align*}
-\mathcal{R}_w[0] &= 1{+}4{+}4{+}1=10, \\
-\mathcal{R}_w[1] &= 1\cdot2 + 2\cdot2 + 2\cdot1 = 8, \\
-\mathcal{R}_w[2] &= 1\cdot2 + 2\cdot1 = 4, \\
-\mathcal{R}_w[3] &= 1\cdot1 = 1.
-\end{align*}
-Vậy $C=[1,\ 1{,}25,\ 2{,}5,\ 10]$. Giả sử $\mathcal{R}_x=[20,12,6,1]$ thì sau nhân $C$: $[20,\ 15,\ 15,\ 10]$ --- đỉnh phụ $\tau$ được nâng tương đối. Q3.13: $1{,}25\to\mathrm{round}(1{,}25\cdot8192)=10240$ (exact). Thêm: $w=[2,2,2]$, $\tau=2$ $\Rightarrow\mathcal{R}_w[0]=12$, $\mathcal{R}_w[2]=4$, $C=3$.
+\begin{physicalinsight}
+Quên nhân $C[\tau]$ thiên lệch hệ thống về $\tau$ nhỏ (giọng cao giả): đỉnh trầm bị đạp, thuật toán thích đỉnh ngắn hơn. Đây là lỗi kiến trúc, không phải nhiễu ngẫu nhiên.
+\end{physicalinsight}
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[box/.style={draw,align=center,font=\small,rounded corners,minimum height=9mm}, node distance=8mm]
+\begin{tikzpicture}[font=\small, >=Stealth]
+  % two overlapping mountains
+  \draw[thick, teal, opacity=0.85] (0.5,0) .. controls (1.5,2.4) and (2.5,2.4) .. (3.5,0);
+  \draw[thick, orange!80!black, opacity=0.85] (2.0,0) .. controls (3.0,2.4) and (4.0,2.4) .. (5.0,0);
+  \draw[<->, gray] (1.8,0.15)--(3.2,0.15);
+  \node[gray, font=\scriptsize] at (2.5,-0.35){vùng chồng $\propto \mathcal{R}_w[\tau]$};
+  \node[teal, font=\scriptsize] at (1.5,2.6){$w[n]$};
+  \node[orange!80!black, font=\scriptsize] at (4.0,2.6){$w[n+\tau]$};
+  \draw[->] (5.8,1.2)--(7.0,1.2);
+  \node[font=\scriptsize, align=left, anchor=west] at (7.1,1.5){$C[\tau]=\dfrac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}$\\nâng đỉnh $\tau$ lớn};
+\end{tikzpicture}
+\caption{Hai quả núi cửa sổ chồng ít dần khi $\tau$ tăng. Hệ số $C[\tau]$ bù đúng độ mất chồng đó.}
+\label{fig:ch08_window_overlap}
+\end{figure}
+
+\subsection*{8.2. Toán từng bước --- mọi ký hiệu}
+
+Công thức chuẩn hóa Boersma (sau khi đã có $\mathcal{R}_x[0]$):
+\[
+r_a[\tau] = \frac{\mathcal{R}_x[\tau]}{\mathcal{R}_x[0]}\cdot C[\tau], \qquad
+C[\tau] = \frac{\mathcal{R}_w[0]}{\mathcal{R}_w[\tau]}.
+\]
+\begin{itemize}[leftmargin=1.4em]
+\item $\mathcal{R}_x[\tau]$: tự tương quan tín hiệu đã cửa sổ (Chương~7), int rộng trên silicon.
+\item $\mathcal{R}_w[\tau]$: tự tương quan cửa sổ --- mẫu số ``độ chồng'', tính offline từ $w_q$.
+\item $C[\tau]\ge 1$ và tăng theo $\tau$ (vì $\mathcal{R}_w$ giảm).
+\item Lượng tử silicon: $C_q[\tau] = \mathrm{sat}_{u16}\!\bigl(\mathrm{round}(C[\tau]\cdot 2^{13})\bigr)$ --- định dạng \textbf{Q3.13} (3 bit phần nguyên gồm đầu, 13 bit thập phân; $1{,}0\mapsto 8192$; dải đến gần $4{,}0$). Chọn Q3.13 vì trên $L=640$, $C[214]\approx 2{,}13$ vượt quá 1 (Q1.15 sẽ bão hòa sai).
+\item Bit-growth: $R_x$ (vd Q2.30 / accum) $\times C$ (Q3.13) rồi làm tròn về thang điểm số. Twin và RTL dùng cùng quy tắc:
+\[
+S[\tau] = (R_x[\tau]\cdot C_q[\tau] + 2^{12}) \gg 13
+\]
+(làm tròn gần nhất, khớp \texttt{lab\_1\_3\_5.py}).
+\end{itemize}
+
+Dải ROM phần cứng: 189 từ cho $\tau = 26\ldots 214$. Tệp \texttt{hex/c\_tau\_rom.hex} trong gói này còn nhân thêm hệ số octave-cost của Praat (xem \texttt{scoring\_rom\_q13} trong golden) --- đó là tiện ích gộp ROM, không đổi bản chất $C[\tau]$ bù cửa sổ. Twin kiểm tra cửa sổ thuần dùng \texttt{compensation\_rom\_q13}.
+
+\subsection*{8.3. Ví dụ tính tay --- mọi số đã chạy Python}
+
+\paragraph{A. $L=4$, $w=[1,2,2,1]$.}
+\begin{align*}
+\mathcal{R}_w[0] &= 1+4+4+1 = 10,\\
+\mathcal{R}_w[1] &= 1\cdot 2 + 2\cdot 2 + 2\cdot 1 = 8,\\
+\mathcal{R}_w[2] &= 1\cdot 2 + 2\cdot 1 = 4,\\
+\mathcal{R}_w[3] &= 1\cdot 1 = 1.
+\end{align*}
+Vậy $C = [1,\ 1{,}25,\ 2{,}5,\ 10]$. Q3.13: $1{,}25 \mapsto \mathrm{round}(1{,}25\cdot 8192) = 10240$. Giả sử $\mathcal{R}_x = [20,12,6,1]$ thì sau nhân $C$: $[20,\ 15,\ 15,\ 10]$ --- đỉnh phụ $\tau$ được nâng tương đối.
+
+\paragraph{B. $w=[1,2,1]$, $\tau=2$.}
+$\mathcal{R}_w[0] = 6$, $\mathcal{R}_w[2] = 1$, $C[2] = 6$.
+
+\paragraph{C. Khung thật $N=640$ Praat (bù cửa sổ thuần).}
+\begin{center}\small
+\begin{tabular}{@{}rrrl@{}}\toprule
+$\tau$ & $C$ float & $C_q$ Q3.13 & hex \\
+\midrule
+26 & 1.010885 & 8281 & \texttt{2059} \\
+80 & 1.108152 & 9078 & \texttt{2376} \\
+160 & 1.515087 & 12412 & \texttt{307C} \\
+214 & 2.127577 & 17429 & \texttt{4415} \\
+\bottomrule
+\end{tabular}
+\end{center}
+Hex triển khai (\texttt{scoring\_rom}, có octave-cost): $C_q[26] = 8283$, $C_q[214] = 17070$ --- lệch nhẹ so với bảng thuần, đúng thiết kế gộp phạt quãng tám vào cùng một lần nhân.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[box/.style={draw,align=center,font=\small,rounded corners,minimum height=9mm}, node distance=7mm]
 \node[box] (mac) {MAC $\mathcal{R}_x[\tau]$};
 \node[box, right=of mac] (rom) {ROM $C[\tau]$\\Q3.13};
 \node[box, right=of rom] (mul) {DSP $\times$};
 \node[box, right=of mul] (peak) {argmax / parabolic};
 \draw[->,thick] (mac)--(mul); \draw[->,thick] (rom)--(mul); \draw[->,thick] (mul)--(peak);
 \end{tikzpicture}
-\caption{Sau nhân $C$: đưa $r_a[\tau]$ vào peak (Ch.~9). Quên nhân $C$ $\Rightarrow$ thiên về $\tau$ nhỏ (giọng cao giả).}
+\caption{Sau nhân $C$: đưa $S[\tau]$ (hoặc $r_a[\tau]$) vào khối dò đỉnh (Chương~9).}
+\label{fig:ch08_norm_datapath}
 \end{figure}
 
-\subsection*{Intel IP --- ROM + cấu hình}
+\subsection*{8.4. Ý nghĩa phần cứng --- ROM mặc định, chia chỉ khi bắt buộc}
 
-Chọn IP \textbf{On-Chip Memory} kiểu ROM (hoặc RAM khởi tạo \texttt{.hex}/\texttt{.mif}). Depth = $\tau_{\max}+1$ (khoảng 214 khi $f_s=16$\,kHz và $F_{0,\min}=75$\,Hz). Width 16 bit mang Q3.13. Bật registered output: 1 chu kỳ --- FSM Ch.~11 phải chờ đúng latency này trước khi nhân. Đường mặc định: ROM $C[\tau]$ đã tính offline. Chỉ khi $\mathcal{R}_w$ thay đổi lúc chạy mới cân nhắc LPM\_DIVIDE runtime (UG~683490) --- \emph{không} dùng ALTDIV\_TENT. Đổi $L$ hoặc cửa sổ $w$ $\Rightarrow$ \textbf{rebuild file hex bắt buộc}; nạp ROM cũ sẽ sai im lặng và đỉnh $F_0$ thiên lệch.
+Đường mặc định: IP \textbf{On-Chip Memory} kiểu ROM (hoặc RAM khởi tạo \texttt{.hex}/\texttt{.mif}).
+\begin{itemize}[leftmargin=1.4em]
+\item Depth $= 189$ (hoặc $\tau_{\max}+1$ nếu lưu từ 0); width $= 16$ bit mang Q3.13.
+\item Registered output: 1 chu kỳ --- FSM Chương~11 chờ đúng latency trước khi nhân.
+\item Một khối DSP nhân $R_x\times C_q$ mỗi $\tau$ (có thể dùng chung nhịp với MAC).
+\end{itemize}
 
+Khi nào mới chia runtime? Chỉ khi $\mathcal{R}_w$ \emph{đổi lúc chạy} (ví dụ đổi loại cửa sổ động). Khi đó dùng IP \textbf{LPM\_DIVIDE} (User Guide chia số nguyên của Intel) hoặc bộ chia \textbf{non-restoring} tự viết bằng ALM --- cùng họ chia sẽ gặp lại ở Chương~9 cho $F_0 = f_s/\tau$. Đường pitch chuẩn của tài liệu này \textbf{không} chia mỗi $\tau$: ROM đã nướng sẵn nghịch đảo.
 
-\subsection*{RTL + twin bit-exact}
+Đổi $L$ hoặc công thức $w$ thì \textbf{rebuild file hex bắt buộc}; nạp ROM cũ sẽ sai im lặng và đỉnh $F_0$ thiên lệch.
 
+\paragraph{RTL (ý tưởng).}
 \begin{verbatim}
 (* ram_init_file = "c_tau_rom.hex" *)
-reg [15:0] C_rom [0:TAU_MAX];
+reg [15:0] C_rom [0:188];           // tau 26..214
 reg [15:0] C_q;
-reg signed [31:0] Rn;
+reg signed [42:0] S;                // score after *C
 always @(posedge clk) begin
-  C_q <= C_rom[tau];              // 1-cycle
-  Rn  <= R_x * $signed(C_q);     // DSP; shift theo Q
+  C_q <= C_rom[tau - 26];           // 1-cycle registered read
+  S   <= (R_x * $signed({1'b0,C_q}) + 43'sd4096) >>> 13;
 end
 \end{verbatim}
 
+\subsection*{8.5. Twin Python bit-exact}
+
 \begin{verbatim}
 import numpy as np
-FRAC, SCALE = 13, 1 << 13
-def build_C(w, tau_max):
+Q13 = 1 << 13
+
+def build_C(w, tau_min, tau_max):
+    w = np.asarray(w, float)
     L = len(w)
-    Rw = np.array([np.dot(w[:L-t], w[t:L]) for t in range(tau_max+1)], float)
-    C = Rw[0] / np.maximum(Rw, 1e-30)
-    return np.clip(np.round(C * SCALE), 0, 65535).astype(np.uint16)
-def apply_C(R_x, C_q, r_shift=FRAC):
-    return (R_x.astype(np.int64) * C_q.astype(np.int64)) >> r_shift
-# assert build_C([1,2,2,1], 3) scaled: C[1]=10240 for 1.25
+    Rw0 = float(np.dot(w, w))
+    out = []
+    for t in range(tau_min, tau_max + 1):
+        Rwt = float(np.dot(w[: L - t], w[t:]))
+        out.append(int(round(Rw0 / max(Rwt, 1e-30) * Q13)))
+    return np.clip(out, 0, 65535).astype(np.uint16)
+
+def apply_C(R_x, C_q):
+    return (R_x.astype(np.int64) * C_q.astype(np.int64) + (1 << 12)) >> 13
+
+# assert: build_C([1,2,2,1], 0, 3)[1] == 10240  # C=1.25
 \end{verbatim}
 
+\subsection*{8.6. Chi phí silicon}
+
 \begin{costbox}
-\textbf{Ngân sách silicon --- giải thích từng mục.}
+\textbf{Ngân sách chuẩn hóa $C[\tau]$.}
 \begin{itemize}[leftmargin=1.2em]
-\item M10K: $<1$ cho $\approx182$ từ Q3.13 ($C[\tau_{\min}..\tau_{\max}]$).
-\item DSP: 1 nhân $r_x\times C$ mỗi $\tau$ (cùng nhịp MAC hoặc sau MAC).
-\item ALM: địa chỉ + đăng ký --- vài chục.
-\item So LPM\_DIVIDE mỗi $\tau$: tiết kiệm hàng trăm phép chia/khung và latency không xác định --- lý do chọn ROM.
-\item Vì sao Q3.13: $C$ đến $\sim10$ trên Hanning ngắn minh họa; trên $L=640$ $C[\tau_{\max}]$ vừa trong 3 bit nguyên + 13 frac.
+\item \textbf{M10K}: $189\times 16 = 3\,024$\,bit $< 1$ M10K ($10\,240$\,bit).
+\item \textbf{DSP}: 1 nhân $R_x\times C$ mỗi $\tau$ (dùng chung hoặc ngay sau MAC).
+\item \textbf{ALM}: địa chỉ + đăng ký --- vài chục.
+\item So với LPM\_DIVIDE mỗi $\tau$: tiết kiệm 189 phép chia/khung và latency không đều --- lý do chọn ROM.
+\item Vì sao Q3.13: $C[214]\approx 2{,}13$ vừa trong 3 bit nguyên; Q1.15 sẽ bão hòa tại $1{,}0$ và phá bù.
 \end{itemize}
 \end{costbox}
 
-\subsection*{Thực hành}
+\subsection*{8.7. Bài tập và lời giải giải thích}
 
+\paragraph{Bài tập 8.1.} $w=[1,2,1]$: tính $C[2]$.
+
+\paragraph{Bài tập 8.2.} Hex Q3.13 cho $C = 1{,}5$: giá trị nguyên và mã hex?
+
+\paragraph{Bài tập 8.3.} Twin dùng floor thay round khi lượng tử $C$: lệch tối đa bao nhiêu LSB trước khi cắt?
+
+\paragraph{Bài tập 8.4.} Quên nhân $C$: đỉnh $\tau$ lớn bị thiên lệch thế nào?
+
+\paragraph{Bài tập 8.5.} Liệt kê ba tham số IP ROM bắt buộc: width, depth, init file. Khi nào cân nhắc LPM\_DIVIDE thay ROM?
+
+\noindent\textbf{Lời giải giải thích.}
 \begin{enumerate}[leftmargin=1.4em]
-\item $w=[1,2,1]$: tính $C[2]$ (đáp án $6$).
-\item Hex Q3.13 cho $C=1{,}5$: $\mathrm{round}(1{,}5\cdot8192)=12288=$ \texttt{3000}.
-\item Twin floor thay round: lệch tối đa bao nhiêu LSB? (worst $\sim0{,}5$).
-\item Quên nhân $C$: đỉnh $\tau$ lớn bị thiên lệch thế nào? (thiên về $\tau$ nhỏ).
-\item Liệt kê 3 tham số IP ROM: width, depth, init file.
+\item $\mathcal{R}_w[0] = 1+4+1 = 6$, $\mathcal{R}_w[2] = 1\cdot 1 = 1$, $C[2] = 6$.
+\item $1{,}5\cdot 8192 = 12288 = $\texttt{0x3000}.
+\item Floor thay round lệch tối đa $0{,}5$ LSB của thang Q3.13 trước khi ép kiểu nguyên.
+\item Quên $C$: đỉnh $\tau$ lớn bị đạp bởi hình học cửa sổ, thuật toán thiên về $\tau$ nhỏ (giọng cao giả).
+\item Width 16, depth 189 (hoặc $\tau_{\max}-\tau_{\min}+1$), init \texttt{c\_tau\_rom.hex}. LPM\_DIVIDE chỉ khi $\mathcal{R}_w$ đổi lúc chạy; đường mặc định pitch không chia mỗi $\tau$.
 \end{enumerate}
-
-\noindent\textbf{Giải thích nhanh đáp án.} (1) $w=[1,2,1]$: $\mathcal{R}_w[0]=1+4+1=6$, $\mathcal{R}_w[2]=1\cdot1=1$, $C[2]=6$. (2) $1{,}5\cdot8192=12288=$\texttt{0x3000}. (3) Floor thay round lệch tối đa $0{,}5$ LSB trước khi cắt. (4) Quên $C$: đỉnh $\tau$ lớn bị đạp $\Rightarrow$ thiên giọng cao giả. (5) Width 16, depth $\tau_{\max}+1$, init \texttt{.hex}.
-
