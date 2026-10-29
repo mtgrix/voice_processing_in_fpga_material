@@ -1,61 +1,172 @@
 \clearpage
 \phantomsection
-\section*{Chương 14. Checklist nộp bài (một lần duy nhất)}
-\addcontentsline{toc}{section}{Chương 14. Checklist nộp bài (một lần duy nhất)}
-\pdfbookmark[1]{Chương 14. Checklist nộp bài (một lần duy nhất)}{chuong14}
+\section*{Chương 14. Checklist nghiệm thu cuối cùng (kèm lý do)}
+\addcontentsline{toc}{section}{Chương 14. Checklist nghiệm thu cuối cùng (kèm lý do)}
+\pdfbookmark[1]{Chương 14. Checklist nghiệm thu cuối cùng (kèm lý do)}{chuong14}
 
 \begin{learningobj}
-Trước khi nộp bài hoặc đóng gói bitfile, bạn đọc từng mục như một câu khẳng định có thể ký tên. Mỗi mục neo lại một quyết định thiết kế đã giải thích ở các chương trước; nếu mục nào chưa đúng, dừng và sửa trước khi sang mục sau.
+Trước khi nộp bài hoặc đóng gói bitfile cho DE10-Standard, người học sẽ:
+\begin{enumerate}[leftmargin=1.4em]
+    \item Đọc từng mục checklist như một câu khẳng định có thể ký tên, kèm \emph{lý do kỹ thuật} neo về chương đã học --- không chỉ ``tick cho có''.
+    \item Chẩn đoán nhanh các triệu chứng đỏ điển hình (Q12.4 $=0$, $F_0/2$, đảo endian, FSM treo) và chỉ đúng tầng kiểm chứng cần mở lại.
+    \item Điền bảng tự ký (RTL lint, twin bit-exact, smoke phần cứng, tài liệu đủ tám yếu tố) với ngày theo múi giờ làm việc.
+    \item Hiểu vì sao checklist chỉ xuất hiện \textbf{một lần} ở Chương~14: tránh lan checklist trùng, mọi khẳng định đã được giải thích ở Chương~2--13.
+\end{enumerate}
 \end{learningobj}
 
-\begin{firstprin}{Checklist không phải nghi thức --- nó bắt lỗi hệ thống}
-Một đường pitch FPGA là chuỗi quyết định (MCLK, Old Data, Hanning $N-1$, ROM $C[\tau]$, parabolic, Q12.4 LE, Viterbi off\ldots). Sai một mắt xích thường không làm synth fail --- nó làm $F_0$ lệch im lặng. Checklist buộc bạn xác nhận lại từng mắt xích bằng chứng (twin xanh, Fitter report, Signal Tap), không chỉ ``nhớ là đã làm''.
+\subsection*{14.1. Hiện tượng thật: checklist bắt lỗi hệ thống, không phải nghi thức}
+
+\begin{firstprin}{Một mắt xích sai --- synth vẫn xanh}
+Đường $F_0$ trên FPGA là chuỗi quyết định đã khóa từ Chương~0: MCLK $12{,}288\,\text{MHz}$, M10K Old Data, Hanning $N-1$, ROM $C[\tau]$, parabolic + LPM\_DIVIDE, voicing + median-3, Avalon-ST giữ data, Q12.4 LE, Viterbi tắt trên fabric. Sai một mắt xích thường \emph{không} làm Quartus báo lỗi --- nó làm $F_0$ lệch im lặng, GPE/VDE ở Chương~13 đỏ, và Pearson thanh điệu sụp. Checklist buộc bạn xác nhận lại từng mắt xích bằng \textbf{bằng chứng} (twin xanh, Fitter report, waveform Avalon, Signal Tap), không chỉ ``nhớ là đã làm''.
 \end{firstprin}
 
-\subsection*{Chuỗi khẳng định (ký từng dòng)}
+\subsection*{14.2. Chuỗi khẳng định có lý do (ký từng dòng)}
 
-\begin{enumerate}\setlength{\itemsep}{4pt}
-\item \textbf{Chuỗi đồng hồ và lấy mẫu.} PLL khóa thạch anh 50\,MHz tạo $MCLK=12.288$\,MHz; ADC codec chạy 48\,kHz; hạ mẫu $\times2$ xuống 24\,kHz; FIR polyphase tỉ số $2/3$ (chỉ nhánh $E_0$/$E_1$) đưa về 16\,kHz dành cho ước lượng cao độ. (Ch.~2, Ch.~4)
-\item \textbf{DC-blocker.} Thanh ghi phản hồi \texttt{y\_acc} rộng 32~bit; cập nhật $y\leftarrow y+x_\Delta-(y\ggg8)$; xuất $\mathrm{sat}_{16}(y\ggg15)$. Twin Python \texttt{dc\_blocker\_q15} khớp từng mẫu với RTL. (Ch.~3)
-\item \textbf{Bộ nhớ trượt.} On-Chip Memory True Dual-Port; chế độ mixed-port read-during-write = \textbf{Old Data}; twin mô phỏng đúng giá trị cũ khi hai cổng đụng cùng địa chỉ. (Ch.~5)
-\item \textbf{Cửa sổ.} ROM Hanning Q1.15 dạng cổ điển $N-1$, lưu nửa bảng nhờ đối xứng; nhân mẫu $\times$ hệ số trước MAC. (Ch.~6)
-\item \textbf{Tự tương quan.} Đường mặc định là MAC trực tiếp trên DSP; nếu lab bật FFT thì nhớ BFP và barrel shift $2^{2e}$ \emph{trước} IFFT. (Ch.~7)
-\item \textbf{Chuẩn hóa $C[\tau]$.} Dùng ROM $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (nhân thay chia runtime), trừ khi có lý do bắt buộc dùng LPM\_DIVIDE động. (Ch.~8)
-\item \textbf{Đỉnh và chia.} Argmax + nội suy parabolic; $F_0=f_s/\tau$ qua LPM\_DIVIDE; testbench chờ đúng latency đã cấu hình. (Ch.~9)
-\item \textbf{Voicing và làm mượt.} Cổng silence/voicing trên fabric; median-3 trên fabric (trễ một khung); Viterbi/\texttt{pathFinder} chỉ trên HPS nếu cần. (Ch.~10)
-\item \textbf{Avalon-ST.} Handshake \texttt{valid}/\texttt{ready} không làm mất mẫu: source giữ data khi bị backpressure. (Ch.~11)
-\item \textbf{Đóng gói.} Q12.4 little-endian; unvoiced $=0$; golden so với Praat trong dung sai đã ghi trong báo cáo. (Ch.~12)
-\item \textbf{Twin ba tầng.} Vector zero / DC / sine / clip đều xanh từ số thực $\to$ dấu phẩy tĩnh $\to$ RTL. (Ch.~13)
-\item \textbf{Báo cáo tài nguyên.} Ghi rõ ALM (hoặc LE), DSP, M10K, Fmax, và latency một khung --- lấy từ Fitter, không bịa.
-\item \textbf{Không dùng tên IP bịa.} Không ALTDIV\_TENT; không CIC cho tỉ số $2/3$; không MCLK 4.096\,MHz cho gói DE10 WM8731 này.
-\item \textbf{Giữ nguyên v10.} Phụ lục~A / các trang v10 (pp.1--38) không bị sửa nội dung.
+\begin{enumerate}\setlength{\itemsep}{6pt}
+\item \textbf{Chuỗi đồng hồ và lấy mẫu.} PLL khóa thạch anh $50\,\text{MHz}$ tạo $MCLK=12{,}288\,\text{MHz}$; ADC codec $48\,\text{kHz}$; hạ mẫu về $24\,\text{kHz}$ rồi FIR polyphase tỷ số $2/3$ về $16\,\text{kHz}$.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Sai MCLK vài chục ppm làm trôi $T_s$, đo lệch $F_0$ theo thời gian (Chương~0 Feynman box~8; Chương~2). Không dùng MCLK $4{,}096\,\text{MHz}$ cho gói WM8731 trên DE10 này.
+\end{itemize}
+
+\item \textbf{DC-blocker.} Thanh ghi phản hồi \texttt{y\_acc} rộng $32$~bit; cập nhật $y\leftarrow y+x_\Delta-(y\ggg 8)$; xuất $\mathrm{sat}_{16}(y\ggg 15)$. Twin \texttt{dc\_blocker\_q15} khớp từng mẫu.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} DC phình $\mathcal{R}[0]$ và nuốt đỉnh $T_0$ (Chương~3). \texttt{y} chỉ $16$~bit tạo deadband/limit-cycle.
+\end{itemize}
+
+\item \textbf{Bộ nhớ trượt.} On-Chip Memory True Dual-Port; mixed-port read-during-write = \textbf{Old Data}; twin mô phỏng đúng giá trị cũ khi hai cổng đụng cùng địa chỉ.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Cyclone~V M10K \textbf{không} hỗ trợ New Data mixed-port (Chương~0, Chương~5). Ép New Data $\Rightarrow$ bypass ALM, giảm Fmax.
+\end{itemize}
+
+\item \textbf{Cửa sổ.} ROM Hanning Q1.15 dạng cổ điển $N-1$, nửa bảng nhờ đối xứng; nhân trước MAC.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Hanning hạ sidelobe $\approx -32\,\text{dB}$, bảo vệ dải $F_0$ khỏi rò phổ (Chương~0, Chương~6). Sai $N$ vs $N-1$ lệch hệ số mép khung.
+\end{itemize}
+
+\item \textbf{Tự tương quan.} Đường mặc định MAC trực tiếp trên DSP; nếu bật FFT thì nhớ BFP và barrel shift $2^{2e}$ \emph{trước} IFFT.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Quên $2e$ phá tỷ lệ $r_a$ và sụp ngưỡng voicing (Chương~0 Feynman box~6; Chương~7).
+\end{itemize}
+
+\item \textbf{Chuẩn hóa $C[\tau]$.} ROM $C[\tau]=\mathcal{R}_w[0]/\mathcal{R}_w[\tau]$ (nhân thay chia runtime), trừ khi bắt buộc LPM\_DIVIDE động.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Không bù dốc cửa sổ $\Rightarrow$ thiên vị $\tau$ lớn $\Rightarrow$ octave xuống (Chương~8).
+\end{itemize}
+
+\item \textbf{Đỉnh và chia.} Argmax + parabolic; $F_0=f_s/\tau$ qua LPM\_DIVIDE; TB chờ đúng latency $L$.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Đọc quotient sớm một chu kỳ gắn nhầm khung (Chương~9). Không dùng IP bịa ALTDIV\_TENT.
+\end{itemize}
+
+\item \textbf{Voicing và làm mượt.} Cổng silence/voicing trên fabric; median-3 đăng ký (trễ một hop); Viterbi/\texttt{pathFinder} chỉ trên HPS nếu cần.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Báo $F_0$ trên UV phá đường cong; median đập spike đơn với $<150$ ALM; Viterbi $O(TK^2)$ vượt ngân sách lab (Chương~10).
+\end{itemize}
+
+\item \textbf{Avalon-ST.} Handshake \texttt{valid}/\texttt{ready}/\texttt{SOP}/\texttt{EOP}: source giữ data khi backpressure; đếm beat khớp; gói $640$ mẫu có SOP/EOP đúng chỗ.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Mất một mẫu $=$ lệch khung $=$ sai $F_0$ im lặng (Chương~11; doc~683091).
+\end{itemize}
+
+\item \textbf{Đóng gói.} Q12.4 little-endian; UV $=0$; cặp \texttt{audio\_16k.wav} $\leftrightarrow$ \texttt{pitch\_f0.bin} đồng bộ hop $10\,\text{ms}$; golden so Praat trong dung sai đã ghi.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Đảo endian biến $200\,\text{Hz}$ thành $2048{,}75\,\text{Hz}$ --- lỗi giao thức (Chương~12).
+\end{itemize}
+
+\item \textbf{Twin ba tầng.} Vector zero / DC / sine / clip / giọng thật xanh từ float$\to$fixed$\to$RTL; GPE/VDE/FFE và cent nằm trong ngân sách báo cáo (Chương~13).
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Mỗi tầng khoanh một lớp lỗi; skip tầng float $= $ debug FSM khi công thức còn sai.
+\end{itemize}
+
+\item \textbf{Báo cáo tài nguyên.} Ghi ALM (hoặc LE), DSP, M10K, Fmax, latency một khung --- lấy từ Fitter, đối chiếu costbox từng chương và ngân sách Chương~0 ($\approx 850$ ALM, $3$ DSP, $4$ M10K, RTF $\approx 0{,}24$).
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Số bịa không kiểm chứng được trên máy chấm; Fmax thấp có thể do ép New Data hoặc chia tổ hợp dài.
+\end{itemize}
+
+\item \textbf{Không dùng tên IP / cấu hình bịa.} Không ALTDIV\_TENT; không CIC cho tỷ số $2/3$; không MCLK $4{,}096\,\text{MHz}$ cho gói DE10 WM8731 này; không ``New Data'' mixed-port M10K trên Cyclone~V.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Các lựa chọn đó hoặc không tồn tại trên tool Standard/Lite, hoặc sai silicon thật --- điểm trừ cứng.
+\end{itemize}
+
+\item \textbf{Giữ nguyên v10.} Phụ lục / các trang v10 (pp.1--38 trong bản đóng gói) không bị sửa nội dung giải thích gốc.
+\begin{itemize}[leftmargin=1.2em]
+    \item \emph{Lý do:} Chính sách DIFF: phần mới là Chương~0--14; không đụng luồng chữ đã khóa.
+\end{itemize}
 \end{enumerate}
 
-\subsection*{Bảng tự ký}
+\subsection*{14.3. Bảng tự ký}
 
-\begin{center}\small\begin{tabular}{@{}lll@{}}\toprule
-Hạng mục & Người ký & Ngày \\
+\begin{center}\small
+\begin{tabular}{@{}p{5.2cm}p{3.2cm}p{3.2cm}@{}}\toprule
+Hạng mục & Người ký & Ngày (Asia/Saigon) \\
 \midrule
-RTL lint sạch & & \\
-Twin bit-exact & & \\
-Hardware smoke (DE10) & & \\
-Tài liệu đủ 8 yếu tố/chương & & \\
+RTL lint sạch (không latch suy đoán, reset bất đồng bộ đúng) & & \\
+Twin bit-exact tầng 2--3 xanh trên golden & & \\
+Hardware smoke trên DE10 (SOP$\to$Q12.4 ra HPS) & & \\
+Tài liệu đủ 8 yếu tố / chương (Chương~0 mục 0.2) & & \\
+Bảng Fitter đã điền số thật & & \\
 \bottomrule
-\end{tabular}\end{center}
+\end{tabular}
+\end{center}
 
-\subsection*{Ví dụ ``đỏ $\to$ xanh'' trước khi nộp}
+\subsection*{14.4. Chẩn đoán đỏ $\to$ xanh trước khi nộp}
 
 \begin{firstprin}{Một triệu chứng, một nguyên nhân điển hình}
-Nếu golden sine 200\,Hz ra Q12.4 $=0$: thường voicing gate nuốt (silenceThreshold quá cao hoặc $P_{\mathrm{global}}$ chưa warmup). Nếu ra $\approx100$\,Hz: thường quên nhân $C[\tau]$ (đỉnh $2T_0$ thắng). Nếu ra $200$ nhưng bytes \texttt{0C 80}: đảo endian. Twin phải bắt từng lớp trước khi đụng Signal Tap.
+\begin{itemize}[leftmargin=1.4em]
+    \item Golden sine $200\,\text{Hz}$ ra Q12.4 $=0$: thường voicing gate nuốt --- \texttt{silenceThreshold} quá cao hoặc $P_{\mathrm{global}}$ chưa warmup. Mở lại Chương~10 và tầng~1 VDE.
+    \item Ra $\approx 100\,\text{Hz}$ thay vì $200$: thường quên nhân $C[\tau]$ (đỉnh $2T_0$ thắng) hoặc octave bias. Mở Chương~8 và GPE.
+    \item Ra $200$ nhưng bytes \texttt{0C 80}: đảo endian phía đọc. Mở Chương~12 --- silicon có thể đúng.
+    \item Đúng trên twin fixed nhưng sai trên RTL: nghi latency LPM\_DIVIDE, backpressure làm mất beat, hoặc reset không xóa thanh ghi median. Mở Chương~9--11 và tầng~3.
+    \item FSM treo ở \texttt{FILL}: thiếu \texttt{EOP} hoặc đếm beat $<L$. Mở Chương~11.
+\end{itemize}
+Twin phải bắt từng lớp trước khi đụng Signal Tap.
 \end{firstprin}
 
-\noindent\textbf{Ví dụ tính tay đóng gói cuối.} $F_0=199{,}466$\,Hz (parabolic Ch.~9) $\to\mathrm{round}(199{,}466\cdot16)=3191$ $\to$ LE \texttt{77 0C}. UV $\to$ \texttt{00 00}.
+\paragraph{Ví dụ tính tay đóng gói cuối.} $F_0=199{,}466\,\text{Hz}$ (parabolic Chương~9) $\to\mathrm{round}(199{,}466\cdot 16)=3191$ $\to$ LE \texttt{77 0C}. UV $\to$ \texttt{00 00}. Khớp \texttt{verify/verify\_chuong\_10\_14.py}.
+
+\paragraph{Ngân sách thời gian thực nhắc lại.} Tại $50\,\text{MHz}$, một hop $10\,\text{ms}$ có $500{,}000$ chu kỳ; $189\times 640=120{,}960$ MAC $\Rightarrow$ RTF $\approx 0{,}2419\ll 1$ (Chương~0 bài tập 0.2). Nếu đo RTF $>1$ trên board, nghi chờ chia/handshake bị kẹt, không nghi ``thiếu DSP''.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  q/.style={draw, rounded corners, align=left, inner sep=3pt, fill=red!6},
+  a/.style={draw, rounded corners, align=left, inner sep=3pt, fill=green!8}]
+  \node[q] (q1) at (0,2.2) {Q12.4 $=0$ trên sine};
+  \node[a] (a1) at (5.8,2.2) {Ch.~10 voicing / $P_{global}$ warmup\\+ VDE tầng 1};
+  \node[q] (q2) at (0,1.1) {$F_0 \approx F_{\mathrm{true}}/2$};
+  \node[a] (a2) at (5.8,1.1) {Ch.~8 ROM $C[\tau]$ + GPE};
+  \node[q] (q3) at (0,0.0) {Bytes đảo / Hz ``khủng''};
+  \node[a] (a3) at (5.8,0.0) {Ch.~12 unpack LE + test pack};
+  \node[q] (q4) at (0,-1.1) {Fixed OK, RTL lệch};
+  \node[a] (a4) at (5.8,-1.1) {Ch.~11 beat + Ch.~9 latency\\tầng 3 bit-exact};
+  \foreach \q/\a in {q1/a1,q2/a2,q3/a3,q4/a4} {
+    \draw[->, thick] (\q.east) -- (\a.west);
+  }
+\end{tikzpicture}
+\caption{Sơ đồ chẩn đoán nhanh: triệu chứng đỏ $\to$ chương và tầng cần mở lại trước khi nộp.}
+\label{fig:ch14_debug_map}
+\end{figure}
 
 \begin{costbox}
 \textbf{Ngân sách ``ngày nộp'' --- giải thích từng mục.}
 \begin{itemize}[leftmargin=1.2em]
-\item Thời gian người: 30--60 phút đọc checklist + chạy lại suite twin; không phải tài nguyên silicon.
-\item Disk: giữ nguyên hex ROM $w$, $C[\tau]$, golden --- không regenerate phút chót trừ khi đổi $L$.
-\item Vì sao checklist một lần duy nhất: tránh lan checklist trùng ở nhiều chương; mọi khẳng định đã neo Ch.~2--13.
+    \item \textbf{Thời gian người:} $30$--$60$ phút đọc checklist + chạy lại suite twin/verify\_chuong\_10\_14.py + (nếu có board) smoke HPS đọc \texttt{pitch\_f0.bin}. Đây là chi phí quy trình, không phải ALM.
+    \item \textbf{Disk:} giữ nguyên hex ROM $w$, $C[\tau]$, golden --- không regenerate phút chót trừ khi đổi $L$ hoặc $H$.
+    \item \textbf{Vì sao checklist một lần duy nhất ở Chương~14:} tránh lan checklist trùng ở nhiều chương; mọi khẳng định đã neo Chương~2--13 với lý do đầy đủ. Chương~14 chỉ là cổng nghiệm thu.
+    \item \textbf{RTF / silicon:} không đổi ở bước này; chỉ xác nhận số Fitter và đo RTF thực tế $\le 1$.
 \end{itemize}
 \end{costbox}
+
+\subsection*{14.5. Bài tập tự vấn trước khi ký}
+
+\paragraph{Bài tập 14.1.} Liệt kê ba bằng chứng bạn sẽ đính kèm để chứng minh mục ``Twin ba tầng xanh'' không phải tự khai.
+
+\paragraph{Lời giải gợi ý.} (1)~Log chạy \texttt{verify\_tiers.py} / \texttt{verify\_chuong\_10\_14.py} có timestamp. (2)~Bảng GPE/VDE/FFE và max cent trên sine $200\,\text{Hz}$ và một đoạn giọng. (3)~Diff $0$ bit giữa dump RTL và twin fixed trên \texttt{golden\_f0.hex}.
+
+\paragraph{Bài tập 14.2.} Nếu Fitter báo $12$ M10K trong khi ngân sách Chương~0 là $4$, bạn kiểm tra khối nào trước?
+
+\paragraph{Lời giải.} Sliding RAM $640\times 16$ chỉ cần $\approx 1$ M10K; ROM Hanning nửa bảng và ROM $C[\tau]$ thêm $1$--$2$; FIFO HPS tuỳ chọn $1$. Nếu thấy $12$, nghi nhân đôi buffer ping-pong không cần, suy luận suy ra block RAM cho Viterbi (đã tắt), hoặc FIR IP sinh RAM dư --- mở report theo hierarchy trước khi chấp nhận vượt ngân sách.
+
+\paragraph{Bài tập 14.3.} Nêu một lý do \emph{không} port \texttt{Pitch\_pathFinder} lên fabric ở lần nộp mặc định.
+
+\paragraph{Lời giải.} Median-3 + cổng voicing đã đủ đập spike đơn trong ngân sách $<2\%$ ALM; Viterbi đa ứng viên cần M10K path metric và tăng latency vượt nhu cầu thời gian thực lab; HPS vẫn chạy soft-float khi bài yêu cầu đường cong Praat đầy đủ (Chương~10).
