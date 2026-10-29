@@ -259,7 +259,7 @@ Cuối cùng, nhớ rằng $r_a[\tau]=\mathcal{R}_x[\tau]/\mathcal{R}_x[0]\cdot 
 \subsection*{8.7. Bài tập và lời giải giải thích}
 
 
-Tóm tắt chương: hiện tượng hai quả núi chồng ít dần giải thích vì sao cần $C[\tau]$; toán Boersma dẫn ra công thức; ví dụ tay và hex $N=640$ đã khóa bằng script; phần cứng mặc định là ROM Q3.13 + một phép nhân DSP; LPM\_DIVIDE / non-restoring chỉ khi $\mathcal{R}_w$ động; twin \texttt{build\_C}/\texttt{apply\_C} là hợp đồng bit-exact; ngân sách dưới 1~M10K và 189 chu kỳ nhân mỗi hop. Sang Chương~9, điểm số $S[\tau]$ đã sẵn sàng cho argmax và parabolic. Mọi số trong mục 8.3 đã chạy \texttt{verify/verify\_chuong\_06\_09.py}; nếu bạn sửa $L$ hoặc công thức $w$, hãy sửa script assert trước, rồi mới commit hex mới. Không commit hex tay chỉnh từng dòng --- luôn sinh từ twin.
+Tóm tắt chương: hiện tượng hai quả núi chồng ít dần giải thích vì sao cần $C[\tau]$; toán Boersma dẫn ra công thức; ví dụ tay và hex $N=640$ đã khóa bằng script; phần cứng mặc định là ROM Q3.13 + một phép nhân DSP; LPM\_DIVIDE / non-restoring chỉ khi $\mathcal{R}_w$ động; twin \texttt{build\_C}/\texttt{apply\_C} là hợp đồng bit-exact; ngân sách dưới 1~M10K và 189 chu kỳ nhân mỗi hop. Sang Chương~9, điểm số $S[\tau]$ đã sẵn sàng cho argmax và parabolic. Mọi số trong mục 8.3 đã chạy \texttt{verify/verify\_chuong\_06\_09.py}; nếu bạn sửa $L$ hoặc công thức $w$, hãy sửa script assert trước, rồi mới commit hex mới. Không commit hex tay chỉnh từng dòng --- luôn sinh lại từ twin Python.
 
 \paragraph{Bài tập 8.1.} $w=[1,2,1]$: tính $C[2]$.
 
