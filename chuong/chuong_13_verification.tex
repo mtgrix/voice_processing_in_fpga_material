@@ -100,6 +100,117 @@ Script \texttt{verify/verify\_chuong\_10\_14.py} khẳng định các tỷ số 
 
 \paragraph{LSB Q12.4.} Tại $200\,\text{Hz}$, $0{,}0625\,\text{Hz}$ $\approx 0{,}541\,\text{cent}$ --- nhỏ hơn nhiều so với $-4{,}6\,\text{cent}$ của parabolic ở ví dụ trên, nên tầng pack hiếm khi là thủ phạm GPE.
 
+
+\paragraph{Ví dụ tính tay --- ma trận nhầm lẫn năm khung.}
+Cho tham chiếu Praat và hệ thống (Hz; $0$ = UV):
+\begin{center}\small
+\begin{tabular}{@{}cccccc@{}}\toprule
+$k$ & 0 & 1 & 2 & 3 & 4 \\
+\midrule
+$F_{\mathrm{ref}}$ & $200$ & $200$ & $0$ & $180$ & $0$ \\
+$F_{\mathrm{hw}}$ & $199{,}5$ & $100$ & $0$ & $0$ & $50$ \\
+Nhãn lỗi & tinh & GPE octave & OK UV & false UV & false V \\
+\bottomrule
+\end{tabular}
+\end{center}
+Khung cùng hữu thanh $VV=\{0,1\}$ ($N_{VV}=2$). Khung~$1$ có $|100/200-1|=0{,}5>0{,}2$ $\Rightarrow N_{\mathrm{GPE}}=1$. Sai voicing ở $k=3$ (FU) và $k=4$ (FV) $\Rightarrow N_{\mathrm{VDE}}=2$.
+\[
+\mathrm{GPE}=\frac{1}{2}=0{,}5,\qquad
+\mathrm{VDE}=\frac{2}{5}=0{,}4,\qquad
+\mathrm{FFE}=\frac{1+2}{5}=0{,}6.
+\]
+Script verify khẳng định $N_{\mathrm{GPE}}=1$, $N_{\mathrm{VDE}}=2$ trên đúng vector này.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \node[draw, fill=green!15, minimum width=2.2cm, minimum height=1.2cm, align=center] at (0,1.3) {TV\\đúng V};
+  \node[draw, fill=red!15, minimum width=2.2cm, minimum height=1.2cm, align=center] at (2.6,1.3) {FV\\false V};
+  \node[draw, fill=red!15, minimum width=2.2cm, minimum height=1.2cm, align=center] at (0,0) {FU\\false UV};
+  \node[draw, fill=green!15, minimum width=2.2cm, minimum height=1.2cm, align=center] at (2.6,0) {TU\\đúng UV};
+  \node[rotate=90, left] at (-1.5,0.65) {Tham chiếu};
+  \node[above] at (1.3,2.1) {Hệ thống $\to$};
+  \node[font=\scriptsize, align=left] at (6.2,0.65)
+    {VDE $=(N_{\mathrm{FV}}+N_{\mathrm{FU}})/N$.\\
+     GPE chỉ đếm trong ô TV\\khi $|F_{hw}/F_{ref}-1|>0{,}2$.};
+\end{tikzpicture}
+\caption{Hình 13.4 --- Ma trận hữu/vô thanh: VDE lấy hai ô đỏ; GPE lấy tập con của ô TV.}
+\label{fig:ch13_confusion}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  s/.style={draw, rounded corners, align=center, inner sep=3pt}]
+  \node[s, fill=blue!10] (wav) {wav};
+  \node[s, fill=blue!10, right=8mm of wav] (praat) {Praat\\AC};
+  \node[s, fill=teal!10, right=8mm of praat] (flt) {float\\twin};
+  \node[s, fill=orange!10, below=10mm of flt] (fix) {fixed\\twin};
+  \node[s, fill=red!10, below=10mm of fix] (rtl) {RTL\\sim};
+  \draw[->, thick] (wav)--(praat);
+  \draw[->, thick] (wav)--(flt);
+  \draw[<->, thick] (praat)--node[above]{GPE/VDE} (flt);
+  \draw[<->, thick] (flt)--node[right]{cent} (fix);
+  \draw[<->, thick] (fix)--node[right]{bit-exact} (rtl);
+\end{tikzpicture}
+\caption{Hình 13.5 --- Luồng đối sánh tầng 1$\to$2$\to$3 trên cùng wav.}
+\label{fig:ch13_flow}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.7cm, y=0.45cm]
+  \foreach \y/\lab in {6/valid, 4.5/ready, 3/data, 1.5/score} {
+    \node[left] at (0,\y) {\lab};
+  }
+  \draw[very thick, blue] (1,5.7)--(1,6.3)--(3,6.3)--(3,5.7)--(4,5.7)--(4,6.3)--(10,6.3);
+  \draw[very thick, teal] (1,4.2)--(1,4.8)--(5,4.8)--(5,4.2)--(7,4.2)--(7,4.8)--(10,4.8);
+  \node at (2,3) {s0};
+  \node at (4.5,3) {s1 giữ};
+  \node at (8,3) {s1..};
+  \fill[orange] (2,1.5) circle (2pt);
+  \fill[orange] (8,1.5) circle (2pt);
+  \node[font=\scriptsize, align=center] at (5.5,0.2)
+    {TB phải hạ ready ngẫu nhiên; scoreboard chỉ chốt khi beat=1.};
+\end{tikzpicture}
+\caption{Hình 13.6 --- Testbench Avalon-ST: valid-gap + backpressure; chỉ chấm cam được so golden.}
+\label{fig:ch13_tb_wave}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small]
+  \draw[->] (0,0)--(8,0) node[right]{khung};
+  \draw[->] (0,0)--(0,3.2) node[above]{$\Delta$cent};
+  \draw[thick, teal] (0.5,1.5)--(1.5,1.2)--(2.5,1.8)--(3.5,0.4)--(4.5,1.1)--(5.5,1.6)--(6.5,1.3);
+  \draw[dashed, red!70] (0,2.5)--(7.5,2.5) node[right,font=\scriptsize]{$+20$};
+  \draw[dashed, red!70] (0,0.5)--(7.5,0.5) node[right,font=\scriptsize]{$-20$};
+  \node[font=\scriptsize, align=left] at (5.5,2.9){Ngân sách lab\\trên khung tinh};
+\end{tikzpicture}
+\caption{Hình 13.7 --- Sai số cent khung-tinh phải nằm trong $\pm 20$---$30$~cent sau khi loại GPE.}
+\label{fig:ch13_cent_budget}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  b/.style={draw, rounded corners, align=center, minimum width=2.4cm, minimum height=0.85cm}]
+  \node[b, fill=red!12] (sym) {Symptom\\GPE cao};
+  \node[b, fill=orange!12, right=10mm of sym] (t1) {Tầng 1?\\công thức};
+  \node[b, fill=orange!12, right=10mm of t1] (t2) {Tầng 2?\\Q-format};
+  \node[b, fill=orange!12, right=10mm of t2] (t3) {Tầng 3?\\handshake};
+  \draw[->, thick] (sym)--(t1);
+  \draw[->, thick] (t1)--(t2);
+  \draw[->, thick] (t2)--(t3);
+  \node[below=3mm of t1, align=center]{quên $C[\tau]$\\sai parabolic};
+  \node[below=3mm of t2, align=center]{cắt MAC\\ROM endian};
+  \node[below=3mm of t3, align=center]{mất beat\\đảo LE};
+\end{tikzpicture}
+\caption{Hình 13.8 --- Cây chẩn đoán: luôn hỏi tầng trên trước khi đụng Signal Tap.}
+\label{fig:ch13_diag_tree}
+\end{figure}
+
+
 \subsection*{13.4. Tầng 1: Float vs Praat}
 
 Thực hành khuyến nghị (Parselmouth hoặc Praat batch):
@@ -142,6 +253,45 @@ assert (q_rtl == q_fixed).all()  # tang 3
 
 \paragraph{Tài liệu Intel cần mở đúng số.} Avalon~683091, FIR~683208, FFT~683374 (nếu bật), LPM\_DIVIDE handbook. Fmax/ALM/DSP/M10K lấy từ \emph{Fitter report} sau Place \& Route --- không bịa.
 
+\subsection*{13.4b. Tầng 1 sâu: khớp tham số Praat}
+
+Ngoài time step / floor / ceiling, các tham số hay làm lệch giả tạo:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{voicingThreshold} (mặc định $0{,}45$): khác số $\Rightarrow$ VDE giả.
+  \item \texttt{octaveCost} / \texttt{octaveJumpCost}: twin float lab tắt pathFinder thì không so được đường cong ``có Viterbi'' của Praat GUI mặc định --- phải gọi API/\texttt{Pitch.cpp} với cùng cờ tắt, hoặc chấp nhận so trên khung đã voiced ổn định.
+  \item Đồng bộ thời gian: tâm cửa sổ lab tại $kH+L/2$; Praat time step $0{,}01\,\text{s}$ phải neo cùng gốc.
+\end{itemize}
+
+\paragraph{Ví dụ tính tay --- RTF mô phỏng $1\,\text{s}$.}
+Số khung $97$, mỗi khung $\approx 120\,960$ chu kỳ MAC:
+\[
+T_{\mathrm{proc}}=\frac{120\,960\cdot 97}{50\cdot 10^6}\approx 0{,}2347\,\text{s},
+\qquad \mathrm{RTF}\approx 0{,}2347
+\]
+(đã kiểm script). Một TB chu kỳ-chính xác cho $1\,\text{s}$ audio vì thế chạy khoảng $0{,}23\,\text{s}$ thời gian mô phỏng xung nhịp (wall-clock phụ thuộc tốc độ sim).
+
+\subsection*{13.5b. Tầng 2 sâu: nguồn cent cố định bit}
+
+Mỗi khối góp sai số lượng tử xấp xỉ (thứ tự độ lớn, không phải định lý):
+\begin{itemize}[leftmargin=1.4em]
+  \item Window Q1.15: hệ số mép khung lệch $1$ LSB $\to$ vài cent.
+  \item MAC cắt về thanh ghi trung gian: nếu cắt quá sớm trước khi nhân $C[\tau]$, đỉnh $\tau$ lớn bị thiên vị.
+  \item ROM $C[\tau]$ Q3.13: sai endian hex $\to$ GPE hàng loạt (lớp này đôi khi lộ sớm ở tầng~1 nếu float cũng đọc nhầm hex --- tách test ROM).
+  \item LPM\_DIVIDE làm tròn quotient: thường $<1\,\text{cent}$ tại $200\,\text{Hz}$.
+  \item Pack Q12.4: LSB $\approx 0{,}54\,\text{cent}$ tại $200\,\text{Hz}$.
+\end{itemize}
+Tổng ngân sách $20$--$30\,\text{cent}$ là ``hộp'' chứa cho cả chuỗi; vượt hộp thì lần từ pack ngược về FIR, đo cent từng điểm neo (sau window, sau MAC, sau $C[\tau]$, sau DIV).
+
+\subsection*{13.6b. Tầng 3 sâu: X-propagation và reset}
+
+RTL sim phải:
+\begin{enumerate}[leftmargin=1.4em]
+  \item Khởi động \texttt{rst\_n}$=0$ đủ vài chu kỳ; mọi thanh ghi median/FSM về $0$.
+  \item Không để \texttt{X} trên \texttt{valid}/\texttt{ready} --- một \texttt{X} làm scoreboard ``xanh giả'' hoặc đỏ ngẫu nhiên.
+  \item Dump $F_q$ chỉ khi beat OUT; so với \texttt{golden\_f0.hex} từ twin fixed cùng seed LFSR cho ready.
+  \item Vector cạnh zero/DC/clip: kỳ vọng $F_q=0$ (hoặc hành vi DC-blocker đã khóa Chương~3).
+\end{enumerate}
+
 \subsection*{13.7. Bảng tài nguyên (điền từ Fitter)}
 
 \begin{center}\small
@@ -175,6 +325,51 @@ FSM + pack Q12.4 &  &  &  & \\
     \item \textbf{Vì sao ba tầng:} một TB ``tất cả'' không chỉ ra \emph{loại} lỗi; tách tầng rút ngắn chu kỳ sửa.
 \end{itemize}
 \end{costbox}
+
+
+\subsection*{13.6c. Golden hex và tái lập bit-exact}
+
+Mỗi revision RTL phải kèm:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{golden\_pcm.hex} --- vector vào (hoặc WAV gốc + script gen).
+  \item \texttt{golden\_f0.hex} --- chuỗi $F_q$ từ twin fixed cùng tham số.
+  \item Seed LFSR cho valid-gap/ready trong TB (ghi vào header test).
+\end{itemize}
+Không tái lập được seed thì ``bit-exact hôm qua'' không chứng minh được hôm nay. Khi đổi $V$, $S$, hoặc ROM $C[\tau]$, phải regenerate golden và ghi chú DIFF.
+
+\paragraph{Ví dụ tính tay --- ngưỡng GPE $20\%$.}
+Tại $F_{\mathrm{ref}}=200\,\text{Hz}$, biên GPE là $160$ và $240\,\text{Hz}$. Mọi ước lượng trong $(160,240)$ trên khung VV \emph{không} tính GPE (chỉ đóng góp cent tinh). Octave đúng $100$ hoặc $400$ nằm ngoài biên --- GPE chắc chắn. Đó là lý do GPE cao thường chỉ thẳng ROM $C[\tau]$ hoặc voicing nuốt đỉnh đúng rồi bám hài.
+
+\paragraph{FFE và báo cáo.} Khi viết báo cáo lab, luôn định nghĩa FFE một lần (công thức~\eqref{eq:ch13_ffe}) và không trộn với ``fine error trung bình cent''. Người chấm cần biết bạn đang đếm \emph{tỷ lệ khung hỏng} chứ không phải trung bình cent.
+
+\begin{physicalinsight}
+Ba tầng không phải nghi thức nộp bài. Chúng là cách khoanh vùng nhanh: công thức, lượng tử, hay dây nối. Một TB ``end-to-end đỏ'' không nói bạn sửa chỗ nào; ba đèn xanh/đỏ nói được.
+\end{physicalinsight}
+
+\subsection*{13.7b. Cách điền Fitter thật}
+
+Sau Place \& Route trên Quartus Standard/Lite cho part \texttt{5CSXFC6D6F31C6N}:
+\begin{enumerate}[leftmargin=1.4em]
+  \item Mở \emph{Fitter $\to$ Resource Usage Summary}: copy ALM logic, DSP blocks, M10K.
+  \item Mở \emph{Timing Analyzer}: Fmax của clock $50\,\text{MHz}$ (hoặc clock datapath thật).
+  \item Breakdown theo hierarchy nếu tool cho phép --- tách MAC, FIR, FSM.
+  \item Không lấy số từ Synthesis sớm (trước Fitter) làm số nộp: synthesis ước tính, Fitter mới là silicon mapping.
+\end{enumerate}
+Mục tiêu Chương~0: $\lesssim 850$ ALM, $3$ DSP, $4$ M10K, RTF $\approx 0{,}24$. Vượt M10K thường do FIFO/RAM thừa; vượt DSP do nhân cửa sổ + MAC + FIR không chia sẻ --- xét time-multiplex trước khi xin thêm.
+
+
+\subsection*{13.7c. Liên hệ RTF, sim wall-time và Signal Tap}
+
+RTF $\approx 0{,}23$ trên $1\,\text{s}$ audio nghĩa là mô phỏng chu kỳ-chính xác ``bắt kịp'' nhanh hơn realtime trên giấy; nhưng ModelSim/Questa có thể chậm hơn realtime tường vì diễn dịch. Đừng nhầm wall-time sim với RTF silicon. Signal Tap trên board đo realtime thật: nếu FIFO đầy liên tục, backpressure đang ăn biên $377\,000$ chu kỳ --- cần giảm dump hoặc tăng FIFO, không thêm DSP.
+
+\paragraph{Ví dụ tính tay --- đếm khung overlap thời gian.} Praat và twin phải so trên cùng tập thời điểm. Nếu Praat trả $100$ khung và twin $97$ khung cho $1\,\text{s}$ (do neo cửa khác), chỉ lấy giao khoảng thời gian chung, ví dụ $90$ khung giữa. Tính GPE/VDE trên $N=90$ đó; không pad $0$ giả vào đuôi. Sai bước này tạo VDE giả ở biên câu.
+
+\paragraph{Chuẩn bị báo cáo.} Mỗi tầng một mục: lệnh chạy, tham số, bảng chỉ số, kết luận xanh/đỏ. Đính kèm hash git của RTL + twin + golden. Người chấm tái lập được thì điểm phương pháp mới vững.
+
+
+\paragraph{Đóng chương kiểm chứng.} Mục tiêu tối thiểu trước nghiệm thu Chương~14: tầng~1 GPE$\approx 0$ trên sine sạch; tầng~2 max cent $<20$; tầng~3 $0$ bit mismatch kèm đếm beat. Thiếu một tầng thì chưa đủ điều kiện nộp.
+
+\paragraph{Bổ sung vector bắt buộc.} Ngoài zero/DC/clip/sine, giữ ít nhất một đoạn $/s/$ (vô thanh xát) để VDE không ``xanh giả'' chỉ vì toàn hữu thanh, và một đoạn giọng thật có thanh điệu để Pearson có nghĩa.
 
 \subsection*{13.8. Bài tập và lời giải giải thích}
 

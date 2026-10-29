@@ -88,6 +88,47 @@ Tổng beat $=4$, đúng bằng số mẫu gửi. Script \texttt{verify/verify\_
 
 \paragraph{Packet $640$ mẫu.} \texttt{SOP} trên beat~$0$, \texttt{EOP} trên beat~$639$. Mọi beat giữa không mang cờ gói. Twin đếm: số lần $\texttt{SOP}=1$ phải bằng số khung; mỗi \texttt{SOP} đi kèm đúng một \texttt{EOP} sau đúng $639$ beat (hoặc $L-1$ khoảng cách beat).
 
+
+\subsection*{11.3b. Dạng sóng timing Avalon-ST (vẽ từng cạnh xung)}
+
+Hình~\ref{fig:ch11_timing} là cùng ví dụ mục~11.3 vẽ theo trục thời gian chu kỳ: khi \texttt{ready}$=0$, \texttt{data} phải đứng yên ở $C$; khi source tự nghỉ, \texttt{valid}$=0$ dù sink vẫn sẵn sàng.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, x=0.85cm, y=0.55cm]
+  \foreach \y/\lab in {8/clk, 6.5/valid, 5/ready, 3.5/data, 2/beat} {
+    \node[left] at (0,\y) {\texttt{\lab}};
+    \draw[gray!40] (0.3,\y) -- (12.5,\y);
+  }
+  % clk ticks
+  \foreach \x in {1,...,11} {
+    \draw[thick] (\x,7.6) -- (\x,8.4);
+  }
+  % valid
+  \draw[very thick, blue!70!black]
+    (1,6.2)--(1,6.8)--(5.9,6.8)--(5.9,6.2)--(6.1,6.2)--(6.1,6.8)--(11,6.8)--(11,6.2);
+  % ready: low on cycles 3,4
+  \draw[very thick, teal!70!black]
+    (1,4.7)--(1,5.3)--(2.9,5.3)--(2.9,4.7)--(4.9,4.7)--(4.9,5.3)--(11,5.3);
+  % data labels
+  \node at (1.5,3.5) {$A$};
+  \node at (2.5,3.5) {$B$};
+  \node at (4.0,3.5) {$C$ (giữ)};
+  \node at (5.5,3.5) {$C$};
+  \node at (6.5,3.5) {---};
+  \node at (8.5,3.5) {$D$};
+  % beat pulses
+  \foreach \x in {1.5,2.5,5.5,8.5} {
+    \fill[orange!70] (\x,2) circle (2pt);
+  }
+  \node[font=\scriptsize, align=center] at (6.5,0.6)
+    {Bốn chấm cam = bốn beat $\{A,B,C,D\}$. Khoảng \texttt{ready}$=0$ không được tiến con trỏ.};
+\end{tikzpicture}
+\caption{Timing Avalon-ST \texttt{readyLatency}$=0$: beat chỉ tại giao của valid và ready đồng thời cao.}
+\label{fig:ch11_timing}
+\end{figure}
+
+
 \subsection*{11.4. FSM đỉnh của đường $F_0$}
 
 Hình~\ref{fig:ch11_top_fsm} là máy trạng thái tích hợp (rút gọn nhưng đủ lab). Mỗi trạng thái điều khiển một khối đã học ở các chương trước; mũi tên chỉ chuyển khi khối sau sẵn sàng (\texttt{ready}) hoặc khi điều kiện nội hoàn tất.
@@ -130,6 +171,46 @@ Hình~\ref{fig:ch11_top_fsm} là máy trạng thái tích hợp (rút gọn như
 \end{itemize}
 
 Nếu \texttt{OUT} gặp backpressure (\texttt{ready}$=0$), FSM \textbf{không} được nhảy về \texttt{FILL} và ghi đè bộ đệm đang chờ --- phải giữ \texttt{valid} và data Q12.4 như mục~11.2.
+
+\subsection*{11.4b. Ngân sách chu kỳ từng trạng thái FSM}
+
+Tại xung nhịp hệ thống $f_{\mathrm{clk}}=50\,\text{MHz}$, mỗi hop $H/f_s=160/16000=0{,}01\,\text{s}$ có đúng
+\[
+N_{\mathrm{cyc}}=f_{\mathrm{clk}}\cdot 0{,}01=50\cdot 10^6\cdot 0{,}01=500\,000
+\]
+chu kỳ. Phân bổ điển hình (lab MAC tuần tự một DSP):
+\begin{center}\small
+\begin{tabular}{@{}lrr@{}}\toprule
+Trạng thái & Chu kỳ (ước) & Ghi chú \\
+\midrule
+FILL / WINDOW & $\sim 640$--$1280$ & ghi M10K + nhân Hanning \\
+MAC $\tau\in[26,214]$ & $120\,960$ & $189\times 640$ (biên trên) \\
+PEAK / DIV & $\sim 20$--$80$ & argmax + latency LPM\_DIVIDE \\
+VOICE / PACK / OUT & $\sim 5$--$20$ & median + Q12.4 + handshake \\
+\midrule
+Tổng hữu ích & $\lesssim 123\,000$ & RTF $\approx 0{,}24$ \\
+Biên còn lại & $\approx 377\,000$ & chờ hop kế / backpressure \\
+\bottomrule
+\end{tabular}
+\end{center}
+Số $189=214-26+1$ và tích $189\times 640=120\,960$ đã kiểm script. RTF (\emph{Real-Time Factor}) $=$ thời gian xử lý / thời gian âm thanh $=120\,960/500\,000\approx 0{,}24192\ll 1$: fabric kịp thật.
+
+\paragraph{Ví dụ tính tay --- bài tập 11.1 chi tiết.} Gửi $\{X,Y,Z\}$, sau beat $X$ sink kéo \texttt{ready}$=0$ đúng ba chu kỳ:
+\begin{center}\small
+\begin{tabular}{@{}cllll@{}}\toprule
+ck & valid & ready & data & beat? \\
+\midrule
+1 & 1 & 1 & $X$ & có \\
+2 & 1 & 0 & $Y$ giữ & không \\
+3 & 1 & 0 & $Y$ giữ & không \\
+4 & 1 & 0 & $Y$ giữ & không \\
+5 & 1 & 1 & $Y$ & có \\
+6 & 1 & 1 & $Z$ & có \\
+\bottomrule
+\end{tabular}
+\end{center}
+Tổng beat $=3$. Script verify đếm lại trace này.
+
 
 \subsection*{11.5. RTL --- giữ data khi backpressure}
 
@@ -193,6 +274,92 @@ Testbench ModelSim/Questa: LFSR hạ \texttt{ready} ngẫu nhiên; LFSR tạo va
     \item \textbf{Vì sao cần SOP/EOP:} tách biên gói $640$ mẫu trong luồng liên tục $16\,\text{kHz}$; thiếu chúng FSM không biết lúc nào kết thúc \texttt{FILL}.
 \end{itemize}
 \end{costbox}
+
+\subsection*{11.5b. Avalon-ST bên trong IP Intel và cầu HPS--FPGA}
+
+Tài liệu \emph{Avalon Interface Specifications} (doc ID~683091) định nghĩa thêm:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{empty}/\texttt{error}: dùng khi bề rộng biểu tượng $>1$ byte; lab pitch dùng biểu tượng $16$~bit đầy đủ nên thường bỏ \texttt{empty}.
+  \item \texttt{channel}: phân kênh ảo trên cùng dây --- lab một đường mono không cần.
+  \item FIR Compiler~II và FFT IP đều nói Avalon-ST; khi nối FIR$\to$sliding RAM phải khớp \texttt{readyLatency}. Lab chọn~$0$ xuyên suốt để FSM đơn giản: quyết định nhận nằm cùng chu kỳ \texttt{valid}.
+\end{itemize}
+
+\paragraph{Cầu HPS--FPGA trên DE10-Standard.} Cyclone~V SX có Hard Processor System (HPS) dual Cortex-A9. Ba cầu chính:
+\begin{itemize}[leftmargin=1.4em]
+  \item \textbf{Lightweight HPS-to-FPGA (LW bridge)} $\approx 2$~MB không gian địa chỉ: CPU đọc thanh ghi trạng thái / từ Q12.4 từng khung --- đủ cho $97$ từ/giây.
+  \item \textbf{HPS-to-FPGA bridge} rộng hơn: DMA burst nếu sau này ghi WAV+bin xuống SDRAM.
+  \item \textbf{FPGA-to-HPS}: fabric làm master (ít dùng ở lab pitch).
+\end{itemize}
+Thực tế lab: khối \texttt{OUT} đẩy Avalon-ST vào DCFIFO đồng bộ chéo miền xung nhịp (nếu HPS và FPGA khác PLL), rồi HPS poll hoặc ngắt khi FIFO nửa đầy. Một từ mất trên cầu LW không làm Quartus báo lỗi --- chỉ làm Pearson thanh điệu sụp; đó là lý do tầng~3 phải đếm beat đến tận biên HPS.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth,
+  b/.style={draw, rounded corners, align=center, inner sep=4pt, minimum height=1.0cm}]
+  \node[b, fill=blue!10] (fsm) {FSM pitch\\fabric $50\,\text{MHz}$};
+  \node[b, fill=teal!10, right=12mm of fsm] (st) {Avalon-ST\\valid/ready};
+  \node[b, fill=orange!10, right=12mm of st] (fifo) {DCFIFO\\(tuỳ chéo clk)};
+  \node[b, fill=green!10, right=12mm of fifo] (hps) {HPS LW bridge\\đọc Q12.4};
+  \draw[->, thick] (fsm)--(st);
+  \draw[->, thick] (st)--(fifo);
+  \draw[->, thick] (fifo)--(hps);
+\end{tikzpicture}
+\caption{Đường ra cao độ: FSM$\to$Avalon-ST$\to$(FIFO)$\to$HPS. Backpressure từ FIFO đầy phải đứt ngược về \texttt{OUT}.}
+\label{fig:ch11_hps_bridge}
+\end{figure}
+
+\paragraph{M10K trong FILL.} Trạng thái \texttt{FILL} ghi True Dual-Port On-Chip Memory (khối M10K $10$~kbit). Một khung $640\times 16=10\,240$~bit vừa khít $\approx 1$ M10K. Chế độ mixed-port read-during-write trên Cyclone~V chỉ \textbf{Old Data} hoặc \textbf{Don't Care} --- không có New Data (Chương~5). FSM không được giả định đọc thấy mẫu vừa ghi trong cùng chu kỳ trên cổng kia.
+
+\subsection*{11.5c. RTL giải thích từng dòng}
+
+\begin{verbatim}
+// Dieu kien nap beat moi:
+//   !out_valid  : bus dang trong (chua cam beat)
+//   out_ready   : sink vua nhan beat (duoc doi mau ke)
+// Ngoai hai truong hop do: GIU NGUYEN data/valid/SOP/EOP.
+always @(posedge clk or negedge rst_n) begin
+  if (!rst_n) begin
+    out_valid <= 1'b0;
+    out_data  <= 16'd0;
+    out_sop   <= 1'b0;
+    out_eop   <= 1'b0;
+  end else if (!out_valid || out_ready) begin
+    if (have_sample) begin
+      out_data  <= next_sample;   // chi doi khi duoc phep
+      out_sop   <= next_is_first;
+      out_eop   <= next_is_last;
+      out_valid <= 1'b1;
+      // rd_ptr <= rd_ptr + 1;  // DUY NHAT noi advance
+    end else begin
+      out_valid <= 1'b0;          // valid gap chu dong
+      out_sop   <= 1'b0;
+      out_eop   <= 1'b0;
+    end
+  end
+  // else: backpressure — latched bus khong doi
+end
+\end{verbatim}
+
+Từng ý: (1)~\texttt{rst\_n} bất đồng bộ hạ đưa mọi cờ về $0$ an toàn; (2)~điều kiện \texttt{!out\_valid || out\_ready} là trái tim hợp đồng 683091 với \texttt{readyLatency}$=0$; (3)~con trỏ đọc chỉ tăng trong nhánh \texttt{have\_sample} --- tăng ngoài nhánh này là bug cố ý của bài tập~11.2; (4)~nhánh \texttt{else} ẩn (không ghi gì) giữ latch --- đó chính là ``giữ data khi backpressure''.
+
+\paragraph{Twin Python mở rộng --- đếm RTF giả lập.}
+\begin{verbatim}
+def mac_cycles(tau_min=26, tau_max=214, L=640):
+    n_tau = tau_max - tau_min + 1  # 189
+    return n_tau * L               # 120960
+
+def rtf(f_clk=50e6, hop_s=0.01):
+    return mac_cycles() / (f_clk * hop_s)  # ≈ 0.24192
+\end{verbatim}
+
+\begin{physicalinsight}
+Handshake không ``sửa'' thuật toán Boersma. Nó chỉ bảo đảm đúng mẫu đúng lúc đến đúng khối. Một beat mất ở biên MAC$\leftrightarrow$peak làm parabolic gắn nhầm $\tau$, tạo GPE octave giả trong khi mọi công thức trong twin float vẫn xanh --- đó là lớp lỗi tầng~3 ở Chương~13.
+\end{physicalinsight}
+
+
+\subsection*{11.6b. Tóm tắt hợp đồng Avalon-ST cho đường $F_0$}
+
+Ba luật vàng cần thuộc trước khi mở Signal Tap: (1)~beat $=$ valid $\land$ ready trong cùng chu kỳ khi \texttt{ready\-Latency}$=0$; (2)~khi valid$=1$ và ready$=0$, source giữ nguyên data lẫn SOP/EOP; (3)~mỗi gói $L=640$ có đúng một SOP ở beat đầu và một EOP ở beat cuối. Vi phạm luật~(2) là lỗi im lặng làm lệch $\mathcal{R}_x$ và $F_0$ dù Fmax xanh. Ngân sách chu kỳ nhắc lại: $500\,000$ chu kỳ mỗi hop, khoảng $120\,960$ cho MAC, RTF $\approx 0{,}24$, biên còn lại dành cho backpressure từ FIFO HPS. Twin đếm beat phải khớp testbench trên mọi seed LFSR trước khi kết luận ``RTL đúng thuật toán''.
 
 \subsection*{11.7. Bài tập và lời giải giải thích}
 

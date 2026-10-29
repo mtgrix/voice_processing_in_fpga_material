@@ -56,7 +56,7 @@ Hình~\ref{fig:ch10_voicing_timeline} minh họa một đoạn sóng có nguyên
   \node[font=\scriptsize, gray!60!black] at (9.8,-0.45){UV};
   \node[font=\scriptsize, align=center] at (6.0,-1.35){Đường cam: chỉ báo $F_0$ khi cổng voicing = Hữu thanh;\\các khung UV xuất đúng $0$ (sẽ đóng gói Q12.4 $=0$ ở Chương~12).};
 \end{tikzpicture}
-\caption{Trực giác voicing: sóng có đoạn rung và đoạn im. Cổng voicing buộc $F_0=0$ trên khung vô thanh/im lặng trước khi median-3 và đóng gói.}
+\caption{Hình 10.1 --- Trực giác voicing: sóng có đoạn rung và đoạn im. Cổng voicing buộc $F_0=0$ trên khung vô thanh/im lặng trước khi median-3 và đóng gói.}
 \label{fig:ch10_voicing_timeline}
 \end{figure}
 
@@ -168,7 +168,7 @@ Spike $80\,\text{Hz}$ (thường là bắt nhầm $2T_0$ hoặc nhiễu) biến 
   \node[teal!80!black, font=\scriptsize, align=left] at (7.2,3.1){Median-3 (nét liền)\\trễ 1 khung};
   \node[gray!60!black, font=\scriptsize] at (1.2,3.1){Thô (nét đứt)};
 \end{tikzpicture}
-\caption{Median-3 đập một xung thấp đơn; đường xuất trễ đúng một khung so với quyết định voicing tức thời.}
+\caption{Hình 10.2 --- Median-3 đập một xung thấp đơn; đường xuất trễ đúng một khung so với quyết định voicing tức thời.}
 \label{fig:ch10_median3}
 \end{figure}
 
@@ -275,6 +275,112 @@ Mọi số trong mục~10.3--10.5 được khẳng định bởi \texttt{verify/
     \item \textbf{Vì sao chọn median thay Viterbi trên fabric:} đập spike đơn đủ cho đo thanh điệu tiếng Việt và Pearson với Praat trên giọng sạch; giữ RTF và diện tích; vẫn để cửa HPS chạy pathFinder khi bài yêu cầu.
 \end{itemize}
 \end{costbox}
+
+
+\paragraph{Ví dụ tính tay --- warmup $P_{\mathrm{global}}$ bằng IIR chậm.}
+Trên streaming FPGA không nhìn được cả câu nói trước, nên $P_{\mathrm{global}}$ được ước bằng bộ lọc IIR bậc một với hệ số $\alpha=1/16$ (dịch phải bốn bit, rất rẻ trên ALM):
+\begin{equation}
+P_g[n]=(1-\alpha)\,P_g[n-1]+\alpha\,P_{\mathrm{local}}[n].
+\end{equation}
+Cho chuỗi đỉnh biên độ cục bộ $P_{\mathrm{local}}=\{100,200,500\}$ và $P_g[0]=0$:
+\begin{align*}
+P_g[1]&=\tfrac{15}{16}\cdot 0+\tfrac{1}{16}\cdot 100=6{,}25,\\
+P_g[2]&=\tfrac{15}{16}\cdot 6{,}25+\tfrac{1}{16}\cdot 200=18{,}359375,\\
+P_g[3]&=\tfrac{15}{16}\cdot 18{,}359375+\tfrac{1}{16}\cdot 500=48{,}4619140625.
+\end{align*}
+Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4539$ --- vẫn nhỏ hơn $P_{\mathrm{local}}$, nên cổng voicing \emph{không} nuốt nguyên âm đang lên dần. Nếu $\alpha$ quá lớn (ví dụ $1/2$), $P_g$ nhảy theo từng khung nhiễu và sàn silence dao động, dễ tạo VDE giả. Mọi số trên khớp \texttt{verify/verify\_chuong\_10\_14.py}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small, >=Stealth,
+  blk/.style={draw, rounded corners, align=center, minimum height=0.9cm, inner sep=3pt}]
+  \node[blk, fill=blue!8] (ra) {$r_a[\tau^*]$\\Q1.14};
+  \node[blk, fill=blue!8, below=8mm of ra] (pl) {$P_{\mathrm{local}}$};
+  \node[blk, fill=teal!10, right=18mm of ra] (cmp1) {$\ge V$?};
+  \node[blk, fill=teal!10, right=18mm of pl] (cmp2) {$\ge S\cdot P_g$?};
+  \node[blk, fill=orange!12, right=18mm of $(cmp1)!0.5!(cmp2)$] (and) {AND};
+  \node[blk, fill=green!10, right=14mm of and] (out) {voiced\\$F_0$ hoặc $0$};
+  \draw[->, thick] (ra)--(cmp1);
+  \draw[->, thick] (pl)--(cmp2);
+  \draw[->, thick] (cmp1)--(and);
+  \draw[->, thick] (cmp2)--(and);
+  \draw[->, thick] (and)--(out);
+  \node[below=2mm of pl, font=\scriptsize, align=center]{$P_g\leftarrow$ IIR $\alpha=1/16$\\(max-hold tuỳ chọn)};
+\end{tikzpicture}
+\caption{Hình 10.5 --- Khối cổng voicing trên fabric: hai so sánh + AND; $P_g$ cập nhật chậm; UV ép $F_0=0$ trước median-3.}
+\label{fig:ch10_voicing_gate}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  % Trellis 2 frames x 2 states
+  \node[draw, circle, minimum size=8mm] (v1) at (0,2) {V1};
+  \node[draw, circle, minimum size=8mm] (u1) at (0,0) {UV1};
+  \node[draw, circle, minimum size=8mm] (v2) at (5,2) {V2};
+  \node[draw, circle, minimum size=8mm] (u2) at (5,0) {UV2};
+  \draw[->, very thick, teal!70!black] (v1)--node[above]{$\delta{=}0{,}50$, $c{=}0{,}05$} (v2);
+  \draw[->, thick, gray] (u1)--node[below,sloped]{$c{=}0{,}14$} (v2);
+  \draw[->, thick, gray] (v1)--node[above,sloped]{$c{=}0{,}14$} (u2);
+  \draw[->, thick, gray] (u1)--node[below]{$c{=}0$} (u2);
+  \node[right=3mm of v2, align=left]{$\mathrm{cum}=0{,}90$\\(thắng)};
+  \node[right=3mm of u2, align=left]{$\mathrm{cum}=0{,}88$};
+  \node[below=8mm of $(u1)!0.5!(u2)$, align=center, font=\small]
+    {Trellis Viterbi $2\times 2$: đường V$\to$V thắng dù $\delta(\mathrm{UV}_2)>\delta(V_2)$.};
+\end{tikzpicture}
+\caption{Hình 10.6 --- Lưới chuyển trạng thái rút gọn của \texttt{Pitch\_pathFinder}: chi phí $c_{ij}$ phạt nhảy V$\leftrightarrow$UV và octave.}
+\label{fig:ch10_viterbi_trellis}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth]
+  \draw[->] (0,0)--(11,0) node[right]{Chu kỳ \texttt{in\_valid} (mỗi hop)};
+  \draw[->] (0,0)--(0,3.2) node[above]{Thanh ghi};
+  % timeline labels
+  \foreach \x/\lab in {1/k-2,3/k-1,5/k,7/k+1,9/k+2} {
+    \node[below] at (\x,-0.15) {\lab};
+  }
+  % f3 stream
+  \draw[thick, blue!70] (1,2.6)--(3,2.7)--(5,1.0)--(7,2.65)--(9,2.7);
+  \node[blue!70, left] at (0.2,2.6) {$f_3$ (mới)};
+  % m_reg
+  \draw[thick, orange!80!black] (1,1.6)--(3,1.6)--(5,2.6)--(7,2.6)--(9,2.65);
+  \node[orange!80!black, left] at (0.2,1.6) {$m\_reg$};
+  % f_out delayed
+  \draw[very thick, teal!70!black] (1,0.6)--(3,0.6)--(5,0.6)--(7,2.6)--(9,2.6);
+  \node[teal!70!black, left] at (0.2,0.6) {$f\_out$};
+  \node[font=\scriptsize, align=left] at (8.2,3.0){Xuất trễ đúng\\1 hop so với med};
+\end{tikzpicture}
+\caption{Hình 10.7 --- Pipeline median-3 đăng ký: $\texttt{f\_out}$ lấy giá trị $\texttt{m\_reg}$ của nhịp trước, khớp Feynman box~11 (trễ nhóm $10\,\text{ms}$).}
+\label{fig:ch10_median_pipe}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\small,
+  bar/.style={draw, rounded corners=1pt, minimum height=0.55cm, anchor=west}]
+  \node[anchor=east] at (-0.2,2.0) {median-3};
+  \node[bar, fill=teal!40, minimum width=1.2cm] at (0,2.0) {\scriptsize $<150$ ALM};
+  \node[anchor=east] at (-0.2,1.2) {cổng voicing};
+  \node[bar, fill=teal!25, minimum width=0.7cm] at (0,1.2) {\scriptsize $\sim 30$};
+  \node[anchor=east] at (-0.2,0.4) {Viterbi $K{=}15$};
+  \node[bar, fill=red!40, minimum width=7.5cm] at (0,0.4) {\scriptsize hàng nghìn ALM + vài M10K path metric};
+  \node[font=\scriptsize, align=left] at (4.5,-0.5)
+    {So sánh chi phí silicon: giữ median trên fabric; chuyển pathFinder sang HPS nếu cần.};
+\end{tikzpicture}
+\caption{Hình 10.8 --- Trực giác ngân sách: median-3 + cổng voicing nằm gọn trong phần nhỏ của $\approx 850$ ALM; Viterbi đa ứng viên phá ngân sách lab.}
+\label{fig:ch10_cost_bars}
+\end{figure}
+
+\paragraph{Giải thích RTL từng dòng (mở rộng).}
+Dây \texttt{voiced} là tổ hợp tổ hợp thuần: so sánh $r_a$ với $V_{\mathrm{Q14}}=7372$ và $P_{\mathrm{local}}$ với sàn silence; không cần DSP. Ba thanh ghi $f_1,f_2,f_3$ tạo cửa sổ trượt; phép gán không chặn (\emph{non-blocking}) trong cùng \texttt{always} khiến \texttt{med} nhìn giá trị \emph{cũ} của ba thanh ghi --- đúng ý ``tính median của cửa sổ vừa hoàn tất trước khi dịch''. Ép UV$\to 0$ ở đầu vào $f_3$ bảo đảm một khung im không bị hai hàng xóm hữu thanh ``kéo'' thành cao độ giả qua median. Cặp $\texttt{m\_reg}\leftarrow\mathrm{med}$, rồi $\texttt{f\_out}\leftarrow\texttt{m\_reg}$ tạo đúng một cấp thanh ghi xuất: đo bằng tay trên chuỗi $\{200,210,80,205,208\}$ cho $\texttt{f\_out}=\{0,0,0,200,200\}$ (warmup rồi mới thấy median của cửa đầu), khớp script verify.
+
+\paragraph{Vì sao octave jump $150\to 300$ đắt đúng $0{,}35$.}
+\[
+|\log_2(150/300)|=|\log_2(1/2)|=1,\qquad 0{,}35\cdot 1=0{,}35.
+\]
+Đó đúng một quãng tám (\emph{octave}): $300\,\text{Hz}$ là hài hai của $150\,\text{Hz}$. Tính theo cent: $1200\log_2(400/200)=+1200\,\text{cent}$ và $1200\log_2(100/200)=-1200\,\text{cent}$ --- một octave lên hoặc xuống. Median-3 đập được xung octave đơn; chuỗi octave bền (nhiều khung liên tiếp) cần pathFinder hoặc chỉnh ROM $C[\tau]$ ở Chương~8.
 
 \subsection*{10.8. Bài tập và lời giải giải thích}
 
