@@ -242,39 +242,6 @@ end
 
 Dòng then chốt là điều kiện \texttt{!out\_valid || out\_ready}: chỉ khi chưa cầm beat, hoặc sink vừa nhận beat, source mới được đổi bus. Mọi chỗ khác phải giữ nguyên --- kể cả \texttt{SOP}/\texttt{EOP}.
 
-\subsection*{11.6. Twin đếm beat và kiểm SOP/EOP}
-
-\begin{verbatim}
-def count_beats(trace):
-    return sum(1 for c in trace if c["valid"] and c["ready"])
-
-def check_packets(trace, L=640):
-    beats = [c for c in trace if c["valid"] and c["ready"]]
-    assert count_beats(trace) == len(beats)
-    # Moi goi: SOP tren beat dau, EOP tren beat cuoi, dung L beat
-    i = 0
-    while i < len(beats):
-        assert beats[i]["sop"] and not beats[i]["eop"]
-        assert i + L - 1 < len(beats)
-        for k in range(1, L - 1):
-            assert not beats[i+k]["sop"] and not beats[i+k]["eop"]
-        assert beats[i+L-1]["eop"] and not beats[i+L-1]["sop"]
-        i += L
-\end{verbatim}
-
-Testbench ModelSim/Questa: LFSR hạ \texttt{ready} ngẫu nhiên; LFSR tạo valid-gap phía source; scoreboard so số beat và nội dung Q1.15 từng mẫu với twin.
-
-\begin{costbox}
-\textbf{Ngân sách silicon --- FSM + adapter Avalon-ST.}
-\begin{itemize}[leftmargin=1.2em]
-    \item \textbf{Adapter valid/ready/SOP/EOP:} khoảng $0$--$30$ ALM (mux giữ data, vài flip-flop); $0$ DSP; $0$ M10K.
-    \item \textbf{FSM đỉnh:} vài trăm ALM tùy số trạng thái và độ rộng bộ đếm địa chỉ ($10$~bit cho $640$), vẫn nằm trong ngân sách $\approx 850$ ALM toàn luồng.
-    \item \textbf{Latency điều khiển:} bản thân handshake thêm $0$--$1$ chu kỳ mỗi biên; không đổi RTF MAC $\approx 0{,}24$.
-    \item \textbf{Vì sao giữ data khi \texttt{ready}$=0$:} mất một mẫu $= $ lệch khung $= $ sai $\mathcal{R}_x$ $= $ sai $F_0$ --- không có cảnh báo synthesis.
-    \item \textbf{Vì sao cần SOP/EOP:} tách biên gói $640$ mẫu trong luồng liên tục $16\,\text{kHz}$; thiếu chúng FSM không biết lúc nào kết thúc \texttt{FILL}.
-\end{itemize}
-\end{costbox}
-
 \subsection*{11.5b. Avalon-ST bên trong IP Intel và cầu HPS--FPGA}
 
 Tài liệu \emph{Avalon Interface Specifications} (doc ID~683091) định nghĩa thêm:
@@ -284,13 +251,13 @@ Tài liệu \emph{Avalon Interface Specifications} (doc ID~683091) định nghĩ
   \item FIR Compiler~II và FFT IP đều nói Avalon-ST; khi nối FIR$\to$sliding RAM phải khớp \texttt{readyLatency}. Lab chọn~$0$ xuyên suốt để FSM đơn giản: quyết định nhận nằm cùng chu kỳ \texttt{valid}.
 \end{itemize}
 
-\paragraph{Cầu HPS--FPGA trên DE10-Standard.} Cyclone~V SX có Hard Processor System (HPS) dual Cortex-A9. Ba cầu chính:
+\paragraph{Cầu HPS--FPGA trên DE10-Standard.} Cyclone~V SX trên DE10-Standard có Hard Processor System (HPS) --- cụm CPU cứng dual Cortex-A9 nằm trên cùng chip với FPGA fabric. Ba cầu chính nối HPS với logic do bạn viết:
 \begin{itemize}[leftmargin=1.4em]
   \item \textbf{Lightweight HPS-to-FPGA (LW bridge)} $\approx 2$~MB không gian địa chỉ: CPU đọc thanh ghi trạng thái / từ Q12.4 từng khung --- đủ cho $97$ từ/giây.
   \item \textbf{HPS-to-FPGA bridge} rộng hơn: DMA burst nếu sau này ghi WAV+bin xuống SDRAM.
   \item \textbf{FPGA-to-HPS}: fabric làm master (ít dùng ở lab pitch).
 \end{itemize}
-Thực tế lab: khối \texttt{OUT} đẩy Avalon-ST vào DCFIFO đồng bộ chéo miền xung nhịp (nếu HPS và FPGA khác PLL), rồi HPS poll hoặc ngắt khi FIFO nửa đầy. Một từ mất trên cầu LW không làm Quartus báo lỗi --- chỉ làm Pearson thanh điệu sụp; đó là lý do tầng~3 phải đếm beat đến tận biên HPS.
+Thực tế lab: khối \texttt{OUT} đẩy Avalon-ST vào DCFIFO (\emph{Dual-Clock FIFO} --- hàng đợi hai miền xung nhịp, IP Intel) nếu HPS và FPGA khác PLL, rồi HPS đọc định kỳ (poll) hoặc nhận ngắt khi FIFO nửa đầy. Một từ mất trên cầu LW không làm Quartus báo lỗi --- chỉ làm Pearson thanh điệu sụp; đó là lý do tầng~3 phải đếm beat đến tận biên HPS.
 
 \begin{figure}[H]
 \centering
@@ -342,24 +309,49 @@ end
 
 Từng ý: (1)~\texttt{rst\_n} bất đồng bộ hạ đưa mọi cờ về $0$ an toàn; (2)~điều kiện \texttt{!out\_valid || out\_ready} là trái tim hợp đồng 683091 với \texttt{readyLatency}$=0$; (3)~con trỏ đọc chỉ tăng trong nhánh \texttt{have\_sample} --- tăng ngoài nhánh này là bug cố ý của bài tập~11.2; (4)~nhánh \texttt{else} ẩn (không ghi gì) giữ latch --- đó chính là ``giữ data khi backpressure''.
 
-\paragraph{Twin Python mở rộng --- đếm RTF giả lập.}
-\begin{verbatim}
-def mac_cycles(tau_min=26, tau_max=214, L=640):
-    n_tau = tau_max - tau_min + 1  # 189
-    return n_tau * L               # 120960
-
-def rtf(f_clk=50e6, hop_s=0.01):
-    return mac_cycles() / (f_clk * hop_s)  # ≈ 0.24192
-\end{verbatim}
-
 \begin{physicalinsight}
 Handshake không ``sửa'' thuật toán Boersma. Nó chỉ bảo đảm đúng mẫu đúng lúc đến đúng khối. Một beat mất ở biên MAC$\leftrightarrow$peak làm parabolic gắn nhầm $\tau$, tạo GPE octave giả trong khi mọi công thức trong twin float vẫn xanh --- đó là lớp lỗi tầng~3 ở Chương~13.
 \end{physicalinsight}
 
 
-\subsection*{11.6b. Tóm tắt hợp đồng Avalon-ST cho đường $F_0$}
+\subsection*{11.6. Twin đếm beat và kiểm SOP/EOP}
 
-Ba luật vàng cần thuộc trước khi mở Signal Tap: (1)~beat $=$ valid $\land$ ready trong cùng chu kỳ khi \texttt{ready\-Latency}$=0$; (2)~khi valid$=1$ và ready$=0$, source giữ nguyên data lẫn SOP/EOP; (3)~mỗi gói $L=640$ có đúng một SOP ở beat đầu và một EOP ở beat cuối. Vi phạm luật~(2) là lỗi im lặng làm lệch $\mathcal{R}_x$ và $F_0$ dù Fmax xanh. Ngân sách chu kỳ nhắc lại: $500\,000$ chu kỳ mỗi hop, khoảng $120\,960$ cho MAC, RTF $\approx 0{,}24$, biên còn lại dành cho backpressure từ FIFO HPS. Twin đếm beat phải khớp testbench trên mọi seed LFSR trước khi kết luận ``RTL đúng thuật toán''.
+\begin{verbatim}
+def count_beats(trace):
+    return sum(1 for c in trace if c["valid"] and c["ready"])
+
+def check_packets(trace, L=640):
+    beats = [c for c in trace if c["valid"] and c["ready"]]
+    assert count_beats(trace) == len(beats)
+    # Moi goi: SOP tren beat dau, EOP tren beat cuoi, dung L beat
+    i = 0
+    while i < len(beats):
+        assert beats[i]["sop"] and not beats[i]["eop"]
+        assert i + L - 1 < len(beats)
+        for k in range(1, L - 1):
+            assert not beats[i+k]["sop"] and not beats[i+k]["eop"]
+        assert beats[i+L-1]["eop"] and not beats[i+L-1]["sop"]
+        i += L
+\end{verbatim}
+
+Testbench ModelSim/Questa: LFSR hạ \texttt{ready} ngẫu nhiên; LFSR tạo valid-gap phía source; scoreboard so số beat và nội dung Q1.15 từng mẫu với twin.
+
+\begin{costbox}
+\textbf{Ngân sách silicon --- FSM + adapter Avalon-ST.}
+\begin{itemize}[leftmargin=1.2em]
+    \item \textbf{Adapter valid/ready/SOP/EOP:} khoảng $0$--$30$ ALM (mux giữ data, vài flip-flop); $0$ DSP; $0$ M10K.
+    \item \textbf{FSM đỉnh:} vài trăm ALM tùy số trạng thái và độ rộng bộ đếm địa chỉ ($10$~bit cho $640$), vẫn nằm trong ngân sách $\approx 850$ ALM toàn luồng.
+    \item \textbf{Latency điều khiển:} bản thân handshake thêm $0$--$1$ chu kỳ mỗi biên; không đổi RTF MAC $\approx 0{,}24$.
+    \item \textbf{Vì sao giữ data khi \texttt{ready}$=0$:} mất một mẫu $= $ lệch khung $= $ sai $\mathcal{R}_x$ $= $ sai $F_0$ --- không có cảnh báo synthesis.
+    \item \textbf{Vì sao cần SOP/EOP:} tách biên gói $640$ mẫu trong luồng liên tục $16\,\text{kHz}$; thiếu chúng FSM không biết lúc nào kết thúc \texttt{FILL}.
+\end{itemize}
+\end{costbox}
+
+\paragraph{Ba luật Avalon-ST cần thuộc trước Signal Tap.}
+(1)~Beat chỉ xảy ra khi \texttt{valid} và \texttt{ready} cùng cao trong một chu kỳ (\texttt{readyLatency}$=0$).
+(2)~Khi \texttt{valid}$=1$ mà \texttt{ready}$=0$, source giữ nguyên \texttt{data} lẫn SOP/EOP.
+(3)~Mỗi gói $L=640$ có đúng một SOP ở beat đầu và một EOP ở beat cuối.
+Vi phạm luật~(2) lệch $\mathcal{R}_x$ và $F_0$ dù Fmax vẫn xanh --- twin đếm beat phải khớp testbench trên mọi seed LFSR.
 
 \subsection*{11.7. Bài tập và lời giải giải thích}
 

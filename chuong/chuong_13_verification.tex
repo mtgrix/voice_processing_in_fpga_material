@@ -223,6 +223,23 @@ f_ref = pm.selected_array["frequency"]  # 0 = UV
 \end{verbatim}
 Tham số bắt buộc khớp lab: time step $0{,}01\,\text{s}$, floor $75$, ceiling $600$, và (nếu đối chiếu sâu) cùng voicingThreshold $0{,}45$. Khác tham số $\Rightarrow$ ``sai số'' giả tạo.
 
+\subsection*{13.4b. Tầng 1 sâu: khớp tham số Praat}
+
+Ngoài time step / floor / ceiling, các tham số hay làm lệch giả tạo:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{voicingThreshold} (mặc định $0{,}45$): khác số $\Rightarrow$ VDE giả.
+  \item \texttt{octaveCost} / \texttt{octaveJumpCost}: twin float lab tắt pathFinder thì không so được đường cong ``có Viterbi'' của Praat GUI mặc định --- phải gọi API/\texttt{Pitch.cpp} với cùng cờ tắt, hoặc chấp nhận so trên khung đã voiced ổn định.
+  \item Đồng bộ thời gian: tâm cửa sổ lab tại $kH+L/2$; Praat time step $0{,}01\,\text{s}$ phải neo cùng gốc.
+\end{itemize}
+
+\paragraph{Ví dụ tính tay --- RTF mô phỏng $1\,\text{s}$.}
+Số khung $97$, mỗi khung $\approx 120\,960$ chu kỳ MAC:
+\[
+T_{\mathrm{proc}}=\frac{120\,960\cdot 97}{50\cdot 10^6}\approx 0{,}2347\,\text{s},
+\qquad \mathrm{RTF}\approx 0{,}2347
+\]
+(RTF = \emph{Real-Time Factor} = thời gian xử lý / thời gian âm thanh; đã kiểm script). Một TB chu kỳ-chính xác cho $1\,\text{s}$ audio vì thế chạy khoảng $0{,}23\,\text{s}$ thời gian mô phỏng xung nhịp (wall-clock phụ thuộc tốc độ sim).
+
 \subsection*{13.5. Tầng 2: Fixed twin vs Float}
 
 Twin cố định bit dùng cùng ROM Hanning Q1.15, ROM $C[\tau]$ Q3.13, cùng sat/shift như RTL. Đo:
@@ -230,7 +247,19 @@ Twin cố định bit dùng cùng ROM Hanning Q1.15, ROM $C[\tau]$ Q3.13, cùng 
     \item Sai lệch cent trung bình / max giữa $F_{\mathrm{fixed}}$ và $F_{\mathrm{float}}$ trên khung cùng voiced;
     \item Số khung đổi voicing so với float (thường $0$ trên sine).
 \end{itemize}
-Nếu tầng~1 xanh mà tầng~2 đỏ: nghi ngờ cắt bit MAC, quên dịch BFP (nếu dùng FFT), hoặc ROM $C[\tau]$ sai endian trong hex.
+Nếu tầng~1 xanh mà tầng~2 đỏ: nghi ngờ cắt bit MAC, quên dịch BFP (\emph{Block Floating Point} --- mỗi khối FFT chia sẻ một exponent; nếu dùng FFT IP), hoặc ROM $C[\tau]$ sai endian trong hex.
+
+\subsection*{13.5b. Tầng 2 sâu: nguồn cent cố định bit}
+
+Mỗi khối góp sai số lượng tử xấp xỉ (thứ tự độ lớn, không phải định lý):
+\begin{itemize}[leftmargin=1.4em]
+  \item Window Q1.15: hệ số mép khung lệch $1$ LSB $\to$ vài cent.
+  \item MAC cắt về thanh ghi trung gian: nếu cắt quá sớm trước khi nhân $C[\tau]$, đỉnh $\tau$ lớn bị thiên vị.
+  \item ROM $C[\tau]$ Q3.13: sai endian hex $\to$ GPE hàng loạt (lớp này đôi khi lộ sớm ở tầng~1 nếu float cũng đọc nhầm hex --- tách test ROM).
+  \item LPM\_DIVIDE làm tròn quotient: thường $<1\,\text{cent}$ tại $200\,\text{Hz}$.
+  \item Pack Q12.4: LSB $\approx 0{,}54\,\text{cent}$ tại $200\,\text{Hz}$.
+\end{itemize}
+Tổng ngân sách $20$--$30\,\text{cent}$ là ``hộp'' chứa cho cả chuỗi; vượt hộp thì lần từ pack ngược về FIR, đo cent từng điểm neo (sau window, sau MAC, sau $C[\tau]$, sau DIV).
 
 \subsection*{13.6. Tầng 3: RTL vs Fixed --- bit-exact và testbench}
 
@@ -253,44 +282,34 @@ assert (q_rtl == q_fixed).all()  # tang 3
 
 \paragraph{Tài liệu Intel cần mở đúng số.} Avalon~683091, FIR~683208, FFT~683374 (nếu bật), LPM\_DIVIDE handbook. Fmax/ALM/DSP/M10K lấy từ \emph{Fitter report} sau Place \& Route --- không bịa.
 
-\subsection*{13.4b. Tầng 1 sâu: khớp tham số Praat}
-
-Ngoài time step / floor / ceiling, các tham số hay làm lệch giả tạo:
-\begin{itemize}[leftmargin=1.4em]
-  \item \texttt{voicingThreshold} (mặc định $0{,}45$): khác số $\Rightarrow$ VDE giả.
-  \item \texttt{octaveCost} / \texttt{octaveJumpCost}: twin float lab tắt pathFinder thì không so được đường cong ``có Viterbi'' của Praat GUI mặc định --- phải gọi API/\texttt{Pitch.cpp} với cùng cờ tắt, hoặc chấp nhận so trên khung đã voiced ổn định.
-  \item Đồng bộ thời gian: tâm cửa sổ lab tại $kH+L/2$; Praat time step $0{,}01\,\text{s}$ phải neo cùng gốc.
-\end{itemize}
-
-\paragraph{Ví dụ tính tay --- RTF mô phỏng $1\,\text{s}$.}
-Số khung $97$, mỗi khung $\approx 120\,960$ chu kỳ MAC:
-\[
-T_{\mathrm{proc}}=\frac{120\,960\cdot 97}{50\cdot 10^6}\approx 0{,}2347\,\text{s},
-\qquad \mathrm{RTF}\approx 0{,}2347
-\]
-(đã kiểm script). Một TB chu kỳ-chính xác cho $1\,\text{s}$ audio vì thế chạy khoảng $0{,}23\,\text{s}$ thời gian mô phỏng xung nhịp (wall-clock phụ thuộc tốc độ sim).
-
-\subsection*{13.5b. Tầng 2 sâu: nguồn cent cố định bit}
-
-Mỗi khối góp sai số lượng tử xấp xỉ (thứ tự độ lớn, không phải định lý):
-\begin{itemize}[leftmargin=1.4em]
-  \item Window Q1.15: hệ số mép khung lệch $1$ LSB $\to$ vài cent.
-  \item MAC cắt về thanh ghi trung gian: nếu cắt quá sớm trước khi nhân $C[\tau]$, đỉnh $\tau$ lớn bị thiên vị.
-  \item ROM $C[\tau]$ Q3.13: sai endian hex $\to$ GPE hàng loạt (lớp này đôi khi lộ sớm ở tầng~1 nếu float cũng đọc nhầm hex --- tách test ROM).
-  \item LPM\_DIVIDE làm tròn quotient: thường $<1\,\text{cent}$ tại $200\,\text{Hz}$.
-  \item Pack Q12.4: LSB $\approx 0{,}54\,\text{cent}$ tại $200\,\text{Hz}$.
-\end{itemize}
-Tổng ngân sách $20$--$30\,\text{cent}$ là ``hộp'' chứa cho cả chuỗi; vượt hộp thì lần từ pack ngược về FIR, đo cent từng điểm neo (sau window, sau MAC, sau $C[\tau]$, sau DIV).
-
 \subsection*{13.6b. Tầng 3 sâu: X-propagation và reset}
 
 RTL sim phải:
 \begin{enumerate}[leftmargin=1.4em]
   \item Khởi động \texttt{rst\_n}$=0$ đủ vài chu kỳ; mọi thanh ghi median/FSM về $0$.
-  \item Không để \texttt{X} trên \texttt{valid}/\texttt{ready} --- một \texttt{X} làm scoreboard ``xanh giả'' hoặc đỏ ngẫu nhiên.
+  \item Không để \texttt{X} (trạng thái chưa xác định trong mô phỏng RTL --- bit chưa được gán $0/1$ sau reset) trên \texttt{valid}/\texttt{ready}: một \texttt{X} làm scoreboard ``xanh giả'' hoặc đỏ ngẫu nhiên.
   \item Dump $F_q$ chỉ khi beat OUT; so với \texttt{golden\_f0.hex} từ twin fixed cùng seed LFSR cho ready.
   \item Vector cạnh zero/DC/clip: kỳ vọng $F_q=0$ (hoặc hành vi DC-blocker đã khóa Chương~3).
 \end{enumerate}
+
+\subsection*{13.6c. Golden hex và tái lập bit-exact}
+
+Mỗi revision RTL phải kèm:
+\begin{itemize}[leftmargin=1.4em]
+  \item \texttt{golden\_pcm.hex} --- vector vào (hoặc WAV gốc + script gen).
+  \item \texttt{golden\_f0.hex} --- chuỗi $F_q$ từ twin fixed cùng tham số.
+  \item Seed LFSR cho valid-gap/ready trong TB (ghi vào header test).
+\end{itemize}
+Không tái lập được seed thì ``bit-exact hôm qua'' không chứng minh được hôm nay. Khi đổi $V$, $S$, hoặc ROM $C[\tau]$, phải regenerate golden và ghi chú DIFF.
+
+\paragraph{Ví dụ tính tay --- ngưỡng GPE $20\%$.}
+Tại $F_{\mathrm{ref}}=200\,\text{Hz}$, biên GPE là $160$ và $240\,\text{Hz}$. Mọi ước lượng trong $(160,240)$ trên khung VV \emph{không} tính GPE (chỉ đóng góp cent tinh). Octave đúng $100$ hoặc $400$ nằm ngoài biên --- GPE chắc chắn. Đó là lý do GPE cao thường chỉ thẳng ROM $C[\tau]$ hoặc voicing nuốt đỉnh đúng rồi bám hài.
+
+\paragraph{FFE và báo cáo.} Khi viết báo cáo lab, luôn định nghĩa FFE một lần (công thức~\eqref{eq:ch13_ffe}) và không trộn với ``fine error trung bình cent''. Người chấm cần biết bạn đang đếm \emph{tỷ lệ khung hỏng} chứ không phải trung bình cent.
+
+\begin{physicalinsight}
+Ba tầng không phải nghi thức nộp bài. Chúng là cách khoanh vùng nhanh: công thức, lượng tử, hay dây nối. Một TB ``end-to-end đỏ'' không nói bạn sửa chỗ nào; ba đèn xanh/đỏ nói được.
+\end{physicalinsight}
 
 \subsection*{13.7. Bảng tài nguyên (điền từ Fitter)}
 
@@ -327,25 +346,6 @@ FSM + pack Q12.4 &  &  &  & \\
 \end{costbox}
 
 
-\subsection*{13.6c. Golden hex và tái lập bit-exact}
-
-Mỗi revision RTL phải kèm:
-\begin{itemize}[leftmargin=1.4em]
-  \item \texttt{golden\_pcm.hex} --- vector vào (hoặc WAV gốc + script gen).
-  \item \texttt{golden\_f0.hex} --- chuỗi $F_q$ từ twin fixed cùng tham số.
-  \item Seed LFSR cho valid-gap/ready trong TB (ghi vào header test).
-\end{itemize}
-Không tái lập được seed thì ``bit-exact hôm qua'' không chứng minh được hôm nay. Khi đổi $V$, $S$, hoặc ROM $C[\tau]$, phải regenerate golden và ghi chú DIFF.
-
-\paragraph{Ví dụ tính tay --- ngưỡng GPE $20\%$.}
-Tại $F_{\mathrm{ref}}=200\,\text{Hz}$, biên GPE là $160$ và $240\,\text{Hz}$. Mọi ước lượng trong $(160,240)$ trên khung VV \emph{không} tính GPE (chỉ đóng góp cent tinh). Octave đúng $100$ hoặc $400$ nằm ngoài biên --- GPE chắc chắn. Đó là lý do GPE cao thường chỉ thẳng ROM $C[\tau]$ hoặc voicing nuốt đỉnh đúng rồi bám hài.
-
-\paragraph{FFE và báo cáo.} Khi viết báo cáo lab, luôn định nghĩa FFE một lần (công thức~\eqref{eq:ch13_ffe}) và không trộn với ``fine error trung bình cent''. Người chấm cần biết bạn đang đếm \emph{tỷ lệ khung hỏng} chứ không phải trung bình cent.
-
-\begin{physicalinsight}
-Ba tầng không phải nghi thức nộp bài. Chúng là cách khoanh vùng nhanh: công thức, lượng tử, hay dây nối. Một TB ``end-to-end đỏ'' không nói bạn sửa chỗ nào; ba đèn xanh/đỏ nói được.
-\end{physicalinsight}
-
 \subsection*{13.7b. Cách điền Fitter thật}
 
 Sau Place \& Route trên Quartus Standard/Lite cho part \texttt{5CSXFC6D6F31C6N}:
@@ -366,10 +366,8 @@ RTF $\approx 0{,}23$ trên $1\,\text{s}$ audio nghĩa là mô phỏng chu kỳ-c
 
 \paragraph{Chuẩn bị báo cáo.} Mỗi tầng một mục: lệnh chạy, tham số, bảng chỉ số, kết luận xanh/đỏ. Đính kèm hash git của RTL + twin + golden. Người chấm tái lập được thì điểm phương pháp mới vững.
 
+\paragraph{Trước khi sang Chương~14.} Tầng~1 cần GPE$\approx 0$ trên sine sạch; tầng~2 max cent $<20$; tầng~3 không lệch bit và đếm beat khớp. Ngoài zero/DC/clip/sine, giữ một đoạn xát vô thanh (ví dụ $/s/$) và một đoạn giọng có thanh điệu --- tránh VDE ``xanh giả'' vì toàn hữu thanh, và để Pearson có nghĩa.
 
-\paragraph{Đóng chương kiểm chứng.} Mục tiêu tối thiểu trước nghiệm thu Chương~14: tầng~1 GPE$\approx 0$ trên sine sạch; tầng~2 max cent $<20$; tầng~3 $0$ bit mismatch kèm đếm beat. Thiếu một tầng thì chưa đủ điều kiện nộp.
-
-\paragraph{Bổ sung vector bắt buộc.} Ngoài zero/DC/clip/sine, giữ ít nhất một đoạn $/s/$ (vô thanh xát) để VDE không ``xanh giả'' chỉ vì toàn hữu thanh, và một đoạn giọng thật có thanh điệu để Pearson có nghĩa.
 
 \subsection*{13.8. Bài tập và lời giải giải thích}
 

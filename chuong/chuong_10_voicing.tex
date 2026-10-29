@@ -278,7 +278,7 @@ Mọi số trong mục~10.3--10.5 được khẳng định bởi \texttt{verify/
 
 
 \paragraph{Ví dụ tính tay --- warmup $P_{\mathrm{global}}$ bằng IIR chậm.}
-Trên streaming FPGA không nhìn được cả câu nói trước, nên $P_{\mathrm{global}}$ được ước bằng bộ lọc IIR bậc một với hệ số $\alpha=1/16$ (dịch phải bốn bit, rất rẻ trên ALM):
+Trên streaming FPGA không nhìn được cả câu nói trước, nên $P_{\mathrm{global}}$ được ước bằng bộ lọc IIR (\emph{Infinite Impulse Response} --- phản hồi vô hạn: lối ra phụ thuộc cả lối vào hiện tại và trạng thái nội đã nhớ). Ở đây dùng IIR bậc một với hệ số $\alpha=1/16$ (dịch phải bốn bit, rất rẻ trên ALM):
 \begin{equation}
 P_g[n]=(1-\alpha)\,P_g[n-1]+\alpha\,P_{\mathrm{local}}[n].
 \end{equation}
@@ -374,13 +374,14 @@ Sàn silence $S\cdot P_g$ lúc đó lần lượt $0{,}1875$, $0{,}5508$, $1{,}4
 \end{figure}
 
 \paragraph{Giải thích RTL từng dòng (mở rộng).}
-Dây \texttt{voiced} là tổ hợp tổ hợp thuần: so sánh $r_a$ với $V_{\mathrm{Q14}}=7372$ và $P_{\mathrm{local}}$ với sàn silence; không cần DSP. Ba thanh ghi $f_1,f_2,f_3$ tạo cửa sổ trượt; phép gán không chặn (\emph{non-blocking}) trong cùng \texttt{always} khiến \texttt{med} nhìn giá trị \emph{cũ} của ba thanh ghi --- đúng ý ``tính median của cửa sổ vừa hoàn tất trước khi dịch''. Ép UV$\to 0$ ở đầu vào $f_3$ bảo đảm một khung im không bị hai hàng xóm hữu thanh ``kéo'' thành cao độ giả qua median. Cặp $\texttt{m\_reg}\leftarrow\mathrm{med}$, rồi $\texttt{f\_out}\leftarrow\texttt{m\_reg}$ tạo đúng một cấp thanh ghi xuất: đo bằng tay trên chuỗi $\{200,210,80,205,208\}$ cho $\texttt{f\_out}=\{0,0,0,200,200\}$ (warmup rồi mới thấy median của cửa đầu), khớp script verify.
+Dây \texttt{voiced} là tổ hợp thuần (chỉ so sánh và AND, không có xung nhịp bên trong): so sánh $r_a$ với ngưỡng $V$ đã lượng tử Q1.14 thành $V_{\mathrm{Q14}}=7372$ (tức $0{,}45\cdot 2^{14}$) và so $P_{\mathrm{local}}$ với sàn silence $S\cdot P_g$; không cần khối DSP. Ba thanh ghi $f_1,f_2,f_3$ tạo cửa sổ trượt ba khung. Trong Verilog, phép gán không chặn (\emph{non-blocking}, toán tử \texttt{<=}) trong cùng khối \texttt{always} có nghĩa: mọi vế phải đọc giá trị \emph{cũ} của thanh ghi trước khi cập nhật --- vì vậy \texttt{med} nhìn đúng cửa sổ vừa hoàn tất, rồi mới dịch cửa. Ép khung vô thanh (UV) thành $0$ ngay khi vào $f_3$ để một khung im không bị hai hàng xóm hữu thanh ``kéo'' thành cao độ giả qua median. Cặp $\texttt{m\_reg}\leftarrow\mathrm{med}$, rồi $\texttt{f\_out}\leftarrow\texttt{m\_reg}$ thêm đúng một cấp thanh ghi xuất (trễ một hop): đo bằng tay trên chuỗi $\{200,210,80,205,208\}$ cho $\texttt{f\_out}=\{0,0,0,200,200\}$ (ba nhịp đầu là warmup), khớp script verify.
 
 \paragraph{Vì sao octave jump $150\to 300$ đắt đúng $0{,}35$.}
+Quãng tám (\emph{octave}) là khoảng tần số nhân đôi: dây thanh dao động gấp đôi số chu kỳ trong cùng thời gian, nên $F_0$ nhảy từ $150$ lên $300\,\text{Hz}$ (hoặc ngược lại xuống nửa). Praat phạt bước nhảy đó bằng hệ số $0{,}35$ nhân số octave trên thang $\log_2$:
 \[
 |\log_2(150/300)|=|\log_2(1/2)|=1,\qquad 0{,}35\cdot 1=0{,}35.
 \]
-Đó đúng một quãng tám (\emph{octave}): $300\,\text{Hz}$ là hài hai của $150\,\text{Hz}$. Tính theo cent: $1200\log_2(400/200)=+1200\,\text{cent}$ và $1200\log_2(100/200)=-1200\,\text{cent}$ --- một octave lên hoặc xuống. Median-3 đập được xung octave đơn; chuỗi octave bền (nhiều khung liên tiếp) cần pathFinder hoặc chỉnh ROM $C[\tau]$ ở Chương~8.
+Cùng khoảng đó theo cent (thang log âm nhạc, $1200$ cent $=$ một octave): $1200\log_2(400/200)=+1200$ và $1200\log_2(100/200)=-1200$. Median-3 đập được xung octave \emph{đơn} (một khung lệch); chuỗi octave bền nhiều khung liên tiếp cần pathFinder trên HPS hoặc chỉnh ROM $C[\tau]$ ở Chương~8.
 
 \subsection*{10.8. Bài tập và lời giải giải thích}
 

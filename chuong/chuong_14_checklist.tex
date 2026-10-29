@@ -97,34 +97,9 @@ Viterbi chỉ trên HPS nếu cần.
 \end{enumerate}
 
 
-\subsection*{14.2b. Giải thích sâu từng mắt xích (bổ sung dạy học)}
+\subsection*{14.2b. Đọc checklist như chuỗi nhân quả, không như danh sách tick}
 
-\paragraph{Đồng hồ và lấy mẫu --- vì sao ppm quan trọng.}
-Thạch anh $50\,\text{MHz}$ trên DE10 nuôi PLL (Altera PLL / Intel FPGA IP) tạo $MCLK=12{,}288\,\text{MHz}=256\times 48\,\text{kHz}$. Sai số vài chục ppm của thạch anh làm chu kỳ mẫu $T_s$ trôi chậm; tích phân trên câu nói dài biến thành lệch $F_0$ đo được theo thời gian. Lab không hiệu chỉnh ppm mềm: coi thạch anh đủ tốt, nhưng checklist buộc xác nhận đúng tần số PLL trong Platform Designer / IP catalog --- không nhầm sang $4{,}096\,\text{MHz}$ (gói khác).
-
-\paragraph{DC-blocker --- deadband $16$~bit.}
-Nếu thanh ghi phản hồi chỉ $16$~bit, với $\alpha\approx 2^{-8}$ các mẫu nhỏ bị lượng tử hóa thành $0$ cập nhật (deadband), tạo limit-cycle nghe như ``rung'' trên im lặng và phá $\mathcal{R}[0]$. Đủ $32$~bit rồi dịch xuất là lựa chọn silicon rẻ hơn FIR high-pass dài.
-
-\paragraph{M10K Old Data --- không phải sở thích.}
-Handbook Cyclone~V ghi rõ mixed-port New Data không khả dụng trên M10K của họ silicon này. Ép trong GUI có thể khiến tool suy ra bypass bằng ALM, giảm Fmax và đổi hành vi twin. Checklist yêu cầu ảnh chụp cấu hình ``Old Data''.
-
-\paragraph{Hanning $N-1$ và sidelobe.}
-Công thức cổ điển $w[n]=0{,}5-0{,}5\cos(2\pi n/(N-1))$ cho cửa dài $N$. Nhầm mẫu số $N$ làm hệ số mép lệch, thay đổi năng lượng khung và thiên vị nhẹ $\tau$. Sidelobe khoảng $-31$---$-32\,\text{dB}$ hạ rò phổ vào dải tìm $F_0$; không cửa sổ $\Rightarrow$ rò mạnh, đỉnh giả cạnh tranh.
-
-\paragraph{MAC vs FFT + BFP.}
-Đường mặc định MAC tránh zero-pad và barrel shift $2^{2e}$. Nếu bật FFT IP, mỗi tầng cánh bướm có Block Floating Point (BFP): exponent chung $e$ phải được nhân bình phương ($2e$) trước IFFT kẻo tỷ lệ $r_a$ vỡ và voicingThreshold vô nghĩa.
-
-\paragraph{ROM $C[\tau]$ --- chống octave xuống.}
-Cửa sổ làm $\mathcal{R}_w[\tau]$ giảm theo $\tau$; không chia (nhân nghịch đảo ROM) thì đỉnh $\tau$ lớn (F0 thấp / nửa tần) được thiên vị. Đó là nguồn GPE ``ra $100$ thay $200$'' kinh điển.
-
-\paragraph{LPM\_DIVIDE latency.}
-IP chia nguyên Intel có latency cấu hình được $L$ chu kỳ. Testbench và FSM PEAK phải chờ đủ $L$ trước khi đọc quotient; đọc sớm gắn $F_0$ khung trước vào khung sau.
-
-\paragraph{Voicing + median vs Viterbi.}
-Cổng silence bắt im lặng giả-đỉnh; median-3 đập spike đơn với $<150$ ALM và trễ một hop đã budget. \texttt{Pitch\_pathFinder} $O(TK^2)$ dành cho HPS soft-float khi bài đòi đường cong Praat đầy đủ --- không phải lần nộp mặc định.
-
-\paragraph{Avalon-ST và Q12.4.}
-Hai mắt xích giao thức: mất beat $\Rightarrow$ lệch thuật toán im lặng; đảo endian $\Rightarrow$ metric nổ dù silicon đúng. Checklist tách ``bằng chứng handshake'' (waveform/TB log) khỏi ``bằng chứng pack'' (\texttt{hexdump}).
+Mỗi dòng mục~14.2 neo một quyết định silicon đã dạy ở chương trước. Hãy đọc chúng theo dòng tín hiệu: thạch anh nuôi PLL tạo $MCLK$ (Chương~2) --- nếu nhầm tần số PLL, mọi $\tau$ sau đó lệch theo ppm tích lũy. DC-blocker giữ thanh ghi phản hồi đủ rộng (thường $32$~bit) để tránh deadband (vùng lượng tử hóa thành $0$ cập nhật, tạo ``rung'' trên im lặng). Sliding RAM trên M10K chỉ được cấu hình mixed-port \textbf{Old Data} hoặc Don't Care trên Cyclone~V --- không có New Data. Cửa sổ Hanning đúng mẫu số $N-1$ hạ thùy phụ (sidelobe, dải phổ phụ quanh đỉnh chính) khoảng $-32\,\text{dB}$. MAC tuần tự tránh BFP của FFT; ROM $C[\tau]$ chống thiên vị octave xuống; LPM\_DIVIDE phải chờ đủ latency $L$ trước khi đọc thương. Cổng voicing + median-3 thay Viterbi trên fabric; Avalon-ST và Q12.4 là hai mắt xích giao thức --- mất beat lệch thuật toán im lặng, đảo endian làm metric nổ dù silicon đúng.
 
 \begin{figure}[H]
 \centering
@@ -150,6 +125,21 @@ Hai mắt xích giao thức: mất beat $\Rightarrow$ lệch thuật toán im l�
 \label{fig:ch14_chain}
 \end{figure}
 
+\subsection*{14.3. Bảng tự ký}
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X>{\centering\arraybackslash}p{2.8cm}>{\centering\arraybackslash}p{3.0cm}@{}}\toprule
+Hạng mục & Người ký & Ngày (Asia/Saigon) \\
+\midrule
+RTL lint sạch (không latch suy đoán, reset bất đồng bộ đúng) & & \\
+Twin bit-exact tầng 2--3 xanh trên golden & & \\
+Hardware smoke trên DE10 (SOP$\to$Q12.4 ra HPS) & & \\
+Tài liệu đủ 8 yếu tố / chương (Chương~0 mục 0.2) & & \\
+Bảng Fitter đã điền số thật & & \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
 \subsection*{14.3b. Quy trình smoke trên DE10 (30--60 phút)}
 
 \begin{enumerate}[leftmargin=1.4em]
@@ -173,21 +163,6 @@ Cùng công thức Chương~0/11: $120\,960/500\,000\approx 0{,}2419$. Đo wall-
 \begin{physicalinsight}
 Checklist xanh không có nghĩa lý thuyết Praat đã ``chứng minh''. Nó có nghĩa: trên bộ vector đã khóa, ba tầng kiểm chứng và các ràng buộc silicon DE10 đã được xác nhận bằng chứng. Đổi $L$, $H$, hoặc ceiling thì phải chạy lại suite --- không ăn theo chữ ký cũ.
 \end{physicalinsight}
-
-\subsection*{14.3. Bảng tự ký}
-
-\begin{center}\small
-\begin{tabular}{@{}p{5.2cm}p{3.2cm}p{3.2cm}@{}}\toprule
-Hạng mục & Người ký & Ngày (Asia/Saigon) \\
-\midrule
-RTL lint sạch (không latch suy đoán, reset bất đồng bộ đúng) & & \\
-Twin bit-exact tầng 2--3 xanh trên golden & & \\
-Hardware smoke trên DE10 (SOP$\to$Q12.4 ra HPS) & & \\
-Tài liệu đủ 8 yếu tố / chương (Chương~0 mục 0.2) & & \\
-Bảng Fitter đã điền số thật & & \\
-\bottomrule
-\end{tabular}
-\end{center}
 
 \subsection*{14.4. Chẩn đoán đỏ $\to$ xanh trước khi nộp}
 
@@ -241,28 +216,28 @@ Twin phải bắt từng lớp trước khi đụng Signal Tap.
 \subsection*{14.4b. Bảng triệu chứng $\leftrightarrow$ bằng chứng cần nộp}
 
 \begin{center}\small
-\begin{tabular}{@{}p{3.6cm}p{4.2cm}p{4.0cm}@{}}\toprule
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}\toprule
 Triệu chứng & Mở chương / tầng & Bằng chứng xanh \\
 \midrule
-Q12.4 $=0$ trên sine $200\,\text{Hz}$ & Ch.~10, VDE tầng~1 & Log voiced=1, $P_g$ warmup \\
-$F_0\approx 100$ thay $200$ & Ch.~8, GPE & Dump $r_a[\tau]$ có đỉnh $\tau\approx 80$ thắng sau $C[\tau]$ \\
-Bytes \texttt{0C 80} & Ch.~12 unpack & \texttt{hexdump} \texttt{80 0C} \\
-Fixed OK, RTL lệch & Ch.~9--11, tầng~3 & Diff $0$ bit + đếm beat \\
-FSM treo FILL & Ch.~11 SOP/EOP & Waveform có EOP@beat $639$ \\
-Fitter $12$ M10K & Ch.~5,~14 & Hierarchy RAM: chỉ $1$ sliding + ROM \\
-RTF đo $>1$ & Ch.~7,~11 & Không kẹt ready; DIV latency đúng \\
+Q12.4 $=0$ trên sine $200\,\text{Hz}$ & Ch.~10, VDE tầng~1 & Log voiced$=1$, $P_g$ warmup \\
+$F_0\approx 100$ thay $200$ & Ch.~8, GPE & Dump $r_a[\tau]$: đỉnh $\tau\approx 80$ thắng sau $C[\tau]$ \\
+Bytes \texttt{0C 80} & Ch.~12 unpack & \texttt{hexdump} hiện \texttt{80 0C} \\
+Fixed OK, RTL lệch & Ch.~9--11, tầng~3 & Diff $0$ bit và đếm beat khớp \\
+FSM treo FILL & Ch.~11 SOP/EOP & Waveform có EOP tại beat $639$ \\
+Fitter $12$ M10K & Ch.~5,~14 & Hierarchy: $1$ sliding RAM + ROM \\
+RTF đo $>1$ & Ch.~7,~11 & Không kẹt ready; đúng latency DIV \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{center}
 
 \paragraph{Ví dụ tính tay --- ký checklist có số.} Trước khi ký mục ``Twin ba tầng'', hãy điền vào biên bản: GPE$=0$, VDE$=0{,}02$, max cent $=7{,}3$ trên sine $200\,\text{Hz}$ (số ví dụ --- thay bằng số chạy thật). Số cụ thể biến chữ ký thành bằng chứng; ô trống biến checklist thành nghi thức.
 
-\paragraph{Giữ DIFF và v10.} Chính sách gói tài liệu: không sửa nội dung giải thích gốc trước lệnh \path|\input{chuong/chuong_00...}| và không đụng các chương không được giao. Checklist mục ``Giữ nguyên v10'' tồn tại để người nộp không ``tiện tay'' sửa trang cũ khi compilation lệch --- lệch thì sửa chương mới hoặc preamble được phép, không đụng khối v10 đã khóa.
+\paragraph{Giữ DIFF và v10.} Chính sách gói tài liệu: không sửa nội dung giải thích gốc trước lệnh \texttt{\textbackslash input\{chuong/\ldots\}} (các file \texttt{chuong\_00\ldots} đã khóa) và không đụng chương ngoài phạm vi giao. Mục ``Giữ nguyên v10'' trên checklist nhắc người nộp: khi compilation lệch, sửa chương mới hoặc preamble được phép --- không ``tiện tay'' đụng khối v10.
 
 \subsection*{14.4c. Thứ tự ưu tiên ngày nộp}
 
 \begin{enumerate}[leftmargin=1.4em]
-  \item Chạy \path|python3 verify/verify_chuong_10_14.py| (và tiers nếu có) --- phải in \texttt{ALL ... PASSED}.
+  \item Chạy \texttt{python3 verify/verify\_chuong\_10\_14.py} --- phải in \texttt{ALL ... PASSED} (thêm tiers nếu có).
   \item Xác nhận \texttt{pitch\_f0.bin} trên vector smoke: độ dài chẵn, mẫu $200\,\text{Hz}$ đúng \texttt{80 0C}.
   \item Đọc lại bốn triệu chứng đỏ ở Hình~\ref{fig:ch14_debug_map}; nếu dính một, đừng nộp.
   \item Điền Fitter + bảng tự ký với ngày Asia/Saigon.
@@ -270,26 +245,12 @@ RTF đo $>1$ & Ch.~7,~11 & Không kẹt ready; DIV latency đúng \\
 \end{enumerate}
 Thứ tự này cố ý để phần mềm/vector chặn lỗi giao thức trước khi bạn đổ công vào Signal Tap phút chót.
 
-\begin{costbox}
-\textbf{Nhắc lại mở rộng các chữ viết tắt trên checklist.}
-\begin{itemize}[leftmargin=1.2em]
-  \item \textbf{ALM:} Adaptive Logic Module --- ô logic Cyclone~V (LUT+FF+arithm).
-  \item \textbf{DSP:} khối nhân cứng $18\times 18$ (hoặc tương đương) --- MAC/FIR/window.
-  \item \textbf{M10K:} block RAM $\approx 10\,\text{kbit}$ --- sliding frame, ROM, FIFO.
-  \item \textbf{MLAB:} memory logic array block nhỏ trong ALM --- không thay M10K cho khung $640$.
-  \item \textbf{Fmax:} tần số xung nhịp tối đa sau timing closure.
-  \item \textbf{RTF:} real-time factor $=$ thời gian xử lý / thời gian audio; cần $<1$.
-  \item \textbf{GPE/VDE/FFE:} chỉ số Chương~13; phải kèm định nghĩa trong báo cáo.
-  \item \textbf{HPS:} Hard Processor System (Cortex-A9) trên DE10-Standard.
-\end{itemize}
-\end{costbox}
+Nếu một chữ viết tắt trên checklist chưa rõ (ALM, DSP, M10K, MLAB, Fmax, RTF, GPE/VDE/FFE, HPS), mở lại costbox của chương neo --- đừng ký khi còn đọc như mã bí mật.
 
 \subsection*{14.4d. Cam kết ngắn trước chữ ký}
 
 Người ký bảng~14.3 xác nhận đã: (1)~chạy verify script và giữ log; (2)~nhìn tận mắt \texttt{hexdump} vài khung đầu của bin; (3)~điền số Fitter không đoán; (4)~không bật Viterbi trên fabric ở bản nộp mặc định; (5)~không dùng tên IP bịa. Nếu một mục chưa làm, để trống ngày và làm nốt --- chữ ký sớm hơn bằng chứng là nợ kỹ thuật sẽ lộ ở chấm phúc khảo.
 
-
-\paragraph{Đóng cổng nghiệm thu.} Checklist Chương~14 là cổng cuối: mọi khẳng định đã được dạy ở Chương~2--13. Khi tất cả dòng có bằng chứng và bảng tự ký đủ ngày Asia/Saigon, bài sẵn sàng nộp --- không thêm checklist trùng ở chương khác.
 
 \subsection*{14.5. Bài tập tự vấn trước khi ký}
 

@@ -278,16 +278,16 @@ Q12.4 không phải định dạng ``nghe được''. Nó là hợp đồng đo 
 Sau khi \texttt{pack\_q124} chốt $F_q$, có ít nhất ba cách đưa số sang phần mềm --- lab chọn cách~(1) vì đơn giản và đủ thông lượng:
 
 \begin{enumerate}[leftmargin=1.4em]
-  \item \textbf{Thanh ghi Avalon-MM trên LW bridge:} FSM OUT viết $F_q$ vào reg; CPU đọc định kỳ mỗi $10\,\text{ms}$ (hoặc khi bit ``new'' bật). Phù hợp $97$ từ/giây.
-  \item \textbf{DCFIFO + ngắt:} fabric đẩy Avalon-ST vào FIFO; khiwatermark, HPS ISR rút hết. Tốt khi jitter lịch CPU lớn.
-  \item \textbf{DMA qua bridge rộng:} ghi liên tục vào SDRAM rồi user-space \texttt{mmap}. Chỉ cần khi sau này ghi cả PCM + bin tốc độ cao.
+  \item \textbf{Thanh ghi Avalon-MM trên LW bridge:} Avalon-MM (\emph{Memory-Mapped}) là bus địa chỉ/đọc-ghi; FSM OUT viết $F_q$ vào một thanh ghi, CPU đọc định kỳ mỗi $10\,\text{ms}$ (hoặc khi bit ``new'' bật). Phù hợp $97$ từ/giây.
+  \item \textbf{DCFIFO + ngắt:} fabric đẩy Avalon-ST vào FIFO; khi mực nước (watermark) đạt ngưỡng, HPS chạy ISR (\emph{Interrupt Service Routine} --- hàm đáp ứng ngắt) để rút hết. Tốt khi lịch CPU bị jitter lớn.
+  \item \textbf{DMA qua bridge rộng:} DMA (\emph{Direct Memory Access}) ghi liên tục vào SDRAM rồi tiến trình user-space \texttt{mmap}. Chỉ cần khi sau này ghi cả PCM + bin tốc độ cao.
 \end{enumerate}
 
 \paragraph{Ví dụ tính tay --- poll period.} Giả sử CPU poll mỗi $5\,\text{ms}$ trong khi hop là $10\,\text{ms}$. Mỗi khung được đọc khoảng hai lần; phần mềm phải dùng bit ``new'' hoặc đếm khung để không nhân đôi mẫu trên \texttt{pitch\_f0.bin}. Nếu poll $20\,\text{ms}$, có nguy cơ bỏ khung khi ISR/trễ lịch --- FIFO depth tối thiểu nên $\ge 2$ từ (an toàn hơn $\ge 8$).
 
 \paragraph{Endian trên dây Avalon-ST $16$~bit.} Trên bus $16$~bit, một beat mang cả từ $F_q$; ``little-endian'' lộ rõ khi \emph{phá} thành byte để ghi tệp hoặc gửi UART. Nhầm chỗ phá byte (coi bit~$15..8$ là byte thấp) chính là bug \texttt{0C 80} thay vì \texttt{80 0C}. Test tối thiểu: golden $200\,\text{Hz}$ phải dump đúng hai byte \texttt{80 0C} trên logic analyzer hoặc trong file.
 
-\paragraph{So với float32.} Một số nhóm xuất \texttt{float32} LE mỗi khung ($4$~byte). Lab cố ý không chọn vì: (a)~cần soft-float hoặc hard FPU format trên đường ra; (b)~khó bit-exact với twin nguyên; (c)~Q12.4 đủ cent budget. Nếu bài yêu cầu float, vẫn giữ Q12.4 nội bộ rồi chỉ convert ở HPS --- một điểm chuyển đổi duy nhất dễ kiểm.
+\paragraph{Vì sao không xuất float32.} Một số nhóm gửi \texttt{float32} little-endian ($4$~byte/khung). Lab giữ Q12.4 vì không cần FPU trên đường ra, dễ khớp twin nguyên từng bit, và LSB đã nhỏ hơn ngân sách cent. Nếu bài bắt buộc float, convert một lần duy nhất trên HPS sau khi đã xác nhận hai byte Q12.4 đúng.
 
 \paragraph{Ví dụ tính tay --- bão hòa và UV cạnh nhau.} Chuỗi thô sau peak: $\{700,\ 0,\ 220\}$ Hz với cờ voiced $\{1,0,1\}$. Pack:
 \begin{align*}
@@ -297,7 +297,7 @@ Sau khi \texttt{pack\_q124} chốt $F_q$, có ít nhất ba cách đưa số san
 \end{align*}
 Tệp bin sáu byte: \texttt{80 25 00 00 C0 0D}. Median-3 (Chương~10) nếu chạy \emph{trước} pack sẽ nhìn chuỗi Hz đã ép UV$=0$ và bão hòa tùy thiết kế; lab chuẩn: voicing$\to$median$\to$pack, và bão hòa nằm trong pack để trần hợp đồng thống nhất.
 
-\paragraph{Đối chiếu Praat TextGrid / Pitch tier.} Khi xuất cùng thời điểm, mỗi khung lab $k$ ứng $t=0{,}01\cdot k$ giây (hoặc $t=0{,}01\cdot k + L/(2f_s)$ nếu neo tâm cửa). Sai lệch một hop làm Pearson thanh điệu giảm dù từng giá trị Hz đúng --- đó vẫn là lỗi giao thức thời gian, họ hàng với lỗi endian.
+\paragraph{Đồng bộ thời gian với Praat.} Mỗi khung lab $k$ ứng $t=0{,}01\cdot k$ giây (hoặc neo tâm cửa $t=0{,}01\cdot k + L/(2f_s)$). Lệch một hop làm hệ số Pearson thanh điệu giảm dù từng Hz đúng --- lỗi giao thức thời gian, cùng họ với lỗi endian.
 
 \begin{figure}[H]
 \centering
@@ -335,20 +335,9 @@ vẫn nhỏ hơn ngân sách $20\,\text{cent}$. Tại trần $600\,\text{Hz}$:
 \[
 1200\log_2\bigl((600+0{,}0625)/600\bigr)\approx 0{,}180\,\text{cent}.
 \]
-Vậy Q12.4 ``thô'' nhất ở tần số thấp nhưng vẫn không phải thủ phạm GPE. Thủ phạm giao thức (endian) tạo sai số hàng nghìn Hz --- lớn hơn mọi lượng tử.
+Vậy Q12.4 ``thô'' nhất ở tần số thấp nhưng vẫn không phải thủ phạm GPE (script verify khẳng định hai số cent trên). Thủ phạm giao thức (endian) tạo sai số hàng nghìn Hz --- lớn hơn mọi lượng tử.
 
 \paragraph{Ví dụ tính tay --- làm tròn nửa LSB.} $F_0=200{,}03125\,\text{Hz}$ (đúng nửa LSB trên $200$): $200{,}03125\cdot 16=3200{,}5$. Quy ước \texttt{round} half-away / banker's tùy ngôn ngữ; Python \texttt{round} dùng banker's (về số chẵn) nên \texttt{round(3200.5)}=3200. Trên RTL, thường cắt hoặc cộng $0{,}5$ rồi trunc --- phải khóa một quy ước trong twin và TB. Lab khuyến nghị: \texttt{int(floor(x*16+0.5))} (half-up) cho khớp nhiều LPM. Với $199{,}466$, cả hai quy ước đều cho $3191$ vì $3191{,}456$ không nằm nửa.
-
-\paragraph{Tóm tắt chương.} Hợp đồng ra ngoài fabric là uint16 Q12.4 LE, UV$=0$, trần $9600$. Mọi metric Chương~13 giả định unpack đúng; sai unpack là lỗi giao thức. Bitfield Hình~12.1--12.3 và bảng mục~12.3 là tài liệu cầm tay khi viết HPS và khi đọc \texttt{hexdump}.
-
-
-\paragraph{Ghi nhớ đóng chương.} Mỗi khi nghi ngờ ``silicon hay phần mềm?'', hãy in hai byte của một mốc biết trước ($200\,\text{Hz}\to\texttt{80 0C}$). Nếu hai byte đúng mà Hz đọc sai, lỗi nằm ở chia $16$ hoặc kiểu dữ liệu. Nếu hai byte sai, lỗi nằm ở pack/endian. Nếu byte đúng và Hz đúng mà GPE vẫn cao, lúc đó mới mở lại MAC và $C[\tau]$. Thứ tự loại trừ này là kỹ năng giao thức cốt lõi của Chương~12.
-
-\paragraph{Ví dụ tính tay --- LSB cent ở $75$ và $600\,\text{Hz}$.} Script verify khẳng định
-$1200\log_2((75+0{,}0625)/75)\approx 1{,}442\,\text{cent}$ và
-$1200\log_2((600+0{,}0625)/600)\approx 0{,}180\,\text{cent}$ --- cùng kết luận: lượng tử Q12.4 không phá ngân sách $20\,\text{cent}$.
-
-\paragraph{Bổ sung ngân sách từ.} Một từ Q12.4 mỗi hop: trên $10\,\text{s}$ audio có khoảng $970$ khung $\Rightarrow 1940$~byte bin --- nhỏ hơn một khung PCM $640\times 2=1280$~byte. Đóng gói cao độ rẻ băng thông hơn nhiều so với gửi sóng thô sang HPS để ước $F_0$ mềm.
 
 \subsection*{12.8. Bài tập và lời giải giải thích}
 
