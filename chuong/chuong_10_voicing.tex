@@ -147,7 +147,7 @@ $(80,205,208)$ & $80,205,208$ & $205$ & \\
 \bottomrule
 \end{tabular}
 \end{center}
-Spike $80\,\text{Hz}$ (thường là bắt nhầm $2T_0$ hoặc nhiễu) biến mất khỏi chuỗi xuất. Kiểm chứng: \texttt{verify/verify\_chuong\_10\_14.py}.
+Spike $80\,\text{Hz}$ (thường là bắt nhầm $2T_0$ hoặc nhiễu) biến mất khỏi chuỗi xuất. Kiểm chứng bằng script \path{verify/verify_chuong_10_14.py}.
 
 \paragraph{Bài tập nhỏ trong bài.} Với một cửa $(100,400,110)$, $\mathrm{med}=110$ (sắp $100,110,400$). Xung $400\,\text{Hz}$ (octave nhảy giả) bị loại; kết quả \emph{không} phải $100$ --- đó là min, không phải median.
 
@@ -226,7 +226,7 @@ always @(posedge clk or negedge rst_n) begin
     f1<=f2; f2<=f3;
     f3<= voiced ? f0_in : 16'd0;   // UV ep 0 truoc median
     m_reg <= med;                  // tinh tren cua so cu
-    f_out <= m_reg;                // xuat ban chot chu ky truoc = tre 1 khung
+    f_out <= m_reg;                // xuat ban chot truoc (= tre 1 khung)
     out_valid <= 1'b1;
   end else out_valid <= 1'b0;
 end
