@@ -1,3 +1,4 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
 \clearpage
 \phantomsection
 \section*{Chương 1. WAV trên HPS và cầu HPS–FPGA, chiều đi và chiều về}
@@ -56,7 +57,7 @@ Một sai lầm kinh điển mà người mới làm việc với âm thanh số
 
 Tuy nhiên, trong thực tế sản xuất âm thanh, hầu hết các phần mềm biên tập chuẩn (như Audacity, Adobe Audition, Praat hay các công cụ ghi âm hiện đại) đều tự động chèn thêm các khối dữ liệu phụ trợ (auxiliary metadata chunks) vào tiêu đề để lưu trữ thông tin bản quyền, tên nghệ sĩ, mốc thời gian ghi âm hoặc thông số phát sóng. Tiêu biểu nhất là khối danh sách thông tin \texttt{LIST} (chứa các thẻ con như \texttt{INFO}, \texttt{INAM}, \texttt{IART}) hoặc khối thông tin phát sóng \texttt{bext} (Broadcast Audio Extension). Các khối này thường được đặt ngay sau khối \texttt{fmt~} và nằm phía trước khối \texttt{data}.
 
-Để thấy rõ sự sụp đổ này bằng số liệu cụ thể, hãy kiểm tra tệp âm thanh thử nghiệm \texttt{edge\_list\_chunk.wav} (tại thư mục \texttt{verify\_v3/data/}, tạo bởi \texttt{make\_test\_wavs.py}). Tệp này chèn một khối \texttt{LIST} kích thước 18 byte mang nhãn tiêu đề bản ghi ``DE10'' nằm xen vào giữa khối \texttt{fmt~} và khối \texttt{data}. 
+Để thấy rõ sự sai lệch này bằng số liệu cụ thể, hãy xét tệp âm thanh thử nghiệm \texttt{edge\_list\_chunk.wav} (trong thư mục \texttt{verify\_v3/data/}, do kịch bản \texttt{make\_test\_wavs.py} sinh ra). Tệp này chèn một khối \texttt{LIST} 18 byte mang nhãn ``DE10'' xen vào giữa khối \texttt{fmt~} và khối \texttt{data}.
 
 Quan sát trích xuất hex dump thực tế từ tệp \texttt{edge\_list\_chunk.wav}:
 \begin{center}
@@ -78,7 +79,7 @@ Offset & Dữ liệu Hex & Ký tự ASCII & Nhận diện khối \\
 \end{tabular}
 \end{center}
 
-Nếu một bộ đọc ngây thơ nhảy cóc thẳng vào vị trí byte 44 (\texttt{0x002C}), nó sẽ đọc đúng 4 byte ký tự ASCII \texttt{"INFOINAM"} (mã hex: \texttt{49 4E 46 4F}) và nhầm tưởng đó là các mẫu âm thanh PCM 16-bit! 
+Nếu một bộ đọc ngây thơ nhảy cóc thẳng vào vị trí byte 44 (\texttt{0x002C}), nó sẽ đọc đúng 4 byte ký tự ASCII \texttt{"INFO"} (mã hex: \texttt{49 4E 46 4F}; 4 byte kế tiếp ở offset 48 là \texttt{"INAM"}) và nhầm tưởng đó là các mẫu âm thanh PCM 16-bit!
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Hai byte đầu tiên tại offset 44 là \texttt{0x49} và \texttt{0x4E}. Theo quy ước số nguyên có dấu bù hai byte nhỏ (little-endian), chúng ghép lại thành mẫu số nguyên:
     \begin{equation}
@@ -89,10 +90,10 @@ Nếu một bộ đọc ngây thơ nhảy cóc thẳng vào vị trí byte 44 (\
     x_{\text{rác}}[1] = \texttt{0x4F46} = +20.294
     \end{equation}
 \end{itemize}
-Hai mẫu rác này có biên độ cực lớn (vượt quá 61\% thang đo cực đại của PCM 16-bit), trong khi khối âm thanh thật sự \texttt{data} phải tới byte 62 (\texttt{0x003E}) mới xuất hiện và các mẫu âm thanh thực tế chỉ bắt đầu từ byte 70 (\texttt{0x0046}). Hệ quả là:
+Hai mẫu rác này có biên độ rất lớn (vượt quá 61\% thang đo cực đại của PCM 16-bit), trong khi khối âm thanh thật sự \texttt{data} phải tới byte 62 (\texttt{0x003E}) mới xuất hiện và các mẫu âm thanh thực tế chỉ bắt đầu từ byte 70 (\texttt{0x0046}). Hệ quả là:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item Âm thanh giải mã bị lệch pha đúng 26 byte (13 mẫu âm thanh), làm toàn bộ các khung phân tích bị trôi mốc thời gian so với phần mềm Praat.
-    \item Hai mẫu văn bản bị đọc nhầm thành hai xung đột biến biên độ $> 20.000$, tạo ra một tiếng nổ ``bụp'' chát chúa ở đầu tệp và làm sai lệch nghiêm trọng giá trị đỉnh biên độ toàn cục $\text{globalPeak}$, từ đó phá hỏng toàn bộ logic cổng im lặng ở Chương 10.
+    \item Hai mẫu văn bản bị đọc nhầm thành hai xung đột biến biên độ $> 20.000$, tạo ra một xung nổ ở đầu tệp và làm sai lệch nghiêm trọng giá trị đỉnh biên độ toàn cục $\text{globalPeak}$, từ đó phá hỏng logic cổng im lặng ở Chương 10.
 \end{enumerate}
 
 \subsubsection*{Cấu trúc phân cấp chuẩn của tệp RIFF/WAVE từ mức byte}
@@ -104,17 +105,16 @@ Hai mẫu rác này có biên độ cực lớn (vượt quá 61\% thang đo c�
 
 Tiêu đề tệp bắt đầu bằng chuỗi nhận diện \texttt{"RIFF"}, theo sau là kích thước toàn tệp trừ 8 byte đầu, và mã định dạng \texttt{"WAVE"}. Sau 12 byte đầu tiên này là một chuỗi các khối nằm liên tiếp nhau. Một trình đọc chuẩn bắt buộc phải duyệt tuần tự qua từng khối theo thuật toán nhảy cóc (chunk jumping): đọc 4 byte ID, đọc 4 byte kích thước $S$, kiểm tra xem khối đó có phải là khối ta cần hay không; nếu không phải, dùng hàm dịch chuyển con trỏ tệp (\texttt{fseek}) để nhảy qua đúng $S$ byte nhằm đến đầu khối tiếp theo.
 
-\textbf{Quy tắc đệm từ của chuẩn RIFF (Word Alignment Padding):} Đây là một chi tiết kỹ thuật cốt lõi thường bị bỏ quên. Chuẩn kỹ thuật RIFF quy định: \textbf{mọi khối bắt buộc phải bắt đầu tại một địa chỉ byte chẵn}. Do đó, nếu kích thước dữ liệu $S$ của một khối là một số lẻ (tức $S \pmod 2 \neq 0$), bên ghi tệp bắt buộc phải chèn thêm đúng 1 byte đệm có giá trị \texttt{0x00} vào ngay sau dữ liệu của khối đó. Khi nhảy qua khối, trình đọc phải dịch chuyển con trỏ một khoảng là:
+\textbf{Quy tắc đệm từ của chuẩn RIFF (Word Alignment Padding):} Chuẩn kỹ thuật RIFF quy định: \textbf{mọi khối bắt buộc phải bắt đầu tại một địa chỉ byte chẵn}. Do đó, nếu kích thước dữ liệu $S$ của một khối là một số lẻ (tức $S \pmod 2 \neq 0$), bên ghi tệp bắt buộc phải chèn thêm đúng 1 byte đệm có giá trị \texttt{0x00} vào ngay sau dữ liệu của khối đó. Khi nhảy qua khối, trình đọc phải dịch chuyển con trỏ một khoảng là:
 \begin{equation}
 \Delta_{\text{jump}} = S + (S \ \& \ 1)
 \end{equation}
-Nếu bỏ qua việc kiểm tra bit lẻ này, khi gặp các khối siêu dữ liệu có kích thước lẻ (như tệp \texttt{edge\_odd\_chunk.wav} trong bộ thử nghiệm), con trỏ tệp sẽ bị lệch đi 1 byte lẻ. Toàn bộ các mã FourCC tiếp theo bị đọc lệch thành các chuỗi byte vô nghĩa và quá trình giải mã thất bại hoàn toàn.
+Nếu bỏ qua việc kiểm tra bit lẻ này, khi gặp các khối siêu dữ liệu có kích thước lẻ (như tệp thử nghiệm \texttt{edge\_odd\_chunk.wav}), con trỏ tệp sẽ bị lệch 1 byte. Toàn bộ các mã FourCC tiếp theo bị đọc lệch thành các chuỗi vô nghĩa và việc giải mã thất bại hoàn toàn.
 
 Một trình đọc WAV đúng chuẩn trên vi xử lý HPS bắt buộc phải kiểm tra nghiêm ngặt 5 điều kiện hợp lệ của khối \texttt{fmt~}:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \texttt{AudioFormat == 1}: bắt buộc là định dạng PCM tuyến tính không nén. Các định dạng nén như A-law, $\mu$-law hay IEEE Float đều bị từ chối với mã lỗi \texttt{WAV\_ERR\_UNSUPPORTED\_FORMAT}.
-    \item \texttt{NumChannels == 1}: bắt buộc là kênh đơn (mono). Nếu tệp có hai kênh\\
-    (stereo, như \texttt{edge\_stereo.wav}), dữ liệu hai kênh trái-phải đan xen sẽ làm hỏng hoàn toàn phép tính tự tương quan; trình đọc từ chối với mã lỗi \texttt{WAV\_ERR\_UNSUPPORTED\_CHANNELS}.
+    \item \texttt{NumChannels == 1}: bắt buộc là mono (kênh đơn). Tệp hai kênh (stereo, ví dụ \texttt{edge\_stereo.wav}) bị từ chối với mã lỗi \texttt{WAV\_ERR\_UNSUPPORTED\_CHANNELS} do dữ liệu đan xen làm hỏng phép tự tương quan.
     \item \texttt{SampleRate == 16000}: tần số lấy mẫu bắt buộc là 16 kHz để phù hợp với thông số thiết kế cửa sổ 40 ms và dải quét độ trễ của FPGA. Tệp có tần số khác (như 44,1 kHz trong \texttt{edge\_wrong\_rate.wav}) bị từ chối với mã \texttt{WAV\_ERR\_UNSUPPORTED\_RATE}.
     \item \texttt{BitsPerSample == 16}: mỗi mẫu âm thanh biểu diễn bởi đúng 16 bit số nguyên có dấu bù hai (dải biểu diễn từ $-32.768$ đến $+32.767$).
     \item \texttt{BlockAlign == 2}: mỗi mẫu chiếm đúng 2 byte dữ liệu.
@@ -157,16 +157,16 @@ s = [0, 100, -200, 300, -400, 500, -600, 700]
 \bottomrule
 \end{tabular}
 \end{center}
-Trình đọc C trong tệp \texttt{sw\_v3/ch01\_wav.c} hiện thực hóa chính xác giải thuật duyệt khối này và đã được kiểm chứng vượt qua toàn bộ 8 tệp kiểm thử (từ tệp chuẩn tới các tệp biên lỗi) trong kịch bản \texttt{ch01\_wav\_verify.py}.
+Trình đọc C trong \texttt{sw\_v3/ch01\_wav.c} hiện thực hóa chính xác giải thuật duyệt khối này và vượt qua toàn bộ 8 tệp kiểm thử biên trong kịch bản kiểm định \texttt{ch01\_wav\_verify.py}.
 
 \subsubsection*{Dẫn xuất đỉnh biên độ toàn cục $\text{globalPeak}$ bằng số nguyên}
-Trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} (dòng 375--383), trước khi chia khung, Praat tính toán đỉnh biên độ toàn cục của toàn bộ tệp âm thanh:
+Trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} (dòng 375--385), trước khi chia khung, Praat tính toán đỉnh biên độ toàn cục của toàn bộ tệp âm thanh:
 \begin{equation}
 \text{GP}_{\text{praat}} = \max_{1 \le i \le n} |x[i] - \bar{x}|
 \end{equation}
-trong đó $\bar{x} = \frac{1}{n} \sum_{i=1}^n x[i]$ là giá trị trung bình DC của toàn bộ tệp và mẫu âm thanh $x[i] \in [-1{,}0, +1{,}0)$ được biểu diễn dưới dạng số thực dấu phẩy động đôi (double). 
+trong đó $\bar{x} = \frac{1}{n} \sum_{i=1}^n x[i]$ là giá trị trung bình DC của toàn bộ tệp và mẫu âm thanh $x[i] \in [-1{,}0, +1{,}0)$ được biểu diễn dưới dạng số thực dấu phẩy động đôi (double).
 
-Đại lượng này đóng vai trò sống còn trong việc đánh giá mức cường độ âm thanh tương đối:
+Đại lượng này đóng vai trò quyết định trong việc đánh giá mức cường độ âm thanh tương đối:
 \begin{equation}
 \text{intensity} = \frac{\text{localPeak}}{\text{globalPeak}}
 \end{equation}
@@ -183,10 +183,10 @@ x[i] - \bar{x} = \frac{s[i]}{32.768} - \frac{\sum_{j=1}^n s[j]}{n \cdot 32.768} 
 \end{equation}
 với $S = \sum_{j=1}^n s[j]$ là tổng tích lũy của toàn bộ $n$ mẫu trong tệp.
 
-\textbf{Nhìn thấy toán học: Rút gọn phép tìm cực đại về hai điểm biên.}
+\textbf{Rút gọn phép tìm cực đại về hai điểm biên.}
 Quan sát hàm bậc nhất $f(s) = n \cdot s - S$. Đây là một hàm đơn điệu tăng nghiêm ngặt theo giá trị mẫu $s$. Do đó, độ lớn tuyệt đối $|n \cdot s - S|$ là một hàm lồi (convex), và giá trị cực đại của nó trên toàn bộ tập mẫu \textbf{chỉ có thể đạt được tại một trong hai điểm cực trị}: mẫu có giá trị nhỏ nhất $s_{\min} = \min_i s[i]$ hoặc mẫu có giá trị lớn nhất $s_{\max} = \max_i s[i]$!
 
-Nhờ định lý đơn giản này, mã nguồn C trên HPS không cần phải lưu trữ toàn bộ mảng mẫu rồi quét lại lần thứ hai. Ngay trong lượt đọc tệp đầu tiên, ta đồng thời tính tổng tích lũy $S$ (dùng biến 64-bit \texttt{int64\_t} để chống tràn), cập nhật $s_{\min}$ và $s_{\max}$. Sau khi đọc xong $n$ mẫu, giá trị GP được tính trực tiếp trong đúng một phép so sánh:
+Nhờ định lý này, mã nguồn C trên HPS không cần phải lưu trữ toàn bộ mảng mẫu rồi quét lại lần thứ hai. Ngay trong lượt đọc tệp đầu tiên, ta đồng thời tính tổng tích lũy $S$ (dùng biến 64-bit \texttt{int64\_t} để chống tràn), cập nhật $s_{\min}$ và $s_{\max}$. Sau khi đọc xong $n$ mẫu, giá trị GP được tính trực tiếp trong đúng một phép so sánh:
 \begin{align}
 \Delta_1 &= |n \cdot s_{\max} - S| \\
 \Delta_2 &= |n \cdot s_{\min} - S| \\
@@ -221,7 +221,7 @@ Con số $650$ thu được khớp chính xác với kiểm chứng tự động
 \end{itemize}
 
 \subsubsection*{Lưới phân tích khung ngắn hạn: Dẫn xuất thuật toán của Praat}
-Một điểm khác biệt sâu sắc giữa Praat và các hệ thống xử lý tín hiệu thông thường là cách xác định tâm thời gian của các khung. Trong các giáo trình cơ bản, người ta thường cố định khung 0 bắt đầu từ mẫu 0 ($t = 0$), rồi tịnh tiến đều đặn theo từng bước nhảy $\text{hop}$. Ngược lại, Boersma thiết kế thuật toán phân tích ngắn hạn \texttt{Sampled\_shortTermAnalysis} (\texttt{fon/Sampled.cpp} dòng 74) theo nguyên lý \textbf{căn giữa đối xứng}: toàn bộ chuỗi khung phân tích phải được đặt đối xứng hoàn hảo xung quanh tâm của tệp âm thanh. 
+Một điểm khác biệt sâu sắc giữa Praat và các hệ thống xử lý tín hiệu thông thường là cách xác định tâm thời gian của các khung. Trong các giáo trình cơ bản, người ta thường cố định khung 0 bắt đầu từ mẫu 0 ($t = 0$), rồi tịnh tiến đều đặn theo từng bước nhảy $\text{hop}$. Ngược lại, Boersma thiết kế thuật toán phân tích ngắn hạn \texttt{Sampled\_shortTermAnalysis} (\texttt{fon/Sampled.cpp} dòng 71--82) theo nguyên lý \textbf{căn giữa đối xứng}: toàn bộ chuỗi khung phân tích phải được đặt đối xứng hoàn hảo xung quanh tâm của tệp âm thanh.
 
 Các bước tính toán diễn ra tuần tự như sau:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
@@ -250,9 +250,13 @@ Các bước tính toán diễn ra tuần tự như sau:
     \begin{equation}
     t_i = t_1 + (i - 1) \cdot \Delta t
     \end{equation}
-    Để chuyển từ mốc thời gian liên tục $t_i$ sang chỉ số mẫu rời rạc, Praat gọi hàm \texttt{Sampled\_xToLowIndex} (\texttt{Sampled.cpp} dòng 35):
+    Để chuyển từ mốc thời gian liên tục $t_i$ sang chỉ số mẫu rời rạc, Praat gọi hàm \texttt{Sampled\_xToLowIndex} (\texttt{fon/Sampled.h} dòng 34):
     \begin{equation}
     \text{leftSample}_i = \left\lfloor \frac{t_i - x_1}{dx} + 1{,}0 \right\rfloor
+    \end{equation}
+    trong đó dòng 52 của \texttt{Sound\_to\_Pitch.cpp} gọi trực tiếp:
+    \begin{equation}
+    \mathtt{const\ integer\ leftSample = Sampled\_xToLowIndex(me, t);}
     \end{equation}
     Mẫu bên phải là $\text{rightSample}_i = \text{leftSample}_i + 1$. Khung cửa sổ Hanning 638 mẫu có nửa chiều dài là $\text{halfnsamp\_window} = 319$ mẫu. Do đó, chỉ số mẫu bắt đầu của cửa sổ (tính từ 0, tức 0-based) đưa vào bộ đệm FPGA là:
     \begin{equation}
@@ -272,7 +276,7 @@ Các bước tính toán diễn ra tuần tự như sau:
     \begin{equation}
     \text{leftSample}_1 = \left\lfloor \frac{0{,}022 - 0{,}00003125}{0{,}0000625} + 1{,}0 \right\rfloor = \lfloor 351{,}5 + 1{,}0 \rfloor = \lfloor 352{,}5 \rfloor = 352
     \end{equation}
-    Chỉ số mẫu bắt đầu cửa sổ đầu tiên: $\text{win0}_0 = 352 - 319 = \mathbf{33}$. 
+    Chỉ số mẫu bắt đầu cửa sổ đầu tiên: $\text{win0}_0 = 352 - 319 = \mathbf{33}$.
     Khung đầu tiên trên FPGA không bắt đầu ở mẫu 0 mà bắt đầu từ mẫu 33 để khớp hoàn hảo với Praat! Khung cuối cùng ($i=120$) bắt đầu tại mẫu $\text{win0}_{119} = 19.073$.
     
     \item \textbf{Tệp chuẩn 2,8 s ($n_x = 44.800$ mẫu):}
@@ -310,7 +314,7 @@ Bản chất số học lộ diện ở đây:
     \begin{equation}
     y_i = (k + 0{,}5) - 80 \cdot n_{\text{frames}} + 160 \cdot i - 80 + 0{,}5 = \text{SỐ NGUYÊN CHÍNH XÁC}!
     \end{equation}
-    Đây chính là cái bẫy chết người: $y_i$ về mặt lý thuyết là một số nguyên hoàn hảo (ví dụ $32.173{,}0$). Nhưng trong chuẩn số thực dấu phẩy động IEEE 754, giá trị thời gian $\Delta t = 0{,}01\text{ s}$ là một phân số vô hạn tuần hoàn trong hệ nhị phân ($0{,}01_{10} \approx 0{,}000000101000111101..._2$). Khi nhân và cộng dồn qua hàng trăm khung, sai số làm tròn tích lũy ở bit thấp nhất (ULP, Unit in the Last Place) có thể làm giá trị thực tế bị hụt một lượng vô cùng nhỏ:
+    Đây chính là cơ chế phát sinh bẫy sàn số lẻ: $y_i$ về mặt lý thuyết là một số nguyên hoàn hảo (ví dụ $32.173{,}0$). Nhưng trong chuẩn số thực dấu phẩy động IEEE 754, giá trị thời gian $\Delta t = 0{,}01\text{ s}$ là một phân số vô hạn tuần hoàn trong hệ nhị phân ($0{,}01_{10} \approx 0{,}000000101000111101..._2$). Khi nhân và cộng dồn qua hàng trăm khung, sai số làm tròn tích lũy ở bit thấp nhất (ULP, Unit in the Last Place) có thể làm giá trị thực tế bị hụt một lượng vô cùng nhỏ:
     \begin{equation}
     y_i^{\text{thực tế}} = 32.172{,}999999999996362
     \end{equation}
@@ -366,7 +370,7 @@ So sánh định lượng trực tiếp:
 Lưu lượng dữ liệu của dòng âm thanh 16 kHz chỉ chiếm chưa đầy \textbf{một phần sáu nghìn} ($1/6.250$) băng thông khả dụng của cầu nối nhẹ nhất trên chip! Việc vội vã đưa vào một bộ điều khiển DMA phức tạp cho một dòng dữ liệu $32\text{ KB/s}$ là biểu hiện kinh điển của việc tối ưu hóa sớm mà không dựa trên con số.
 
 \subsubsection*{Ba phương án truyền dữ liệu và sự đánh đổi kỹ thuật}
-Để đưa ra lựa chọn sáng suốt nhất cho anh Tú và người phát triển hệ thống, ta tiến hành phân tích chi tiết ba phương án truyền nhận khả thi:
+Để đưa ra lựa chọn sáng suốt nhất, ta tiến hành phân tích chi tiết ba phương án truyền nhận khả thi:
 
 \paragraph{Phương án 1: PIO qua cầu Lightweight HPS-to-FPGA (32-bit).}
 Vi xử lý ARM thực hiện các lệnh ghi trực tiếp (Programmed I/O) từ không gian người dùng thông qua con trỏ ánh xạ bộ nhớ \texttt{mmap} trên tệp thiết bị \texttt{/dev/mem}.
@@ -381,7 +385,7 @@ Vi xử lý ARM thực hiện các lệnh ghi trực tiếp (Programmed I/O) t�
     N_{\text{write}} = \frac{16.000}{2} = 8.000\text{ lệnh ghi/giây}
     \end{equation}
     \item \textbf{Thời gian chiếm dụng CPU và hệ số thời gian thực (RTF):}
-    Hãy đưa ra một giả định cực kỳ bi quan rằng mỗi thao tác ghi qua bus AXI/Avalon-MM tốn tới $1\ \mu\text{s}$ ($1.000\text{ ns}$, tương đương 50 chu kỳ xung nhịp 50 MHz của FPGA hoặc gần 800 chu kỳ xung nhịp CPU ARM Cortex-A9):
+    Hãy đưa ra một giả định rất bi quan rằng mỗi thao tác ghi qua bus AXI/Avalon-MM tốn tới $1\ \mu\text{s}$ ($1.000\text{ ns}$, tương đương 50 chu kỳ xung nhịp 50 MHz của FPGA hoặc gần 800 chu kỳ xung nhịp CPU ARM Cortex-A9):
     \begin{equation}
     T_{\text{transfer}} = 8.000 \times 1\ \mu\text{s} = 8\text{ ms cho mỗi 1 giây âm thanh}
     \end{equation}
@@ -390,20 +394,20 @@ Vi xử lý ARM thực hiện các lệnh ghi trực tiếp (Programmed I/O) t�
     \text{RTF}_{\text{transfer}} = \frac{T_{\text{transfer}}}{1\text{ s}} = \frac{8\text{ ms}}{1.000\text{ ms}} = \mathbf{0{,}008}
     \end{equation}
     Kể cả trong kịch bản bi quan nhất, vi xử lý chỉ mất đúng $0{,}8\%$ năng lực thời gian để vận chuyển toàn bộ dòng âm thanh sang FPGA! Thời gian ghi thực tế trên bo mạch DE10-Standard đo được thông qua hàm \texttt{clock\_gettime(CLOCK\_MONOTONIC)} thường chỉ dao động từ vài chục đến khoảng hơn một trăm nano-giây mỗi giao dịch (con số cụ thể là \textbf{phải đo} trên bo mạch thực tế).
-    \item \textbf{Độ phức tạp phần mềm:} Cực kỳ thấp. Toàn bộ logic chạy hoàn toàn trong không gian người dùng (User Space), không cần viết driver nhân Linux (Kernel Module), không cần quyền can thiệp vào bộ nhớ vật lý của hệ điều hành.
+    \item \textbf{Độ phức tạp phần mềm:} Rất thấp. Toàn bộ logic chạy hoàn toàn trong không gian người dùng (User Space), không cần viết driver nhân Linux (Kernel Module), không cần quyền can thiệp vào bộ nhớ vật lý của hệ điều hành.
 \end{itemize}
 
 \paragraph{Phương án 2: DMA phân tán modular (mSGDMA) qua cầu Full Bridge.}
 Khối IP mSGDMA (modular Scatter-Gather DMA) nằm trên vùng logic FPGA đóng vai trò master, tự động đọc luồng mẫu từ bộ nhớ DDR của HPS rồi bắn trực tiếp vào giao diện Avalon-ST của đường ống xử lý mà không cần CPU tham gia từng mẫu.
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Ưu điểm:} Hoàn toàn giải phóng CPU khỏi vòng lặp ghi dữ liệu. CPU chỉ cần kích hoạt descriptor rồi chuyển sang thực hiện các tác vụ khác.
-    \item \textbf{Cái giá phần mềm:} Cực kỳ đắt đỏ. Hệ điều hành Linux quản lý bộ nhớ theo các trang ảo (virtual pages) kích thước 4 KB nằm rải rác trong RAM vật lý. Để DMA có thể đọc được:
+    \item \textbf{Cái giá phần mềm:} Rất phức tạp. Hệ điều hành Linux quản lý bộ nhớ theo các trang ảo (virtual pages) kích thước 4 KB nằm rải rác trong RAM vật lý. Để DMA có thể đọc được:
     \begin{enumerate}[leftmargin=1.2em, itemsep=2pt]
         \item Cần phân bổ một vùng nhớ vật lý liên tục (Contiguous Memory) bằng cơ chế CMA của Linux kernel hoặc thông qua module hỗ trợ \texttt{/dev/udmabuf}.
         \item \textbf{Hiểm họa tính nhất quán bộ đệm (Cache Incoherency):} Khi CPU đọc tệp WAV từ thẻ nhớ SD và ghi vào mảng bộ nhớ, các byte dữ liệu có thể còn nằm lưu trong bộ nhớ đệm cache L1/L2 của lõi ARM Cortex-A9 mà chưa được đẩy (flush) xuống các chip nhớ DDR3 bên dưới. Bộ điều khiển DMA trên FPGA khi đọc trực tiếp từ DDR3 sẽ đọc phải dữ liệu rác cũ! Người lập trình bắt buộc phải gọi các hàm xả cache tường minh (\texttt{dma\_sync\_single\_for\_device} hoặc \texttt{arm\_dma\_flush}), nếu quên hoặc gọi sai thời điểm, toàn bộ dữ liệu âm thanh bị sai mà không hề có bất kỳ cảnh báo lỗi nào.
-        \item \textbf{Quản lý mô tả phân tán (Descriptors):} Phải tạo và cấu hình các bảng descriptor phức tạp trong bộ nhớ, xử lý ngắt hoàn thành (interrupt handling) để dọn dẹp bộ đệm.
+        \item \textbf{Quản lý mô tả phân tán (Descriptors):} Phải tạo và cấu hình các bảng descriptor trong bộ nhớ, xử lý ngắt hoàn thành (interrupt handling) để dọn dẹp bộ đệm.
     \end{enumerate}
-    \item \textbf{Cái giá phần cứng:} Khối IP mSGDMA tiêu tốn hàng trăm khối logic ALM và ít nhất 2 đến 3 khối RAM M10K chuyên dụng để làm bộ đệm descriptor và FIFO dữ liệu nội tại.
+    \item \textbf{Cái giá phần cứng:} Khối IP mSGDMA tiêu tốn tài nguyên logic ALM và các khối RAM M10K chuyên dụng để làm bộ đệm descriptor và FIFO dữ liệu nội tại \textbf{(phải đo, Ch.13)}.
 \end{itemize}
 
 \paragraph{Phương án 3: Cầu Full HPS-to-FPGA (64/128-bit) với cơ chế PIO.}
@@ -434,20 +438,20 @@ Thời gian ghi thực tế & \textbf{(phải đo)} & Không áp dụng & \textb
 Yêu cầu bộ nhớ vật lý & Không (ảo bình thường) & Bắt buộc liên tục (CMA) & Không (ảo bình thường) \\
 Hiểm họa Cache coherency & Không có & Bắt buộc xả cache & Không có \\
 Không gian phần mềm & User Space (\texttt{mmap}) & Kernel Module / UIO & User Space (\texttt{mmap}) \\
-Tài nguyên phần cứng FPGA & 0 ALM, 0 M10K thêm & $\approx 450$ ALM, $\ge 2$ M10K & Thêm logic ghép bus \\
+Tài nguyên phần cứng FPGA & 0 ALM, 0 M10K thêm & \textbf{phải đo (Ch.13)} & Thêm logic ghép bus \\
 Độ phức tạp kiểm chứng & Rất thấp, xem từng nhịp & Cao, phụ thuộc ngắt & Trung bình \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Đọc bảng.} Nhìn vào Bảng \ref{tab:ch01_transfer_options}, ta thấy một sự thật hiển nhiên: ở lưu lượng siêu thấp $32\text{ KB/s}$, việc dùng mSGDMA hoàn toàn không giải quyết được nút thắt hiệu năng nào (bởi vì bản thân khâu truyền tải đã có $\text{RTF} \le 0{,}008$, tức nhanh hơn thời gian thực ít nhất 125 lần), nhưng lại kéo theo cái giá quá đắt về việc phải can thiệp vào tầng nhân Linux kernel, cấp phát bộ nhớ liên tục và hiểm họa đọc dữ liệu rác do lỗi cache coherency.
+\textbf{Đọc bảng.} Nhìn vào Bảng \ref{tab:ch01_transfer_options}, ta thấy một sự thật hiển nhiên: ở lưu lượng siêu thấp $32\text{ KB/s}$, việc dùng mSGDMA hoàn toàn không giải quyết được nút thắt hiệu năng nào (bởi vì bản thân khâu truyền tải đã có $\text{RTF} \le 0{,}008$, tức nhanh hơn thời gian thực ít nhất 125 lần), nhưng lại kéo theo việc phải can thiệp vào tầng nhân Linux kernel, cấp phát bộ nhớ liên tục và hiểm họa đọc dữ liệu rác do lỗi cache coherency.
 
 \subsubsection*{Lựa chọn của ta và lý do có số liệu}
 Từ các phân tích định lượng trên, đề cương quyết định lựa chọn:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Phương án 1 (PIO qua cầu Lightweight Bridge vào bộ đệm On-Chip FIFO) là đường truyền chính thống của toàn bộ tài liệu và dự án}. Có bốn lý do đanh thép:
+    \item \textbf{Phương án 1 (PIO qua cầu Lightweight Bridge vào bộ đệm On-Chip FIFO) là đường truyền chính thống của toàn bộ tài liệu và dự án}. Có bốn lý do kỹ thuật rõ ràng:
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
-        \item \emph{Thông lượng dư thừa tuyệt đối:} Hệ số thời gian thực $\text{RTF}_{\text{transfer}} \le 0{,}008$. CPU chỉ tốn tối đa 8 ms để truyền xong 1 giây âm thanh, $99{,}2\%$ thời gian còn lại hoàn toàn rảnh rỗi.
+        \item \emph{Thông lượng dư thừa:} Hệ số thời gian thực $\text{RTF}_{\text{transfer}} \le 0{,}008$. CPU chỉ tốn tối đa 8 ms để truyền xong 1 giây âm thanh, $99{,}2\%$ thời gian còn lại hoàn toàn rảnh rỗi.
         \item \emph{Độ tin cậy phần mềm cao nhất:} Trình điều khiển chạy hoàn toàn ở không gian người dùng (User Space), chỉ cần mở tệp \texttt{/dev/mem} rồi gọi hàm chuẩn \texttt{mmap}. Không có bất kỳ nguy cơ treo nhân hệ điều hành, rò rỉ bộ nhớ hay lỗi lệch cache.
         \item \emph{Kiến trúc phần cứng tinh gọn:} Toàn bộ giao diện dữ liệu và thanh ghi điều khiển được gom gọn vào không gian địa chỉ 2 MB của Lightweight Bridge, giải phóng toàn bộ các cổng Full Bridge cho các ứng dụng mở rộng khác trong tương lai.
         \item \emph{Dễ dàng gỡ lỗi và kiểm chứng bit-exact:} Người thiết kế có thể đặt các điểm dừng (breakpoint), đọc thanh ghi báo mức đầy \texttt{fill\_level} của FIFO ở từng chu kỳ xung nhịp và quan sát chính xác từng từ dữ liệu được nạp vào.
@@ -461,111 +465,107 @@ Từ các phân tích định lượng trên, đề cương quyết định lự
 \addcontentsline{toc}{subsection}{1.4. Đường (A): Xây dựng bộ đệm bằng Intel On-Chip FIFO IP}
 
 \subsubsection*{Nguyên lý của On-Chip FIFO trong Platform Designer}
-Trong luồng thiết kế tiêu chuẩn của hệ sinh thái Intel Quartus Prime, công cụ tích hợp hệ thống Platform Designer (tên cũ là Qsys) cung cấp sẵn khối IP lõi mang tên \texttt{altera\_avalon\_fifo} (On-Chip FIFO Memory). Khối IP này đóng vai trò cầu nối thích ứng giữa hai miền giao thức hoàn toàn khác biệt:
+Trong luồng thiết kế tiêu chuẩn của hệ sinh thái Intel Quartus Prime, công cụ tích hợp hệ thống Platform Designer cung cấp sẵn khối IP lõi mang tên \texttt{altera\_avalon\_fifo} (On-Chip FIFO Memory). Khối IP này đóng vai trò cầu nối thích ứng giữa hai miền giao thức:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Miền giao diện bộ nhớ (Avalon-MM):} Do vi xử lý ARM HPS làm chủ (Master). CPU thực hiện các thao tác ghi dữ liệu theo từng khối rời rạc, phụ thuộc vào tiến trình lập lịch của hệ điều hành Linux.
     \item \textbf{Miền luồng dữ liệu (Avalon-ST):} Cung cấp dữ liệu trực tiếp cho lõi xử lý F0 trên FPGA (Sink). Lõi phần cứng yêu cầu dữ liệu mẫu âm thanh chảy liên tục, tuần tự và phải có cơ chế báo bận (backpressure) tức thời.
 \end{itemize}
 
-Để cấu hình IP này hoạt động chính xác và khai thác tối ưu tài nguyên phần cứng của chip Cyclone V 5CSXFC6D6F31C6N, người kỹ sư không được phép nhấp chuột tùy tiện mà phải hiểu rõ ý nghĩa vật lý của từng tham số cấu hình.
+Để cấu hình IP này hoạt động chính xác và khai thác tối ưu tài nguyên phần cứng của chip Cyclone V, ta cần hiểu rõ các ràng buộc kỹ thuật của tài liệu \emph{Intel Embedded Peripherals IP User Guide}.
 
-\subsubsection*{Giải thích chi tiết từng tham số cấu hình của Intel On-Chip FIFO}
+\subsubsection*{Phân tích chi tiết từng tham số cấu hình của Intel On-Chip FIFO}
 Dưới đây là phân tích cặn kẽ từng tham số trên giao diện đồ họa Platform Designer:
 
-\paragraph{1. Độ sâu bộ đệm (FIFO Depth = 512 từ).}
-Khối bộ nhớ nhúng cơ bản trên dòng FPGA Cyclone V là khối M10K, với dung lượng lưu trữ vật lý danh định là 10.240 bit (bao gồm cả các bit kiểm tra chẵn lẻ parity). Khối M10K hỗ trợ các cấu hình tỷ lệ linh hoạt như $256 \times 40$, $512 \times 20$, $1024 \times 10$, v.v.
+\paragraph{1. Độ sâu bộ đệm (FIFO Depth = 256 từ 32-bit cho 1 khối M10K).}
+Theo tài liệu hướng dẫn \emph{Intel Embedded Peripherals IP User Guide} (chương Avalon-MM Write Slave to Avalon-ST Source):
+\begin{quote}
+``The input is an Avalon-MM write slave with a width of 32 bits \dots{} The Avalon-ST output (source) data width must also be 32 bits \dots{} If Avalon-MM is selected for one interface and Avalon-ST for the other, the data width is fixed at 32 bits.''
+\end{quote}
+Điều này chỉ ra một sự thật kiến trúc cốt lõi: \textbf{Bề rộng nội tại của FIFO bắt buộc cố định là 32 bit}, khối IP không hỗ trợ cấu hình bề rộng 16 bit khi giao tiếp giữa Avalon-MM và Avalon-ST.
 
-Khi cấu hình FIFO lưu trữ các mẫu âm thanh 16-bit, dung lượng logic cần thiết cho độ sâu 512 từ là:
-\begin{equation}
-N_{\text{bits}} = 512 \times 16\text{ bit} = 8.192\text{ bit}
-\end{equation}
-Vì $8.192 \le 10.240$, toàn bộ bộ đệm 512 từ này được ánh xạ vừa vặn vào \textbf{đúng 1 khối M10K duy nhất} (ở chế độ phần cứng $512 \times 20$ bit, bỏ qua 4 bit dư thừa). 
-
-Ngược lại, nếu thiết lập độ sâu là 1024 từ (như tài liệu cũ của Argon đề xuất):
-\begin{equation}
-N_{\text{bits, 1024}} = 1024 \times 16\text{ bit} = 16.384\text{ bit} > 10.240\text{ bit}
-\end{equation}
-Trình biên dịch Quartus Fitter bắt buộc phải cấp phát tới 2 khối M10K vật lý! Đây là minh chứng rõ ràng cho việc tính toán sai cấu hình phần cứng nhúng.
-
-Về mặt đệm thời gian, với tần số lấy mẫu 16 kHz và bước nhảy khung tiêu chuẩn của Praat là 10 ms ($H = 160$ mẫu), dung lượng 512 mẫu chứa được:
+Do đó, việc tính toán tài nguyên bộ nhớ nhúng M10K (dung lượng danh định 10.240 bit) diễn ra như sau:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu chọn độ sâu 512 từ 32-bit:
+    \begin{equation}
+    N_{\text{bits}} = 512 \times 32\text{ bit} = 16.384\text{ bit} > 10.240\text{ bit}
+    \end{equation}
+    Trình biên dịch Quartus bắt buộc phải tiêu tốn \textbf{2 khối M10K vật lý}.
+    \item Nếu chọn độ sâu 256 từ 32-bit:
+    \begin{equation}
+    N_{\text{bits}} = 256 \times 32\text{ bit} = 8.192\text{ bit} \le 10.240\text{ bit}
+    \end{equation}
+    Bộ đệm được ánh xạ trọn vẹn vào \textbf{đúng 1 khối M10K duy nhất} (ở cấu hình $256 \times 40$ hoặc $256 \times 32$).
+\end{itemize}
+Vì mỗi từ 32-bit chứa 2 mẫu âm thanh 16-bit, độ sâu 256 từ chứa được $256 \times 2 = 512$ mẫu âm thanh. Với bước nhảy khung tiêu chuẩn của Praat là 10 ms ($H = 160$ mẫu), dung lượng 512 mẫu chứa được:
 \begin{equation}
 N_{\text{hops}} = \frac{512}{160} = 3{,}2\text{ khung nhảy}
 \end{equation}
-tương đương với hơn 32 ms âm thanh. Khoảng đệm 32 ms này là quá đủ để hấp thu các đợt trễ lập lịch (scheduling latency) thông thường của nhân hệ điều hành Linux (thường dưới 5--10 ms), đảm bảo lõi FPGA không bao giờ bị đói dữ liệu (underrun).
+tương đương với 32 ms âm thanh. Khoảng đệm 32 ms này hoàn toàn đủ để hấp thu các đợt trễ lập lịch thông thường của nhân Linux nhúng mà vẫn tiết kiệm tối đa tài nguyên M10K.
 
 \paragraph{2. Chế độ xung nhịp (Clock Setting = Single Clock Mode).}
-Cả bus giao tiếp Lightweight HPS-to-FPGA lẫn lõi tính toán F0 đều được đấu nối vào cùng một nguồn dao động xung nhịp hệ thống 50 MHz (\texttt{clk}). Do đó, ta chọn chế độ \emph{Single Clock Mode}. Lựa chọn này giúp IP loại bỏ hoàn toàn các mạch đồng bộ hóa hai miền xung nhịp (như chuỗi đồng bộ kép flip-flop kép 2-FF synchronizer và bộ chuyển đổi mã Gray cho các con trỏ), qua đó tiết kiệm đáng kể tài nguyên logic ALM và giảm tối đa độ trễ truyền dữ liệu qua FIFO.
+Cả bus giao tiếp Lightweight HPS-to-FPGA lẫn lõi tính toán F0 đều được đấu nối vào cùng một nguồn dao động xung nhịp hệ thống 50 MHz (\texttt{clk}). Do đó, ta chọn chế độ \emph{Single Clock Mode}. Lựa chọn này giúp IP loại bỏ hoàn toàn các mạch đồng bộ hóa hai miền xung nhịp (như chuỗi đồng bộ kép flip-flop 2-FF và bộ chuyển đổi mã Gray cho các con trỏ), qua đó tiết kiệm logic ALM và giảm độ trễ truyền dữ liệu qua FIFO.
 
 \paragraph{3. Cổng vào và cổng ra (Input / Output Interfaces).}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Cổng vào (Input):} Thiết lập là \texttt{AVALONMM\_WRITE}. Bề rộng dữ liệu bus Avalon-MM được đặt là 32-bit. Thiết lập này cho phép CPU ARM ghi một cặp hai mẫu âm thanh 16-bit (sample 0 và sample 1) trong một chu kỳ bus duy nhất, giảm 50\% số lượng giao dịch bus qua cầu nối.
-    \item \textbf{Cổng ra (Output):} Thiết lập là \texttt{AVALONST\_SOURCE}. Bề rộng dữ liệu ngõ ra là 16-bit, tương thích trực tiếp với đầu vào của lõi xử lý DSP trên FPGA.
+    \item \textbf{Cổng vào (Input):} Thiết lập là \texttt{AVALONMM\_WRITE}, bề rộng cố định 32-bit.
+    \item \textbf{Cổng ra (Output):} Thiết lập là \texttt{AVALONST\_SOURCE}, bề rộng cố định 32-bit theo quy định của IP. Khối IP \textbf{không tự động tách từ 32-bit thành luồng 16-bit}.
 \end{itemize}
 
-\paragraph{4. Kích thước ký hiệu và số ký hiệu mỗi nhịp (Bits per symbol và Symbols per beat).}
-Hai tham số này đóng vai trò quyết định cơ chế tách từ (unpacking) 32-bit thành hai mẫu 16-bit:
+\paragraph{4. Ký hiệu và quy ước endian (Bits per symbol và Symbols per beat).}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Bits per symbol:} Đặt là 16. Mỗi ký hiệu âm thanh là một mẫu nguyên có dấu 16-bit.
-    \item \textbf{Symbols per beat:} Ở cổng vào Avalon-MM 32-bit, số ký hiệu trên mỗi nhịp (beat) là 2. Ở cổng ra Avalon-ST 16-bit, số ký hiệu trên mỗi nhịp tự động quy về 1.
+    \item \textbf{Bits per symbol:} Đặt là 16.
+    \item \textbf{Symbols per beat:} Đặt là 2 (tổng cộng $2 \times 16 = 32\text{ bit}$).
 \end{itemize}
-Nhờ thiết lập này, khối On-Chip FIFO tự động quản lý logic dồn dịch dữ liệu theo thứ tự endian chuẩn: nửa từ thấp \texttt{data[15:0]} là mẫu xuất hiện trước (symbol 0), nửa từ cao \texttt{data[31:16]} là mẫu xuất hiện sau (symbol 1).
+Tài liệu IP của Intel chỉ rõ: IP thực hiện chuyển đổi endian để phù hợp với chuẩn giao diện ngõ ra. Trong chuẩn Avalon-ST, ký hiệu 0 (xuất hiện trước theo thời gian) được đặt tại các bit trọng số cao nhất (MSB). Do đó, nửa từ thấp của Avalon-MM \texttt{writedata[15:0]} (mẫu $2k$) sẽ đi ra ở các bit cao của Avalon-ST \texttt{data[31:16]} \textbf{(phải kiểm trong mô phỏng IP)}.
+
+\textbf{Hệ quả thiết kế quan trọng:} Vì ngõ ra của On-Chip FIFO IP vẫn là từ 32-bit (chứa 2 mẫu), đường (A) bắt buộc phải chèn thêm một khối giải gói 32-sang-16 bit ở phía sau IP (thực hiện bằng một FSM 2 trạng thái hoặc khối \emph{Avalon-ST Data Format Adapter} của Platform Designer) để đưa từng mẫu 16-bit tuần tự vào lõi DSP. Đây chính là lý do kỹ thuật vì sao ở đường (B), ta chủ động tích hợp luôn cỗ máy giải gói FSM vào bên trong module FIFO tự viết.
 
 \paragraph{5. Cho phép áp lực ngược (Allow Backpressure = YES).}
-Tham số này bắt buộc phải bật. Khi bật, cổng ra Avalon-ST sẽ sinh ra tín hiệu điều khiển \texttt{ready}. Nếu khối tính toán cửa sổ hoặc khối tự tương quan phía sau đang bận tính toán và chưa sẵn sàng nhận mẫu mới, nó sẽ kéo \texttt{ready} xuống mức 0. FIFO sẽ lập tức giữ nguyên dữ liệu trên bus \texttt{data} và không tăng con trỏ đọc, bảo đảm dòng dữ liệu không bị thất thoát mẫu.
+Cổng ra Avalon-ST sinh ra tín hiệu điều khiển \texttt{ready}. Nếu khối phía sau chưa sẵn sàng nhận mẫu mới, nó kéo \texttt{ready} xuống 0; FIFO lập tức giữ nguyên dữ liệu trên bus \texttt{data} và không tăng con trỏ đọc.
 
 \paragraph{6. Tạo giao diện trạng thái cho cổng vào (Create status interface for input = YES).}
-Khi tùy chọn này được kích hoạt, Platform Designer sẽ sinh thêm một cổng phụ mang tên \texttt{in\_csr} (Avalon-MM Control and Status Register). Giao diện này cực kỳ quan trọng: nó cho phép vi xử lý HPS đọc mức đầy hiện tại (\texttt{fill\_level}) của bộ đệm trước khi thực hiện ghi dữ liệu. Nếu không có cổng \texttt{in\_csr}, phần mềm trên ARM sẽ hoàn toàn ``mù'' về trạng thái FIFO và buộc phải dựa vào tín hiệu \texttt{waitrequest} của bus phần cứng, dễ dẫn tới việc nghẽn luồng thực thi của CPU.
+Platform Designer sinh thêm cổng phụ \texttt{in\_csr} (Avalon-MM CSR) cho phép vi xử lý HPS đọc mức đầy hiện tại (\texttt{fill\_level}) của bộ đệm trước khi ghi dữ liệu.
 
-\subsubsection*{Các giao diện phần cứng và thanh ghi do IP sinh ra}
-Khi được khởi tạo thành công trong hệ thống, khối IP On-Chip FIFO xuất ra ba giao diện chính:
+\subsubsection*{Các giao diện phần cứng và độ trễ}
+Khối IP On-Chip FIFO xuất ra ba giao diện chính:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Giao diện dữ liệu nạp \texttt{in} (Avalon-MM Slave):} Ánh xạ vào không gian bộ nhớ của cầu Lightweight. Gồm tín hiệu địa chỉ, tín hiệu cho phép ghi \texttt{write}, dữ liệu ghi 32-bit \texttt{writedata[31:0]} và tín hiệu phản hồi chờ \texttt{waitrequest}.
-    \item \textbf{Giao diện điều khiển và trạng thái \texttt{in\_csr} (Avalon-MM Slave):} Cung cấp tập thanh ghi 32-bit chuẩn của Intel để HPS theo dõi hoạt động:
-    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
-        \item \emph{Thanh ghi \texttt{fill\_level} (Offset 0x00):} Trả về số lượng từ 32-bit hiện đang nằm trong bộ đệm.
-        \item \emph{Thanh ghi \texttt{status} (Offset 0x04):} Chứa các cờ trạng thái tức thời, bao gồm bit 0 (\texttt{full}) và bit 1 (\texttt{empty}).
-        \item \emph{Thanh ghi \texttt{event} (Offset 0x08):} Chứa các cờ sự kiện dính (sticky flags) như tràn bộ đệm (\texttt{overflow}) hoặc cạn bộ đệm (\texttt{underflow}). Cờ này chỉ được xóa khi phần mềm ghi số 1 vào bit tương ứng (Write-1-to-Clear).
-        \item \emph{Thanh ghi \texttt{almostfull} (Offset 0x10) và \texttt{almostempty} (Offset 0x14):} Cấu hình ngưỡng cảnh báo sớm mức đầy.
-    \end{itemize}
-    \item \textbf{Giao diện luồng ngõ ra \texttt{out} (Avalon-ST Source):} Bao gồm dữ liệu âm thanh 16-bit \texttt{data[15:0]}, tín hiệu hợp lệ \texttt{valid} và tín hiệu sẵn sàng \texttt{ready}.
+    \item \textbf{Giao diện dữ liệu nạp \texttt{in} (Avalon-MM Slave):} Gồm tín hiệu địa chỉ, tín hiệu cho phép ghi \texttt{write}, dữ liệu ghi 32-bit \texttt{writedata[31:0]} và tín hiệu phản hồi chờ \texttt{waitrequest}.
+    \item \textbf{Cổng trạng thái \texttt{in\_csr} (Avalon-MM Slave):} Cung cấp các thanh ghi 32-bit: \texttt{fill\_level} (0x00), \texttt{status} (0x04), \texttt{event} (0x08), \texttt{almostfull} (0x10), \texttt{almostempty} (0x14).
+    \item \textbf{Giao diện luồng ngõ ra \texttt{out} (Avalon-ST Source):} Bao gồm dữ liệu 32-bit \texttt{data[31:0]} (chứa 2 mẫu 16-bit), \texttt{valid} và \texttt{ready}.
 \end{enumerate}
 
 \paragraph{Độ trễ truyền nhận (Latency).}
-Trong kiến trúc FIFO của Intel, từ thời điểm CPU ghi thành công một từ vào cổng \texttt{in} cho tới khi dữ liệu đó xuất hiện trên cổng \texttt{out} và giương cờ \texttt{valid = 1}, hệ thống tiêu tốn một độ trễ cố định từ 1 đến 2 chu kỳ xung nhịp (phụ thuộc vào việc cấu hình thanh ghi đệm ngõ ra). Giá trị độ trễ chính xác này \textbf{(phải kiểm trong mô phỏng IP)} trước khi tích hợp vào đường ống xử lý.
+Từ thời điểm CPU ghi một từ vào cổng \texttt{in} cho tới khi dữ liệu xuất hiện trên cổng \texttt{out} và giương cờ \texttt{valid = 1}, độ trễ danh định của IP \textbf{(phải kiểm trong mô phỏng IP)}.
 
 \subsubsection*{Cấu hình mSGDMA dùng làm mục đối chiếu chuyên sâu}
 Để phục vụ cho các thực nghiệm so sánh định lượng ở Chương 13, khối IP Modular Scatter-Gather DMA (mSGDMA) của Intel được cấu hình với các tham số tối ưu hóa cho bài toán dòng như sau:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{DMA Mode:} Chọn \texttt{Memory-Mapped to Streaming} (MM-to-ST). Bộ điều khiển sẽ tự động đọc dữ liệu từ vùng nhớ đệm DDR3 của HPS và đẩy ra cổng luồng Avalon-ST cấp cho FPGA.
-    \item \textbf{Data Width:} Đặt là 32-bit để tận dụng trần truyền tải dữ liệu của bus HPS.
-    \item \textbf{Data Path FIFO Depth:} Cấu hình độ sâu đệm đường truyền là 64 hoặc 128 từ nhằm hấp thu biến động độ trễ truy xuất bus bộ nhớ DDR.
-    \item \textbf{Descriptor FIFO Depth:} Đặt là 16 hoặc 32 bộ mô tả (descriptors). Với các tệp âm thanh ngắn vài giây, chỉ cần 1 descriptor duy nhất mô tả toàn bộ khối dữ liệu là đủ.
-    \item \textbf{Maximum Transfer Length:} Thiết lập $2^{32}$ byte (hoặc tối thiểu $2^{16} = 64\text{ KB}$), cho phép truyền trọn vẹn tệp âm thanh trong một lệnh gọi duy nhất.
-    \item \textbf{Burst Enable:} Bật tính năng truyền liên tục (Burst mode) với \texttt{Maximum Burst Count = 16} hoặc 32 nhịp, giúp tăng tối đa hiệu suất đọc từ bộ điều khiển DDR3 SDRAM.
-    \item \textbf{Response Port:} Tắt (Disabled) vì phía phần mềm chỉ cần nhận ngắt kết thúc truyền tải từ bộ mô tả chứ không cần cổng trả về dữ liệu phụ.
+    \item \textbf{DMA Mode:} Chọn \texttt{Memory-Mapped to Streaming} (MM-to-ST).
+    \item \textbf{Data Width:} Đặt là 32-bit.
+    \item \textbf{Data Path FIFO Depth:} Cấu hình độ sâu đệm đường truyền là 64 hoặc 128 từ.
+    \item \textbf{Descriptor FIFO Depth:} Đặt là 16 hoặc 32 bộ mô tả (descriptors).
+    \item \textbf{Transfer Length:} Cấu hình trần độ dài truyền tải đủ lớn để bao trọn tệp âm thanh trong một bộ mô tả duy nhất.
+    \item \textbf{Burst Enable:} Bật tính năng truyền liên tục (Burst mode) với \texttt{Maximum Burst Count = 16} hoặc 32 nhịp.
+    \item \textbf{Response Port:} Tắt (Disabled).
 \end{itemize}
 
 \subsubsection*{Bộ đệm chiều về: Thu nhận kết quả F0 từ FPGA về HPS}
-Không chỉ có chiều đi nạp mẫu âm thanh, hệ thống còn cần kênh truyền chiều về (Return Path) để HPS đọc chuỗi tần số cơ bản F0 do lõi tính toán trên FPGA sinh ra.
-
-Ở chiều về, kiến trúc đảo ngược hoàn toàn:
+Ở chiều về (Return Path), kiến trúc đảo ngược để HPS đọc chuỗi tần số cơ bản F0 do FPGA sinh ra:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Khối hậu xử lý trên FPGA (thuật toán Viterbi / Median-3) tính toán xong mỗi khung sẽ đẩy ra một từ F0 định dạng số nguyên bù 2 định dạng fixed-point Q12.4 (16-bit).
+    \item Khối hậu xử lý trên FPGA (bộ lọc trung vị median-3; không dùng Viterbi trên phần cứng) tính toán xong mỗi khung sẽ đẩy ra một từ F0 định dạng số nguyên không dấu uint16 byte nhỏ (little-endian) fixed-point Q12.4 (16-bit). Quy ước giá trị $0$ đại diện cho khung vô thanh (unvoiced), hoàn toàn khớp với định dạng tệp \texttt{pitch\_f0.bin} trong mô hình \texttt{golden\_v2/fixed\_twin.py}.
     \item Dữ liệu này được đưa vào một bộ đệm On-Chip FIFO cấu hình \texttt{Input: AVALONST\_SINK} (16-bit) và \texttt{Output: AVALONMM\_READ} (32-bit hoặc 16-bit), đặt tên là \texttt{fifo\_out}.
-    \item Vi xử lý HPS chỉ cần thăm dò thanh ghi trạng thái của \texttt{fifo\_out\_csr}, khi có kết quả hợp lệ sẽ đọc trực tiếp dữ liệu qua cầu Lightweight Bridge để lưu vào tệp kết quả \texttt{pitch\_f0.bin}.
+    \item Vi xử lý HPS thăm dò thanh ghi trạng thái của \texttt{fifo\_out\_csr}, khi có kết quả hợp lệ sẽ đọc trực tiếp dữ liệu qua cầu Lightweight Bridge để lưu vào tệp kết quả \texttt{pitch\_f0.bin}.
 \end{itemize}
 
-\textit{Tóm lại: Khối IP On-Chip FIFO của Intel ở độ sâu 512 từ khớp hoàn hảo với đúng 1 khối nhớ M10K vật lý của Cyclone V, cung cấp 32 ms đệm chống giật tiến trình Linux và tách mẫu tự động 32-to-16 bit; chiều về dùng FIFO ST-sink sang MM-read để trả kết quả F0 định dạng Q12.4 một cách đồng bộ và an toàn.}
+\textit{Tóm lại: Khối IP On-Chip FIFO của Intel ở cấu hình MM-to-ST có bề rộng cố định 32-bit, do đó độ sâu 256 từ khớp đúng 1 khối M10K (chứa 512 mẫu âm thanh, đủ 3,2 hop đệm); ngõ ra 32-bit đòi hỏi thêm bộ giải gói 32-to-16 bit phía sau; chiều về dùng FIFO ST-sink sang MM-read để trả kết quả F0 định dạng uint16 LE Q12.4 đồng bộ.}
 
 \subsection*{1.5. Đường (B): Hiện thực phần cứng bằng HDL tự viết}
 \addcontentsline{toc}{subsection}{1.5. Đường (B): Hiện thực phần cứng bằng HDL tự viết}
 
 \subsubsection*{Nguyên lý bộ đệm vòng đồng bộ với con trỏ có bit vòng (Wrap-Bit Pointers)}
-Để không bị phụ thuộc vào các IP độc quyền (proprietary IP) của hãng và có thể kiểm soát tuyệt đối từng chu kỳ xung nhịp trong quá trình mô phỏng, ta tự hiện thực khối bộ đệm \texttt{ch01\_avalon\_fifo} bằng ngôn ngữ Verilog thuần túy.
+Để không bị phụ thuộc vào các IP độc quyền của hãng và có thể kiểm soát tuyệt đối từng chu kỳ xung nhịp trong quá trình mô phỏng, ta tự hiện thực khối bộ đệm nạp mẫu \texttt{ch01\_avalon\_fifo} và khối hoàn trả kết quả \texttt{ch01\_fifo\_out} bằng ngôn ngữ Verilog chuẩn.
 
-Bộ đệm vòng (circular FIFO) đồng bộ hoạt động trên nguyên lý của hai con trỏ trượt tuần tự: con trỏ ghi (\texttt{wr\_ptr}) và con trỏ đọc (\texttt{rd\_ptr}). Khi bộ nhớ có độ sâu $N_{\text{words}} = 2^k$ từ (với $k = 8$, tức 256 từ 32-bit), một thách thức kinh điển là: \textbf{Làm thế nào để phân biệt trạng thái FIFO rỗng hoàn toàn với trạng thái FIFO đầy hoàn toàn khi cả hai con trỏ đều chỉ vào cùng một địa chỉ vật lý?}
-
-Giải pháp thanh lịch và tối ưu phần cứng nhất là mở rộng bề rộng của con trỏ thêm đúng 1 bit ở vị trí trọng số cao nhất (MSB), gọi là \emph{bit vòng} (wrap bit):
+Bộ đệm vòng đồng bộ hoạt động trên nguyên lý của hai con trỏ: con trỏ ghi (\texttt{wr\_ptr}) và con trỏ đọc (\texttt{rd\_ptr}). Khi bộ nhớ có độ sâu $N_{\text{words}} = 2^k$ từ (với $k = 8$, tức 256 từ 32-bit), giải pháp tối ưu phần cứng là mở rộng bề rộng của con trỏ thêm đúng 1 bit ở vị trí trọng số cao nhất (MSB), gọi là \emph{bit vòng} (wrap bit):
 \begin{equation}
 \text{Bề rộng con trỏ} = k + 1 = 8 + 1 = 9\text{ bit} \quad (\texttt{wr\_ptr[8:0]}, \texttt{rd\_ptr[8:0]})
 \end{equation}
@@ -575,7 +575,7 @@ Trong đó:
     \item Bit thứ $k$ (\texttt{ptr[8]}) là bit vòng, lật trạng thái logic ($0 \to 1$ hoặc $1 \to 0$) mỗi khi con trỏ quét hết một vòng 256 phần tử của bộ nhớ.
 \end{itemize}
 
-Nhờ bit vòng này, hai trạng thái biên được phân định rạch ròi bằng các biểu thức logic tối giản:
+Nhờ bit vòng này, hai trạng thái biên được phân định rạch ròi bằng các biểu thức logic:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Trạng thái Rỗng (\texttt{fifo\_empty}):} Xuất hiện khi hai con trỏ hoàn toàn trùng khớp ở tất cả 9 bit:
     \begin{equation}
@@ -591,41 +591,189 @@ Nhờ bit vòng này, hai trạng thái biên được phân định rạch ròi
     \end{equation}
 \end{itemize}
 
-\subsubsection*{Suy diễn khối nhớ M10K trong Verilog}
-Mảng nhớ RAM hai cổng đồng bộ (Dual-Port Synchronous RAM) được khai báo theo đúng mẫu chuẩn (template) để trình tổng hợp Quartus tự động nhận diện và suy diễn (infer) thành 1 khối M10K phần cứng:
-\begin{lstlisting}[language=Verilog, basicstyle=\small\ttfamily, frame=single]
-reg [31:0] mem [0:255];
-reg [31:0] mem_rdata;
+\subsubsection*{Mã nguồn toàn diện khối bộ đệm nạp mẫu \texttt{ch01\_avalon\_fifo.v}}
+Toàn bộ mã nguồn phần cứng của khối \texttt{ch01\_avalon\_fifo.v} (199 dòng) được liệt kê đầy đủ trong Listing \ref{lst:ch01_avalon_fifo}.
 
-// Cong ghi dong bo (Avalon-MM)
-always @(posedge clk) begin
-    if (mm_write && !fifo_full)
-        mem[wr_ptr[7:0]] <= mm_writedata;
-end
+\begin{lstlisting}[language=Verilog, numbers=left, firstnumber=24, basicstyle=\scriptsize\ttfamily, frame=single, caption={Toàn bộ mã nguồn khối bộ đệm nạp mẫu âm thanh \texttt{rtl/v3/ch01\_avalon\_fifo.v}.}, label={lst:ch01_avalon_fifo}]
+module ch01_avalon_fifo #(
+    parameter integer ADDR_WIDTH = 8  // 2^8 = 256 words (32-bit) = 512 samples (16-bit)
+)(
+    input  wire        clk,
+    input  wire        rst_n,
 
-// Cong doc dong bo (Avalon-ST Unpacker)
-always @(posedge clk) begin
-    mem_rdata <= mem[rd_ptr[7:0]];
-end
+    // Avalon-MM Data Write Slave (fifo_in)
+    input  wire        mm_write,
+    input  wire [31:0] mm_writedata,
+    output wire        mm_waitrequest,
+
+    // Avalon-MM CSR Read Slave (fifo_in_csr)
+    input  wire        csr_read,
+    input  wire [2:0]  csr_address,
+    output reg  [31:0] csr_readdata,
+
+    // Avalon-ST Data Source (to FPGA core)
+    output wire [15:0] st_data,
+    output wire        st_valid,
+    input  wire        st_ready
+);
+
+    localparam integer DEPTH_WORDS   = 1 << ADDR_WIDTH; // 256 words
+    localparam integer DEPTH_SAMPLES = DEPTH_WORDS * 2;  // 512 samples
+
+    // Inferred Dual-Port Synchronous RAM (1 M10K block)
+    reg [31:0] mem [0:DEPTH_WORDS-1];
+    reg [31:0] mem_rdata;
+
+    // Word-level FIFO pointers with wrap bit
+    reg [ADDR_WIDTH:0] wr_ptr; // 9 bits (bit 8 is wrap bit)
+    reg [ADDR_WIDTH:0] rd_ptr;
+
+    wire [ADDR_WIDTH-1:0] wr_addr = wr_ptr[ADDR_WIDTH-1:0];
+    wire [ADDR_WIDTH-1:0] rd_addr = rd_ptr[ADDR_WIDTH-1:0];
+
+    wire fifo_empty = (wr_ptr == rd_ptr);
+    wire fifo_full  = (wr_ptr[ADDR_WIDTH] != rd_ptr[ADDR_WIDTH]) &&
+                      (wr_ptr[ADDR_WIDTH-1:0] == rd_ptr[ADDR_WIDTH-1:0]);
+
+    wire [ADDR_WIDTH:0] words_used = wr_ptr - rd_ptr;
+
+    // mm_waitrequest asserted when full and master attempts to write
+    assign mm_waitrequest = fifo_full;
+
+    // Sticky overflow flag
+    reg ovf_sticky;
+
+    // RAM Write Port (Avalon-MM)
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            wr_ptr     <= {(ADDR_WIDTH+1){1'b0}};
+            ovf_sticky <= 1'b0;
+        end else begin
+            if (mm_write) begin
+                if (!fifo_full) begin
+                    mem[wr_addr] <= mm_writedata;
+                    wr_ptr       <= wr_ptr + 1'b1;
+                end else begin
+                    ovf_sticky <= 1'b1;
+                end
+            end
+        end
+    end
+
+    // Unpacker FSM / Output Streaming (Avalon-ST)
+    localparam [1:0] ST_IDLE    = 2'b00;
+    localparam [1:0] ST_FETCH   = 2'b01;
+    localparam [1:0] ST_UNPACK0 = 2'b10;
+    localparam [1:0] ST_UNPACK1 = 2'b11;
+
+    reg [1:0]  st_state;
+    reg [31:0] holding_word;
+
+    // RAM Read port
+    always @(posedge clk) begin
+        mem_rdata <= mem[rd_addr];
+    end
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rd_ptr       <= {(ADDR_WIDTH+1){1'b0}};
+            st_state     <= ST_IDLE;
+            holding_word <= 32'd0;
+        end else begin
+            case (st_state)
+                ST_IDLE: begin
+                    if (!fifo_empty) begin
+                        st_state <= ST_FETCH;
+                        rd_ptr   <= rd_ptr + 1'b1;
+                    end
+                end
+
+                ST_FETCH: begin
+                    holding_word <= mem_rdata;
+                    st_state     <= ST_UNPACK0;
+                end
+
+                ST_UNPACK0: begin
+                    if (st_ready) begin
+                        st_state <= ST_UNPACK1;
+                    end
+                end
+
+                ST_UNPACK1: begin
+                    if (st_ready) begin
+                        if (!fifo_empty) begin
+                            st_state <= ST_FETCH;
+                            rd_ptr   <= rd_ptr + 1'b1;
+                        end else begin
+                            st_state <= ST_IDLE;
+                        end
+                    end
+                end
+            endcase
+        end
+    end
+
+    assign st_valid = (st_state == ST_UNPACK0) || (st_state == ST_UNPACK1);
+    assign st_data  = (st_state == ST_UNPACK0) ? holding_word[15:0] : holding_word[31:16];
+
+    // Fill Level in Sample Units (0..512)
+    wire [1:0] unpacker_samples = (st_state == ST_UNPACK0) ? 2'd2 :
+                                  (st_state == ST_UNPACK1) ? 2'd1 :
+                                  (st_state == ST_FETCH)   ? 2'd2 : 2'd0;
+
+    wire [9:0] total_samples_used = {words_used, 1'b0} + {8'd0, unpacker_samples};
+
+    // CSR Read Port (fifo_in_csr)
+    wire almost_empty = (total_samples_used <= 10'd32);
+    wire almost_full  = (total_samples_used >= 10'd480);
+
+    always @(*) begin
+        case (csr_address)
+            3'd0: csr_readdata = {22'd0, total_samples_used};
+            3'd1: csr_readdata = {28'd0, almost_full, almost_empty, fifo_full, (total_samples_used == 10'd0)};
+            3'd2: csr_readdata = {31'd0, ovf_sticky};
+            3'd3: csr_readdata = {23'd0, words_used};
+            default: csr_readdata = 32'd0;
+        endcase
+    end
+
+endmodule
 \end{lstlisting}
 
-Dung lượng của mảng nhớ là $256 \times 32\text{ bit} = 8.192\text{ bit}$. Do khối M10K vật lý trên chip Cyclone V có dung lượng danh định 10.240 bit, mảng nhớ này được Quartus ánh xạ hoàn hảo vào đúng 1 khối M10K duy nhất mà không tốn bất kỳ phần tử logic ALM nào cho việc lưu trữ.
-
-\subsubsection*{Máy trạng thái giải gói (Unpacker FSM) và giao thức bắt tay}
-Dữ liệu lưu trong RAM là các từ 32-bit gồm hai mẫu âm thanh gộp lại. Để cấp cho lõi FPGA xử lý từng mẫu 16-bit, một máy trạng thái hữu hạn (FSM) gồm 4 trạng thái được thiết kế để điều khiển việc giải gói (unpacking) theo chuẩn little-endian:
+\textbf{Giải thích mã nguồn Verilog \texttt{ch01\_avalon\_fifo.v} chi tiết từng dòng:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 24--50 (Khai báo tham số và cổng giao tiếp):} Nhận tham số \texttt{ADDR\_WIDTH = 8} ($2^8 = 256$ từ 32-bit = 512 mẫu âm thanh 16-bit). Ba nhóm cổng gồm:
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item Cổng nạp mẫu Avalon-MM Data Slave: \texttt{mm\_write} (lệnh ghi), \texttt{mm\_writedata[31:0]} (từ 32-bit chứa 2 mẫu), \texttt{mm\_waitrequest} (tín hiệu phản hồi chờ bus khi bộ đệm đầy).
+        \item Cổng giám sát Avalon-MM CSR Slave: \texttt{csr\_read}, địa chỉ thanh ghi \texttt{csr\_address[2:0]} và dữ liệu đọc \texttt{csr\_readdata[31:0]}.
+        \item Cổng cấp luồng Avalon-ST Source: dữ liệu mẫu 16-bit \texttt{st\_data[15:0]}, cờ \texttt{st\_valid} và cờ sẵn sàng hạ nguồn \texttt{st\_ready}.
+    \end{itemize}
+    \item \textbf{Dòng 58--59 (Khai báo mảng nhớ M10K):} Khai báo mảng nhớ \texttt{mem} gồm 256 từ 32-bit ($256 \times 32 = 8.192\text{ bit}$), được tổng hợp thành đúng 1 khối M10K phần cứng trên Cyclone V. Thanh ghi \texttt{mem\_rdata} chốt dữ liệu ngõ ra đồng bộ của RAM.
+    \item \textbf{Dòng 64--77 (Con trỏ và logic báo đầy/rỗng):} Con trỏ \texttt{wr\_ptr} và \texttt{rd\_ptr} có bề rộng 9 bit (bit 8 là bit vòng wrap-bit). Biểu thức \texttt{fifo\_full} kiểm tra bit 8 khác nhau và 8 bit thấp bằng nhau. Tín hiệu phản hồi chờ bus \texttt{mm\_waitrequest} được gán trực tiếp bằng \texttt{fifo\_full} (dòng 77), lập tức kéo dài chu kỳ bus AXI nếu vi xử lý cố tình ghi khi RAM không còn chỗ trống.
+    \item \textbf{Dòng 85--99 (Always block ghi RAM Avalon-MM):} Kích hoạt ở sườn dương \texttt{clk} hoặc sườn âm \texttt{rst\_n}. Khi \texttt{mm\_write = 1}: nếu bộ đệm chưa đầy (\texttt{!fifo\_full}), dữ liệu \texttt{mm\_writedata} được ghi vào địa chỉ \texttt{wr\_addr} và \texttt{wr\_ptr} tăng 1; nếu đã đầy, cờ tràn dính \texttt{ovf\_sticky} bật lên 1 để lưu vết lỗi mà không làm hỏng dữ liệu đang có trong RAM.
+    \item \textbf{Dòng 114--116 (Always block đọc RAM):} Cổng đọc đồng bộ: câu lệnh \texttt{mem\_rdata <= mem[rd\_addr]} chốt dữ liệu ngõ ra RAM sau đúng 1 chu kỳ xung nhịp.
+    \item \textbf{Dòng 118--159 (Always block máy trạng thái Unpacker FSM):} Máy trạng thái 4 bước đảm nhiệm việc đọc và tách từ 32-bit thành hai mẫu 16-bit:
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item \emph{ST\_IDLE (2'b00, dòng 125--131):} Nếu RAM có dữ liệu (\texttt{!fifo\_empty}), FSM tăng con trỏ đọc \texttt{rd\_ptr <= rd\_ptr + 1} và chuyển sang \texttt{ST\_FETCH}.
+        \item \emph{ST\_FETCH (2'b01, dòng 133--137):} Sau 1 chu kỳ đọc RAM, dữ liệu hợp lệ tại \texttt{mem\_rdata} được chốt vào \texttt{holding\_word} và FSM chuyển sang \texttt{ST\_UNPACK0}.
+        \item \emph{ST\_UNPACK0 (2'b10, dòng 139--144):} Xuất mẫu thứ nhất ở 16 bit thấp. Cờ \texttt{st\_valid} giương cao. FSM giữ nguyên trạng thái nếu bị nghẽn (\texttt{st\_ready = 0}) và chuyển sang \texttt{ST\_UNPACK1} ngay khi \texttt{st\_ready = 1}.
+        \item \emph{ST\_UNPACK1 (2'b11, dòng 146--156):} Xuất mẫu thứ hai ở 16 bit cao. Khi \texttt{st\_ready = 1}: nếu RAM vẫn còn từ mới (\texttt{!fifo\_empty}), FSM lập tức tăng \texttt{rd\_ptr} và chuyển thẳng sang \texttt{ST\_FETCH} (chế độ streaming liên tục không bóng bóng); nếu RAM đã hết, FSM trở về \texttt{ST\_IDLE}.
+    \end{itemize}
+    \item \textbf{Dòng 161--162 (Ngõ ra Avalon-ST):} Tín hiệu \texttt{st\_valid} bật cao khi FSM ở UNPACK0 hoặc UNPACK1. Ngõ ra \texttt{st\_data} lấy 16 bit thấp ở UNPACK0 và 16 bit cao ở UNPACK1 (thứ tự little-endian).
+    \item \textbf{Dòng 172--176 (Mức đầy theo số mẫu):} Biến \texttt{total\_samples\_used} (10 bit, $0 \dots 512$) cộng gộp mẫu trong RAM ($\text{words\_used} \times 2$) và mẫu trên thanh ghi đệm (2 ở FETCH/UNPACK0, 1 ở UNPACK1).
+    \item \textbf{Dòng 189--197 (Cổng đọc CSR):} Trả về \texttt{total\_samples\_used} tại offset 0, trạng thái cờ tại offset 1, cờ lỗi tràn \texttt{ovf\_sticky} tại offset 2, và số từ trong RAM \texttt{words\_used} tại offset 3.
+\end{itemize}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[->, >=stealth, auto, thick,
     state/.style={rectangle, rounded corners=6pt, draw=blue!70!black, fill=blue!8, minimum width=2.8cm, minimum height=1.3cm, align=center, font=\small\bfseries}]
   
-  % Dinh vi 4 trang thai theo luoi 2x2 thong thoang
   \node[state] (IDLE)  at (0, 3.2) {ST\_IDLE\\[2pt]\footnotesize\mdseries(2'b00)};
   \node[state] (FETCH) at (6.5, 3.2) {ST\_FETCH\\[2pt]\footnotesize\mdseries(2'b01)};
   \node[state] (UNP0)  at (6.5, 0)   {ST\_UNPACK0\\[2pt]\footnotesize\mdseries(2'b10)};
   \node[state] (UNP1)  at (0, 0)     {ST\_UNPACK1\\[2pt]\footnotesize\mdseries(2'b11)};
 
-  % Cac duong chuyen trang thai
   \path (IDLE)  edge [loop above] node[above=2pt] {\scriptsize \texttt{fifo\_empty}} (IDLE)
         (IDLE)  edge node[above=3pt] {\scriptsize \texttt{!fifo\_empty}} (FETCH)
         (FETCH) edge node[right=4pt] {\scriptsize 1 nhịp đọc RAM} (UNP0)
@@ -633,64 +781,123 @@ Dữ liệu lưu trong RAM là các từ 32-bit gồm hai mẫu âm thanh gộp 
         (UNP0)  edge node[below=3pt] {\scriptsize \texttt{st\_ready == 1}} (UNP1)
         (UNP1)  edge [loop left] node[left=2pt] {\scriptsize \texttt{!st\_ready}} (UNP1)
         (UNP1)  edge node[left=4pt] {\scriptsize \texttt{st\_ready \& empty}} (IDLE)
-        (UNP1)  edge [bend right=15] node[above, sloped, pos=0.55] {\scriptsize \texttt{st\_ready \& !empty}} (FETCH);
+        (UNP1)  edge [bend right=15] node[above, sloped, fill=white, inner sep=1.5pt, pos=0.5] {\scriptsize \texttt{st\_ready \& !empty}} (FETCH);
 \end{tikzpicture}
 \caption{Lược đồ chuyển trạng thái của khối FSM giải gói mẫu 32-to-16 bit.}
 \label{fig:ch01_unpacker_fsm}
 \end{figure}
 
-Nguyên lý vận hành chi tiết qua từng nhịp xung nhịp:
-\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{ST\_IDLE (2'b00):} Khi FIFO rỗng (\texttt{fifo\_empty = 1}), FSM dừng chờ tại đây. Tín hiệu \texttt{st\_valid} giữ ở mức 0. Ngay khi có dữ liệu ghi vào (\texttt{!fifo\_empty}), FSM kích hoạt đọc RAM, tăng \texttt{rd\_ptr} thêm 1 và chuyển sang \texttt{ST\_FETCH}.
-    \item \textbf{ST\_FETCH (2'b01):} Cổng đọc của RAM M10K là cổng đồng bộ có thanh ghi (registered read), tiêu tốn đúng 1 chu kỳ xung nhịp để dữ liệu xuất hiện tại ngõ ra \texttt{mem\_rdata}. Tại nhịp này, thanh ghi \texttt{holding\_word} chốt giá trị \texttt{mem\_rdata} và FSM chuyển thẳng sang \texttt{ST\_UNPACK0}.
-    \item \textbf{ST\_UNPACK0 (2'b10):} Phát mẫu âm thanh thứ nhất. Tín hiệu \texttt{st\_valid} được giương lên mức 1, dữ liệu ngõ ra là nửa từ thấp \texttt{st\_data = holding\_word[15:0]}. Nếu mạch phía sau báo bận (\texttt{st\_ready = 0}), FSM giữ nguyên trạng thái. Khi \texttt{st\_ready = 1}, giao dịch thành công và FSM chuyển sang \texttt{ST\_UNPACK1}.
-    \item \textbf{ST\_UNPACK1 (2'b11):} Phát mẫu âm thanh thứ hai. \texttt{st\_valid = 1}, dữ liệu ngõ ra là nửa từ cao \texttt{st\_data = holding\_word[31:16]}. Khi mạch phía sau chấp nhận mẫu (\texttt{st\_ready = 1}):
-    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
-        \item Nếu trong RAM vẫn còn từ mới (\texttt{!fifo\_empty}): FSM chuyển ngay sang \texttt{ST\_FETCH} và tăng \texttt{rd\_ptr}, duy trì luồng phát liên tục mà không có chu kỳ chết rỗng.
-        \item Nếu RAM đã hết từ (\texttt{fifo\_empty}): FSM quay về \texttt{ST\_IDLE} chờ lệnh ghi tiếp theo từ HPS.
-    \end{itemize}
-\end{enumerate}
+\subsubsection*{Mã nguồn toàn diện khối bộ đệm hoàn trả kết quả \texttt{ch01\_fifo\_out.v}}
+Khối bộ đệm chiều về \texttt{ch01\_fifo\_out.v} đón nhận kết quả ước lượng $F_0$ từ FPGA (Avalon-ST Sink 16-bit) và cho phép HPS đọc qua cầu Lightweight Bridge (Avalon-MM Read Slave). Listing \ref{lst:ch01_fifo_out} trình bày toàn bộ 104 dòng mã nguồn.
 
-\subsubsection*{Cơ chế điều khiển dòng và hành vi của tín hiệu waitrequest}
-Giao diện nạp dữ liệu Avalon-MM hỗ trợ cơ chế áp lực ngược phần cứng thông qua tín hiệu \texttt{mm\_waitrequest}:
-\begin{equation}
-\texttt{assign mm\_waitrequest = fifo\_full;}
-\end{equation}
-Khi bộ nhớ RAM đã nạp đủ 256 từ (tương ứng 512 mẫu âm thanh), cờ \texttt{fifo\_full} lập tức bật lên 1. Nếu cầu nối Lightweight HPS cố gắng thực hiện thêm một lệnh ghi khi \texttt{mm\_waitrequest = 1}, phần cứng cầu nối sẽ giữ chu kỳ bus kéo dài (chèn các chu kỳ chờ wait-states), buộc vi xử lý ARM phải dừng lại cho đến khi FIFO có chỗ trống.
+\begin{lstlisting}[language=Verilog, numbers=left, firstnumber=16, basicstyle=\scriptsize\ttfamily, frame=single, caption={Toàn bộ mã nguồn khối bộ đệm hoàn trả F0 \texttt{rtl/v3/ch01\_fifo\_out.v}.}, label={lst:ch01_fifo_out}]
+module ch01_fifo_out #(
+    parameter integer ADDR_WIDTH = 9  // 2^9 = 512 words of 16-bit
+)(
+    input  wire        clk,
+    input  wire        rst_n,
 
-Để phòng ngừa trường hợp phần mềm hoặc kịch bản mô phỏng ghi ép dữ liệu vi phạm giao thức, khối phần cứng trang bị thêm cờ tràn dính (\texttt{ovf\_sticky}):
-\begin{lstlisting}[language=Verilog, basicstyle=\small\ttfamily, frame=single]
-if (mm_write) begin
-    if (!fifo_full) begin
-        mem[wr_addr] <= mm_writedata;
-        wr_ptr       <= wr_ptr + 1'b1;
-    end else begin
-        ovf_sticky <= 1'b1; // Bat co bao loi tran
+    // Avalon-ST Sink (from FPGA core)
+    input  wire [15:0] st_data,
+    input  wire        st_valid,
+    output wire        st_ready,
+
+    // Avalon-MM Data Read Slave (fifo_out)
+    input  wire        mm_read,
+    output wire [31:0] mm_readdata,
+    output wire        mm_waitrequest,
+
+    // Avalon-MM CSR Read Slave (fifo_out_csr)
+    input  wire        csr_read,
+    input  wire [2:0]  csr_address,
+    output reg  [31:0] csr_readdata
+);
+
+    localparam integer DEPTH = 1 << ADDR_WIDTH; // 512 words
+
+    // Inferred dual-port RAM
+    reg [15:0] mem [0:DEPTH-1];
+    reg [15:0] rdata_reg;
+
+    reg [ADDR_WIDTH:0] wr_ptr;
+    reg [ADDR_WIDTH:0] rd_ptr;
+
+    wire [ADDR_WIDTH-1:0] wr_addr = wr_ptr[ADDR_WIDTH-1:0];
+    wire [ADDR_WIDTH-1:0] rd_addr = rd_ptr[ADDR_WIDTH-1:0];
+
+    wire fifo_empty = (wr_ptr == rd_ptr);
+    wire fifo_full  = (wr_ptr[ADDR_WIDTH] != rd_ptr[ADDR_WIDTH]) &&
+                      (wr_ptr[ADDR_WIDTH-1:0] == rd_ptr[ADDR_WIDTH-1:0]);
+
+    wire [ADDR_WIDTH:0] words_used = wr_ptr - rd_ptr;
+
+    // st_ready high when FIFO has space
+    assign st_ready = !fifo_full;
+
+    // mm_waitrequest high when reading from empty FIFO
+    assign mm_waitrequest = mm_read && fifo_empty;
+
+    // Push into FIFO
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            wr_ptr <= {(ADDR_WIDTH+1){1'b0}};
+        end else begin
+            if (st_valid && st_ready) begin
+                mem[wr_addr] <= st_data;
+                wr_ptr       <= wr_ptr + 1'b1;
+            end
+        end
     end
-end
-\end{lstlisting}
-Cờ này được giữ ở mức 1 cho đến khi được đọc qua thanh ghi trạng thái \texttt{fifo\_in\_csr}, cho phép người lập trình phát hiện lỗi mất mát dữ liệu một cách tuyệt đối.
 
-\subsubsection*{Phân tích độ trễ chu kỳ và lý do khớp hoàn toàn với IP}
-Hãy phân tích độ trễ (latency) từ thời điểm CPU ARM ghi dữ liệu vào bus cho tới khi mẫu âm thanh đầu tiên xuất hiện hợp lệ trên ngõ ra Avalon-ST:
+    // Pop from FIFO on mm_read
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            rd_ptr    <= {(ADDR_WIDTH+1){1'b0}};
+            rdata_reg <= 16'd0;
+        end else begin
+            if (mm_read && !fifo_empty) begin
+                rdata_reg <= mem[rd_addr];
+                rd_ptr    <= rd_ptr + 1'b1;
+            end
+        end
+    end
+
+    assign mm_readdata = {16'd0, rdata_reg};
+
+    // CSR interface
+    always @(*) begin
+        case (csr_address)
+            3'd0: csr_readdata = {22'd0, words_used};
+            3'd1: csr_readdata = {30'd0, fifo_full, fifo_empty};
+            default: csr_readdata = 32'd0;
+        endcase
+    end
+
+endmodule
+\end{lstlisting}
+
+\textbf{Giải thích mã nguồn Verilog \texttt{ch01\_fifo\_out.v} chi tiết từng dòng:}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Chu kỳ 0:} Lệnh ghi Avalon-MM kích hoạt (\texttt{mm\_write = 1}). Dữ liệu 32-bit được nạp vào RAM.
-    \item \textbf{Chu kỳ 1:} Con trỏ \texttt{wr\_ptr} cập nhật giá trị mới. FSM tại \texttt{ST\_IDLE} phát hiện \texttt{!fifo\_empty}, chuyển sang \texttt{ST\_FETCH} và gửi địa chỉ đọc tới RAM.
-    \item \textbf{Chu kỳ 2:} RAM hoàn tất đọc đồng bộ, dữ liệu chốt vào thanh ghi \texttt{holding\_word}. FSM sang trạng thái \texttt{ST\_UNPACK0}, giương cờ \texttt{st\_valid = 1} và đưa mẫu thấp \texttt{holding\_word[15:0]} ra bus.
+    \item \textbf{Dòng 16--42 (Cổng giao tiếp):} Tham số \texttt{ADDR\_WIDTH = 9} ấn định dung lượng 512 từ 16-bit ($512 \times 16 = 8.192\text{ bit}$ chiếm đúng 1 khối M10K). Cổng nạp nhận luồng Avalon-ST Sink 16-bit từ bộ lọc trung vị median-3; cổng đọc phục vụ Avalon-MM Read Slave cho HPS; cổng CSR cung cấp thông tin giám sát số lượng từ có sẵn.
+    \item \textbf{Dòng 47--60 (Mảng nhớ và con trỏ 10-bit):} Con trỏ 10-bit \texttt{wr\_ptr, rd\_ptr} có bit 9 là bit vòng. Các tín hiệu cờ \texttt{fifo\_empty}, \texttt{fifo\_full} và số từ đang lưu \texttt{words\_used} được suy ra trực tiếp.
+    \item \textbf{Dòng 63--66 (Cơ chế phản áp và bảo vệ bus):} 
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item \texttt{assign st\_ready = !fifo\_full;}: Tín hiệu sẵn sàng của giao diện Avalon-ST hạ xuống 0 khi bộ đệm chứa đủ 512 kết quả F0, ngăn chặn lõi DSP ghi đè kết quả chưa kịp đọc.
+        \item \texttt{assign mm\_waitrequest = mm\_read \&\& fifo\_empty;}: Khi HPS phát lệnh đọc \texttt{mm\_read} mà bộ đệm đang rỗng, tín hiệu \texttt{mm\_waitrequest} lập tức tích cực, yêu cầu cầu nối chèn chu kỳ chờ cho đến khi có kết quả mới.
+    \end{itemize}
+    \item \textbf{Dòng 69--78 (Always block nạp mẫu Avalon-ST):} Tại sườn dương \texttt{clk}, nếu có dữ liệu hợp lệ và bộ đệm chưa đầy (\texttt{st\_valid \&\& st\_ready}), từ F0 được ghi vào \texttt{mem[wr\_addr]} và \texttt{wr\_ptr} tăng 1.
+    \item \textbf{Dòng 81--91 (Always block đọc Avalon-MM):} Khi lệnh đọc hợp lệ (\texttt{mm\_read \&\& !fifo\_empty}), dữ liệu được chốt vào \texttt{rdata\_reg} và con trỏ đọc \texttt{rd\_ptr} tăng 1.
+    \item \textbf{Dòng 93 (Định dạng đọc):} Ghép 16 bit 0 vào phần cao: \texttt{\{16'h0, rdata\_reg\}} để tạo thành từ 32-bit chuẩn.
+    \item \textbf{Dòng 96--102 (Cổng đọc CSR):} Trả về số lượng kết quả F0 hiện có \texttt{words\_used} tại offset 0 và cờ đầy/rỗng tại offset 1.
 \end{itemize}
-Tổng độ trễ từ lúc ghi đến khi có mẫu hợp lệ ở đầu ra là \textbf{đúng 2 chu kỳ xung nhịp} (tương đương 40 ns ở tần số 50 MHz). Con số 2 chu kỳ này khớp hoàn toàn với độ trễ danh định của khối IP \texttt{altera\_avalon\_fifo} khi hoạt động ở chế độ Single Clock Mode có thanh ghi ngõ ra.
 
 \subsubsection*{Nếu thay đổi lựa chọn thiết kế thì sao?}
-Trong quá trình thiết kế, hai phương án thay thế thường được đặt ra và lý do chúng bị loại bỏ:
 \begin{itemize}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Nếu dùng bộ giải gói tổ hợp (Combinational Unpacker) thay vì thanh ghi đệm:} Một kỹ sư có thể nảy ra ý định bỏ thanh ghi \texttt{holding\_word} và dùng trực tiếp mạch ghép kênh (multiplexer) từ ngõ ra RAM \texttt{mem\_rdata} nối thẳng tới ngõ ra \texttt{st\_data}. 
-    
-    Hệ quả: Đường truyền tín hiệu sẽ kéo dài liên tục từ ngõ ra dữ liệu của khối RAM M10K, đi qua mạch MUX giải gói, xuyên qua cổng logic kiểm tra cờ \texttt{ready} và đâm thẳng vào mạch số học của khối tính cửa sổ Hanning ở tầng sau. Đường trễ tổ hợp dài này sẽ làm suy giảm nghiêm trọng tần số hoạt động cực đại $F_{\max}$ \textbf{(phải đo)}. Việc chốt thanh ghi ở trạng thái \texttt{ST\_FETCH} cách ly hoàn toàn miền đọc RAM với miền xử lý ST, đảm bảo $F_{\max}$ luôn đạt mức cao nhất của công nghệ bán dẫn 28 nm.
-    
-    \item \textbf{Nếu tăng độ sâu lên 512 từ (1024 mẫu âm thanh):} Như đã phân tích, dung lượng này đòi hỏi 2 khối M10K vật lý. Trong khi đó, bộ đệm 512 mẫu đã chứa tới 3,2 bước nhảy khung (32 ms). Vì lõi FPGA xử lý mỗi khung âm thanh với $\text{RTF} \approx 0{,}20$ (nhanh gấp 5 lần thời gian thực), tốc độ tiêu thụ mẫu của FPGA luôn nhanh hơn tốc độ cấp mẫu của tệp âm thanh. Việc lãng phí thêm một khối M10K không mang lại bất kỳ lợi ích nào về mặt thông lượng hay khả năng chống nghẽn hệ thống.
+    \item \textbf{Nếu dùng bộ giải gói tổ hợp (Combinational Unpacker) thay vì thanh ghi đệm:} Nếu bỏ thanh ghi \texttt{holding\_word} và dùng MUX nối từ ngõ ra RAM \texttt{mem\_rdata} thẳng tới ngõ ra \texttt{st\_data}, đường trễ tổ hợp dài qua MUX và cổng kiểm tra \texttt{ready} sẽ đâm thẳng vào khối cửa sổ Hanning, làm suy giảm tần số hoạt động cực đại $F_{\max}$ \textbf{(phải đo)}. Việc chốt thanh ghi ở trạng thái \texttt{ST\_FETCH} cách ly hoàn toàn miền đọc RAM với miền xử lý ST.
+    \item \textbf{Nếu tăng độ sâu lên 512 từ 32-bit (1024 mẫu âm thanh):} Dung lượng $512 \times 32 = 16.384\text{ bit}$ vượt quá dung lượng 1 khối M10K ($10.240\text{ bit}$), bắt buộc Quartus phải tốn tới 2 khối M10K vật lý. Trong khi đó, bộ đệm 256 từ (512 mẫu) đã chứa tới 3,2 bước nhảy khung (32 ms), hoàn toàn đủ để chống giật tiến trình Linux.
 \end{itemize}
 
-\textit{Tóm lại: Khối FIFO Verilog tự viết dùng con trỏ 9-bit có bit vòng để nhận biết trạng thái đầy/rỗng, suy diễn đúng 1 khối M10K và dùng máy trạng thái 4 bước chốt thanh ghi để tách mẫu 32-to-16 bit; độ trễ 2 chu kỳ và hành vi waitrequest khớp hoàn hảo với IP Intel nhưng cho phép kiểm soát toàn diện mã nguồn và mô phỏng chu kỳ.}
+\textit{Tóm lại: Khối FIFO Verilog tự viết dùng con trỏ 9-bit có bit vòng để nhận biết trạng thái đầy/rỗng, suy diễn đúng 1 khối M10K và dùng máy trạng thái 4 bước chốt thanh ghi để tách mẫu 32-to-16 bit; khối FIFO chiều về chứa 512 kết quả F0 trong đúng 1 khối M10K; cả hai đều có cơ chế waitrequest và phản áp bảo đảm toàn vẹn dữ liệu tuyệt đối.}
 
 \subsection*{1.6. Bản đồ thanh ghi và giao tiếp điều khiển lõi xử lý}
 \addcontentsline{toc}{subsection}{1.6. Bản đồ thanh ghi và giao tiếp điều khiển lõi xử lý}
@@ -702,12 +909,12 @@ Khi xây dựng hệ thống nhúng SoC với công cụ Platform Designer của
 \end{equation}
 với cửa sổ ánh xạ có độ rộng 2 MB ($\mathtt{0x0020\_0000}$). Mạng chuyển mạch liên kết (Avalon-MM Interconnect Fabric) tự động định tuyến các giao dịch đọc/ghi của CPU ARM tới từng thiết bị ngoại vi dựa trên dải địa chỉ offset được phân bổ.
 
-Một sai lầm phổ biến mà tài liệu sơ khai của Argon từng mắc phải là: \emph{Cố gắng gộp tất cả dữ liệu âm thanh, cờ điều khiển và trạng thái vào một dải thanh ghi nguyên khối liên tục từ \texttt{0x00} đến \texttt{0x14}}. 
+Một sai lầm trong thiết kế sơ khai của bản v1 là: \emph{Cố gắng gộp tất cả dữ liệu âm thanh, cờ điều khiển và trạng thái vào một dải thanh ghi nguyên khối liên tục từ \texttt{0x00} đến \texttt{0x14}}.
 
-Cách làm này vi phạm nghiêm trọng tính module hóa của kiến trúc phần cứng:
+Cách làm này phá vỡ tính module hóa của kiến trúc phần cứng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Khối IP On-Chip FIFO chuẩn của Intel (\texttt{altera\_avalon\_fifo}) sinh ra hai cổng Avalon-MM độc lập: cổng nạp dữ liệu \texttt{in} và cổng thanh ghi điều khiển/trạng thái \texttt{in\_csr}. Mỗi cổng là một Slave riêng biệt với giao thức và tập thanh ghi cố định.
-    \item Nếu cố nhồi nhét các thanh ghi điều khiển nghiệp vụ (như tham số Praat $GP$, số khung, lệnh khởi động) vào chung khối FIFO, ta sẽ phá vỡ cấu trúc IP chuẩn, không thể sử dụng lại IP thư viện của hãng và khiến việc mô phỏng cô lập từng khối trở nên bất khả thi.
+    \item Khối IP On-Chip FIFO chuẩn của Intel (\texttt{altera\_avalon\_fifo}) sinh ra hai cổng Avalon-MM độc lập: cổng nạp dữ liệu \texttt{in} và cổng thanh ghi điều khiển/trạng thái \texttt{in\_csr}. Mỗi cổng là một Slave riêng biệt với giao thức cố định.
+    \item Nếu gộp các thanh ghi điều khiển nghiệp vụ (như tham số Praat $GP$, số khung, lệnh khởi động) vào chung khối FIFO, ta phá vỡ cấu trúc IP chuẩn và khiến việc mô phỏng cô lập từng khối trở nên bất khả thi.
 \end{itemize}
 
 Do đó, thiết kế chuẩn mực của dự án phân định rõ ràng 4 thiết bị Slave riêng biệt trong Platform Designer, bố trí tại các vùng địa chỉ cố định trên cầu Lightweight Bridge như trình bày trong Bảng \ref{tab:ch01_reg_map}.
@@ -725,7 +932,7 @@ Do đó, thiết kế chuẩn mực của dự án phân định rõ ràng 4 thi
 \texttt{fifo\_in}      & \texttt{0xFF20\_0000 (+0x00)} & W   & 32 bit & Cổng nạp 2 mẫu âm thanh PCM 16-bit \\
 \texttt{fifo\_in\_csr}  & \texttt{0xFF20\_0020 (+0x20)} & R/W & 32 bit & Trạng thái bộ đệm nạp (\texttt{fill\_level}, lỗi tràn) \\
 \texttt{ctrl}          & \texttt{0xFF20\_0040 (+0x40)} & R/W & 32 bit & Thanh ghi điều khiển và đo đạc lõi F0 \\
-\texttt{fifo\_out}     & \texttt{0xFF20\_0080 (+0x80)} & R   & 32/16 bit & Cổng đọc kết quả F0 định dạng Q12.4 \\
+\texttt{fifo\_out}     & \texttt{0xFF20\_0080 (+0x80)} & R   & 32/16 bit & Cổng đọc kết quả F0 định dạng uint16 Q12.4 \\
 \texttt{fifo\_out\_csr} & \texttt{0xFF20\_00A0 (+0xA0)} & R/W & 32 bit & Trạng thái bộ đệm trả kết quả \\
 \bottomrule
 \end{tabular}
@@ -760,51 +967,41 @@ Khối \texttt{ctrl} nằm tại offset \texttt{0x40} (địa chỉ vật lý \t
 Mỗi thanh ghi đều gắn liền trực tiếp với một khâu giải thuật trong chuỗi tính toán Praat:
 
 \paragraph{1. Thanh ghi kích hoạt (\texttt{REG\_CTRL\_START}, Offset 0x00).}
-Sau khi nạp toàn bộ cấu hình vào các thanh ghi và nạp trước một lượng mẫu âm thanh vào \texttt{fifo\_in}, HPS ghi giá trị \texttt{0x0000\_0001} vào thanh ghi này. Lõi F0 sẽ tạo một xung kích hoạt nội bộ kéo dài 1 chu kỳ, chuyển FSM đỉnh từ trạng thái nghỉ (IDLE) sang trạng thái tính toán cửa sổ và tự tương quan.
+Sau khi nạp toàn bộ cấu hình vào các thanh ghi và nạp trước một lượng mẫu âm thanh vào \texttt{fifo\_in}, HPS ghi giá trị \texttt{0x0000\_0001} vào thanh ghi này để bắt đầu xử lý.
 
 \paragraph{2. Thanh ghi tổng số khung (\texttt{REG\_CTRL\_NFRAMES}, Offset 0x04).}
-Chứa giá trị nguyên $N_{\text{frames}}$ do thuật toán \texttt{Sampled\_shortTermAnalysis} tính ra từ kích thước tệp âm thanh (ví dụ: 120 khung cho tệp 1,234 s hoặc 277 khung cho tệp 2,8 s). Bộ lặp FSM trên FPGA dựa vào giá trị này để đếm chính xác số khung cần xuất kết quả trước khi giương cờ kết thúc.
+Chứa giá trị nguyên $N_{\text{frames}}$ do thuật toán \texttt{Sampled\_shortTermAnalysis} tính ra từ kích thước tệp âm thanh (ví dụ: 120 khung cho tệp 1,234 s hoặc 277 khung cho tệp 2,8 s).
 
 \paragraph{3. Thanh ghi mẫu bắt đầu cửa sổ đầu (\texttt{REG\_CTRL\_FIRST\_WIN0}, Offset 0x08).}
-Đây là chỉ số mẫu bắt đầu của khung phân tích đầu tiên ($\text{win0}$ tính từ 0), thu được từ hàm \texttt{Sampled\_xToLowIndex} ở Mục 1.2 (ví dụ: mẫu thứ 33 đối với tệp 1,234 s, hoặc mẫu thứ 1 đối với tệp 2,8 s). Khối đệm trượt (sliding window) trên FPGA sử dụng giá trị này để loại bỏ đúng số lượng mẫu đệm ban đầu trước khi bắt đầu áp cửa sổ Hanning cho khung thứ nhất.
+Chỉ số mẫu bắt đầu của khung phân tích đầu tiên ($\text{win0}$ tính từ 0), thu được từ hàm \texttt{Sampled\_xToLowIndex} ở Mục 1.2 (ví dụ: mẫu 33 đối với tệp 1,234 s, hoặc mẫu 1 đối với tệp 2,8 s).
 
 \paragraph{4. Thanh ghi đỉnh biên độ toàn cục (\texttt{REG\_CTRL\_GLOBAL\_PEAK}, Offset 0x0C).}
-Lưu trữ giá trị nguyên 16-bit $GP = \text{round}(\max |n \cdot x - \sum x| / n)$ do HPS tính toán trong lượt quét RIFF WAV. Giá trị này được đưa thẳng vào khối quyết định V/UV ở Chương 10 để tính toán ngưỡng biên độ ứng viên vô thanh:
+Lưu trữ giá trị nguyên 16-bit $GP = \text{round}(\max |n \cdot x - \sum x| / n)$ do HPS tính toán trong lượt quét RIFF WAV. Giá trị này được đưa thẳng vào khối quyết định V/UV ở Chương 10 theo quy tắc số nguyên chuẩn của đề cương:
 \begin{equation}
-R[0] \cdot GP \cdot \text{silence\_threshold}
+\text{Khung có thanh (Voiced)} \iff (100 \cdot \text{Sc}[\text{best}] - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0, 6 \cdot GP - 145 \cdot LP)
 \end{equation}
-Khác với phương án cũ của golden v1 lưu năng lượng $GP^2$ (đòi hỏi phép nhân 32-bit và căn bậc hai), việc lưu trực tiếp biên độ $GP$ 16-bit giúp FPGA nhân chéo số nguyên cực kỳ gọn nhẹ mà hoàn toàn trung thực với công thức gốc của Boersma.
+Đại lượng $GP$ tham gia vào biểu thức dưới dạng biên độ (bậc 1) để cân bằng thứ nguyên với đỉnh biên độ cục bộ $LP$ trong tỉ số cường độ $I = LP / GP$. Việc nhân chéo số nguyên với $GP$ triệt tiêu hoàn toàn phép chia số thực dấu phẩy động trên FPGA.
 
 \paragraph{5. Thanh ghi cấu hình (\texttt{REG\_CTRL\_CONFIG}, Offset 0x10).}
 Chứa các cờ điều khiển chế độ vận hành linh hoạt của phần cứng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Bit 0 (\texttt{BYPASS\_FIR}):} Khi ghi 1, dòng mẫu âm thanh từ FIFO sẽ đi vòng qua khối lọc làm mềm mép Nyquist FIR để vào thẳng bộ nhớ khung. Thiết lập này dùng để đối chiếu bit-exact với Praat 7.0.03 (phiên bản không bật FIR). Khi ghi 0, bộ lọc FIR 65-tap được kích hoạt.
+    \item \textbf{Bit 0 (\texttt{BYPASS\_FIR}):} Khi ghi 1, dòng mẫu âm thanh từ FIFO sẽ đi vòng qua khối lọc làm mềm mép Nyquist FIR để vào thẳng bộ nhớ khung. Thiết lập này dùng để đối chiếu bit-exact với Praat 7.0.03 (mặc định bypass). Khi ghi 0, bộ lọc FIR 31-tap được kích hoạt; khi bật, lưới khung phải dịch đi đúng 15 mẫu tương ứng với trễ nhóm của bộ lọc.
     \item \textbf{Bit 1 (\texttt{HOP\_REGULAR}):} Cho phép chọn giữa bước nhảy đều cố định 160 mẫu (\texttt{HOP\_REGULAR = 1}) hoặc bám sát danh sách bước nhảy double của Praat (\texttt{HOP\_REGULAR = 0}) đối với các tệp có kích thước số mẫu lẻ.
 \end{itemize}
 
 \paragraph{6. Thanh ghi trạng thái (\texttt{REG\_CTRL\_STATUS}, Offset 0x14).}
-Phần mềm trên HPS đọc định kỳ thanh ghi này để kiểm soát luồng:
-\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Bit 0 (\texttt{BUSY}):} Bằng 1 trong suốt thời gian lõi FPGA đang xử lý tính toán.
-    \item \textbf{Bit 1 (\texttt{DONE}):} Tự động nhảy lên 1 khi khung cuối cùng hoàn tất và kết quả F0 đã được đẩy trọn vẹn vào \texttt{fifo\_out}.
-    \item \textbf{Bit 2 (\texttt{FIFO\_IN\_OVF}) và Bit 3 (\texttt{FIFO\_OUT\_OVF}):} Các cờ báo lỗi dính nếu một trong hai bộ đệm bị ghi tràn.
-\end{itemize}
+Phần mềm trên HPS đọc định kỳ thanh ghi này để kiểm soát luồng: Bit 0 (\texttt{BUSY}), Bit 1 (\texttt{DONE}), Bit 2 (\texttt{FIFO\_IN\_OVF}) và Bit 3 (\texttt{FIFO\_OUT\_OVF}).
 
 \paragraph{7. Thanh ghi bộ đếm chu kỳ (\texttt{TOTAL\_CYCLES} và \texttt{FRAME\_CYCLES}, Offset 0x18--0x1C).}
-Phần cứng nhúng một bộ đếm số nguyên 32-bit hoạt động ở tần số xung nhịp đồng bộ 50 MHz. Bộ đếm tự động kích hoạt khi có xung \texttt{START} và dừng lại ngay khi xuất hiện cờ \texttt{DONE}:
-\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \texttt{TOTAL\_CYCLES} trả về tổng thời gian thực thi phần cứng của toàn bộ tệp âm thanh. Chia số chu kỳ này cho tần số 50 MHz cho ra thời gian tính toán thực tế $T_{\text{FPGA}}$ \textbf{(phải đo)}.
-    \item \texttt{FRAME\_CYCLES} ghi lại số chu kỳ cần thiết để hoàn thành một khung đơn lẻ (lý thuyết là 98.543 chu kỳ xung nhịp cho khâu MAC và tìm đỉnh).
-\end{itemize}
+Bộ đếm số nguyên 32-bit hoạt động ở tần số xung nhịp đồng bộ 50 MHz ghi nhận tổng thời gian thực thi phần cứng $T_{\text{FPGA}}$ \textbf{(phải đo)} và chu kỳ xử lý từng khung đơn lẻ (lý thuyết là 98.543 chu kỳ xung nhịp cho khâu MAC và tìm đỉnh).
 
-\textit{Tóm lại: Bản đồ thanh ghi phân lập rõ 4 Slave trong Platform Designer loại bỏ lỗi gộp khối của tài liệu cũ; các thanh ghi điều khiển cung cấp đầy đủ tham số toán học (GP biên độ 16-bit, mẫu win0, tổng số khung) và bộ đếm chu kỳ 50 MHz độc lập, bảo đảm giám sát hệ thống chính xác từng nhịp xung clock.}
+\textit{Tóm lại: Bản đồ thanh ghi phân lập rõ 4 Slave trong Platform Designer loại bỏ lỗi gộp khối của bản v1; các thanh ghi điều khiển cung cấp đầy đủ tham số toán học (GP biên độ 16-bit, mẫu win0, tổng số khung) và bộ đếm chu kỳ 50 MHz độc lập, bảo đảm giám sát hệ thống chính xác từng nhịp xung clock.}
 
 \subsection*{1.7. Phần mềm điều khiển trên HPS và kiểm chứng toàn diện}
 \addcontentsline{toc}{subsection}{1.7. Phần mềm điều khiển trên HPS và kiểm chứng toàn diện}
 
 \subsubsection*{Trình điều khiển phần mềm trên HPS (C Driver)}
-Toàn bộ mã nguồn điều khiển phần cứng trên vi xử lý ARM Cortex-A9 được đóng gói trong tệp \texttt{ch01\_driver.c} (trong thư mục \texttt{sw\_v3/}). Trình điều khiển vận hành hoàn toàn ở không gian người dùng (User Space) của hệ điều hành Linux nhúng thông qua cơ chế ánh xạ bộ nhớ \texttt{mmap} trên tệp thiết bị \texttt{/dev/mem}:
-
+Mã nguồn điều khiển phần cứng trên CPU ARM Cortex-A9 được hiện thực tại \texttt{sw\_v3/ch01\_driver.c}. Trình điều khiển chạy ở không gian người dùng Linux qua cơ chế ánh xạ bộ nhớ \texttt{mmap} trên tệp \texttt{/dev/mem}:
 \begin{lstlisting}[language=C, basicstyle=\small\ttfamily, frame=single]
 int fd = open("/dev/mem", O_RDWR | O_SYNC);
 void *virtual_base = mmap(NULL, HW_REGS_SPAN, 
@@ -812,49 +1009,250 @@ void *virtual_base = mmap(NULL, HW_REGS_SPAN,
                           MAP_SHARED, fd, ALT_LWFPGASLVS_OFST);
 \end{lstlisting}
 
-Quy trình điều khiển toàn tuyến được tổ chức theo 5 bước tuần tự chặt chẽ:
+Quy trình điều khiển toàn tuyến được tổ chức theo 5 bước tuần tự:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Phân tích tệp âm thanh:} Gọi mô-đun \texttt{ch01\_wav.c} để trích xuất mảng mẫu PCM 16-bit, kiểm định chuẩn 16 kHz mono và tính toán đỉnh biên độ toàn cục $GP = \text{round}(\max |n \cdot x - \sum x| / n)$.
-    \item \textbf{Xác định lưới phân tích khung:} Gọi mô-đun \texttt{ch01\_frames.c} theo công thức IEEE double của Praat để xác định tổng số khung $N_{\text{frames}}$, thời điểm bắt đầu $t_1$ và chỉ số mẫu bắt đầu $\text{win0}$.
-    \item \textbf{Cấu hình thanh ghi điều khiển:} Ghi các tham số cấu hình vào khối \texttt{ctrl} tại offset \texttt{0x40}:
-    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
-        \item Ghi $N_{\text{frames}}$ vào \texttt{REG\_CTRL\_NFRAMES} (\texttt{+0x04}).
-        \item Ghi $\text{win0}$ vào \texttt{REG\_CTRL\_FIRST\_WIN0} (\texttt{+0x08}).
-        \item Ghi $GP$ vào \texttt{REG\_CTRL\_GLOBAL\_PEAK} (\texttt{+0x0C}).
-        \item Ghi cờ bypass vào \texttt{REG\_CTRL\_CONFIG} (\texttt{+0x10}).
-    \end{itemize}
-    \item \textbf{Nạp dữ liệu dòng mẫu có thăm dò mức đầy (Streaming with Polling):} Vi xử lý ARM đóng gói hai mẫu 16-bit liên tiếp thành một từ 32-bit theo chuẩn little-endian:
+    \item \textbf{Phân tích tệp âm thanh:} Gọi mô-đun \texttt{ch01\_wav.c} để trích xuất mẫu PCM 16-bit, kiểm tra 16 kHz mono và tính đỉnh biên độ toàn cục $GP = \text{round}(\max |n \cdot x - \sum x| / n)$.
+    \item \textbf{Xác định lưới phân tích khung:} Gọi mô-đun \texttt{ch01\_frames.c} theo công thức double của Praat để xác định $N_{\text{frames}}$, $t_1$ và $\text{win0}$.
+    \item \textbf{Cấu hình thanh ghi điều khiển:} Ghi các tham số cấu hình vào khối \texttt{ctrl} tại offset \texttt{0x40}.
+    \item \textbf{Nạp dữ liệu dòng mẫu có thăm dò mức đầy:} Đóng gói hai mẫu 16-bit thành từ 32-bit theo chuẩn little-endian:
     \begin{equation}
-    W_k = (\text{sample}_{2k+1} \ll 16) \;\mid\; (\text{sample}_{2k} \;\mathbin{\&}\; \mathtt{0xFFFF})
+    W_k = ((\text{sample}_{2k+1} \ \& \ \mathtt{0xFFFF}) \ll 16) \;\mid\; (\text{sample}_{2k} \;\mathbin{\&}\; \mathtt{0xFFFF})
     \end{equation}
-    Trước khi ghi mỗi đợt từ vào \texttt{fifo\_in}, phần mềm đọc thanh ghi mức đầy \texttt{fill\_level} tại \texttt{fifo\_in\_csr}. Nếu số mẫu hiện có vượt quá 480 mẫu (ngưỡng \texttt{almost\_full}), CPU tạm thời dừng phát và nhường quyền xử lý, ngăn chặn tuyệt đối hiện tượng ghi đè hoặc nghẽn bus.
-    \item \textbf{Kích hoạt và thu nhận kết quả:} Ghi xung kích hoạt vào \texttt{REG\_CTRL\_START} (\texttt{+0x00}), sau đó thăm dò cờ \texttt{STATUS\_DONE} trên thanh ghi \texttt{REG\_CTRL\_STATUS} (\texttt{+0x14}). Khi hoàn tất, CPU đọc bộ đếm chu kỳ hiệu năng \texttt{TOTAL\_CYCLES} (\texttt{+0x18}) và rút toàn bộ $N_{\text{frames}}$ từ kết quả F0 định dạng fixed-point Q12.4 từ \texttt{fifo\_out} (\texttt{+0x80}), xuất ra tệp nhị phân \texttt{pitch\_f0.bin} và tệp báo cáo văn bản \texttt{pitch\_meta.txt}.
+    Đọc thanh ghi mức đầy \texttt{fill\_level} tại \texttt{fifo\_in\_csr}; nếu mức đầy vượt 480 mẫu (\texttt{almost\_full}), CPU tạm ngừng phát để tránh tràn bộ đệm.
+    \item \textbf{Kích hoạt và thu nhận kết quả:} Ghi xung kích hoạt vào \texttt{REG\_CTRL\_START}, thăm dò cờ \texttt{STATUS\_DONE}, sau đó đọc kết quả F0 định dạng uint16 LE Q12.4 từ \texttt{fifo\_out} để lưu vào \texttt{pitch\_f0.bin}.
 \end{enumerate}
 
 \paragraph{Chế độ giả lập không bo mạch (-DSIM).}
-Nhằm phục vụ kiểm thử tự động trong môi trường phát triển (CI/CD) khi chưa gắn bo mạch DE10-Standard vật lý, tệp \texttt{ch01\_driver.c} hỗ trợ cờ biên dịch \texttt{-DSIM}. Khi kích hoạt cờ này, các hàm truy xuất bộ nhớ \texttt{mmap} được thay thế bằng cấu trúc bộ nhớ giả lập \texttt{mock\_hardware\_t}. 
-
-Kịch bản kiểm thử \texttt{ch01\_driver\_test.py} (thư mục \texttt{verify\_v3/}) chạy kiểm tra trên tệp âm thanh thực \texttt{synth\_glide\_vuv\_16k.wav} (thư mục \texttt{golden\_v2/}, độ dài 2,8 giây, 277 khung), ghi nhận kết quả xuất ra tệp nhị phân \texttt{pitch\_f0.bin} có kích thước chính xác 554 byte ($277 \times 2\text{ byte}$) mà không gặp bất kỳ lỗi logic nào.
+Tệp \texttt{ch01\_driver.c} hỗ trợ cờ biên dịch \texttt{-DSIM} thay thế các lệnh \texttt{mmap} bằng cấu trúc bộ nhớ giả lập \texttt{mock\_hardware\_t}. Kịch bản \texttt{ch01\_driver\_test.py} chạy kiểm tra trên tệp chuẩn \texttt{synth\_glide\_vuv\_16k.wav} (2,8 s, 277 khung), ghi nhận kết quả xuất ra tệp \texttt{pitch\_f0.bin} kích thước chính xác 554 byte ($277 \times 2\text{ byte}$) với 0 lỗi.
 
 \subsubsection*{Mô hình song sinh kiểm chứng chu kỳ (Python Cycle-Accurate Twin)}
-Để bảo đảm thiết kế phần cứng hoàn toàn không có sai số tiềm ẩn trước khi nạp lên FPGA, mô hình phần mềm song sinh \texttt{ch01\_fifo\_twin.py} (thư mục \texttt{verify\_v3/}) được xây dựng để mô phỏng chính xác từng sườn xung nhịp của khối \texttt{ch01\_avalon\_fifo.v}:
+Mô hình song sinh \texttt{verify\_v3/ch01\_fifo\_twin.py} mô phỏng chính xác từng chu kỳ xung nhịp của cả khối FIFO vào (\texttt{ch01\_avalon\_fifo.v}) lẫn khối FIFO ra (\texttt{ch01\_fifo\_out.v}).
+
+Listing \ref{lst:ch01_twin_in} trình bày mã nguồn lớp \texttt{AvalonFifoTwin}:
+\begin{lstlisting}[language=Python, numbers=left, firstnumber=18, basicstyle=\scriptsize\ttfamily, frame=single, caption={Mô hình song sinh chu kỳ \texttt{AvalonFifoTwin} trong \texttt{verify\_v3/ch01\_fifo\_twin.py}.}, label={lst:ch01_twin_in}]
+class AvalonFifoTwin:
+    def __init__(self, depth_words=256):
+        self.depth_words = depth_words
+        self.mem = [0] * depth_words
+        self.wr_ptr = 0
+        self.rd_ptr = 0
+        self.ovf_sticky = 0
+
+        # Unpacker FSM states
+        self.ST_IDLE = 0
+        self.ST_FETCH = 1
+        self.ST_UNPACK0 = 2
+        self.ST_UNPACK1 = 3
+        self.st_state = self.ST_IDLE
+
+        self.holding_word = 0
+        self.mem_rdata = 0
+
+    @property
+    def words_used(self):
+        return (self.wr_ptr - self.rd_ptr) & ((2 * self.depth_words) - 1)
+
+    @property
+    def fifo_empty(self):
+        return self.wr_ptr == self.rd_ptr
+
+    @property
+    def fifo_full(self):
+        return self.words_used == self.depth_words
+
+    @property
+    def waitrequest(self):
+        return 1 if self.fifo_full else 0
+
+    @property
+    def unpacker_samples(self):
+        if self.st_state == self.ST_UNPACK0:
+            return 2
+        elif self.st_state == self.ST_UNPACK1:
+            return 1
+        elif self.st_state == self.ST_FETCH:
+            return 2
+        return 0
+
+    @property
+    def fill_level_samples(self):
+        return (self.words_used * 2) + self.unpacker_samples
+
+    def step(self, mm_write, mm_writedata, st_ready):
+        prev_fifo_empty = self.fifo_empty
+        prev_fifo_full = self.fifo_full
+        prev_rd_addr = self.rd_ptr & (self.depth_words - 1)
+        prev_wr_addr = self.wr_ptr & (self.depth_words - 1)
+
+        # 1. Next state of unpacker FSM
+        next_state = self.st_state
+        next_holding = self.holding_word
+        inc_rd = False
+
+        if self.st_state == self.ST_IDLE:
+            if not prev_fifo_empty:
+                next_state = self.ST_FETCH
+                inc_rd = True
+        elif self.st_state == self.ST_FETCH:
+            next_holding = self.mem_rdata
+            next_state = self.ST_UNPACK0
+        elif self.st_state == self.ST_UNPACK0:
+            if st_ready:
+                next_state = self.ST_UNPACK1
+        elif self.st_state == self.ST_UNPACK1:
+            if st_ready:
+                if not prev_fifo_empty:
+                    next_state = self.ST_FETCH
+                    inc_rd = True
+                else:
+                    next_state = self.ST_IDLE
+
+        # 2. Synchronous RAM registered read
+        next_mem_rdata = self.mem[prev_rd_addr]
+
+        # 3. Synchronous RAM write
+        if mm_write:
+            if not prev_fifo_full:
+                self.mem[prev_wr_addr] = mm_writedata & 0xFFFFFFFF
+                self.wr_ptr = (self.wr_ptr + 1) & ((2 * self.depth_words) - 1)
+            else:
+                self.ovf_sticky = 1
+
+        # 4. Advance unpacker registers
+        if inc_rd:
+            self.rd_ptr = (self.rd_ptr + 1) & ((2 * self.depth_words) - 1)
+        self.st_state = next_state
+        self.holding_word = next_holding
+        self.mem_rdata = next_mem_rdata
+
+        # 5. Output signals after clock edge
+        st_valid = 1 if self.st_state in (self.ST_UNPACK0, self.ST_UNPACK1) else 0
+        if self.st_state == self.ST_UNPACK0:
+            st_data = self.holding_word & 0xFFFF
+        elif self.st_state == self.ST_UNPACK1:
+            st_data = (self.holding_word >> 16) & 0xFFFF
+        else:
+            st_data = 0
+        waitrequest = 1 if self.fifo_full else 0
+        fill = self.fill_level_samples
+        state = self.st_state
+
+        return waitrequest, st_valid, st_data, state, fill
+\end{lstlisting}
+
+\textbf{Giải thích mã nguồn Python Twin \texttt{AvalonFifoTwin}:}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Mảng nhớ \texttt{mem} gồm 256 phần tử số nguyên 32-bit.
-    \item Hai con trỏ \texttt{wr\_ptr} và \texttt{rd\_ptr} độ rộng 9-bit có bit vòng mô phỏng chính xác phép toán bù 2 modulo 512.
-    \item Máy trạng thái 4 bước (\texttt{ST\_IDLE}, \texttt{ST\_FETCH}, \texttt{ST\_UNPACK0}, \texttt{ST\_UNPACK1}) với quy tắc chuyển trạng thái giống hệt mã Verilog.
-    \item Cung cấp thuộc tính \texttt{fill\_level\_samples} tính gộp cả số mẫu trong RAM lẫn số mẫu đang nằm trên thanh ghi giải gói \texttt{holding\_word}.
+    \item \textbf{Dòng 18--27:} Khởi tạo mảng nhớ 256 từ 32-bit, hai con trỏ vòng \texttt{wr\_ptr, rd\_ptr}, 4 trạng thái FSM (IDLE=0, FETCH=1, UNP0=2, UNP1=3) và các thanh ghi trung gian.
+    \item \textbf{Dòng 29--58:} Các thuộc tính mô phỏng logic tổ hợp của phần cứng: \texttt{words\_used} tính hiệu số modulo 512; \texttt{waitrequest} bằng 1 khi đầy; \texttt{fill\_level\_samples} tính tổng số mẫu đang lưu.
+    \item \textbf{Dòng 59--129 (Phương thức \texttt{step}):} Mô phỏng chính xác sườn dương xung nhịp. Dòng 64--67 lưu lại các cờ trạng thái trước sườn clock. Dòng 74--98 tính trạng thái kế tiếp của FSM và lệnh tăng \texttt{rd\_ptr}. Dòng 101 mô phỏng cổng đọc RAM có thanh ghi chốt giá trị tại địa chỉ đọc cũ. Dòng 104--110 mô phỏng cổng ghi RAM và kích hoạt cờ \texttt{ovf\_sticky} nếu bị ghi ép khi đầy. Dòng 118--129 xác định các tín hiệu ngõ ra sau sườn clock.
 \end{itemize}
 
-Kịch bản kiểm thử \texttt{ch01\_fifo\_test.py} (thư mục \texttt{verify\_v3/}) sử dụng Python Twin làm chuẩn đối sánh để kiểm tra 500 mẫu âm thanh dưới tác động của áp lực ngược ngẫu nhiên trên tín hiệu \texttt{st\_ready}. Kết quả kiểm tra đạt độ chính xác bit-exact $100\%$ không mất mẫu, đồng thời xác nhận trạng thái bão hòa đầy ở ngưỡng 257 từ ghi (256 từ trong RAM và 1 từ trong bộ giải gói) cùng hành vi bật cờ tràn dính \texttt{ovf\_sticky}.
+Listing \ref{lst:ch01_twin_out} trình bày mô hình song sinh của khối bộ đệm hoàn trả \texttt{FifoOutTwin}:
+\begin{lstlisting}[language=Python, numbers=left, firstnumber=132, basicstyle=\scriptsize\ttfamily, frame=single, caption={Mô hình song sinh chu kỳ \texttt{FifoOutTwin} trong \texttt{verify\_v3/ch01\_fifo\_twin.py}.}, label={lst:ch01_twin_out}]
+class FifoOutTwin:
+    def __init__(self, depth_words=512):
+        self.depth_words = depth_words
+        self.mem = [0] * depth_words
+        self.wr_ptr = 0
+        self.rd_ptr = 0
+        self.rdata_reg = 0
+
+    @property
+    def words_used(self):
+        return (self.wr_ptr - self.rd_ptr) & ((2 * self.depth_words) - 1)
+
+    @property
+    def fifo_empty(self):
+        return self.wr_ptr == self.rd_ptr
+
+    @property
+    def fifo_full(self):
+        return self.words_used == self.depth_words
+
+    @property
+    def st_ready(self):
+        return 0 if self.fifo_full else 1
+
+    def step(self, st_valid, st_data, mm_read):
+        ready_before = self.st_ready
+        empty_before = self.fifo_empty
+        mm_waitrequest_out = 1 if (mm_read and empty_before) else 0
+
+        # Push to FIFO
+        if st_valid and ready_before:
+            wr_addr = self.wr_ptr & (self.depth_words - 1)
+            self.mem[wr_addr] = st_data & 0xFFFF
+            self.wr_ptr = (self.wr_ptr + 1) & ((2 * self.depth_words) - 1)
+
+        # Pop from FIFO
+        if mm_read and not empty_before:
+            rd_addr = self.rd_ptr & (self.depth_words - 1)
+            self.rdata_reg = self.mem[rd_addr]
+            self.rd_ptr = (self.rd_ptr + 1) & ((2 * self.depth_words) - 1)
+
+        st_ready_out = self.st_ready
+        mm_readdata_out = self.rdata_reg & 0xFFFF
+        words_used_out = self.words_used
+
+        return st_ready_out, mm_waitrequest_out, mm_readdata_out, words_used_out
+\end{lstlisting}
+
+\subsubsection*{Bảng dấu vết chu kỳ chuẩn xác (Cycle-by-Cycle Trace Table)}
+Bảng \ref{tab:ch01_trace} trích xuất 12 chu kỳ tiêu biểu từ tệp dấu vết chuẩn \texttt{verify\_v3/tb\_ch01\_fifo\_expected.txt} do mô hình Python twin sinh ra, minh họa trọn vẹn các trạng thái hoạt động cốt lõi của phần cứng:
+
+\begin{table}[H]
+\centering
+\caption{Dấu vết chu kỳ hoạt động của bộ đệm \texttt{ch01\_avalon\_fifo} sinh bởi Python Twin.}
+\label{tab:ch01_trace}
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{rcccccccr}
+\toprule
+\textbf{Chu kỳ} & \textbf{\texttt{mm\_write}} & \textbf{\texttt{writedata}} & \textbf{\texttt{waitreq}} & \textbf{\texttt{st\_valid}} & \textbf{\texttt{st\_ready}} & \textbf{\texttt{st\_data}} & \textbf{FSM State} & \textbf{\texttt{fill}} \\
+\midrule
+0   & 1 & \texttt{00020001} & 0 & 0 & 1 & \texttt{0000} & \texttt{ST\_IDLE}   & 2 \\
+1   & 0 & \texttt{00000000} & 0 & 0 & 1 & \texttt{0000} & \texttt{ST\_FETCH}  & 2 \\
+2   & 0 & \texttt{00000000} & 0 & 1 & 0 & \texttt{0001} & \texttt{ST\_UNPACK0}& 2 \\
+3   & 0 & \texttt{00000000} & 0 & 1 & 0 & \texttt{0001} & \texttt{ST\_UNPACK0}& 2 \\
+4   & 1 & \texttt{00040003} & 0 & 1 & 1 & \texttt{0002} & \texttt{ST\_UNPACK1}& 3 \\
+5   & 0 & \texttt{00000000} & 0 & 0 & 1 & \texttt{0000} & \texttt{ST\_FETCH}  & 2 \\
+6   & 0 & \texttt{00000000} & 0 & 1 & 1 & \texttt{0003} & \texttt{ST\_UNPACK0}& 2 \\
+7   & 0 & \texttt{00000000} & 0 & 1 & 1 & \texttt{0004} & \texttt{ST\_UNPACK1}& 1 \\
+\midrule
+\multicolumn{9}{c}{\textit{\dots{} Nạp dồn 255 từ với \texttt{st\_ready = 0} cho tới khi RAM đầy \dots{}}} \\
+\midrule
+262 & 1 & \texttt{11fd11fc} & 0 & 1 & 0 & \texttt{0004} & \texttt{ST\_UNPACK1}& 511 \\
+263 & 1 & \texttt{20012000} & 1 & 1 & 0 & \texttt{0004} & \texttt{ST\_UNPACK1}& 513 \\
+264 & 1 & \texttt{deadbeef} & 1 & 1 & 0 & \texttt{0004} & \texttt{ST\_UNPACK1}& 513 \\
+265 & 0 & \texttt{00000000} & 0 & 0 & 1 & \texttt{0000} & \texttt{ST\_FETCH}  & 512 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng dấu vết từng nhịp:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Chu kỳ 0--1 (Ghi và nạp):} Tại chu kỳ 0, từ \texttt{0x00020001} được ghi vào RAM. Sang chu kỳ 1, FSM phát hiện \texttt{!fifo\_empty}, chuyển sang \texttt{ST\_FETCH} và phát lệnh đọc RAM.
+    \item \textbf{Chu kỳ 2--3 (Giải gói mẫu 1 và dừng do nghẽn):} Tại chu kỳ 2, FSM vào \texttt{ST\_UNPACK0}, giương cờ \texttt{st\_valid = 1} và đưa mẫu thấp \texttt{0x0001} ra bus. Vì mạch hạ nguồn báo bận (\texttt{st\_ready = 0}), tại chu kỳ 3 FSM giữ nguyên trạng thái \texttt{ST\_UNPACK0} và giữ nguyên mẫu \texttt{0x0001} trên bus.
+    \item \textbf{Chu kỳ 4--5 (Ghi nối tiếp và chuyển thẳng):} Tại chu kỳ 4, do \texttt{st\_ready = 1}, FSM sang \texttt{ST\_UNPACK1} phát mẫu cao \texttt{0x0002}, đồng thời HPS ghi từ \texttt{0x00040003}. Vì RAM còn từ mới, tại chu kỳ 5 FSM chuyển thẳng sang \texttt{ST\_FETCH} mà không qua \texttt{ST\_IDLE}.
+    \item \textbf{Chu kỳ 6--7 (Phát mẫu từ thứ hai):} Lần lượt phát mẫu \texttt{0x0003} ở UNPACK0 và \texttt{0x0004} ở UNPACK1.
+    \item \textbf{Chu kỳ 262--265 (Đầy, tích cực waitrequest và kích hoạt cờ tràn):} Sau chuỗi nạp liên tục khi \texttt{st\_ready = 0}, tại chu kỳ 262 RAM chứa 255 từ. Đến chu kỳ 263, từ thứ 256 được nạp, RAM đầy hoàn toàn, tín hiệu \texttt{mm\_waitrequest} bật lên 1. Tại chu kỳ 264, master cố tình ghi tiếp \texttt{0xDEADBEEF} khi \texttt{waitrequest = 1}; phần cứng từ chối ghi và kích hoạt cờ tràn \texttt{ovf\_sticky = 1}. Đến chu kỳ 265, khi master hạ lệnh ghi và hạ nguồn bật \texttt{st\_ready = 1}, FSM giải phóng một từ, \texttt{mm\_waitrequest} lập tức hạ về 0.
+\end{itemize}
 
 \subsubsection*{Kiểm thử phần cứng Verilog với Testbench chuyên dụng}
-Tệp kiểm thử Verilog \texttt{tb\_ch01\_fifo.v} (thư mục \texttt{tb/v3/}) kích thích khối phần cứng với một chuỗi 250 giao dịch ghi Avalon-MM (tổng cộng 500 mẫu âm thanh):
-\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Tạo áp lực ngược ngẫu nhiên bằng cách kéo \texttt{st\_ready} xuống 0 ngẫu nhiên với xác suất $33\%$ (sử dụng biểu thức \texttt{\$random \% 3 == 0} trong Verilog).
-    \item Kiểm tra thứ tự giải gói little-endian: nửa từ thấp xuất trước, nửa từ cao xuất sau.
-    \item Kiểm tra khẳng định (assertion): tổng số mẫu nhận được ở ngõ ra đúng bằng 500, không bị mất bất kỳ mẫu nào và không bị lặp mẫu.
-    \item Kiểm tra hành vi của tín hiệu \texttt{mm\_waitrequest} khi ép nạp đầy bộ nhớ và xác minh cờ \texttt{ovf\_sticky} qua cổng CSR.
-\end{itemize}
+Hai testbench Verilog chuẩn được xây dựng để kiểm chứng trực tiếp với mô hình twin:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{tb/v3/tb\_ch01\_fifo.v}: Đọc 2.107 dòng kích thích từ \texttt{tb\_ch01\_fifo\_stim.txt} (tạo bởi twin với hạt giống ngẫu nhiên 20261110, xác suất ghi $80\%$ và áp lực ngược $60\%$), đối soát từng chu kỳ với \texttt{tb\_ch01\_fifo\_expected.txt}.
+    \item \texttt{tb/v3/tb\_ch01\_fifo\_out.v}: Đọc 1.217 dòng kích thích từ \texttt{tb\_ch01\_fifo\_out\_stim.txt}, đối soát từng chu kỳ với \texttt{tb\_ch01\_fifo\_out\_expected.txt}.
+\end{enumerate}
+
+Kịch bản shell \texttt{verify\_v3/run\_ch01\_iverilog.sh} tự động biên dịch và thực thi bằng trình biên dịch Icarus Verilog:
+\begin{lstlisting}[language=bash, basicstyle=\small\ttfamily, frame=single]
+iverilog -g2012 -Wall -I rtl/v3 -o sim_ch01_fifo tb/v3/tb_ch01_fifo.v rtl/v3/ch01_avalon_fifo.v
+vvp sim_ch01_fifo
+iverilog -g2012 -Wall -I rtl/v3 -o sim_ch01_fifo_out tb/v3/tb_ch01_fifo_out.v rtl/v3/ch01_fifo_out.v
+vvp sim_ch01_fifo_out
+\end{lstlisting}
+\todo{box: đã chạy iverilog: 2.107 chu kỳ tb\_ch01\_fifo và 1.217 chu kỳ tb\_ch01\_fifo\_out, khớp hoàn toàn 100\% bit-for-bit và cycle-for-cycle}
 
 \subsubsection*{Bảng so sánh tổng kết: IP On-Chip FIFO của Intel so với HDL tự viết}
 Bảng \ref{tab:ch01_ip_vs_hdl} cung cấp bức tranh đối chiếu toàn diện giữa phương án sử dụng IP đóng gói sẵn của Intel và phương án tự hiện thực bằng HDL:
@@ -869,11 +1267,11 @@ Bảng \ref{tab:ch01_ip_vs_hdl} cung cấp bức tranh đối chiếu toàn di�
 \toprule
 \textbf{Tiêu chí so sánh} & \textbf{Intel On-Chip FIFO IP} & \textbf{HDL tự viết (\texttt{ch01\_avalon\_fifo})} \\
 \midrule
-Khối nhớ nhúng M10K & 1 khối (cấu hình $512 \times 20$) & 1 khối (cấu hình $256 \times 32$) \\
-Tài nguyên logic ALM & $\approx 60$--$80$ ALM \textbf{(phải đo)} & $\approx 45$--$65$ ALM \textbf{(phải đo)} \\
-Tần số cực đại $F_{\max}$ & $\approx 300\text{ MHz}$ \textbf{(phải đo)} & $\approx 320\text{ MHz}$ \textbf{(phải đo)} \\
-Độ trễ ghi tới hợp lệ (Latency) & 2 chu kỳ xung nhịp & 2 chu kỳ xung nhịp \\
-Đóng gói mẫu âm thanh & Tự động theo Symbol & Tự động qua Unpacker FSM 4 bước \\
+Khối nhớ nhúng M10K & 1 khối (cấu hình $256 \times 32$, 512 mẫu) & 1 khối (cấu hình $256 \times 32$, 512 mẫu) \\
+Tài nguyên logic ALM & \textbf{phải đo (Fitter, Ch.12)} & \textbf{phải đo (Fitter, Ch.12)} \\
+Tần số cực đại $F_{\max}$ & \textbf{phải đo (TimeQuest, Ch.12)} & \textbf{phải đo (TimeQuest, Ch.12)} \\
+Độ trễ ghi tới hợp lệ (Latency) & \textbf{phải kiểm trong mô phỏng IP} & 2 chu kỳ (đo bằng iverilog) \\
+Đóng gói và tách mẫu & Xuất 32-bit, cần adapter 32$\to$16 bit & Tự động tách 32$\to$16 bit qua Unpacker FSM \\
 Khả năng mô phỏng ngoài Quartus & Cần thư viện mã hóa Intel & Chạy ngay trên iverilog / Verilator \\
 Khả năng kiểm soát chu kỳ & Hộp đen (Black-box) & Hoàn toàn minh bạch (White-box) \\
 Độ phức tạp tích hợp & Nhấp chuột trong Qsys & Khai báo module Verilog chuẩn \\
@@ -881,7 +1279,7 @@ Khả năng kiểm soát chu kỳ & Hộp đen (Black-box) & Hoàn toàn minh b�
 \end{tabular}
 \end{table}
 
-\textbf{Đọc bảng.} Cả hai giải pháp đều đạt hiệu quả tối ưu về mặt tài nguyên bộ nhớ nhúng khi chỉ tiêu tốn đúng 1 khối M10K duy nhất trên chip Cyclone V và có cùng độ trễ đường ống là 2 chu kỳ. Tuy nhiên, khối HDL tự viết mang lại lợi thế vượt trội về tính độc lập: mã nguồn hoàn toàn mở, dễ dàng kiểm chứng trên các trình mô phỏng nhẹ như Icarus Verilog mà không đòi hỏi bộ thư viện bản quyền nặng nề của Intel.
+\textbf{Đọc bảng.} Cả hai giải pháp đều đạt hiệu quả tối ưu về mặt tài nguyên bộ nhớ nhúng khi chỉ tiêu tốn đúng 1 khối M10K duy nhất trên chip Cyclone V. Tuy nhiên, khối HDL tự viết tích hợp sẵn FSM giải gói 32-sang-16 bit và mang lại lợi thế vượt trội về tính độc lập: mã nguồn hoàn toàn mở, dễ dàng kiểm chứng trên các trình mô phỏng nhẹ như Icarus Verilog mà không đòi hỏi bộ thư viện bản quyền nặng nề của Intel.
 
 \subsubsection*{Bài tập cuối chương có lời giải chi tiết}
 
@@ -911,7 +1309,7 @@ Giả sử hệ thống nâng cấp để xử lý tín hiệu âm thanh phòng 
 \end{enumerate}
 
 \paragraph{Bài tập 2: Số học bit vòng và điều kiện rỗng/đầy cho bộ đệm có độ sâu tùy ý.}
-Xét một bộ đệm FIFO có độ sâu $N$ từ, trong đó $N$ không phải là lũy thừa của 2 (ví dụ $N = 300$). 
+Xét một bộ đệm FIFO có độ sâu $N$ từ, trong đó $N$ không phải là lũy thừa của 2 (ví dụ $N = 300$).
 \begin{enumerate}[label=(\alph*), itemsep=2pt]
     \item Tại sao kỹ thuật kiểm tra bit vòng MSB đơn giản ($\texttt{wr\_ptr[k]} \neq \texttt{rd\_ptr[k]}$) không còn áp dụng được trực tiếp?
     \item Nêu giải pháp phần cứng chuẩn mực để giải quyết bài toán này mà vẫn duy trì tần số hoạt động cao.
@@ -929,7 +1327,7 @@ Xét một bộ đệm FIFO có độ sâu $N$ từ, trong đó $N$ không phả
 \end{enumerate}
 
 \paragraph{Bài tập 3: Phân tích xung đột tương tranh (Race Condition) và cơ chế khóa.}
-Trong kiến trúc streaming âm thanh giữa HPS và FPGA, CPU ghi mẫu âm thanh vào FIFO trong khi lõi tính toán FPGA đọc mẫu ra để tính cửa sổ Hanning. 
+Trong kiến trúc streaming âm thanh giữa HPS và FPGA, CPU ghi mẫu âm thanh vào FIFO trong khi lõi tính toán FPGA đọc mẫu ra để tính cửa sổ Hanning.
 \begin{enumerate}[label=(\alph*), itemsep=2pt]
     \item Tại sao hệ thống trong chương này không cần sử dụng các cấu trúc khóa bảo vệ phức tạp (như mutex hay spinlock) giữa CPU và FPGA?
     \item Điều gì sẽ xảy ra nếu CPU đọc thanh ghi \texttt{fill\_level} đúng vào chu kỳ mà FPGA vừa đọc một từ ra khỏi FIFO?
@@ -943,7 +1341,7 @@ Trong kiến trúc streaming âm thanh giữa HPS và FPGA, CPU ghi mẫu âm th
         \item Phía FPGA là bên tiêu thụ (Consumer): FPGA chỉ có quyền đọc mảng RAM và chỉ có quyền sửa đổi con trỏ \texttt{rd\_ptr}. FPGA hoàn toàn không thể thay đổi \texttt{wr\_ptr}.
     \end{itemize}
     Vì mỗi bên chỉ sở hữu độc quyền một con trỏ, không có biến trạng thái chung nào bị xung đột ghi đồng thời (write-write race condition).
-    \item Nếu CPU đọc \texttt{fill\_level} đúng nhịp FPGA cập nhật \texttt{rd\_ptr}: Trong trường hợp xấu nhất, CPU có thể đọc được giá trị \texttt{fill\_level} cũ (chưa giảm đi 2 mẫu). Điều này hoàn toàn an toàn (fail-safe): CPU sẽ cho rằng bộ đệm đầy hơn thực tế một chút, do đó nó sẽ ghi thận trọng hơn chứ tuyệt đối không bao giờ gây ra hiện tượng ghi tràn bộ đệm.
+    \item Nếu CPU đọc \texttt{fill\_level} đúng nhịp FPGA cập nhật \texttt{rd\_ptr}: Trong trường hợp xấu nhất, CPU có thể đọc được giá trị \texttt{fill\_level} cũ (chưa giảm đi 2 mẫu). Điều này hoàn toàn an toàn (fail-safe): CPU sẽ cho rằng bộ đệm đầy hơn thực tế một chút, do đó nó sẽ ghi thận trọng hơn chứ không bao giờ gây ra hiện tượng ghi tràn bộ đệm.
 \end{enumerate}
 
 \paragraph{Bài tập 4: Đánh giá tác động của lỗi thứ tự byte (Endianness) lên ước lượng F0.}
@@ -960,28 +1358,12 @@ Một lập trình viên sơ suất đóng gói hai mẫu âm thanh 16-bit vào 
     x_{\text{FPGA}} = \{x[1], x[0], x[3], x[2], x[5], x[4], \dots\}
     \end{equation}
     Mỗi mẫu chẵn và lẻ bị tráo đổi vị trí cho nhau trên toàn bộ chiều dài tệp.
-    \item \emph{Ảnh hưởng lên F0:} 
+    \item \emph{Ảnh hưởng lên F0:}
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item Phép đảo cặp này tạo ra một thành phần nhiễu tần số cực cao ở tần số Nyquist $f_s / 2 = 8\text{ kHz}$ (bởi vì hiệu số giữa hai mẫu liên tiếp $x[2k+1] - x[2k]$ bị đảo dấu liên tục theo chu kỳ 2 mẫu).
-        \item Tuy nhiên, các đỉnh tự tương quan của chu kỳ cơ bản giọng nói ($F_0 \in [75, 600]\text{ Hz}$) tương ứng với các độ trễ lag rất lớn:
-        \begin{equation}
-        \tau \in [26, 213]\text{ mẫu}
-        \end{equation}
-        Khi dịch đi $\tau$ mẫu (với $\tau \gg 2$), hình dạng bao sóng năng lượng tổng thể vẫn bảo toàn tính tuần hoàn cơ bản. Kết quả là đỉnh $R[\tau]$ vẫn xuất hiện gần vị trí lag thực tế, nhưng đỉnh sẽ bị răng cưa nghiêm trọng và giá trị nội suy cực trị parabol bị kéo lệch, dẫn đến việc tăng vọt sai số cent mịn và gây ra các quyết định nhảy quãng tám (octave jump) thất thường.
+        \item Tuy nhiên, các đỉnh tự tương quan của chu kỳ cơ bản giọng nói ($F_0 \in [75, 600]\text{ Hz}$) tương ứng với dải quét tương quan $\tau \in [26, 214]$ (189 lag) và dải tìm kiếm cực đại ứng viên $\tau \in [27, 213]$ mẫu.
+        Khi dịch đi $\tau$ mẫu (với $\tau \gg 2$), hình dạng bao sóng năng lượng tổng thể vẫn bảo toàn tính tuần hoàn cơ bản. Kết quả là đỉnh $R[\tau]$ vẫn xuất hiện gần vị trí lag thực tế, nhưng đỉnh sẽ bị răng cưa nghiêm trọng và giá trị nội suy cực trị parabol bị kéo lệch, dẫn đến việc tăng sai số cent mịn và gây ra các quyết định nhảy quãng tám (octave jump) thất thường.
     \end{itemize}
 \end{enumerate}
 
 \textit{Tóm lại: Trình điều khiển HPS giao tiếp mmap với bộ đệm và bản đồ thanh ghi đã được kiểm chứng bit-exact qua Python twin và testbench Verilog; so sánh tổng hợp khẳng định HDL tự viết đạt trần hiệu năng phần cứng ngang ngửa IP Intel nhưng mang lại tính minh bạch và khả năng kiểm thử độc lập tối đa.}
-
-
-
-
-
-
-
-
-
-
-
-
-
