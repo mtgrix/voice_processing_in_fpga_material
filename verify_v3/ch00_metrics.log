@@ -1,10 +1,34 @@
 === Verifying against golden_v2 compare results ===
-File synth_glide_vuv_16k.wav: 277 frames
-  fixed_raw vs praat_R2              : VDE=0/277 (0.0000), GPE=0/208 (0.0000), FFE=0.0000, cents=0.2102 (p95=0.4834, max=1.08)
-  fixed_med3 vs praat_R1             : VDE=0/277 (0.0000), GPE=0/208 (0.0000), FFE=0.0000, cents=0.3734 (p95=0.6363, max=12.96)
-File synth_glide_vuv_16k_snr5.wav: 277 frames
-  fixed_raw vs praat_R2              : VDE=0/277 (0.0000), GPE=3/207 (0.0145), FFE=0.0108, cents=20.37 (p95=10.56, max=32.91)
-  fixed_med3 vs praat_R1             : VDE=0/277 (0.0000), GPE=15/207 (0.0725), FFE=0.0542, cents=91.24 (p95=1182, max=48.41)
+Running compute_metrics() on golden TSV files and asserting against compare_summary.json:
+Note: compare.py's cents_mean_abs and cents_p95 include gross pitch error frames,
+while compute_metrics() fine-cent metrics exclude gross frames by design (Section 0.5).
+
+File synth_glide_vuv_16k.wav:
+  [PASS] float_R2 vs praat_R2                  : VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=7.265e-05 (JSON max=6.815e-05)
+  [PASS] float_R1 vs praat_R1                  : VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=7.265e-05 (JSON max=6.815e-05)
+  [PASS] praat_R1 vs praat_R2 (path-finder effect): VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=0 (JSON max=0)
+  [PASS] fixed_raw vs praat_R2                 : VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=1.08 (JSON max=1.08)
+  [PASS] fixed_raw vs float_R2                 : VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=1.08 (JSON max=1.08)
+  [PASS] fixed_med3 vs praat_R1                : VDE=0/277, GPE=0/208, FFE=0.0000, fine_max=12.96 (JSON max=12.96)
+  [PASS] praat_R1 vs truth                     : VDE=4/277, GPE=0/207, FFE=0.0144, fine_max=7.906 (JSON max=7.906)
+File synth_glide_vuv_16k_snr5.wav:
+  [PASS] float_R2 vs praat_R2                  : VDE=0/277, GPE=0/207, FFE=0.0000, fine_max=0.0001536 (JSON max=0.0001521)
+  [PASS] float_R1 vs praat_R1                  : VDE=0/277, GPE=0/207, FFE=0.0000, fine_max=0.0001536 (JSON max=0.0001521)
+  [PASS] praat_R1 vs praat_R2 (path-finder effect): VDE=0/277, GPE=19/207, FFE=0.0686, fine_max=37.28 (JSON max=37.28)
+         (gross frames present: fine_mean=1.01 vs report gross-included mean=117.37)
+  [PASS] fixed_raw vs praat_R2                 : VDE=0/277, GPE=3/207, FFE=0.0108, fine_max=32.91 (JSON max=32.91)
+         (gross frames present: fine_mean=3.07 vs report gross-included mean=20.37)
+  [PASS] fixed_raw vs float_R2                 : VDE=0/277, GPE=3/207, FFE=0.0108, fine_max=32.91 (JSON max=32.91)
+         (gross frames present: fine_mean=3.07 vs report gross-included mean=20.37)
+  [PASS] fixed_med3 vs praat_R1                : VDE=0/277, GPE=15/207, FFE=0.0542, fine_max=48.41 (JSON max=48.41)
+         (gross frames present: fine_mean=5.58 vs report gross-included mean=91.24)
+  [PASS] praat_R1 vs truth                     : VDE=3/277, GPE=0/207, FFE=0.0108, fine_max=29.32 (JSON max=29.32)
+  [PASS] praat_R2 vs truth                     : VDE=3/277, GPE=19/207, FFE=0.0794, fine_max=28.48 (JSON max=28.48)
+         (gross frames present: fine_mean=10.55 vs report gross-included mean=126.39)
+  [PASS] fixed_raw vs truth                    : VDE=3/277, GPE=22/207, FFE=0.0903, fine_max=25.85 (JSON max=25.85)
+         (gross frames present: fine_mean=9.12 vs report gross-included mean=142.31)
+  [PASS] fixed_med3 vs truth                   : VDE=3/277, GPE=15/207, FFE=0.0650, fine_max=32.68 (JSON max=32.68)
+         (gross frames present: fine_mean=9.71 vs report gross-included mean=94.99)
 
 === Pedagogical 10-Frame Example ===
 Frame | Ref (Hz) | Test (Hz) | Status                | Rel Err (%) | Cents     | Gross?
@@ -28,10 +52,10 @@ Voicing errors (VDE): 2 frames (Frames 5, 6) -> VDE = 2/10 = 20.0%
 Gross Pitch Errors (GPE): 2 frames (Frames 7, 8) out of 6 both-voiced frames -> GPE = 2/6 = 33.3%
 F0 Frame Errors (FFE): VDE + GPE = 2 + 2 = 4 -> FFE = 4/10 = 40.0%
 Fine cents (excluding GPE frames 7 and 8, on frames 1, 2, 3, 4):
-  Frame 1:  0.00 cent
-  Frame 2: +22.96 cent
-  Frame 3: -34.97 cent
-  Frame 4: +31.18 cent
+  Frame 1:  +0.00 cent
+  Frame 2: +22.93 cent
+  Frame 3: -34.98 cent
+  Frame 4: +31.19 cent
   Mean absolute cents: 22.28 cent
   Std of cents: 25.64 cent
   95th percentile: 34.41 cent

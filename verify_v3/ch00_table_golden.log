@@ -1,0 +1,29 @@
+==========================================================================================
+GOLDEN V2 RESULTS RECOMPUTED WITH FINE CENTS (NON-GROSS)
+Note: compare_report.md's 'mean abs/p95' columns include gross frames (>20% / ~316 cents).
+This table uses FINE cents (excluding gross frames), matching the Section 0.5 definition.
+==========================================================================================
+
+--- Tín hiệu sạch (Clean synth, 208 khung cùng hữu thanh) ---
+Phép so sánh                           | VDE     | GPE     | FFE    | Fine TB  | Fine p95 | Fine Max | All TB   | All p95 
+-------------------------------------------------------------------------------------------------------------------
+Port float vs Praat R2                 | 0/277   | 0/208   | 0.0000 | 7.9e-06  | 5.8e-05  | 7.3e-05  | 0.00     | 0.00    
+Port float vs Praat R1                 | 0/277   | 0/208   | 0.0000 | 7.9e-06  | 5.8e-05  | 7.3e-05  | 0.00     | 0.00    
+Praat R1 vs Praat R2                   | 0/277   | 0/208   | 0.0000 | 0.00     | 0.00     | 0.00     | 0.00     | 0.00    
+Twin (trước median) vs Praat R2        | 0/277   | 0/208   | 0.0000 | 0.21     | 0.48     | 1.08     | 0.21     | 0.48    
+Twin + median-3 vs Praat R1            | 0/277   | 0/208   | 0.0000 | 0.37     | 0.64     | 12.96    | 0.37     | 0.64    
+Praat R1 vs Ground-Truth               | 4/277   | 0/207   | 0.0144 | 0.30     | 0.83     | 7.91     | 0.30     | 0.83    
+Twin + median-3 vs Ground-Truth        | 4/277   | 0/207   | 0.0144 | 0.53     | 1.05     | 14.28    | 0.53     | 1.05    
+
+--- Tín hiệu có ồn SNR 5 dB (207 khung cùng hữu thanh) ---
+Phép so sánh                           | VDE     | GPE     | FFE    | Fine TB  | Fine p95 | Fine Max | All TB   | All p95 
+-------------------------------------------------------------------------------------------------------------------
+Port float vs Praat R2                 | 0/277   | 0/207   | 0.0000 | 1.2e-05  | 6.3e-05  | 1.5e-04  | 0.00     | 0.00    
+Port float vs Praat R1                 | 0/277   | 0/207   | 0.0000 | 1.2e-05  | 6.4e-05  | 1.5e-04  | 0.00     | 0.00    
+Praat R1 vs Praat R2 (Viterbi)         | 0/277   | 19/207  | 0.0686 | 1.01     | 0.00     | 37.28    | 117.37   | 1190.68 
+Twin (trước median) vs Praat R2        | 0/277   | 3/207   | 0.0108 | 3.07     | 9.78     | 32.91    | 20.37    | 10.56   
+Twin + median-3 vs Praat R1            | 0/277   | 15/207  | 0.0542 | 5.58     | 20.62    | 48.41    | 91.24    | 1181.53 
+Praat R1 vs Ground-Truth               | 3/277   | 0/207   | 0.0108 | 10.56    | 21.80    | 29.32    | 10.56    | 21.80   
+Praat R2 vs Ground-Truth               | 3/277   | 19/207  | 0.0794 | 10.55    | 21.79    | 28.48    | 126.39   | 1199.05 
+Twin (trước median) vs Ground-Truth    | 3/277   | 22/207  | 0.0903 | 9.12     | 20.53    | 25.85    | 142.31   | 1199.09 
+Twin + median-3 vs Ground-Truth        | 3/277   | 15/207  | 0.0650 | 9.71     | 25.76    | 32.68    | 94.99    | 1178.88 

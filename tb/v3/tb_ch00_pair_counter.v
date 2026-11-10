@@ -6,6 +6,7 @@
 //   Tests the canonical Praat configuration (N=638, TAU_MIN=26, TAU_MAX=214)
 //   followed by 200 diverse configurations read from "tb_ch00_configs.txt".
 //   Checks pair count, cycle count, sload/last counts, and 32-bit checksum.
+//   Dumps per-cycle stream for small N (N <= 40) for bit-exact line-by-line diff.
 // ============================================================================
 
 `timescale 1ns/1ps
@@ -59,7 +60,7 @@ module tb_ch00_pair_counter;
     );
 
     // Testbench tracking registers
-    integer fd, status;
+    integer fd, fd_dump, status;
     integer test_idx;
     integer exp_n, exp_tmin, exp_tmax, exp_pairs;
     reg [31:0] exp_csum;
@@ -67,8 +68,9 @@ module tb_ch00_pair_counter;
     integer sload_count, last_count, valid_count;
     integer total_errors;
     integer total_tests;
+    integer dump_active;
 
-    // Checksum computation while valid is high
+    // Checksum computation and trace dumping while valid is high
     reg [31:0] pair_word;
     always @(posedge clk) begin
         if (rst_n && valid) begin
@@ -78,6 +80,11 @@ module tb_ch00_pair_counter;
 
             pair_word = {last, sload, tau_out[9:0], addr_b[9:0], addr_a[9:0]};
             run_csum <= (run_csum * 32'd31 + pair_word);
+
+            if (dump_active && fd_dump != 0) begin
+                $fdisplay(fd_dump, "%0d %b %b %b %0d %0d %0d",
+                          test_idx, valid, sload, last, addr_a, addr_b, tau_out);
+            end
         end
     end
 
@@ -93,21 +100,26 @@ module tb_ch00_pair_counter;
         valid_count = 0;
         total_errors = 0;
         total_tests = 0;
+        dump_active = 0;
+
+        fd_dump = $fopen("tb_ch00_dump_small.txt", "w");
 
         repeat (5) @(negedge clk);
         rst_n = 1;
         repeat (2) @(negedge clk);
 
         // --------------------------------------------------------------------
-        // Test 1: Canonical Praat Configuration (N=638, TAU_MIN=26, TAU_MAX=214)
+        // Test 0: Canonical Praat Configuration (N=638, TAU_MIN=26, TAU_MAX=214)
         // Using default parameters (cfg_n = 0)
         // --------------------------------------------------------------------
         $display("----------------------------------------------------------------");
         $display("Test 0: Canonical Praat configuration (N=638, tau=26..214)");
+        test_idx = 0;
         run_csum = 0;
         sload_count = 0;
         last_count = 0;
         valid_count = 0;
+        dump_active = 0;
         cfg_n = 0;
         cfg_tau_min = 0;
         cfg_tau_max = 0;
@@ -137,6 +149,11 @@ module tb_ch00_pair_counter;
             $display("ERROR: Canonical last count mismatch: got %0d, expected 190", last_count);
             total_errors = total_errors + 1;
         end
+        // Checksum assertion against golden twin (Reviewer feedback 6c)
+        if (run_csum !== 32'h26518cf3) begin
+            $display("ERROR: Canonical checksum mismatch: got 0x%08x, expected 0x26518cf3", run_csum);
+            total_errors = total_errors + 1;
+        end
 
         $display("Canonical Praat test PASSED: pairs=%0d, cycles=%0d, sloads=%0d, lasts=%0d, csum=0x%08x",
                  valid_count, total_cycles, sload_count, last_count, run_csum);
@@ -161,6 +178,9 @@ module tb_ch00_pair_counter;
                 cfg_tau_min = exp_tmin[ADDR_WIDTH-1:0];
                 cfg_tau_max = exp_tmax[ADDR_WIDTH-1:0];
 
+                // Dump per-cycle stream for small N <= 40 (Reviewer feedback 6a)
+                dump_active = (exp_n <= 40);
+
                 @(negedge clk);
                 start = 1;
                 @(negedge clk);
@@ -173,6 +193,12 @@ module tb_ch00_pair_counter;
                 if (valid_count !== exp_pairs) begin
                     $display("ERROR [Test %0d (N=%0d, t=[%0d..%0d])]: pairs got %0d, exp %0d",
                              test_idx, exp_n, exp_tmin, exp_tmax, valid_count, exp_pairs);
+                    total_errors = total_errors + 1;
+                end
+                // Cycle-exact check: total_cycles must equal exp_pairs with 0 idle bubbles (Reviewer feedback 6b)
+                if (total_cycles !== exp_pairs) begin
+                    $display("ERROR [Test %0d (N=%0d, t=[%0d..%0d])]: total_cycles got %0d, exp %0d",
+                             test_idx, exp_n, exp_tmin, exp_tmax, total_cycles, exp_pairs);
                     total_errors = total_errors + 1;
                 end
                 if (run_csum !== exp_csum) begin
@@ -195,6 +221,10 @@ module tb_ch00_pair_counter;
                 repeat (2) @(negedge clk);
             end
             $fclose(fd);
+        end
+
+        if (fd_dump != 0) begin
+            $fclose(fd_dump);
         end
 
         $display("----------------------------------------------------------------");

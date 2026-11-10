@@ -27,7 +27,7 @@ Phương pháp đơn giản nhất mà người mới học xử lý tín hiệu
 
 Để thấy rõ sự thất bại này bằng số liệu định lượng, ta xét một đoạn tín hiệu tổng hợp được tạo bởi kịch bản kiểm chứng \texttt{verify\_v3/ch00\_naive\_methods.py}:
 \begin{equation}
-x(t) = \sin(2\pi \cdot 100 t) - 0{,}75 \cos(2\pi \cdot 200 t)
+x(t) = \sin(2\pi \cdot 100 t) - 0{,}75 \sin(2\pi \cdot 200 t)
 \end{equation}
 Tần số cơ bản thực sự là $f_0 = 100{,}0\text{ Hz}$, tần số lấy mẫu $f_s = 16.000\text{ Hz}$. Một chu kỳ cơ bản kéo dài $T_0 = 1/100 = 10\text{ ms}$, tương ứng đúng $P = 160$ mẫu. Nếu tín hiệu là sóng sin thuần, một chu kỳ 160 mẫu sẽ cắt qua trục 0 đúng 2 lần. Nhưng khi kiểm tra trên đoạn tín hiệu dài 3 chu kỳ (480 mẫu), bộ đếm điểm qua không ghi nhận tổng cộng 12 lần đổi dấu, tức trung bình 4 điểm qua không trong mỗi chu kỳ. Tần số ước lượng bị thổi phồng thành:
 \begin{equation}
@@ -35,7 +35,7 @@ f_{\text{est}} = \frac{12}{2 \times 3 \times 0{,}01\text{ s}} = 200{,}0\text{ Hz
 \end{equation}
 Thuật toán bị đánh lừa hoàn toàn bởi hài âm bậc hai, báo sai lệch cao độ gấp đôi ($100\%$ lỗi) ngay trên một tín hiệu hoàn toàn tuần hoàn và không hề có nhiễu bên ngoài.
 
-\textbf{Ví dụ tính tay thu nhỏ.} Để nhìn thấy từng bước ở mức mẫu, xét 16 mẫu rời rạc đại diện cho một chu kỳ rút gọn (lấy trực tiếp từ log của \texttt{verify\_v3/ch00\_naive\_methods.py}):
+\textbf{Ví dụ tính tay thu nhỏ.} Để nhìn thấy từng bước ở mức mẫu, xét dãy 16 mẫu rời rạc đại diện cho một chu kỳ rút gọn được sinh theo công thức $x_{16}[n] = \operatorname{round}\left(100 \cdot \left(\sin\left(\frac{2\pi n}{16}\right) - 0{,}8 \sin\left(\frac{4\pi n}{16}\right)\right)\right)$ (trích xuất trực tiếp từ kịch bản \texttt{verify\_v3/ch00\_naive\_methods.py}):
 \begin{center}
 \small
 \begin{tabular}{lrrrrrrrrrrrrrrrr}
@@ -55,7 +55,7 @@ Cách tiếp cận thứ hai là chuyển tín hiệu sang miền tần số b�
 \begin{equation}
 \Delta f = \frac{f_s}{N} = \frac{16.000}{640} = 25{,}00\text{ Hz} \quad (\text{với } N=638, \Delta f = \frac{16.000}{638} \approx 25{,}08\text{ Hz})
 \end{equation}
-Khoảng cách giữa hai vạch phổ kề nhau lên tới 25 Hz. Hãy xét một giọng nam trầm có tần số cơ bản thực là $f_0 = 112{,}5\text{ Hz}$. Tần số này rơi vào chính giữa bin 4 ($4 \times 25 = 100\text{ Hz}$) và bin 5 ($5 \times 25 = 125\text{ Hz}$). Bộ chọn đỉnh phổ dù hoàn hảo nhất cũng chỉ có thể chỉ định bin 4 hoặc bin 5, gây ra sai số tuyệt đối ít nhất là $12{,}5\text{ Hz}$.
+Khoảng cách giữa hai vạch phổ kề nhau lên tới 25 Hz. Hãy xét một giọng nam trầm có tần số cơ bản thực là $f_0 = 112{,}5\text{ Hz}$. Tần số này rơi vào chính giữa bin 4 ($4 \times 25 = 100\text{ Hz}$) và bin 5 ($5 \times 25 = 125\text{ Hz}$). Bộ chọn đỉnh phổ dù lý tưởng nhất cũng chỉ có thể chỉ định bin 4 hoặc bin 5, gây ra sai số tuyệt đối ít nhất là $12{,}5\text{ Hz}$.
 
 Trong âm nhạc học và ngữ âm học, tai người cảm nhận cao độ theo hàm logarit của tần số. Đơn vị đo độ chênh lệch cao độ chuẩn là \textbf{cent}, trong đó 1 quãng tám (tần số gấp đôi) tương ứng với 1.200 cent, và 1 nửa cung (semitone) tương ứng với 100 cent:
 \begin{equation}
@@ -65,7 +65,7 @@ Trong âm nhạc học và ngữ âm học, tai người cảm nhận cao độ 
 \begin{equation}
 \Delta \text{cent} = 1.200 \cdot \left| \log_2 \left( \frac{100{,}0}{112{,}5} \right) \right| \approx 203{,}91\text{ cent}
 \end{equation}
-(kết quả được kiểm chứng trong \texttt{verify\_v3/ch00\_naive\_methods.log}). Sai số hơn 200 cent tương đương với hai nửa cung (một cung nguyên) trong âm nhạc. Một bộ ước lượng $F_0$ với sai số thô như vậy hoàn toàn vô giá trị trong các ứng dụng phân tích ngữ điệu hoặc đối sánh khoa học. Muốn giảm $\Delta f$ xuống dưới 1 Hz, FFT cần cửa sổ dài hơn 1 giây, nhưng trong 1 giây đó người nói đã phát âm qua 3 đến 5 âm tiết khác nhau, tính dừng của tín hiệu bị phá vỡ hoàn toàn.
+(kết quả được kiểm chứng trong \texttt{verify\_v3/ch00\_naive\_methods.log}). Sai số tương ứng 204 cent tương đương với hai nửa cung (một cung nguyên) trong âm nhạc. Một bộ ước lượng $F_0$ với sai số thô như vậy hoàn toàn không đáp ứng được yêu cầu trong các ứng dụng phân tích ngữ điệu hoặc đối sánh khoa học. Muốn giảm $\Delta f$ xuống dưới 1 Hz, FFT cần cửa sổ dài hơn 1 giây, nhưng trong 1 giây đó người nói đã phát âm qua 3 đến 5 âm tiết khác nhau, tính dừng của tín hiệu bị phá vỡ hoàn toàn.
 
 \subsubsection*{Bản chất của phép tự tương quan (Autocorrelation)}
 Để khắc phục triệt để hai nhược điểm trên, ta quay về nguyên lý đầu tiên: \textbf{một tín hiệu tuần hoàn luôn có hình dạng giống hệt chính nó khi bị dịch trễ đi đúng một chu kỳ cơ bản}. Phép đo mức độ tương đồng giữa tín hiệu $x[n]$ và bản sao dịch trễ của nó $x[n+\tau]$ ở độ trễ $\tau$ (lag) được định nghĩa qua hàm tự tương quan ngắn hạn:
@@ -73,7 +73,7 @@ Trong âm nhạc học và ngữ âm học, tai người cảm nhận cao độ 
 R[\tau] = \sum_{n=0}^{N-1-\tau} x[n] x[n+\tau]
 \end{equation}
 
-\textbf{Ví dụ tính tay số nguyên thu nhỏ.} Xét một tín hiệu rời rạc tuần hoàn hoàn hảo với chu kỳ cơ bản $P = 3$ mẫu, độ dài khung $N = 9$ mẫu:
+\textbf{Ví dụ tính tay số nguyên thu nhỏ.} Xét một tín hiệu rời rạc tuần hoàn lý tưởng với chu kỳ cơ bản $P = 3$ mẫu, độ dài khung $N = 9$ mẫu:
 \begin{equation}
 x = [3, -1, -2, \; 3, -1, -2, \; 3, -1, -2]
 \end{equation}
@@ -103,7 +103,7 @@ Ta tính trực tiếp giá trị tích vô hướng $R[\tau]$ theo từng bư�
     \item Tại $\tau = 5$: nhân 4 cặp mẫu, thu được $R[5] = -13$.
 \end{itemize}
 
-\textbf{Chỗ dễ vướng: Vì sao $R[3] = 28$ lại bé hơn $R[0] = 42$ dù tín hiệu tuần hoàn tuyệt đối?}
+\textbf{Chỗ dễ vướng: Vì sao $R[3] = 28$ lại bé hơn $R[0] = 42$ dù tín hiệu tuần hoàn lý tưởng?}
 Đây là bẫy tư duy kinh điển mà người thiết kế phần cứng hay gặp. Ở độ trễ $\tau = 3$, số cặp mẫu còn lại để nhân với nhau chỉ là $N - \tau = 9 - 3 = 6$ cặp, trong khi ở $\tau = 0$ ta cộng dồn tới 9 cặp. Nếu ta tính giá trị trung bình không chệch bằng cách chia tổng tích lũy cho số cặp mẫu tham gia:
 \begin{align}
 \frac{R[0]}{9 - 0} &= \frac{42}{9} \approx 4{,}67 \\
@@ -111,7 +111,7 @@ Ta tính trực tiếp giá trị tích vô hướng $R[\tau]$ theo từng bư�
 \end{align}
 Hai con số hoàn toàn trùng khớp! Đỉnh tương quan tại $\tau = 3$ đã chỉ ra chính xác chu kỳ cơ bản của tín hiệu là 3 mẫu mà không bị nhiễu hài âm đánh lừa như phương pháp đếm điểm qua 0, cũng không bị lượng tử hóa thô thiển như phương pháp chọn đỉnh FFT.
 
-\textit{Tóm lại: Đếm điểm qua không thất bại vì hài âm bậc hai tạo thêm điểm cắt giả, lấy đỉnh FFT thất bại vì độ phân giải bin thô tới 204 cent ở 100 Hz; phương pháp tự tương quan đo mức độ tương đồng theo miền thời gian, mở ra con đường xác định chu kỳ cơ bản chính xác và bền vững trước cấu trúc hài âm phức tạp của tiếng nói.}
+\textit{Tóm lại: Đếm điểm qua không thất bại vì hài âm bậc hai tạo thêm điểm cắt giả, lấy đỉnh FFT thất bại vì độ phân giải bin thô tới 204 cent ở 112,5 Hz (khi làm tròn về bin 100 Hz); phương pháp tự tương quan đo mức độ tương đồng theo miền thời gian, mở ra con đường xác định chu kỳ cơ bản chính xác và bền vững trước cấu trúc hài âm phức tạp của tiếng nói.}
 
 \subsection*{0.2. Ý tưởng của Boersma: Chuẩn hóa bằng tự tương quan của cửa sổ}
 \addcontentsline{toc}{subsection}{0.2. Ý tưởng của Boersma: Chuẩn hóa bằng tự tương quan của cửa sổ}
@@ -133,7 +133,7 @@ Trong đó hàm tự tương quan của cửa sổ được định nghĩa hoàn
 \begin{equation}
 R_w[\tau] = \sum_{n=0}^{N-1-\tau} w[n] w[n+\tau]
 \end{equation}
-Từ mối liên hệ nhân này, Boersma đề xuất thuật toán chuẩn hóa: muốn tìm lại hàm tự tương quan chuẩn hóa không thiên vị $r[\tau]$ của bản thân tín hiệu gốc (với giá trị lý tưởng $r[0] = 1$ và $r[T_0] = 1$ đối với tín hiệu tuần hoàn hoàn hảo), ta chỉ cần lấy $R_{xw}[\tau]$ chia cho $R_w[\tau]$, rồi chuẩn hóa tỉ lệ theo năng lượng tại $\tau = 0$:
+Từ mối liên hệ nhân này, Boersma đề xuất thuật toán chuẩn hóa: muốn tìm lại hàm tự tương quan chuẩn hóa không thiên vị $r[\tau]$ của bản thân tín hiệu gốc (với giá trị lý tưởng $r[0] = 1$ và $r[T_0] = 1$ đối với tín hiệu tuần hoàn lý tưởng), ta chỉ cần lấy $R_{xw}[\tau]$ chia cho $R_w[\tau]$, rồi chuẩn hóa tỉ lệ theo năng lượng tại $\tau = 0$:
 \begin{equation}
 r[\tau] = \frac{R_{xw}[\tau] / R_w[\tau]}{R_{xw}[0] / R_w[0]} = \frac{R_{xw}[\tau]}{R_w[\tau]} \cdot \frac{R_w[0]}{R_{xw}[0]}
 \end{equation}
@@ -151,11 +151,11 @@ Trong khi đó, tần số cơ bản của người nói dao động từ 75 Hz 
 Đường bao cửa sổ Hanning $w[n]$ là một hàm cosin trơn dốc êm dịu trải dài trên toàn bộ 638 mẫu. Trong phạm vi một chu kỳ đơn lẻ $T_0$, giá trị của $w[n]$ và $w[n+\tau]$ gần như là một hằng số cục bộ. Khi ta lấy tổng tích lũy $\sum x[n] x[n+\tau] \cdot (w[n] w[n+\tau])$, đại lượng dao động nhanh $x[n] x[n+\tau]$ tạo ra giá trị kỳ vọng trung bình tuần hoàn $R_x[\tau]$, trong khi đại lượng biến thiên chậm $w[n] w[n+\tau]$ có thể đưa ra ngoài dấu tích phân cục bộ dưới dạng trọng số bao $R_w[\tau]$. Phép nhân chập giữa phổ tín hiệu hẹp và phổ cửa sổ rộng trong miền tần số tương ứng với phép nhân đường bao trực tiếp trong miền thời gian.
 
 \subsubsection*{Ví dụ tính tay thu nhỏ: Sóng sin thuần qua cửa sổ Hanning 8 mẫu}
-Để minh chứng tường minh bằng số học cụ thể, ta xét một thí nghiệm mô phỏng thu nhỏ được thực thi bởi kịch bản \texttt{verify\_v3/ch00\_norm\_sine.py}. Ta sử dụng một sóng sin tuần hoàn hoàn hảo có chu kỳ $P = 4$ mẫu (tương ứng tần số $f_0 = f_s / 4 = 4.000\text{ Hz}$), chiều dài phân tích $N = 8$ mẫu:
+Để minh chứng tường minh bằng số học cụ thể, ta xét một thí nghiệm mô phỏng thu nhỏ được thực thi bởi kịch bản \texttt{verify\_v3/ch00\_norm\_sine.py}. Ta sử dụng một sóng sin tuần hoàn lý tưởng có chu kỳ $P = 4$ mẫu (tương ứng tần số $f_0 = f_s / 4 = 4.000\text{ Hz}$), chiều dài phân tích $N = 8$ mẫu:
 \begin{equation}
 x[n] = \sin\left(\frac{2\pi n}{4}\right) = [0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000, \; 0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000]
 \end{equation}
-Hàm cửa sổ Hanning 8 mẫu của Praat tuân thủ công thức $N+1$ (được định nghĩa trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} dòng 423--424):
+Hàm cửa sổ Hanning 8 mẫu của Praat tuân thủ công thức $N+1$ (được định nghĩa trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} dòng 412--416):
 \begin{equation}
 w[i] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi i}{N+1}\right), \quad i = 1, \dots, N \quad (i = n + 1)
 \end{equation}
@@ -166,9 +166,9 @@ w = [0{,}116978, \; 0{,}413176, \; 0{,}750000, \; 0{,}969846, \; 0{,}969846, \; 
 
 Tín hiệu sau khi nhân cửa sổ $x_w[n] = x[n] \cdot w[n]$ là:
 \begin{align*}
-x_w = [& 0{,}0000, \; 0{,}4132, \; 0{,}0000, \; -0{,}9698, \; -0{,}0000, \; 0{,}7500, \; 0{,}0000, \; -0{,}1170]
+x_w = [0{,}0000, \, 0{,}4132, \, 0{,}0000, \, -0{,}9698, \, -0{,}0000, \, 0{,}7500, \, 0{,}0000, \, -0{,}1170]
 \end{align*}
-Bảng \ref{tab:ch00_norm_sine} liệt kê kết quả tính tay chi tiết hàm tự tương quan của cửa sổ $R_w[\tau]$, hàm tự tương quan của tín hiệu nhân cửa sổ $R_{xw}[\tau]$, hệ số tương quan chưa chuẩn hóa $r_{\text{unnorm}}[\tau] = R_{xw}[\tau]/R_{xw}[0]$, và hệ số chuẩn hóa Boersma $r_{\text{Boersma}}[\tau]$ cho các độ trễ từ $\tau = 0$ đến $\tau = 4$ (trích xuất nguyên văn từ \texttt{verify\_v3/ch00\_norm\_sine.log}).
+Bảng \ref{tab:ch00_norm_sine} liệt kê kết quả tính tay chi tiết hàm tự tương quan của cửa sổ $R_w[\tau]$, hàm tự tương quan của tín hiệu nhân cửa sổ $R_{xw}[\tau]$, hệ số tương quan chưa chuẩn hóa $r_{\text{unnorm}}[\tau] = R_{xw}[\tau] / R_{xw}[0]$, và hệ số chuẩn hóa Boersma $r_{\text{Boersma}}[\tau]$ cho các độ trễ từ $\tau = 0$ đến $\tau = 4$ (trích xuất nguyên văn từ tệp nhật ký \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_norm\_sine.log}).
 
 \begin{table}[H]
 \centering
@@ -190,58 +190,71 @@ Bảng \ref{tab:ch00_norm_sine} liệt kê kết quả tính tay chi tiết hàm
 
 \textbf{Đọc bảng và kết luận định lượng.} Hãy nhìn thẳng vào dòng $\tau = 4$, chính là chu kỳ lặp lại thực tế của sóng sin:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Nếu \textbf{không chuẩn hóa cửa sổ}, hệ số tương quan chỉ đạt $r_{\text{unnorm}}[4] = 0{,}250864 \approx 0{,}251$. Tín hiệu thuần nhất 100\% tuần hoàn nhưng giá trị đỉnh tương quan bị sụt giảm tới gần 75\% năng lượng! Với ngưỡng voicing mặc định của Praat là 0,45, thuật toán sẽ kết luận ngay khung này là \emph{vô thanh} (unvoiced) do $0{,}251 < 0{,}45$.
-    \item Ngược lại, khi áp dụng \textbf{chuẩn hóa Boersma}: ta lấy $R_{xw}[4] / R_w[4] = 0{,}423332 / 0{,}846665 = 0{,}500000$. Chia cho tỉ số tại gốc $R_{xw}[0] / R_w[0] = 1{,}687500 / 3{,}375000 = 0{,}500000$, ta thu được kết quả chính xác tuyệt đối:
+    \item Nếu \textbf{không chuẩn hóa cửa sổ}, hệ số tương quan chỉ đạt $r_{\text{unnorm}}[4] = 0{,}250864 \approx 0{,}251$. Tín hiệu tuần hoàn lý tưởng nhưng giá trị đỉnh tương quan bị sụt giảm tới gần 75\% năng lượng! Với ngưỡng voicing mặc định của Praat là 0,45, thuật toán sẽ kết luận ngay khung này là \emph{vô thanh} (unvoiced) do $0{,}251 < 0{,}45$.
+    \item Ngược lại, khi áp dụng \textbf{chuẩn hóa Boersma}: ta lấy $R_{xw}[4] / R_w[4] = 0{,}423332 / 0{,}846665 = 0{,}500000$. Chia cho tỉ số tại gốc $R_{xw}[0] / R_w[0] = 1{,}687500 / 3{,}375000 = 0{,}500000$, ta thu được kết quả chính xác:
     \begin{equation}
     r_{\text{Boersma}}[4] = \frac{0{,}500000}{0{,}500000} = 1{,}000000
     \end{equation}
 \end{itemize}
-Giá trị 1,000000 phản ánh đúng 100\% tính tuần hoàn của sóng sin, không hề bị ảnh hưởng bởi việc cửa sổ bị thót hẹp ở hai đầu. Đây chính là linh hồn toán học giải thích vì sao phần mềm Praat đạt được độ tin cậy và danh tiếng vượt trội trong cộng đồng nghiên cứu ngữ âm học suốt ba thập kỷ qua.
+Giá trị 1,000000 phản ánh đúng tính tuần hoàn của sóng sin, không hề bị ảnh hưởng bởi việc cửa sổ bị thót hẹp ở hai đầu. Đây chính là linh hồn toán học giải thích vì sao phần mềm Praat đạt được độ tin cậy và danh tiếng vượt trội trong cộng đồng nghiên cứu ngữ âm học suốt ba thập kỷ qua.
 
 \textit{Tóm lại: Cửa sổ cắt khung làm suy hao giả tạo năng lượng ở các độ trễ lớn khiến đỉnh cao độ thật bị lùn đi; ý tưởng cốt lõi của Boersma là chia hàm tự tương quan của tín hiệu cho hàm tự tương quan của cửa sổ $R_{xw}[\tau] / R_w[\tau]$, khôi phục trọn vẹn độ mạnh của chu kỳ cơ bản và triệt tiêu định kiến thiên lệch về các độ trễ nhỏ.}
 
 \subsection*{0.3. Tám bước của Praat đúng như mã nguồn và các lựa chọn thiết kế phần cứng}
 \addcontentsline{toc}{subsection}{0.3. Tám bước của Praat đúng như mã nguồn và các lựa chọn thiết kế phần cứng}
 
-Mọi so sánh định lượng giữa bộ đo trên FPGA và phần mềm Praat chỉ có giá trị khoa học khi và chỉ khi ta hiểu chính xác từng dòng mã nguồn của Praat thực sự làm gì. Trong các tài liệu sơ bộ trước đây, thuật toán Praat thường được mô tả qua trí nhớ hoặc dựa trên các khái niệm chung chung, dẫn đến nhiều sai lệch nghiêm trọng về kích thước cửa sổ, số lượng tham số, hay phạm vi tính toán. Ở đây, ta đối chiếu trực tiếp với mã nguồn chuẩn của bản phát hành \textbf{Praat 7.0.03} (phát hành ngày 08/11/2026, ghim làm mốc tham chiếu cho toàn bộ tài liệu), cụ thể là các tệp \texttt{fon/Sound\_to\_Pitch.cpp}, \texttt{fon/Pitch.cpp}, \texttt{fon/Sampled.cpp} và \texttt{fon/praat\_Sound.cpp}.
+Mọi so sánh định lượng giữa bộ đo trên FPGA và phần mềm Praat chỉ có giá trị khoa học khi và chỉ khi ta hiểu chính xác từng dòng mã nguồn của Praat thực sự làm gì. Để tránh các sai lệch thường gặp về kích thước cửa sổ, số lượng tham số hay phạm vi tính toán, tài liệu này đối chiếu trực tiếp với mã nguồn chuẩn của bản phát hành \textbf{Praat 7.0.03} (ghim làm mốc tham chiếu xuyên suốt), cụ thể là các tệp \texttt{fon/Sound\_to\_Pitch.cpp}, \texttt{fon/Pitch.cpp}, \texttt{fon/Sampled.cpp} và \texttt{fon/praat\_Sound.cpp}.
 
 \subsubsection*{Tám bước thuật toán theo đúng thứ tự thực thi trong mã nguồn Praat}
 Thuật toán ước lượng cao độ bằng tự tương quan thô của Praat vận hành tuần tự qua tám bước sau:
 
 \textbf{Bước 1: Tính đỉnh biên độ toàn cục (\texttt{globalPeak}).}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 375--383), Praat quét qua toàn bộ tệp âm thanh đầu vào, tính giá trị trung bình DC của cả tệp, rồi xác định đỉnh biên độ cực đại:
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 365--375), Praat quét qua toàn bộ tệp âm thanh đầu vào, tính giá trị trung bình DC của cả tệp, rồi xác định đỉnh biên độ cực đại:
 \begin{equation}
 \text{globalPeak} = \max_{t} |x(t) - \bar{x}_{\text{file}}|
 \end{equation}
 Giá trị này phản ánh mức biên độ đỉnh tuyệt đối của người nói, được giữ nguyên làm mốc quy chiếu xuyên suốt để thiết lập ngưỡng yên lặng động cho từng khung ở Bước 8.
 
 \textbf{Bước 2: Phân bố lưới khung thời gian (\texttt{Sampled\_shortTermAnalysis}).}
-Trong tệp \texttt{Sampled.cpp} (dòng 56--70), Praat không đặt khung đầu tiên tại mẫu 0 mà căn các khung đối xứng hoàn hảo quanh tâm của tệp âm thanh. Với độ dài tệp $T$, số khung phân tích được tính bởi công thức làm tròn sàn $\lfloor(T - 0{,}04)/0{,}01\rfloor + 1$. Vị trí tâm của khung đầu tiên $t_1$ phụ thuộc vào độ dài tổng thể của tệp. Vì vậy, khung thứ nhất không bắt đầu ở mẫu 0 mà lệch đi một số mẫu nhất định; lõi phần cứng FPGA bắt buộc phải nhận tọa độ $t_1$ và chỉ số mẫu bắt đầu do bộ vi xử lý HPS tính toán để đảm bảo hai bên phân tích trên đúng từng mẫu âm thanh.
+Trong tệp \texttt{Sampled.cpp} (dòng 56--70 định nghĩa \texttt{Sampled\_getWindowSamples} và \texttt{Sampled\_xToLowIndex}; dòng 71--82 định nghĩa \texttt{Sampled\_shortTermAnalysis}), Praat không đặt khung đầu tiên tại mẫu 0 mà căn các khung đối xứng quanh tâm của tệp âm thanh. Với độ dài tệp $T$, số khung phân tích được tính bởi công thức làm tròn sàn $\lfloor(T - 0{,}04)/0{,}01\rfloor + 1$. Vị trí tâm của khung đầu tiên $t_1$ phụ thuộc vào độ dài tổng thể của tệp. Vì vậy, khung thứ nhất không bắt đầu ở mẫu 0 mà lệch đi một số mẫu nhất định; lõi phần cứng FPGA bắt buộc phải nhận tọa độ $t_1$ và chỉ số mẫu bắt đầu do bộ vi xử lý HPS tính toán để đảm bảo hai bên phân tích trên đúng từng mẫu âm thanh.
 
 \textbf{Bước 3: Trừ trung bình cục bộ trên 426 mẫu.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 56--66), Praat tính giá trị trung bình cục bộ của tín hiệu trên đoạn dài đúng hai chu kỳ dài nhất về hai phía tâm khung (``one longest period to both sides''). Tại $f_{\min} = 75\text{ Hz}$, chu kỳ dài nhất là $T_{0,\max} = 16.000 / 75 = 213{,}33$ mẫu, làm tròn thành 213 mẫu. Do đó, trung bình cục bộ được tính trên đúng $2 \times 213 = 426$ mẫu quanh tâm khung ($106 \dots 531$), hoàn toàn không phải trên toàn bộ 638 mẫu. Giá trị trung bình này được trừ khỏi khung để triệt tiêu triệt để thành phần một chiều (DC offset) cục bộ, ngăn ngừa sai lệch hàm tự tương quan.
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 56--66), Praat tính giá trị trung bình cục bộ của tín hiệu trên đoạn dài đúng hai chu kỳ dài nhất về hai phía tâm khung (``one longest period to both sides''). Tại $f_{\min} = 75\text{ Hz}$, chu kỳ dài nhất là $T_{0,\max} = 16.000 / 75 = 213{,}33$ mẫu, làm tròn thành 213 mẫu. Do đó, trung bình cục bộ được tính trên đúng $2 \times 213 = 426$ mẫu quanh tâm khung ($106 \dots 531$), hoàn toàn không phải trên toàn bộ 638 mẫu. Sau đó, tại dòng 68--84, Praat sao chép khung và trừ trung bình cục bộ này trước khi nhân với cửa sổ Hanning nhằm triệt tiêu triệt để thành phần một chiều (DC offset) cục bộ, ngăn ngừa sai lệch hàm tự tương quan.
 
 \textbf{Bước 4: Nhân cửa sổ Hanning $N+1$ với $N = 638$ mẫu.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 335--339 và 423--424), kích thước cửa sổ phân tích được làm tròn đối xứng: từ $640$ mẫu lý thuyết, Praat lấy nửa cửa sổ $\text{half} = 640/2 - 1 = 319$ mẫu, suy ra chiều dài cửa sổ thực tế là $N = 2 \times 319 = 638$ mẫu. Tín hiệu sau khi trừ trung bình cục bộ được nhân với hàm cửa sổ Hanning dạng $N+1$:
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 324--330 và dòng 412--416), kích thước cửa sổ phân tích được làm tròn đối xứng: từ $640$ mẫu lý thuyết, Praat lấy nửa cửa sổ $\text{half} = 640/2 - 1 = 319$ mẫu, suy ra chiều dài cửa sổ thực tế là $N = 2 \times 319 = 638$ mẫu. Tín hiệu sau khi trừ trung bình cục bộ được nhân với hàm cửa sổ Hanning dạng $N+1$:
 \begin{equation}
 w[i] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi i}{639}\right), \quad i = 1, \dots, 638
 \end{equation}
 
 \textbf{Bước 5: Tính đỉnh biên độ cục bộ (\texttt{localPeak}).}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 430--435), Praat tìm giá trị biên độ tuyệt đối lớn nhất của tín hiệu đã nhân cửa sổ bên trong khoảng cách $\pm 107$ mẫu quanh tâm khung:
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 87--102), Praat tìm giá trị biên độ đỉnh tuyệt đối lớn nhất của tín hiệu đã nhân cửa sổ bên trong khoảng cách nửa chu kỳ dài nhất $\pm 107$ mẫu quanh tâm khung ($j \in [212, 425]$):
 \begin{equation}
 \text{localPeak} = \max_{j \in [212, 425]} |x_w[j]|
 \end{equation}
-Tỉ số cường độ tương đối được xác lập qua đại lượng $\text{intensity} = \text{localPeak} / \text{globalPeak}$, phục vụ trực tiếp cho việc xác định ngưỡng chuyển đổi có thanh/vô thanh.
+Tỉ số cường độ tương đối $\text{intensity}$ được xác lập qua biểu thức (dòng 102):
+\begin{equation}
+\text{intensity} = \begin{cases}
+1{,}0, & \text{nếu } \text{localPeak} > \text{globalPeak}, \\
+\dfrac{\text{localPeak}}{\text{globalPeak}}, & \text{ngược lại},
+\end{cases}
+\end{equation}
+phục vụ trực tiếp cho việc xác định ngưỡng chuyển đổi có thanh/vô thanh.
 
 \textbf{Bước 6: Tự tương quan và chuẩn hóa Boersma bằng FFT 1024 điểm.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 440--450), Praat tính hàm $R_{xw}[\tau]$ bằng FFT 1024 điểm (vì độ dài nhân chập $638 \times 1{,}5 = 957$ mẫu, lũy thừa 2 nhỏ nhất là 1024). Sau đó, kết quả được chia cho $R_w[\tau]$ và chuẩn hóa về $r[0] = 1$. Mảng $r[\tau]$ được tính tới độ trễ 319 mẫu (biến \texttt{brent\_ixmax} = 319) làm dữ liệu cho phép nội suy sinc.
+
+Trong tệp \texttt{Sound\_to\_}\linebreak[0]\texttt{Pitch.cpp} (dòng 145--160), Praat tính hàm tự tương quan khung $R_{xw}[\tau]$ bằng phép biến đổi FFT 1024 điểm qua hàm \texttt{NUMfft\_}\linebreak[0]\texttt{forward} (dòng 149, với độ dài nhân chập $638 \times 1{,}5 = 957$ mẫu, chọn lũy thừa 2 gần nhất là 1024).
+
+Đồng thời, tại dòng 422--435, Praat biến đổi FFT và tính tự tương quan của chính cửa sổ $R_w[\tau]$ (mảng \texttt{windowR}), chuẩn hóa mảng này và xác định độ trễ tối đa $\texttt{brent\_}\linebreak[0]\texttt{ixmax} = 319$ mẫu. Sau đó, tại dòng 162--164, kết quả được chuẩn hóa và chia theo công thức Boersma:
+\begin{equation*}
+r[i] = \frac{ac[i+1]}{ac[1] \cdot \texttt{windowR}[i+1]}
+\end{equation*}
 
 \textbf{Bước 7: Tìm kiếm ứng viên cao độ và tinh chỉnh sinc70 + Brent.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 254--270), các đỉnh cực đại cục bộ thỏa mãn đồng thời ba điều kiện: $r[i] > r[i-1]$, $r[i] \ge r[i+1]$, và $r[i] > 0{,}225$ với $i \in [2, \text{maximumLag}-1]$. Với $N=638$, $\text{maximumLag} = \lfloor 638/3 \rfloor + 2 = 214$, nên chỉ số đỉnh $i$ được rà soát trong đoạn $[27, 213]$ (độ trễ 26 và 214 đóng vai trò làm hàng xóm biên). Vị trí đỉnh ban đầu được ước lượng bằng nội suy parabol, nhưng \textbf{luôn luôn được tinh chỉnh chính xác bằng phép nội suy hàm sinc 70 điểm kết hợp thuật toán tìm kiếm Brent}, bất kể chế độ \texttt{Very accurate} bật hay tắt. Độ mạnh (\texttt{strength}) của đỉnh nếu vượt quá 1 sẽ được phản xạ thành $1/\text{strength}$. Praat lưu lại tối đa 15 ứng viên có độ mạnh lớn nhất trong mỗi khung.
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 185--200), Praat quét tìm các đỉnh cực đại cục bộ thỏa mãn đồng thời: $r[i] > 0{,}5 \times \text{voicingThreshold}$, $r[i] > r[i-1]$ và $r[i] \ge r[i+1]$ với $i \in [2, \text{maximumLag}-1]$. Với $N=638$, $\text{maximumLag} = \lfloor 638/3 \rfloor + 2 = 214$, nên Praat quét qua $i = 2 \dots 213$. Các độ trễ $i \in [2, 26]$ vẫn có thể trở thành ứng viên cực đại, nhưng do chúng tương ứng với tần số $f \ge 600\text{ Hz}$ (vượt quá trần \texttt{pitch ceiling} 600 Hz), bộ dò đường Viterbi coi chúng là vô thanh (\texttt{Pitch.cpp} dòng 558, hàm \texttt{Pitch\_util\_frequencyIsVoiced}). Trong khi đó, mạch số FPGA của ta quét trực tiếp trên dải $[27, 213]$ (với độ trễ 26 và 214 đóng vai trò làm hàng xóm biên cho nội suy parabol 3 điểm; xem \texttt{golden\_v2/README} độ lệch 6). Vị trí đỉnh ban đầu được ước lượng bằng nội suy parabol (dòng 195--200), nhưng sau đó \textbf{luôn luôn được tinh chỉnh chính xác bằng phép nội suy hàm sinc 70 điểm kết hợp thuật toán tìm kiếm Brent} (dòng 250--260, hàm \texttt{NUMimproveMaximum}), bất kể chế độ \texttt{Very accurate} bật hay tắt. Độ mạnh (\texttt{strength}) của đỉnh nếu vượt quá 1 sẽ được phản xạ thành $1/\text{strength}$. Praat lưu lại tối đa 15 ứng viên có độ mạnh lớn nhất trong mỗi khung.
 
 \textbf{Bước 8: Thuật toán quy hoạch động Viterbi (Path Finder).}
-Trong tệp \texttt{Pitch.cpp} (dòng 553--560), một bộ tìm đường tối ưu toàn cục (Viterbi) xâu chuỗi các ứng viên qua tất cả các khung trong tệp âm thanh. Ứng viên vô thanh có độ mạnh phụ thuộc vào cường độ biên độ:
+Trong tệp \texttt{Pitch.cpp} (dòng 550--565), một bộ tìm đường tối ưu toàn cục (Viterbi) xâu chuỗi các ứng viên qua tất cả các khung trong tệp âm thanh. Ứng viên vô thanh có độ mạnh phụ thuộc vào cường độ biên độ:
 \begin{equation}
 \text{strength}_{\text{unvoiced}} = 0{,}45 + \max\left(0, \; 2 - \frac{\text{intensity}}{0{,}03 / 1{,}45}\right)
 \end{equation}
@@ -249,7 +262,7 @@ Trong tệp \texttt{Pitch.cpp} (dòng 553--560), một bộ tìm đường tối
 \begin{equation}
 \text{octave\_cost} = 0{,}01 \cdot \log_2\left(\frac{\text{Pitch ceiling}}{f}\right)
 \end{equation}
-Hàm mục tiêu quy hoạch động tối ưu hóa tổng độ mạnh của các ứng viên trừ đi hai chi phí chuyển tiếp: chi phí nhảy quãng tám (\texttt{octave-jump cost} = 0,35) và chi phí chuyển đổi hữu thanh/vô thanh (\texttt{voiced/unvoiced cost} = 0,14).
+Đặc biệt, trong tệp \texttt{Pitch.cpp} (dòng 543--545), Praat nhân hệ số tỉ lệ thời gian $\text{timeStepCorrection} = 0{,}01 / \Delta t$ vào hai chi phí chuyển tiếp: chi phí nhảy quãng tám (\texttt{octave-jump cost} $= 0{,}35 \cdot (0{,}01/\Delta t)$) và chi phí chuyển đổi hữu thanh/vô thanh (\texttt{voiced/unvoiced cost} $= 0{,}14 \cdot (0{,}01/\Delta t)$). Với bước nhảy mặc định $\Delta t = 10\text{ ms} = 0{,}01\text{ s}$, hệ số tỉ lệ này đúng bằng $1{,}0$; đối với các bước nhảy tổng quát khác, công thức này bảo đảm chi phí chuyển tiếp luôn tương thích theo thang thời gian vật lý.
 
 \subsubsection*{Mười tham số chuẩn của Praat và hành vi ở $f_s = 16\text{ kHz}$}
 Lệnh chuẩn trong giao diện Praat là \texttt{Sound: To Pitch (raw autocorrelation)...} tiếp nhận đúng \textbf{10 tham số} cấu hình:
@@ -259,18 +272,18 @@ Lệnh chuẩn trong giao diện Praat là \texttt{Sound: To Pitch (raw autocorr
     \item \textbf{Pitch ceiling} (mặc định 600 Hz): Đặt giới hạn tần số cao nhất, quyết định độ trễ tối thiểu quét là $\tau_{\min} = \lfloor 16000 / 600 \rfloor = 26$ mẫu; mọi ứng viên có tần số vượt 600 Hz bị coi là vô thanh.
     \item \textbf{Max. number of candidates} (mặc định 15): Số lượng ứng viên cao độ tối đa được giữ lại ở mỗi khung cho bộ giải thuật Viterbi; mã nguồn tự động ép giá trị này tối thiểu bằng $\lfloor 600 / 75 \rfloor = 8$.
     \item \textbf{Very accurate} (mặc định \texttt{off}): Khi tắt, thuật toán dùng cửa sổ Hanning 3 chu kỳ và nội suy sinc 70 điểm; nếu bật, Praat chuyển sang cửa sổ Gaussian 6 chu kỳ và nội suy sinc 700 điểm.
-    \item \textbf{Silence threshold} (mặc định 0,03): Ngưỡng tỉ số biên độ $\text{localPeak}/\text{globalPeak}$, kích hoạt vùng dốc phi tuyến nhằm hạ độ mạnh của ứng viên có thanh trong các đoạn thì thầm hoặc im lặng.
+    \item \textbf{Silence threshold} (mặc định 0,03): Ngưỡng tỉ số biên độ đỉnh tuyệt đối cục bộ so với đỉnh toàn cục (tỉ số $\text{localPeak} / \text{globalPeak}$, không phải đo bằng năng lượng RMS), kích hoạt vùng dốc phi tuyến nhằm hạ độ mạnh của ứng viên có thanh trong các đoạn thì thầm hoặc im lặng.
     \item \textbf{Voicing threshold} (mặc định 0,45): Ngưỡng sức mạnh tương quan để ứng viên có thanh được chấp nhận cạnh tranh với ứng viên vô thanh.
     \item \textbf{Octave cost} (mặc định 0,01): Trọng số phạt theo logarit tần số, ưu tiên nhẹ cho các tần số cao hơn để chống lại xu hướng rơi vào bẫy chia đôi quãng tám.
-    \item \textbf{Octave-jump cost} (mặc định 0,35): Hệ số phạt khi đường cao độ nhảy vọt đột ngột quá một quãng tám giữa hai khung liên tiếp trong thuật toán Viterbi.
-    \item \textbf{Voiced/unvoiced cost} (mặc định 0,14): Hệ số phạt khi có sự chuyển trạng thái giữa có thanh và vô thanh giữa hai khung kề nhau trong thuật toán Viterbi.
+    \item \textbf{Octave-jump cost} (mặc định 0,35): Hệ số phạt khi đường cao độ nhảy vọt đột ngột quá một quãng tám giữa hai khung liên tiếp trong thuật toán Viterbi (nhân tỉ lệ $0{,}01/\Delta t$).
+    \item \textbf{Voiced/unvoiced cost} (mặc định 0,14): Hệ số phạt khi có sự chuyển trạng thái giữa có thanh và vô thanh giữa hai khung kề nhau trong thuật toán Viterbi (nhân tỉ lệ $0{,}01/\Delta t$).
 \end{itemize}
 
 \textbf{Lưu ý về bước lọc mềm mép Nyquist (Soft Upsampling):}
 Trong bài báo gốc của Paul Boersma năm 1993, tác giả có đề xuất một bước tiền xử lý gọi là ``soft upsampling'': làm mềm phổ biên độ dốc tuyến tính về 0 từ $95\%$ đến $100\%$ tần số Nyquist (tức từ 7,6 kHz đến 8,0 kHz ở $f_s = 16\text{ kHz}$) bằng biến đổi FFT nhằm giảm hiện tượng gợn sóng bậc cao trong hàm tương quan. Tuy nhiên, khi kiểm tra kỹ lưỡng toàn bộ mã nguồn của Praat 6.4.12 và Praat 7.0.03, \textbf{bước xử lý này hoàn toàn không tồn tại trong đường thực thi \texttt{raw autocorrelation}}. Tài liệu hướng dẫn sử dụng hiện hành của Praat cũng đã loại bỏ bước này. Do đó, trong thiết kế phần cứng ở Chương 3, ta bố trí một khối lọc FIR 31-tap tùy chọn nhưng đặt công tắc mặc định là \textbf{bypass} khi tiến hành đo đạc đối sánh với Praat để tránh tự tạo ra sai lệch không đáng có.
 
 \subsubsection*{Bảng đối chiếu thiết kế: Praat phần mềm so với FPGA phần cứng}
-Bảng \ref{tab:ch00_praat_vs_fpga} tổng hợp toàn diện các quyết định kiến trúc: khâu nào ta bám sát Praat 100\%, khâu nào ta chủ động thay thế bằng giải thuật thân thiện với phần cứng, lý do kỹ thuật và tác động định lượng đến phép so sánh.
+Bảng \ref{tab:ch00_praat_vs_fpga} tổng hợp toàn diện các quyết định kiến trúc: khâu nào ta bám sát Praat nguyên bản, khâu nào ta chủ động thay thế bằng giải thuật thân thiện với phần cứng, lý do kỹ thuật và tác động định lượng đến phép so sánh.
 
 \begin{table}[H]
 \centering
@@ -281,31 +294,31 @@ Bảng \ref{tab:ch00_praat_vs_fpga} tổng hợp toàn diện các quyết đị
 \toprule
 \textbf{Khâu xử lý} & \textbf{Praat 7.0.03 (SW)} & \textbf{Thiết kế FPGA (HW)} & \textbf{Lý do kỹ thuật phần cứng} & \textbf{Ảnh hưởng tới phép so sánh} \\
 \midrule
-1. Cửa sổ và lưới thời gian & $N = 638$ mẫu, hop 160, căn đối xứng cả tệp & Bám đúng $N = 638$, hop 160, nhận lưới thời gian từ HPS & Cùng lưới là điều kiện tiên quyết bắt buộc để so sánh từng khung & Sai lệch thời gian bằng 0; khung phân tích trùng khít 100\%. \\
+1. Cửa sổ và lưới thời gian & $N = 638$ mẫu, hop 160, căn đối xứng cả tệp & Bám đúng $N = 638$, hop 160, nhận lưới thời gian từ HPS & Cùng lưới là điều kiện tiên quyết bắt buộc để so sánh từng khung & Sai lệch thời gian bằng 0; khung phân tích trùng khít hoàn toàn. \\
 \addlinespace
-2. Trung bình cục bộ & Lấy trên 426 mẫu ($106 \dots 531$), số thực double & 426 mẫu, nhân hằng số nghịch đảo $M=10.082.083$, dịch 32 bit & Tránh bộ chia số nguyên phức tạp, vừa vặn trong bộ nhân cứng DSP 25$\times$24 & Trừ trung bình khớp bit 100\% với mô hình số nguyên. \\
+2. Trung bình cục bộ & Lấy trên 426 mẫu ($106 \dots 531$), số thực double & 426 mẫu, nhân hằng số nghịch đảo $M=10.082.083$, dịch 32 bit & Tránh bộ chia số nguyên phức tạp, vừa vặn trong bộ nhân cứng DSP 25$\times$24 & Trừ trung bình khớp bit chính xác (bit-exact) với mô hình số nguyên. \\
 \addlinespace
-3. Tính tự tương quan & FFT 1024 điểm, số thực double 64-bit & Nhân-cộng MAC trực tiếp, toán hạng 17-bit, tích lũy 48-bit & 1 khối DSP 18$\times$18 chạy nối tiếp 98.543 nhịp, tiết kiệm hàng nghìn ALM so với lõi FFT & Khớp về mặt toán học; sai số lượng tử fixed-point cực nhỏ ($< 10^{-4}$ cent). \\
+3. Tính tự tương quan & FFT 1024 điểm, số thực double 64-bit & Nhân-cộng MAC trực tiếp, toán hạng 17-bit, tích lũy 48-bit & 1 khối DSP 18$\times$18 chạy nối tiếp 98.543 nhịp, tiết kiệm hàng nghìn ALM so với lõi FFT & Khớp về mặt toán học; mô hình số nguyên twin vs R2 đạt sai số cent mịn trung bình $0{,}21$ cent ($p_{95} = 0{,}48$ cent) trên tín hiệu sạch, và $3{,}07$ cent ($p_{95} = 9{,}78$ cent) trên tín hiệu ồn 5 dB. \\
 \addlinespace
 4. Chi phí quãng tám (\texttt{octave cost}) & Trừ $0{,}01 \log_2(\text{ceiling}/f)$ vào độ mạnh ứng viên & Chuẩn hóa $R[\tau]$ về 27 bit, trừ số hạng tra bảng $K[\tau]$ & Thay thế phép chia và hàm logarit phức tạp bằng phép trừ số nguyên & Khớp hoàn toàn với công thức Praat, không làm méo dạng đỉnh parabol. \\
 \addlinespace
-5. Tinh chỉnh đỉnh cực đại & Nội suy Parabol sơ bộ rồi tinh chỉnh sinc 70 điểm + Brent & Nội suy Parabol 3 điểm, gộp hai phép chia thành một phép chia duy nhất & Phép nội suy sinc70 lặp Brent quá cồng kềnh cho FPGA; parabol chỉ tốn 1 bộ chia & Lệch $< 1{,}1$ cent trên tín hiệu sạch; lệch tới $\sim 33$ cent trên tín hiệu ồn 5 dB. \\
+5. Tinh chỉnh đỉnh cực đại & Nội suy Parabol sơ bộ rồi tinh chỉnh sinc 70 điểm + Brent & Nội suy Parabol 3 điểm, gộp hai phép chia thành một phép chia duy nhất & Phép nội suy sinc70 lặp Brent quá cồng kềnh cho FPGA; parabol chỉ tốn 1 bộ chia & Lệch cực đại $1{,}08$ cent trên tín hiệu sạch; lệch cực đại $32{,}91$ cent trên tín hiệu ồn 5 dB. \\
 \addlinespace
-6. Xếp hạng ứng viên & Lưu 15 ứng viên cục bộ, tính độ mạnh sinc cho từng đỉnh & Chỉ lưu 1 ứng viên có điểm số $S_c$ cao nhất trên lưới độ trễ $\tau$ & Tiết kiệm thanh ghi và logic quản lý bảng ứng viên phức tạp & Ở tín hiệu ồn có hai đỉnh gần hòa, FPGA có thể chọn đỉnh khác Praat (3/207 khung). \\
+6. Xếp hạng ứng viên & Quét $i \in [2, 213]$ (lags $2 \dots 26$ thành vô thanh), lưu 15 ứng viên & Quét trực tiếp dải $[27, 213]$, chỉ lưu 1 ứng viên có điểm số $S_c$ cao nhất trên lưới & Tiết kiệm thanh ghi và logic quản lý bảng ứng viên phức tạp & Ở tín hiệu ồn có hai đỉnh gần hòa, FPGA có thể chọn đỉnh khác Praat (3/207 khung). \\
 \addlinespace
 7. Lựa chọn cao độ toàn cục & Quy hoạch động Viterbi (Path Finder) duyệt toàn bộ tệp âm thanh & Bộ lọc trung vị 3 điểm (median-3) xử lý trôi (streaming) & Viterbi cần bộ nhớ lưu trữ toàn bộ tệp và giải thuật đệ quy quay lui; median-3 chỉ trễ 1 khung & Median-3 sửa được các đỉnh gai đơn lẻ nhưng không thay thế được Viterbi; phần chênh lệch đo bằng $R_1 - R_2$. \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\textbf{Đọc bảng và định vị mốc tham chiếu.} Bảng đối chiếu trên cho thấy một nguyên tắc thiết kế mạch lạc: các khâu biến đổi tín hiệu vật lý cơ bản (lưới khung, độ dài cửa sổ 638 mẫu, trung bình 426 mẫu, chuẩn hóa cửa sổ và chi phí quãng tám dạng trừ) được hiện thực trung thành tuyệt đối với Praat để loại trừ mọi sai số tiên nghiệm. 
+\textbf{Đọc bảng và định vị mốc tham chiếu.} Bảng đối chiếu trên cho thấy một nguyên tắc thiết kế mạch lạc: các khâu biến đổi tín hiệu vật lý cơ bản (lưới khung, độ dài cửa sổ 638 mẫu, trung bình 426 mẫu, chuẩn hóa cửa sổ và chi phí quãng tám dạng trừ) được hiện thực bám sát Praat để loại trừ mọi sai số tiên nghiệm. 
 
 Ba sự khác biệt có chủ ý nằm ở: (1) nội suy parabol thay cho sinc70 + Brent, (2) chọn đỉnh tốt nhất trên lưới thay vì 15 ứng viên, và (3) bộ lọc trung vị median-3 thay cho Viterbi. Chính vì FPGA không chứa bộ giải thuật Viterbi, trong toàn bộ tài liệu này ta định nghĩa hai mốc tham chiếu Praat chuẩn:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Praat $R_1$}: Chạy Praat với toàn bộ 10 tham số mặc định (gồm cả thuật toán Viterbi với \texttt{octave-jump cost} = 0,35 và \texttt{V/UV cost} = 0,14).
     \item \textbf{Praat $R_2$}: Chạy Praat với cấu hình tương tự nhưng đặt \texttt{octave-jump cost} = 0 và \texttt{V/UV cost} = 0. Khi triệt tiêu hai chi phí chuyển tiếp này, thuật toán Viterbi tự động suy biến thành phép chọn cực đại độc lập trên từng khung ($\operatorname{argmax}$ cục bộ).
 \end{itemize}
-Nhờ định nghĩa này, phép so sánh giữa FPGA (trước bộ lọc median) và Praat $R_2$ trở thành một phép so sánh \textbf{ngang hàng tuyệt đối (apples-to-apples)}: cả hai đều chọn ứng viên tốt nhất trên từng khung độc lập. Hiệu số giữa Praat $R_1$ và Praat $R_2$ sẽ bóc tách và định lượng chính xác phần đóng góp riêng biệt của thuật toán Viterbi, giúp anh Tú trả lời trọn vẹn câu hỏi: phần chênh lệch nào do phần cứng số nguyên gây ra, và phần nào do sự vắng mặt của thuật toán quy hoạch động toàn cục.
+Nhờ định nghĩa này, phép so sánh giữa FPGA (trước bộ lọc median) và Praat $R_2$ trở thành một phép so sánh \textbf{ngang hàng (apples-to-apples)}: cả hai đều chọn ứng viên tốt nhất trên từng khung độc lập. Hiệu số giữa Praat $R_1$ và Praat $R_2$ sẽ bóc tách và định lượng chính xác phần đóng góp riêng biệt của thuật toán Viterbi, giúp anh Tú trả lời trọn vẹn câu hỏi: phần chênh lệch nào do phần cứng số nguyên gây ra, và phần nào do sự vắng mặt của thuật toán quy hoạch động toàn cục.
 
 \textit{Tóm lại: Praat vận hành qua 8 bước chặt chẽ với 10 tham số chuẩn; trên FPGA ta bám sát Praat ở kích thước cửa sổ 638 mẫu, trung bình 426 mẫu và chuẩn hóa cửa sổ, đồng thời thay thế sinc70+Brent bằng parabol và Viterbi bằng median-3, sử dụng mốc Praat $R_2$ làm chuẩn đối sánh ngang hàng trực tiếp.}
 
@@ -336,6 +349,33 @@ Hình \ref{fig:ch00_system} phác họa toàn cảnh kiến trúc luồng dữ l
     \end{itemize}
     \item \textbf{Đường trả kết quả và nhánh đối chứng (màu tím):} Giá trị $F_0$ tính được cùng trạng thái có thanh/vô thanh được đẩy vào FIFO ngõ ra F0. Bộ điều khiển HPS đọc từ FIFO này qua cầu nối và ghi tuần tự vào tệp nhị phân \texttt{pitch\_f0.bin} kèm tệp mô tả meta. Song song trên máy tính, phần mềm Praat 7.0.03 xử lý cùng tệp WAV với 10 tham số chuẩn, xuất ra hai đường tham chiếu $R_1$ và $R_2$ để phục vụ phân tích sai số toàn diện ở Chương 13.
 \end{enumerate}
+
+\subsubsection*{Phân tích phương án truyền dữ liệu HPS--FPGA và kích thước bộ đệm FIFO}
+Để đưa dữ liệu từ vi xử lý sang FPGA một cách tối ưu, ta tiến hành phân tích so sánh giữa các phương án phần cứng:
+
+\textbf{1. Cơ chế truyền dữ liệu: PIO qua Lightweight Bridge so với mSGDMA qua Full Bridge.}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Phương án A (Cơ chế PIO qua Lightweight HPS-to-FPGA):} Bộ điều khiển C trên HPS sử dụng ánh xạ bộ nhớ (\texttt{mmap}) trực tiếp vào không gian địa chỉ $2\text{ MB}$ của cầu nối Lightweight 32-bit Avalon-MM và ghi từng từ vào FIFO ngõ vào.
+    \item \emph{Phương án B (Cơ chế DMA qua HPS-to-FPGA toàn phần):} Sử dụng bộ điều khiển DMA phân tán \texttt{altera\_}\linebreak[0]\texttt{avalon\_}\linebreak[0]\texttt{msgdma} kết nối qua cầu nối HPS-to-FPGA AXI 64/128-bit.
+    \item \emph{Đánh đổi định lượng:} Âm thanh chuẩn 16 kHz, 16-bit PCM mono có lưu lượng dữ liệu vật lý rất thấp:
+    \begin{equation}
+    B = 16.000\text{ mẫu/s} \times 2\text{ byte/mẫu} = 32.000\text{ byte/s} = 32\text{ KB/s}
+    \end{equation}
+    Khi ghép 2 mẫu 16-bit thành một từ 32-bit (chẵn khung), HPS chỉ cần phát $8.000$ thao tác ghi/giây. Trên xung nhịp bus 50 MHz, một chu kỳ ghi bus tốn $20\text{ ns}$. Ngay cả khi ước lượng với con số cực kỳ bi quan là $1\ \mu\text{s}$ cho mỗi thao tác ghi trong không gian người dùng của Linux kernel, tổng thời gian CPU tiêu tốn cho việc truyền dữ liệu trong mỗi 1 giây âm thanh chỉ là $8.000 \times 1\ \mu\text{s} = 8\text{ ms}$, tương ứng hệ số thời gian thực truyền dữ liệu:
+    \begin{equation}
+    \text{RTF}_{\text{transfer}} = \frac{8\text{ ms}}{1.000\text{ ms}} = 0{,}008
+    \end{equation}
+    (thời gian ghi thực tế trên Linux cần được đo đạc chính xác trên bo mạch ở Chương 13 -- phải đo). Hệ số $0{,}008$ chỉ chiếm chưa đầy $1\%$ thời gian của hệ thống. Ngược lại, cấu hình mSGDMA đòi hỏi phân bổ bộ nhớ vật lý liên tục, khởi tạo bảng mô tả descriptor, quản lý ngắt hoàn tất và tiêu tốn hàng nghìn logic ALM trên Cyclone V. Với băng thông $32\text{ KB/s}$, mSGDMA là sự phức tạp hóa không cần thiết.
+\end{itemize}
+
+\textbf{2. Kích thước On-Chip FIFO: $512 \times 16$ bit so với $1024 \times 16$ bit.}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Một khối RAM nhúng M10K trên Cyclone V có dung lượng $10.240\text{ bit}$. Ở độ rộng 16-bit, cấu hình sâu nhất của 1 khối M10K là $512\text{ từ} \times 16\text{ bit} = 8.192\text{ bit}$. FIFO $512 \times 16$ chiếm vừa vặn đúng \textbf{1 khối M10K duy nhất}.
+    \item Dung lượng 512 mẫu chứa được $512 / 160 = 3{,}2$ bước nhảy hop (tương đương $32\text{ ms}$ âm thanh), hoàn toàn đủ để hấp thụ các dao động trễ lập lịch (scheduling jitter) của hệ điều hành Linux HPS (thường dưới $2 \dots 5\text{ ms}$).
+    \item Nếu nâng lên $1024 \times 16$, thiết kế bắt buộc phải tiêu tốn \textbf{2 khối M10K}. Do HPS phát dữ liệu đều đặn mỗi 10 ms và FPGA xử lý một khung chỉ mất khoảng 2 ms, bộ đệm 512 mẫu hầu như luôn ở mức rỗng; việc tăng lên 1024 mẫu không đem lại lợi ích thiết thực mà gây lãng phí tài nguyên RAM nhúng.
+\end{itemize}
+
+\textbf{Lựa chọn thiết kế:} Sử dụng cơ chế \textbf{PIO qua cầu nối Lightweight HPS-to-FPGA} kết hợp \textbf{On-Chip FIFO $512 \times 16$ (chiếm đúng 1 M10K)}. Đây là lựa chọn tối giản, vững chắc và tiết kiệm tài nguyên nhất (phù hợp với thiết kế chi tiết ở Chương 1, Mục 1.3).
 
 \subsubsection*{Bản đồ phân công nội dung chi tiết theo từng chương}
 Mỗi khối chức năng trong kiến trúc tổng thể trên được nghiên cứu, thiết kế và kiểm chứng chi tiết trong từng chương chuyên biệt của tài liệu này:
@@ -405,7 +445,7 @@ Một ngưỡng lệch tương đối $20\%$ về mặt tần số tương ứng
 \begin{equation}
 1.200 \cdot \log_2(1{,}20) \approx 315{,}64\text{ cent} \approx 3{,}16\text{ nửa cung (semitones)}
 \end{equation}
-Khoảng cách hơn 3 nửa cung vượt xa ngưỡng phân biệt cao độ mịn của con người (thường dưới 20--50 cent). Khi một khung bị lỗi nhảy quãng tám (nhân đôi tần số: $F_{\text{test}} = 2 F_{\text{ref}}$), sai số cent lên tới đúng $1.200\text{ cent}$! Nếu gộp các khung lỗi quãng tám này vào thống kê cent mịn, chỉ cần một khung lỗi 1.200 cent duy nhất cũng đủ làm biến dạng giá trị trung bình từ $0{,}2\text{ cent}$ vọt lên hàng chục cent, che lấp hoàn toàn độ chính xác vi mô của bộ nội suy đỉnh parabol. Do đó, việc tách rời GPE (đánh giá lỗi giải thuật) và cent mịn (đánh giá độ tinh xảo số học) là nguyên tắc bắt buộc.
+Khoảng cách hơn 3 nửa cung vượt xa ngưỡng nghe nhận biết cao độ (JND -- Just Noticeable Difference) của con người (khoảng $5 \dots 10\text{ cent}$ đối với âm thanh đơn âm hoặc người nghe được huấn luyện, và $10 \dots 25\text{ cent}$ đối với tiếng nói tự nhiên trong ngữ cảnh phức tạp). Khi một khung bị lỗi nhảy quãng tám (nhân đôi tần số: $F_{\text{test}} = 2 F_{\text{ref}}$), sai số cent lên tới đúng $1.200\text{ cent}$! Nếu gộp các khung lỗi quãng tám này vào thống kê cent mịn, chỉ cần một khung lỗi 1.200 cent duy nhất cũng đủ làm biến dạng giá trị trung bình từ $0{,}2\text{ cent}$ tăng lên hàng chục cent, che lấp độ chính xác vi mô của bộ nội suy đỉnh parabol. Do đó, việc tách rời GPE (đánh giá lỗi giải thuật) và cent mịn (đánh giá độ tinh xảo số học) là nguyên tắc bắt buộc cần tuân thủ.
 
 \subsubsection*{Ví dụ tính tay thu nhỏ trên 10 khung mô phỏng}
 Để người đọc tự tay kiểm tra từng con số, xét kịch bản mẫu gồm 10 khung phân tích đại diện đầy đủ cho 4 tình huống vật lý (được sinh và tính toán bởi kịch bản \texttt{verify\_v3/ch00\_metrics.py}):
@@ -419,7 +459,7 @@ Khoảng cách hơn 3 nửa cung vượt xa ngưỡng phân biệt cao độ m�
 Khung & $F_{\text{ref}}$ (Hz) & $F_{\text{test}}$ (Hz) & Phân loại tình huống & Sai số tương đối & Sai số cent & Trạng thái lỗi \\
 \midrule
 0 & 0,0 & 0,0 & Cả hai vô thanh (TH 4) & --- & --- & Không lỗi \\
-1 & 120,0 & 120,0 & Cùng có thanh (TH 1) & $0{,}00\%$ & $+0{,}00$ & Khớp tuyệt đối \\
+1 & 120,0 & 120,0 & Cùng có thanh (TH 1) & $0{,}00\%$ & $+0{,}00$ & Khớp hoàn toàn \\
 2 & 150,0 & 152,0 & Cùng có thanh (TH 1) & $1{,}33\%$ & $+22{,}93$ & Sai số mịn \\
 3 & 200,0 & 196,0 & Cùng có thanh (TH 1) & $2{,}00\%$ & $-34{,}98$ & Sai số mịn \\
 4 & 220,0 & 224,0 & Cùng có thanh (TH 1) & $1{,}82\%$ & $+31{,}19$ & Sai số mịn \\
@@ -448,22 +488,22 @@ Khung & $F_{\text{ref}}$ (Hz) & $F_{\text{test}}$ (Hz) & Phân loại tình hu�
     \begin{equation}
     \text{FFE} = \frac{N_{\text{VDE}} + N_{\text{GPE}}}{N} = \frac{2 + 2}{10} = 40{,}0\%
     \end{equation}
-    \item Thống kê sai số cent mịn trên 4 khung không lỗi thô (Khung 1, 2, 3, 4 với độ lệch tuyệt đối là $0{,}00$, $22{,}96$, $34{,}97$, $31{,}18\text{ cent}$):
+    \item Thống kê sai số cent mịn trên 4 khung không lỗi thô (Khung 1, 2, 3, 4 với độ lệch tuyệt đối là $0{,}00$, $22{,}93$, $34{,}98$, $31{,}19\text{ cent}$):
     \begin{align}
-    \text{Trung bình tuyệt đối} &= \frac{0{,}00 + 22{,}96 + 34{,}97 + 31{,}18}{4} = 22{,}28\text{ cent} \\
+    \text{Trung bình tuyệt đối} &= \frac{0{,}00 + 22{,}93 + 34{,}98 + 31{,}19}{4} = 22{,}28\text{ cent} \\
     \text{Độ lệch chuẩn (Std)} &= 25{,}64\text{ cent} \\
     \text{Phân vị 95 (P95)} &= 34{,}41\text{ cent} \\
     \text{Sai số mịn cực đại} &= 34{,}98\text{ cent}
     \end{align}
 \end{itemize}
-Tất cả các hàm đo đạc trong \texttt{verify\_v3/ch00\_metrics.py} đã được đối chiếu và khẳng định cho kết quả trùng khớp hoàn toàn với kịch bản tổng thể \texttt{golden\_v2/compare.py} khi kiểm tra trên hai tệp kiểm chứng \texttt{synth\_glide\_vuv\_16k.wav} và \texttt{synth\_glide\_vuv\_16k\_snr5.wav}.
+Để khẳng định tính đúng đắn của các hàm đo đạc, kịch bản \texttt{verify\_v3/ch00\_metrics.py} đã nạp trực tiếp toàn bộ 16 tệp dữ liệu \texttt{.tsv} kết quả trong \texttt{golden\_v2/out/} và chạy hàm \texttt{compute\_metrics()}, xác nhận số lượng khung VDE, GPE, FFE và giá trị sai số cent mịn cực đại trùng khớp với từng con số trong \texttt{golden\_v2/out/compare\_summary.json}. Đồng thời, sự khác biệt có chủ ý về trung bình và phân vị 95 (do \texttt{compare.py} tính trên toàn bộ các khung cùng có thanh bao gồm cả lỗi thô, còn \texttt{ch00\_metrics.py} chỉ tính trên các khung cent mịn) đã được ghi nhận và giải thích minh bạch trong mã nguồn.
 
 \textit{Tóm lại: VDE đo sự sai lệch phân loại hữu thanh/vô thanh trên toàn tệp, GPE đo lỗi nhảy quãng tám trên các khung cùng hữu thanh, FFE gộp cả hai loại lỗi trên tổng số khung, còn sai số cent mịn đánh giá độ chính xác toán học của bộ nội suy đỉnh sau khi đã bóc tách triệt để các lỗi thô.}
 
 \subsection*{0.6. Ngân sách chu kỳ, hệ số thời gian thực RTF, và mạch phát cặp mẫu phần cứng}
 \addcontentsline{toc}{subsection}{0.6. Ngân sách chu kỳ, hệ số thời gian thực RTF, và mạch phát cặp mẫu phần cứng}
 
-Khi chuyển dịch một thuật toán từ môi trường máy tính sang chip bán dẫn FPGA, câu hỏi sống còn đầu tiên của người kỹ sư là: mạch số có đủ nhanh để xử lý tín hiệu theo thời gian thực (real-time) hay không, và ta cần bao nhiêu tài nguyên phần cứng (bộ nhân DSP, khối nhớ RAM M10K) để đáp ứng thời hạn đó? 
+Khi chuyển dịch một thuật toán từ môi trường máy tính sang chip bán dẫn FPGA, bài toán thiết kế trọng tâm đầu tiên của người kỹ sư là: mạch số có đủ nhanh để xử lý tín hiệu theo thời gian thực (real-time) hay không, và ta cần bao nhiêu tài nguyên phần cứng (bộ nhân DSP, khối nhớ RAM M10K) để đáp ứng thời hạn đó? 
 
 \subsubsection*{Dẫn xuất ngân sách chu kỳ từ nguyên lý đầu tiên}
 Hệ thống phần cứng trên bo mạch DE10-Standard vận hành với xung nhịp đồng hồ hệ thống $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ xung nhịp $T_{\text{clk}} = 20\text{ ns}$). Tín hiệu âm thanh chuẩn được lấy mẫu ở tần số $f_s = 16.000\text{ Hz}$ (chu kỳ lấy mẫu $T_s = 62{,}5\ \mu\text{s}$).
@@ -498,7 +538,26 @@ Nhờ cơ chế phát cặp mẫu liên tục không nhịp nghỉ (sẽ phân t
 \begin{equation}
 N_{\text{cycles, MAC}} = 98.540\text{ nhịp phát} + 3\text{ nhịp trễ} = 98.543\text{ chu kỳ/khung}
 \end{equation}
-Con số 98.543 chu kỳ này đã được đo đạc chính xác tuyệt đối bằng bộ mô phỏng iverilog trên mã nguồn \texttt{golden\_v2/hdl\_check/tb\_mac638.v}.
+Con số 98.543 chu kỳ này đã được đo đạc chính xác bằng bộ mô phỏng iverilog trên mã nguồn \texttt{golden\_v2/}\linebreak[0]\texttt{hdl\_check/}\linebreak[0]\texttt{tb\_mac638.v}.
+
+\subsubsection*{Phân tích phương án kiến trúc khối MAC: Tuần tự 1 DSP so với Song song $P$ DSP}
+Trước khi ấn định thiết kế phần cứng cho khối tự tương quan, ta phân tích đánh đổi giữa hai phương án kiến trúc:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Phương án 1 (Kiến trúc tuần tự 1 DSP, $P = 1$):} Dùng duy nhất 1 bộ nhân-cộng MAC $18 \times 18$ bit vận hành nối tiếp qua tất cả các cặp mẫu của 190 độ trễ ($R[0]$ và 189 độ trễ $\tau$).
+    \item \emph{Phương án 2 (Kiến trúc song song $P$ DSP, $P \ge 2$):} Bố trí $P$ bộ nhân-cộng MAC hoạt động song song để chia sẻ việc tính toán các độ trễ khác nhau.
+    \item \emph{Đánh đổi định lượng:}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \textbf{Số chu kỳ:} Số chu kỳ tính toán của khối MAC tỉ lệ nghịch với $P$:
+        \begin{equation}
+        N_{\text{cycles, MAC}} \approx \frac{98.540}{P} + 3\text{ chu kỳ}
+        \end{equation}
+        Với $P = 2$, số chu kỳ giảm còn khoảng $49.273$ chu kỳ; với $P = 4$, giảm còn khoảng $24.638$ chu kỳ.
+        \item \textbf{Tài nguyên DSP:} Số khối DSP tiêu tốn tăng tuyến tính bằng đúng $P$ khối nhân.
+        \item \textbf{Nghẽn cổ chai cổng đọc RAM M10K:} Đây là rào cản vật lý then chốt. Mỗi bộ nhân MAC ở mỗi chu kỳ cần đọc đồng thời 2 mẫu âm thanh $x[n]$ và $x[n+\tau]$. Một khối RAM nhúng M10K chỉ hỗ trợ tối đa 2 cổng đọc độc lập (True Dual-Port RAM). Nếu sử dụng $P$ bộ MAC song song, hệ thống đòi hỏi $2P$ cổng đọc đồng thời tại mỗi nhịp xung nhịp. Để giải quyết, ta buộc phải nhân bản bộ nhớ RAM vòng thành $P$ bản sao giống hệt nhau (tiêu tốn $2P$ khối M10K thay vì 2 khối M10K), hoặc phải thiết kế cơ chế phân vùng ngân hàng nhớ (multi-banking) kèm logic phân xử chuyển mạch vô cùng phức tạp để chống xung đột truy xuất.
+        \item \textbf{Khả năng đáp ứng thời gian thực:} Ở tần số xung nhịp chuẩn 50 MHz, ngân sách cho mỗi bước nhảy khung 10 ms là 500.000 chu kỳ. Kiến trúc tuần tự với $P = 1$ chỉ tiêu tốn 98.543 chu kỳ, tương ứng hệ số $\text{RTF}_{\text{MAC}} \approx 0{,}197$ (nhanh gấp 5 lần thời gian thực).
+    \end{itemize}
+    \item \emph{Lựa chọn thiết kế:} Sử dụng \textbf{kiến trúc tuần tự 1 khối DSP 18$\times$18 ($P = 1$)}. Vì $P = 1$ đã thừa sức đáp ứng thời gian thực với biên an toàn gấp 5 lần, việc tăng $P$ chỉ gây lãng phí bộ nhân DSP và khối nhớ M10K quý giá trên FPGA mà không đem lại bất kỳ giá trị thực tiễn nào.
+\end{itemize}
 
 \subsubsection*{Khái niệm Hệ số thời gian thực (RTF) và Độ trễ so với Thông lượng}
 Hệ số thời gian thực (\textbf{RTF -- Real-Time Factor}) được định nghĩa là tỉ số giữa thời gian xử lý của phần cứng chia cho thời lượng thực tế của đoạn âm thanh:
@@ -613,19 +672,29 @@ module ch00_pair_counter #(
 endmodule
 \end{lstlisting}
 
-\textbf{Giải thích mã nguồn Verilog từng khối:}
+\textbf{Giải thích mã nguồn Verilog chi tiết từng dòng:}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Dòng 1--12 khai báo cổng: nhận các tham số động \texttt{cfg\_n, cfg\_tau\_min, cfg\_tau\_max} (nếu bằng 0 thì dùng tham số tĩnh $N=638, \tau \in [26, 214]$). Xuất tín hiệu địa chỉ \texttt{addr\_a, addr\_b}, cờ \texttt{valid}, \texttt{sload}, \texttt{last} và các thanh ghi đếm chu kỳ \texttt{total\_cycles}, \texttt{pair\_count}.
-    \item Dòng 17 định nghĩa tín hiệu tổ hợp \texttt{max\_n}: khi $\tau=0$, mẫu cuối cùng là $N-1$; khi $\tau \ge \tau_{\min}$, mẫu cuối cùng là $N - 1 - \tau$.
-    \item Dòng 26--37 (\texttt{STATE\_IDLE}): khi nhận xung kích hoạt \texttt{start}, FSM nạp tham số làm việc, khởi tạo địa chỉ $(0, 0)$ cho $R[0]$, bật cờ \texttt{valid} = 1 và cờ nạp \texttt{sload} = 1.
-    \item Dòng 39--61 (\texttt{STATE\_RUN}): mạch tăng dần con đếm mẫu $n$ ở mỗi nhịp xung nhịp. Khi $n$ đạt tới \texttt{max\_n}, mạch kiểm tra chuyển đổi độ trễ: nếu vừa xong $\tau=0$, mạch nhảy tức thì sang $\tau = \tau_{\min}$ và phát địa chỉ $(0, \tau_{\min})$; nếu đang ở $\tau < \tau_{\max}$, mạch nhảy sang $\tau+1$ và phát $(0, \tau+1)$. Tại đúng chu kỳ đầu tiên của mỗi độ trễ, cờ \texttt{sload} được kích hoạt mức cao, báo cho khối nhân-cộng nạp tích mới mà không cần bất kỳ nhịp xóa thanh ghi tích lũy nào.
-    \item Dòng 62--66: khi hoàn thành mẫu cuối cùng của độ trễ cực đại $\tau_{\max}$, mạch hạ cờ \texttt{valid}, bật cờ hoàn tất \texttt{done} và chuyển sang \texttt{STATE\_DONE}.
+    \item \textbf{Dòng 1--12 (Khai báo cổng):} Nhận xung nhịp \texttt{clk}, reset tích cực mức thấp \texttt{rst\_n}, xung kích hoạt \texttt{start}, và 3 cổng cấu hình độ dài động \texttt{cfg\_n, cfg\_tau\_min, cfg\_tau\_max}. Xuất các cờ trạng thái \texttt{busy, done, valid, sload, last}, địa chỉ truy xuất RAM hai cổng \texttt{addr\_a, addr\_b}, chỉ số độ trễ hiện tại \texttt{tau\_out}, cùng hai thanh ghi đếm chu kỳ và đếm cặp mẫu \texttt{total\_cycles, pair\_count}.
+    \item \textbf{Dòng 17--18 (Tín hiệu tổ hợp \texttt{max\_n}):} Biến \texttt{max\_n} được tính bằng mạch logic tổ hợp (\texttt{wire}) thay vì thanh ghi có chốt nhịp. Khi $\tau = 0$, chỉ số mẫu cuối là $N-1$; khi $\tau \ge \tau_{\min}$, chỉ số cuối là $N - 1 - \tau$. Việc tính tổ hợp cho phép FSM đánh giá tức thời điều kiện chạm đỉnh lag (\texttt{n\_cnt == max\_n}) ngay trong chu kỳ hiện tại, loại bỏ hoàn toàn độ trễ 1 nhịp xung nhịp so với việc dùng thanh ghi.
+    \item \textbf{Dòng 30--41 (\texttt{STATE\_IDLE}):} Khi nhận xung kích hoạt \texttt{start}:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Dự phòng khi \texttt{cfg\_n == 0} (dòng 34--36):} Biểu thức \texttt{act\_n <= (cfg\_n != 0) ? cfg\_n : N} (tương tự cho \texttt{act\_tau\_min, act\_tau\_max}) tạo cơ chế dự phòng linh hoạt: mạch nhận tham số cấu hình động từ thanh ghi HPS khi có yêu cầu, hoặc tự động lùi về tham số tĩnh mặc định ($N=638, \tau \in [26, 214]$) nếu phần mềm truyền giá trị 0.
+        \item \emph{Khởi tạo \texttt{total\_cycles} và \texttt{pair\_count} bằng 1 (dòng 39):} Ngay trong chính chu kỳ nhận \texttt{start} này, cặp mẫu đầu tiên $(0, 0)$ của $R[0]$ đã bắt đầu được xuất ra bus địa chỉ cùng cờ \texttt{valid = 1, sload = 1}; do đó hai bộ đếm này phải bắt đầu từ 1 để phản ánh chính xác từng chu kỳ vật lý thực tế.
+        \item \emph{Tính trước cờ \texttt{last} (dòng 38):} Biểu thức \texttt{last <= ((cfg\_n != 0 ? cfg\_n : N) == 1)} tính trước cờ kết thúc cho trường hợp biên suy biến $N=1$ (chỉ có đúng 1 mẫu).
+    \end{itemize}
+    \item \textbf{Dòng 42--70 (\texttt{STATE\_RUN}):} Mạch thực thi phát cặp mẫu liên tục không bóng bóng:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Dòng 43--51 (Quét trong cùng một độ trễ):} Tăng dần con đếm mẫu \texttt{n\_cnt}. Địa chỉ cổng A nhận \texttt{addr\_a <= n\_cnt + 1}, và cổng B nhận \texttt{addr\_b <= (tau\_cnt == 0) ? (n\_cnt + 1) : (n\_cnt + 1 + tau\_cnt)}. Việc cộng thêm 1 là kỹ thuật định địa chỉ nhìn trước (look-ahead addressing): thanh ghi chốt sẵn địa chỉ của chu kỳ xung nhịp kế tiếp để dữ liệu từ RAM M10K xuất hiện đúng thời điểm khối MAC cần. Cờ \texttt{sload} hạ về 0 để tiếp tục cộng dồn. Cờ \texttt{last} được kích hoạt sớm đúng 1 chu kỳ (\texttt{last <= (n\_cnt + 1 == max\_n)}) để tín hiệu kết thúc lag đi kèm đồng bộ với mẫu cuối cùng vào đường ống MAC.
+        \item \emph{Dòng 52--56 (Chuyển tiếp tức thì $R[0] \to \tau_{\min}$):} Khi vừa hoàn tất mẫu cuối cùng của $R[0]$ (\texttt{tau\_cnt == 0}), mạch lập tức nhảy sang \texttt{act\_tau\_min}, phát địa chỉ $(0, \tau_{\min})$, bật cờ \texttt{sload = 1} để khối MAC khởi tạo tổng tích lũy mới mà không cần nhịp xóa thanh ghi, và kiểm tra điều kiện biên $N - 1 - \tau_{\min} == 0$ (trường hợp độ trễ chỉ có đúng 1 mẫu) để chốt cờ \texttt{last} ngay.
+        \item \emph{Dòng 57--64 (Chuyển sang độ trễ kế tiếp $\tau+1$):} Khi ở $\tau < \tau_{\max}$, mạch tăng $\tau$ thêm 1, reset \texttt{n\_cnt = 0}, phát $(0, \tau+1)$, kích hoạt \texttt{sload = 1}, và kiểm tra trường hợp góc $N - 1 - (\tau+1) == 0$ cho cờ \texttt{last}. Toàn bộ quá trình chuyển lag diễn ra trong đúng 1 chu kỳ xung nhịp, không có bất kỳ nhịp chết nào.
+        \item \emph{Dòng 65--68 (Nhánh hoàn tất toàn bộ các lag):} Khi hoàn thành mẫu cuối cùng của độ trễ cực đại $\tau_{\max}$, mạch hạ toàn bộ cờ \texttt{valid, sload, last}, bật cờ \texttt{done = 1} và chuyển sang \texttt{STATE\_DONE}.
+    \end{itemize}
 \end{itemize}
 
 \textbf{Mô hình tương đương Python (Twin) và Kết quả kiểm chứng iverilog:}
 Bộ mô hình tương đương số nguyên viết bằng Python (\texttt{verify\_v3/ch00\_pair\_counter\_twin.py}) mô phỏng chính xác hành vi phát cặp mẫu và tính giá trị băm kiểm tra (checksum 32-bit):
 
-\begin{lstlisting}[language=Python, caption={Mô hình tương đương \texttt{PairCounterTwin} trong \texttt{verify\_v3/ch00\_pair\_counter\_twin.py}}]
+\begin{lstlisting}[language=Python, caption={Mô hình tương đương \texttt{PairCounterTwin} trong \texttt{ch00\_pair\_counter\_twin.py}}]
 class PairCounterTwin:
     def __init__(self, N, tau_min, tau_max):
         self.N, self.tau_min, self.tau_max = N, tau_min, tau_max
@@ -649,18 +718,28 @@ class PairCounterTwin:
         return pairs
 \end{lstlisting}
 
-Kịch bản kiểm thử \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_test\_pair\_counter.py} kết nối với testbench Verilog \texttt{tb/v3/}\linebreak[0]\texttt{tb\_ch00\_pair\_counter.v}, biên dịch bằng \texttt{iverilog -g2005} và thực thi bằng \texttt{vvp}. Quá trình kiểm chứng bao gồm:
+\textbf{Giải thích cấu trúc và vận hành của mô hình Python Twin:}
+Lớp \texttt{PairCounterTwin} đóng vai trò là quy chuẩn vàng (golden specification) độc lập về mặt giải thuật để đối soát với phần cứng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Cấu hình chuẩn Praat ($N=638, \tau \in [26, 214]$): Mạch phát đúng $98.540$ cặp mẫu trong $98.540$ chu kỳ, sinh đúng $190$ xung \texttt{sload} và $190$ xung \texttt{last}. Mã băm kiểm tra chuỗi dữ liệu đạt giá trị \texttt{0x26518cf3}, trùng khớp 100\% với mô hình Python.
-    \item 200 cấu hình ngẫu nhiên (với $N \in [15, 80]$, $\tau$ thay đổi tự do): Tất cả 200 trường hợp đều vượt qua kiểm tra, số cặp mẫu và giá trị băm checksum khớp bit đối bit và chu kỳ đối chu kỳ ($201/201$ ca kiểm thử thành công, 0 lỗi, lưu tại \texttt{verify\_v3/ch00\_pair\_counter.log}).
+    \item \emph{Vòng lặp 1 (dòng 8--14):} Duyệt $N$ mẫu của năng lượng $R[0]$, sinh ra các từ điển chứa địa chỉ $a=n, b=n, \tau=0$, đánh dấu cờ nạp \texttt{sload = 1} tại mẫu đầu tiên ($n=0$) và cờ kết thúc \texttt{last = 1} tại mẫu cuối cùng ($n = N-1$).
+    \item \emph{Vòng lặp 2 (dòng 16--23):} Lần lượt duyệt qua từng độ trễ $\tau$ từ $\tau_{\min}$ đến $\tau_{\max}$. Với mỗi độ trễ, số cặp mẫu tối đa là $\max_n = N - 1 - \tau$. Vòng lặp trong duyệt $n \in [0, \max_n]$, sinh ra cặp địa chỉ $a=n, b=n+\tau$, đánh dấu \texttt{sload = 1} tại $n=0$ và \texttt{last = 1} tại $n = \max_n$.
+    \item Danh sách từ điển trả về chứa toàn bộ chuỗi sự kiện chu kỳ đối chu kỳ, được kịch bản kiểm thử dùng để đối chiếu bit-exact với dữ liệu mô phỏng từ testbench Verilog.
 \end{itemize}
 
-\textit{Tóm lại: Ở 50 MHz, ngân sách thời gian thực là 500.000 chu kỳ cho mỗi bước nhảy 10 ms; khối tự tương quan cần 98.543 chu kỳ (hệ số RTF $\approx 0{,}197$), được hiện thực bằng mạch phát cặp mẫu liên tục \texttt{ch00\_pair\_counter} chuyển độ trễ với 0 nhịp nghỉ, đã kiểm chứng khớp tuyệt đối 201/201 ca thử nghiệm.}
+Kịch bản kiểm thử (tệp \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_test\_}\linebreak[0]\texttt{pair\_counter.py}) kết nối với testbench Verilog \texttt{tb/v3/}\linebreak[0]\texttt{tb\_ch00\_pair\_counter.v}, biên dịch bằng \texttt{iverilog -g2005} và thực thi bằng \texttt{vvp}. Quá trình kiểm chứng bao gồm:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khẳng định cấu hình chuẩn Praat ($N=638, \tau \in [26, 214]$):} Mạch phát đúng $98.540$ cặp mẫu trong đúng $98.540$ chu kỳ, sinh đúng $190$ xung \texttt{sload} và $190$ xung \texttt{last}. Mã băm kiểm tra chuỗi dữ liệu (canonical checksum 32-bit) đạt giá trị \texttt{0x26518cf3}, được khẳng định bằng lệnh \texttt{assert} trực tiếp trong testbench và trùng khớp hoàn toàn với mô hình Python.
+    \item \textbf{So sánh chuỗi vết chi tiết (Trace Diff cho $N \le 40$):} Với các cấu hình có kích thước nhỏ ($N \le 40$), testbench xuất toàn bộ chuỗi tín hiệu chu kỳ đối chu kỳ (\texttt{valid, sload, last, addr\_a, addr\_b, tau}) ra tệp vết và so sánh đối chiếu từng dòng (line-by-line diff), xác nhận chuỗi phát của RTL trùng khít hoàn toàn với mô hình Python twin.
+    \item \textbf{Khẳng định không bóng bóng trên 200 cấu hình ngẫu nhiên ($N \in [15, 80]$):} Với toàn bộ 200 cấu hình ngẫu nhiên sinh tự động, testbench kiểm tra và khẳng định điều kiện chu kỳ đối chu kỳ không bóng bóng: tổng số chu kỳ thực tế phải thỏa mãn chính xác tuyệt đối công thức $\text{total\_cycles} = N + \sum_{\tau=\tau_{\min}}^{\tau_{\max}} (N - \tau)$ cho từng ca thử nghiệm, bảo đảm không có chu kỳ chờ (\texttt{valid = 0}) nào chen vào giữa các cặp mẫu. Toàn bộ $201/201$ ca kiểm thử đều vượt qua với 0 lỗi (lưu tại \texttt{verify\_v3/ch00\_pair\_counter.log}).
+\end{itemize}
+
+\textit{Tóm lại: Ở 50 MHz, ngân sách thời gian thực là 500.000 chu kỳ cho mỗi bước nhảy 10 ms; khối tự tương quan cần 98.543 chu kỳ (hệ số RTF $\approx 0{,}197$), được hiện thực bằng mạch phát cặp mẫu \texttt{ch00\_pair\_counter} chuyển độ trễ với 0 nhịp nghỉ, đã kiểm chứng khớp hoàn toàn 201/201 ca thử nghiệm.}
 
 % ==============================================================================
 % 0.7. BẢN ĐỒ KIỂM CHỨNG BA TẦNG VÀ BỘ GOLDEN V2
 % ==============================================================================
-\subsection{Bản đồ kiểm chứng ba tầng và bộ golden v2}
+\subsection*{0.7. Bản đồ kiểm chứng ba tầng và bộ golden v2}
+\addcontentsline{toc}{subsection}{0.7. Bản đồ kiểm chứng ba tầng và bộ golden v2}
 
 \textbf{Vấn đề thực tế:} Khi hiện thực một chuỗi xử lý tín hiệu số phức tạp lên phần cứng FPGA (DE10-Standard Cyclone V), nếu ta đưa toàn bộ kiến trúc từ xử lý mẫu đến chia nội suy và xuất dữ liệu lên chip, rồi chỉ so sánh kết quả tần số cơ bản F0 cuối cùng với phần mềm Praat chạy trên máy tính, ta sẽ rơi vào bế tắc hoàn toàn khi xuất hiện sai số. Nếu một khung tín hiệu bị lệch tần số hoặc sai phân loại hữu thanh/vô thanh ($V/UV$), nguyên nhân bắt nguồn từ đâu?
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -672,22 +751,22 @@ Kịch bản kiểm thử \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_test\_p
 \end{itemize}
 Một sai lệch dù chỉ 1 mẫu hay 1 bit thấp nhất (LSB) ở tầng trước sẽ bị tích lũy và khuếch đại thành sai số hàng trăm cent hoặc sai nhãn $V/UV$ ở tầng sau mà không để lại bất kỳ manh mối nào. Vì vậy, ta cần một kiến trúc kiểm chứng đa tầng chặt chẽ, phân định rạch ròi giữa \emph{tính đúng đắn logic của mạch phần cứng} và \emph{sai số xấp xỉ thuật toán so với Praat}.
 
-\subsubsection{Kiến trúc kiểm chứng ba tầng (Three-tier Verification)}
+\subsubsection*{0.7.1. Kiến trúc kiểm chứng ba tầng (Three-tier Verification)}
 Chiến lược kiểm chứng của cuốn sách được xây dựng thành ba tầng độc lập, tạo thành "tấm lưới bảo vệ" khép kín xuyên suốt từ mã nguồn thuật toán đến chân chip FPGA (Hình~\ref{fig:ch00_system}):
 
 \begin{enumerate}[leftmargin=1.5em, itemsep=4pt]
-    \item \textbf{Tầng 1 --- Khớp bit tuyệt đối giữa mô hình Python số nguyên và mô phỏng RTL (Twin vs RTL):}
-    Tầng này so sánh đối ứng bit-exact (khớp chính xác 100\% từng bit dữ liệu và từng chu kỳ xung nhịp) giữa mô hình tương đương Python (\texttt{golden\_v2/fixed\_twin.py} và các script twin cục bộ của từng chương) với mô phỏng Verilog RTL (\texttt{rtl/v3/} và \texttt{tb/v3/}) chạy bằng \texttt{iverilog/vvp}. 
+    \item \textbf{Tầng 1 --- Khớp bit chính xác (bit-exact) giữa mô hình Python số nguyên và mô phỏng RTL (Twin vs RTL):}
+    Tầng này so sánh đối ứng bit-exact (khớp chính xác từng bit dữ liệu và từng chu kỳ xung nhịp) giữa mô hình tương đương Python (\texttt{golden\_v2/fixed\_twin.py} và các script twin cục bộ của từng chương) với mô phỏng Verilog RTL (\texttt{rtl/v3/} và \texttt{tb/v3/}) chạy bằng \texttt{iverilog/vvp}. 
     Mỗi khối phần cứng phải vượt qua ít nhất 200 véc-tơ kiểm tra ngẫu nhiên cùng các khung tín hiệu biên dồn nén (stress vectors, biên độ cực trị $\pm 32.768$). Tiêu chuẩn nghiệm thu ở tầng 1 là 0 lỗi: chuỗi bit đầu ra và mã băm kiểm tra (checksum) của RTL phải trùng khớp hoàn toàn với mô hình Python. Tầng này loại bỏ triệt để mọi lỗi logic, lỗi tràn số và lỗi sai lệch chu kỳ giao tiếp Avalon-ST.
     
-    \item \textbf{Tầng 2 --- Khớp bit tuyệt đối giữa mô phỏng RTL và phần cứng chạy thực (RTL vs Board):}
-    Tầng này so sánh kết quả mô phỏng RTL với dữ liệu đo thực tế trên kit DE10-Standard, được trích xuất thông qua bộ phân tích logic nhúng Quartus SignalTap II hoặc đọc trực tiếp từ bộ đệm DDR của HPS qua bus Avalon-MM. Tầng 2 nhằm phát hiện các lỗi vật lý nằm ngoài tầm kiểm soát của code RTL thuần túy: khởi tạo bộ nhớ M10K qua file \texttt{.mif}/\texttt{.hex}, cấu hình bộ chia tần và độ ổn định của khối PLL (50 MHz), ràng buộc chân IO, và sự đồng bộ tín hiệu bắt tay trên bus hệ thống Platform Designer (Qsys). Tiêu chuẩn nghiệm thu: chuỗi kết quả F0 phần cứng trả về HPS phải trùng khít 100\% với chuỗi kết quả của mô phỏng RTL.
+    \item \textbf{Tầng 2 --- Khớp bit chính xác (bit-exact) giữa mô phỏng RTL và phần cứng chạy thực (RTL vs Board):}
+    Tầng này so sánh kết quả mô phỏng RTL với dữ liệu đo thực tế trên kit DE10-Standard, được trích xuất thông qua bộ phân tích logic nhúng Quartus SignalTap II hoặc đọc trực tiếp từ bộ đệm DDR của HPS qua bus Avalon-MM. Tầng 2 nhằm phát hiện các lỗi vật lý nằm ngoài tầm kiểm soát của code RTL thuần túy: khởi tạo bộ nhớ M10K qua file \texttt{.mif}/\texttt{.hex}, cấu hình bộ chia tần và độ ổn định của khối PLL (50 MHz), ràng buộc chân IO, và sự đồng bộ tín hiệu bắt tay trên bus hệ thống Platform Designer (Qsys). Tiêu chuẩn nghiệm thu: chuỗi kết quả F0 phần cứng trả về HPS phải trùng khít hoàn toàn với chuỗi kết quả của mô phỏng RTL.
     
     \item \textbf{Tầng 3 --- Đánh giá thống kê giữa phần cứng và chuẩn Praat trên máy tính (FPGA/Twin vs Praat):}
-    Sau khi tầng 1 và tầng 2 đảm bảo phần cứng thực thi đúng 100\% đặc tả toán học số nguyên, tầng 3 tiến hành so sánh đối chiếu giữa đầu ra của FPGA (hoặc Python Twin) với phần mềm Praat 7.0.03 gốc chạy trên máy tính thông qua công cụ \texttt{golden\_v2/compare.py}. Thước đo ở tầng này không còn là khớp bit mà là các chỉ số xử lý tín hiệu khách quan: VDE, GPE, FFE và phân bố sai số cent mịn (trung bình, độ lệch chuẩn, phân vị 95, cực đại). Mục tiêu là chứng minh độ lệch âm học giữa giải pháp phần cứng và Praat luôn nằm sâu dưới ngưỡng nghe nhận biết của tai người, đồng thời giải thích tường minh nguyên nhân của từng khung sai lệch.
+    Sau khi tầng 1 và tầng 2 đảm bảo phần cứng thực thi đúng đặc tả toán học số nguyên, tầng 3 tiến hành so sánh đối chiếu giữa đầu ra của FPGA (hoặc Python Twin) với phần mềm Praat 7.0.03 gốc chạy trên máy tính thông qua công cụ \texttt{golden\_v2/compare.py}. Thước đo ở tầng này không còn là khớp bit mà là các chỉ số xử lý tín hiệu khách quan: VDE, GPE, FFE và phân bố sai số cent mịn (trung bình, độ lệch chuẩn, phân vị 95, cực đại). Mục tiêu là chứng minh độ lệch âm học giữa giải pháp phần cứng và Praat luôn nằm sâu dưới ngưỡng nghe nhận biết của tai người, đồng thời giải thích tường minh nguyên nhân của từng khung sai lệch.
 \end{enumerate}
 
-\subsubsection{Cấu trúc bộ công cụ golden v2}
+\subsubsection*{0.7.2. Cấu trúc bộ công cụ golden v2}
 Toàn bộ mã nguồn kiểm chứng tham chiếu được đặt tại thư mục \texttt{golden\_v2/}, đóng vai trò "trọng tài kỹ thuật" cho toàn bộ tài liệu:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \texttt{constants.py}: Định nghĩa tập trung mọi hằng số suy xuất trực tiếp từ mã nguồn C++ của Praat 7.0.03 (\texttt{Sound\_to\_Pitch.cpp}), bao gồm kiểm tra khẳng định \texttt{assert}.
@@ -698,7 +777,7 @@ Toàn bộ mã nguồn kiểm chứng tham chiếu được đặt tại thư m�
     \item \texttt{compare.py}: Kịch bản tự động thực thi chuỗi so sánh đa phương diện, xuất báo cáo đối soát chi tiết (\texttt{golden\_v2/}\linebreak[0]\texttt{out/}\linebreak[0]\texttt{compare\_report.md}).
 \end{itemize}
 
-\subsubsection{Đặc tả 10 bước số nguyên của lõi phần cứng (fixed\_twin.py)}
+\subsubsection*{0.7.3. Đặc tả 10 bước số nguyên của lõi phần cứng (fixed\_twin.py)}
 Để mạch phần cứng FPGA có thể hoạt động hoàn toàn bằng số nguyên có dấu với tài nguyên tối thiểu mà không cần khối dấu phẩy động tốn kém, thuật toán ước lượng F0 được phân rã thành 10 bước xử lý số nguyên bit-exact như sau:
 
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
@@ -755,21 +834,21 @@ Toàn bộ mã nguồn kiểm chứng tham chiếu được đặt tại thư m�
     \item \textbf{Bước 10 --- Bộ lọc trung vị median-3:} Đầu ra tức thời của khung là $F0\_Q12.4$ nếu hữu thanh hoặc $0$ nếu vô thanh; sau đó được đưa qua bộ lọc trung vị trượt 3 khung liên tiếp để triệt tiêu các xung nhảy quãng tám cô lập.
 \end{enumerate}
 
-\subsubsection{Kết quả đối chiếu trên tập tín hiệu tổng hợp chuẩn}
-Để đánh giá định lượng độ chính xác của bộ mô hình \texttt{golden\_v2}, ta thực hiện kiểm thử toàn diện trên hai tệp âm thanh tổng hợp chuẩn (tần số lấy mẫu 16 kHz, độ dài 2,8 giây, gồm 277 khung phân tích, bước nhảy hop 160 mẫu, $t_1 = 0{,}020$ s). Tệp thứ nhất là tín hiệu sạch không tạp âm (\texttt{synth\_glide\_vuv\_16k.wav}, $GP = 22.946$), tệp thứ hai được cộng thêm nhiễu trắng ở tỷ số $SNR = 5\text{ dB}$ (\texttt{synth\_}\linebreak[0]\texttt{glide\_}\linebreak[0]\texttt{vuv\_}\linebreak[0]\texttt{16k\_}\linebreak[0]\texttt{snr5.wav}, $GP = 22.937$) để kích hoạt các tình huống nhảy quãng tám phức tạp. Kết quả tổng hợp từ công cụ \texttt{golden\_v2/}\linebreak[0]\texttt{compare.py} được trình bày trong Bảng~\ref{tab:ch00_golden_results}.
+\subsubsection*{0.7.4. Kết quả đối chiếu trên tập tín hiệu tổng hợp chuẩn}
+Để đánh giá định lượng độ chính xác của bộ mô hình \texttt{golden\_v2}, ta thực hiện kiểm thử toàn diện trên hai tệp âm thanh tổng hợp chuẩn (tần số lấy mẫu 16 kHz, độ dài 2,8 giây, gồm 277 khung phân tích, bước nhảy hop 160 mẫu, $t_1 = 0{,}020$ s). Tệp thứ nhất là tín hiệu sạch không tạp âm (\texttt{synth\_glide\_vuv\_16k.wav}, $GP = 22.946$), tệp thứ hai được cộng thêm nhiễu trắng ở tỷ số $SNR = 5\text{ dB}$ (\texttt{synth\_}\linebreak[0]\texttt{glide\_}\linebreak[0]\texttt{vuv\_}\linebreak[0]\texttt{16k\_}\linebreak[0]\texttt{snr5.wav}, $GP = 22.937$) để kích hoạt các tình huống nhảy quãng tám phức tạp. Kết quả tổng hợp từ công cụ \texttt{golden\_v2/}\linebreak[0]\texttt{compare.py} kết hợp kịch bản trích xuất sai số cent mịn \texttt{verify\_v3/ch00\_table\_golden.py} được trình bày trong Bảng~\ref{tab:ch00_golden_results}.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Kết quả đối chiếu toàn tuyến bộ công cụ golden v2 với Praat 7.0.03 trên tín hiệu tổng hợp chuẩn (277 khung, 16 kHz).}
+\caption{Kết quả đối chiếu toàn tuyến bộ công cụ golden v2 với Praat 7.0.03 trên tín hiệu tổng hợp chuẩn (277 khung, 16 kHz). Lưu ý: Các cột sai số cent phản ánh thống kê cent mịn (loại bỏ khung lỗi thô GPE theo đúng định nghĩa chuẩn tại Mục 0.5), khác với báo cáo \texttt{compare\_report.md} vốn tính trung bình và phân vị 95 trên toàn bộ các khung cùng có thanh bao gồm cả lỗi thô.}
 \label{tab:ch00_golden_results}
 \begin{tabular}{lcccccc}
 \toprule
 \textbf{Phép so sánh} & \textbf{VDE} & \textbf{GPE} & \textbf{FFE} & \textbf{Cent TB} & \textbf{Cent $p_{95}$} & \textbf{Cent Max} \\
 \midrule
 \multicolumn{7}{l}{\textit{Tín hiệu sạch (Clean synth, 208 khung cùng hữu thanh):}} \\
-Port float vs Praat R2 & 0/277 & 0/208 & 0,0000 & $5{,}7 \cdot 10^{-6}$ & $5{,}6 \cdot 10^{-5}$ & $6{,}8 \cdot 10^{-5}$ \\
-Port float vs Praat R1 & 0/277 & 0/208 & 0,0000 & $5{,}7 \cdot 10^{-6}$ & $5{,}6 \cdot 10^{-5}$ & $6{,}8 \cdot 10^{-5}$ \\
+Port float vs Praat R2 & 0/277 & 0/208 & 0,0000 & $7{,}9 \cdot 10^{-6}$ & $5{,}8 \cdot 10^{-5}$ & $7{,}3 \cdot 10^{-5}$ \\
+Port float vs Praat R1 & 0/277 & 0/208 & 0,0000 & $7{,}9 \cdot 10^{-6}$ & $5{,}8 \cdot 10^{-5}$ & $7{,}3 \cdot 10^{-5}$ \\
 Praat R1 vs Praat R2 & 0/277 & 0/208 & 0,0000 & 0,00 & 0,00 & 0,00 \\
 Twin (trước median) vs Praat R2 & 0/277 & 0/208 & 0,0000 & 0,21 & 0,48 & 1,08 \\
 Twin + median-3 vs Praat R1 & 0/277 & 0/208 & 0,0000 & 0,37 & 0,64 & 12,96 \\
@@ -777,44 +856,45 @@ Praat R1 vs Ground-Truth & 4/277 & 0/207 & 0,0144 & 0,30 & 0,83 & 7,91 \\
 Twin + median-3 vs Ground-Truth & 4/277 & 0/207 & 0,0144 & 0,53 & 1,05 & 14,28 \\
 \midrule
 \multicolumn{7}{l}{\textit{Tín hiệu có ồn SNR 5 dB (207 khung cùng hữu thanh):}} \\
-Port float vs Praat R2 & 0/277 & 0/207 & 0,0000 & $9{,}4 \cdot 10^{-6}$ & $6{,}0 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
-Port float vs Praat R1 & 0/277 & 0/207 & 0,0000 & $1{,}0 \cdot 10^{-5}$ & $6{,}2 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
-Praat R1 vs Praat R2 (Viterbi) & 0/277 & 19/207 & 0,0686 & 117,4 & 1191 & 37,28 \\
-Twin (trước median) vs Praat R2 & 0/277 & 3/207 & 0,0108 & 3,10 & 9,80 & 32,91 \\
-Twin + median-3 vs Praat R1 & 0/277 & 15/207 & 0,0542 & 3,60 & 10,90 & 32,91 \\
+Port float vs Praat R2 & 0/277 & 0/207 & 0,0000 & $1{,}2 \cdot 10^{-5}$ & $6{,}3 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
+Port float vs Praat R1 & 0/277 & 0/207 & 0,0000 & $1{,}2 \cdot 10^{-5}$ & $6{,}4 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
+Praat R1 vs Praat R2 (Viterbi) & 0/277 & 19/207 & 0,0686 & 1,01 & 0,00 & 37,28 \\
+Twin (trước median) vs Praat R2 & 0/277 & 3/207 & 0,0108 & 3,07 & 9,78 & 32,91 \\
+Twin + median-3 vs Praat R1 & 0/277 & 15/207 & 0,0542 & 5,58 & 20,62 & 48,41 \\
 Praat R1 vs Ground-Truth & 3/277 & 0/207 & 0,0108 & 10,56 & 21,80 & 29,32 \\
-Praat R2 vs Ground-Truth & 3/277 & 19/207 & 0,0794 & 126,4 & 1199 & 28,48 \\
-Twin (trước median) vs Ground-Truth & 3/277 & 22/207 & 0,0903 & 142,3 & 1199 & 25,85 \\
-Twin + median-3 vs Ground-Truth & 3/277 & 15/207 & 0,0650 & 94,99 & 1179 & 32,68 \\
+Praat R2 vs Ground-Truth & 3/277 & 19/207 & 0,0794 & 10,55 & 21,79 & 28,48 \\
+Twin (trước median) vs Ground-Truth & 3/277 & 22/207 & 0,0903 & 9,12 & 20,53 & 25,85 \\
+Twin + median-3 vs Ground-Truth & 3/277 & 15/207 & 0,0650 & 9,71 & 25,76 & 32,68 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \textbf{Đọc bảng.} Bảng~\ref{tab:ch00_golden_results} làm sáng tỏ các mối quan hệ nền tảng của toàn bộ hệ thống:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \emph{Độ chính xác của bản port mã nguồn (Port float vs Praat):} Sai số cent giữa bản Python dấu phẩy động và phần mềm Praat 7.0.03 gốc chỉ ở mức $10^{-5}$ đến $10^{-4}$ cent, với $VDE = 0$ và $GPE = 0$. Con số cực nhỏ này khẳng định ta đã mô phỏng chuẩn xác 100\% thuật toán C++ của Praat đến từng phép toán dấu phẩy động kép.
-    \item \emph{Vai trò của bộ dò đường Viterbi (Praat R1 vs R2):} Trên tín hiệu sạch, cấu hình mặc định $R_1$ và cấu hình không chi phí $R_2$ cho kết quả trùng khít 100\%. Tuy nhiên, khi chịu ảnh hưởng của tạp âm mạnh (SNR 5 dB), bộ dò đường Viterbi của $R_1$ sửa được 19 khung nhảy quãng tám mà $R_2$ (thuần túy chọn đỉnh lớn nhất từng khung) mắc phải.
-    \item \emph{Độ chính xác của lõi số nguyên (Twin vs Praat R2):} Trên tín hiệu sạch, mô hình số nguyên khớp hoàn hảo với Praat R2: $VDE = 0$, $GPE = 0/208$, sai số cent mịn trung bình chỉ $0{,}21$ cent, $p_{95} = 0{,}48$ cent và sai số cực đại là $1{,}08$ cent (hoàn toàn không thể nhận biết bởi tai người). Trên tín hiệu ồn 5 dB, twin chỉ lệch 3 khung $GPE$ so với R2 do sai số lượng tử hóa số nguyên ở các đỉnh có điểm số gần bằng nhau.
-    \item \emph{Hiệu quả của bộ lọc trung vị phần cứng (Twin + median-3 vs Ground-Truth):} Trên tín hiệu ồn 5 dB, so với sự thật mặt đất (ground-truth), bộ lọc median-3 giúp giảm số khung lỗi thô $GPE$ của phần cứng từ 22 khung xuống còn 15 khung (sửa được 7 khung lỗi quãng tám đơn lẻ), chứng minh tính hiệu quả vượt bậc của một cấu trúc phần cứng siêu nhỏ gọn.
+    \item \emph{Độ chính xác của bản port mã nguồn (Port float vs Praat):} Sai số cent giữa bản Python dấu phẩy động và phần mềm Praat 7.0.03 gốc chỉ ở mức $10^{-5}$ đến $10^{-4}$ cent, với $VDE = 0$ và $GPE = 0$. Con số cực nhỏ này khẳng định ta đã mô phỏng chuẩn xác thuật toán C++ của Praat đến từng phép toán dấu phẩy động kép.
+    \item \emph{Vai trò của bộ dò đường Viterbi (Praat R1 vs R2):} Trên tín hiệu sạch, cấu hình mặc định $R_1$ và cấu hình không chi phí $R_2$ cho kết quả trùng khít hoàn toàn. Tuy nhiên, khi chịu ảnh hưởng của tạp âm mạnh (SNR 5 dB), bộ dò đường Viterbi của $R_1$ sửa được 19 khung nhảy quãng tám mà $R_2$ (thuần túy chọn đỉnh lớn nhất từng khung) mắc phải.
+    \item \emph{Độ chính xác của lõi số nguyên (Twin vs Praat R2):} Trên tín hiệu sạch, mô hình số nguyên khớp sát với Praat R2: $VDE = 0$, $GPE = 0/208$, sai số cent mịn trung bình chỉ $0{,}21$ cent, $p_{95} = 0{,}48$ cent và sai số cực đại là $1{,}08$ cent (hoàn toàn không thể nhận biết bởi tai người). Trên tín hiệu ồn 5 dB, twin chỉ lệch 3/207 khung $GPE$ so với R2 (các khung 63, 64, 172). Nguyên nhân không phải do sai số lượng tử hóa số nguyên, mà là hiện tượng hai đỉnh quãng tám cạnh tranh sít sao (near-ties): Praat xếp hạng ứng viên dựa trên độ mạnh tương quan sau khi đã tinh chỉnh bằng hàm sinc70, trong khi twin xếp hạng dựa trên điểm số trên lưới nguyên trước khi nội suy; chênh lệch điểm số giữa hai đỉnh tốt nhất ở 3 khung này chỉ từ $0{,}0005$ đến $0{,}007$, khiến twin chọn đỉnh quãng tám lân cận. Khi loại bỏ 3 khung lỗi thô này, sai số cent mịn của twin so với R2 trên tín hiệu ồn 5 dB đạt trung bình $3{,}07$ cent, $p_{95} = 9{,}78$ cent và cực đại $32{,}91$ cent.
+    \item \emph{Hiệu quả của bộ lọc trung vị phần cứng (Twin + median-3 vs Ground-Truth):} Trên tín hiệu ồn 5 dB, so với sự thật mặt đất (ground-truth), bộ lọc median-3 giúp giảm số khung lỗi thô $GPE$ của phần cứng từ 22 khung xuống còn 15 khung (sửa được 7 khung lỗi quãng tám đơn lẻ), chứng minh hiệu quả rõ rệt của một cấu trúc phần cứng nhỏ gọn.
 \end{itemize}
 
-\subsubsection{Ba khác biệt có chủ ý và phân tích hạn chế cố hữu}
-Để giữ sự minh bạch khoa học tuyệt đối, ta cần chỉ rõ ba sai khác có chủ ý giữa thiết kế phần cứng FPGA và thuật toán gốc của Praat (đã được thống nhất tại Mục 0.3):
+\subsubsection*{Ba khác biệt có chủ ý và phân tích hạn chế cố hữu}
+Để giữ sự minh bạch khoa học, ta cần chỉ rõ ba sai khác có chủ ý giữa thiết kế phần cứng FPGA và thuật toán gốc của Praat (đã được thống nhất tại Mục 0.3):
 
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Nội suy đỉnh parabol thay cho sinc70 + Brent:} Trên tín hiệu sạch, parabol cho sai số nội suy nhỏ hơn $1{,}1$ cent. Tuy nhiên, trên tín hiệu có ồn lớn (SNR 5 dB), hình dạng đỉnh tự tương quan bị méo mó hoặc chẻ đôi, khiến xấp xỉ parabol lệch tới 32,9 cent so với tinh chỉnh sinc70. Đây là cái giá phải trả để tiết kiệm hàng chục nghìn chu kỳ tính toán và tránh thuật toán tìm nghiệm Brent phi tuyến tính trên FPGA.
-    \item \textbf{Xếp hạng ứng viên bằng điểm số trên lưới rời rạc:} Thuật toán phần cứng chọn đỉnh ứng viên tốt nhất $\tau_p = \operatorname{argmax} S_c[\tau]$ dựa trên các giá trị nguyên rời rạc trên lưới trước khi nội suy, thay vì tính điểm sức mạnh $S_c$ tại tọa độ thực sau nội suy như Praat. Khi hai đỉnh quãng tám có điểm số chênh lệch cực nhỏ (chỉ từ $0{,}0005$ đến $0{,}007$), việc làm tròn số nguyên có thể làm lật thứ tự ưu tiên (gây ra hiện tượng lệch 3/207 khung ở tệp thử nghiệm SNR 5 dB).
+    \item \textbf{Nội suy đỉnh parabol thay cho sinc70 + Brent:} Trên tín hiệu sạch, parabol cho sai số nội suy nhỏ hơn $1{,}1$ cent (sai số cực đại $1{,}08$ cent). Tuy nhiên, trên tín hiệu có ồn lớn (SNR 5 dB), hình dạng đỉnh tự tương quan bị méo mó hoặc chẻ đôi, khiến xấp xỉ parabol lệch tới 32,9 cent so với tinh chỉnh sinc70. Đây là cái giá phải trả để tiết kiệm hàng chục nghìn chu kỳ tính toán và tránh thuật toán tìm nghiệm Brent phi tuyến tính trên FPGA.
+    \item \textbf{Xếp hạng ứng viên bằng điểm số trên lưới rời rạc:} Thuật toán phần cứng chọn đỉnh ứng viên tốt nhất $\tau_p = \operatorname{argmax} S_c[\tau]$ dựa trên các giá trị nguyên rời rạc trên lưới trước khi nội suy, thay vì tính điểm sức mạnh $S_c$ tại tọa độ thực sau nội suy như Praat. Tại các khung có hai đỉnh quãng tám cạnh tranh sít sao (near-ties) với độ chênh lệch chi phí cục bộ cực nhỏ (chỉ từ $0{,}0005$ đến $0{,}007$ như ghi nhận trong \texttt{golden\_v2/README}), sự khác biệt giữa điểm số trên lưới và độ mạnh sau nội suy sinc khiến thứ tự ưu tiên giữa hai đỉnh có thể bị hoán đổi (gây ra hiện tượng lệch 3/207 khung GPE ở tệp thử nghiệm SNR 5 dB).
     \item \textbf{Bộ lọc trung vị median-3 thay cho bộ dò đường quy hoạch động Viterbi:} Vì FPGA xử lý luồng theo từng khung thời gian thực và không lưu toàn bộ ma trận ứng viên của cả tệp âm thanh vào bộ nhớ lớn, nó không thể chạy thuật toán Viterbi toàn cục. Median-3 chỉ quan sát cửa sổ cục bộ 3 khung nên chỉ sửa được các lỗi nhảy quãng tám đơn lẻ (1 khung), không thể khắc phục được chuỗi nhảy quãng tám kéo dài từ 2 khung trở lên.
 \end{enumerate}
 
 \noindent\textbf{Ghi chú về tập dữ liệu thử nghiệm:} Toàn bộ các con số kiểm chứng trong chương này được tính toán nghiêm ngặt trên tập tín hiệu tổng hợp chuẩn (\texttt{synth\_glide\_vuv\_16k.wav} và phiên bản SNR 5 dB). Tập dữ liệu các tệp WAV giọng nói thực tế của anh Tú hiện chưa sẵn sàng tại thời điểm xuất bản chương này; khi có dữ liệu, kịch bản tự động \texttt{golden\_v2/compare.py} sẽ được tái thực thi để cập nhật bổ sung mà không làm thay đổi kiến trúc kiểm chứng ba tầng đã thiết lập.
 
-\textit{Tóm lại: Bản đồ kiểm chứng ba tầng bảo đảm sự nhất quán tuyệt đối giữa mã nguồn Python twin số nguyên, mô phỏng RTL, phần cứng thực tế trên kit DE10-Standard và chuẩn Praat 7.0.03; trên tín hiệu sạch, lõi phần cứng đạt sai số cent trung bình chỉ $0{,}21$ cent và $GPE = 0$, còn trên tín hiệu ồn 5 dB, bộ lọc median-3 giúp giảm lỗi thô từ 22 khung xuống 15 khung.}
+\textit{Tóm lại: Bản đồ kiểm chứng ba tầng bảo đảm sự nhất quán chặt chẽ giữa mã nguồn Python twin số nguyên, mô phỏng RTL, phần cứng thực tế trên kit DE10-Standard và chuẩn Praat 7.0.03; trên tín hiệu sạch, lõi phần cứng đạt sai số cent trung bình chỉ $0{,}21$ cent và $GPE = 0$; trên tín hiệu ồn 5 dB, sai số cent mịn là $3{,}07$ cent ($p_{95} = 9{,}78$ cent), và bộ lọc median-3 giúp giảm lỗi thô từ 22 khung xuống 15 khung.}
 
 % ==============================================================================
 % BÀI TẬP CUỐI CHƯƠNG
 % ==============================================================================
-\subsection{Bài tập cuối chương}
+\subsection*{Bài tập cuối chương}
+\addcontentsline{toc}{subsection}{Bài tập cuối chương}
 
 Dưới đây là các bài tập vận dụng nhằm củng cố các nguyên lý nền tảng đã trình bày trong Chương 0. Tất cả các bài tập đều có lời giải chi tiết và số liệu đã được kiểm chứng bằng kịch bản \texttt{verify\_v3/}\allowbreak\texttt{ch00\_exercises.py}.
 
@@ -873,7 +953,7 @@ Một thuật toán ước lượng F0 thực hiện lấy đỉnh biên độ p
 \begin{enumerate}[label=\alph*)]
     \item Tính độ rộng của mỗi vạch phổ (bin spacing $\Delta f$).
     \item Giả sử giọng người nói có tần số cơ bản thực tế rơi vào $F_{\text{true}} = 162{,}5\text{ Hz}$ (nằm chính giữa hai bin kề nhau). Hãy xác định hai bin lân cận và sai số tần số cực đại nếu chọn đỉnh rời rạc lớn nhất mà không dùng thuật toán nội suy.
-    \item Tính sai số cực đại này theo đơn vị cent âm học so với tần số thực tế $162{,}5\text{ Hz}$. So sánh sai số này với ngưỡng nghe nhận biết cao độ của tai người ($5 \dots 10\text{ cent}$).
+    \item Tính sai số cực đại này theo đơn vị cent âm học so với tần số thực tế $162{,}5\text{ Hz}$. So sánh sai số này với ngưỡng nghe nhận biết cao độ (JND) của con người ($5 \dots 10\text{ cent}$ đối với âm thanh đơn âm hoặc người nghe được huấn luyện, và $10 \dots 25\text{ cent}$ đối với tiếng nói tự nhiên trong ngữ cảnh phức tạp).
 \end{enumerate}
 
 \noindent\textbf{Lời giải chi tiết:}
@@ -900,7 +980,7 @@ Một thuật toán ước lượng F0 thực hiện lấy đỉnh biên độ p
     \begin{equation}
         E_{\text{cent}} = 1200 \cdot \left|\log_2\left(\frac{150{,}0}{162{,}5}\right)\right| = 1200 \cdot \log_2(1{,}08333) \approx 138{,}57\text{ cent}
     \end{equation}
-    \textbf{Nhận xét:} Sai số $128 \dots 138\text{ cent}$ tương đương hơn 1,3 bán âm (vượt quá khoảng cách giữa nốt Đô và Đô thăng trên phím đàn piano). Trong khi đó, tai người bình thường có thể phân biệt được độ chênh lệch cao độ chỉ từ $5$ đến $10\text{ cent}$. Do đó, phương pháp tìm đỉnh FFT thô hoàn toàn không đáp ứng được yêu cầu phân tích ngữ điệu giọng nói.
+    \textbf{Nhận xét:} Sai số $128 \dots 138\text{ cent}$ tương đương hơn 1,3 bán âm (vượt quá khoảng cách giữa nốt Đô và Đô thăng trên phím đàn piano). Trong khi đó, ngưỡng phân biệt cao độ của con người chỉ từ $5$ đến $10\text{ cent}$ (với âm thanh đơn âm) và $10 \dots 25\text{ cent}$ (với tiếng nói phức tạp). Do đó, phương pháp tìm đỉnh FFT thô hoàn toàn không đáp ứng được yêu cầu phân tích ngữ điệu giọng nói.
 \end{enumerate}
 
 % --- BÀI TẬP 3 ---
@@ -956,7 +1036,7 @@ Xét một chuỗi mẫu tín hiệu ngắn đối xứng gồm 6 điểm:
             r(2) = \frac{R_{xw}(2) / R_w(2)}{R_{xw}(0) / R_w(0)} = \frac{30{,}000 / 1{,}5000}{80{,}500 / 2{,}6250} = \frac{20{,}000}{30{,}6667} \approx 0{,}6522
         \end{equation}
     \end{itemize}
-    \textbf{Nhận xét:} Do hiệu ứng vát biên của cửa sổ, hệ số chưa chuẩn hóa bị nén giảm giả tạo xuống chỉ còn $0{,}3727$ (giảm tới $62{,}7\%$), có thể rơi xuống dưới ngưỡng hữu thanh $0{,}45$ và bị gán nhầm thành vô thanh. Phép chuẩn hóa Boersma đã phục hồi giá trị thực lên $0{,}6522$, phản ánh chính xác tính tuần hoàn của tín hiệu.
+    \textbf{Nhận xét và lưu ý quan trọng về tính tuần hoàn:} Do hiệu ứng vát biên của cửa sổ, hệ số chưa chuẩn hóa bị nén giảm giả tạo xuống chỉ còn $0{,}3727$ (giảm tới $62{,}7\%$), có thể rơi xuống dưới ngưỡng hữu thanh $0{,}45$ và bị gán nhầm thành vô thanh. Phép chuẩn hóa Boersma đã bù đắp phần suy giảm và nâng giá trị lên $0{,}6522$. Cần lưu ý rằng chuỗi mẫu ngắn $x = [2, 4, 6, 6, 4, 2]$ bản thân không phải là một tín hiệu tuần hoàn (do có dạng đường bao tam giác hữu hạn); bài tập này minh họa rằng phép chia cho tự tương quan cửa sổ $R_w[\tau]$ triệt tiêu độ dốc suy hao do biên cửa sổ hữu hạn (taper bias), chứ không thể biến đổi một tín hiệu không tuần hoàn thành tuần hoàn.
 \end{enumerate}
 
 % --- BÀI TẬP 4 ---
@@ -1069,7 +1149,7 @@ Một hệ thống ước lượng F0 xử lý tín hiệu âm thanh lấy mẫu
             f_{\min} = \frac{N_{\text{total}}}{T_{\text{hop}}} = \frac{797.600}{0{,}010\text{ s}} = 79.760.000\text{ Hz} = 79{,}76\text{ MHz}
         \end{equation}
     \end{itemize}
-    \textbf{Kết luận:} Một mức xung nhịp hệ thống phổ thông $100\text{ MHz}$ trên Cyclone V (lớn hơn $79{,}76\text{ MHz}$) hoàn toàn đủ khả năng ghép kênh xử lý cùng lúc 8 luồng âm thanh thời gian thực chỉ với duy nhất một bộ nhân-cộng DSP tuần tự!
+    \textbf{Kết luận:} Một mức xung nhịp hệ thống phổ thông $100\text{ MHz}$ trên Cyclone V (giả định cần được xác nhận bằng đo đạc $F_{\max}$ thực tế trên bo mạch -- phải đo) lớn hơn $79{,}76\text{ MHz}$, hoàn toàn đủ khả năng ghép kênh xử lý cùng lúc 8 luồng âm thanh thời gian thực chỉ với duy nhất một bộ nhân-cộng DSP tuần tự!
 \end{enumerate}
 
 

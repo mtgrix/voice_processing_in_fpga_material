@@ -12,8 +12,12 @@ ch00:
 	$(PYTHON) ch00_naive_methods.py > ch00_naive_methods.log
 	@echo "=== [ch00] Running window normalization verification ==="
 	$(PYTHON) ch00_norm_sine.py > ch00_norm_sine.log
+	@echo "=== [ch00] Running Praat 7.0.03 line citations verification ==="
+	$(PYTHON) ch00_praat_lines.py > ch00_praat_lines.log
 	@echo "=== [ch00] Running metrics verification ==="
 	$(PYTHON) ch00_metrics.py > ch00_metrics.log
+	@echo "=== [ch00] Running golden table recomputation (fine cents) ==="
+	$(PYTHON) ch00_table_golden.py > ch00_table_golden.log
 	@echo "=== [ch00] Running cycle budget verification ==="
 	$(PYTHON) ch00_cycle_budget.py > ch00_cycle_budget.log
 	@echo "=== [ch00] Running golden v2 spec verification ==="
@@ -25,4 +29,4 @@ ch00:
 	@echo "=== [ch00] All Chapter 0 verifications completed successfully ==="
 
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt
