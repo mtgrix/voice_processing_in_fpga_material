@@ -207,9 +207,31 @@ Khắc phục triệt để 3 điểm tồn đọng duy nhất từ phản biệ
 
 ---
 
-## 7. Lịch sử các Commit Git trên nhánh v3
+## 7. Báo cáo Chi tiết Vòng Sửa đổi 3 (Revision Round 3 - Final Figure Only)
+
+**Ngày hoàn thành đợt sửa đổi 3:** 11/11/2026  
+Khắc phục triệt để 2 lỗi hình vẽ còn lại trên `chuong_v3/fig_ch00_system.tex` (trang 12) theo biên bản phản biện Round 3:
+
+1. **Khối Praat 7.0.03 Laptop không còn chạm viền HPS (Mục 1):**
+   - Nâng tọa độ khối `praat` từ $(0{,}8; 8{,}8)$ lên $(0{,}8; 9{,}3)$, đưa mép dưới của khối lên $y \approx 8{,}8$ cm, cách đỉnh khung nét đứt HPS ($y = 8{,}4$ cm) một khoảng an toàn $0{,}40$ cm (vượt yêu cầu $\ge 0{,}25$ cm).
+   - Góc khung HPS $(2{,}1; 8{,}4)$ hoàn toàn không còn cắt vào góc hộp Praat; chuỗi ký tự `$R_2$` trong `10 tham số chuẩn \to R_1, R_2` hiển thị trọn vẹn, sắc nét.
+   - Giữ nguyên liên kết mũi tên nét đứt từ `sd.north` vào `praat.south`; cập nhật điểm chuyển tiếp đường đối sánh từ $(-1{,}2; 8{,}8)$ thành $(-1{,}2; 9{,}3)$ đi ngang sạch sẽ vào `praat.west`.
+
+2. **Đường đối sánh tím không còn cắt qua tiêu đề đường hoàn trả (Mục 2):**
+   - Định tuyến lại đường bus nét đứt tím đi ra từ cạnh phải `(out_bin.east)` tại $x = 5{,}55$ cm, đi ngang sang phải đến $x = 6{,}1$ cm (nằm ngoài mép khung hoàn trả $x = 5{,}8$ cm), đi thẳng đứng lên $y = 6{,}0$ cm rồi rẽ trái sang $x = -1{,}2$ cm.
+   - Tuyệt đối không còn hiện tượng đường nét đứt tím cắt qua cụm từ `về HPS` trong tiêu đề `Đường hoàn trả kết quả về HPS` (tiêu đề giữ nguyên căn giữa hoàn hảo tại $(2{,}9; 5{,}75)$).
+   - Nhãn `Đối sánh Ch.13: GPE, VDE, FFE, Cent, RTF` được căn giữa trên đường $y = 6{,}0$ với `inner sep=1.2pt`, tạo khoảng hở an toàn với mép dưới khung HPS ($y = 6{,}2$ cm) và mép trên khung hoàn trả ($y = 5{,}8$ cm), không chạm viền hay cắt qua bất kỳ chữ nào.
+
+Biên dịch 2 lần bằng XeLaTeX: 0 lỗi, 0 overfull, giữ nguyên 31 trang; đã trích xuất kiểm tra trực quan tại 300 DPI (`pdftoppm -r 300`) xác nhận mọi cạnh hộp, đường nối và văn bản đều tách biệt hoàn toàn.
+
+---
+
+## 8. Lịch sử các Commit Git trên nhánh v3
 
 ```text
+9a43013 v3: ch00 r3 figure
+77b6ce8 v3: ch00 r2 box-verified logs
+b0a34f8 v3: ch00 revision 2
 3dd693e v3: ch00 r2 fixes
 7398d87 v3: ch00 r1 box-verified logs
 0d0819d v3: ch00 revision
