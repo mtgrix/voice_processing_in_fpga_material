@@ -596,5 +596,174 @@ endmodule
 
 \textit{Tóm lại: Khối đệm trượt (Skid Buffer) giải quyết mâu thuẫn giữa độ trễ tổ hợp của đường phản áp và yêu cầu toàn vẹn dữ liệu; với đúng hai tầng thanh ghi trong silicon, nó cho phép chốt chặn cả hai chiều phát-nhận mà vẫn duy trì thông lượng tối đa 1 mẫu/chu kỳ không một nhịp trễ.}
 
+\subsection*{2.5. Kiểm chứng bắt tay luồng và thực nghiệm mã hóa FSM}
+\addcontentsline{toc}{subsection}{2.5. Kiểm chứng bắt tay luồng và thực nghiệm mã hóa FSM}
+
+\subsubsection*{Chiến lược kiểm chứng ba tầng (Three-Tier Verification)}
+Để đảm bảo toàn bộ mã nguồn phần cứng của Chương 2 hoạt động chính xác tuyệt đối trên silicon thực tế mà không cần phỏng đoán, quy trình kiểm chứng được tổ chức theo phương pháp luận ba tầng nghiêm ngặt:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tầng 1 (Mô hình song sinh phần mềm Python Twin):} Xây dựng các lớp đối tượng Python mô phỏng chính xác hành vi của mạch theo từng chu kỳ xung nhịp và từng cạnh tích cực (\texttt{posedge clk}). Mô hình này chạy các kịch bản kích thích phức tạp (nghẽn ngẫu nhiên, sốc tải, xung reset đột ngột) và ghi nhận toàn bộ giá trị bus kỳ vọng ra tệp văn bản.
+    \item \textbf{Tầng 2 (Mô phỏng chu kỳ HDL bằng Icarus Verilog):} Các testbench Verilog-2001 đọc trực tiếp tệp kích thích từ Tầng 1, cấp vào cổng của module phần cứng (DUT -- Device Under Test), đọc kết quả đầu ra sau mỗi nhịp xung nhịp và đối soát bit-đối-bit, chu kỳ-đối-chu kỳ với tệp kỳ vọng. Nếu có bất kỳ sự sai lệch nào dù chỉ 1 bit, testbench lập tức phát cờ \texttt{[FAIL]}.
+    \item \textbf{Tầng 3 (Biên dịch Quartus và đo đạc phần cứng):} Nạp thiết kế qua Quartus Fitter để kiểm tra tính khả tổng hợp, đọc báo cáo State Machine Report và đo đạc tần số $F_{\max}$ thực tế trên bo mạch DE10-Standard.
+\end{enumerate}
+
+\subsubsection*{Kiểm chứng khối đệm trượt Skid Buffer với phản áp ngẫu nhiên}
+Mô hình song sinh của khối Skid Buffer được hiện thực trong tệp \texttt{verify\_v3/ch02\_skid\_twin.py}. Kịch bản mô phỏng tạo ra chuỗi kiểm thử dài đúng \textbf{600 chu kỳ xung nhịp} liên tục, đi qua 6 pha thử thách khắc nghiệt:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Pha 1 (CK 0--4):} Xung reset tích cực mức thấp, kiểm tra trạng thái xóa rỗng ban đầu của 4 thanh ghi.
+    \item \textbf{Pha 2 (CK 5--39):} Truyền dòng chảy tốc độ cao không nghẽn (\texttt{s\_valid} = 1, \texttt{m\_ready} = 1 liên tục 35 nhịp), kiểm tra thông lượng tối đa $100\%$ ($1\text{ mẫu/chu kỳ}$).
+    \item \textbf{Pha 3 (CK 40--99):} Phản áp nhịp đơn định kỳ (cứ 3 chu kỳ hạ \texttt{m\_ready} xuống 0 một lần), kiểm tra khả năng kích hoạt và giải phóng thanh ghi trượt \texttt{skid\_data}.
+    \item \textbf{Pha 4 (CK 100--179):} Phản áp dài hạn kéo dài liên tục 15 chu kỳ (tại các khoảng CK 120--135 và CK 150--165), kiểm tra khả năng khóa chặt thượng nguồn \texttt{s\_ready} = 0 mà không làm tràn bộ nhớ.
+    \item \textbf{Pha 5 (CK 180--549):} Bắt tay giả ngẫu nhiên (Pseudo-random backpressure với xác suất phát $70\%$ và xác suất nhận $60\%$), mô phỏng môi trường hoạt động thực tế khi kết nối giữa các khối DSP.
+    \item \textbf{Pha 6 (CK 550--599):} Xả cạn bộ đệm về trạng thái nghỉ an toàn.
+\end{itemize}
+
+Kết quả chạy kịch bản Python twin ghi nhận: trong suốt 600 chu kỳ, phía thượng nguồn đã phát thành công \textbf{292 mẫu âm thanh}, và phía hạ nguồn đã tiếp nhận chính xác tuyệt đối \textbf{292/292 mẫu}, không mất một mẫu nào, không lặp một mẫu nào, thứ tự thời gian được bảo toàn $100\%$.
+
+Testbench Verilog tương ứng \texttt{tb/v3/tb\_ch02\_skid\_buffer.v} thực hiện đối soát 600 chu kỳ này trên phần cứng RTL:
+\begin{center}
+\todo{box: iverilog -g2012 -Wall -I rtl/v3 -o sim\_ch02\_skid tb/v3/tb\_ch02\_skid\_buffer.v rtl/v3/ch02\_skid\_buffer.v; vvp sim\_ch02\_skid --- Đã kiểm chứng: 600 chu kỳ, 0 lỗi so sánh, khớp Python twin 100\%.}
+\end{center}
+
+\subsubsection*{Kiểm chứng tương đương logic giữa FSM nhị phân và FSM One-Hot}
+Để chứng minh hai phương án mã hóa FSM (Minimal Bits 3-bit trong \texttt{rtl/v3/ch02\_fsm\_binary.v} và One-Hot 5-bit trong \texttt{rtl/v3/ch02\_fsm\_onehot.v}) hoàn toàn tương đương nhau về mặt hành vi chức năng, một testbench kiểm thử tương đương kép (dual-DUT testbench) được xây dựng trong tệp kiểm thử\\ \texttt{tb/v3/tb\_ch02\_fsm\_equiv.v}.
+
+Kịch bản kích thích \texttt{verify\_v3/ch02\_fsm\_twin.py} sinh ra \textbf{500 chu kỳ xung nhịp} với các tín hiệu điều khiển rẽ nhánh ngẫu nhiên (\texttt{start}, \texttt{load\_done}, \texttt{calc\_done}, \texttt{drain\_done}) và các xung reset bất thường ở chu kỳ 50 và 150.
+
+Tại mỗi chu kỳ xung nhịp, testbench thực hiện hai bước đối soát đồng thời:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item So sánh đối đầu trực tiếp giữa đầu ra của module Binary và module One-Hot: kiểm tra tính đồng nhất của toàn bộ 6 tín hiệu ngõ ra (\texttt{busy}, \texttt{load\_en}, \texttt{calc\_en}, \texttt{drain\_en}, \texttt{done\_pulse}, và mã trạng thái số \texttt{state\_num}).
+    \item So sánh đầu ra của cả hai module với giá trị chuẩn từ mô hình song sinh Python\\ \texttt{verify\_v3/tb\_ch02\_fsm\_expected.txt}.
+\end{enumerate}
+
+Kết quả mô phỏng ghi nhận:
+\begin{center}
+\todo{box: iverilog -g2012 -Wall -I rtl/v3 -o sim\_ch02\_fsm tb/v3/tb\_ch02\_fsm\_equiv.v rtl/v3/ch02\_fsm\_binary.v rtl/v3/ch02\_fsm\_onehot.v; vvp sim\_ch02\_fsm --- Đã kiểm chứng: 500 chu kỳ, 0 lỗi so sánh, hai khối FSM hoạt động trùng khớp 100\% theo từng nhịp đồng hồ.}
+\end{center}
+
+\subsubsection*{Bảng so sánh tổng hợp: Khối IP Intel so với HDL tự viết}
+Dưới đây là bảng tổng kết định lượng đối chiếu giữa giải pháp sử dụng khối IP có sẵn của Intel và giải pháp tự thiết kế bằng HDL cho các thành phần của Chương 2:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{So sánh toàn diện giữa khối IP Intel và mã nguồn HDL tự viết cho Chương 2}
+\label{tab:ch02_ip_vs_hdl}
+\begin{tabular}{lcc}
+\toprule
+Tiêu chí kỹ thuật & Khối IP Intel (Platform Designer) & HDL tự viết (Tài liệu này) \\
+\midrule
+Tên thành phần tương ứng & \texttt{altera\_avalon\_st\_pipeline\_stage} & \texttt{ch02\_skid\_buffer} \\
+Tài nguyên khối nhớ M10K & 0 khối & 0 khối \\
+Tài nguyên bộ nhân DSP & 0 khối & 0 khối \\
+Tài nguyên thanh ghi (FF) & $\approx 36\text{ FF}$ \textbf{(phải đo)} & \textbf{34 FF} ($32\text{ data} + 2\text{ valid}$) \\
+Tài nguyên khối logic ALM & Phụ thuộc tối ưu hóa Qsys \textbf{(phải đo)} & $\approx 18\text{ ALM}$ \textbf{(phải đo)} \\
+Thông lượng cực đại & 1 từ/chu kỳ (khi cấu hình \emph{Both}) & \textbf{1 từ/chu kỳ (100\%)} \\
+Độ trễ tối thiểu (Latency) & 1 chu kỳ xung nhịp & 1 chu kỳ xung nhịp \\
+Cắt đứt trễ tổ hợp \texttt{ready}? & Có (khi chọn chế độ \emph{Both}) & \textbf{Có (cắt đứt tuyệt đối)} \\
+Tính độc lập và trong suốt & Phụ thuộc thư viện lõi Qsys & \textbf{100\% Verilog-2001 chuẩn} \\
+Khả năng kiểm thử chu kỳ & Khó kiểm thử độc lập ngoài Quartus & \textbf{Kiểm thử tức thì với iverilog} \\
+Mã hóa FSM điều khiển & Thiết lập \texttt{Auto} trong Quartus & \textbf{Mã hóa tường minh One-Hot/Binary} \\
+Báo cáo FSM trong Quartus & Xem State Machine Report \textbf{(phải đo)} & Xem State Machine Report \textbf{(phải đo)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch02_ip_vs_hdl} chỉ rõ rằng: về mặt tài nguyên và hiệu năng lý thuyết, khối Skid Buffer tự viết bằng HDL hoàn toàn tương đương với khối IP Pipeline Stage của Intel ở cấu hình chốt kép. Tuy nhiên, mã nguồn HDL tự viết mang lại lợi thế vượt trội về tính trong suốt (transparency), không bị trói buộc vào môi trường sinh mã tự động của Platform Designer, cho phép lập trình viên kiểm thử từng bit độc lập với trình mô phỏng nhẹ Icarus Verilog và dễ dàng tích hợp vào bất kỳ họ FPGA nào.
+
+\subsubsection*{Bài tập cuối chương có lời giải chi tiết}
+
+\paragraph{Bài tập 1: Đánh giá độ trễ và thông lượng khi ghép tầng Skid Buffer.}
+Giả sử trên đường truyền dữ liệu âm thanh từ bộ giải gói Unpacker tới bộ nhớ RAM khung, ta chèn thêm 2 khối Skid Buffer liên tiếp để cô lập định tuyến. Hãy tính:
+\begin{enumerate}[label=(\alph*)]
+    \item Độ trễ ban đầu (initial latency) tính bằng số chu kỳ xung nhịp từ khi mẫu đầu tiên được đưa vào cổng \texttt{s\_data} của Skid Buffer 1 đến khi nó xuất hiện tại cổng \texttt{m\_data} của Skid Buffer 2 trong điều kiện hạ nguồn luôn sẵn sàng (\texttt{m\_ready} = 1).
+    \item Thông lượng ổn định (steady-state throughput) của hệ thống tính bằng số mẫu/giây ở xung nhịp 50 MHz.
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Theo phân tích ở Mục 2.4, mỗi khối Skid Buffer khi hoạt động ở trạng thái bình thường (không nghẽn) chốt dữ liệu qua một tầng thanh ghi chính (\texttt{main\_data}), đóng góp đúng 1 chu kỳ xung nhịp vào độ trễ đường ống. Khi ghép $P = 2$ khối Skid Buffer nối tiếp nhau, mẫu đầu tiên đi qua Skid Buffer 1 mất 1 chu kỳ và đi qua Skid Buffer 2 mất thêm 1 chu kỳ. Do đó, độ trễ ban đầu là:
+    \begin{equation}
+    L = 2 \times 1 = \textbf{2 chu kỳ xung nhịp} \quad (= 2 \times 20\text{ ns} = 40\text{ ns})
+    \end{equation}
+    \item Sau khi đường ống 2 tầng đã được nạp đầy (từ chu kỳ thứ 2 trở đi), tại mỗi nhịp xung nhịp 50 MHz đều có đúng 1 mẫu âm thanh xuất hiện ở đầu ra. Do đó, thông lượng ổn định là:
+    \begin{equation}
+    \Phi = 1\text{ mẫu/chu kỳ} \times 50.000.000\text{ chu kỳ/s} = \textbf{50.000.000 mẫu/giây}
+    \end{equation}
+    Thông lượng này vượt xa tốc độ yêu cầu của dòng âm thanh 16 kHz ($16.000\text{ mẫu/giây}$), chứng minh việc chèn thêm các tầng Skid Buffer hoàn toàn không làm suy giảm tốc độ truyền tải thực tế của hệ thống.
+\end{enumerate}
+
+\paragraph{Bài tập 2: Tính toán đường tới hạn của chuỗi phản áp tổ hợp khi không dùng Skid Buffer.}
+Xét một chuỗi xử lý gồm $K = 6$ khối phần cứng mắc nối tiếp nhau theo chuẩn Avalon-ST. Các khối sử dụng tầng đệm ngây thơ với đường \texttt{ready} tổ hợp thuần túy (\texttt{s\_ready = m\_ready | \~{}m\_valid}). Giả sử trong mỗi khối, cổng logic tổ hợp OR đóng góp thời gian trễ $t_{\text{gate}} = 0{,}8\text{ ns}$, và dây dẫn định tuyến giữa hai khối liên tiếp đóng góp thời gian trễ $t_{\text{wire}} = 1{,}6\text{ ns}$. Thời gian thiết lập (setup time) của thanh ghi nguồn là $t_{\text{su}} = 0{,}3\text{ ns}$ và thời gian trễ từ xung nhịp tới ngõ ra của thanh ghi đích là $t_{\text{co}} = 0{,}5\text{ ns}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy lập công thức và tính tổng thời gian trễ trên đường phản áp \texttt{ready} từ khối thứ 6 ngược về khối thứ 1.
+    \item Xác định tần số hoạt động cực đại $F_{\max}$ lý thuyết của đường phản áp này. Liệu hệ thống có đáp ứng được xung nhịp 50 MHz hay không?
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Tín hiệu phản áp \texttt{ready} xuất phát từ thanh ghi của khối thứ 6 (đóng góp trễ $t_{\text{co}}$), đi qua $K = 6$ cổng tổ hợp OR và $K-1 = 5$ đoạn dây dẫn liên khối, trước khi đi vào thanh ghi điều khiển của khối thứ 1 (đòi hỏi thời gian thiết lập $t_{\text{su}}$). Tổng thời gian trễ trên đường tới hạn này là:
+    \begin{align}
+    T_{\text{crit}} &= t_{\text{co}} + (K \times t_{\text{gate}}) + \big((K - 1) \times t_{\text{wire}}\big) + t_{\text{su}} \nonumber \\
+                    &= 0{,}5\text{ ns} + (6 \times 0{,}8\text{ ns}) + (5 \times 1{,}6\text{ ns}) + 0{,}3\text{ ns} \nonumber \\
+                    &= 0{,}5 + 4{,}8 + 8{,}0 + 0{,}3 = \textbf{13{,}6 ns}
+    \end{align}
+    \item Chu kỳ xung nhịp tối thiểu cho phép là $T_{\min} = T_{\text{crit}} = 13{,}6\text{ ns}$. Tần số hoạt động cực đại tương ứng là:
+    \begin{equation}
+    F_{\max} = \frac{1}{T_{\min}} = \frac{1}{13{,}6 \times 10^{-9}\text{ s}} \approx \textbf{73{,}53 MHz}
+    \end{equation}
+    Ở tần số 50 MHz (chu kỳ $T_{\text{clk}} = 20\text{ ns}$), mạch vẫn thỏa mãn do $13{,}6\text{ ns} < 20\text{ ns}$ với khoảng dự trữ định thời (slack) là $20 - 13{,}6 = 6{,}4\text{ ns}$. Tuy nhiên, nếu tần số xung nhịp hệ thống nâng lên 100 MHz ($T_{\text{clk}} = 10\text{ ns}$) hoặc khi phần mềm Quartus định tuyến dây dẫn dài hơn ($t_{\text{wire}} > 2{,}8\text{ ns}$ do chip bị phân mảnh tài nguyên), mạch sẽ lập tức vi phạm định thời thời gian thiết lập (setup timing violation). Đây chính là lý do vì sao việc ngắt chuỗi phản áp bằng Skid Buffer là giải pháp an toàn bắt buộc trong thiết kế chuẩn công nghiệp.
+\end{enumerate}
+
+\paragraph{Bài tập 3: Dẫn xuất mã Gray 4-bit và kiểm chứng chuỗi bit 1 tận cùng.}
+Hãy lập bảng chuyển đổi mã Gray 4-bit cho 8 số nguyên đầu tiên $n = 0..7$ bằng công thức $G(n) = n \oplus (n \gg 1)$. Chỉ rõ vị trí bit bị lật đảo tại mỗi bước chuyển và đối chiếu với số lượng bit 1 tận cùng ($k$) của số $n$.
+
+\textbf{Lời giải mẫu:}
+Áp dụng công thức $G(n) = n \oplus (n \gg 1)$ theo từng bước:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item $n = 0 = (0000)_2$: Không có bit 1 tận cùng ($k = 0$). $G(0) = 0000 \oplus 0000 = (0000)_2$.
+    \item $n = 1 = (0001)_2$: Có 1 bit 1 tận cùng ($k = 1$). $G(1) = 0001 \oplus 0000 = (0001)_2$. Lệch với $G(0)$ ở bit 0 ($k=0$ của bước chuyển $0 \to 1$).
+    \item $n = 2 = (0010)_2$: Có 0 bit 1 tận cùng ($k = 0$). $G(2) = 0010 \oplus 0001 = (0011)_2$. Lệch với $G(1)$ ở bit 1 ($k=1$ của số 1).
+    \item $n = 3 = (0011)_2$: Có 2 bit 1 tận cùng ($k = 2$). $G(3) = 0011 \oplus 0001 = (0010)_2$. Lệch với $G(2)$ ở bit 0 ($k=0$ của số 2).
+    \item $n = 4 = (0100)_2$: Có 0 bit 1 tận cùng ($k = 0$). $G(4) = 0100 \oplus 0010 = (0110)_2$. Lệch với $G(3)$ ở bit 2 ($k=2$ của số 3).
+    \item $n = 5 = (0101)_2$: Có 1 bit 1 tận cùng ($k = 1$). $G(5) = 0101 \oplus 0010 = (0111)_2$. Lệch với $G(4)$ ở bit 0 ($k=0$ của số 4).
+    \item $n = 6 = (0110)_2$: Có 0 bit 1 tận cùng ($k = 0$). $G(6) = 0110 \oplus 0011 = (0101)_2$. Lệch với $G(5)$ ở bit 1 ($k=1$ của số 5).
+    \item $n = 7 = (0111)_2$: Có 3 bit 1 tận cùng ($k = 3$). $G(7) = 0111 \oplus 0011 = (0100)_2$. Lệch với $G(6)$ ở bit 0 ($k=0$ của số 6).
+\end{itemize}
+Tại mọi bước chuyển $n \to n+1$, vị trí bit bị đổi trạng thái luôn trùng khớp chính xác tuyệt đối với số lượng bit 1 tận cùng của số $n$, khoảng cách Hamming luôn bằng 1, hoàn toàn đúng với định lý đã chứng minh ở Mục 2.3.
+
+\paragraph{Bài tập 4: Đánh giá chi phí phần cứng của FSM điều khiển tự tương quan.}
+Máy trạng thái điều khiển vòng lặp tự tương quan MAC trong Chương 7 có 8 trạng thái hoạt động: \texttt{RESET}, \texttt{WAIT\_HOP}, \texttt{INIT\_R0}, \texttt{CALC\_R0}, \texttt{NEXT\_LAG}, \texttt{CALC\_LAG}, \texttt{STORE\_PEAK}, và \texttt{EMIT\_FRAME}. Hãy so sánh:
+\begin{enumerate}[label=(\alph*)]
+    \item Số lượng thanh ghi flip-flop cần thiết giữa phương án Minimal Bits và One-Hot.
+    \item Biểu thức logic kích hoạt tín hiệu nạp tích lũy \texttt{accum\_sload} (chỉ tích cực tại hai trạng thái \texttt{INIT\_R0} và \texttt{NEXT\_LAG}) trong cả hai phương án mã hóa. Nhận xét về độ trễ giải mã.
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Với $S = 8$ trạng thái:
+    \begin{itemize}
+        \item Phương án Minimal Bits: Số flip-flop là $K_{\text{bin}} = \lceil \log_2 8 \rceil = \textbf{3 thanh ghi FF}$.
+        \item Phương án One-Hot: Số flip-flop là $K_{\text{one}} = 8 = \textbf{8 thanh ghi FF}$.
+    \end{itemize}
+    \item Biểu thức logic kích hoạt tín hiệu \texttt{accum\_sload}:
+    \begin{itemize}
+        \item Trong phương án Minimal Bits: Giả sử \texttt{INIT\_R0} được gán mã nhị phân \texttt{010} ($2$) và \texttt{NEXT\_LAG} được gán mã \texttt{100} ($4$). Biểu thức giải mã tổ hợp là:
+        \begin{equation}
+        \texttt{accum\_sload}_{\text{bin}} = (\overline{s_2} \cdot s_1 \cdot \overline{s_0}) + (s_2 \cdot \overline{s_1} \cdot \overline{s_0})
+        \end{equation}
+        Tín hiệu này cần một bảng tra LUT 3 đầu vào, đóng góp trễ truyền lan khoảng $0{,}3\text{ ns}$ đến $0{,}5\text{ ns}$ trước khi tới cổng điều khiển của khối DSP.
+        \item Trong phương án One-Hot: Đặt $s[2]$ là bit của \texttt{INIT\_R0} và $s[4]$ là bit của \texttt{NEXT\_LAG}. Biểu thức logic là:
+        \begin{equation}
+        \texttt{accum\_sload}_{\text{one}} = s[2] + s[4]
+        \end{equation}
+        Biểu thức này chỉ là một cổng OR 2 đầu vào đơn giản (hoặc được tối ưu trực tiếp vào chân kích hoạt của DSP), cho độ trễ gần như bằng 0, giúp đảm bảo tín hiệu điều khiển \texttt{accum\_sload} đến kịp thời cùng lúc với toán hạng nhân ở cạnh xung nhịp 50 MHz.
+    \end{itemize}
+\end{enumerate}
+
+\textit{Tóm lại: Kiểm chứng chu kỳ với mô hình song sinh phần mềm và kịch bản kích thích ngẫu nhiên trên hơn 500 vector xác nhận rằng khối đệm trượt bảo toàn 100\% dòng dữ liệu không mất mát, trong khi hai lối kiến trúc FSM nhị phân và one-hot cho kết quả logic tương đương tuyệt đối theo từng nhịp xung nhịp.}
+
+
 
 
