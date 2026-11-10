@@ -155,7 +155,7 @@ Trong khi đó, tần số cơ bản của người nói dao động từ 75 Hz 
 \begin{equation}
 x[n] = \sin\left(\frac{2\pi n}{4}\right) = [0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000, \; 0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000]
 \end{equation}
-Hàm cửa sổ Hanning 8 mẫu của Praat tuân thủ công thức $N+1$ (được định nghĩa trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} dòng 412--416):
+Hàm cửa sổ Hanning 8 mẫu của Praat tuân thủ công thức $N+1$ (được định nghĩa trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} dòng 422--425):
 \begin{equation}
 w[i] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi i}{N+1}\right), \quad i = 1, \dots, N \quad (i = n + 1)
 \end{equation}
@@ -196,7 +196,7 @@ Bảng \ref{tab:ch00_norm_sine} liệt kê kết quả tính tay chi tiết hàm
     r_{\text{Boersma}}[4] = \frac{0{,}500000}{0{,}500000} = 1{,}000000
     \end{equation}
 \end{itemize}
-Giá trị 1,000000 phản ánh đúng tính tuần hoàn của sóng sin, không hề bị ảnh hưởng bởi việc cửa sổ bị thót hẹp ở hai đầu. Đây chính là linh hồn toán học giải thích vì sao phần mềm Praat đạt được độ tin cậy và danh tiếng vượt trội trong cộng đồng nghiên cứu ngữ âm học suốt ba thập kỷ qua.
+Giá trị 1,000000 phản ánh đúng tính tuần hoàn của sóng sin, không hề bị ảnh hưởng bởi việc cửa sổ bị thót hẹp ở hai đầu.
 
 \textit{Tóm lại: Cửa sổ cắt khung làm suy hao giả tạo năng lượng ở các độ trễ lớn khiến đỉnh cao độ thật bị lùn đi; ý tưởng cốt lõi của Boersma là chia hàm tự tương quan của tín hiệu cho hàm tự tương quan của cửa sổ $R_{xw}[\tau] / R_w[\tau]$, khôi phục trọn vẹn độ mạnh của chu kỳ cơ bản và triệt tiêu định kiến thiên lệch về các độ trễ nhỏ.}
 
@@ -209,20 +209,20 @@ Mọi so sánh định lượng giữa bộ đo trên FPGA và phần mềm Praa
 Thuật toán ước lượng cao độ bằng tự tương quan thô của Praat vận hành tuần tự qua tám bước sau:
 
 \textbf{Bước 1: Tính đỉnh biên độ toàn cục (\texttt{globalPeak}).}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 365--375), Praat quét qua toàn bộ tệp âm thanh đầu vào, tính giá trị trung bình DC của cả tệp, rồi xác định đỉnh biên độ cực đại:
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 375--385), Praat quét qua toàn bộ tệp âm thanh đầu vào, tính giá trị trung bình DC của cả tệp, rồi xác định đỉnh biên độ cực đại:
 \begin{equation}
 \text{globalPeak} = \max_{t} |x(t) - \bar{x}_{\text{file}}|
 \end{equation}
 Giá trị này phản ánh mức biên độ đỉnh tuyệt đối của người nói, được giữ nguyên làm mốc quy chiếu xuyên suốt để thiết lập ngưỡng yên lặng động cho từng khung ở Bước 8.
 
 \textbf{Bước 2: Phân bố lưới khung thời gian (\texttt{Sampled\_shortTermAnalysis}).}
-Trong tệp \texttt{Sampled.cpp} (dòng 56--70 định nghĩa \texttt{Sampled\_getWindowSamples} và \texttt{Sampled\_xToLowIndex}; dòng 71--82 định nghĩa \texttt{Sampled\_shortTermAnalysis}), Praat không đặt khung đầu tiên tại mẫu 0 mà căn các khung đối xứng quanh tâm của tệp âm thanh. Với độ dài tệp $T$, số khung phân tích được tính bởi công thức làm tròn sàn $\lfloor(T - 0{,}04)/0{,}01\rfloor + 1$. Vị trí tâm của khung đầu tiên $t_1$ phụ thuộc vào độ dài tổng thể của tệp. Vì vậy, khung thứ nhất không bắt đầu ở mẫu 0 mà lệch đi một số mẫu nhất định; lõi phần cứng FPGA bắt buộc phải nhận tọa độ $t_1$ và chỉ số mẫu bắt đầu do bộ vi xử lý HPS tính toán để đảm bảo hai bên phân tích trên đúng từng mẫu âm thanh.
+Trong tệp \texttt{Sampled.cpp} (hàm \texttt{Sampled\_getWindowSamples} từ dòng 53, cùng hàm nội tuyến \texttt{Sampled\_xToLowIndex} trong \texttt{Sampled.h} dòng 34; dòng 71--82 định nghĩa \texttt{Sampled\_shortTermAnalysis}), Praat không đặt khung đầu tiên tại mẫu 0 mà căn các khung đối xứng quanh tâm của tệp âm thanh. Với độ dài tệp $T$, số khung phân tích được tính bởi công thức làm tròn sàn $\lfloor(T - 0{,}04)/0{,}01\rfloor + 1$. Vị trí tâm của khung đầu tiên $t_1$ phụ thuộc vào độ dài tổng thể của tệp. Vì vậy, khung thứ nhất không bắt đầu ở mẫu 0 mà lệch đi một số mẫu nhất định; lõi phần cứng FPGA bắt buộc phải nhận tọa độ $t_1$ và chỉ số mẫu bắt đầu do bộ vi xử lý HPS tính toán để đảm bảo hai bên phân tích trên đúng từng mẫu âm thanh.
 
 \textbf{Bước 3: Trừ trung bình cục bộ trên 426 mẫu.}
 Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 56--66), Praat tính giá trị trung bình cục bộ của tín hiệu trên đoạn dài đúng hai chu kỳ dài nhất về hai phía tâm khung (``one longest period to both sides''). Tại $f_{\min} = 75\text{ Hz}$, chu kỳ dài nhất là $T_{0,\max} = 16.000 / 75 = 213{,}33$ mẫu, làm tròn thành 213 mẫu. Do đó, trung bình cục bộ được tính trên đúng $2 \times 213 = 426$ mẫu quanh tâm khung ($106 \dots 531$), hoàn toàn không phải trên toàn bộ 638 mẫu. Sau đó, tại dòng 68--84, Praat sao chép khung và trừ trung bình cục bộ này trước khi nhân với cửa sổ Hanning nhằm triệt tiêu triệt để thành phần một chiều (DC offset) cục bộ, ngăn ngừa sai lệch hàm tự tương quan.
 
 \textbf{Bước 4: Nhân cửa sổ Hanning $N+1$ với $N = 638$ mẫu.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 324--330 và dòng 412--416), kích thước cửa sổ phân tích được làm tròn đối xứng: từ $640$ mẫu lý thuyết, Praat lấy nửa cửa sổ $\text{half} = 640/2 - 1 = 319$ mẫu, suy ra chiều dài cửa sổ thực tế là $N = 2 \times 319 = 638$ mẫu. Tín hiệu sau khi trừ trung bình cục bộ được nhân với hàm cửa sổ Hanning dạng $N+1$:
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 335--339 và dòng 422--425), kích thước cửa sổ phân tích được làm tròn đối xứng: từ $640$ mẫu lý thuyết, Praat lấy nửa cửa sổ $\text{half} = 640/2 - 1 = 319$ mẫu, suy ra chiều dài cửa sổ thực tế là $N = 2 \times 319 = 638$ mẫu. Tín hiệu sau khi trừ trung bình cục bộ được nhân với hàm cửa sổ Hanning dạng $N+1$:
 \begin{equation}
 w[i] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi i}{639}\right), \quad i = 1, \dots, 638
 \end{equation}
@@ -243,15 +243,15 @@ phục vụ trực tiếp cho việc xác định ngưỡng chuyển đổi có 
 
 \textbf{Bước 6: Tự tương quan và chuẩn hóa Boersma bằng FFT 1024 điểm.}
 
-Trong tệp \texttt{Sound\_to\_}\linebreak[0]\texttt{Pitch.cpp} (dòng 145--160), Praat tính hàm tự tương quan khung $R_{xw}[\tau]$ bằng phép biến đổi FFT 1024 điểm qua hàm \texttt{NUMfft\_}\linebreak[0]\texttt{forward} (dòng 149, với độ dài nhân chập $638 \times 1{,}5 = 957$ mẫu, chọn lũy thừa 2 gần nhất là 1024).
+Trong tệp \texttt{Sound\_to\_}\linebreak[0]\texttt{Pitch.cpp} (dòng 147--157), Praat tính hàm tự tương quan khung $R_{xw}[\tau]$ bằng phép biến đổi FFT 1024 điểm qua hàm \texttt{NUMfft\_}\linebreak[0]\texttt{forward} (dòng 150, với độ dài nhân chập $638 \times 1{,}5 = 957$ mẫu, chọn lũy thừa 2 gần nhất là 1024).
 
-Đồng thời, tại dòng 422--435, Praat biến đổi FFT và tính tự tương quan của chính cửa sổ $R_w[\tau]$ (mảng \texttt{windowR}), chuẩn hóa mảng này và xác định độ trễ tối đa $\texttt{brent\_}\linebreak[0]\texttt{ixmax} = 319$ mẫu. Sau đó, tại dòng 162--164, kết quả được chuẩn hóa và chia theo công thức Boersma:
+Đồng thời, tại dòng 430--445, Praat biến đổi FFT và tính tự tương quan của chính cửa sổ $R_w[\tau]$ (mảng \texttt{windowR}), chuẩn hóa mảng này và xác định độ trễ tối đa $\texttt{brent\_}\linebreak[0]\texttt{ixmax} = 319$ mẫu. Sau đó, tại dòng 163--165, kết quả được chuẩn hóa và chia theo công thức Boersma:
 \begin{equation*}
 r[i] = \frac{ac[i+1]}{ac[1] \cdot \texttt{windowR}[i+1]}
 \end{equation*}
 
 \textbf{Bước 7: Tìm kiếm ứng viên cao độ và tinh chỉnh sinc70 + Brent.}
-Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 185--200), Praat quét tìm các đỉnh cực đại cục bộ thỏa mãn đồng thời: $r[i] > 0{,}5 \times \text{voicingThreshold}$, $r[i] > r[i-1]$ và $r[i] \ge r[i+1]$ với $i \in [2, \text{maximumLag}-1]$. Với $N=638$, $\text{maximumLag} = \lfloor 638/3 \rfloor + 2 = 214$, nên Praat quét qua $i = 2 \dots 213$. Các độ trễ $i \in [2, 26]$ vẫn có thể trở thành ứng viên cực đại, nhưng do chúng tương ứng với tần số $f \ge 600\text{ Hz}$ (vượt quá trần \texttt{pitch ceiling} 600 Hz), bộ dò đường Viterbi coi chúng là vô thanh (\texttt{Pitch.cpp} dòng 558, hàm \texttt{Pitch\_util\_frequencyIsVoiced}). Trong khi đó, mạch số FPGA của ta quét trực tiếp trên dải $[27, 213]$ (với độ trễ 26 và 214 đóng vai trò làm hàng xóm biên cho nội suy parabol 3 điểm; xem \texttt{golden\_v2/README} độ lệch 6). Vị trí đỉnh ban đầu được ước lượng bằng nội suy parabol (dòng 195--200), nhưng sau đó \textbf{luôn luôn được tinh chỉnh chính xác bằng phép nội suy hàm sinc 70 điểm kết hợp thuật toán tìm kiếm Brent} (dòng 250--260, hàm \texttt{NUMimproveMaximum}), bất kể chế độ \texttt{Very accurate} bật hay tắt. Độ mạnh (\texttt{strength}) của đỉnh nếu vượt quá 1 sẽ được phản xạ thành $1/\text{strength}$. Praat lưu lại tối đa 15 ứng viên có độ mạnh lớn nhất trong mỗi khung.
+Trong tệp \texttt{Sound\_to\_Pitch.cpp} (dòng 185--200), Praat quét tìm các đỉnh cực đại cục bộ thỏa mãn đồng thời: $r[i] > 0{,}5 \times \text{voicingThreshold}$, $r[i] > r[i-1]$ và $r[i] \ge r[i+1]$ với $i \in [2, \text{maximumLag}-1]$. Với $N=638$, $\text{maximumLag} = \lfloor 638/3 \rfloor + 2 = 214$, nên Praat quét qua $i = 2 \dots 213$. Các độ trễ $i \in [2, 26]$ vẫn có thể trở thành ứng viên cực đại, nhưng do chúng tương ứng với tần số $f \ge 600\text{ Hz}$ (vượt quá trần \texttt{pitch ceiling} 600 Hz), bộ dò đường Viterbi coi chúng là vô thanh (\texttt{Pitch.cpp} dòng 558, hàm \texttt{Pitch\_util\_frequencyIsVoiced}). Trong khi đó, mạch số FPGA của ta quét trực tiếp trên dải $[27, 213]$ (với độ trễ 26 và 214 đóng vai trò làm hàng xóm biên cho nội suy parabol 3 điểm; xem \texttt{golden\_v2/README} độ lệch 6). Vị trí đỉnh ban đầu được ước lượng bằng nội suy parabol (dòng 195--200), nhưng sau đó \textbf{luôn luôn được tinh chỉnh chính xác bằng phép nội suy hàm sinc 70 điểm kết hợp thuật toán tìm kiếm Brent} (dòng 254--270, hàm \texttt{NUMimproveMaximum} ở dòng 258), bất kể chế độ \texttt{Very accurate} bật hay tắt. Độ mạnh (\texttt{strength}) của đỉnh nếu vượt quá 1 sẽ được phản xạ thành $1/\text{strength}$. Praat lưu lại tối đa 15 ứng viên có độ mạnh lớn nhất trong mỗi khung.
 
 \textbf{Bước 8: Thuật toán quy hoạch động Viterbi (Path Finder).}
 Trong tệp \texttt{Pitch.cpp} (dòng 550--565), một bộ tìm đường tối ưu toàn cục (Viterbi) xâu chuỗi các ứng viên qua tất cả các khung trong tệp âm thanh. Ứng viên vô thanh có độ mạnh phụ thuộc vào cường độ biên độ:
@@ -272,7 +272,7 @@ Lệnh chuẩn trong giao diện Praat là \texttt{Sound: To Pitch (raw autocorr
     \item \textbf{Pitch ceiling} (mặc định 600 Hz): Đặt giới hạn tần số cao nhất, quyết định độ trễ tối thiểu quét là $\tau_{\min} = \lfloor 16000 / 600 \rfloor = 26$ mẫu; mọi ứng viên có tần số vượt 600 Hz bị coi là vô thanh.
     \item \textbf{Max. number of candidates} (mặc định 15): Số lượng ứng viên cao độ tối đa được giữ lại ở mỗi khung cho bộ giải thuật Viterbi; mã nguồn tự động ép giá trị này tối thiểu bằng $\lfloor 600 / 75 \rfloor = 8$.
     \item \textbf{Very accurate} (mặc định \texttt{off}): Khi tắt, thuật toán dùng cửa sổ Hanning 3 chu kỳ và nội suy sinc 70 điểm; nếu bật, Praat chuyển sang cửa sổ Gaussian 6 chu kỳ và nội suy sinc 700 điểm.
-    \item \textbf{Silence threshold} (mặc định 0,03): Ngưỡng tỉ số biên độ đỉnh tuyệt đối cục bộ so với đỉnh toàn cục (tỉ số $\text{localPeak} / \text{globalPeak}$, không phải đo bằng năng lượng RMS), kích hoạt vùng dốc phi tuyến nhằm hạ độ mạnh của ứng viên có thanh trong các đoạn thì thầm hoặc im lặng.
+    \item \textbf{Silence threshold} (mặc định 0,03): Ngưỡng tỉ số biên độ đỉnh tuyệt đối cục bộ so với đỉnh toàn cục (tỉ số $\text{localPeak} / \text{globalPeak}$, không phải đo bằng năng lượng RMS); khi $\text{intensity}$ giảm xuống dưới ngưỡng, Praat kích hoạt vùng dốc phi tuyến nhằm nâng cao độ mạnh của ứng viên vô thanh qua công thức $0{,}45 + \max(0, \; 2 - \text{intensity}/(0{,}03/1{,}45))$ (\texttt{Pitch.cpp} dòng 553--555), giúp ứng viên vô thanh thắng thế trong các khung thì thầm hoặc yên lặng.
     \item \textbf{Voicing threshold} (mặc định 0,45): Ngưỡng sức mạnh tương quan để ứng viên có thanh được chấp nhận cạnh tranh với ứng viên vô thanh.
     \item \textbf{Octave cost} (mặc định 0,01): Trọng số phạt theo logarit tần số, ưu tiên nhẹ cho các tần số cao hơn để chống lại xu hướng rơi vào bẫy chia đôi quãng tám.
     \item \textbf{Octave-jump cost} (mặc định 0,35): Hệ số phạt khi đường cao độ nhảy vọt đột ngột quá một quãng tám giữa hai khung liên tiếp trong thuật toán Viterbi (nhân tỉ lệ $0{,}01/\Delta t$).
@@ -298,7 +298,7 @@ Bảng \ref{tab:ch00_praat_vs_fpga} tổng hợp toàn diện các quyết đị
 \addlinespace
 2. Trung bình cục bộ & Lấy trên 426 mẫu ($106 \dots 531$), số thực double & 426 mẫu, nhân hằng số nghịch đảo $M=10.082.083$, dịch 32 bit & Tránh bộ chia số nguyên phức tạp, vừa vặn trong bộ nhân cứng DSP 25$\times$24 & Trừ trung bình khớp bit chính xác (bit-exact) với mô hình số nguyên. \\
 \addlinespace
-3. Tính tự tương quan & FFT 1024 điểm, số thực double 64-bit & Nhân-cộng MAC trực tiếp, toán hạng 17-bit, tích lũy 48-bit & 1 khối DSP 18$\times$18 chạy nối tiếp 98.543 nhịp, tiết kiệm hàng nghìn ALM so với lõi FFT & Khớp về mặt toán học; mô hình số nguyên twin vs R2 đạt sai số cent mịn trung bình $0{,}21$ cent ($p_{95} = 0{,}48$ cent) trên tín hiệu sạch, và $3{,}07$ cent ($p_{95} = 9{,}78$ cent) trên tín hiệu ồn 5 dB. \\
+3. Tính tự tương quan & FFT 1024 điểm, số thực double 64-bit & Nhân-cộng MAC trực tiếp, toán hạng 17-bit, cần 43 bit, dùng 48 bit & 1 khối DSP 18$\times$18 chạy nối tiếp 98.543 nhịp, tiết kiệm hàng nghìn ALM so với lõi FFT & Khớp về mặt toán học; mô hình số nguyên twin vs R2 đạt sai số cent mịn trung bình $0{,}21$ cent ($p_{95} = 0{,}48$ cent) trên tín hiệu sạch, và $3{,}07$ cent ($p_{95} = 9{,}78$ cent) trên tín hiệu ồn 5 dB. \\
 \addlinespace
 4. Chi phí quãng tám (\texttt{octave cost}) & Trừ $0{,}01 \log_2(\text{ceiling}/f)$ vào độ mạnh ứng viên & Chuẩn hóa $R[\tau]$ về 27 bit, trừ số hạng tra bảng $K[\tau]$ & Thay thế phép chia và hàm logarit phức tạp bằng phép trừ số nguyên & Khớp hoàn toàn với công thức Praat, không làm méo dạng đỉnh parabol. \\
 \addlinespace
