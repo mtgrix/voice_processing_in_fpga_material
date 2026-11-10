@@ -358,3 +358,104 @@ Mỗi khối chức năng trong kiến trúc tổng thể trên được nghiên
 \end{itemize}
 
 \textit{Tóm lại: Hệ thống phân chia rành mạch giữa HPS (quản lý tệp, căn lưới thời gian, giao tiếp bus) và FPGA (xử lý số tín hiệu nối tiếp theo dòng); từng khối phần cứng được ánh xạ tương ứng vào từng chương độc lập với kiểm chứng song song hai đường IP và HDL tự viết.}
+
+\subsection*{0.5. Các phép đo đánh giá: GPE, VDE, FFE và sai số cent}
+\addcontentsline{toc}{subsection}{0.5. Các phép đo đánh giá: GPE, VDE, FFE và sai số cent}
+
+Để so sánh đường cao độ do mạch số FPGA ước lượng với đường cao độ tham chiếu chuẩn của phần mềm Praat (hoặc cao độ thực \emph{ground-truth} của tệp thử nghiệm), ta không thể dùng các độ đo sai số trung bình bình phương (MSE) thông thường. Tiếng nói gồm các đoạn có thanh (voiced, dây thanh rung) xen kẽ các đoạn vô thanh (unvoiced, âm ma sát hoặc khoảng lặng). Khi một khung bị đoán sai trạng thái thanh tính, giá trị tần số hoàn toàn không xác định, khiến phép trừ số học trực tiếp mất ý nghĩa.
+
+\subsubsection*{Dẫn xuất các tình huống xảy ra trên một khung phân tích}
+Xét một khung phân tích bất kỳ tại mốc thời gian $t$. Gọi $F_{\text{ref}}$ là tần số cơ bản của Praat (hoặc ground-truth) và $F_{\text{test}}$ là tần số do FPGA tính toán (quy ước quy đổi giá trị 0 đại diện cho trạng thái vô thanh). So sánh giữa hai giá trị này chỉ có thể rơi vào đúng \textbf{bốn tình huống vật lý} sau:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Tình huống 1: Cả hai bên cùng hữu thanh và gần nhau ($F_{\text{ref}} > 0, F_{\text{test}} > 0$, sai số tương đối $\le 20\%$).} Đây là các khung ước lượng thành công về mặt cao độ cơ bản. Phần chênh lệch nhỏ giữa hai bên phản ánh sai số làm tròn số học, sự khác biệt giữa thuật toán nội suy đỉnh parabol và nội suy hàm sinc. Tình huống này được đưa vào tập đo \textbf{sai số cent mịn (fine-cent error)}.
+    \item \textbf{Tình huống 2: Cả hai bên cùng hữu thanh nhưng lệch nhau rất xa ($F_{\text{ref}} > 0, F_{\text{test}} > 0$, sai số tương đối $> 20\%$).} Đây là các lỗi thô nghiêm trọng về mặt giải thuật, thường do mạch số chọn nhầm hài âm bậc hai (nhân đôi quãng tám: $F_{\text{test}} \approx 2 F_{\text{ref}}$) hoặc chọn nhầm độ trễ gấp đôi (chia đôi quãng tám: $F_{\text{test}} \approx 0{,}5 F_{\text{ref}}$). Hiện tượng này được định nghĩa là \textbf{Lỗi cao độ thô (Gross Pitch Error -- GPE)}.
+    \item \textbf{Tình huống 3: Quyết định thanh tính không đồng nhất (một bên có thanh, bên kia vô thanh).} Hoặc Praat phát hiện có thanh mà FPGA bỏ sót ($F_{\text{ref}} > 0, F_{\text{test}} = 0$), hoặc ngược lại FPGA nhận diện nhầm tiếng ồn thành có thanh ($F_{\text{ref}} = 0, F_{\text{test}} > 0$). Hiện tượng này được định nghĩa là \textbf{Lỗi quyết định thanh tính (Voicing Decision Error -- VDE)}.
+    \item \textbf{Tình huống 4: Cả hai bên cùng vô thanh ($F_{\text{ref}} = 0, F_{\text{test}} = 0$).} Hai bên hoàn toàn đồng thuận về khoảng lặng hoặc âm vô thanh; khung phân tích hoàn toàn chính xác và không có lỗi nào phát sinh.
+\end{itemize}
+
+Từ bốn tình huống trên, cộng đồng xử lý tiếng nói quốc tế chuẩn hóa bốn chỉ số định lượng:
+
+\textbf{1. Tỉ lệ lỗi quyết định thanh tính (VDE -- Voicing Decision Error):}
+Là tỉ số giữa số khung có quyết định thanh tính khác nhau ($N_{\text{VDE}}$, tức Tình huống 3) trên tổng số khung phân tích $N$:
+\begin{equation}
+\text{VDE} = \frac{N_{\text{VDE}}}{N} = \frac{\sum_{i=1}^N \left[ (F_{\text{ref},i} > 0) \oplus (F_{\text{test},i} > 0) \right]}{N}
+\end{equation}
+
+\textbf{2. Tỉ lệ lỗi cao độ thô (GPE -- Gross Pitch Error):}
+Chỉ tính riêng trên tập hợp các khung mà \emph{cả hai bên đều nhận định là có thanh} ($N_{\text{both}}$ khung). GPE là tỉ lệ số khung bị lệch tần số quá $20\%$ ($N_{\text{GPE}}$, tức Tình huống 2) trên $N_{\text{both}}$:
+\begin{equation}
+\text{GPE} = \frac{N_{\text{GPE}}}{N_{\text{both}}} = \frac{\sum_{i \in \text{both}} \mathbb{I}\left( \left| \frac{F_{\text{test},i}}{F_{\text{ref},i}} - 1 \right| > 0{,}20 \right)}{N_{\text{both}}}
+\end{equation}
+
+\textbf{3. Tỉ lệ lỗi tổng hợp toàn khung (FFE -- $F_0$ Frame Error):}
+Phản ánh bức tranh toàn cảnh về độ chính xác của hệ thống, bằng tổng số khung bị lỗi thanh tính cộng số khung bị lỗi cao độ thô, chia cho tổng số khung $N$:
+\begin{equation}
+\text{FFE} = \frac{N_{\text{VDE}} + N_{\text{GPE}}}{N}
+\end{equation}
+
+\textbf{4. Thống kê sai số cent mịn (Fine-Cent Statistics):}
+Được tính riêng biệt trên các khung ở Tình huống 1 (cùng có thanh và không phạm lỗi thô GPE). Độ lệch cao độ tính bằng cent:
+\begin{equation}
+C_i = 1.200 \cdot \log_2 \left( \frac{F_{\text{test},i}}{F_{\text{ref},i}} \right)
+\end{equation}
+Ta báo cáo bốn đại lượng thống kê: trung bình độ lệch tuyệt đối ($\text{Mean } |C|$), độ lệch chuẩn ($\text{Std } C$), phân vị 95 ($\text{P95 } |C|$) và sai số mịn cực đại ($\max |C|$).
+
+\textbf{Ý nghĩa của ngưỡng $20\%$ và vì sao phải loại bỏ lỗi thô khi đo cent?}
+Một ngưỡng lệch tương đối $20\%$ về mặt tần số tương ứng với bao nhiêu trong cảm thụ âm nhạc? Ta quy đổi trực tiếp ra cent:
+\begin{equation}
+1.200 \cdot \log_2(1{,}20) \approx 315{,}64\text{ cent} \approx 3{,}16\text{ nửa cung (semitones)}
+\end{equation}
+Khoảng cách hơn 3 nửa cung vượt xa ngưỡng phân biệt cao độ mịn của con người (thường dưới 20--50 cent). Khi một khung bị lỗi nhảy quãng tám (nhân đôi tần số: $F_{\text{test}} = 2 F_{\text{ref}}$), sai số cent lên tới đúng $1.200\text{ cent}$! Nếu gộp các khung lỗi quãng tám này vào thống kê cent mịn, chỉ cần một khung lỗi 1.200 cent duy nhất cũng đủ làm biến dạng giá trị trung bình từ $0{,}2\text{ cent}$ vọt lên hàng chục cent, che lấp hoàn toàn độ chính xác vi mô của bộ nội suy đỉnh parabol. Do đó, việc tách rời GPE (đánh giá lỗi giải thuật) và cent mịn (đánh giá độ tinh xảo số học) là nguyên tắc bắt buộc.
+
+\subsubsection*{Ví dụ tính tay thu nhỏ trên 10 khung mô phỏng}
+Để người đọc tự tay kiểm tra từng con số, xét kịch bản mẫu gồm 10 khung phân tích đại diện đầy đủ cho 4 tình huống vật lý (được sinh và tính toán bởi kịch bản \texttt{verify\_v3/ch00\_metrics.py}):
+\begin{table}[H]
+\centering
+\small
+\caption{Bảng tính tay chi tiết các chỉ số chất lượng trên 10 khung mô phỏng sư phạm}
+\label{tab:ch00_metrics_10}
+\begin{tabular}{crrcccc}
+\toprule
+Khung & $F_{\text{ref}}$ (Hz) & $F_{\text{test}}$ (Hz) & Phân loại tình huống & Sai số tương đối & Sai số cent & Trạng thái lỗi \\
+\midrule
+0 & 0,0 & 0,0 & Cả hai vô thanh (TH 4) & --- & --- & Không lỗi \\
+1 & 120,0 & 120,0 & Cùng có thanh (TH 1) & $0{,}00\%$ & $+0{,}00$ & Khớp tuyệt đối \\
+2 & 150,0 & 152,0 & Cùng có thanh (TH 1) & $1{,}33\%$ & $+22{,}93$ & Sai số mịn \\
+3 & 200,0 & 196,0 & Cùng có thanh (TH 1) & $2{,}00\%$ & $-34{,}98$ & Sai số mịn \\
+4 & 220,0 & 224,0 & Cùng có thanh (TH 1) & $1{,}82\%$ & $+31{,}19$ & Sai số mịn \\
+5 & 0,0 & 130,0 & Lệch thanh tính (TH 3) & --- & --- & \textbf{Lỗi VDE} \\
+6 & 140,0 & 0,0 & Lệch thanh tính (TH 3) & --- & --- & \textbf{Lỗi VDE} \\
+7 & 100,0 & 200,0 & Nhân đôi quãng tám (TH 2) & $100{,}00\%$ & $+1.200{,}00$ & \textbf{Lỗi GPE} \\
+8 & 300,0 & 150,0 & Chia đôi quãng tám (TH 2) & $50{,}00\%$ & $-1.200{,}00$ & \textbf{Lỗi GPE} \\
+9 & 0,0 & 0,0 & Cả hai vô thanh (TH 4) & --- & --- & Không lỗi \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Dẫn xuất từng chỉ số từ Bảng \ref{tab:ch00_metrics_10}:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tổng số khung: $N = 10$.
+    \item Số khung cùng có thanh: $N_{\text{both}} = 6$ (Khung 1, 2, 3, 4, 7, 8).
+    \item Lỗi thanh tính (VDE): xuất hiện ở Khung 5 và Khung 6 ($N_{\text{VDE}} = 2$). Tỉ lệ:
+    \begin{equation}
+    \text{VDE} = \frac{2}{10} = 20{,}0\%
+    \end{equation}
+    \item Lỗi cao độ thô (GPE): trong 6 khung cùng có thanh, Khung 7 bị nhân đôi cao độ ($100\% > 20\%$) và Khung 8 bị chia đôi ($50\% > 20\%$), nên $N_{\text{GPE}} = 2$. Tỉ lệ:
+    \begin{equation}
+    \text{GPE} = \frac{2}{6} \approx 33{,}3\%
+    \end{equation}
+    \item Lỗi tổng hợp toàn khung (FFE):
+    \begin{equation}
+    \text{FFE} = \frac{N_{\text{VDE}} + N_{\text{GPE}}}{N} = \frac{2 + 2}{10} = 40{,}0\%
+    \end{equation}
+    \item Thống kê sai số cent mịn trên 4 khung không lỗi thô (Khung 1, 2, 3, 4 với độ lệch tuyệt đối là $0{,}00$, $22{,}96$, $34{,}97$, $31{,}18\text{ cent}$):
+    \begin{align}
+    \text{Trung bình tuyệt đối} &= \frac{0{,}00 + 22{,}96 + 34{,}97 + 31{,}18}{4} = 22{,}28\text{ cent} \\
+    \text{Độ lệch chuẩn (Std)} &= 25{,}64\text{ cent} \\
+    \text{Phân vị 95 (P95)} &= 34{,}41\text{ cent} \\
+    \text{Sai số mịn cực đại} &= 34{,}98\text{ cent}
+    \end{align}
+\end{itemize}
+Tất cả các hàm đo đạc trong \texttt{verify\_v3/ch00\_metrics.py} đã được đối chiếu và khẳng định cho kết quả trùng khớp hoàn toàn với kịch bản tổng thể \texttt{golden\_v2/compare.py} khi kiểm tra trên hai tệp kiểm chứng \texttt{synth\_glide\_vuv\_16k.wav} và \texttt{synth\_glide\_vuv\_16k\_snr5.wav}.
+
+\textit{Tóm lại: VDE đo sự sai lệch phân loại hữu thanh/vô thanh trên toàn tệp, GPE đo lỗi nhảy quãng tám trên các khung cùng hữu thanh, FFE gộp cả hai loại lỗi trên tổng số khung, còn sai số cent mịn đánh giá độ chính xác toán học của bộ nội suy đỉnh sau khi đã bóc tách triệt để các lỗi thô.}
