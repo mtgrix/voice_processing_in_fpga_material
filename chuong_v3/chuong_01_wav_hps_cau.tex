@@ -328,5 +328,136 @@ Thực nghiệm kiểm chứng trên 200 tệp âm thanh ngẫu nhiên trong k�
 
 \textit{Tóm lại: Đọc WAV đúng cách là duyệt theo từng chunk RIFF để tránh bẫy offset 44 và xử lý byte đệm số lẻ; tính đỉnh GP bằng công thức số nguyên quét cực trị một lượt tránh số thực; và lưới khung Praat phải được tính bằng double để nhận diện bẫy sàn số lẻ khi số mẫu âm thanh không chia hết cho hai.}
 
+\subsection*{1.3. Các phương án truyền dữ liệu, đánh đổi và lựa chọn}
+\addcontentsline{toc}{subsection}{1.3. Các phương án truyền dữ liệu, đánh đổi và lựa chọn}
+
+\subsubsection*{Vấn đề thực tế: Ảo tưởng về sự cần thiết của DMA trong xử lý âm thanh}
+Khi bắt tay vào thiết kế một hệ thống tích hợp HPS–FPGA, một phản xạ tự nhiên của nhiều kỹ sư phần cứng là lập tức tìm đến các bộ điều khiển truy xuất bộ nhớ trực tiếp DMA (Direct Memory Access, tiêu biểu như IP mSGDMA của Intel). Lập luận thường nghe là: ``phải có DMA để truyền dữ liệu tự động ở tốc độ phần cứng, nếu dùng CPU ghi từng từ thì sẽ làm nghẽn vi xử lý và không thể đáp ứng thời gian thực''.
+
+Tuy nhiên, trong kỹ nghệ hệ thống, mọi quyết định kiến trúc bắt buộc phải xuất phát từ phép tính định lượng trên nguyên lý đầu tiên: \textbf{Lưu lượng thực sự cần vận chuyển là bao nhiêu?}
+
+Hãy làm phép tính số học cơ bản cho tín hiệu âm thanh chuẩn 16 kHz:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tần số lấy mẫu: $f_s = 16.000\text{ mẫu/giây}$.
+    \item Mỗi mẫu âm thanh PCM 16-bit chiếm đúng 2 byte bộ nhớ.
+    \item Băng thông dữ liệu thực tế sinh ra trong một giây âm thanh là:
+    \begin{equation}
+    B_{\text{audio}} = 16.000 \times 2 = 32.000\text{ byte/giây} = 32\text{ KB/s} = 0{,}032\text{ MB/s}
+    \end{equation}
+\end{itemize}
+
+Bây giờ, hãy đặt con số $32\text{ KB/s}$ này lên bàn cân với năng lực truyền tải của các cầu nối phần cứng trên SoC Cyclone V:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Bus bộ nhớ DDR3 của HPS hoạt động ở xung nhịp 400 MHz (tốc độ dữ liệu kép DDR 800 MT/s), bề rộng 32-bit, cho băng thông đỉnh lý thuyết lên tới:
+    \begin{equation}
+    B_{\text{DDR3}} = 800\text{ MT/s} \times 4\text{ byte} = 3.200\text{ MB/s} = 3{,}2\text{ GB/s}
+    \end{equation}
+    \item Cầu nối Lightweight HPS-to-FPGA (LWHPS2FPGA) có bề rộng cố định 32-bit. Ở xung nhịp đồng bộ của hệ thống FPGA là 50 MHz, trần băng thông lý thuyết của bus là:
+    \begin{equation}
+    B_{\text{LWHPS}} = 50\text{ MHz} \times 4\text{ byte} = 200\text{ MB/s}
+    \end{equation}
+    \item Cầu nối tốc độ cao Full HPS-to-FPGA với bề rộng 128-bit ở xung nhịp 100 MHz có thể đạt tới $1.600\text{ MB/s} = 1{,}6\text{ GB/s}$.
+\end{itemize}
+
+So sánh định lượng trực tiếp:
+\begin{equation}
+\frac{B_{\text{audio}}}{B_{\text{LWHPS}}} = \frac{0{,}032\text{ MB/s}}{200\text{ MB/s}} = 0{,}00016 = \mathbf{0{,}016\%}!
+\end{equation}
+Lưu lượng dữ liệu của dòng âm thanh 16 kHz chỉ chiếm chưa đầy \textbf{một phần sáu nghìn} ($1/6.250$) băng thông khả dụng của cầu nối nhẹ nhất trên chip! Việc vội vã đưa vào một bộ điều khiển DMA phức tạp cho một dòng dữ liệu $32\text{ KB/s}$ là biểu hiện kinh điển của việc tối ưu hóa sớm mà không dựa trên con số.
+
+\subsubsection*{Ba phương án truyền dữ liệu và sự đánh đổi kỹ thuật}
+Để đưa ra lựa chọn sáng suốt nhất cho anh Tú và người phát triển hệ thống, ta tiến hành phân tích chi tiết ba phương án truyền nhận khả thi:
+
+\paragraph{Phương án 1: PIO qua cầu Lightweight HPS-to-FPGA (32-bit).}
+Vi xử lý ARM thực hiện các lệnh ghi trực tiếp (Programmed I/O) từ không gian người dùng thông qua con trỏ ánh xạ bộ nhớ \texttt{mmap} trên tệp thiết bị \texttt{/dev/mem}.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cơ chế đóng gói:} Vì mỗi giao dịch bus của cầu Lightweight chuyển được đúng một từ 32-bit, ta đóng gói hai mẫu âm thanh 16-bit liên tiếp vào một từ duy nhất:
+    \begin{equation}
+    \text{word}_{32} = ((s[2k+1] \ \& \ 0\text{xFFFF}) \ll 16) \ | \ (s[2k] \ \& \ 0\text{xFFFF})
+    \end{equation}
+    với mẫu chẵn $s[2k]$ đặt ở 16 bit thấp và mẫu lẻ $s[2k+1]$ đặt ở 16 bit cao theo chuẩn little-endian.
+    \item \textbf{Tần suất thao tác ghi:} Để đẩy 1 giây âm thanh (16.000 mẫu), CPU chỉ cần thực hiện đúng:
+    \begin{equation}
+    N_{\text{write}} = \frac{16.000}{2} = 8.000\text{ lệnh ghi/giây}
+    \end{equation}
+    \item \textbf{Thời gian chiếm dụng CPU và hệ số thời gian thực (RTF):}
+    Hãy đưa ra một giả định cực kỳ bi quan rằng mỗi thao tác ghi qua bus AXI/Avalon-MM tốn tới $1\ \mu\text{s}$ ($1.000\text{ ns}$, tương đương 50 chu kỳ xung nhịp 50 MHz của FPGA hoặc gần 800 chu kỳ xung nhịp CPU ARM Cortex-A9):
+    \begin{equation}
+    T_{\text{transfer}} = 8.000 \times 1\ \mu\text{s} = 8\text{ ms cho mỗi 1 giây âm thanh}
+    \end{equation}
+    Quy đổi ra hệ số thời gian thực của khâu truyền tải:
+    \begin{equation}
+    \text{RTF}_{\text{transfer}} = \frac{T_{\text{transfer}}}{1\text{ s}} = \frac{8\text{ ms}}{1.000\text{ ms}} = \mathbf{0{,}008}
+    \end{equation}
+    Kể cả trong kịch bản bi quan nhất, vi xử lý chỉ mất đúng $0{,}8\%$ năng lực thời gian để vận chuyển toàn bộ dòng âm thanh sang FPGA! Thời gian ghi thực tế trên bo mạch DE10-Standard đo được thông qua hàm \texttt{clock\_gettime(CLOCK\_MONOTONIC)} thường chỉ dao động từ vài chục đến khoảng hơn một trăm nano-giây mỗi giao dịch (con số cụ thể là \textbf{phải đo} trên bo mạch thực tế).
+    \item \textbf{Độ phức tạp phần mềm:} Cực kỳ thấp. Toàn bộ logic chạy hoàn toàn trong không gian người dùng (User Space), không cần viết driver nhân Linux (Kernel Module), không cần quyền can thiệp vào bộ nhớ vật lý của hệ điều hành.
+\end{itemize}
+
+\paragraph{Phương án 2: DMA phân tán modular (mSGDMA) qua cầu Full Bridge.}
+Khối IP mSGDMA (modular Scatter-Gather DMA) nằm trên vùng logic FPGA đóng vai trò master, tự động đọc luồng mẫu từ bộ nhớ DDR của HPS rồi bắn trực tiếp vào giao diện Avalon-ST của đường ống xử lý mà không cần CPU tham gia từng mẫu.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Ưu điểm:} Hoàn toàn giải phóng CPU khỏi vòng lặp ghi dữ liệu. CPU chỉ cần kích hoạt descriptor rồi chuyển sang thực hiện các tác vụ khác.
+    \item \textbf{Cái giá phần mềm:} Cực kỳ đắt đỏ. Hệ điều hành Linux quản lý bộ nhớ theo các trang ảo (virtual pages) kích thước 4 KB nằm rải rác trong RAM vật lý. Để DMA có thể đọc được:
+    \begin{enumerate}[leftmargin=1.2em, itemsep=2pt]
+        \item Cần phân bổ một vùng nhớ vật lý liên tục (Contiguous Memory) bằng cơ chế CMA của Linux kernel hoặc thông qua module hỗ trợ \texttt{/dev/udmabuf}.
+        \item \textbf{Hiểm họa tính nhất quán bộ đệm (Cache Incoherency):} Khi CPU đọc tệp WAV từ thẻ nhớ SD và ghi vào mảng bộ nhớ, các byte dữ liệu có thể còn nằm lưu trong bộ nhớ đệm cache L1/L2 của lõi ARM Cortex-A9 mà chưa được đẩy (flush) xuống các chip nhớ DDR3 bên dưới. Bộ điều khiển DMA trên FPGA khi đọc trực tiếp từ DDR3 sẽ đọc phải dữ liệu rác cũ! Người lập trình bắt buộc phải gọi các hàm xả cache tường minh (\texttt{dma\_sync\_single\_for\_device} hoặc \texttt{arm\_dma\_flush}), nếu quên hoặc gọi sai thời điểm, toàn bộ dữ liệu âm thanh bị sai mà không hề có bất kỳ cảnh báo lỗi nào.
+        \item \textbf{Quản lý mô tả phân tán (Descriptors):} Phải tạo và cấu hình các bảng descriptor phức tạp trong bộ nhớ, xử lý ngắt hoàn thành (interrupt handling) để dọn dẹp bộ đệm.
+    \end{enumerate}
+    \item \textbf{Cái giá phần cứng:} Khối IP mSGDMA tiêu tốn hàng trăm khối logic ALM và ít nhất 2 đến 3 khối RAM M10K chuyên dụng để làm bộ đệm descriptor và FIFO dữ liệu nội tại.
+\end{itemize}
+
+\paragraph{Phương án 3: Cầu Full HPS-to-FPGA (64/128-bit) với cơ chế PIO.}
+Sử dụng cầu nối chính HPS-to-FPGA với bề rộng 64-bit hoặc 128-bit kết hợp với lệnh ghi SIMD (NEON) của ARM để đẩy 4 hoặc 8 mẫu âm thanh trong một chu kỳ truy xuất.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Đánh giá:} Băng thông tăng thêm 2 đến 4 lần so với cầu Lightweight, nhưng đối với lưu lượng chỉ $32\text{ KB/s}$, việc giảm số lần ghi từ 8.000 xuống 2.000 hay 4.000 lần/giây không đem lại bất kỳ cải thiện nhận thấy nào về hiệu năng tổng thể. Trong khi đó, cầu Full Bridge chiếm dụng không gian địa chỉ vật lý rất rộng lớn, đòi hỏi cấu hình mạng chuyển mạch bus AXI phức tạp hơn và việc phân bổ xung nhịp giữa hai miền cần thêm các tầng đồng bộ chuyên dụng.
+\end{itemize}
+
+\subsubsection*{Bảng so sánh tổng hợp các phương án truyền tải}
+Bảng \ref{tab:ch01_transfer_options} tổng hợp toàn diện các chỉ số kỹ thuật và sự đánh đổi giữa ba phương án:
+
+\begin{table}[H]
+\centering
+\caption{So sánh định lượng các phương án truyền dữ liệu HPS--FPGA cho tín hiệu 16 kHz.}
+\label{tab:ch01_transfer_options}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Chỉ số kỹ thuật} & \textbf{PA 1: PIO (LWHPS)} & \textbf{PA 2: mSGDMA} & \textbf{PA 3: PIO (Full)} \\
+\midrule
+Cầu nối vật lý & LWHPS-to-FPGA & Full HPS-to-FPGA & Full HPS-to-FPGA \\
+Bề rộng dữ liệu bus & 32 bit & 32 hoặc 64 bit & 64 hoặc 128 bit \\
+Lưu lượng yêu cầu & $32\text{ KB/s}$ ($8.000\text{ từ/s}$) & $32\text{ KB/s}$ ($8.000\text{ từ/s}$) & $32\text{ KB/s}$ ($4.000\text{ từ/s}$) \\
+Tải băng thông bus & $0{,}016\%$ của $200\text{ MB/s}$ & $< 0{,}005\%$ của $1{,}6\text{ GB/s}$ & $< 0{,}003\%$ của $1{,}6\text{ GB/s}$ \\
+Thời gian CPU (RTF) & $\le 0{,}008$ (bi quan $1\ \mu\text{s}$) & $\approx 0{,}000$ (tự động) & $\le 0{,}004$ (bi quan) \\
+Thời gian ghi thực tế & \textbf{(phải đo)} & Không áp dụng & \textbf{(phải đo)} \\
+Yêu cầu bộ nhớ vật lý & Không (ảo bình thường) & Bắt buộc liên tục (CMA) & Không (ảo bình thường) \\
+Hiểm họa Cache coherency & Không có & Bắt buộc xả cache & Không có \\
+Không gian phần mềm & User Space (\texttt{mmap}) & Kernel Module / UIO & User Space (\texttt{mmap}) \\
+Tài nguyên phần cứng FPGA & 0 ALM, 0 M10K thêm & $\approx 450$ ALM, $\ge 2$ M10K & Thêm logic ghép bus \\
+Độ phức tạp kiểm chứng & Rất thấp, xem từng nhịp & Cao, phụ thuộc ngắt & Trung bình \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Nhìn vào Bảng \ref{tab:ch01_transfer_options}, ta thấy một sự thật hiển nhiên: ở lưu lượng siêu thấp $32\text{ KB/s}$, việc dùng mSGDMA hoàn toàn không giải quyết được nút thắt hiệu năng nào (bởi vì bản thân khâu truyền tải đã có $\text{RTF} \le 0{,}008$, tức nhanh hơn thời gian thực ít nhất 125 lần), nhưng lại kéo theo cái giá quá đắt về việc phải can thiệp vào tầng nhân Linux kernel, cấp phát bộ nhớ liên tục và hiểm họa đọc dữ liệu rác do lỗi cache coherency.
+
+\subsubsection*{Lựa chọn của ta và lý do có số liệu}
+Từ các phân tích định lượng trên, đề cương quyết định lựa chọn:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Phương án 1 (PIO qua cầu Lightweight Bridge vào bộ đệm On-Chip FIFO) là đường truyền chính thống của toàn bộ tài liệu và dự án}. Có bốn lý do đanh thép:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Thông lượng dư thừa tuyệt đối:} Hệ số thời gian thực $\text{RTF}_{\text{transfer}} \le 0{,}008$. CPU chỉ tốn tối đa 8 ms để truyền xong 1 giây âm thanh, $99{,}2\%$ thời gian còn lại hoàn toàn rảnh rỗi.
+        \item \emph{Độ tin cậy phần mềm cao nhất:} Trình điều khiển chạy hoàn toàn ở không gian người dùng (User Space), chỉ cần mở tệp \texttt{/dev/mem} rồi gọi hàm chuẩn \texttt{mmap}. Không có bất kỳ nguy cơ treo nhân hệ điều hành, rò rỉ bộ nhớ hay lỗi lệch cache.
+        \item \emph{Kiến trúc phần cứng tinh gọn:} Toàn bộ giao diện dữ liệu và thanh ghi điều khiển được gom gọn vào không gian địa chỉ 2 MB của Lightweight Bridge, giải phóng toàn bộ các cổng Full Bridge cho các ứng dụng mở rộng khác trong tương lai.
+        \item \emph{Dễ dàng gỡ lỗi và kiểm chứng bit-exact:} Người thiết kế có thể đặt các điểm dừng (breakpoint), đọc thanh ghi báo mức đầy \texttt{fill\_level} của FIFO ở từng chu kỳ xung nhịp và quan sát chính xác từng từ dữ liệu được nạp vào.
+    \end{itemize}
+    \item \textbf{Phương án 2 (mSGDMA) được giữ lại làm mục đối chiếu chuyên sâu}: Chương 13 sẽ trình bày cách cấu hình mSGDMA và tiến hành đo đạc thực nghiệm trên phần cứng thật để so sánh chính xác thời gian chiếm dụng CPU và tài nguyên ALM/M10K với phương án PIO.
+\end{enumerate}
+
+\textit{Tóm lại: Với lưu lượng âm thanh chỉ 32 KB/s (8.000 lần ghi 32-bit mỗi giây), cơ chế PIO qua cầu Lightweight bridge chỉ tiêu tốn RTF $\le 0{,}008$ mà loại bỏ hoàn toàn gánh nặng bộ đệm vật lý và xả cache của DMA, là lựa chọn tối ưu về cả hiệu năng lẫn độ tin cậy.}
+
+
+
 
 
