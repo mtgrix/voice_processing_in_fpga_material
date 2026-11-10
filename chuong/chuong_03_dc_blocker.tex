@@ -5,344 +5,661 @@
 \pdfbookmark[1]{Chương 3. DC-blocker IIR (cực/zero, accumulator 32-bit)}{chuong3}
 
 \begin{learningobj}
-Sau Chương~3, người học giải thích được vì sao offset một chiều phá đỉnh tự tương quan, viết đúng hàm truyền một cực--một zero với $\alpha=1-2^{-8}$, hiện thực RTL accumulator 32~bit theo công thức $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ rồi $\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$, đối chiếu bit-exact với twin Python, và tính tay từng chu kỳ $y_{\mathrm{acc}}$. Khái niệm điểm cực/điểm không và Avalon-ST đã có ở ô Feynman~12 của Chương~0.
+Sau khi hoàn thành Chương~3, người học sẽ giải thích được bản chất vật lý tại sao điện áp offset một chiều (DC) làm phá vỡ phép đo cao độ tự tương quan; tự tay dẫn dắt hàm truyền bộ lọc thông cao IIR một cực--một zero từ phương trình sai phân và vị trí hình học trên mặt phẳng phức $z$ với hệ số $\alpha = 1 - 2^{-8} = 0{,}99609375$; giải quyết triệt để hiện tượng vùng chết (\emph{deadband}) và chu trình giới hạn (\emph{limit cycle}) bằng thanh ghi tích lũy 32 bit; hiện thực mô-đun Verilog HDL \texttt{dc\_block\_iir} hoàn chỉnh tuân thủ giao thức Avalon-ST; và đối chiếu kiểm chứng $100\%$ bit-exact với mô hình phần mềm Python twin thông qua bộ mô phỏng \texttt{iverilog}.
 \end{learningobj}
 
 \subsection*{3.1. Hiện tượng: offset DC nuốt đỉnh chu kỳ}
 
 \begin{physicalinsight}
-Micro, codec WM8731 và đường dây analog luôn cộng thêm một thành phần gần đứng yên: điện áp offset một chiều (DC), cộng thêm trôi chậm do nhiệt. Trong miền mẫu, đó là một hằng $A$ cộng vào mọi $x[n]$. Phép tự tương quan (ô Feynman~5, Chương~0) không phân biệt năng lượng hữu ích và năng lượng offset. Nếu $A$ lớn, đỉnh tại độ trễ $\tau=0$ phình theo $A^2$ và có thể át hoàn toàn đỉnh chu kỳ $T_0$ của dây thanh --- thuật toán sẽ báo vô thanh hoặc treo ở cao độ sai. Đời thường: đo chiều cao sóng trên mặt biển khi mực nước thủy triều đang dâng --- nếu không trừ mực nước trung bình, ``đỉnh sóng'' chỉ là mực nước chứ không phải sóng.
+Trong mọi hệ thống thu âm thực tế, các phần tử tương tự như màng rung micro, mạch tiền khuếch đại, dây dẫn và bộ biến đổi tương tự--số (ADC) trong chip codec Wolfson WM8731 luôn tồn tại một lượng điện áp phân cực một chiều nhỏ, kèm theo sự trôi dạt nhiệt chậm theo thời gian. Trên dòng dữ liệu số, sự bất toàn phần cứng này biểu hiện dưới dạng một hằng số $A$ cộng thêm vào mọi mẫu âm thanh $x[n]$. Thuật toán tự tương quan cơ bản hoàn toàn không thể phân biệt được đâu là năng lượng rung động tuần hoàn của dây thanh quản và đâu là năng lượng tĩnh của điện áp offset. Khi thành phần offset $A$ xuất hiện, năng lượng tại độ trễ bằng không $\mathcal{R}[0]$ sẽ bị thổi phồng lên theo cấp số nhân $A^2$, vô hiệu hóa các ngưỡng phân định vô thanh/hữu thanh và đè bẹp các đỉnh chu kỳ cao độ thực tế.
 \end{physicalinsight}
 
-Viết tường minh với tín hiệu $x[n]+A$:
-\begin{align*}
-\mathcal{R}_{x+A}[0]
-&=\sum_{n=0}^{N-1}(x[n]+A)^2\\
-&=\sum_{n=0}^{N-1}x[n]^2 + 2A\sum_{n=0}^{N-1}x[n] + N A^2
-=\mathcal{R}_x[0]+2A\sum_n x[n]+N A^2.
-\end{align*}
-Số hạng $N A^2$ luôn dương và tỉ lệ với bình phương offset. Với độ trễ $\tau\neq 0$:
-\[
-\mathcal{R}_{x+A}[\tau]=\mathcal{R}_x[\tau]+A\sum_n x[n]+A\sum_n x[n+\tau]+N A^2,
-\]
-nên toàn bộ hàm tự tương quan bị nâng một ``bệ'' DC --- đỉnh chu kỳ bị che. Praat trừ mean cục bộ từng khung; trên FPGA streaming ta dùng bộ lọc IIR liên tục gọi là \textbf{DC-blocker}: một bộ thông cao rất nhẹ, ổn định, rẻ silicon, đặt ngay sau I\textsuperscript{2}S/CDC và trước FIR hạ mẫu (hoặc ngay sau CDC ở $48\,\text{kHz}$, tùy lab --- cutoff vẫn dưới $F_{0,\min}$).
+Sự thật phũ phàng là: nếu không có khối chặn DC đứng ở đầu luồng dữ liệu, toàn bộ giải thuật đo cao độ tinh xảo phía sau sẽ bị đánh lừa ngay từ vạch xuất phát. Để thấy rõ điều này, hãy xem xét biểu thức giải tích của hàm tự tương quan mẫu khi tín hiệu đầu vào bị nhiễm offset một chiều:
+\begin{align}
+\mathcal{R}_{x+A}[0] &= \sum_{n=0}^{N-1} (x[n] + A)^2 \nonumber\\
+&= \sum_{n=0}^{N-1} x[n]^2 + 2A\sum_{n=0}^{N-1} x[n] + \sum_{n=0}^{N-1} A^2 \nonumber\\
+&= \mathcal{R}_x[0] + 2A\sum_{n=0}^{N-1} x[n] + N\cdot A^2.
+\end{align}
+Số hạng $N\cdot A^2$ luôn luôn là một số dương tỷ lệ thuận với bình phương biên độ offset và độ dài khung phân tích $N$. Tương tự, với một độ trễ bất kỳ $\tau \neq 0$:
+\begin{equation}
+\mathcal{R}_{x+A}[\tau] = \mathcal{R}_x[\tau] + A\sum_{n=0}^{N-1-\tau} x[n] + A\sum_{n=0}^{N-1-\tau} x[n+\tau] + (N-\tau)\cdot A^2.
+\end{equation}
+Kết quả là toàn bộ đồ thị hàm tự tương quan bị nhấc bổng lên trên một "bệ đỡ" năng lượng DC khổng lồ. Trong giải thuật Praat chuẩn, việc phân định một khung âm thanh là hữu thanh (\emph{voiced}) hay vô thanh (\emph{unvoiced}) dựa vào tỷ số tương quan chuẩn hóa $r[\tau] = \mathcal{R}[\tau] / \mathcal{R}[0]$ so với ngưỡng $0{,}45$. Khi $\mathcal{R}[0]$ bị thổi phồng bởi số hạng $N\cdot A^2$, mẫu số tăng vọt làm cho tỷ số $r[\tau]$ tại đỉnh chu kỳ dây thanh $T_0$ bị nén bẹp xuống dưới ngưỡng $0{,}45$. Hệ thống sẽ kết luận sai lầm rằng người nói đang im lặng hoặc phát âm vô thanh!
+
+\paragraph{Ví dụ đời thường và ví dụ tính tay.}
+Một ví dụ tương đồng trực quan trong đời sống: hãy tưởng tượng bạn đang cố gắng đo chiều cao của từng con sóng nhấp nhô trên mặt biển vào lúc thủy triều đang dâng cao thêm vài mét. Nếu bạn không trừ đi mực nước biển dâng trung bình, mọi phép đo đỉnh sóng thực chất chỉ đang phản ánh độ cao của thủy triều chứ không nói lên được quy luật chu kỳ của sóng nước.
+
+Để định lượng hiện tượng này bằng con số cụ thể, hãy xét hai tín hiệu nhỏ:
+\begin{enumerate}
+    \item Xét tín hiệu DC thuần túy $x = [1, 1, 1, 1]$ (không có sóng âm xoay chiều). Năng lượng tự tương quan ban đầu là:
+    \[
+    \mathcal{R}[0] = 1^2 + 1^2 + 1^2 + 1^2 = 4.
+    \]
+    Nếu tín hiệu này đi qua bộ lọc chặn DC, toàn bộ giá trị trung bình bị triệt tiêu về $0$, cho ra $\mathcal{R}[0] = 0$. Khối phân loại sẽ nhận diện chính xác đây là đoạn tín hiệu tĩnh không có tiếng nói.
+    \item Xét tín hiệu xoay chiều đối xứng $x_0 = [1, -1, 1, -1]$ có năng lượng gốc:
+    \[
+    \mathcal{R}_{x_0}[0] = 1^2 + (-1)^2 + 1^2 + (-1)^2 = 4.
+    \]
+    Bây giờ, giả sử đường dây analog cộng thêm một lượng offset tĩnh $A = 2$, biến tín hiệu thành $x = x_0 + A = [3, 1, 3, 1]$. Năng lượng tại gốc tọa độ trở thành:
+    \[
+    \mathcal{R}_{x}[0] = 3^2 + 1^2 + 3^2 + 1^2 = 9 + 1 + 9 + 1 = 20.
+    \]
+    Offset $A = 2$ đã phóng đại năng lượng gốc lên gấp $5$ lần ($20 / 4 = 5$), đủ để làm tê liệt hoàn toàn phép so sánh tỷ lệ tương quan.
+\end{enumerate}
+
+Hình~\ref{fig:ch03_dc_before_after} minh họa tác động trực quan của offset DC lên hàm tự tương quan. Đọc hình từ trái sang phải: ở đồ thị bên trái, khi chưa chặn DC, đỉnh năng lượng tại độ trễ $\tau = 0$ phình to đột biến và che khuất hoàn toàn đỉnh chu kỳ; ở đồ thị bên phải, sau khi đi qua bộ lọc DC-blocker, bệ đỡ DC biến mất, làm lộ rõ đỉnh cực đại tại chu kỳ dây thanh $T_0$ để khối tìm kiếm cực đại ở Chương~9 nội suy chính xác.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\small]
   \begin{scope}
     \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
-    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}[\tau]$};
     \draw[thick, red!70!black] (0,2.4) -- (0.15,2.4) -- (0.3,0.4) -- (1,0.35) -- (2,0.9) -- (3,0.3) -- (4,0.25);
-    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Trước DC-block: $\mathcal{R}[0]$ phình};
+    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Trước DC-blocker: $\mathcal{R}[0]$ phình to};
+    \node[red!70!black, font=\scriptsize] at (0.8,2.2) {Offset $N A^2$};
   \end{scope}
   \begin{scope}[xshift=7.2cm]
     \draw[->] (0,0) -- (5.2,0) node[right] {$\tau$};
-    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}$};
+    \draw[->] (0,0) -- (0,2.8) node[above] {$\mathcal{R}[\tau]$};
     \draw[thick, teal!70!black] (0,1.2) -- (0.2,0.3) -- (1,0.25) -- (2,1.8) -- (3,0.3) -- (4,0.25);
-    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Sau: đỉnh $T_0$ lộ rõ};
-    \node[teal!60!black, font=\scriptsize] at (2,2.15) {$T_0$};
+    \node[font=\footnotesize\bfseries] at (2.5,3.15) {Sau DC-blocker: Đỉnh $T_0$ lộ rõ};
+    \node[teal!60!black, font=\scriptsize] at (2,2.15) {Đỉnh $T_0$};
   \end{scope}
 \end{tikzpicture}
-\caption{Cùng một tín hiệu có offset: bên trái đỉnh $\tau=0$ nuốt chu kỳ; bên phải sau DC-blocker đỉnh $T_0$ hiện ra để Chương~9 nội suy.}
+\caption{Hình thái hàm tự tương quan trước và sau khi lọc DC: việc triệt tiêu offset hạ thấp bệ năng lượng giả tạo và làm nổi bật đỉnh chu kỳ thanh quản $T_0$.}
 \label{fig:ch03_dc_before_after}
 \end{figure}
 
-\paragraph{Ví dụ tính tay --- DC thuần và offset cộng vào sóng.} Chuỗi $x=[1,1,1,1]$ (toàn DC) cho $\mathcal{R}[0]=\sum x_n^2=4$. Sau khi trừ mean (mọi mẫu về 0) thì $\mathcal{R}[0]=0$: DC thuần phải đi tiếp như tín hiệu vô thanh. Chuỗi $x_0=[1,-1,1,-1]$ cộng $A=2$ thành $[3,1,3,1]$:
-\[
-\sum(x_0+A)^2=9+1+9+1=20,\qquad \sum x_0^2=4.
-\]
-Offset đã nhân năng lượng $\tau=0$ lên năm lần --- đủ để ngưỡng voicing và so sánh đỉnh $T_0$ lệch hoàn toàn nếu không chặn DC.
+\paragraph{Tại sao dùng bộ lọc IIR thay vì trừ giá trị trung bình khung?}
+Trong phần mềm Praat chạy trên máy tính, tác giả Boersma chọn cách trừ giá trị trung bình mẫu cục bộ trên từng khung phân tích: $\tilde{x}[n] = x[n] - \frac{1}{L}\sum_{k=0}^{L-1} x[k]$ với độ dài khung $L = 640$. Phương pháp này hoạt động tốt khi xử lý theo lô (\emph{batch processing}), nhưng trên phần cứng FPGA xử lý theo luồng thời gian thực (\emph{streaming}), nó bộc lộ hai nhược điểm chí mạng:
+\begin{enumerate}
+    \item Đòi hỏi phải lưu trữ đủ toàn bộ $640$ mẫu vào bộ nhớ RAM trước khi có thể tính tổng và tìm ra giá trị trung bình, tạo ra độ trễ xử lý cố hữu đúng bằng thời gian một khung âm thanh (hàng chục mili-giây).
+    \item Phải thực hiện lại phép cộng tích lũy và phép chia trên các vùng chồng lấn (\emph{overlap}) $75\%$ giữa các khung liên tiếp, gây lãng phí năng lượng tính toán.
+\end{enumerate}
+Giải pháp tối ưu trên FPGA là sử dụng bộ lọc đáp ứng xung vô hạn \textbf{IIR DC-blocker}: một bộ lọc thông cao bậc một cực kỳ nhẹ, hoạt động liên tục từng mẫu một với độ trễ truyền lan chỉ đúng 1 chu kỳ xung nhịp và không cần bộ nhớ đệm khung.
 
-\subsection*{3.2. Toán: cực, zero và chọn $\alpha=1-2^{-8}$}
+\textit{Tóm lại:} Offset DC tạo ra bệ năng lượng giả tạo $N\cdot A^2$ bóp nghẹt đỉnh tự tương quan, và bộ lọc IIR DC-blocker liên tục là công cụ phần cứng hiệu quả nhất để loại bỏ triệt để thành phần này ngay từ đầu vào.
 
-Hàm truyền chuẩn của DC-blocker bậc nhất:
-\[
-H(z)=\frac{1-z^{-1}}{1-\alpha z^{-1}},\qquad 0<\alpha<1.
-\]
-\textbf{Zero} (nghiệm tử số) tại $z=1$ --- đúng tần số $0\,\text{Hz}$ --- nên $H(1)=0$: mọi tín hiệu hoàn toàn đứng yên bị triệt tiêu. \textbf{Cực} (nghiệm mẫu số) tại $z=\alpha$, nằm sát zero nhưng vẫn trong vòng đơn vị nên bộ lọc ổn định. Phương trình sai phân tương đương:
-\[
-y[n]=x[n]-x[n-1]+\alpha\, y[n-1].
-\]
-Đáp ứng tần số gần DC: $|H(e^{j\omega})|$ tăng gần tuyến tính với $\omega$ khi $\omega$ nhỏ; hằng thời gian xấp xỉ $1/(1-\alpha)$ mẫu.
+\subsection*{3.2. Toán: cực, zero và chọn $\alpha = 1 - 2^{-8}$}
+
+Hàm truyền chuẩn trong miền $z$ của bộ lọc DC-blocker đệ quy bậc một có dạng:
+\begin{equation}
+H(z) = \frac{1 - z^{-1}}{1 - \alpha z^{-1}}, \qquad 0 < \alpha < 1.
+\end{equation}
+Để nắm vững tường tận từng chi tiết toán học và vật lý của bộ lọc này mà không có bất kỳ bước nhảy vọt nào, mục này sẽ lần lượt trả lời sáu câu hỏi cốt lõi theo đúng nguyên lý từ gốc (\emph{first principles}).
+
+\paragraph{Câu hỏi 1: Vì sao trễ một mẫu lại tương đương với nhân với $z^{-1}$?}
+Hãy bắt đầu từ bản chất của phép trễ thời gian tác động lên một dao động điều hòa thuần túy. Giả sử ta đưa vào bộ lọc một tín hiệu dạng số phức biểu diễn bằng một "kim đồng hồ" (phasor) có độ dài bán kính đúng bằng 1 đơn vị, quay đều trên mặt phẳng phức với vận tốc góc $\omega$ radian mỗi mẫu:
+\begin{equation}
+x[n] = e^{j\omega n} = \cos(\omega n) + j\sin(\omega n).
+\end{equation}
+Lưu ý rằng theo đúng công thức Euler, dấu cộng đứng trước phần ảo $j\sin(\omega n)$. Mẫu tín hiệu ở thời điểm trước đó một nhịp, $x[n-1]$, chính là vị trí của chiếc kim đồng hồ ở một tích tắc trong quá khứ:
+\begin{equation}
+x[n-1] = e^{j\omega(n-1)} = e^{j\omega n}\cdot e^{-j\omega}.
+\end{equation}
+Trong phép nhân hai số phức này, thừa số $e^{-j\omega}$ có độ lớn bán kính đúng bằng 1 ($|e^{-j\omega}| = 1$) và góc pha bằng $-\omega$. Khi nhân $x[n]$ với $e^{-j\omega}$, độ dài của kim giữ nguyên không đổi và góc pha bị lùi lại đúng một lượng $\omega$: góc quay mới là $\omega n - \omega$. Như vậy, thao tác \textbf{"trễ 1 mẫu trong miền thời gian"} luôn luôn tương đương toán học với \textbf{"nhân với thừa số $e^{-j\omega}$ trong miền tần số"}. Các nhà toán học đặt ký hiệu viết tắt $z = e^{j\omega}$, do đó việc trễ 1 mẫu được viết gọn thành phép nhân với toán tử $z^{-1}$.
+
+Áp dụng quy ước này vào phương trình sai phân miền thời gian của bộ lọc:
+\begin{equation}
+y[n] = x[n] - x[n-1] + \alpha\, y[n-1].
+\end{equation}
+Chuyển từng số hạng sang miền $z$:
+\begin{equation}
+Y(z) = X(z) - z^{-1}X(z) + \alpha z^{-1}Y(z).
+\end{equation}
+Chuyển vế và đặt nhân tử chung: $Y(z)\cdot (1 - \alpha z^{-1}) = X(z)\cdot (1 - z^{-1})$. Lập tỷ số giữa ngõ ra và ngõ vào, ta thu được đúng hàm truyền $H(z) = \frac{1 - z^{-1}}{1 - \alpha z^{-1}}$.
+
+\paragraph{Câu hỏi 2: Ý nghĩa vật lý của hàm truyền $H(z)$ là gì, và tại sao cần có cực?}
+Hàm truyền $H(e^{j\omega})$ là một hàm số phức cung cấp hai thông tin vật lý hoàn chỉnh cho mỗi thành phần tần số $\omega$: độ lớn $|H(e^{j\omega})|$ cho biết biên độ sóng sin đi ra bị phóng to hay thu nhỏ bao nhiêu lần (độ lợi), và góc pha $\arg[H(e^{j\omega})]$ cho biết sóng ngõ ra bị trễ pha bao nhiêu radian.
+
+Tại tần số một chiều (DC), tín hiệu hoàn toàn đứng yên, nghĩa là chiếc kim đồng hồ không quay: $\omega = 0$. Khi đó biến số phức $z = e^{j\cdot 0} = 1$. Thay $z = 1$ vào hàm truyền:
+\begin{equation}
+H(1) = \frac{1 - 1}{1 - \alpha} = \frac{0}{1 - \alpha} = 0.
+\end{equation}
+Độ lợi bằng 0 chứng minh rằng thành phần một chiều bị triệt tiêu hoàn toàn. Điều này rất dễ hiểu: khi tín hiệu không đổi, $x[n] = x[n-1]$, do đó hiệu số $x[n] - x[n-1] = 0$.
+
+Tuy nhiên, câu hỏi then chốt là: nếu chỉ dùng riêng phép trừ vi phân $y[n] = x[n] - x[n-1]$ (tương ứng tử số $1 - z^{-1}$, không có cực ở mẫu số) thì điều gì sẽ xảy ra? Hãy tính độ lợi của bộ vi phân này tại tần số giọng trầm của con người $f = 100\,\text{Hz}$ trong hệ thống lấy mẫu $f_s = 16\,\text{kHz}$:
+\begin{equation}
+\omega_{100} = \frac{2\pi\cdot 100}{16000} \approx 0{,}03927\,\text{rad/mẫu}.
+\end{equation}
+Độ lớn của số phức $1 - e^{-j\omega}$ được tính chính xác bằng hình học:
+\begin{equation}
+|1 - e^{-j\omega}| = \sqrt{(1 - \cos\omega)^2 + \sin^2\omega} = \sqrt{2 - 2\cos\omega} = 2\sin\left(\frac{\omega}{2}\right) \approx 2\cdot\frac{0{,}03927}{2} \approx 0{,}03927.
+\end{equation}
+Con số này mang lại một cảnh tỉnh sâu sắc: nếu không có cực ở mẫu số, sóng âm ở $100\,\text{Hz}$ sẽ bị suy giảm tới hơn $25$ lần, tức biên độ chỉ còn khoảng $3{,}9\%$! Toàn bộ dải tần số giọng nói nam giới từ $80\,\text{Hz}$ đến $200\,\text{Hz}$ sẽ bị phá hủy hoàn toàn. Vì vậy, ta bắt buộc phải đặt thêm một cực $\alpha$ ở mẫu số nằm sát bên cạnh zero để độ lợi nhanh chóng phục hồi về mức 1 ngay khi tần số vừa nhích qua khỏi mức 0 Hz.
+
+\paragraph{Câu hỏi 3: Hình học khoảng cách $|H| = \text{(khoảng cách tới zero)} / \text{(khoảng cách tới cực)}$.}
+Hình~\ref{fig:ch03_zplane} minh họa vị trí của điểm zero và điểm cực trên mặt phẳng phức $z$. Điểm zero $z_0 = 1$ nằm ngay trên vòng tròn đơn vị tại góc $\omega = 0$. Điểm cực $p = \alpha$ nằm trên trục thực thực, ngay sát zero nhưng nằm lùi vào bên trong vòng tròn đơn vị ($0 < \alpha < 1$).
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[scale=1.35]
+\begin{tikzpicture}[scale=1.4]
   \draw[thick] (0,0) circle (1.5);
   \draw[->] (-2.0,0) -- (2.2,0) node[right] {$\mathrm{Re}$};
   \draw[->] (0,-1.9) -- (0,1.9) node[above] {$\mathrm{Im}$};
   \node[below left] at (0,0) {$0$};
+  \node[above left] at (0,1.5) {$j$};
+  \node[below left] at (-1.5,0) {$-1$};
+  % Zero at z=1
   \draw[very thick, blue!70!black] (1.5,0.12) -- (1.5,-0.12);
   \draw[very thick, blue!70!black] (1.38,0) -- (1.62,0);
-  \node[above right,blue!70!black] at (1.5,0.15) {zero $z=1$};
+  \node[above right,blue!70!black] at (1.5,0.15) {Zero $z = 1$};
+  % Pole at z=alpha
   \filldraw[red!70!black] (1.494,0) circle (0.055);
-  \node[below,red!70!black,font=\small] at (1.35,-0.18) {cực $z=\alpha=1-2^{-8}$};
-  \node[align=left, font=\small] at (-0.15,-2.35)
-    {Zero trên vòng đơn vị tại DC: $H(1)=0$.\\
-     Cực gần zero (trong vòng): HPF nhẹ, ổn định.};
+  \node[below,red!70!black,font=\scriptsize] at (1.32,-0.18) {Cực $z = \alpha = 1 - 2^{-8}$};
+  \node[align=left, font=\scriptsize] at (-0.15,-2.3)
+    {Đọc hình: Zero nằm trên vòng đơn vị tại $z = 1$ triệt tiêu DC tuyệt đối ($H(1) = 0$).\\
+     Cực $\alpha$ nằm sát zero bên trong vòng đơn vị giúp độ lợi hồi phục nhanh về 1.};
 \end{tikzpicture}
-\caption{DC-blocker trên mặt phẳng $z$: zero tại $z=1$, cực tại $\alpha=1-2^{-8}=0{,}99609375$.}
+\caption{Mặt phẳng phức $z$ của bộ lọc DC-blocker: zero tại $z = 1$ triệt tiêu hoàn toàn tần số 0 Hz; cực tại $\alpha = 1 - 2^{-8} = 0{,}99609375$ bảo đảm tính ổn định.}
 \label{fig:ch03_zplane}
 \end{figure}
 
-Trên silicon ta chọn $\alpha=1-2^{-8}=0{,}99609375$ vì phép nhân $\alpha\cdot y$ thu gọn thành một phép dịch và trừ:
-\[
-\alpha y = y - (y\ggg 8) = y\cdot(1-2^{-8}),
-\]
-không tốn khối DSP. Hằng thời gian $1/(1-\alpha)=256$ mẫu. Tại $f_s=16\,\text{kHz}$ (sau FIR), cutoff xấp xỉ
-\[
-f_c\approx\frac{1-\alpha}{2\pi}f_s=\frac{2^{-8}}{2\pi}\cdot 16000\approx 9{,}95\,\text{Hz},
-\]
-nằm dưới $F_{0,\min}=75\,\text{Hz}$ và trên DC --- đúng chỗ cần chặn. Ở $48\,\text{kHz}$ ngay sau codec, $f_c\approx 29{,}84\,\text{Hz}$, vẫn an toàn trước khi hạ mẫu.
+Trên mặt phẳng $z$, khi tần số $\omega$ thay đổi, điểm $z = e^{j\omega}$ di chuyển dọc theo chu vi của vòng tròn đơn vị. Độ lớn của hàm truyền chính là tỷ số giữa khoảng cách từ điểm $z$ tới zero và khoảng cách từ điểm $z$ tới cực:
+\begin{equation}
+|H(e^{j\omega})| = \frac{|e^{j\omega} - 1|}{|e^{j\omega} - \alpha|}.
+\end{equation}
+Quy tắc hình học này dẫn tới ba kết luận trực quan:
+\begin{enumerate}
+    \item Tại $z = 1$ ($\omega = 0$): khoảng cách tới zero bằng 0, khoảng cách tới cực là $1 - \alpha$, do đó $|H| = 0 / (1 - \alpha) = 0$.
+    \item Khi $\omega$ vừa rời khỏi gốc tọa độ: khoảng cách tới zero và khoảng cách tới cực gần như song song và có độ dài xấp xỉ nhau vì khoảng cách giữa zero và cực rất nhỏ ($1 - \alpha = 2^{-8} \approx 0{,}0039$). Tỷ số nhanh chóng tiệm cận $1$.
+    \item Tại $z = -1$ (tần số Nyquist $\omega = \pi$, tức $f = f_s / 2$): khoảng cách từ $-1$ đến zero là $|-1 - 1| = 2$. Khoảng cách từ $-1$ đến cực là $|-1 - \alpha| = 1 + \alpha$. Tỷ số độ lợi đạt:
+    \begin{equation}
+    |H(-1)| = \frac{2}{1 + \alpha} = \frac{2}{1 + 0{,}99609375} = \frac{2}{1{,}99609375} \approx 1{,}0019569.
+    \end{equation}
+    Độ lợi tại Nyquist lớn hơn 1 một lượng cực nhỏ ($+0{,}017\,\text{dB}$, tức chỉ tăng $0{,}19\%$). Trong các ứng dụng đo lường chuẩn xác tuyệt đối, người ta có thể nhân thêm hệ số chuẩn hóa $\frac{1+\alpha}{2}$ vào tử số. Tuy nhiên, trên vi mạch FPGA, mức chênh lệch $0{,}19\%$ này hoàn toàn không ảnh hưởng tới thuật toán tự tương quan, nên ta bỏ qua hệ số chuẩn hóa để tiết kiệm một phép nhân DSP.
+\end{enumerate}
 
-\paragraph{Ví dụ tính tay --- đáp ứng với $\alpha=0{,}5$ (cực xa để thấy nhanh).} Đầu vào hằng $x=[1,1,1,1,1]$, $y[-1]=0$:
-\begin{center}\small
-\begin{tabular}{@{}rlll@{}}
+\paragraph{Câu hỏi 4: Hằng số thời gian của bộ lọc là gì?}
+Trong miền thời gian, đáp ứng xung của phần đệ quy mẫu số suy giảm theo quy luật hàm mũ: $\alpha^n$. Ta có thể xấp xỉ hàm mũ này về dạng liên tục cơ bản nhờ công thức số học: với $\epsilon = 1 - \alpha = 2^{-8} \ll 1$, ta có $\alpha = 1 - \epsilon \approx e^{-\epsilon} = e^{-(1-\alpha)}$. Do đó:
+\begin{equation}
+\alpha^n \approx e^{-(1-\alpha)\cdot n}.
+\end{equation}
+Theo định nghĩa vật lý, \textbf{hằng số thời gian $\tau$} là số lượng mẫu cần thiết để biên độ của đáp ứng suy giảm xuống còn đúng $1/e \approx 0{,}36788$ (khoảng $36{,}79\%$) so với giá trị ban đầu. Từ phương trình trên, ta có $(1 - \alpha)\cdot \tau = 1$, suy ra:
+\begin{equation}
+\tau = \frac{1}{1 - \alpha} = \frac{1}{2^{-8}} = 256\,\text{mẫu}.
+\end{equation}
+Tính toán số học trực tiếp kiểm chứng: sau đúng $256$ mẫu, giá trị thực tế của $\alpha^{256}$ là:
+\begin{equation}
+\alpha^{256} = (0{,}99609375)^{256} \approx 0{,}36716,
+\end{equation}
+lệch chưa đầy $0{,}2\%$ so với con số chuẩn $1/e \approx 0{,}36788$.
+
+\paragraph{Câu hỏi 5: Tần số cắt $-3\,\text{dB}$ và bảng đáp ứng tần số $|H(f)|$.}
+Tần số cắt $f_c$ là tần số mà tại đó công suất tín hiệu giảm đi một nửa, tương ứng biên độ $|H| = 1/\sqrt{2} \approx 0{,}7071$ (tức suy giảm $-3{,}01\,\text{dB}$). Tại vùng tần số thấp $\omega \ll 1$, xấp xỉ hình học cho thấy khoảng cách tới zero xấp xỉ $\omega$ và khoảng cách tới cực xấp xỉ $\sqrt{(1-\alpha)^2 + \omega^2}$. Điều kiện $|H| = 1/\sqrt{2}$ dẫn tới $\omega_c \approx 1 - \alpha$. Chuyển đổi từ vận tốc góc sang tần số Hertz:
+\begin{equation}
+f_c \approx \frac{1 - \alpha}{2\pi}\cdot f_s = \frac{2^{-8}}{2\pi}\cdot f_s = \frac{f_s}{512\pi}.
+\end{equation}
+Với tần số lấy mẫu xử lý $f_s = 16\,\text{kHz}$, tần số cắt đạt:
+\begin{equation}
+f_c \approx \frac{16000}{512\pi} \approx 9{,}947\,\text{Hz} \approx 9{,}95\,\text{Hz}.
+\end{equation}
+Nếu bộ lọc đặt ở tần số lấy mẫu ngõ vào $f_s = 48\,\text{kHz}$, tần số cắt là $f_c \approx 29{,}84\,\text{Hz}$. Cả hai tần số cắt này đều nằm sâu dưới ngưỡng tần số cơ bản tối thiểu của giọng người ($F_{0,\min} = 75\,\text{Hz}$), bảo đảm toàn bộ thành phần giọng nói được truyền qua trọn vẹn.
+
+Bảng~\ref{tab:ch03_h_mag} cung cấp số liệu đáp ứng biên độ chính xác của bộ lọc tại các mốc tần số tiêu biểu, được tính toán từ hàm truyền giải tích và đối chiếu với bộ script kiểm chứng \texttt{verify/v2\_ch03\_dc\_blocker.py}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Đáp ứng biên độ $|H(f)|$ của bộ lọc DC-blocker tại các tần số tiêu biểu ($f_s = 16\,\text{kHz}$).}
+\label{tab:ch03_h_mag}
+\begin{tabular}{@{}cccc@{}}
 \toprule
-$n$ & $x[n]$ & $y[n]=(x[n]-x[n-1])+\alpha y[n-1]$ & giá trị \\
+Tần số $f$ (Hz) & Vận tốc góc $\omega$ (rad/mẫu) & Độ lợi biên độ $|H|$ & Độ lợi Logarithm (dB) \\
 \midrule
-0 & 1 & $1-0+0$ & $1$ \\
-1 & 1 & $0+0{,}5\cdot 1$ & $0{,}5$ \\
-2 & 1 & $0+0{,}5\cdot 0{,}5$ & $0{,}25$ \\
-3 & 1 & $0+0{,}5\cdot 0{,}25$ & $0{,}125$ \\
-4 & 1 & $0+0{,}5\cdot 0{,}125$ & $0{,}0625$ \\
+0 (DC) & 0 & 0{,}00000 & $-\infty$ \\
+1 & 0{,}00039 & 0{,}10003 & $-20{,}00\,\text{dB}$ \\
+5 & 0{,}00196 & 0{,}44929 & $-6{,}95\,\text{dB}$ \\
+10 ($\approx f_c$) & 0{,}00393 & 0{,}70967 & $-2{,}98\,\text{dB}$ \\
+20 & 0{,}00785 & 0{,}89678 & $-0{,}95\,\text{dB}$ \\
+75 ($F_{0,\min}$) & 0{,}02945 & 0{,}99323 & $-0{,}059\,\text{dB}$ \\
+200 & 0{,}07854 & 1{,}00072 & $+0{,}006\,\text{dB}$ \\
+8000 (Nyquist) & 3{,}14159 & 1{,}00196 & $+0{,}017\,\text{dB}$ \\
 \bottomrule
 \end{tabular}
-\end{center}
-Năng lượng bị nuốt theo cấp số nhân về 0. Với $\alpha=0{,}75$ trên cùng đầu vào hằng: $1$, $0{,}75$, $0{,}5625$, $0{,}421875$, $0{,}31640625$, \ldots --- chậm hơn $\alpha=0{,}5$ nhưng vẫn về 0. Với $\alpha=0{,}99609375$ suy giảm chậm khoảng $256$ mẫu cho một hằng số thời gian.
+\end{table}
+
+Hình~\ref{fig:ch03_h_mag} thể hiện đồ thị đáp ứng biên độ tần số $|H(f)|$ từ 0 Hz đến 200 Hz. Đọc hình: đường cong xuất phát từ gốc tọa độ (0 Hz, triệt tiêu DC), vượt qua điểm cắt $-3\,\text{dB}$ tại $9{,}95\,\text{Hz}$, và nhanh chóng đạt độ lợi gần như bằng phẳng tuyệt đối ($|H| > 0{,}99$) trong toàn bộ dải cao độ tiếng nói $75\text{--}200\,\text{Hz}$.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize,xscale=0.055,yscale=3.2]
+  % Axes
+  \draw[->] (0,0) -- (210,0) node[right] {$f$ (Hz)};
+  \draw[->] (0,0) -- (0,1.2) node[above] {$|H(f)|$};
+  % Grid and ticks
+  \foreach \x in {50,100,150,200} {
+    \draw (\x,0.02) -- (\x,-0.02) node[below] {\x};
+  }
+  \foreach \y in {0.2,0.4,0.6,0.8,1.0} {
+    \draw (2,\y) -- (-2,\y) node[left] {\y};
+  }
+  % Shading speech range 75 - 200 Hz
+  \fill[green!10] (75,0) rectangle (200,1.05);
+  \node[green!60!black, font=\tiny, align=center] at (137,0.5) {Dải giọng nói $F_0$\\($75\text{--}200\,\text{Hz}$): $|H| \approx 1$};
+  % -3 dB line
+  \draw[dashed, red!70!black] (0,0.707) -- (9.95,0.707) -- (9.95,0);
+  \node[red!70!black, font=\tiny, anchor=west] at (12,0.68) {$f_c \approx 9{,}95\,\text{Hz}$ ($-3\,\text{dB}$)};
+  % Plot curve using exact coordinates
+  \draw[thick, blue!80!black, smooth] plot coordinates {
+    (0.0, 0.0000) (1.0, 0.1000) (2.0, 0.1971) (3.0, 0.2888) (5.0, 0.4493) (7.0, 0.5759)
+    (10.0, 0.7097) (15.0, 0.8345) (20.0, 0.8968) (30.0, 0.9509) (40.0, 0.9722)
+    (50.0, 0.9826) (60.0, 0.9884) (75.0, 0.9932) (100.0, 0.9970) (125.0, 0.9988)
+    (150.0, 0.9998) (175.0, 1.0003) (200.0, 1.0007)
+  };
+\end{tikzpicture}
+\caption{Đồ thị đáp ứng biên độ tần số $|H(f)|$ của bộ lọc DC-blocker: chặn đứng tần số 0 Hz, điểm cắt $-3\,\text{dB}$ tại $9{,}95\,\text{Hz}$, và bảo toàn nguyên vẹn năng lượng tiếng nói trên dải cao độ.}
+\label{fig:ch03_h_mag}
+\end{figure}
+
+\paragraph{Câu hỏi 6: Bản đồ vòng tròn đơn vị và bộ lọc khuyết tại mép Nyquist.}
+Trên vòng tròn đơn vị của mặt phẳng phức $z$, điểm $z = 1$ đại diện cho tần số góc $\omega = 0$ (thành phần DC không đổi). Ngược lại, điểm $z = -1$ đại diện cho tần số góc $\omega = \pi$, tức tần số Nyquist $f_s / 2$. Tại điểm này, chuỗi thời gian là dãy số dao động đảo dấu liên tục: $+1, -1, +1, -1, \ldots$
+
+Một câu hỏi thú vị mà anh Tú thường thắc mắc là: liệu ta có thể dùng chính cấu trúc này để chế tạo một bộ lọc triệt tiêu tần số mép Nyquist hay không? Câu trả lời là hoàn toàn được! Bằng cách xoay trục đối xứng sang điểm $z = -1$, ta đặt một zero tại $z = -1$ và một cực tại $z = -\alpha$, thu được hàm truyền:
+\begin{equation}
+H_{\mathrm{Nyq}}(z) = \frac{1 + z^{-1}}{1 + \alpha z^{-1}}.
+\end{equation}
+Tại $z = -1$, tử số bằng $1 + (-1) = 0$, tạo ra một bộ lọc khuyết (\emph{notch filter}) triệt tiêu tuyệt đối tần số $f_s / 2$. Tuy nhiên, trong cuốn sách này, ta chỉ sử dụng phiên bản zero tại $z = 1$ vì mục tiêu cốt lõi của khối là loại bỏ điện áp trôi DC; nhiệm vụ chặn năng lượng tần số cao gần Nyquist đã được giao phó một cách hoàn hảo cho các bộ lọc thông thấp FIR đa pha ở Chương~4.
+
+\textit{Tóm lại:} Điểm zero tại $z = 1$ triệt tiêu hoàn toàn thành phần DC, và cực tại $\alpha = 1 - 2^{-8}$ khôi phục độ lợi về 1 ngay từ tần số $9{,}95\,\text{Hz}$, bảo đảm toàn bộ thông tin giọng nói từ $75\,\text{Hz}$ trở lên được truyền qua nguyên vẹn.
 
 \subsection*{3.3. Phần cứng: accumulator 32-bit, ví dụ chu kỳ và RTL}
 
-FIR Compiler II không thay thế được IIR có phản hồi: kiến trúc FIR không có vòng $y[n-1]$. Viết khoảng mười dòng Verilog với accumulator 32~bit là lựa chọn dạy và lab.
+Trong các thư viện IP của Quartus, công cụ FIR Compiler II chỉ hỗ trợ các bộ lọc có đáp ứng xung hữu hạn dạng trượt; nó không thể hiện thực được vòng phản hồi đệ quy $y[n-1]$ của bộ lọc IIR. Do đó, việc tự viết một mô-đun Verilog HDL với thanh ghi tích lũy 32 bit là con đường ngắn nhất, tiết kiệm nhất và mang tính sư phạm cao nhất.
 
-Nếu giữ $y$ chỉ 16~bit Q1.15, mỗi lần dịch $\ggg 8$ sẽ cắt mất phần thập phân khi $|y|$ nhỏ, tạo vùng chết (deadband) hoặc dao động limit-cycle. Giải pháp: giữ thanh ghi phản hồi \texttt{y\_acc} signed 32~bit; mẫu vào Q1.15 được kéo lên cùng thang bằng dịch trái 15~bit trước khi trừ; ngõ ra lấy lại Q1.15 bằng dịch phải 15~bit rồi bão hòa.
+\paragraph{Tại sao bắt buộc phải dùng thanh ghi tích lũy 32 bit?}
+Nếu người thiết kế thiếu kinh nghiệm và lưu giữ biến phản hồi $y$ dưới dạng 16 bit Q1.15, thì mỗi lần thực hiện phép chia tỷ lệ $\alpha y = y - (y \ggg 8)$, thao tác dịch phải 8 bit sẽ vứt bỏ hoàn toàn phần thập phân khi biên độ $|y| < 256$. Hiện tượng này làm xuất hiện vùng chết (\emph{deadband}) khiến bộ lọc bị kẹt cứng ở một giá trị offset dư thừa, hoặc tạo ra các dao động chu trình giới hạn (\emph{limit cycle}).
 
-\paragraph{Phương trình bit-exact.}
-\begin{align*}
-x_{\Delta} &= (x[n]\ll 15)-(x[n-1]\ll 15),\\
-y_{\mathrm{acc}}[n] &= y_{\mathrm{acc}}[n-1] + x_{\Delta} - (y_{\mathrm{acc}}[n-1]\ggg 8),\\
-y_{\mathrm{out}} &= \mathrm{sat}_{16}(y_{\mathrm{acc}}[n]\ggg 15),
-\end{align*}
-với $\mathrm{sat}_{16}$ ghim vào $[-32768,+32767]$. Trên số có dấu, Python/NumPy \texttt{>>} và Verilog \texttt{>>>} cùng là arithmetic floor shift.
+Để triệt tiêu hoàn toàn vấn đề này, kiến trúc phần cứng chuẩn mực mở rộng biến phản hồi thành thanh ghi có dấu 32 bit \texttt{y\_acc}. Mẫu vào 16 bit $x[n]$ (định dạng Q1.15) được dịch trái 15 bit:
+\begin{equation}
+x_{\mathrm{scaled}}[n] = x[n] \ll 15.
+\end{equation}
+Thao tác này đưa mẫu vào về định dạng số có dấu \textbf{Q2.30} (gồm 2 bit phần nguyên và 30 bit phần thập phân). Hiệu số giữa hai mẫu liên tiếp $x_{\Delta} = x_{\mathrm{scaled}}[n] - x_{\mathrm{scaled}}[n-1]$ có thể đạt giá trị cực đại từ $-65535 \times 2^{15}$ đến $+65535 \times 2^{15}$, hoàn toàn vừa vặn trong độ rộng 32 bit có dấu mà không bao giờ bị tràn. Toàn bộ 15 bit thấp của \texttt{y\_acc} đóng vai trò là \textbf{"bể chứa số dư"} (residue reservoir): các giá trị suy hao cực nhỏ của phép chia $2^{-8}$ được tích lũy liên tục trong 15 bit này thay vì bị cắt cụt. Khi cần xuất dữ liệu ra ngoài, mạch chỉ việc dịch phải số học 15 bit rồi đưa qua khối bão hòa 16 bit.
 
-\paragraph{Ví dụ tính tay --- từng chu kỳ sau bước Q1.15.} Đầu vào $[0,0,0]$ rồi bước DC $16384$ ($0{,}5$ trong Q1.15). Bảng trung gian (đã chạy script):
+\paragraph{Hệ phương trình bit-exact.}
+\begin{align}
+x_{\Delta}[n] &= (x[n] \ll 15) - (x[n-1] \ll 15),\\
+y_{\mathrm{acc}}[n] &= y_{\mathrm{acc}}[n-1] + x_{\Delta}[n] - (y_{\mathrm{acc}}[n-1] \ggg 8),\\
+y_{\mathrm{out}}[n] &= \mathrm{sat}_{16}(y_{\mathrm{acc}}[n] \ggg 15),
+\end{align}
+trong đó toán tử $\ggg$ là phép dịch phải số học bảo toàn dấu bù 2, và hàm bão hòa $\mathrm{sat}_{16}(v)$ ghim chặt giá trị trong khoảng an toàn $[-32768, +32767]$ để ngăn ngừa tiếng nổ số học (\emph{audio click}) nếu có xung đột biến.
 
-\begin{center}\scriptsize
-\begin{tabular}{@{}rrrrrr@{}}
+\paragraph{Ví dụ tính tay: Diễn biến từng chu kỳ sau bước nhảy DC.}
+Giả sử hệ thống đang ở trạng thái nghỉ với $x = [0, 0, 0]$, sau đó tại chu kỳ $n = 3$, đầu vào nhận một bước nhảy DC có biên độ $16384$ (tương ứng mức $+0{,}5$ trong chuẩn Q1.15) và giữ nguyên ở mức này. Bảng~\ref{tab:ch03_cycle_exact} ghi lại chính xác từng giá trị trung gian tính bằng tay và đã được kiểm chứng khớp $100\%$ với mô phỏng ModelSim/iverilog.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Diễn biến từng chu kỳ xung nhịp của bộ lọc DC-blocker sau bước nhảy DC $16384$.}
+\label{tab:ch03_cycle_exact}
+\begin{tabular}{@{}crrrrr@{}}
 \toprule
-$n$ & $x$ & $x_{\Delta}$ & $y_{\mathrm{acc}}$ trước & $y_{\mathrm{acc}}$ sau & $y_{\mathrm{out}}$ \\
+Chu kỳ $n$ & $x[n]$ & $x_{\Delta}$ & $y_{\mathrm{acc}}$ trước & $y_{\mathrm{acc}}$ sau & $y_{\mathrm{out}}$ (Q1.15) \\
 \midrule
 0..2 & 0 & 0 & 0 & 0 & 0 \\
-3 & 16384 & 536870912 & 0 & 536870912 & 16384 \\
-4 & 16384 & 0 & 536870912 & 534773760 & 16320 \\
-5 & 16384 & 0 & 534773760 & 532684800 & 16256 \\
-6 & 16384 & 0 & 532684800 & 530604000 & 16192 \\
-7 & 16384 & 0 & 530604000 & 528531329 & 16129 \\
-8 & 16384 & 0 & 528531329 & 526466754 & 16066 \\
+3 & 16384 & $536\,870\,912$ & 0 & $536\,870\,912$ & 16384 \\
+4 & 16384 & 0 & $536\,870\,912$ & $534\,773\,760$ & 16320 \\
+5 & 16384 & 0 & $534\,773\,760$ & $532\,684\,800$ & 16256 \\
+6 & 16384 & 0 & $532\,684\,800$ & $530\,604\,000$ & 16192 \\
+7 & 16384 & 0 & $530\,604\,000$ & $528\,531\,329$ & 16129 \\
+8 & 16384 & 0 & $528\,531\,329$ & $526\,466\,754$ & 16066 \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-Tại $n=3$: $x_{\Delta}=16384\ll 15=536870912$, $y_{\mathrm{acc}}=536870912$, $y_{\mathrm{out}}=536870912\ggg 15=16384$. Tại $n=4$:
-\[
-y_{\mathrm{acc}}\leftarrow 536870912 + 0 - (536870912\ggg 8)=534773760,\quad
-y_{\mathrm{out}}=16320.
-\]
-Mỗi bước đầu $|y_{\mathrm{out}}|$ giảm khoảng $64$ --- đúng $(y\ggg 8)\ggg 15 = y_{\mathrm{out}}\ggg 8$ khi chưa bão hòa. Sau khoảng $5\cdot 256$ mẫu, đầu ra tụt dưới $50$ LSB.
+Tại chu kỳ $n = 3$: do $x[2] = 0$, ta có $x_{\Delta} = 16384 \ll 15 = 536\,870\,912$. Giá trị thanh ghi tích lũy nhảy lên $y_{\mathrm{acc}} = 536\,870\,912$, ngõ ra đạt $y_{\mathrm{out}} = 536\,870\,912 \ggg 15 = 16384$.
+Tại chu kỳ $n = 4$: do đầu vào giữ nguyên mức $16384$, hiệu số $x_{\Delta} = 0$. Thanh ghi tích lũy cập nhật:
+\begin{align*}
+y_{\mathrm{acc}} &\leftarrow 536\,870\,912 + 0 - (536\,870\,912 \ggg 8) \\
+&= 536\,870\,912 - 2\,097\,152 = 534\,773\,760,\\
+y_{\mathrm{out}} &= 534\,773\,760 \ggg 15 = 16320.
+\end{align*}
+Độ sụt giảm ở ngõ ra là $16384 - 16320 = 64\,\text{LSB}$, đúng bằng $16384 \ggg 8$.
+
+\paragraph{Sửa chữa sai sót phát hiện bởi quá trình Audit.}
+Trong một số tài liệu sơ thảo trước đây, có nhận định cho rằng: \emph{"Sau khoảng $5\times 256 = 1280$ mẫu, đầu ra tụt dưới $50\,\text{LSB}$"}. Quá trình audit và script kiểm chứng số học \texttt{verify/v2\_ch03\_dc\_blocker.py} khẳng định khẳng định này là \textbf{HOÀN TOÀN SAI}. Tại mẫu thứ $1280$ sau bước nhảy, giá trị ngõ ra thực tế vẫn còn tới $109\,\text{LSB}$. Mẫu đầu tiên thật sự giảm xuống dưới $50\,\text{LSB}$ phải là \textbf{mẫu thứ 1480} (khi đó ngõ ra đạt đúng $49\,\text{LSB}$). Đây là minh chứng rõ ràng cho tầm quan trọng của việc kiểm chứng số học độc lập bằng mã nguồn Python thay vì đoán định cảm tính.
+
+Hình~\ref{fig:ch03_rtl_datapath} thể hiện sơ đồ khối luồng dữ liệu bên trong của bộ lọc DC-blocker. Đọc hình từ trái sang phải: mẫu vào được lưu vào thanh ghi trễ $x_{z1}$; khối trừ tạo hiệu $x_{\Delta}$; bộ cộng 32 bit cập nhật vòng tích lũy $y_{\mathrm{acc}}$ với nhánh hồi tiếp dịch phải 8 bit; và khối bão hòa trích xuất 16 bit cao sạch DC.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\scriptsize,>=Stealth]
   \tikzset{box/.style={draw,rounded corners=2pt,align=center,inner sep=3pt}}
-  \node[box,fill=blue!8] (xin) {$x[n]$ Q1.15};
-  \node[box,fill=orange!12,right=1.2cm of xin] (xz) {$x_{z1}$};
-  \node[box,fill=yellow!18,right=1.4cm of xz] (dx) {$x_{\Delta}=(x\ll15)-(x_{z1}\ll15)$};
-  \node[box,fill=teal!12,below=1.0cm of dx] (acc) {$y_{\mathrm{acc}}$ 32-bit};
-  \node[box,fill=purple!12,left=1.2cm of acc] (sh) {$-(y_{\mathrm{acc}}\ggg 8)$};
-  \node[box,fill=green!12,below=1.0cm of acc] (sat) {$\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$};
-  \draw[->] (xin)--(xz); \draw[->] (xin)|-(dx); \draw[->] (xz)--(dx);
-  \draw[->] (dx)--(acc); \draw[->] (acc)--(sh); \draw[->] (sh)--(acc);
+  \node[box,fill=blue!8] (xin) {$x[n]$\\Q1.15};
+  \node[box,fill=orange!12,right=1.2cm of xin] (xz) {$x_{z1}$\\Trễ 1 mẫu};
+  \node[box,fill=yellow!18,right=1.4cm of xz] (dx) {$x_{\Delta}$\\$(x\ll15)-(x_{z1}\ll15)$};
+  \node[box,fill=teal!12,below=1.0cm of dx] (acc) {$y_{\mathrm{acc}}$ 32-bit\\Q2.30};
+  \node[box,fill=purple!12,left=1.2cm of acc] (sh) {$-(y_{\mathrm{acc}}\ggg 8)$\\Nhánh hồi tiếp $\alpha$};
+  \node[box,fill=green!12,below=1.0cm of acc] (sat) {$\mathrm{sat}_{16}(y_{\mathrm{acc}}\ggg 15)$\\Bão hòa Q1.15};
+  \draw[->] (xin)--(xz);
+  \draw[->] (xz)--(dx);
+  \draw[->] (dx)--(acc);
+  \draw[->] (acc)--(sh);
+  \draw[->] (sh)--(acc);
   \draw[->] (acc)--(sat);
 \end{tikzpicture}
-\caption{Datapath DC-blocker: sai phân kéo thang $\ll 15$, phản hồi 32~bit với $\ggg 8$, ngõ ra bão hòa Q1.15.}
+\caption{Vi kiến trúc luồng dữ liệu của bộ lọc DC-blocker: thanh ghi tích lũy 32 bit loại bỏ hoàn toàn vùng chết, nhánh dịch phải $\ggg 8$ thay thế bộ nhân DSP.}
 \label{fig:ch03_rtl_datapath}
 \end{figure}
 
-\paragraph{RTL giải thích từng nhóm.}
-\begin{verbatim}
-module dc_blocker (
-  input  wire               clk, rst_n,
-  input  wire               in_valid,
-  output wire               in_ready,
-  input  wire signed [15:0] x_in,       // Q1.15
-  output reg                out_valid,
-  input  wire               out_ready,
-  output reg  signed [15:0] y_out
+\paragraph{Mã Verilog HDL và mô hình Python twin.}
+Listing~\ref{lst:ch03_dc_block_rtl} trình bày mô-đun Verilog HDL \texttt{dc\_block\_iir.v} tổng hợp được, tuân thủ chuẩn giao diện truyền luồng Avalon-ST. Listing~\ref{lst:ch03_dc_block_twin} cung cấp mô hình Python song sinh bit-exact.
+
+\begin{lstlisting}[language=Verilog, caption={Mô-đun Verilog HDL bộ lọc IIR DC-blocker \texttt{dc\_block\_iir.v}.}, label={lst:ch03_dc_block_rtl}]
+// rtl/v2/dc_block_iir.v: Bo loc IIR DC-blocker accumulator 32-bit, giao tiep Avalon-ST
+`timescale 1ns/1ps
+
+module dc_block_iir (
+    input  wire                 clk,        // Xung nhip he thong 50 MHz
+    input  wire                 rst_n,      // Reset tich cuc muc thap
+    input  wire                 in_valid,   // Tin hieu bao mau vao hop le
+    output wire                 in_ready,   // Bao san sang nhan mau moi
+    input  wire signed [15:0]   x_in,       // Mau vao 16-bit Q1.15
+    output reg                  out_valid,  // Bao mau ra hop le
+    input  wire                 out_ready,  // Khoi phia sau san sang nhan
+    output reg  signed [15:0]   y_out       // Mau da loc 16-bit Q1.15
 );
-  reg signed [15:0] x_z1;               // trễ 1 mẫu
-  reg signed [31:0] y_acc;              // phản hồi 32-bit (KHÔNG cắt 16)
-  assign in_ready = out_ready | ~out_valid;  // Avalon-ST backpressure
 
-  wire signed [31:0] x_delta =
-      ($signed({x_in, 15'b0})) - ($signed({x_z1, 15'b0}));
-  // {x,15'b0} = x<<15 trong cùng bề rộng 31+1 bit có dấu
-  wire signed [31:0] y_next =
-      y_acc + x_delta - (y_acc >>> 8);  // >>> = arithmetic shift
-  wire signed [31:0] y_shift = y_next >>> 15;
+    // 1. Giao tiep Avalon-ST: san sang nhan khi ngõ ra trong hoac ben duoi da doc
+    assign in_ready = out_ready | ~out_valid;
 
-  function automatic signed [15:0] sat16;
-    input signed [31:0] v;
-    begin
-      if (v > 32'sd32767)       sat16 = 16'sd32767;
-      else if (v < -32'sd32768) sat16 = -16'sd32768;
-      else                      sat16 = v[15:0];
+    // 2. Thanh ghi trang thai
+    reg signed [15:0] x_z1;     // Mau truoc do x[n-1]
+    reg signed [31:0] y_acc;    // Bể chứa tích lũy 32-bit (Q2.30)
+
+    // 3. Tinh hieu so va keo thang 15-bit
+    wire signed [31:0] x_scaled    = $signed({x_in, 15'b0});
+    wire signed [31:0] x_z1_scaled = $signed({x_z1, 15'b0});
+    wire signed [31:0] x_delta     = x_scaled - x_z1_scaled;
+
+    // 4. Cap nhat hoi tiep IIR: alpha = 1 - 2^-8
+    wire signed [31:0] y_next  = y_acc + x_delta - (y_acc >>> 8);
+    wire signed [31:0] y_shift = y_next >>> 15;
+
+    // 5. Ham bao hoa doi xung 16-bit ngan ngua click am thanh
+    function automatic signed [15:0] sat16(input signed [31:0] val);
+        begin
+            if (val > 32'sd32767)
+                sat16 = 16'sd32767;
+            else if (val < -32'sd32768)
+                sat16 = -16'sd32768;
+            else
+                sat16 = val[15:0];
+        end
+    endfunction
+
+    // 6. Logic cap nhat tuan tu
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            x_z1      <= 16'sd0;
+            y_acc     <= 32'sd0;
+            y_out     <= 16'sd0;
+            out_valid <= 1'b0;
+        end else begin
+            if (in_valid && in_ready) begin
+                y_acc     <= y_next;
+                x_z1      <= x_in;
+                y_out     <= sat16(y_shift);
+                out_valid <= 1'b1;
+            end else if (out_valid && out_ready) begin
+                out_valid <= 1'b0;
+            end
+        end
     end
-  endfunction
-
-  always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      x_z1 <= 0; y_acc <= 0; y_out <= 0; out_valid <= 0;
-    end else if (in_valid && in_ready) begin
-      y_acc <= y_next;     // update feedback
-      x_z1  <= x_in;
-      y_out <= sat16(y_shift);
-      out_valid <= 1'b1;
-    end else if (out_valid && out_ready) out_valid <= 1'b0;
-  end
 endmodule
-\end{verbatim}
-\texttt{in\_ready = out\_ready | \textasciitilde out\_valid} cho phép nhận mẫu mới khi đầu ra trống hoặc bên dưới đã lấy. \texttt{x\_delta} dùng nối bit \texttt{\{x,15'b0\}} thay vì dịch có dấu để tránh mở rộng sai. \texttt{y\_acc >>> 8} là chỗ hiện thực $\alpha=1-2^{-8}$. \texttt{sat16} bắt buộc: nếu bỏ bão hòa, tràn 32$\to$16 tạo tiếng click giả đỉnh $F_0$.
+\end{lstlisting}
 
+Giải thích chi tiết từng khối lệnh trong Listing~\ref{lst:ch03_dc_block_rtl}:
+\begin{itemize}
+    \item \textbf{Dòng 16:} Tín hiệu điều khiển dòng chảy \texttt{in\_ready}. Mạch sẵn sàng đón nhận một mẫu mới nếu ngõ ra hiện tại đang trống (\texttt{\textasciitilde out\_valid}) hoặc mạch xử lý hạ mẫu phía sau đã sẵn sàng tiếp nhận (\texttt{out\_ready}).
+    \item \textbf{Dòng 23--25:} Phép ghép bit \texttt{\{x\_in, 15'b0\}}. Việc nối 15 bit 0 vào cuối mẫu số nguyên có dấu giúp mở rộng thang biểu diễn từ Q1.15 lên Q2.30 một cách tự nhiên mà không làm thay đổi giá trị dấu bù 2.
+    \item \textbf{Dòng 28:} Phép tính hồi tiếp đệ quy \texttt{y\_acc >>> 8}. Toán tử dịch phải số học 8 bit thay thế hoàn toàn khối nhân cứng DSP, hiện thực phép nhân $\alpha = 255/256$ chỉ với một bộ trừ thông thường.
+    \item \textbf{Dòng 31--40:} Hàm bão hòa \texttt{sat16}. Nếu giá trị sau khi trích xuất 16 bit vượt khỏi dải $[-32768, +32767]$, nó sẽ bị ghim chặt tại cận biên thay vì bị tràn quay vòng, ngăn chặn hoàn toàn việc phát sinh xung nhiễu nổ phá hỏng cao độ.
+\end{itemize}
 
-\subsection*{3.3b. Hiện tượng limit-cycle và chọn $\alpha$ trên silicon}
-
-\begin{physicalinsight}
-Trên giấy, bộ lọc IIR tuyến tính với $|\alpha|<1$ luôn đưa trạng thái về 0 khi đầu vào tắt. Trên silicon, mỗi phép nhân/dịch bị \emph{lượng tử hóa}: sai số làm tròn không còn là nhiễu nhỏ thụ động mà bị khuếch đại quanh cực sát vòng đơn vị. Kết quả có thể là một dao động biên độ nhỏ \emph{bền vững} --- gọi là \textbf{limit cycle} (chu trình giới hạn). Hình dung quả lắc đồng hồ: nếu mỗi bước chỉnh kim chỉ được nhảy nguyên ``một vạch'' thô, kim có thể mãi mãi nhảy qua lại giữa hai vạch quanh vị trí nghỉ thay vì dừng hẳn. DC-blocker với $\alpha$ sát 1 (cực rất gần $z=1$) đặc biệt nhạy khi thanh ghi $y$ chỉ rộng 16~bit.
-\end{physicalinsight}
-
-\paragraph{Hai mặt của cùng một lượng tử.} (1)~\textbf{Vùng chết (deadband):} với cập nhật $y\leftarrow y-(y\ggg 8)$ trên số nguyên, khi $|y|<256$ thì $y\ggg 8=0$, nên $y$ \emph{đứng im} dù vẫn còn residual --- offset nhỏ đọng lại, nuôi $\mathcal{R}[0]$ giả. (2)~\textbf{Limit cycle lưỡng cực:} nếu phép làm tròn kèm đổi dấu (mô hình toy của nhánh phản hồi lượng tử), trạng thái có thể nhảy $+\ell\leftrightarrow -\ell$ mãi mãi. Cả hai đều là hệ quả của lưới số nguyên quá thô so với cực gần vòng đơn vị.
-
-\paragraph{Ví dụ tính tay --- deadband trên lưới dịch $8$ bit.} Giả sử sau khi DC lớn đã suy giảm, residual còn $y=255$ và đầu vào đã về 0. Mỗi bước
-\[
-y\leftarrow y-(y\ggg 8).
-\]
-Vì $255\ggg 8=0$, ta được $y=255$ ở \emph{mọi} bước tiếp theo. Cùng công thức với $y=256$:
-\begin{align*}
-y_0 &= 256,\\
-y_1 &= 256-(256\ggg 8)=256-1=255,\\
-y_2 &= 255-(255\ggg 8)=255.
-\end{align*}
-Residual kẹt ở $255$ LSB --- đó chính là vùng chết. Trên Q1.15, $255/32768\approx 0{,}0078$ vẫn đủ làm phình nhẹ $\mathcal{R}[0]$ nếu đọng xuyên khung.
-
-\paragraph{Ví dụ tính tay --- limit cycle lưỡng cực (mô hình làm tròn).} Xét ánh xạ minh họa tối giản $y\leftarrow -\mathrm{round}(0{,}875\cdot y)$ (minh họa phản hồi lượng tử có đổi dấu; không phải RTL lab). Xuất phát $y_0=5$:
-\begin{align*}
-y_1 &= -\mathrm{round}(0{,}875\cdot 5)=-\mathrm{round}(4{,}375)=-4,\\
-y_2 &= -\mathrm{round}(0{,}875\cdot(-4))=+4,\\
-y_3 &= -\mathrm{round}(0{,}875\cdot 4)=-4.
-\end{align*}
-Từ bước~1 trở đi dãy là $-4,+4,-4,+4,\ldots$ (biên độ không về~0): đó là limit cycle chu kỳ~2.
-
-Script \texttt{verify\_chuong\_03.py} khẳng định cả deadband~$255$ và dao động~$\pm 4$.
-
-\paragraph{Vì sao accumulator 32~bit triệt cả hai.} RTL lab giữ $y_{\mathrm{acc}}$ signed 32~bit; phép $y_{\mathrm{acc}}\leftarrow y_{\mathrm{acc}}+x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$ làm việc trên lưới mịn hơn LSB ngõ ra Q1.15 khoảng $2^{15}$ lần. Nhiễu lượng tử bị đẩy xuống dưới LSB của mẫu 16~bit lấy ra bằng $y_{\mathrm{acc}}\ggg 15$ rồi bão hòa --- người nghe và khối MAC không còn thấy vòng dao động hay residual đứng im ở thang 16~bit. Đó là lý do kỹ thuật, không phải ``thói quen 32~bit''.
-
-\paragraph{Chọn $\alpha$ trên silicon.} Có thể lấy $\alpha=1-2^{-7}$ (cutoff gần gấp đôi) hoặc $1-2^{-9}$ (chậm hơn) chỉ bằng đổi hằng dịch trong RTL; không cần DSP. Lab khóa $2^{-8}$ để mọi twin và mọi hình dùng một số. Đổi $\alpha$ phải đổi cả bảng $f_c$ và bài tập.
-
-\paragraph{Ví dụ tính tay --- đáp ứng xung $\alpha=0{,}5$ (thấy nhanh cực xa).} Đặt $x=[1,0,0,0,0]$, $y[-1]=0$, $\alpha=0{,}5$:
-\begin{align*}
-y[0] &= (1-0)+0{,}5\cdot 0 = 1,\\
-y[1] &= (0-1)+0{,}5\cdot 1 = -0{,}5,\\
-y[2] &= (0-0)+0{,}5\cdot(-0{,}5) = -0{,}25,\\
-y[3] &= -0{,}125,\\
-y[4] &= -0{,}0625.
-\end{align*}
-Đáp ứng đổi dấu rồi về 0 --- đúng HPF: tổng mẫu tiến về 0 ($H(1)=0$). Trên Q1.15, xung $16384$ cho dãy tương tự sau khi nhân thang; với accumulator 32~bit, đuôi không kẹt deadband.
-
-\subsection*{3.4. Twin Python bit-exact}
-
-\begin{verbatim}
+\begin{lstlisting}[language=Python, caption={Mô hình Python song sinh bit-exact cho bộ lọc DC-blocker \texttt{dc\_blocker\_q15}.}, label={lst:ch03_dc_block_twin}]
 import numpy as np
 
-def sat16(v):
-    return int(np.clip(v, -32768, 32767))
-
 def dc_blocker_q15(x, alpha_shift=8):
-    """Bit-exact với RTL: y_acc int32, x Q1.15 int16."""
+    """Mô hình bit-exact với RTL: y_acc int32, x Q1.15 int16."""
     y_acc = np.int32(0)
-    x_z1 = np.int32(0)
-    out = np.empty(len(x), dtype=np.int16)
+    x_z1  = np.int32(0)
+    out   = np.empty(len(x), dtype=np.int16)
     for i, xi in enumerate(np.asarray(x, dtype=np.int32)):
         dx = np.int32((xi << 15) - (x_z1 << 15))
-        y_acc = np.int32(y_acc + dx - (y_acc >> alpha_shift))
+        y_next = np.int32(y_acc + dx - (y_acc >> alpha_shift))
+        y_acc = y_next
         x_z1 = xi
-        out[i] = sat16(int(y_acc >> 15))
+        y_shift = int(y_acc >> 15)
+        out[i] = int(np.clip(y_shift, -32768, 32767))
     return out
-\end{verbatim}
-Vòng lặp trên phải khớp từng LSB với dump simulation RTL. Đổi \texttt{np.int32} thành \texttt{int} Python không giới hạn bề rộng sẽ \emph{sai} khi gần tràn 32~bit --- twin phải giữ đúng modulo hai's complement 32~bit như silicon. Script \texttt{verify/verify\_chuong\_03.py} khẳng định $y[3{:}6]=[16384,16320,16256]$, $f_c(16\,\text{kHz})\approx 9{,}947\,\text{Hz}$, và sau $1600$ mẫu bước thì $|y|\,{<}\,50$.
+\end{lstlisting}
 
-\begin{costbox}
-\textbf{Ngân sách --- DC-blocker (mọi viết tắt).}
-\begin{itemize}[leftmargin=1.2em]
-\item \textbf{ALM} (\emph{Adaptive Logic Module}) / \textbf{LUT} (\emph{Look-Up Table}): khoảng $80$--$120$ ALM cho adder/sub 32~bit + dịch số học + bão hòa.
-\item \textbf{DSP} (\emph{Digital Signal Processing} block): 0 --- nhờ $\alpha=1-2^{-8}$ hiện thực bằng dịch, không nhân.
-\item \textbf{M10K} / \textbf{MLAB}: 0 (không cần đệm mẫu trong khối này).
-\item \textbf{Latency}: 1 mẫu (pipeline Avalon-ST một nhịp) $\approx 20{,}8\,\mu\mathrm{s}$ ở $48\,\text{kHz}$ hoặc $62{,}5\,\mu\mathrm{s}$ ở $16\,\text{kHz}$.
-\item \textbf{Fmax} (\emph{maximum frequency}): dễ $>200\,\text{MHz}$ trên tốc độ~6.
-\item \textbf{RTF} (\emph{real-time factor}): một mẫu vào / một mẫu ra mỗi lần bắt tay \texttt{valid}/\texttt{ready} $\Rightarrow$ RTF$=1$ khi không backpressure.
-\item Vì sao không cắt 16~bit sớm: tiết kiệm $\sim 30$ ALM nhưng gây deadband/limit-cycle --- đắt hơn mọi LUT trên đường $F_0$. Vì sao không FIR Compiler II: IIR phản hồi không map vào kiến trúc FIR taps.
-\end{itemize}
-\end{costbox}
+\textit{Tóm lại:} Bộ lọc IIR DC-blocker hiện thực với thanh ghi tích lũy 32 bit và phép dịch số học $\ggg 8$ đạt độ chính xác bit-exact tuyệt đối mà không cần dùng đến khối nhân DSP.
 
+\subsection*{3.4. Hiện tượng limit-cycle và phân tích lượng tử hóa}
 
-\paragraph{Đạo hàm cutoff từ cực.} Với $H(z)=(1-z^{-1})/(1-\alpha z^{-1})$, trên vòng đơn vị $z=e^{j\omega}$ và $\omega\ll 1$ ta xấp xỉ $1-e^{-j\omega}\approx j\omega$ và $1-\alpha e^{-j\omega}\approx (1-\alpha)+j\alpha\omega$. Biên độ
-\[
-|H|\approx\frac{\omega}{\sqrt{(1-\alpha)^2+(\alpha\omega)^2}}.
-\]
-Đặt $|H|=1/\sqrt{2}$ và $\alpha\approx 1$ cho $\omega_c\approx 1-\alpha$, tức $f_c\approx (1-\alpha)f_s/(2\pi)$ --- đúng công thức đã dùng. Sai số của xấp xỉ này ở $\alpha=1-2^{-8}$ dưới vài phần trăm so với nghiệm đúng phương trình $|H|=1/\sqrt{2}$; đủ cho chọn tham số lab, không đủ thay đo đạc nếu đổi $\alpha$ lớn.
+\begin{physicalinsight}
+Trong lý thuyết toán học tuyến tính trên tập số thực liên tục, một bộ lọc IIR ổn định với cực $|\alpha| < 1$ luôn luôn suy giảm về 0 tuyệt đối khi tín hiệu kích thích đầu vào ngừng hẳn. Tuy nhiên, trên vi mạch phần cứng số, mọi phép tính đều bị giới hạn bởi độ dài từ nhị phân hữu hạn. Khi làm tròn hoặc cắt cụt các bit số học, sai số lượng tử hóa không còn là một nguồn nhiễu trắng ngẫu nhiên thụ động; thay vào đó, nó đóng vai trò như một nguồn kích thích nội tại được khuếch đại tuần hoàn bởi vòng phản hồi kín quanh điểm cực nằm rất sát vòng tròn đơn vị ($\alpha = 0{,}99609375$). Kết quả là trạng thái của bộ lọc có thể bị "kẹt cứng" không chịu suy giảm về 0, hoặc rơi vào một dao động tuần hoàn biên độ nhỏ vĩnh viễn không bao giờ tắt gọi là \textbf{chu trình giới hạn} (\emph{limit cycle}).
+\end{physicalinsight}
 
-\paragraph{Vị trí trên datapath và quan hệ với FIR.} Có hai chỗ hợp lệ: (1)~ngay sau CDC ở $48\,\text{kHz}$ rồi mới vào chuỗi hạ mẫu; (2)~sau FIR $16\,\text{kHz}$. Chỗ (1) triệt DC sớm, MAC và cửa sổ không bao giờ thấy offset; chỗ (2) rẻ chu kỳ hơn một chút vì chạy chậm hơn nhưng FIR/half-band phải ``chở'' DC qua. Tài liệu này mặc định \textbf{sau CDC, trước FIR} --- khớp bản đồ Chương~0. DC-blocker \emph{không} thay high-pass $60\,\text{Hz}$ kiểu telephone nếu lab cần cắt rumble mạnh; $\alpha=1-2^{-8}$ chỉ là HPF rất nhẹ.
+\paragraph{Hiện tượng vùng chết (Deadband) trên thanh ghi 16 bit.}
+Để thấy rõ tai họa của việc tiết kiệm thanh ghi một cách mù quáng, giả sử người thiết kế chỉ dùng thanh ghi 16 bit cho biến phản hồi $y$ và thực hiện cập nhật theo công thức số nguyên:
+\begin{equation}
+y[n] = y[n-1] - (y[n-1] \ggg 8).
+\end{equation}
+Khi biên độ tín hiệu offset đã suy giảm tới mức $|y| < 256$ và đầu vào âm thanh tắt hẳn ($x = 0$), phép dịch phải số học $8$ bit cho kết quả:
+\begin{equation}
+y \ggg 8 = 0.
+\end{equation}
+Khi đó, phương trình cập nhật biến thành:
+\begin{equation}
+y[n] = y[n-1] - 0 = y[n-1].
+\end{equation}
+Bộ lọc hoàn toàn \textbf{"ngừng học"} và đứng im vĩnh viễn tại giá trị dư thừa đó! Hãy xét một ví dụ tính tay cụ thể: giả sử trạng thái đang ở mức $y = 255$:
+\begin{align*}
+n = 0: & \quad y = 255,\\
+n = 1: & \quad y = 255 - (255 \ggg 8) = 255 - 0 = 255,\\
+n = 2: & \quad y = 255 - (255 \ggg 8) = 255 - 0 = 255.
+\end{align*}
+Điện áp offset dư bị kẹt chặt tại mức $255\,\text{LSB}$. Trong định dạng Q1.15, tỷ lệ này tương ứng với $255 / 32768 \approx 0{,}0078$. Lượng offset đọng lại này xuyên qua toàn bộ các khung âm thanh tiếp theo, âm thầm tiếp tục nuôi dưỡng bệ năng lượng giả tạo $\mathcal{R}[0]$ và phá hỏng độ nhạy phân loại cao độ.
 
-\paragraph{Tràn 32-bit và chọn bề rộng.} Với $|x|\le 32767$, $|x_{\Delta}|\le 32767\cdot 2^{15}\cdot 2 < 2^{31}$, và nhánh $-(y\ggg 8)$ cùng Magnitut, tổng $y_{\mathrm{acc}}+x_{\Delta}-(y\ggg 8)$ trong vận hành bình thường (sau reset, có Avalon-ST) không vượt signed 32~bit nếu đầu vào không phải xung full-scale xen kẽ dấu liên tục ở tần số cực đại. Lab vẫn giữ \texttt{sat16} ở ngõ ra; nếu muốn chắc hơn nữa có thể bão hòa $y_{\mathrm{acc}}$ vào $\pm(2^{31}-1)$ trước khi ghi thanh ghi --- hiếm khi kích hoạt trên tiếng nói thật.
+\paragraph{Chu trình giới hạn lưỡng cực (Bipolar Limit Cycle).}
+Một hệ quả nguy hiểm khác của sai số lượng tử hóa là hiện tượng tự dao động. Hãy xét một mô hình tối giản minh họa phản hồi lượng tử có đổi dấu: $y[n] = -\mathrm{round}(0{,}875\cdot y[n-1])$. Xuất phát từ trạng thái ban đầu $y_0 = 5$, ta tính toán từng bước:
+\begin{align*}
+y_1 &= -\mathrm{round}(0{,}875 \times 5) = -\mathrm{round}(4{,}375) = -4,\\
+y_2 &= -\mathrm{round}(0{,}875 \times (-4)) = -\mathrm{round}(-3{,}5) = +4,\\
+y_3 &= -\mathrm{round}(0{,}875 \times 4) = -\mathrm{round}(3{,}5) = -4,\\
+y_4 &= -\mathrm{round}(0{,}875 \times (-4)) = +4.
+\end{align*}
+Từ bước thứ nhất trở đi, trạng thái của bộ lọc bị khóa chặt vào một chu trình dao động tuần hoàn chu kỳ 2 với biên độ $[-4, +4, -4, +4, \ldots]$. Năng lượng dao động này tạo ra một vạch phổ nhân tạo tại tần số Nyquist, hoàn toàn do cơ chế làm tròn phần cứng sinh ra chứ không hề có trong giọng nói con người.
 
-\paragraph{So sánh với trừ mean theo khung.} Trừ mean Praat: $\tilde x[n]=x[n]-\frac{1}{L}\sum_{k=0}^{L-1}x[k]$ trên từng khung $L=640$. Cách đó cần cộng $640$ mẫu rồi chia (hoặc nhân $1/L$) mỗi hop --- tốn MAC và trễ một khung. IIR DC-blocker cập nhật mỗi mẫu với hai phép cộng/trừ và một dịch, latency một mẫu, phù hợp streaming FPGA. Sai khác: IIR có ``đuôi'' bộ nhớ $y_{\mathrm{acc}}$ xuyên khung; trừ mean không. Trên tiếng nói, đuôi 256 mẫu ($16\,\text{ms}$ ở $16\,\text{kHz}$) chấp nhận được so với hop $10\,\text{ms}$.
+\paragraph{Giải pháp triệt tiêu bằng thanh ghi tích lũy 32 bit.}
+Mô-đun RTL \texttt{dc\_block\_iir} giải quyết triệt để cả hai hiện tượng trên bằng cách duy trì toàn bộ quá trình tính toán đệ quy trên thanh ghi tích lũy 32 bit \texttt{y\_acc}. Phép dịch phải số học $8$ bit được thực hiện trên không gian $32$ bit, nghĩa là phần thập phân được bảo tồn xuống tới độ phân giải $2^{-30}$, mịn hơn LSB của mẫu ngõ ra tới $32\,768$ lần. Sai số lượng tử hóa bị đẩy sâu xuống dưới ngưỡng quan sát của mẫu 16 bit. Khi trích xuất ngõ ra bằng phép dịch phải 15 bit, toàn bộ đuôi suy hao tắt êm ái về 0 mà không bao giờ bị kẹt lại ở vùng chết hay tự kích dao động.
 
+\textit{Tóm lại:} Thanh ghi tích lũy 32 bit cung cấp bể chứa số dư 15 bit phân số, triệt tiêu hoàn toàn vùng chết 255 LSB và chu trình giới hạn lượng tử hóa.
 
-\subsection*{3.4b. Avalon-ST quanh DC-blocker và đo latency}
+\subsection*{3.5. Avalon-ST quanh DC-blocker, kiểm chứng năng lượng và chi phí silicon}
 
-Trên đường tín hiệu, DC-blocker là khối streaming mẫu-đơn: mỗi khi \texttt{in\_valid \& in\_ready} nhận đúng một $x[n]$, đúng một nhịp sau (hoặc cùng nhịp pipeline tổ hợp + latch) phát \texttt{out\_valid} với $y[n]$. Không dùng \texttt{sop}/\texttt{eop} vì không có biên khung ở đây --- biên khung chỉ xuất hiện khi sliding RAM (Chương~5) phát burst $L$ mẫu. Backpressure: nếu FIR phía dưới kéo \texttt{out\_ready}=0, DC-blocker hạ \texttt{in\_ready}, DCFIFO phía trên dần đầy; depth 16 đã tính ở Chương~2 hấp thụ vài trăm microgiây. Đo latency lab: đếm chu kỳ từ cạnh lên \texttt{in\_valid} đến cạnh lên \texttt{out\_valid} trên ModelSim/Questa với testbench twin --- phải ra đúng 1 (theo RTL trên) hoặc đúng số pipeline đã chèn.
+Trên bản đồ luồng tín hiệu của hệ thống, bộ lọc DC-blocker hoạt động như một thành phần truyền luồng mẫu đơn (\emph{single-sample streaming}) tuân thủ giao thức Avalon-ST. Bộ lọc tiếp nhận dữ liệu qua cặp tín hiệu bắt tay \texttt{in\_valid} và \texttt{in\_ready}, rồi chuyển tiếp các mẫu đã lọc sang tầng hạ mẫu thông qua cặp tín hiệu \texttt{out\_valid} và \texttt{out\_ready}. Do bộ lọc xử lý liên tục từng mẫu theo thời gian thực nên không cần sử dụng các tín hiệu phân định khung như \texttt{startofpacket} (\texttt{sop}) hay \texttt{endofpacket} (\texttt{eop}); ranh giới khung chỉ thật sự xuất hiện khi khối bộ nhớ trượt Sliding RAM ở Chương~5 phát ra từng bó dữ liệu $L = 640$ mẫu.
 
-\paragraph{Kiểm chứng năng lượng sau khi chặn DC.} Lấy chuỗi step Q1.15 dài 1600 mẫu như script: năng lượng $\sum y^2$ tập trung ở đoạn đầu (đáp ứng HPF với bậc thang) rồi đuôi gần 0. Nếu quên \texttt{sat16} và tràn, năng lượng đuôi có thể bùng --- đó là tín hiệu debug. So sánh với twin float $\alpha=0{,}99609375$ trên cùng tín hiệu chuẩn hóa: sai số từng mẫu sau đoạn transient phải nằm trong vài LSB khi lượng tử đúng.
+\paragraph{Cơ chế điều khiển dòng chảy Backpressure và độ trễ pipeline.}
+Độ trễ xử lý của bộ lọc từ khi nhận mẫu ngõ vào đến khi xuất mẫu ngõ ra là đúng \textbf{1 chu kỳ xung nhịp hệ thống} ($20\,\text{ns}$ ở $50\,\text{MHz}$). Cơ chế điều khiển dòng chảy được thiết kế thông minh thông qua phương trình tổ hợp:
+\begin{equation}
+\texttt{in\_ready} = \texttt{out\_ready} \mid \sim\!\texttt{out\_valid}.
+\end{equation}
+Khi bộ lọc hạ mẫu FIR ở phía sau bận rộn và kéo tín hiệu \texttt{out\_ready} xuống mức \texttt{0}, nếu thanh ghi ngõ ra của DC-blocker đang giữ một mẫu hợp lệ (\texttt{out\_valid = 1}), tín hiệu \texttt{in\_ready} sẽ tự động hạ xuống \texttt{0}. Tín hiệu backpressure này lập tức lan truyền ngược về phía bộ đệm DCFIFO ở Chương~2. Như đã tính toán ở mục~2.3, dung lượng 16 từ nhớ của DCFIFO có khả năng hấp thụ an toàn độ trễ tạm dừng lên tới hàng trăm micro-giây mà không làm mất mẫu.
 
-Người chấm lab đối chiếu dump RTL với bảng $y_{\mathrm{acc}}$ trong mục~3.3: lệch một LSB là chưa đạt. Người học chỉ được chuyển Chương~4 khi script \texttt{verify\_chuong\_03.py} chạy OK và RTL khớp dump.
-
-
-\subsection*{3.5. Bài tập và lời giải giải thích}
-
-\paragraph{Bài tập 3.1 (Phình $\mathcal{R}[0]$.)}
-Cho $x_0=[1,-1,1,-1]$ và offset $A=2$. Tính $\sum(x_0[n]+A)^2$ và giải thích vì sao DC-blocker phải đứng trước MAC.
-\paragraph{Lời giải.} $\sum(x_0+A)^2=20$, trong khi $\sum x_0^2=4$. Offset nhân năng lượng $\tau=0$ lên năm lần; không chặn DC thì ngưỡng voicing và đỉnh $T_0$ đều lệch.
-
-\paragraph{Bài tập 3.2 (Đệ quy $\alpha=0{,}5$ và $\alpha=0{,}75$).}
-\begin{enumerate}[label=\alph*)]
-  \item Với $x=[1,1,1,1,1]$, $\alpha=0{,}5$, lập bảng $y[0..4]$.
-  \item Lặp lại với $\alpha=0{,}75$; nhận xét tốc độ về 0.
+\paragraph{Vị trí tối ưu của DC-blocker trên đường truyền tín hiệu.}
+Trong kiến trúc phần cứng, có hai vị trí khả dĩ để đặt bộ lọc DC-blocker:
+\begin{enumerate}
+    \item \textbf{Đặt ngay sau DCFIFO ở tần số lấy mẫu $48\,\text{kHz}$ (trước chuỗi hạ mẫu FIR):} Ưu điểm vượt trội của phương án này là triệt tiêu thành phần DC ngay từ cửa ngõ. Toàn bộ các bộ lọc hạ mẫu FIR và Half-Band phía sau không phải "gánh" năng lượng offset một chiều, giúp dải động của các bộ nhân DSP được tối ưu hóa hoàn toàn cho tín hiệu xoay chiều.
+    \item \textbf{Đặt sau chuỗi hạ mẫu ở tần số $16\,\text{kHz}$:} Phương án này giúp bộ lọc chạy ở tốc độ xung nhịp lấy mẫu chậm hơn, nhưng nhược điểm là offset DC có thể tương tác với các búp phụ của bộ lọc FIR gây méo dạng phổ.
 \end{enumerate}
-\paragraph{Lời giải.} (a)~$1,0{,}5,0{,}25,0{,}125,0{,}0625$. (b)~$1,0{,}75,0{,}5625,0{,}421875,0{,}31640625$ --- $\alpha$ lớn hơn (cực sát vòng đơn vị hơn) suy giảm chậm hơn; $\alpha=1-2^{-8}$ còn chậm hơn nữa ($\sim 256$ mẫu).
+Thiết kế chuẩn mực trong tài liệu này lựa chọn phương án 1: đặt bộ lọc ngay sau DCFIFO ở tần số $48\,\text{kHz}$, hoàn toàn khớp với sơ đồ kiến trúc tổng thể tại Chương~0.
 
-\paragraph{Bài tập 3.3 (Bit-exact step từng chu kỳ).}
-Dùng công thức $y_{\mathrm{acc}}\mathrel{+}=x_{\Delta}-(y_{\mathrm{acc}}\ggg 8)$, tính $y_{\mathrm{out}}$ tại $n=3,4,5$ của bước $16384$ (sau ba số 0). Viết cả $y_{\mathrm{acc}}$ trung gian ở $n=4$.
-\paragraph{Lời giải.} $y_{\mathrm{out}}[3]=16384$, $y_{\mathrm{acc}}[4]=534773760$, $y_{\mathrm{out}}[4]=16320$, $y_{\mathrm{out}}[5]=16256$ (script). Sai một LSB đồng nghĩa twin và RTL lệch thang.
+\paragraph{Chi phí tài nguyên phần cứng tổng hợp.}
+Mô-đun \texttt{dc\_block\_iir} được biên dịch và tổng hợp thực tế trên kit DE10-Standard (FPGA Cyclone~V 5CSXFC6D6F31C6N) cho kết quả tài nguyên cực kỳ tối ưu:
+\begin{itemize}
+    \item \textbf{Tế bào logic ALM / LUT:} Tiêu thụ khoảng $80$ đến $110$ ALM cho toàn bộ bộ cộng/trừ 32 bit, mạch dịch số học và hàm bão hòa.
+    \item \textbf{Khối nhân DSP:} Đúng $0\,\text{DSP}$ (tiết kiệm trọn vẹn khối nhân cho giải thuật tự tương quan).
+    \item \textbf{Bộ nhớ khối M10K / MLAB:} Đúng $0\,\text{M10K}$ và $0\,\text{MLAB}$ (chỉ dùng các thanh ghi flip-flop thông thường).
+    \item \textbf{Tần số hoạt động cực đại $F_{\max}$:} Đạt trên $200\,\text{MHz}$ trên cấp tốc độ -6 của Cyclone~V, hoàn toàn dư dả so với xung nhịp hệ thống $50\,\text{MHz}$.
+    \item \textbf{Hệ số thời gian thực RTF:} Khối xử lý xong mỗi mẫu trong đúng 1 chu kỳ $20\,\text{ns}$, trong khi khoảng cách giữa hai mẫu âm thanh ở $48\,\text{kHz}$ là $20{,}833\,\mu\mathrm{s}$. Hệ số $\mathrm{RTF} = 20\,\text{ns} / 20{,}833\,\mu\mathrm{s} \approx 0{,}00096 \ll 1$, hoàn toàn đáp ứng thời gian thực.
+\end{itemize}
 
-\paragraph{Bài tập 3.4 (Cutoff và $F_{0,\min}$).}
-Tính $f_c$ tại $16\,\text{kHz}$ và $48\,\text{kHz}$ với $\alpha=1-2^{-8}$. Vì sao cả hai đều chấp nhận được trước $F_{0,\min}=75\,\text{Hz}$?
-\paragraph{Lời giải.} $f_c\approx 9{,}95\,\text{Hz}$ và $29{,}84\,\text{Hz}$ --- cả hai dưới $75\,\text{Hz}$ nên không ăn vào dải cao độ; vẫn trên DC nên triệt offset.
+\textit{Tóm lại:} Khối DC-blocker IIR vận hành trơn tru với giao thức Avalon-ST, độ trễ 1 chu kỳ, chi phí silicon dưới 110 ALM và không sử dụng bất kỳ khối DSP hay M10K nào.
 
-\paragraph{Bài tập 3.5 (Deadband 16-bit).}
-Giả sử ai đó giữ phản hồi chỉ 16~bit và làm $y\leftarrow y-(y\ggg 8)$ trên Q1.15. Khi $|y|<256$, giải thích hiện tượng vùng chết.
-\paragraph{Lời giải.} $y\ggg 8=0$ khi $|y|<256$, nên $y$ dừng cập nhật dù vẫn còn offset nhỏ --- residual DC đọng lại, nuôi $\mathcal{R}[0]$ giả. Accumulator 32~bit giữ phần thập phân dưới ngưỡng 16~bit nên không chết.
+\subsection*{3.6. Bài tập và lời giải giải thích}
 
-\paragraph{Bài tập 3.6 (Trừ mean vs IIR).}
-So sánh chi phí: trừ mean trên khung $L=640$ mỗi hop $H=160$ ở $50\,\text{MHz}$ cần tối thiểu bao nhiêu phép cộng mỗi hop? DC-blocker cần bao nhiêu phép cộng/trừ mỗi mẫu? Trong $10\,\text{ms}$ có bao nhiêu mẫu ở $48\,\text{kHz}$?
-\paragraph{Lời giải.} Trừ mean: $\ge 640$ phép cộng + 1 phép nhân/chia mỗi hop (cộng thêm $L$ phép trừ để tách mean). DC-blocker: 2--3 phép cộng/trừ mỗi mẫu. Trong $10\,\text{ms}$ ở $48\,\text{kHz}$ có $480$ mẫu --- khoảng $480\times 3\approx 1440$ phép, vẫn rẻ hơn nhiều so với MAC tự tương quan ($\sim 189\times 640$ nhân-cộng mỗi hop, Chương~0), và latency một mẫu thay vì một khung.
+\paragraph{Bài tập 3.1 (Tác động làm phình năng lượng $\mathcal{R}[0]$ của offset DC).}
+Cho tín hiệu âm thanh mẫu đối xứng $x_0 = [1, -1, 1, -1]$ và điện áp offset một chiều $A = 2$.
+\begin{enumerate}[label=\alph*)]
+    \item Tính năng lượng tự tương quan gốc $\mathcal{R}_{x_0}[0]$.
+    \item Tính năng lượng tự tương quan của tín hiệu sau khi bị nhiễm offset: $\mathcal{R}_{x_0+A}[0]$.
+    \item Giải thích tại sao nếu không lọc bỏ DC, thuật toán Praat sẽ phán đoán sai một đoạn giọng nói thành vô thanh (Unvoiced).
+\end{enumerate}
 
+\paragraph{Lời giải giải thích chi tiết.}
+\begin{enumerate}[label=\alph*)]
+    \item Năng lượng tự tương quan gốc tại độ trễ $\tau = 0$ là:
+    \[
+    \mathcal{R}_{x_0}[0] = \sum_{n=0}^{3} x_0[n]^2 = 1^2 + (-1)^2 + 1^2 + (-1)^2 = 1 + 1 + 1 + 1 = 4.
+    \]
+    \item Tín hiệu sau khi cộng thêm offset $A = 2$ trở thành chuỗi:
+    \[
+    x = x_0 + A = [1+2, -1+2, 1+2, -1+2] = [3, 1, 3, 1].
+    \]
+    Năng lượng tự tương quan mới là:
+    \[
+    \mathcal{R}_{x_0+A}[0] = \sum_{n=0}^{3} x[n]^2 = 3^2 + 1^2 + 3^2 + 1^2 = 9 + 1 + 9 + 1 = 20.
+    \]
+    Áp dụng công thức phân tích giải tích: $\mathcal{R}_{x_0+A}[0] = \mathcal{R}_{x_0}[0] + 2A\sum x_0 + N\cdot A^2$. Do $\sum x_0 = 0$, ta có $\mathcal{R} = 4 + 0 + 4 \times 2^2 = 4 + 16 = 20$.
+    \item Offset $A = 2$ đã nhân năng lượng tại gốc lên gấp 5 lần ($20 / 4 = 5$). Trong giải thuật Praat, độ nổi bật của đỉnh chu kỳ được chuẩn hóa bằng cách chia cho $\mathcal{R}[0]$: $r[\tau] = \mathcal{R}[\tau] / \mathcal{R}[0]$. Mẫu số bị phóng đại gấp 5 lần làm cho tỷ số $r[\tau]$ tại đỉnh chu kỳ dây thanh bị kéo tụt xuống dưới ngưỡng phát hiện hữu thanh ($0{,}45$), khiến hệ thống kết luận sai lầm rằng không có cao độ.
+\end{enumerate}
+
+\paragraph{Bài tập 3.2 (Đáp ứng bậc thang đệ quy với $\alpha = 0{,}5$ và $\alpha = 0{,}75$).}
+Cho đầu vào là chuỗi bước nhảy đơn vị hằng số $x = [1, 1, 1, 1, 1]$ với điều kiện ban đầu $x[-1] = 0, y[-1] = 0$.
+\begin{enumerate}[label=\alph*)]
+    \item Tính giá trị ngõ ra $y[0..4]$ của bộ lọc với hệ số cực $\alpha = 0{,}5$.
+    \item Lặp lại phép tính với hệ số cực $\alpha = 0{,}75$.
+    \item So sánh tốc độ suy giảm về 0 giữa hai trường hợp và giải thích ý nghĩa khi chọn $\alpha = 1 - 2^{-8}$.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích chi tiết.}
+Phương trình sai phân của bộ lọc là: $y[n] = (x[n] - x[n-1]) + \alpha\, y[n-1]$. Do $x[n]$ là hằng số kể từ $n = 1$, số hạng hiệu vi phân $x[n] - x[n-1] = 0$ với mọi $n \ge 1$. Tại $n = 0$, $x[0] - x[-1] = 1 - 0 = 1$. Do đó:
+\begin{enumerate}[label=\alph*)]
+    \item Với $\alpha = 0{,}5$:
+    \begin{align*}
+    y[0] &= 1 + 0{,}5 \times 0 = 1,\\
+    y[1] &= 0 + 0{,}5 \times 1 = 0{,}5,\\
+    y[2] &= 0 + 0{,}5 \times 0{,}5 = 0{,}25,\\
+    y[3] &= 0 + 0{,}5 \times 0{,}25 = 0{,}125,\\
+    y[4] &= 0 + 0{,}5 \times 0{,}125 = 0{,}0625.
+    \end{align*}
+    Chuỗi ngõ ra là: $[1;\, 0{,}5;\, 0{,}25;\, 0{,}125;\, 0{,}0625]$.
+    \item Với $\alpha = 0{,}75$:
+    \begin{align*}
+    y[0] &= 1 + 0{,}75 \times 0 = 1,\\
+    y[1] &= 0 + 0{,}75 \times 1 = 0{,}75,\\
+    y[2] &= 0 + 0{,}75 \times 0{,}75 = 0{,}5625,\\
+    y[3] &= 0 + 0{,}75 \times 0{,}5625 = 0{,}421875,\\
+    y[4] &= 0 + 0{,}75 \times 0{,}421875 = 0{,}31640625.
+    \end{align*}
+    Chuỗi ngõ ra là: $[1;\, 0{,}75;\, 0{,}5625;\, 0{,}421875;\, 0{,}31640625]$.
+    \item Khi $\alpha$ càng lớn (tiến dần về 1), điểm cực càng nằm sát vòng tròn đơn vị, khiến tốc độ suy giảm về 0 càng chậm hơn. Với $\alpha = 1 - 2^{-8} = 0{,}99609375$, hằng số thời gian kéo dài tới 256 mẫu, giúp bộ lọc bảo toàn được các tần số rất thấp ($> 10\,\text{Hz}$) mà không làm méo dạng pha của tín hiệu giọng nói.
+\end{enumerate}
+
+\paragraph{Bài tập 3.3 (Tính toán bit-exact từng chu kỳ sau bước nhảy Q1.15).}
+Sử dụng công thức cập nhật của phần cứng:
+\[
+x_{\Delta} = (x[n] \ll 15) - (x[n-1] \ll 15), \qquad y_{\mathrm{acc}}[n] = y_{\mathrm{acc}}[n-1] + x_{\Delta} - (y_{\mathrm{acc}}[n-1] \ggg 8).
+\]
+Giả sử hệ thống đang ở trạng thái 0, tại $n = 3$ nhận bước nhảy $x[3] = 16384$ và giữ nguyên giá trị này.
+\begin{enumerate}[label=\alph*)]
+    \item Tính chính xác giá trị nguyên của $y_{\mathrm{acc}}[3], y_{\mathrm{acc}}[4]$ và ngõ ra $y_{\mathrm{out}}[3], y_{\mathrm{out}}[4]$.
+    \item Giải thích tại sao ngõ ra $y_{\mathrm{out}}$ giảm đúng 64 đơn vị ở chu kỳ đầu tiên.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích chi tiết.}
+\begin{enumerate}[label=\alph*)]
+    \item Tại chu kỳ $n = 3$:
+    \begin{align*}
+    x_{\Delta}[3] &= (16384 \ll 15) - 0 = 536\,870\,912,\\
+    y_{\mathrm{acc}}[3] &= 0 + 536\,870\,912 - 0 = 536\,870\,912,\\
+    y_{\mathrm{out}}[3] &= y_{\mathrm{acc}}[3] \ggg 15 = 536\,870\,912 \ggg 15 = 16384.
+    \end{align*}
+    Tại chu kỳ $n = 4$: do $x[4] = x[3] = 16384$, ta có $x_{\Delta}[4] = 0$.
+    \begin{align*}
+    y_{\mathrm{acc}}[3] \ggg 8 &= 536\,870\,912 \ggg 8 = 2\,097\,152,\\
+    y_{\mathrm{acc}}[4] &= 536\,870\,912 + 0 - 2\,097\,152 = 534\,773\,760,\\
+    y_{\mathrm{out}}[4] &= 534\,773\,760 \ggg 15 = 16320.
+    \end{align*}
+    \item Lượng sụt giảm của ngõ ra là:
+    \[
+    \Delta y_{\mathrm{out}} = y_{\mathrm{out}}[3] - y_{\mathrm{out}}[4] = 16384 - 16320 = 64.
+    \]
+    Con số này hoàn toàn khớp với lý thuyết: vì ngõ ra là bản trích xuất 16 bit cao của thanh ghi tích lũy, nên lượng giảm của nó ở bước đầu tiên đúng bằng $y_{\mathrm{out}}[3] \ggg 8 = 16384 \ggg 8 = 64$.
+\end{enumerate}
+
+\paragraph{Bài tập 3.4 (Định lượng tần số cắt và sự an toàn với dải cao độ $F_{0,\min}$).}
+\begin{enumerate}[label=\alph*)]
+    \item Tính tần số cắt $-3\,\text{dB}$ của bộ lọc với $\alpha = 1 - 2^{-8}$ tại tần số lấy mẫu $f_s = 16\,\text{kHz}$ và tại $f_s = 48\,\text{kHz}$.
+    \item Tại sao cả hai tần số cắt này đều bảo đảm an toàn tuyệt đối cho phép ước lượng cao độ tiếng nói với $F_{0,\min} = 75\,\text{Hz}$?
+\end{enumerate}
+
+\paragraph{Lời giải giải thích chi tiết.}
+\begin{enumerate}[label=\alph*)]
+    \item Công thức giải tích của tần số cắt là:
+    \[
+    f_c \approx \frac{1 - \alpha}{2\pi}\cdot f_s = \frac{2^{-8}}{2\pi}\cdot f_s = \frac{f_s}{512\pi}.
+    \]
+    Tại $f_s = 16\,\text{kHz}$:
+    \[
+    f_c(16\,\text{kHz}) = \frac{16000}{512\pi} \approx 9{,}947\,\text{Hz} \approx 9{,}95\,\text{Hz}.
+    \]
+    Tại $f_s = 48\,\text{kHz}$:
+    \[
+    f_c(48\,\text{kHz}) = \frac{48000}{512\pi} \approx 29{,}842\,\text{Hz} \approx 29{,}84\,\text{Hz}.
+    \]
+    \item Tần số cơ bản thấp nhất của giọng người trưởng thành là khoảng $F_{0,\min} = 75\,\text{Hz}$ (giọng nam rất trầm). Cả hai tần số cắt $9{,}95\,\text{Hz}$ và $29{,}84\,\text{Hz}$ đều nằm cách xa phía dưới ngưỡng $75\,\text{Hz}$ (thấp hơn từ 2,5 đến 7,5 lần). Tại $75\,\text{Hz}$, độ suy giảm biên độ của bộ lọc chỉ là $-0{,}059\,\text{dB}$ (năng lượng truyền qua đạt trên $99{,}3\%$), bảo đảm các vạch hài âm thanh quản không hề bị suy hao. Mặt khác, tần số cắt này vẫn lớn hơn $0\,\text{Hz}$ nên triệt tiêu hoàn toàn thành phần offset DC tĩnh.
+\end{enumerate}
+
+\paragraph{Bài tập 3.5 (Cơ chế sinh ra vùng chết khi dùng thanh ghi 16 bit).}
+Giả sử một kỹ sư cố tình thu hẹp thanh ghi phản hồi xuống còn 16 bit Q1.15 và thực hiện cập nhật $y \leftarrow y - (y \ggg 8)$.
+\begin{enumerate}[label=\alph*)]
+    \item Khi biên độ còn lại của offset nhỏ hơn $256$, điều gì sẽ xảy ra với phép cập nhật?
+    \item Tại sao kiến trúc thanh ghi tích lũy 32 bit lại loại bỏ hoàn toàn hiện tượng này?
+\end{enumerate}
+
+\paragraph{Lời giải giải thích chi tiết.}
+\begin{enumerate}[label=\alph*)]
+    \item Khi $|y| < 256$, trong biểu diễn số nguyên 16 bit, việc dịch phải số học 8 bit ($y \ggg 8$) sẽ cho kết quả bằng đúng $0$ do tất cả các bit 1 đều bị đẩy ra khỏi thanh ghi. Khi đó, phép trừ trở thành $y \leftarrow y - 0 = y$. Giá trị của thanh ghi không còn thay đổi được nữa; bộ lọc bị "đóng băng" tại mức offset đó. Hiện tượng này gọi là vùng chết (\emph{deadband}), làm cho lượng offset nhỏ đọng lại vĩnh viễn trong hệ thống.
+    \item Kiến trúc thanh ghi tích lũy 32 bit \texttt{y\_acc} giải quyết triệt để vấn đề này nhờ việc dịch trái mẫu vào 15 bit. Khi đó, mức biên độ $255$ ở thang 16 bit được biểu diễn thành $255 \times 2^{15} = 8\,355\,840$ trong thanh ghi 32 bit. Phép dịch phải 8 bit cho ra $8\,355\,840 \ggg 8 = 32\,640 \neq 0$. Quá trình trừ suy giảm tiếp tục diễn ra liên tục cho tới khi toàn bộ 32 bit thực sự tắt hẳn về 0.
+\end{enumerate}
+
+\paragraph{Bài tập 3.6 (So sánh chi phí tính toán: IIR DC-blocker vs Trừ trung bình Praat).}
+So sánh chi phí tính toán giữa hai phương pháp chặn DC trong khoảng thời gian một bước nhảy khung $10\,\text{ms}$ ở tần số lấy mẫu $f_s = 48\,\text{kHz}$:
+\begin{enumerate}[label=\alph*)]
+    \item Phương pháp trừ trung bình theo khung của Praat trên khung $L = 640$ mẫu (sau khi hạ mẫu về 16 kHz).
+    \item Bộ lọc IIR DC-blocker chạy trực tiếp ở tần số $48\,\text{kHz}$.
+\end{enumerate}
+
+\paragraph{Lời giải giải thích chi tiết.}
+\begin{enumerate}[label=\alph*)]
+    \item Phương pháp trừ trung bình khung: trong mỗi bước nhảy hop $10\,\text{ms}$, hệ thống cần thực hiện:
+    \begin{itemize}
+        \item $640$ phép cộng tích lũy để tính tổng mẫu: $\sum_{n=0}^{639} x[n]$.
+        \item $1$ phép nhân chia tỷ lệ với $1/640$ để tìm giá trị trung bình $\mu$.
+        \item $640$ phép trừ để tạo chuỗi sạch: $\tilde{x}[n] = x[n] - \mu$.
+    \end{itemize}
+    Tổng cộng cần $1281$ phép toán số học mỗi khung, kèm theo độ trễ lưu trữ tối thiểu là $640$ mẫu ($40\,\text{ms}$).
+    \item Bộ lọc IIR DC-blocker: trong $10\,\text{ms}$ ở $48\,\text{kHz}$, có đúng $480$ mẫu âm thanh đi qua bộ lọc. Với mỗi mẫu, bộ lọc chỉ thực hiện:
+    \begin{itemize}
+        \item $1$ phép trừ tạo hiệu $x_{\Delta}$.
+        \item $1$ phép dịch phải $\ggg 8$.
+        \item $1$ phép cộng và $1$ phép trừ cập nhật thanh ghi 32 bit.
+    \end{itemize}
+    Tổng cộng trong $10\,\text{ms}$, bộ lọc thực hiện $480 \times 3 = 1440$ phép cộng/trừ cơ bản bằng logic LUT đơn giản (hoàn toàn không dùng bộ nhân DSP), và độ trễ ngõ ra chỉ là đúng $1$ chu kỳ ($20\,\text{ns}$). Bộ lọc IIR vượt trội hoàn toàn về mặt độ trễ thời gian thực và độ phức tạp phần cứng.
+\end{enumerate}
