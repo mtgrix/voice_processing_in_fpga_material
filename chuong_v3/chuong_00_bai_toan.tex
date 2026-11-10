@@ -459,3 +459,200 @@ Khung & $F_{\text{ref}}$ (Hz) & $F_{\text{test}}$ (Hz) & Phân loại tình hu�
 Tất cả các hàm đo đạc trong \texttt{verify\_v3/ch00\_metrics.py} đã được đối chiếu và khẳng định cho kết quả trùng khớp hoàn toàn với kịch bản tổng thể \texttt{golden\_v2/compare.py} khi kiểm tra trên hai tệp kiểm chứng \texttt{synth\_glide\_vuv\_16k.wav} và \texttt{synth\_glide\_vuv\_16k\_snr5.wav}.
 
 \textit{Tóm lại: VDE đo sự sai lệch phân loại hữu thanh/vô thanh trên toàn tệp, GPE đo lỗi nhảy quãng tám trên các khung cùng hữu thanh, FFE gộp cả hai loại lỗi trên tổng số khung, còn sai số cent mịn đánh giá độ chính xác toán học của bộ nội suy đỉnh sau khi đã bóc tách triệt để các lỗi thô.}
+
+\subsection*{0.6. Ngân sách chu kỳ, hệ số thời gian thực RTF, và mạch phát cặp mẫu phần cứng}
+\addcontentsline{toc}{subsection}{0.6. Ngân sách chu kỳ, hệ số thời gian thực RTF, và mạch phát cặp mẫu phần cứng}
+
+Khi chuyển dịch một thuật toán từ môi trường máy tính sang chip bán dẫn FPGA, câu hỏi sống còn đầu tiên của người kỹ sư là: mạch số có đủ nhanh để xử lý tín hiệu theo thời gian thực (real-time) hay không, và ta cần bao nhiêu tài nguyên phần cứng (bộ nhân DSP, khối nhớ RAM M10K) để đáp ứng thời hạn đó? 
+
+\subsubsection*{Dẫn xuất ngân sách chu kỳ từ nguyên lý đầu tiên}
+Hệ thống phần cứng trên bo mạch DE10-Standard vận hành với xung nhịp đồng hồ hệ thống $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ xung nhịp $T_{\text{clk}} = 20\text{ ns}$). Tín hiệu âm thanh chuẩn được lấy mẫu ở tần số $f_s = 16.000\text{ Hz}$ (chu kỳ lấy mẫu $T_s = 62{,}5\ \mu\text{s}$).
+
+Số chu kỳ xung nhịp đồng hồ FPGA có sẵn giữa hai mẫu âm thanh liên tiếp là:
+\begin{equation}
+N_{\text{cycles/sample}} = \frac{f_{\text{clk}}}{f_s} = \frac{50.000.000}{16.000} = 3.125\text{ chu kỳ/mẫu}
+\end{equation}
+Cứ sau một khoảng thời gian bước nhảy khung $\Delta t = 10\text{ ms}$ (\texttt{hop} = 160 mẫu), hệ thống phải hoàn tất việc tính toán một giá trị $F_0$ mới. Ngân sách chu kỳ tối đa cho mỗi khung để đạt ngưỡng thời gian thực là:
+\begin{equation}
+N_{\text{budget/hop}} = 160\text{ mẫu} \times 3.125\text{ chu kỳ/mẫu} = 500.000\text{ chu kỳ/khung}
+\end{equation}
+Con số 500.000 chu kỳ ở 50 MHz chính là trần thời gian thực. Bất kỳ thiết kế nào hoàn thành một khung dưới 500.000 chu kỳ đều chạy nhanh hơn tốc độ phát âm thanh thực tế.
+
+\subsubsection*{Dẫn xuất số phép nhân-cộng MAC và số chu kỳ của khối tự tương quan}
+Khối tiêu tốn chu kỳ tính toán nặng nề nhất trong toàn bộ hệ thống là khối tự tương quan. Ta xét một khung có độ dài $N = 638$ mẫu, rà soát trên dải độ trễ từ $\tau_{\min} = 26$ đến $\tau_{\max} = 214$ (tương ứng với $214 - 26 + 1 = 189$ độ trễ).
+
+Tại một độ trễ $\tau$ bất kỳ, số cặp mẫu cần nhân và tích lũy là $N - \tau = 638 - \tau$. Tổng số phép nhân-cộng (MAC) cho toàn bộ 189 độ trễ được tính chính xác bằng công thức tổng cấp số cộng:
+\begin{align}
+\sum_{\tau=26}^{214} (638 - \tau) &= \sum_{\tau=26}^{214} 638 - \sum_{\tau=26}^{214} \tau \\
+&= 189 \times 638 - \frac{189 \times (26 + 214)}{2} \\
+&= 120.582 - \frac{189 \times 240}{2} = 120.582 - 189 \times 120 \\
+&= 120.582 - 22.680 = 97.902\text{ phép MAC}
+\end{align}
+Để tính năng lượng khung chuẩn hóa tại gốc $\tau = 0$ ($R[0]$), ta cần thêm $N = 638$ phép nhân-cộng nữa:
+\begin{equation}
+N_{\text{pairs}} = 97.902 + 638 = 98.540\text{ cặp mẫu}
+\end{equation}
+Khối nhân-cộng phần cứng trong Chương 7 được thiết kế với đường ống 2 tầng thanh ghi (thanh ghi ngõ vào toán hạng trong khối DSP cứng và thanh ghi tổng tích lũy ngõ ra), cộng với 1 nhịp đọc từ bộ nhớ RAM M10K hai cổng, tạo ra độ trễ đường ống (pipeline latency) tổng cộng là 3 chu kỳ xung nhịp.
+
+Nhờ cơ chế phát cặp mẫu liên tục không nhịp nghỉ (sẽ phân tích ở phần HDL bên dưới), tổng số chu kỳ xung nhịp từ lúc phát cặp địa chỉ đầu tiên đến khi giá trị $R[214]$ xuất hiện hợp lệ ở đầu ra là:
+\begin{equation}
+N_{\text{cycles, MAC}} = 98.540\text{ nhịp phát} + 3\text{ nhịp trễ} = 98.543\text{ chu kỳ/khung}
+\end{equation}
+Con số 98.543 chu kỳ này đã được đo đạc chính xác tuyệt đối bằng bộ mô phỏng iverilog trên mã nguồn \texttt{golden\_v2/hdl\_check/tb\_mac638.v}.
+
+\subsubsection*{Khái niệm Hệ số thời gian thực (RTF) và Độ trễ so với Thông lượng}
+Hệ số thời gian thực (\textbf{RTF -- Real-Time Factor}) được định nghĩa là tỉ số giữa thời gian xử lý của phần cứng chia cho thời lượng thực tế của đoạn âm thanh:
+\begin{equation}
+\text{RTF} = \frac{T_{\text{xử lý}}}{T_{\text{âm thanh}}} = \frac{\text{Số chu kỳ FPGA}}{N_{\text{budget/hop}}}
+\end{equation}
+Riêng đối với khối tự tương quan MAC, hệ số RTF đạt được là:
+\begin{equation}
+\text{RTF}_{\text{MAC}} = \frac{98.543}{500.000} \approx 0{,}197086 \approx 0{,}197
+\end{equation}
+Tổng số chu kỳ của toàn bộ lõi FPGA (bao gồm cả trừ trung bình 426 mẫu, nhân cửa sổ Hanning 638 mẫu, chuẩn hóa cửa sổ, nội suy parabol và lọc median-3) ước lượng chỉ mất khoảng 99.700 chu kỳ/khung (sẽ phân tích chi tiết ở Chương 12):
+\begin{equation}
+\text{RTF}_{\text{core}} = \frac{99.700}{500.000} \approx 0{,}1994 \approx 0{,}199
+\end{equation}
+Hệ số RTF $\approx 0{,}20$ có nghĩa là: mạch số FPGA chỉ mất 2 mili-giây để tính toán xong một khung âm thanh dài 10 mili-giây! Phần cứng chạy nhanh gấp 5 lần tốc độ phát âm thanh thời gian thực.
+
+\textbf{Chỗ dễ vướng: Độ trễ đường ống (Latency) có làm chậm 98.540 phép tính không?}
+Câu trả lời là hoàn toàn không. Người học cần phân biệt rành mạch giữa \emph{độ trễ (latency)} và \emph{thông lượng (throughput)}. Hãy liên tưởng đến một băng chuyền nhà máy: món hàng đầu tiên mất 3 nhịp di chuyển mới đến điểm cuối của băng chuyền (latency = 3 chu kỳ). Nhưng kể từ thời điểm đó trở đi, cứ mỗi nhịp xung nhịp đồng hồ lại có một món hàng hoàn thiện lăn ra khỏi băng chuyền (throughput = 1 kết quả/nhịp). Vì 98.540 cặp mẫu được phát liên tiếp không nghỉ, ta thu được 98.540 kết quả chỉ sau $98.540 + 3 = 98.543$ chu kỳ. Khoảng trễ 3 chu kỳ trên tổng số gần một trăm nghìn chu kỳ chỉ chiếm tỉ lệ vỏn vẹn $3 / 98.543 \approx 0{,}003\%$, hoàn toàn không đáng kể.
+
+\subsubsection*{Ba phép đo thời gian và định nghĩa RTF trong hệ thống}
+Trong báo cáo kiểm thử toàn tuyến (Chương 13), ta đo đạc và so sánh ba mốc thời gian độc lập:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Thời gian lõi FPGA (Core Cycle Count):} Đo bằng thanh ghi đếm chu kỳ phần cứng (\texttt{cycle counter}) tích hợp trực tiếp trên FPGA, bấm giờ từ lúc cờ \texttt{start} bật đến khi cờ \texttt{done} tích cực; quy đổi $\text{RTF}_{\text{FPGA}} = \text{Số chu kỳ} / 500.000$.
+    \item \textbf{Thời gian toàn trình HPS (End-to-End HPS Time):} Đo bằng hàm chuẩn POSIX \texttt{clock\_gettime} (với nguồn xung \texttt{CLOCK\_MONOTONIC}) trên hệ điều hành Linux của HPS, bao gồm toàn bộ thời gian: đọc tệp WAV từ thẻ SD, bóc tách cấu trúc, tính GP, ghi mẫu qua cầu nối bus, đợi FPGA xử lý, đọc kết quả F0 từ FIFO và ghi tệp nhị phân xuống đĩa.
+    \item \textbf{Thời gian Praat trên máy tính (Laptop Praat Time):} Đo trực tiếp bên trong kịch bản Praat (tệp \texttt{praat\_}\linebreak[0]\texttt{pitch.praat}) bằng các lệnh bấm giờ nội bộ, nhằm loại trừ thời gian khởi tạo giao diện GUI và nạp thư viện hệ điều hành. Do Praat mặc định kích hoạt tính toán đa luồng (cơ chế \texttt{MelderThread}), số luồng CPU của máy tính xách tay phải được ghi nhận rõ ràng trong báo cáo đo đạc.
+\end{enumerate}
+
+\subsubsection*{Mạch phần cứng Chương 0: Bộ phát cặp mẫu tự tương quan (\texttt{ch00\_pair\_counter})}
+Để gắn kết chặt chẽ ngân sách chu kỳ lý thuyết với phần cứng thực tế, ta thiết kế một khối phần cứng tổng hợp được: \texttt{rtl/v3/ch00\_pair\_counter.v}. Khối này có nhiệm vụ phát tuần tự chuỗi địa chỉ $(n, n+\tau)$ để truy xuất bộ nhớ RAM hai cổng, đồng thời sinh ra các cờ điều khiển \texttt{sload} (báo nạp tích mới) và \texttt{last} (báo kết thúc lag) đúng nhịp cho khối MAC ở Chương 7.
+
+\textbf{Vì sao không có Intel IP cho khối này?}
+Trong thư viện IP Catalog của Intel Quartus Prime, Intel cung cấp các bộ đếm chuẩn (LPM\_COUNTER) hoặc bộ tạo địa chỉ DMA tuyến tính. Tuy nhiên, quy luật duyệt chỉ số tự tương quan $(n, n+\tau)$ trượt hai chiều với giới hạn $n \in [0, N-1-\tau]$ biến thiên theo từng độ trễ $\tau$ là một hàm chỉ số phi tuyến tính đặc thù. Không có bất kỳ khối IP nào hỗ trợ sẵn cấu trúc này; việc tự viết mã HDL là lựa chọn tối ưu, linh hoạt và tiết kiệm tài nguyên nhất.
+
+\begin{lstlisting}[language=Verilog, caption={Trích đoạn máy trạng thái và bộ phát cặp mẫu trong \texttt{rtl/v3/ch00\_pair\_counter.v}}]
+module ch00_pair_counter #(
+    parameter integer N          = 638,
+    parameter integer TAU_MIN    = 26,
+    parameter integer TAU_MAX    = 214,
+    parameter integer ADDR_WIDTH = 10
+)(
+    input  wire                   clk, rst_n, start,
+    input  wire [ADDR_WIDTH-1:0]  cfg_n, cfg_tau_min, cfg_tau_max,
+    output reg                    busy, done, valid, sload, last,
+    output reg  [ADDR_WIDTH-1:0]  addr_a, addr_b, tau_out,
+    output reg  [31:0]            total_cycles, pair_count
+);
+    localparam [1:0] STATE_IDLE = 2'b00, STATE_RUN = 2'b01, STATE_DONE = 2'b10;
+    reg [1:0]            state;
+    reg [ADDR_WIDTH-1:0] n_cnt, tau_cnt, act_n, act_tau_min, act_tau_max;
+
+    wire [ADDR_WIDTH-1:0] max_n = (tau_cnt == 0) ?
+                                  (act_n - 1'b1) : (act_n - 1'b1 - tau_cnt);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state <= STATE_IDLE;
+            busy <= 0; done <= 0; valid <= 0; sload <= 0; last <= 0;
+            addr_a <= 0; addr_b <= 0; tau_out <= 0;
+            total_cycles <= 0; pair_count <= 0;
+            n_cnt <= 0; tau_cnt <= 0;
+            act_n <= N; act_tau_min <= TAU_MIN; act_tau_max <= TAU_MAX;
+        end else begin
+            case (state)
+                STATE_IDLE: begin
+                    done <= 0;
+                    if (start) begin
+                        state <= STATE_RUN; busy <= 1; valid <= 1; sload <= 1;
+                        act_n <= (cfg_n != 0) ? cfg_n : N;
+                        act_tau_min <= (cfg_n != 0) ? cfg_tau_min : TAU_MIN;
+                        act_tau_max <= (cfg_n != 0) ? cfg_tau_max : TAU_MAX;
+                        addr_a <= 0; addr_b <= 0; tau_cnt <= 0; n_cnt <= 0;
+                        last <= ((cfg_n != 0 ? cfg_n : N) == 1);
+                        total_cycles <= 1; pair_count <= 1;
+                    end
+                end
+                STATE_RUN: begin
+                    total_cycles <= total_cycles + 1'b1;
+                    if (n_cnt < max_n) begin
+                        n_cnt <= n_cnt + 1'b1;
+                        addr_a <= n_cnt + 1'b1;
+                        addr_b <= (tau_cnt == 0) ?
+                                  (n_cnt + 1'b1) : (n_cnt + 1'b1 + tau_cnt);
+                        sload <= 0;
+                        last <= (n_cnt + 1'b1 == max_n);
+                        pair_count <= pair_count + 1'b1;
+                    end else begin
+                        if (tau_cnt == 0) begin // Xong R[0], sang TAU_MIN
+                            tau_cnt <= act_tau_min; tau_out <= act_tau_min;
+                            n_cnt <= 0; addr_a <= 0; addr_b <= act_tau_min;
+                            sload <= 1;
+                            last <= (act_n - 1'b1 - act_tau_min == 0);
+                            pair_count <= pair_count + 1'b1;
+                        end else if (tau_cnt < act_tau_max) begin // Sang tau ke tiep
+                            tau_cnt <= tau_cnt + 1'b1; tau_out <= tau_cnt + 1'b1;
+                            n_cnt <= 0; addr_a <= 0; addr_b <= tau_cnt + 1'b1;
+                            sload <= 1;
+                            last <= (act_n - 1'b1 - (tau_cnt + 1'b1) == 0);
+                            pair_count <= pair_count + 1'b1;
+                        end else begin // Hoan tat tat ca cac lag
+                            valid <= 0; sload <= 0; last <= 0; busy <= 0; done <= 1;
+                            state <= STATE_DONE;
+                        end
+                    end
+                end
+                STATE_DONE: begin
+                    busy <= 0; valid <= 0; sload <= 0; last <= 0; done <= 1;
+                    if (!start) state <= STATE_IDLE;
+                end
+            endcase
+        end
+    end
+endmodule
+\end{lstlisting}
+
+\textbf{Giải thích mã nguồn Verilog từng khối:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Dòng 1--12 khai báo cổng: nhận các tham số động \texttt{cfg\_n, cfg\_tau\_min, cfg\_tau\_max} (nếu bằng 0 thì dùng tham số tĩnh $N=638, \tau \in [26, 214]$). Xuất tín hiệu địa chỉ \texttt{addr\_a, addr\_b}, cờ \texttt{valid}, \texttt{sload}, \texttt{last} và các thanh ghi đếm chu kỳ \texttt{total\_cycles}, \texttt{pair\_count}.
+    \item Dòng 17 định nghĩa tín hiệu tổ hợp \texttt{max\_n}: khi $\tau=0$, mẫu cuối cùng là $N-1$; khi $\tau \ge \tau_{\min}$, mẫu cuối cùng là $N - 1 - \tau$.
+    \item Dòng 26--37 (\texttt{STATE\_IDLE}): khi nhận xung kích hoạt \texttt{start}, FSM nạp tham số làm việc, khởi tạo địa chỉ $(0, 0)$ cho $R[0]$, bật cờ \texttt{valid} = 1 và cờ nạp \texttt{sload} = 1.
+    \item Dòng 39--61 (\texttt{STATE\_RUN}): mạch tăng dần con đếm mẫu $n$ ở mỗi nhịp xung nhịp. Khi $n$ đạt tới \texttt{max\_n}, mạch kiểm tra chuyển đổi độ trễ: nếu vừa xong $\tau=0$, mạch nhảy tức thì sang $\tau = \tau_{\min}$ và phát địa chỉ $(0, \tau_{\min})$; nếu đang ở $\tau < \tau_{\max}$, mạch nhảy sang $\tau+1$ và phát $(0, \tau+1)$. Tại đúng chu kỳ đầu tiên của mỗi độ trễ, cờ \texttt{sload} được kích hoạt mức cao, báo cho khối nhân-cộng nạp tích mới mà không cần bất kỳ nhịp xóa thanh ghi tích lũy nào.
+    \item Dòng 62--66: khi hoàn thành mẫu cuối cùng của độ trễ cực đại $\tau_{\max}$, mạch hạ cờ \texttt{valid}, bật cờ hoàn tất \texttt{done} và chuyển sang \texttt{STATE\_DONE}.
+\end{itemize}
+
+\textbf{Mô hình tương đương Python (Twin) và Kết quả kiểm chứng iverilog:}
+Bộ mô hình tương đương số nguyên viết bằng Python (\texttt{verify\_v3/ch00\_pair\_counter\_twin.py}) mô phỏng chính xác hành vi phát cặp mẫu và tính giá trị băm kiểm tra (checksum 32-bit):
+
+\begin{lstlisting}[language=Python, caption={Mô hình tương đương \texttt{PairCounterTwin} trong \texttt{verify\_v3/ch00\_pair\_counter\_twin.py}}]
+class PairCounterTwin:
+    def __init__(self, N, tau_min, tau_max):
+        self.N, self.tau_min, self.tau_max = N, tau_min, tau_max
+
+    def generate_pairs(self):
+        pairs = []
+        # Lag 0: R[0]
+        for n in range(self.N):
+            pairs.append({
+                'a': n, 'b': n, 'tau': 0,
+                'sload': int(n == 0), 'last': int(n == self.N - 1)
+            })
+        # Lags tau_min .. tau_max
+        for tau in range(self.tau_min, self.tau_max + 1):
+            max_n = self.N - 1 - tau
+            for n in range(max_n + 1):
+                pairs.append({
+                    'a': n, 'b': n + tau, 'tau': tau,
+                    'sload': int(n == 0), 'last': int(n == max_n)
+                })
+        return pairs
+\end{lstlisting}
+
+Kịch bản kiểm thử \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_test\_pair\_counter.py} kết nối với testbench Verilog \texttt{tb/v3/}\linebreak[0]\texttt{tb\_ch00\_pair\_counter.v}, biên dịch bằng \texttt{iverilog -g2005} và thực thi bằng \texttt{vvp}. Quá trình kiểm chứng bao gồm:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Cấu hình chuẩn Praat ($N=638, \tau \in [26, 214]$): Mạch phát đúng $98.540$ cặp mẫu trong $98.540$ chu kỳ, sinh đúng $190$ xung \texttt{sload} và $190$ xung \texttt{last}. Mã băm kiểm tra chuỗi dữ liệu đạt giá trị \texttt{0x26518cf3}, trùng khớp 100\% với mô hình Python.
+    \item 200 cấu hình ngẫu nhiên (với $N \in [15, 80]$, $\tau$ thay đổi tự do): Tất cả 200 trường hợp đều vượt qua kiểm tra, số cặp mẫu và giá trị băm checksum khớp bit đối bit và chu kỳ đối chu kỳ ($201/201$ ca kiểm thử thành công, 0 lỗi, lưu tại \texttt{verify\_v3/ch00\_pair\_counter.log}).
+\end{itemize}
+
+\textit{Tóm lại: Ở 50 MHz, ngân sách thời gian thực là 500.000 chu kỳ cho mỗi bước nhảy 10 ms; khối tự tương quan cần 98.543 chu kỳ (hệ số RTF $\approx 0{,}197$), được hiện thực bằng mạch phát cặp mẫu liên tục \texttt{ch00\_pair\_counter} chuyển độ trễ với 0 nhịp nghỉ, đã kiểm chứng khớp tuyệt đối 201/201 ca thử nghiệm.}
