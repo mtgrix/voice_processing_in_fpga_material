@@ -112,3 +112,90 @@ Ta tính trực tiếp giá trị tích vô hướng $R[\tau]$ theo từng bư�
 Hai con số hoàn toàn trùng khớp! Đỉnh tương quan tại $\tau = 3$ đã chỉ ra chính xác chu kỳ cơ bản của tín hiệu là 3 mẫu mà không bị nhiễu hài âm đánh lừa như phương pháp đếm điểm qua 0, cũng không bị lượng tử hóa thô thiển như phương pháp chọn đỉnh FFT.
 
 \textit{Tóm lại: Đếm điểm qua không thất bại vì hài âm bậc hai tạo thêm điểm cắt giả, lấy đỉnh FFT thất bại vì độ phân giải bin thô tới 204 cent ở 100 Hz; phương pháp tự tương quan đo mức độ tương đồng theo miền thời gian, mở ra con đường xác định chu kỳ cơ bản chính xác và bền vững trước cấu trúc hài âm phức tạp của tiếng nói.}
+
+\subsection*{0.2. Ý tưởng của Boersma: Chuẩn hóa bằng tự tương quan của cửa sổ}
+\addcontentsline{toc}{subsection}{0.2. Ý tưởng của Boersma: Chuẩn hóa bằng tự tương quan của cửa sổ}
+
+Khi áp dụng phương pháp tự tương quan lên các đoạn tiếng nói thực tế, một bài toán kỹ thuật mới lập tức nảy sinh: ta không thể tính toán trên toàn bộ tệp âm thanh dài hàng phút mà bắt buộc phải cắt tín hiệu thành từng khung ngắn hữu hạn (khoảng 40 ms) để theo dõi sự biến đổi cao độ theo thời gian. Việc cắt khung bằng một hàm chữ nhật đột ngột (rectangular window) sẽ tạo ra các điểm gián đoạn sắc nhọn ở hai biên khung, dẫn đến hiện tượng rò rỉ năng lượng phổ (spectral leakage) nghiêm trọng. Để khắc phục hiện tượng này, giải pháp kinh điển là nhân khung tín hiệu với một hàm cửa sổ êm dịu, tiêu biểu là cửa sổ Hanning (hoặc Hamming), có biên độ vuốt dần về 0 ở hai đầu mút.
+
+Tuy nhiên, việc nhân cửa sổ lại kéo theo một hậu quả tiêu cực khác: các mẫu âm thanh nằm xa tâm khung bị suy giảm biên độ mạnh mẽ. Khi ta tính hàm tự tương quan trên tín hiệu đã nhân cửa sổ $x_w[n] = x[n] \cdot w[n]$:
+\begin{equation}
+R_{xw}[\tau] = \sum_{n=0}^{N-1-\tau} x_w[n] x_w[n+\tau] = \sum_{n=0}^{N-1-\tau} x[n] w[n] x[n+\tau] w[n+\tau]
+\end{equation}
+Độ trễ $\tau$ càng lớn thì khoảng chồng lấn giữa $w[n]$ và $w[n+\tau]$ càng thu hẹp, và tích $w[n] w[n+\tau]$ càng bị đè bẹp về gần 0. Đồ thị $R_{xw}[\tau]$ xuất hiện một sườn dốc suy thoái nhân tạo theo $\tau$. Hệ quả là đỉnh tương quan ứng với chu kỳ cơ bản thực sự $T_0$ của một giọng nam trầm (nằm ở các độ trễ lớn, ví dụ $\tau \approx 160$ mẫu tại 100 Hz) bị lùn đi nghiêm trọng. Nếu dùng hàm tương quan chuẩn hóa thông thường $R_{xw}[\tau]/R_{xw}[0]$, giá trị đỉnh này thường xuyên rơi xuống dưới ngưỡng hữu thanh (voicing threshold mặc định của Praat là 0,45) khiến khung âm thanh bị nhận diện nhầm thành vô thanh, hoặc bị lép vế trước một đỉnh phụ ở độ trễ nhỏ hơn ($\tau = T_0 / 2$), gây ra lỗi kinh điển là \textbf{nhân đôi quãng tám (octave doubling)}.
+
+\subsubsection*{Cơ chế chia cho tự tương quan cửa sổ $R_w[\tau]$}
+Đóng góp đột phá của Paul Boersma (1993) nằm ở nhận định giải tích: hàm tự tương quan của tín hiệu đã nhân cửa sổ xấp xỉ bằng tích giữa hàm tự tương quan thực sự của tín hiệu $R_x[\tau]$ với hàm tự tương quan của chính hàm cửa sổ $R_w[\tau]$:
+\begin{equation}
+R_{xw}[\tau] \approx R_x[\tau] \cdot R_w[\tau]
+\end{equation}
+Trong đó hàm tự tương quan của cửa sổ được định nghĩa hoàn toàn tương tự:
+\begin{equation}
+R_w[\tau] = \sum_{n=0}^{N-1-\tau} w[n] w[n+\tau]
+\end{equation}
+Từ mối liên hệ nhân này, Boersma đề xuất thuật toán chuẩn hóa: muốn tìm lại hàm tự tương quan chuẩn hóa không thiên vị $r[\tau]$ của bản thân tín hiệu gốc (với giá trị lý tưởng $r[0] = 1$ và $r[T_0] = 1$ đối với tín hiệu tuần hoàn hoàn hảo), ta chỉ cần lấy $R_{xw}[\tau]$ chia cho $R_w[\tau]$, rồi chuẩn hóa tỉ lệ theo năng lượng tại $\tau = 0$:
+\begin{equation}
+r[\tau] = \frac{R_{xw}[\tau] / R_w[\tau]}{R_{xw}[0] / R_w[0]} = \frac{R_{xw}[\tau]}{R_w[\tau]} \cdot \frac{R_w[0]}{R_{xw}[0]}
+\end{equation}
+Phép chia này đóng vai trò như một bộ bù độ dốc: vì $R_w[\tau]$ giảm dần về 0 khi $\tau$ tăng theo đúng quy luật hình học của cửa sổ, việc chia cho $R_w[\tau]$ sẽ nâng bổng các đỉnh ở độ trễ xa lên đúng biên độ thực sự của chúng, triệt tiêu hoàn toàn sự thiên lệch về phía các độ trễ nhỏ.
+
+\subsubsection*{Vì sao phép xấp xỉ $R_{xw}[\tau] \approx R_x[\tau] \cdot R_w[\tau]$ lại đúng?}
+Để trả lời thuyết phục người kỹ sư phần cứng, ta xét bản chất vật lý của hai chuyển động: dao động nhanh của dây thanh âm và sự biến thiên chậm của đường bao cửa sổ. 
+
+Trong thuật toán Praat, chiều dài khung phân tích được ấn định bằng đúng 3 chu kỳ của tần số thấp nhất (pitch floor $f_{\min} = 75\text{ Hz}$):
+\begin{equation}
+T_{\text{window}} = \frac{3}{f_{\min}} = \frac{3}{75} = 0{,}04\text{ s} = 40\text{ ms} \quad (N = 638\text{ mẫu tại } f_s = 16\text{ kHz})
+\end{equation}
+Trong khi đó, tần số cơ bản của người nói dao động từ 75 Hz đến 600 Hz, tương ứng với chu kỳ cơ bản $T_0$ từ 26 mẫu (600 Hz) đến 213 mẫu (75 Hz). Điều này có nghĩa là bên trong một khung 638 mẫu, tín hiệu tiếng nói thực hiện từ 3 đến hơn 24 chu kỳ dao động tuần hoàn nhanh.
+
+Đường bao cửa sổ Hanning $w[n]$ là một hàm cosin trơn dốc êm dịu trải dài trên toàn bộ 638 mẫu. Trong phạm vi một chu kỳ đơn lẻ $T_0$, giá trị của $w[n]$ và $w[n+\tau]$ gần như là một hằng số cục bộ. Khi ta lấy tổng tích lũy $\sum x[n] x[n+\tau] \cdot (w[n] w[n+\tau])$, đại lượng dao động nhanh $x[n] x[n+\tau]$ tạo ra giá trị kỳ vọng trung bình tuần hoàn $R_x[\tau]$, trong khi đại lượng biến thiên chậm $w[n] w[n+\tau]$ có thể đưa ra ngoài dấu tích phân cục bộ dưới dạng trọng số bao $R_w[\tau]$. Phép nhân chập giữa phổ tín hiệu hẹp và phổ cửa sổ rộng trong miền tần số tương ứng với phép nhân đường bao trực tiếp trong miền thời gian.
+
+\subsubsection*{Ví dụ tính tay thu nhỏ: Sóng sin thuần qua cửa sổ Hanning 8 mẫu}
+Để minh chứng tường minh bằng số học cụ thể, ta xét một thí nghiệm mô phỏng thu nhỏ được thực thi bởi kịch bản \texttt{verify\_v3/ch00\_norm\_sine.py}. Ta sử dụng một sóng sin tuần hoàn hoàn hảo có chu kỳ $P = 4$ mẫu (tương ứng tần số $f_0 = f_s / 4 = 4.000\text{ Hz}$), chiều dài phân tích $N = 8$ mẫu:
+\begin{equation}
+x[n] = \sin\left(\frac{2\pi n}{4}\right) = [0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000, \; 0{,}000, \; 1{,}000, \; 0{,}000, \; -1{,}000]
+\end{equation}
+Hàm cửa sổ Hanning 8 mẫu của Praat tuân thủ công thức $N+1$ (được định nghĩa trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} dòng 423--424):
+\begin{equation}
+w[i] = 0{,}5 - 0{,}5 \cos\left(\frac{2\pi i}{N+1}\right), \quad i = 1, \dots, N \quad (i = n + 1)
+\end{equation}
+Với $N=8$, các mẫu cửa sổ tính ra là:
+\begin{equation*}
+w = [0{,}116978, \; 0{,}413176, \; 0{,}750000, \; 0{,}969846, \; 0{,}969846, \; 0{,}750000, \; 0{,}413176, \; 0{,}116978]
+\end{equation*}
+
+Tín hiệu sau khi nhân cửa sổ $x_w[n] = x[n] \cdot w[n]$ là:
+\begin{align*}
+x_w = [& 0{,}0000, \; 0{,}4132, \; 0{,}0000, \; -0{,}9698, \; -0{,}0000, \; 0{,}7500, \; 0{,}0000, \; -0{,}1170]
+\end{align*}
+Bảng \ref{tab:ch00_norm_sine} liệt kê kết quả tính tay chi tiết hàm tự tương quan của cửa sổ $R_w[\tau]$, hàm tự tương quan của tín hiệu nhân cửa sổ $R_{xw}[\tau]$, hệ số tương quan chưa chuẩn hóa $r_{\text{unnorm}}[\tau] = R_{xw}[\tau]/R_{xw}[0]$, và hệ số chuẩn hóa Boersma $r_{\text{Boersma}}[\tau]$ cho các độ trễ từ $\tau = 0$ đến $\tau = 4$ (trích xuất nguyên văn từ \texttt{verify\_v3/ch00\_norm\_sine.log}).
+
+\begin{table}[H]
+\centering
+\small
+\caption{Đối chiếu giá trị tự tương quan trước và sau khi chuẩn hóa cửa sổ Boersma trên sóng sin thuần ($N=8, P=4$)}
+\label{tab:ch00_norm_sine}
+\begin{tabular}{crrrrc}
+\toprule
+Độ trễ $\tau$ & $R_w[\tau]$ & $R_{xw}[\tau]$ & $r_{\text{unnorm}}[\tau]$ & $r_{\text{Boersma}}[\tau]$ & Đánh giá vật lý \\
+\midrule
+0 & 3,375000 & 1,687500 & 1,000000 & 1,000000 & Gốc chuẩn hóa năng lượng \\
+1 & 3,111800 & 0,000000 & 0,000000 & 0,000000 & Trực giao ở góc pha $90^\circ$ \\
+2 & 2,431670 & $-1{,}215835$ & $-0{,}720495$ & $-1{,}000000$ & Ngược pha hoàn toàn ($180^\circ$) \\
+3 & 1,590835 & 0,000000 & 0,000000 & 0,000000 & Trực giao ở góc pha $270^\circ$ \\
+\textbf{4} & \textbf{0,846665} & \textbf{0,423332} & \textbf{0,250864} & \textbf{1,000000} & \textbf{Chu kỳ cơ bản $P=4$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng và kết luận định lượng.} Hãy nhìn thẳng vào dòng $\tau = 4$, chính là chu kỳ lặp lại thực tế của sóng sin:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu \textbf{không chuẩn hóa cửa sổ}, hệ số tương quan chỉ đạt $r_{\text{unnorm}}[4] = 0{,}250864 \approx 0{,}251$. Tín hiệu thuần nhất 100\% tuần hoàn nhưng giá trị đỉnh tương quan bị sụt giảm tới gần 75\% năng lượng! Với ngưỡng voicing mặc định của Praat là 0,45, thuật toán sẽ kết luận ngay khung này là \emph{vô thanh} (unvoiced) do $0{,}251 < 0{,}45$.
+    \item Ngược lại, khi áp dụng \textbf{chuẩn hóa Boersma}: ta lấy $R_{xw}[4] / R_w[4] = 0{,}423332 / 0{,}846665 = 0{,}500000$. Chia cho tỉ số tại gốc $R_{xw}[0] / R_w[0] = 1{,}687500 / 3{,}375000 = 0{,}500000$, ta thu được kết quả chính xác tuyệt đối:
+    \begin{equation}
+    r_{\text{Boersma}}[4] = \frac{0{,}500000}{0{,}500000} = 1{,}000000
+    \end{equation}
+\end{itemize}
+Giá trị 1,000000 phản ánh đúng 100\% tính tuần hoàn của sóng sin, không hề bị ảnh hưởng bởi việc cửa sổ bị thót hẹp ở hai đầu. Đây chính là linh hồn toán học giải thích vì sao phần mềm Praat đạt được độ tin cậy và danh tiếng vượt trội trong cộng đồng nghiên cứu ngữ âm học suốt ba thập kỷ qua.
+
+\textit{Tóm lại: Cửa sổ cắt khung làm suy hao giả tạo năng lượng ở các độ trễ lớn khiến đỉnh cao độ thật bị lùn đi; ý tưởng cốt lõi của Boersma là chia hàm tự tương quan của tín hiệu cho hàm tự tương quan của cửa sổ $R_{xw}[\tau] / R_w[\tau]$, khôi phục trọn vẹn độ mạnh của chu kỳ cơ bản và triệt tiêu định kiến thiên lệch về các độ trễ nhỏ.}
