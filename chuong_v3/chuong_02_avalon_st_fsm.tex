@@ -108,3 +108,133 @@ Chu kỳ & \texttt{valid} & \texttt{data} & \texttt{ready} & Bắt tay (RL=0) & 
 Hậu quả của sự bất đồng này là mẫu âm thanh số 12 bị xóa sổ hoàn toàn khỏi dòng dữ liệu. Trong một khung phân tích 638 mẫu của thuật toán Praat, việc mất đúng một mẫu làm toàn bộ 637 mẫu phía sau bị dồn lên trước một vị trí thời gian. Các phép tính tự tương quan $R[\tau]$ sau đó vẫn thực thi bình thường theo công thức toán học, nhưng trên một cửa sổ tín hiệu bị lệch pha, dẫn đến sai lệch đỉnh parabol và xuất hiện lỗi thô (Gross Pitch Error) mà người lập trình không thể tìm ra nguyên nhân nếu chỉ nhìn vào mã thuật toán.
 
 \textit{Tóm lại: Tham số \texttt{readyLatency} quyết định thời điểm một mẫu dữ liệu được công nhận đã chuyển giao; hiểu lệch một nhịp giữa hai khối giao tiếp sẽ làm rơi hoặc nhân đôi mẫu âm thanh một cách im lặng mà không hề báo lỗi trên đường truyền.}
+
+\subsection*{2.2. Ngân sách chu kỳ khi đầu vào là tệp âm thanh và thực tế thời gian thực}
+\addcontentsline{toc}{subsection}{2.2. Ngân sách chu kỳ khi đầu vào là tệp âm thanh và thực tế thời gian thực}
+
+\subsubsection*{Vấn đề thực tế: Ảo tưởng về đồng hồ lấy mẫu vật lý 16 kHz}
+Khi tiếp cận bài toán xử lý tiếng nói trên FPGA, trực giác ban đầu của nhiều kỹ sư là tìm kiếm một bộ tạo xung nhịp 16 kHz trong thiết kế để điều nhịp cho toàn bộ hệ thống. Trực giác đó xuất phát từ thói quen làm việc với các bộ giải mã âm thanh tương tự (như chip WM8731 trên bo mạch DE10-Standard), nơi mà bộ chuyển đổi ADC (Analog-to-Digital Converter) liên tục xuất ra từng mẫu sau mỗi khoảng thời gian đều đặn $T_s = 1 / 16.000\text{ s} = 62{,}5\ \mu\text{s}$. Khi có một bộ ADC ngoại vi ép nhịp, nếu mạch FPGA xử lý chậm hơn $62{,}5\ \mu\text{s}$, bộ đệm sẽ tràn và dữ liệu âm thanh bị mất.
+
+Tuy nhiên, trong kiến trúc hệ thống của tài liệu này (đã định hình ở Chương 1), \textbf{nguồn dữ liệu đầu vào là một tệp âm thanh WAV lưu trên thẻ nhớ SD, được vi xử lý HPS đọc và đẩy qua cầu Lightweight HPS-to-FPGA Bridge vào bộ đệm On-Chip FIFO}. 
+
+Sự thật kỹ thuật là: \textbf{Không có bất kỳ đồng hồ 16 kHz nào ép bước trên phần cứng}.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Vi xử lý HPS chạy ở xung nhịp 800 MHz có thể ghi một từ 32-bit (chứa 2 mẫu âm thanh) vào FIFO trong vòng dưới $1\ \mu\text{s}$. Nếu FIFO còn chỗ trống, HPS có thể đẩy hàng chục nghìn mẫu âm thanh trong một phần nghìn giây.
+    \item Lõi xử lý DSP trên FPGA chạy hoàn toàn trên miền xung nhịp hệ thống $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ $T_{\text{clk}} = 20\text{ ns}$).
+    \item Tốc độ tiêu thụ dữ liệu không bị khống chế bởi tần số lấy mẫu 16 kHz của âm thanh, mà bị quyết định tuyệt đối bởi \textbf{thời gian thực thi của khối tính toán tự tương quan MAC}---nút thắt cổ chai lớn nhất của toàn bộ hệ thống.
+\end{itemize}
+
+Vậy con số 16 kHz có ý nghĩa gì? Nó là thông số toán học quy định khoảng cách thời gian giữa các mẫu để tính ra cao độ thực theo đơn vị Hertz ($F_0 = f_s / \tau_{\text{interp}}$), và là \textbf{thước đo tham chiếu thời gian thực (real-time yardstick)} để đánh giá xem phần cứng chạy nhanh hơn cuộc sống thực bao nhiêu lần.
+
+\subsubsection*{Dẫn xuất ngân sách chu kỳ từ nguyên lý đầu tiên}
+Hãy bắt đầu thiết lập ngân sách chu kỳ một cách tường minh từ các tham số chuẩn mực của phần mềm Praat 7.0.03 trên tệp âm thanh $f_s = 16.000\text{ Hz}$:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Chu kỳ xung nhịp chuẩn:} Với tần số xung nhịp hệ thống $f_{\text{clk}} = 50\text{ MHz}$, mỗi chu kỳ xung nhịp kéo dài:
+    \begin{equation}
+    T_{\text{clk}} = \frac{1}{50.000.000\text{ Hz}} = 20\text{ ns}
+    \end{equation}
+    \item \textbf{Thước đo thời gian thực cho một mẫu:} Trong thế giới vật lý, một mẫu âm thanh 16 kHz xuất hiện sau mỗi khoảng thời gian $T_s = 62{,}5\ \mu\text{s}$. Số chu kỳ xung nhịp 50 MHz tương ứng với một khoảng thời gian lấy mẫu là:
+    \begin{equation}
+    C_{\text{sample}} = \frac{f_{\text{clk}}}{f_s} = \frac{50.000.000}{16.000} = 3.125\text{ chu kỳ/mẫu}
+    \end{equation}
+    \item \textbf{Bước nhảy khung phân tích (Frame Hop):} Thuật toán Praat với cấu hình mặc định (sàn cao độ $\text{pitchFloor} = 75\text{ Hz}$, bước thời gian tự động $\text{timeStep} = 0{,}75 / 75 = 10\text{ ms}$, tham chiếu mã nguồn \texttt{TODO-PRAAT-LINE}) phân tích các khung cách nhau đúng:
+    \begin{equation}
+    H = 10\text{ ms} \times 16.000\text{ mẫu/s} = 160\text{ mẫu}
+    \end{equation}
+    \item \textbf{Ngân sách chu kỳ thời gian thực cho một bước nhảy ($C_{\text{hop}}$):} Để đạt ngưỡng thời gian thực (tức xử lý kịp tốc độ nói của con người), toàn bộ chuỗi tính toán cho 160 mẫu mới phải hoàn thành trong khoảng thời gian không vượt quá 10 ms. Tại xung nhịp 50 MHz, ngân sách chu kỳ tối đa cho phép là:
+    \begin{equation}
+    C_{\text{hop}} = H \times C_{\text{sample}} = 160 \times 3.125 = 500.000\text{ chu kỳ/khung}
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Số phép tính MAC và chu kỳ thực thi của khối tự tương quan}
+Mỗi khung âm thanh có độ dài cửa sổ $N = 638$ mẫu (đã được làm tròn từ $3 \times 16.000 / 75 = 640$ mẫu theo quy tắc đối xứng tâm của Boersma). Khối nhân tích lũy MAC cần tính toán:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Năng lượng chuẩn $R[0]$: Cần tích lũy $638$ tích số $x_w[n] \times x_w[n]$ ($n = 0..637$). Số phép tính MAC là:
+    \begin{equation}
+    M_{R0} = 638\text{ phép tính}
+    \end{equation}
+    \item Dải quét độ trễ $\tau \in [26, 214]$ gồm 189 giá trị trễ liên tiếp: Với mỗi độ trễ $\tau$, số lượng tích số cần tính là $638 - \tau$. Khi $\tau = 26$, số phép nhân là $638 - 26 = 612$. Khi $\tau = 214$, số phép nhân là $638 - 214 = 424$. Tổng số phép tính MAC cho toàn bộ 189 độ trễ là tổng của một cấp số cộng:
+    \begin{equation}
+    M_{\text{lags}} = \sum_{\tau=26}^{214} (638 - \tau) = \frac{(612 + 424) \times 189}{2} = \frac{1.036 \times 189}{2} = 518 \times 189 = 97.902\text{ phép tính}
+    \end{equation}
+\end{itemize}
+
+Tổng số phép tính nhân tích lũy trên một khung phân tích là:
+\begin{equation}
+M_{\text{total}} = M_{R0} + M_{\text{lags}} = 638 + 97.902 = 98.540\text{ phép tính}
+\end{equation}
+
+Do khối MAC được thiết kế dưới dạng đường ống dòng chảy liên tục (streaming pipeline, phát địa chỉ liền mạch không nhịp nghỉ như đã phân tích ở Chương 0), mỗi nhịp xung nhịp đưa vào một cặp toán hạng. Sau khi cặp toán hạng cuối cùng của $\tau = 214$ đi vào, bộ tích lũy trong khối DSP cần thêm đúng 3 chu kỳ trễ đường ống (pipeline latency) để đẩy kết quả cuối cùng ra thanh ghi xuất. Do đó, tổng số chu kỳ xung nhịp thực tế để tính xong toàn bộ ma trận tương quan của một khung là:
+\begin{equation}
+C_{\text{calc}} = M_{\text{total}} + 3 = 98.540 + 3 = 98.543\text{ chu kỳ/khung}
+\end{equation}
+
+Thời gian thực tế để FPGA xử lý xong một khung là:
+\begin{equation}
+T_{\text{calc}} = 98.543 \times 20\text{ ns} = 1.970.860\text{ ns} \approx 1{,}971\text{ ms}
+\end{equation}
+
+Chia số chu kỳ này cho 160 mẫu âm thanh mới nạp vào mỗi khung, ta có số chu kỳ tính toán trung bình trên một mẫu âm thanh:
+\begin{equation}
+C_{\text{per\_sample}} = \frac{98.543}{160} \approx 615{,}89\text{ chu kỳ/mẫu} \quad (\approx 616\text{ chu kỳ/mẫu})
+\end{equation}
+
+\subsubsection*{Định nghĩa và dẫn xuất Hệ số Thời gian thực (Real-Time Factor -- RTF)}
+Hệ số thời gian thực $\text{RTF}$ là tỷ số không thứ nguyên giữa thời gian phần cứng thực thi phép tính ($T_{\text{calc}}$) và thời lượng âm thanh thực tế được xử lý ($T_{\text{audio}}$):
+\begin{equation}
+\text{RTF} = \frac{T_{\text{calc}}}{T_{\text{audio}}} = \frac{C_{\text{calc}} \times T_{\text{clk}}}{H \times T_s} = \frac{C_{\text{calc}}}{C_{\text{hop}}}
+\end{equation}
+
+Thay các con số đã dẫn xuất vào công thức:
+\begin{equation}
+\text{RTF}_{\text{MAC}} = \frac{98.543}{500.000} \approx 0{,}197086 \quad (\approx 0{,}197)
+\end{equation}
+
+Nếu tính thêm các khâu phụ trợ như trừ giá trị trung bình cục bộ, tra bảng Hanning, tìm đỉnh cực đại parabol và lọc trung vị (ước tính chiếm khoảng $1.157$ chu kỳ bổ sung, đưa tổng chu kỳ lõi lên mức $\approx 99.700$ chu kỳ, sẽ được chi tiết hóa ở Chương 12), hệ số thời gian thực toàn lõi là:
+\begin{equation}
+\text{RTF}_{\text{total}} = \frac{99.700}{500.000} \approx 0{,}1994 \quad (\approx 0{,}199)
+\end{equation}
+
+Con số $\text{RTF} \approx 0{,}197$ mang một ý nghĩa vật lý trực quan: \textbf{Mạch FPGA xử lý tín hiệu nhanh gấp hơn 5 lần so với thời gian thực} ($1 / 0{,}197 \approx 5{,}07$). Một đoạn âm thanh đàm thoại dài 10 giây chỉ cần chưa đầy 2 giây để trích xuất toàn bộ đường nét cao độ $F_0$.
+
+\subsubsection*{Phân tích và đính chính sai lệch lịch sử trong các tài liệu cũ}
+Trong các bản thảo kỹ thuật trước đây (tiêu biểu như báo cáo của nhóm tác giả Argon), một sự nhầm lẫn nghiêm trọng đã xuất hiện khi ghi nhận rằng: \emph{``Ngân sách chu kỳ là 1.250.000 chu kỳ/khung, mạch chạy mất $\approx 246.000$ chu kỳ, đạt RTF = 0,197''}. 
+
+Bằng phép toán dẫn xuất ở trên, ta thấy ngay con số này mắc phải \textbf{hai lỗi sai cơ bản bù trừ ngẫu nhiên cho nhau}:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Sai bước nhảy khung (Hop error):} Ngân sách $1.250.000$ chu kỳ ở xung nhịp 50 MHz tương ứng với thời lượng âm thanh là $1.250.000 / 50.000.000 = 25\text{ ms}$ (tức $H = 25\text{ ms} \times 16\text{ kHz} = 400\text{ mẫu}$). Con số 25 ms là kích thước khung phân tích trong một số bài toán nhận dạng giọng nói kinh điển (như hệ số MFCC), nhưng hoàn toàn mâu thuẫn với bước nhảy chuẩn 10 ms (160 mẫu) của thuật toán Praat!
+    \item \textbf{Sai số chu kỳ tính toán (Cycle count error):} Con số $246.000$ chu kỳ là kết quả tính toán trên một cửa sổ 640 mẫu với dải quét độ trễ rộng hơn hoặc thuật toán nhân chập chưa được tối ưu hóa đường ống.
+    \item \textbf{Sự triệt tiêu ngẫu nhiên:} Khi lấy $246.000 / 1.250.000$, tỷ số thu được là $0{,}1968 \approx 0{,}197$. Sự trùng hợp ngẫu nhiên của con số $0{,}197$ đã che giấu sự sai lệch gấp 2,5 lần về bước nhảy khung và thời gian trễ thực tế của hệ thống.
+\end{enumerate}
+
+Dưới đây là bảng đối chiếu tổng hợp được trích xuất trực tiếp từ kịch bản kiểm chứng số học\\ \texttt{verify\_v3/ch02\_cycle\_budget.py}:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Bảng đối chiếu thông số ngân sách chu kỳ và phân tích sai lệch kỹ thuật}
+\label{tab:ch02_cycle_budget}
+\begin{tabular}{lccc}
+\toprule
+Thông số hệ thống & Tài liệu này (Chuẩn Praat) & Tài liệu cũ (Argon) & Bản chất kỹ thuật \\
+\midrule
+Tần số lấy mẫu âm thanh ($f_s$) & 16.000 Hz & 16.000 Hz & Tiêu chuẩn âm thanh tiếng nói \\
+Tần số xung nhịp FPGA ($f_{\text{clk}}$) & 50.000.000 Hz & 50.000.000 Hz & Xung nhịp đồng bộ hệ thống \\
+Thước đo chu kỳ trên mẫu & 3.125 chu kỳ/mẫu & 3.125 chu kỳ/mẫu & $f_{\text{clk}} / f_s = 50\text{ MHz} / 16\text{ kHz}$ \\
+Bước nhảy khung ($H$) & \textbf{160 mẫu (10 ms)} & \textbf{400 mẫu (25 ms)} & Praat dùng 10 ms; cũ nhầm 25 ms \\
+Ngân sách thời gian thực ($C_{\text{hop}}$) & \textbf{500.000 chu kỳ} & \textbf{1.250.000 chu kỳ} & $H \times 3.125$ chu kỳ \\
+Độ dài cửa sổ phân tích ($N$) & 638 mẫu & 640 mẫu & Praat làm tròn tâm đối xứng \\
+Số phép tính MAC ($M_{\text{total}}$) & 98.540 & Chưa tối ưu & $638 + \sum_{26}^{214} (638 - \tau)$ \\
+Chu kỳ thực tế của lõi ($C_{\text{calc}}$) & \textbf{98.543 chu kỳ} & \textbf{246.000 chu kỳ} & 98.540 nhịp phát + 3 nhịp trễ \\
+Chu kỳ tính toán trên 1 mẫu mới & \textbf{615,89 chu kỳ/mẫu} & 615,00 chu kỳ/mẫu & $C_{\text{calc}} / H$ \\
+Thời gian tính toán một khung & \textbf{1,971 ms} & 4,920 ms & $C_{\text{calc}} \times 20\text{ ns}$ \\
+Hệ số thời gian thực ($\text{RTF}_{\text{MAC}}$) & \textbf{0,197} & \textbf{0,197} & Trùng hợp do sai cả tử và mẫu \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch02_cycle_budget} khẳng định một chân lý thiết kế: dù cùng hướng tới mục tiêu thời gian thực $\text{RTF} \approx 0{,}197$, bản thiết kế chuẩn xác của chúng ta hoàn tất một khung phân tích chỉ trong $1{,}97\text{ ms}$ trên bước nhảy $10\text{ ms}$ (đúng chuẩn tương quan của Boersma), giúp hệ thống có độ trễ phản hồi cực thấp (latency thấp) và giải phóng hơn 80\% băng thông xử lý của FPGA cho các tác vụ tổng hợp hoặc nhận dạng tiếp theo.
+
+\textit{Tóm lại: Khi xử lý tệp âm thanh, không có đồng hồ 16 kHz nào chi phối bước chạy; lõi FPGA tính toán ở tốc độ cực đại 50 MHz với 98.543 chu kỳ cho mỗi bước nhảy 160 mẫu (616 chu kỳ/mẫu), hoàn tất một khung 10 ms chỉ trong 1,97 ms, đạt hệ số thời gian thực RTF = 0,197 so với ngân sách 500.000 chu kỳ.}
+
