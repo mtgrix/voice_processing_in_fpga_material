@@ -656,3 +656,158 @@ Kịch bản kiểm thử \texttt{verify\_v3/}\linebreak[0]\texttt{ch00\_test\_p
 \end{itemize}
 
 \textit{Tóm lại: Ở 50 MHz, ngân sách thời gian thực là 500.000 chu kỳ cho mỗi bước nhảy 10 ms; khối tự tương quan cần 98.543 chu kỳ (hệ số RTF $\approx 0{,}197$), được hiện thực bằng mạch phát cặp mẫu liên tục \texttt{ch00\_pair\_counter} chuyển độ trễ với 0 nhịp nghỉ, đã kiểm chứng khớp tuyệt đối 201/201 ca thử nghiệm.}
+
+% ==============================================================================
+% 0.7. BẢN ĐỒ KIỂM CHỨNG BA TẦNG VÀ BỘ GOLDEN V2
+% ==============================================================================
+\subsection{Bản đồ kiểm chứng ba tầng và bộ golden v2}
+
+\textbf{Vấn đề thực tế:} Khi hiện thực một chuỗi xử lý tín hiệu số phức tạp lên phần cứng FPGA (DE10-Standard Cyclone V), nếu ta đưa toàn bộ kiến trúc từ xử lý mẫu đến chia nội suy và xuất dữ liệu lên chip, rồi chỉ so sánh kết quả tần số cơ bản F0 cuối cùng với phần mềm Praat chạy trên máy tính, ta sẽ rơi vào bế tắc hoàn toàn khi xuất hiện sai số. Nếu một khung tín hiệu bị lệch tần số hoặc sai phân loại hữu thanh/vô thanh ($V/UV$), nguyên nhân bắt nguồn từ đâu?
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Do chỉ số cắt khung lệch một mẫu tại tầng HPS?
+    \item Do khối trừ trung bình cục bộ làm tròn sai hoặc tràn số 17-bit?
+    \item Do bảng ROM Hanning lượng tử hóa sai hệ số tỷ lệ?
+    \item Do khối nhân-cộng tự tương quan MAC bị trễ chu kỳ xung nhịp hoặc sai tín hiệu kích hoạt nạp?
+    \item Hay do phép chia điểm đỉnh parabol số nguyên bị mất mát độ chính xác?
+\end{itemize}
+Một sai lệch dù chỉ 1 mẫu hay 1 bit thấp nhất (LSB) ở tầng trước sẽ bị tích lũy và khuếch đại thành sai số hàng trăm cent hoặc sai nhãn $V/UV$ ở tầng sau mà không để lại bất kỳ manh mối nào. Vì vậy, ta cần một kiến trúc kiểm chứng đa tầng chặt chẽ, phân định rạch ròi giữa \emph{tính đúng đắn logic của mạch phần cứng} và \emph{sai số xấp xỉ thuật toán so với Praat}.
+
+\subsubsection{Kiến trúc kiểm chứng ba tầng (Three-tier Verification)}
+Chiến lược kiểm chứng của cuốn sách được xây dựng thành ba tầng độc lập, tạo thành "tấm lưới bảo vệ" khép kín xuyên suốt từ mã nguồn thuật toán đến chân chip FPGA (Hình~\ref{fig:ch00_system}):
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{Tầng 1 --- Khớp bit tuyệt đối giữa mô hình Python số nguyên và mô phỏng RTL (Twin vs RTL):}
+    Tầng này so sánh đối ứng bit-exact (khớp chính xác 100\% từng bit dữ liệu và từng chu kỳ xung nhịp) giữa mô hình tương đương Python (\texttt{golden\_v2/fixed\_twin.py} và các script twin cục bộ của từng chương) với mô phỏng Verilog RTL (\texttt{rtl/v3/} và \texttt{tb/v3/}) chạy bằng \texttt{iverilog/vvp}. 
+    Mỗi khối phần cứng phải vượt qua ít nhất 200 véc-tơ kiểm tra ngẫu nhiên cùng các khung tín hiệu biên dồn nén (stress vectors, biên độ cực trị $\pm 32.768$). Tiêu chuẩn nghiệm thu ở tầng 1 là 0 lỗi: chuỗi bit đầu ra và mã băm kiểm tra (checksum) của RTL phải trùng khớp hoàn toàn với mô hình Python. Tầng này loại bỏ triệt để mọi lỗi logic, lỗi tràn số và lỗi sai lệch chu kỳ giao tiếp Avalon-ST.
+    
+    \item \textbf{Tầng 2 --- Khớp bit tuyệt đối giữa mô phỏng RTL và phần cứng chạy thực (RTL vs Board):}
+    Tầng này so sánh kết quả mô phỏng RTL với dữ liệu đo thực tế trên kit DE10-Standard, được trích xuất thông qua bộ phân tích logic nhúng Quartus SignalTap II hoặc đọc trực tiếp từ bộ đệm DDR của HPS qua bus Avalon-MM. Tầng 2 nhằm phát hiện các lỗi vật lý nằm ngoài tầm kiểm soát của code RTL thuần túy: khởi tạo bộ nhớ M10K qua file \texttt{.mif}/\texttt{.hex}, cấu hình bộ chia tần và độ ổn định của khối PLL (50 MHz), ràng buộc chân IO, và sự đồng bộ tín hiệu bắt tay trên bus hệ thống Platform Designer (Qsys). Tiêu chuẩn nghiệm thu: chuỗi kết quả F0 phần cứng trả về HPS phải trùng khít 100\% với chuỗi kết quả của mô phỏng RTL.
+    
+    \item \textbf{Tầng 3 --- Đánh giá thống kê giữa phần cứng và chuẩn Praat trên máy tính (FPGA/Twin vs Praat):}
+    Sau khi tầng 1 và tầng 2 đảm bảo phần cứng thực thi đúng 100\% đặc tả toán học số nguyên, tầng 3 tiến hành so sánh đối chiếu giữa đầu ra của FPGA (hoặc Python Twin) với phần mềm Praat 7.0.03 gốc chạy trên máy tính thông qua công cụ \texttt{golden\_v2/compare.py}. Thước đo ở tầng này không còn là khớp bit mà là các chỉ số xử lý tín hiệu khách quan: VDE, GPE, FFE và phân bố sai số cent mịn (trung bình, độ lệch chuẩn, phân vị 95, cực đại). Mục tiêu là chứng minh độ lệch âm học giữa giải pháp phần cứng và Praat luôn nằm sâu dưới ngưỡng nghe nhận biết của tai người, đồng thời giải thích tường minh nguyên nhân của từng khung sai lệch.
+\end{enumerate}
+
+\subsubsection{Cấu trúc bộ công cụ golden v2}
+Toàn bộ mã nguồn kiểm chứng tham chiếu được đặt tại thư mục \texttt{golden\_v2/}, đóng vai trò "trọng tài kỹ thuật" cho toàn bộ tài liệu:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{constants.py}: Định nghĩa tập trung mọi hằng số suy xuất trực tiếp từ mã nguồn C++ của Praat 7.0.03 (\texttt{Sound\_to\_Pitch.cpp}), bao gồm kiểm tra khẳng định \texttt{assert}.
+    \item \texttt{frames.py}: Hiện thực hóa chia lưới khung ngắn hạn (\texttt{Sampled\_}\allowbreak\texttt{shortTerm}\allowbreak\texttt{Analysis}) bằng số thực kép.
+    \item \texttt{praat\_float\_ref.py}: Bản chuyển đổi trực tiếp thuật toán Praat 7.0.03 sang Python số thực chuẩn: trích chọn 15 ứng viên, nội suy sơ bộ parabol, tinh chỉnh độ chính xác cao sinc70 + Brent, bộ dò đường Viterbi ($R_1$) và đường chi phí bằng 0 ($R_2$), kết hợp bộ lọc trung vị median-3.
+    \item \texttt{fixed\_twin.py}: Mô hình số nguyên tương đương bit-exact toàn tuyến. Phần tài liệu docstring của tệp này chính là bản đặc tả số nguyên 10 bước chuẩn hóa mà mạch phần cứng RTL bắt buộc phải tuân theo.
+    \item \texttt{gen\_roms.py}: Kịch bản tự động sinh bảng ROM Hanning Q1.15 (\texttt{rom/}\allowbreak\texttt{hanning638\_q15.hex}), ROM bù suy giảm $C[\tau]$ và chi phí $K[\tau]$ (\texttt{rom/}\allowbreak\texttt{ck\_rom.hex}), cùng tệp \texttt{rom/}\allowbreak\texttt{constants.vh}.
+    \item \texttt{compare.py}: Kịch bản tự động thực thi chuỗi so sánh đa phương diện, xuất báo cáo đối soát chi tiết (\texttt{golden\_v2/}\linebreak[0]\texttt{out/}\linebreak[0]\texttt{compare\_report.md}).
+\end{itemize}
+
+\subsubsection{Đặc tả 10 bước số nguyên của lõi phần cứng (fixed\_twin.py)}
+Để mạch phần cứng FPGA có thể hoạt động hoàn toàn bằng số nguyên có dấu với tài nguyên tối thiểu mà không cần khối dấu phẩy động tốn kém, thuật toán ước lượng F0 được phân rã thành 10 bước xử lý số nguyên bit-exact như sau:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Bước 1 --- Trừ trung bình cục bộ:} Lấy tổng tích lũy $S = \sum_{j=106}^{531} x[j]$ trên đúng 426 mẫu quanh tâm khung (ứng với hai chu kỳ dài nhất tại floor 75 Hz). Giá trị trung bình nguyên được tính bằng phép nhân-dịch thay thế bộ chia:
+    \begin{equation}
+        \text{mean} = \left\lfloor \frac{(S + 213 + 426 \cdot 2^{15}) \cdot 10.082.083}{2^{32}} \right\rfloor - 2^{15} = \left\lfloor \frac{S + 213}{426} \right\rfloor
+    \end{equation}
+    
+    \item \textbf{Bước 2 --- Nhân cửa sổ Hanning:} Độ lệch $d[j] = x[j] - \text{mean}$ là số nguyên có dấu 17-bit (nằm trong khoảng $[-65.536, 65.535]$). Mẫu sau khi nhân cửa sổ Hanning định dạng Q1.15 được làm tròn và dịch phải:
+    \begin{equation}
+        xw[j] = (d[j] \cdot w[j] + 2^{14}) \gg 15
+    \end{equation}
+    với $w[j] \in [1, 32.767]$ đọc từ ROM. Khung biên cực đại có thể đạt $|xw| = 59.379$, vượt quá 16-bit nên yêu cầu thanh ghi 17-bit có dấu.
+    
+    \item \textbf{Bước 3 --- Đỉnh biên độ cục bộ ($LP$):} Tìm giá trị cực đại tuyệt đối của mẫu trong vùng trung tâm 214 mẫu quanh tâm khung:
+    \begin{equation}
+        LP = \max_{j=212}^{425} |xw[j]|
+    \end{equation}
+    
+    \item \textbf{Bước 4 --- Khối nhân-cộng tự tương quan (MAC):} Tích lũy năng lượng khung $R[0] = \sum_{j=0}^{637} xw[j]^2$ và tương quan chập cho 189 độ trễ:
+    \begin{equation}
+        R[\tau] = \sum_{j=0}^{637-\tau} xw[j] \cdot xw[j+\tau], \quad \tau \in [26, 214]
+    \end{equation}
+    
+    \item \textbf{Bước 5 --- Chuẩn hóa thang đo động:} Tìm số bit dịch động $sh = \max(0, \text{bitlen}(R[0]) - 26)$ để đưa $R[0]$ và toàn bộ các giá trị $R[\tau]$ về dải số nguyên 27-bit:
+    \begin{equation}
+        R_{0n} = R[0] \gg sh, \quad R_n[\tau] = R[\tau] \gg sh
+    \end{equation}
+    
+    \item \textbf{Bước 6 --- Bù suy giảm cửa sổ và trừ chi phí quãng tám (Scoring):} Tích số chuẩn hóa $U[\tau]$ và điểm số đánh giá $S_c[\tau]$ được tính bằng phép nhân số nguyên với các hệ số đọc từ ROM:
+    \begin{align}
+        U[\tau] &= (R_n[\tau] \cdot C[\tau] + 2^{13}) \gg 14 \quad (\approx r(\tau) \cdot R_{0n}) \\
+        S_c[\tau] &= U[\tau] - \left( (R_{0n} \cdot K[\tau] + 2^{19}) \gg 20 \right) \quad \left(\approx \left(r(\tau) - 0{,}01 \log_2\frac{600}{f}\right) \cdot R_{0n}\right)
+    \end{align}
+    với $C[\tau] \in \text{Q2.14}$ và $K[\tau] \in \text{Q12.20}$.
+    
+    \item \textbf{Bước 7 --- Trích chọn ứng viên cực đại cục bộ:} Quét tìm các độ trễ $\tau \in [27, 213]$ thỏa mãn điều kiện tạo đỉnh cục bộ:
+    \begin{equation}
+        U[\tau] > U[\tau-1], \quad U[\tau] \ge U[\tau+1], \quad 1000 \cdot U[\tau] > 225 \cdot R_{0n}
+    \end{equation}
+    Ứng viên tốt nhất được chọn là vị trí độ trễ $\tau_p$ có điểm số $S_c[\tau]$ lớn nhất ($\text{argmax}$).
+    
+    \item \textbf{Bước 8 --- Quyết định hữu thanh/vô thanh (Voicing):} Khung được xác nhận là hữu thanh khi và chỉ khi bất đẳng thức tích chéo số nguyên sau đây thỏa mãn:
+    \begin{equation}
+        (100 \cdot S_c[\tau_p] - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0, 6 \cdot GP - 145 \cdot LP)
+    \end{equation}
+    Bất đẳng thức này phản ánh chính xác điều kiện ngưỡng voicing của Praat: $\text{strength} > 0{,}45 + \max(0, 2 - I / (0{,}03 / 1{,}45))$ với cường độ tương đối $I = LP / GP$.
+    
+    \item \textbf{Bước 9 --- Nội suy đỉnh parabol và nghịch đảo tần số F0 gộp:} Lấy hiệu độ dốc $num = U[\tau_p+1] - U[\tau_p-1]$ và độ cong $den = 2 U[\tau_p] - U[\tau_p-1] - U[\tau_p+1]$. Sau khi dịch chuẩn hóa $s_2 = \max(0, \text{bitlen}(den) - 24)$, mẫu số chung $D = 2 \cdot den_n \cdot \tau_p + num_n$. Giá trị tần số F0 định dạng Q12.4 được tính gọn bằng duy nhất một phép chia số nguyên:
+    \begin{equation}
+        F0\_Q12.4 = \left\lfloor \frac{512.000 \cdot den_n + \lfloor D / 2 \rfloor}{D} \right\rfloor
+    \end{equation}
+    
+    \item \textbf{Bước 10 --- Bộ lọc trung vị median-3:} Đầu ra tức thời của khung là $F0\_Q12.4$ nếu hữu thanh hoặc $0$ nếu vô thanh; sau đó được đưa qua bộ lọc trung vị trượt 3 khung liên tiếp để triệt tiêu các xung nhảy quãng tám cô lập.
+\end{enumerate}
+
+\subsubsection{Kết quả đối chiếu trên tập tín hiệu tổng hợp chuẩn}
+Để đánh giá định lượng độ chính xác của bộ mô hình \texttt{golden\_v2}, ta thực hiện kiểm thử toàn diện trên hai tệp âm thanh tổng hợp chuẩn (tần số lấy mẫu 16 kHz, độ dài 2,8 giây, gồm 277 khung phân tích, bước nhảy hop 160 mẫu, $t_1 = 0{,}020$ s). Tệp thứ nhất là tín hiệu sạch không tạp âm (\texttt{synth\_glide\_vuv\_16k.wav}, $GP = 22.946$), tệp thứ hai được cộng thêm nhiễu trắng ở tỷ số $SNR = 5\text{ dB}$ (\texttt{synth\_}\linebreak[0]\texttt{glide\_}\linebreak[0]\texttt{vuv\_}\linebreak[0]\texttt{16k\_}\linebreak[0]\texttt{snr5.wav}, $GP = 22.937$) để kích hoạt các tình huống nhảy quãng tám phức tạp. Kết quả tổng hợp từ công cụ \texttt{golden\_v2/}\linebreak[0]\texttt{compare.py} được trình bày trong Bảng~\ref{tab:ch00_golden_results}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Kết quả đối chiếu toàn tuyến bộ công cụ golden v2 với Praat 7.0.03 trên tín hiệu tổng hợp chuẩn (277 khung, 16 kHz).}
+\label{tab:ch00_golden_results}
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Phép so sánh} & \textbf{VDE} & \textbf{GPE} & \textbf{FFE} & \textbf{Cent TB} & \textbf{Cent $p_{95}$} & \textbf{Cent Max} \\
+\midrule
+\multicolumn{7}{l}{\textit{Tín hiệu sạch (Clean synth, 208 khung cùng hữu thanh):}} \\
+Port float vs Praat R2 & 0/277 & 0/208 & 0,0000 & $5{,}7 \cdot 10^{-6}$ & $5{,}6 \cdot 10^{-5}$ & $6{,}8 \cdot 10^{-5}$ \\
+Port float vs Praat R1 & 0/277 & 0/208 & 0,0000 & $5{,}7 \cdot 10^{-6}$ & $5{,}6 \cdot 10^{-5}$ & $6{,}8 \cdot 10^{-5}$ \\
+Praat R1 vs Praat R2 & 0/277 & 0/208 & 0,0000 & 0,00 & 0,00 & 0,00 \\
+Twin (trước median) vs Praat R2 & 0/277 & 0/208 & 0,0000 & 0,21 & 0,48 & 1,08 \\
+Twin + median-3 vs Praat R1 & 0/277 & 0/208 & 0,0000 & 0,37 & 0,64 & 12,96 \\
+Praat R1 vs Ground-Truth & 4/277 & 0/207 & 0,0144 & 0,30 & 0,83 & 7,91 \\
+Twin + median-3 vs Ground-Truth & 4/277 & 0/207 & 0,0144 & 0,53 & 1,05 & 14,28 \\
+\midrule
+\multicolumn{7}{l}{\textit{Tín hiệu có ồn SNR 5 dB (207 khung cùng hữu thanh):}} \\
+Port float vs Praat R2 & 0/277 & 0/207 & 0,0000 & $9{,}4 \cdot 10^{-6}$ & $6{,}0 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
+Port float vs Praat R1 & 0/277 & 0/207 & 0,0000 & $1{,}0 \cdot 10^{-5}$ & $6{,}2 \cdot 10^{-5}$ & $1{,}5 \cdot 10^{-4}$ \\
+Praat R1 vs Praat R2 (Viterbi) & 0/277 & 19/207 & 0,0686 & 117,4 & 1191 & 37,28 \\
+Twin (trước median) vs Praat R2 & 0/277 & 3/207 & 0,0108 & 3,10 & 9,80 & 32,91 \\
+Twin + median-3 vs Praat R1 & 0/277 & 15/207 & 0,0542 & 3,60 & 10,90 & 32,91 \\
+Praat R1 vs Ground-Truth & 3/277 & 0/207 & 0,0108 & 10,56 & 21,80 & 29,32 \\
+Praat R2 vs Ground-Truth & 3/277 & 19/207 & 0,0794 & 126,4 & 1199 & 28,48 \\
+Twin (trước median) vs Ground-Truth & 3/277 & 22/207 & 0,0903 & 142,3 & 1199 & 25,85 \\
+Twin + median-3 vs Ground-Truth & 3/277 & 15/207 & 0,0650 & 94,99 & 1179 & 32,68 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch00_golden_results} làm sáng tỏ các mối quan hệ nền tảng của toàn bộ hệ thống:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Độ chính xác của bản port mã nguồn (Port float vs Praat):} Sai số cent giữa bản Python dấu phẩy động và phần mềm Praat 7.0.03 gốc chỉ ở mức $10^{-5}$ đến $10^{-4}$ cent, với $VDE = 0$ và $GPE = 0$. Con số cực nhỏ này khẳng định ta đã mô phỏng chuẩn xác 100\% thuật toán C++ của Praat đến từng phép toán dấu phẩy động kép.
+    \item \emph{Vai trò của bộ dò đường Viterbi (Praat R1 vs R2):} Trên tín hiệu sạch, cấu hình mặc định $R_1$ và cấu hình không chi phí $R_2$ cho kết quả trùng khít 100\%. Tuy nhiên, khi chịu ảnh hưởng của tạp âm mạnh (SNR 5 dB), bộ dò đường Viterbi của $R_1$ sửa được 19 khung nhảy quãng tám mà $R_2$ (thuần túy chọn đỉnh lớn nhất từng khung) mắc phải.
+    \item \emph{Độ chính xác của lõi số nguyên (Twin vs Praat R2):} Trên tín hiệu sạch, mô hình số nguyên khớp hoàn hảo với Praat R2: $VDE = 0$, $GPE = 0/208$, sai số cent mịn trung bình chỉ $0{,}21$ cent, $p_{95} = 0{,}48$ cent và sai số cực đại là $1{,}08$ cent (hoàn toàn không thể nhận biết bởi tai người). Trên tín hiệu ồn 5 dB, twin chỉ lệch 3 khung $GPE$ so với R2 do sai số lượng tử hóa số nguyên ở các đỉnh có điểm số gần bằng nhau.
+    \item \emph{Hiệu quả của bộ lọc trung vị phần cứng (Twin + median-3 vs Ground-Truth):} Trên tín hiệu ồn 5 dB, so với sự thật mặt đất (ground-truth), bộ lọc median-3 giúp giảm số khung lỗi thô $GPE$ của phần cứng từ 22 khung xuống còn 15 khung (sửa được 7 khung lỗi quãng tám đơn lẻ), chứng minh tính hiệu quả vượt bậc của một cấu trúc phần cứng siêu nhỏ gọn.
+\end{itemize}
+
+\subsubsection{Ba khác biệt có chủ ý và phân tích hạn chế cố hữu}
+Để giữ sự minh bạch khoa học tuyệt đối, ta cần chỉ rõ ba sai khác có chủ ý giữa thiết kế phần cứng FPGA và thuật toán gốc của Praat (đã được thống nhất tại Mục 0.3):
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Nội suy đỉnh parabol thay cho sinc70 + Brent:} Trên tín hiệu sạch, parabol cho sai số nội suy nhỏ hơn $1{,}1$ cent. Tuy nhiên, trên tín hiệu có ồn lớn (SNR 5 dB), hình dạng đỉnh tự tương quan bị méo mó hoặc chẻ đôi, khiến xấp xỉ parabol lệch tới 32,9 cent so với tinh chỉnh sinc70. Đây là cái giá phải trả để tiết kiệm hàng chục nghìn chu kỳ tính toán và tránh thuật toán tìm nghiệm Brent phi tuyến tính trên FPGA.
+    \item \textbf{Xếp hạng ứng viên bằng điểm số trên lưới rời rạc:} Thuật toán phần cứng chọn đỉnh ứng viên tốt nhất $\tau_p = \operatorname{argmax} S_c[\tau]$ dựa trên các giá trị nguyên rời rạc trên lưới trước khi nội suy, thay vì tính điểm sức mạnh $S_c$ tại tọa độ thực sau nội suy như Praat. Khi hai đỉnh quãng tám có điểm số chênh lệch cực nhỏ (chỉ từ $0{,}0005$ đến $0{,}007$), việc làm tròn số nguyên có thể làm lật thứ tự ưu tiên (gây ra hiện tượng lệch 3/207 khung ở tệp thử nghiệm SNR 5 dB).
+    \item \textbf{Bộ lọc trung vị median-3 thay cho bộ dò đường quy hoạch động Viterbi:} Vì FPGA xử lý luồng theo từng khung thời gian thực và không lưu toàn bộ ma trận ứng viên của cả tệp âm thanh vào bộ nhớ lớn, nó không thể chạy thuật toán Viterbi toàn cục. Median-3 chỉ quan sát cửa sổ cục bộ 3 khung nên chỉ sửa được các lỗi nhảy quãng tám đơn lẻ (1 khung), không thể khắc phục được chuỗi nhảy quãng tám kéo dài từ 2 khung trở lên.
+\end{enumerate}
+
+\noindent\textbf{Ghi chú về tập dữ liệu thử nghiệm:} Toàn bộ các con số kiểm chứng trong chương này được tính toán nghiêm ngặt trên tập tín hiệu tổng hợp chuẩn (\texttt{synth\_glide\_vuv\_16k.wav} và phiên bản SNR 5 dB). Tập dữ liệu các tệp WAV giọng nói thực tế của anh Tú hiện chưa sẵn sàng tại thời điểm xuất bản chương này; khi có dữ liệu, kịch bản tự động \texttt{golden\_v2/compare.py} sẽ được tái thực thi để cập nhật bổ sung mà không làm thay đổi kiến trúc kiểm chứng ba tầng đã thiết lập.
+
+\textit{Tóm lại: Bản đồ kiểm chứng ba tầng bảo đảm sự nhất quán tuyệt đối giữa mã nguồn Python twin số nguyên, mô phỏng RTL, phần cứng thực tế trên kit DE10-Standard và chuẩn Praat 7.0.03; trên tín hiệu sạch, lõi phần cứng đạt sai số cent trung bình chỉ $0{,}21$ cent và $GPE = 0$, còn trên tín hiệu ồn 5 dB, bộ lọc median-3 giúp giảm lỗi thô từ 22 khung xuống 15 khung.}
+
