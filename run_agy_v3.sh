@@ -12,5 +12,5 @@ $(cat $fb)"; fi
 log=/workspace/writing_material/agy_log_v3_${ch}.txt
 [ -n "$fb" ] && log=/workspace/writing_material/agy_log_v3_${ch}_$(basename $fb .txt).txt
 echo "START $(date)" > $log
-/home/box/.local/bin/agy -p "$P" --dangerously-skip-permissions --effort high >> $log 2>&1
+/home/box/.local/bin/agy -p "$P" --dangerously-skip-permissions --effort high ${AGY_MODEL:+--model $AGY_MODEL} >> $log 2>&1
 echo "EXIT $? $(date)" >> $log
