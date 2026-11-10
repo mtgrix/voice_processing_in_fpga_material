@@ -3,39 +3,37 @@ VERIFYING PRAAT 7.0.03 CITATIONS IN CHAPTER 0
 ================================================================================
 
 [Sampled.cpp lines 56-70] Sampled_getWindowSamples / Sampled_xToLowIndex
-  (Sampled.cpp not found on local path, using verified Praat 7.0.03 reference snippet)
-    [56] integer Sampled_xToLowIndex (Sampled me, double x) {
-    [57] 	return Melder_ifloor ((x - my x1) / my dx) + 1;
-    [58] }
-    [59] 
-    [60] integer Sampled_xToHighIndex (Sampled me, double x) {
-    [61] 	return Melder_iceil ((x - my x1) / my dx) + 1;
-    [62] }
-    [63] 
-    [64] void Sampled_getWindowSamples (Sampled me, double xmin, double xmax,
-    [65] 	integer *ixmin, integer *ixmax)
-    [66] {
-    [67] 	*ixmin = Sampled_xToHighIndex (me, xmin);
-    [68] 	*ixmax = Sampled_xToLowIndex (me, xmax);
-    [69] }
-    [70] 
-  [PASS] Verified token: 'Sampled_xToLowIndex'
-  [PASS] Verified token: 'Sampled_getWindowSamples'
+  [  56] 	*ixmin = ( ixmin_real < 1.0 ? 1 : (integer) ixmin_real );
+  [  57] 	*ixmax = ( ixmax_real > (double) my nx ? my nx : (integer) ixmax_real );
+  [  58] 	if (*ixmin > *ixmax)
+  [  59] 		return 0;
+  [  60] 	return *ixmax - *ixmin + 1;
+  [  61] }
+  [  62] 
+  [  63] void Sampled_init (mutableSampled me, double xmin, double xmax, integer nx, double dx, double x1) {
+  [  64] 	my xmin = xmin;
+  [  65] 	my xmax = xmax;
+  [  66] 	my nx = nx;
+  [  67] 	my dx = dx;
+  [  68] 	my x1 = x1;
+  [  69] }
+  [  70] 
+  [FAIL] Token 'Sampled_xToLowIndex' not found in lines 56-70
+  [FAIL] Token 'Sampled_getWindowSamples' not found in lines 56-70
 
 [Sampled.cpp lines 71-82] Sampled_shortTermAnalysis (frame grid calculation)
-  (Sampled.cpp not found on local path, using verified Praat 7.0.03 reference snippet)
-    [71] void Sampled_shortTermAnalysis (Sampled me, double windowDuration, double timeStep,
-    [72] 	integer *numberOfFrames, double *firstTime)
-    [73] {
-    [74] 	double myDuration = my dx * my nx;
-    [75] 	if (windowDuration > myDuration) {
-    [76] 		*numberOfFrames = 0;
-    [77] 		if (firstTime) *firstTime = 0.5 * (my xmin + my xmax);
-    [78] 		return;
-    [79] 	}
-    [80] 	*numberOfFrames = 1 + Melder_ifloor ((myDuration - windowDuration) / timeStep);
-    [81] 	double ourMid = my x1 - 0.5 * my dx + 0.5 * myDuration;
-    [82] 	double thyDuration = *numberOfFrames * timeStep;
+  [  71] void Sampled_shortTermAnalysis (constSampled me, double windowDuration, double timeStep, integer *numberOfFrames, double *firstTime) {
+  [  72] 	Melder_assert (windowDuration > 0.0);
+  [  73] 	Melder_assert (timeStep > 0.0);
+  [  74] 	volatile double myDuration = my dx * my nx;   // volatile, because we need to truncate to 64 bits
+  [  75] 	if (windowDuration > myDuration)
+  [  76] 		Melder_throw (me, U": shorter than window length.");
+  [  77] 	*numberOfFrames = Melder_ifloor ((myDuration - windowDuration) / timeStep) + 1;
+  [  78] 	Melder_assert (*numberOfFrames >= 1);
+  [  79] 	const double ourMidTime = my x1 - 0.5 * my dx + 0.5 * myDuration;
+  [  80] 	const double thyDuration = *numberOfFrames * timeStep;
+  [  81] 	*firstTime = ourMidTime - 0.5 * thyDuration + 0.5 * timeStep;
+  [  82] }
   [PASS] Verified token: 'Sampled_shortTermAnalysis'
   [PASS] Verified token: 'Melder_ifloor'
   [PASS] Verified token: 'windowDuration'
@@ -98,107 +96,107 @@ VERIFYING PRAAT 7.0.03 CITATIONS IN CHAPTER 0
   [PASS] Verified token: 'globalPeak'
 
 [Sound_to_Pitch.cpp lines 145-160] frame FFT (NUMfft_forward around line 149) & autocorrelation
-  [ 145] 		*/
-  [ 146] 		for (integer i = 1; i <= nsampFFT; i ++)
-  [ 147] 			ac [i] = 0.0;
-  [ 148] 		for (integer channel = 1; channel <= my ny; channel ++) {
-  [ 149] 			NUMfft_forward (fftTable, VEC (& frame [channel] [1], fftTable->n));   // complex spectrum
-  [ 150] 			ac [1] += frame [channel] [1] * frame [channel] [1];   // DC component
-  [ 151] 			for (integer i = 2; i < nsampFFT; i += 2)
-  [ 152] 				ac [i] += frame [channel] [i] * frame [channel] [i] + frame [channel] [i+1] * frame [channel] [i+1];   // power spectrum
-  [ 153] 			ac [nsampFFT] += frame [channel] [nsampFFT] * frame [channel] [nsampFFT];   // Nyquist frequency
-  [ 154] 		}
-  [ 155] 		NUMfft_backward (fftTable, ac);   // autocorrelation
-  [ 156] 
-  [ 157] 		/*
-  [ 158] 			Normalize the autocorrelation to the value with zero lag,
-  [ 159] 			and divide it by the normalized autocorrelation of the window.
+  [ 145] 			The FFT of the autocorrelation is the power spectrum.
+  [ 146] 		*/
+  [ 147] 		for (integer i = 1; i <= nsampFFT; i ++)
+  [ 148] 			ac [i] = 0.0;
+  [ 149] 		for (integer channel = 1; channel <= my ny; channel ++) {
+  [ 150] 			NUMfft_forward (fftTable, VEC (& frame [channel] [1], fftTable->n));   // complex spectrum
+  [ 151] 			ac [1] += frame [channel] [1] * frame [channel] [1];   // DC component
+  [ 152] 			for (integer i = 2; i < nsampFFT; i += 2)
+  [ 153] 				ac [i] += frame [channel] [i] * frame [channel] [i] + frame [channel] [i+1] * frame [channel] [i+1];   // power spectrum
+  [ 154] 			ac [nsampFFT] += frame [channel] [nsampFFT] * frame [channel] [nsampFFT];   // Nyquist frequency
+  [ 155] 		}
+  [ 156] 		NUMfft_backward (fftTable, ac);   // autocorrelation
+  [ 157] 
+  [ 158] 		/*
+  [ 159] 			Normalize the autocorrelation to the value with zero lag,
   ... (1 more lines)
   [PASS] Verified token: 'NUMfft_forward'
   [PASS] Verified token: 'NUMfft_backward'
 
 [Sound_to_Pitch.cpp lines 162-164] autocorrelation normalisation by ac[1] * windowR
-  [ 162] 		for (integer i = 1; i <= brent_ixmax; i ++)
-  [ 163] 			r [- i] = r [i] = ac [i + 1] / (ac [1] * windowR [i + 1]);
-  [ 164] 	}
+  [ 162] 		r [0] = 1.0;
+  [ 163] 		for (integer i = 1; i <= brent_ixmax; i ++)
+  [ 164] 			r [- i] = r [i] = ac [i + 1] / (ac [1] * windowR [i + 1]);
   [PASS] Verified token: 'windowR'
 
 [Sound_to_Pitch.cpp lines 185-200] candidate search (i = 2 .. maximumLag-1) and parabolic first estimate
-  [ 185] 	for (integer i = 2; i < maximumLag && i < brent_ixmax; i ++)
-  [ 186] 		if (r [i] > 0.5 * voicingThreshold &&   // not too unvoiced?
-  [ 187] 			r [i] > r [i-1] && r [i] >= r [i+1])   // maximum?
-  [ 188] 	{
-  [ 189] 		integer place = 0;
-  [ 190] 
-  [ 191] 		/*
-  [ 192] 			Use parabolic interpolation for first estimate of frequency,
-  [ 193] 			and sin(x)/x interpolation to compute the strength of this frequency.
-  [ 194] 		*/
-  [ 195] 		const double dr = 0.5 * (r [i+1] - r [i-1]);
-  [ 196] 		const double d2r = (r [i] - r [i-1]) + (r [i] - r [i+1]);
-  [ 197] 				// not 2.0 * r [i] - r [i-1] - r [i+1] because of rounhding errors! (bug removed 2025-04-18)
-  [ 198] 		Melder_assert (d2r > 0);
-  [ 199] 		const double frequencyOfMaximum = 1.0 / my dx / (i + dr / d2r);
+  [ 185] 	imax [1] = 0;
+  [ 186] 	for (integer i = 2; i < maximumLag && i < brent_ixmax; i ++)
+  [ 187] 		if (r [i] > 0.5 * voicingThreshold &&   // not too unvoiced?
+  [ 188] 			r [i] > r [i-1] && r [i] >= r [i+1])   // maximum?
+  [ 189] 	{
+  [ 190] 		integer place = 0;
+  [ 191] 
+  [ 192] 		/*
+  [ 193] 			Use parabolic interpolation for first estimate of frequency,
+  [ 194] 			and sin(x)/x interpolation to compute the strength of this frequency.
+  [ 195] 		*/
+  [ 196] 		const double dr = 0.5 * (r [i+1] - r [i-1]);
+  [ 197] 		const double d2r = (r [i] - r [i-1]) + (r [i] - r [i+1]);
+  [ 198] 				// not 2.0 * r [i] - r [i-1] - r [i+1] because of rounding errors! (bug removed 2025-04-18)
+  [ 199] 		Melder_assert (d2r > 0.0);
   ... (1 more lines)
   [PASS] Verified token: 'for (integer i = 2; i < maximumLag && i < brent_ixmax; i ++)'
   [PASS] Verified token: 'frequencyOfMaximum'
 
 [Sound_to_Pitch.cpp lines 250-260] sinc70 / Brent refinement (NUMimproveMaximum)
-  [ 250] 		if (method != AC_HANNING || pitchFrame -> candidates [i]. frequency > 0.0 / my dx) {
-  [ 251] 			double xmid, ymid;
-  [ 252] 			const integer offset = - brent_ixmax - 1;
-  [ 253] 			ymid = NUMimproveMaximum (constVEC (& r [offset + 1], brent_ixmax - offset), imax [i] - offset,
-  [ 254] 					pitchFrame -> candidates [i]. frequency > 0.3 / my dx ? NUM_PEAK_INTERPOLATE_SINC700 : brent_depth, & xmid);
-  [ 255] 			xmid += offset;
-  [ 256] 			pitchFrame -> candidates [i]. frequency = 1.0 / my dx / xmid;
-  [ 257] 			if (ymid > 1.0)
-  [ 258] 				ymid = 1.0 / ymid;
-  [ 259] 			pitchFrame -> candidates [i]. strength = ymid;
-  [ 260] 		}
+  [ 250] 
+  [ 251] 	/*
+  [ 252] 		Second pass: for extra precision, maximize sin(x)/x interpolation ('sinc').
+  [ 253] 	*/
+  [ 254] 	for (integer i = 2; i <= pitchFrame -> nCandidates; i ++) {
+  [ 255] 		if (method != AC_HANNING || pitchFrame -> candidates [i]. frequency > 0.0 / my dx) {
+  [ 256] 			double xmid, ymid;
+  [ 257] 			const integer offset = - brent_ixmax - 1;
+  [ 258] 			ymid = NUMimproveMaximum (constVEC (& r [offset + 1], brent_ixmax - offset), imax [i] - offset,
+  [ 259] 					pitchFrame -> candidates [i]. frequency > 0.3 / my dx ? NUM_PEAK_INTERPOLATE_SINC700 : brent_depth, & xmid);
+  [ 260] 			Melder_assert (isdefined (xmid));
   [PASS] Verified token: 'NUMimproveMaximum'
   [PASS] Verified token: 'brent_depth'
   [PASS] Verified token: 'candidates [i]. frequency'
 
 [Sound_to_Pitch.cpp lines 365-375] globalPeak over the entire sound (amplitude silence reference)
-  [ 365] 		globalPeak = 0.0;
-  [ 366] 		for (integer ichan = 1; ichan <= my ny; ichan ++) {
-  [ 367] 			const double mean = NUMmean (my z.row (ichan));
-  [ 368] 			for (integer i = 1; i <= my nx; i ++) {
-  [ 369] 				double value = fabs (my z [ichan] [i] - mean);
-  [ 370] 				if (value > globalPeak)
-  [ 371] 					globalPeak = value;
-  [ 372] 			}
-  [ 373] 		}
-  [ 374] 		if (globalPeak == 0.0)
-  [ 375] 			return thee;
+  [ 365] 			Create (too much) space for candidates.
+  [ 366] 		*/
+  [ 367] 		for (integer iframe = 1; iframe <= numberOfFrames; iframe ++) {
+  [ 368] 			const Pitch_Frame pitchFrame = & thy frames [iframe];
+  [ 369] 			Pitch_Frame_init (pitchFrame, maxnCandidates);
+  [ 370] 		}
+  [ 371] 
+  [ 372] 		/*
+  [ 373] 			Compute the global absolute peak for determination of silence threshold.
+  [ 374] 		*/
+  [ 375] 		globalPeak = 0.0;
   [PASS] Verified token: 'globalPeak'
-  [PASS] Verified token: 'NUMmean'
+  [FAIL] Token 'NUMmean' not found in lines 365-375
 
 [Sound_to_Pitch.cpp lines 412-416] Hanning window formula w[i] = 0.5 - 0.5*cos(2*pi*i/(N+1))
-  [ 412] 			} else {   // Hanning window
-  [ 413] 				for (integer i = 1; i <= nsamp_window; i ++)
-  [ 414] 					window [i] = 0.5 - 0.5 * cos (NUM2pi * i / (nsamp_window + 1));
-  [ 415] 			}
-  [ 416] 
-  [PASS] Verified token: '0.5 - 0.5 * cos'
+  [ 412] 			/*
+  [ 413] 				A Gaussian or Hanning window is applied against phase effects.
+  [ 414] 				The Hanning window is 2 to 5 dB better for 3 periods/window.
+  [ 415] 				The Gaussian window is 25 to 29 dB better for 6 periods/window.
+  [ 416] 			*/
+  [FAIL] Token '0.5 - 0.5 * cos' not found in lines 412-416
 
 [Sound_to_Pitch.cpp lines 422-435] window FFT, windowR autocorrelation, normalisation, and brent_ixmax
-  [ 422] 			NUMfft_forward (fftTable.get(), windowR.get());
-  [ 423] 			windowR [1] *= windowR [1];   // DC component
-  [ 424] 			for (integer i = 2; i < nsampFFT; i += 2) {
-  [ 425] 				windowR [i] = windowR [i] * windowR [i] + windowR [i + 1] * windowR [i + 1];
-  [ 426] 				windowR [i + 1] = 0.0;   // power spectrum: square and zero
-  [ 427] 			}
-  [ 428] 			windowR [nsampFFT] *= windowR [nsampFFT];   // Nyquist frequency
-  [ 429] 			NUMfft_backward (fftTable.get(), windowR.get());   // autocorrelation
-  [ 430] 			for (integer i = 2; i <= nsamp_window; i ++)
-  [ 431] 				windowR [i] /= windowR [1];   // normalize
-  [ 432] 			windowR [1] = 1.0;   // normalize
-  [ 433] 
-  [ 434] 			brent_ixmax = Melder_ifloor (nsamp_window * interpolation_depth);
-  [ 435] 		}
+  [ 422] 			} else {   // Hanning window
+  [ 423] 				for (integer i = 1; i <= nsamp_window; i ++)
+  [ 424] 					window [i] = 0.5 - 0.5 * cos (NUM2pi * i / (nsamp_window + 1));
+  [ 425] 			}
+  [ 426] 
+  [ 427] 			/*
+  [ 428] 				Compute the normalized autocorrelation of the window.
+  [ 429] 			*/
+  [ 430] 			for (integer i = 1; i <= nsamp_window; i ++)
+  [ 431] 				windowR [i] = window [i];
+  [ 432] 			NUMfft_forward (fftTable.get(), windowR.get());
+  [ 433] 			windowR [1] *= windowR [1];   // DC component
+  [ 434] 			for (integer i = 2; i < nsampFFT; i += 2) {
+  [ 435] 				windowR [i] = windowR [i] * windowR [i] + windowR [i + 1] * windowR [i + 1];
   [PASS] Verified token: 'windowR'
-  [PASS] Verified token: 'brent_ixmax'
+  [FAIL] Token 'brent_ixmax' not found in lines 422-435
 
 [Pitch.cpp lines 543-545] timeStepCorrection = 0.01 / my dx scaling for octave-jump and V/UV costs
   [ 543] 		const double timeStepCorrection = 0.01 / my dx;
@@ -237,5 +235,5 @@ VERIFYING PRAAT 7.0.03 CITATIONS IN CHAPTER 0
   [PASS] Verified token: 'octaveCost'
 
 ================================================================================
-ALL PRAAT 7.0.03 CITATIONS VERIFIED SUCCESSFULLY.
+SOME CITATIONS FAILED VERIFICATION.
 ================================================================================

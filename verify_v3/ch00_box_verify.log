@@ -1,6 +1,6 @@
-Box verification 2026-11-11 02:24:10 +07
-Praat: Praat 7.0.03 (November 8 2026)
-praat R1/R2 clean+snr5 regenerated: identical to golden_v2/out/praat*_R{1,2}.tsv (4/4)
-golden_v2/compare.py rerun: compare_report.md unchanged
-hdl_check tb_mac638: results checked = 3040, errors = 0
-pair_counter: TEST SUMMARY: Total tests = 201, Total errors = 0
+Box verification r1 2026-11-11 03:17:48 +07 on HEAD 0d0819d
+Praat source used for line check: /workspace/tools/praat_src (7.0.03, commit 6a9874e, 2026-11-08)
+ch00_praat_lines.py: 5 FAIL tokens (laptop log claimed all pass; laptop used an older Praat tree)
+pair_counter: TEST SUMMARY: Total tests = 201, Total errors = 0; stream diff N<=40: 17865 cycles verified line-by-line with 0 diffs across 90 configs
+hdl_check tb_mac638: 3040 results, 0 errors, 98543 cycles/frame
+other ch00 scripts: rc=0, output identical to laptop logs (modulo CRLF)

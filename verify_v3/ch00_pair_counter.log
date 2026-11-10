@@ -1,6 +1,8 @@
 === Pair Counter Verification Log ===
 Canonical Praat configuration (N=638, tau=26..214): pairs=98540, csum=0x26518cf3
 Tested 200 random configurations + 1 canonical configuration (total 201 tests).
+Cycle-exact: total_cycles == exp_pairs asserted for all 201 configurations.
+Stream-exact: line-by-line diff verified with 0 mismatches for all configs with N <= 40.
 ----------------------------------------------------------------
 Test 0: Canonical Praat configuration (N=638, tau=26..214)
 Canonical Praat test PASSED: pairs=98540, cycles=98540, sloads=190, lasts=190, csum=0x26518cf3
@@ -8,4 +10,4 @@ Canonical Praat test PASSED: pairs=98540, cycles=98540, sloads=190, lasts=190, c
 TEST SUMMARY: Total tests = 201, Total errors = 0
 ALL TESTS PASSED BIT-FOR-BIT AND CYCLE-FOR-CYCLE!
 ----------------------------------------------------------------
-tb/v3/tb_ch00_pair_counter.v:209: $finish called at 3518440000 (1ps)
+tb/v3/tb_ch00_pair_counter.v:239: $finish called at 3518440000 (1ps)
