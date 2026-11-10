@@ -122,7 +122,7 @@ A part missing either block, or missing the "why it matches the IP" explanation,
   - Fix every "vừa khít 1 M10K" and the "4 M10K" budget in Ch.0.
   - Or present the alternatives (half-table window ROM of 320 words, which fits in 1 block).
   - Say "kiểm tra bằng báo cáo Fitter".
-- **A8, silence threshold.** Ch.1 §1.10 uses a hard energy gate (Rx[0]/Eref, θ² = 0.0009), but Praat uses the amplitude ratio localPeak/globalPeak as a soft cost in the unvoiced candidate. Align Ch.1 with Ch.10. If an FPGA hard gate is kept, call it a deliberate approximation and give the reason.
+- **A8 + Argon R3, silence/voicing gate (DECIDED).** Ch.1 §1.10 and Ch.10 must use ONE method: the Ch.1.10 integer cross-multiply with no division and no DSP (silence: `R0*10000 < 9*E_ref`; voicing: `best_score*100 >= 45*R0`). Rewrite Ch.10 to this method and remove the amplitude max|x| >= S·P_global and `ra_q14 >= 7372` division path. State honestly that Praat's silenceThreshold compares localPeak/globalPeak AMPLITUDE as a soft cost in the unvoiced candidate; the FPGA uses its energy square (0.03^2 = 0.0009 = 9/10000) as a deliberate integer approximation, and explain when the two differ.
 - **A9, missing C[τ].** Forgetting C[τ] biases the result toward SMALL τ (high pitch), not toward large τ / octave down. Fix Ch.14 (p.152 item 6, p.154–155).
 - **A10, Hanning form.** Praat uses N+1 with a full 640-word table. Remove "dạng cổ điển N−1, nửa bảng" from Ch.14.
 - **A11.** Octave cost in Praat is SUBTRACTIVE (−octaveCost·log2(ceiling/F0)). If Ch.8 folds it into a multiplicative ROM factor, call that an approximation and say where it holds.
@@ -140,6 +140,25 @@ A part missing either block, or missing the "why it matches the IP" explanation,
   - Remove "Soft Upsampling / dọn mép Nyquist" wording (A3), and "Tiết kiệm 66%".
 - **Figures and listings.** The Hình 9 caption says step 2 is deleted although the text keeps it. The Listing 2 caption is broken.
 
+
+## 6b. Items from the Argon review (verified by the reviewer; see audit section 8)
+- **Delete all leaked meta/prompt text**: "Giữ nguyên v10 … pp.1–38", "Chính sách DIFF", "Giữ DIFF và v10. Chính sách gói tài liệu…" (Ch.14 p.152 items 13–14, p.153), and "ghi chú DIFF" (Ch.13 p.149). The reader must never see notes addressed to writers.
+- **Complete every stub or half-commented RTL** as full synthesizable code, verified with iverilog against a twin:
+  - `i2s_rx` (Ch.2: `// reg [4:0] bit_cnt; reg [15:0] shreg;` is commented out);
+  - `mac_autocorr` (Ch.7: empty body; give an FSM IDLE/RUN/DONE with pair_cnt and a 41/48-bit accumulator);
+  - `window_hanning` (Ch.6: the ROM is read combinationally; use `w_q_r <= rom[n]`, then multiply `x_q_d1 * w_q_r` the next cycle, matching an M10K with registered output);
+  - the sliding RAM (Ch.5: put the `rd_base <= n_w` latch at frame_req into the RTL, which currently has only a free-running rd_ptr).
+- **Fix overlapping figure labels**: Fig 7 (p.40, the block-diagram arrow labels overlap the boxes), Fig 26 (p.91, text ~5 pt, enlarge), Fig 30 (p.104, the w_q/"chốt" labels collide with the waveform), Fig 57 (p.147, "GPE/VDE" overlaps the "float twin" box). After rendering, LOOK at each one.
+- **Duplicate removal**: Ch.11 §11.5c repeats the §11.5 RTL (the same logic, only the comments differ). Merge them into one section with a line-by-line explanation; nothing is lost.
+- **Ch.8 octave cost**: give the formula so the reader can hand-compute 17070. C_q[τ] = round(C[τ] · 2^(−0.01·log2(600/F0)) · 8192), F0 = 16000/τ. At τ = 214: F0 = 74.766 Hz, factor 0.979390, 17429 → 17070 (golden `scoring_rom_q13`). Say that this is a multiplicative stand-in for Praat's subtractive cost.
+- **Ch.9 Mode B signs**: D < 0 at a true peak and N can have either sign. Negate both (N_pos = S₊ − S₋, D_pos = −D > 0) so the divider always sees a positive denominator, and state LPM_DIVIDE's truncation toward zero and its effect on rounding.
+- **Ch.1 §1.8 (p.58) parabolic**: bring the explicit algebra up here from Ch.9: x = −1, 0, 1 give r₋ = a − b + c, r* = c, r₊ = a + b + c, so a and b follow, and 2ax + b = 0 gives the peak.
+- **Ch.2 Gray code**: explain why n ^ (n >> 1) changes exactly one bit per increment. An increment flips a run of trailing 1s plus one 0; XOR with the shifted copy cancels every adjacent-equal flip, and only the boundary bit changes.
+- **Ch.3 §3.3**: explain why `<<15` into 32 bits. The difference needs 17 bits (Q2.15), and placed as Q2.30 in y_acc, the 15 LSBs are the residue reservoir so that `>>>8` does not create a dead band. Add the bridge that puts DC (z = +1, the notch below 10 Hz) and Nyquist (z = −1, the 48-tap linear-phase FIR wall 8→24 kHz at −60 dB) on the same unit circle.
+- **Polyphase**: Argon suggested mod-3 grouping for 2/3. **That is WRONG for ↑2↓3 — do NOT do it.** Keep E0 = even taps and E1 = odd taps (section 4). Mod-3 grouping may appear ONLY as a clearly labelled stepping stone for a pure ↓3 decimator, before showing why ↑2 changes the picture.
+- **p.51 DFT example**: the minus sign IS printed. The real error is that the signal is fs/4, not Nyquist (A5). Use [1,−1,1,−1,…]: X[4] = 8 and G[4] = 0 kills it.
+- **Single median3 module**: `f_out <= med(f_in_gated, d0, d1)`, with no extra m_reg, shared by Ch.1 Listing 3 and Ch.10. The one-frame group delay is inherent; say so.
+
 ## 7. Per-chapter findings
 Fix all of these. Page numbers are printed pages of the current PDF.
 - **Ch.0** (p.40–49):
@@ -152,7 +171,7 @@ Fix all of these. Page numbers are printed pages of the current PDF.
 - **Ch.1** (p.50–71):
   - §1.1: retitle and fix per A3/A5, and fix the Hình 9 caption.
   - §1.5: split DFT / butterfly / Parseval / BFP into separate parts. Define "depth" in nsampFFT and connect it to N ≥ L + τmax.
-  - §1.8: explain Brent. §1.10: per A8.
+  - §1.8: explain Brent. §1.10: per A8 (cross-multiply kept; label it an approximation of Praat). Parabolic algebra moved up to §1.8 (Argon R11). Fix the DFT example per A5 (the minus sign is fine). Make Listing 3 the single median3 module (no m_reg), shared with Ch.10.
   - Rewrite the 10-parameter table (tr.69) and the T3 solutions (tr.70–71) as prose.
   - A6 everywhere. Fix the Listing 2 caption.
   - Steps 1–9 need a twin + HDL per step. For Bước 1 (offline FFT), give the Python twin and an HDL that explains what the FPGA does instead (FIR), or why there is no HDL.
