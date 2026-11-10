@@ -7,7 +7,7 @@ Verifying Sampled.h (lines 34-36):
   [  35] static inline integer Sampled_xToHighIndex    (constSampled me, double x) { return Melder_iceiling ((x - my x1) / my dx + 1.0); }
   [  36] static inline integer Sampled_xToNearestIndex (constSampled me, double x) { return Melder_iround   ((x - my x1) / my dx + 1.0); }
   [PASS] Verified token: 'Sampled_xToLowIndex'
-  [FAIL] Token 'Melder_ifloor ((x - my x1) / my dx) + 1' not found in lines 34-36
+  [PASS] Verified token: 'Melder_ifloor   ((x - my x1) / my dx + 1.0)'
 
 Verifying Sampled.cpp (lines 71-82):
   [  71] void Sampled_shortTermAnalysis (constSampled me, double windowDuration, double timeStep, integer *numberOfFrames, double *firstTime) {
@@ -33,7 +33,7 @@ Verifying Sound_to_Pitch.cpp (lines 50-55):
   [  53] 	integer startSample, endSample;
   [  54] 
   [  55] 	for (integer channel = 1; channel <= my ny; channel ++) {
-  [FAIL] Token 'leftSample = Sampled_xToLowIndex (me, t);' not found in lines 50-55
+  [PASS] Verified token: 'integer leftSample = Sampled_xToLowIndex (me, t), rightSample = leftSample + 1;'
   [PASS] Verified token: 'rightSample = leftSample + 1;'
 
 Verifying Sound_to_Pitch.cpp (lines 375-385):
@@ -49,9 +49,9 @@ Verifying Sound_to_Pitch.cpp (lines 375-385):
   [ 384] 		if (globalPeak == 0.0)
   [ 385] 			return thee;
   [PASS] Verified token: 'globalPeak = 0.0;'
-  [FAIL] Token 'mean += my z [channel] [i];' not found in lines 375-385
+  [PASS] Verified token: 'const double mean = NUMmean (my z.row (ichan));'
   [PASS] Verified token: 'if (value > globalPeak)'
 
 ================================================================================
-SOME CITATIONS FAILED VERIFICATION.
+ALL PRAAT 7.0.03 CITATIONS FOR CH01 VERIFIED SUCCESSFULLY.
 ================================================================================

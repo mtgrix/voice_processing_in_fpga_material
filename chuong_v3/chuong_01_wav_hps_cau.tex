@@ -1252,7 +1252,7 @@ vvp sim_ch01_fifo
 iverilog -g2012 -Wall -I rtl/v3 -o sim_ch01_fifo_out tb/v3/tb_ch01_fifo_out.v rtl/v3/ch01_fifo_out.v
 vvp sim_ch01_fifo_out
 \end{lstlisting}
-\todo{box: verify again in r2}
+Kết quả chạy trên Linux (Icarus Verilog 12, \texttt{verify\_v3/ch01\_iverilog.log}): \texttt{tb\_ch01\_fifo} khớp twin 2\,107/2\,107 chu kỳ, \texttt{tb\_ch01\_fifo\_out} khớp 1\,217/1\,217 chu kỳ, 0 lỗi so sánh.
 
 \subsubsection*{Bảng so sánh tổng kết: IP On-Chip FIFO của Intel so với HDL tự viết}
 Bảng \ref{tab:ch01_ip_vs_hdl} cung cấp bức tranh đối chiếu toàn diện giữa phương án sử dụng IP đóng gói sẵn của Intel và phương án tự hiện thực bằng HDL:

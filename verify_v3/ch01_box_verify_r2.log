@@ -1,0 +1,13 @@
+=== [1/2] Compiling and running tb_ch01_fifo ===
+=== STARTING CH01 AVALON FIFO CYCLE-BY-CYCLE VERIFICATION ===
+Simulation completed 2107 cycles.
+Total comparison errors: 0
+=== [PASS] CH01 AVALON FIFO MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 2107 CYCLES ===
+tb/v3/tb_ch01_fifo.v:176: $finish called at 42211000 (1ps)
+=== [2/2] Compiling and running tb_ch01_fifo_out ===
+=== STARTING CH01 RETURN FIFO OUT CYCLE-BY-CYCLE VERIFICATION ===
+Simulation completed 1217 cycles.
+Total comparison errors: 0
+=== [PASS] CH01 RETURN FIFO OUT MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 1217 CYCLES ===
+tb/v3/tb_ch01_fifo_out.v:167: $finish called at 24411000 (1ps)
+=== All Chapter 1 iverilog testbenches passed successfully! ===

@@ -6,10 +6,8 @@ Total comparison errors: 0
 tb/v3/tb_ch01_fifo.v:176: $finish called at 42211000 (1ps)
 === [2/2] Compiling and running tb_ch01_fifo_out ===
 === STARTING CH01 RETURN FIFO OUT CYCLE-BY-CYCLE VERIFICATION ===
-[FAIL] Cycle 1: mm_waitrequest mismatch (got 1, exp 0)
-[FAIL] Cycle 1216: mm_waitrequest mismatch (got 1, exp 0)
 Simulation completed 1217 cycles.
-Total comparison errors: 2
-=== [FAIL] CH01 RETURN FIFO OUT FAILED WITH 2 ERRORS ===
+Total comparison errors: 0
+=== [PASS] CH01 RETURN FIFO OUT MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 1217 CYCLES ===
 tb/v3/tb_ch01_fifo_out.v:167: $finish called at 24411000 (1ps)
 === All Chapter 1 iverilog testbenches passed successfully! ===
