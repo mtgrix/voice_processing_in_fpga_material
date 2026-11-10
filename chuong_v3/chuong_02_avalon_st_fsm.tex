@@ -238,3 +238,164 @@ Hệ số thời gian thực ($\text{RTF}_{\text{MAC}}$) & \textbf{0,197} & \tex
 
 \textit{Tóm lại: Khi xử lý tệp âm thanh, không có đồng hồ 16 kHz nào chi phối bước chạy; lõi FPGA tính toán ở tốc độ cực đại 50 MHz với 98.543 chu kỳ cho mỗi bước nhảy 160 mẫu (616 chu kỳ/mẫu), hoàn tất một khung 10 ms chỉ trong 1,97 ms, đạt hệ số thời gian thực RTF = 0,197 so với ngân sách 500.000 chu kỳ.}
 
+\subsection*{2.3. Kỹ thuật mã hóa FSM: Đánh đổi tài nguyên và độ trễ trên kiến trúc Cyclone V}
+\addcontentsline{toc}{subsection}{2.3. Kỹ thuật mã hóa FSM: Đánh đổi tài nguyên và độ trễ trên kiến trúc Cyclone V}
+
+\subsubsection*{Vấn đề thực tế: Từ câu lệnh switch-case trừu tượng đến cổng logic vật lý}
+Trong ngôn ngữ mô tả phần cứng Verilog, máy trạng thái hữu hạn FSM (Finite State Machine) thường được lập trình viên biểu diễn dưới dạng câu lệnh rẽ nhánh trừu tượng: \texttt{case (state\_reg) ... endcase}. Nhìn trên màn hình soạn thảo mã nguồn, việc chuyển trạng thái trông giống như một phép gán biến tức thời trong ngôn ngữ C.
+
+Nhưng lớp silicon bên dưới hoàn toàn không có khái niệm ``trạng thái trừu tượng''. Mọi trạng thái bắt buộc phải được số hóa thành một chuỗi các bit nhị phân lưu trữ trong các phần tử nhớ tuần tự---các thanh ghi flip-flop (FF). Phần mềm tổng hợp logic Quartus Prime khi phân tích mã nguồn sẽ phải đối mặt với câu hỏi cốt lõi: \textbf{Mỗi trạng thái nên được gán bằng tổ hợp bit nào để mạch chạy nhanh nhất ($F_{\max}$ cao nhất) mà tốn ít diện tích nhất?}
+
+Cách thức gán bit cho trạng thái (State Encoding) chi phối trực tiếp hai yếu tố sống còn của mạch tích hợp:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Số lượng thanh ghi flip-flop tiêu tốn:} Ảnh hưởng tới dung lượng tài nguyên tuần tự của chip.
+    \item \textbf{Độ sâu và độ phức tạp của mạng logic tổ hợp (Combinational Logic Depth):} Logic chuyển trạng thái tiếp theo (\texttt{next\_state}) và logic sinh tín hiệu ngõ ra (\texttt{outputs}) đòi hỏi mạng cổng logic LUT (Look-Up Table) có số đầu vào (fan-in) rộng hay hẹp. Mạng logic càng sâu, thời gian truyền trễ (propagation delay) càng lớn, kéo tụt tần số hoạt động tối đa $F_{\max}$ của hệ thống.
+\end{enumerate}
+
+\subsubsection*{Khảo sát 6 phương án mã hóa trong thiết lập State Machine Processing của Quartus}
+Trong cửa sổ cấu hình dự án của Quartus Prime (\emph{Assignments $\to$ Settings $\to$ Compiler Settings $\to$ Advanced Settings (Synthesis) $\to$ State Machine Processing}), công cụ cung cấp đúng 6 phương án xử lý máy trạng thái:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Auto (Tự động - Mặc định):} Quartus tự động phân tích cấu trúc FSM dựa trên thuật toán tối ưu hóa nội bộ. Với hầu hết các máy trạng thái trong FPGA có số trạng thái nhỏ hơn hoặc bằng 32, Quartus sẽ tự động chuyển đổi sang mã hóa One-Hot nhằm tối đa hóa tần số $F_{\max}$.
+    \item \textbf{One-Hot (Một bit tích cực):} Nếu FSM có $S$ trạng thái, bộ mã hóa sử dụng đúng $S$ thanh ghi flip-flop. Tại một thời điểm bất kỳ, \emph{chỉ có duy nhất 1 thanh ghi mang giá trị 1}, tất cả các thanh ghi còn lại mang giá trị 0. 
+    \item \textbf{Minimal Bits (Nhị phân tối thiểu - Binary):} Số thanh ghi flip-flop sử dụng là giá trị nhỏ nhất đủ để biểu diễn $S$ trạng thái: $K = \lceil \log_2 S \rceil$. Các trạng thái được đánh số nhị phân tuần tự từ $0$ đến $S-1$.
+    \item \textbf{Gray (Mã Gray chuyển mạch đơn bit):} Sử dụng $K = \lceil \log_2 S \rceil$ thanh ghi, nhưng các trạng thái liền kề nhau trong chu trình hoạt động chỉ khác nhau đúng \textbf{1 bit duy nhất}.
+    \item \textbf{Johnson (Mã vòng lặp đảo Moebius):} Sử dụng $K = \lceil S / 2 \rceil$ thanh ghi dưới dạng một thanh ghi dịch vòng tròn với đầu ra đảo quay về đầu vào. Hai trạng thái liên tiếp cũng chỉ lệch nhau đúng 1 bit.
+    \item \textbf{User-Encoded (Mã hóa do người dùng định nghĩa):} Quartus tôn trọng tuyệt đối giá trị gán bit mà người thiết kế đã khai báo trong mã nguồn Verilog (\texttt{parameter} hoặc \texttt{localparam}), không tự ý trích xuất hoặc thay đổi.
+\end{enumerate}
+
+\subsubsection*{Phân tích so sánh trên máy trạng thái 5 trạng thái điển hình}
+Để làm sáng tỏ bản chất của từng phương án, hãy xét một máy trạng thái điều khiển khung điển hình gồm $S = 5$ trạng thái xuất hiện xuyên suốt trong bộ xử lý âm thanh:
+\begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+    \item \texttt{S\_IDLE} (Trạng thái nghỉ, chờ tín hiệu \texttt{start})
+    \item \texttt{S\_LOAD} (Nạp mẫu âm thanh từ FIFO vào RAM khung)
+    \item \texttt{S\_CALC} (Kích hoạt lõi tính toán tự tương quan MAC)
+    \item \texttt{S\_DRAIN} (Đẩy kết quả cao độ ra bộ đệm xuất)
+    \item \texttt{S\_DONE} (Phát xung báo hoàn tất và quay về \texttt{S\_IDLE})
+\end{itemize}
+
+Dưới đây là bảng phân bổ tổ hợp bit và đánh giá chi phí phần cứng của 4 phương án mã hóa tiêu biểu:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4.5pt}
+\caption{So sánh các phương án mã hóa trạng thái cho FSM 5 trạng thái}
+\label{tab:ch02_fsm_encodings}
+\begin{tabular}{lcccc}
+\toprule
+Trạng thái FSM & Minimal Bits (Binary) & One-Hot & Mã Gray & Mã Johnson \\
+\midrule
+\texttt{S\_IDLE}  & \texttt{000} & \texttt{00001} & \texttt{000} & \texttt{000} \\
+\texttt{S\_LOAD}  & \texttt{001} & \texttt{00010} & \texttt{001} & \texttt{001} \\
+\texttt{S\_CALC}  & \texttt{010} & \texttt{00100} & \texttt{011} & \texttt{011} \\
+\texttt{S\_DRAIN} & \texttt{011} & \texttt{01000} & \texttt{010} & \texttt{111} \\
+\texttt{S\_DONE}  & \texttt{100} & \texttt{10000} & \texttt{110} & \texttt{110} \\
+\midrule
+Số flip-flop ($K$) & \textbf{3 FF} & \textbf{5 FF} & \textbf{3 FF} & \textbf{3 FF} \\
+Số trạng thái thừa & $2^3 - 5 = 3$ & $2^5 - 5 = 27$ & $2^3 - 5 = 3$ & $2^3 - 5 = 3$ \\
+Fan-in giải mã ngõ ra & 3 biến (cần LUT3) & \textbf{1 biến (Dây nối)} & 3 biến (cần LUT3) & 2 biến (cần LUT2) \\
+Độ trễ giải mã ngõ ra & Trễ qua cổng LUT & \textbf{0 ns (Không tốn cổng)} & Trễ qua cổng LUT & Trễ qua cổng LUT \\
+Chuyển mạch đơn bit? & Không (001 $\to$ 010: 2 bit) & Không (2 bit đổi) & \textbf{Có (luôn 1 bit)} & \textbf{Có (luôn 1 bit)} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Bản chất đánh đổi:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Minimal Bits (Binary):} Tiết kiệm thanh ghi nhất (chỉ tốn 3 FF cho 5 trạng thái). Nhưng để biết máy trạng thái có đang ở \texttt{S\_CALC} hay không, mạch phải giải mã biểu thức logic tổ hợp 3 biến: $\texttt{calc\_en} = \overline{s_2} \cdot s_1 \cdot \overline{s_0}$. Tín hiệu này buộc phải đi qua một bảng tra LUT 3 đầu vào, làm tiêu tốn tài nguyên ALM và thêm độ trễ truyền lan vào đường tới hạn.
+    \item \textbf{One-Hot:} Tốn nhiều thanh ghi nhất (5 FF cho 5 trạng thái). Nhưng đổi lại, để kích hoạt tín hiệu tính toán, ta chỉ cần nối thẳng đường dây từ flip-flop thứ 2: $\texttt{calc\_en} = s[2]$! \textbf{Hoàn toàn không tốn bất kỳ cổng logic hay bảng tra LUT nào cho việc giải mã ngõ ra}. Đường chuyển trạng thái kế tiếp cũng chỉ là các cổng AND/OR 2 đầu vào đơn giản ($s_{\text{next}}[2] = s[1] \cdot \texttt{load\_done} + s[2] \cdot \overline{\texttt{calc\_done}}$). Do đó, One-Hot triệt tiêu độ trễ tổ hợp và cho tần số $F_{\max}$ vượt trội.
+\end{itemize}
+
+\subsubsection*{Bối cảnh vi kiến trúc Cyclone V: Vì sao One-Hot gần như miễn phí?}
+Một số tài liệu cũ (như ghi chép của Argon) cảnh báo rằng: \emph{``Cần hạn chế One-Hot vì chip chỉ có khoảng 68.000 thanh ghi, nên dùng Minimal Bits để tiết kiệm tài nguyên''}. Đây là một nhận định sai lầm nghiêm trọng xuất phát từ việc không nắm vững kiến trúc vật lý của chip Cyclone V SoC.
+
+Trên bo mạch DE10-Standard, vi mạch FPGA là dòng Cyclone V SoC 5CSXFC6D6F31C6N. Theo tài liệu chính thức \emph{Cyclone V Device Handbook} (Volume 1: Device Interfaces and Integration):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Chip sở hữu đúng \textbf{41.910 khối logic thích nghi ALM (Adaptive Logic Module)}.
+    \item Mỗi khối ALM của Cyclone V không chỉ chứa các bảng tra LUT phân chia được (fracturable LUT), mà còn tích hợp sẵn \textbf{bốn thanh ghi flip-flop chuyên dụng} (4 dedicated D-type registers).
+    \item Tổng số lượng thanh ghi flip-flop khả dụng trên toàn chip là một con số khổng lồ:
+    \begin{equation}
+    N_{\text{registers}} = 41.910 \times 4 = \textbf{166.036 thanh ghi flip-flop}
+    \end{equation}
+\end{itemize}
+
+Toàn bộ hệ thống ước lượng cao độ $F_0$ từ đầu đến cuối (bao gồm cả bộ đệm FIFO, khối trừ trung bình, khối Hanning và khối MAC) chỉ sử dụng chưa tới $2.500$ thanh ghi (chiếm khoảng $1{,}5\%$ tài nguyên chip). 
+
+Trong một con chip có sẵn $166.036$ thanh ghi, việc bỏ thêm 2 thanh ghi FF để chuyển FSM từ 3 bit (Binary) sang 5 bit (One-Hot) là một sự đánh đổi \textbf{hoàn toàn miễn phí về mặt tài nguyên}. Ngược lại, việc giảm được số tầng logic LUT tổ hợp sẽ giúp thiết kế dễ dàng đạt thời gian định thời (timing closure) ở 50 MHz mà không gây áp lực lên khâu định tuyến (routing) của phần mềm Quartus Fitter.
+
+\subsubsection*{Chứng minh toán học: Bản chất chuyển mạch đơn bit của mã Gray}
+Mã Gray (Gray Code) là một phát minh kinh điển của Frank Gray (1953), giữ vai trò then chốt trong các bộ đếm con trỏ FIFO bất đồng bộ giữa hai miền xung nhịp khác nhau. Thuật toán chuyển đổi từ số nhị phân $n$ sang mã Gray $G(n)$ được hiện thực hóa bằng một dòng lệnh cực kỳ tinh gọn:
+\begin{equation}
+G(n) = n \ \oplus \ (n \gg 1)
+\end{equation}
+
+Câu hỏi toán học mang tính nguyên lý đầu tiên là: \textbf{Vì sao công thức $n \oplus (n \gg 1)$ luôn đảm bảo rằng khi $n$ tăng lên $n+1$, giá trị mã Gray $G(n)$ và $G(n+1)$ chỉ thay đổi đúng duy nhất 1 bit?}
+
+Dưới đây là chứng minh toán học chặt chẽ thông qua \textbf{Lập luận chuỗi bit 1 tận cùng (Trailing-Ones Argument)}:
+
+\textbf{Bước 1: Phân tích bản chất phép cộng 1 trong hệ nhị phân.}
+Mọi số nguyên không âm $n$ khi biểu diễn dưới dạng nhị phân đều có thể viết dưới dạng tổng quát với $k$ bit 1 liên tiếp ở phần tận cùng bên phải ($k \ge 0$):
+\begin{equation}
+n = (\dots b_{k+1} \, 0 \, \underbrace{1 \, 1 \, \dots \, 1}_{k \text{ bit 1}})_2
+\end{equation}
+Khi ta cộng thêm 1 vào số $n$, quy tắc nhớ (carry propagation) của phép cộng nhị phân sẽ lật toàn bộ $k$ bit 1 này thành số 0, và phát sinh một bit nhớ làm lật bit thứ $k$ (vốn đang là 0) thành 1. Toàn bộ các bit từ vị trí $k+1$ trở về trước hoàn toàn không bị ảnh hưởng:
+\begin{equation}
+n + 1 = (\dots b_{k+1} \, 1 \, \underbrace{0 \, 0 \, \dots \, 0}_{k \text{ bit 0}})_2
+\end{equation}
+
+Gọi $\Delta_j = b_j(n+1) \oplus b_j(n)$ là chỉ số báo hiệu bit thứ $j$ của số nhị phân có bị đổi trạng thái hay không:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Với các vị trí $0 \le j < k$: Bit cũ là 1, bit mới là 0 $\implies \Delta_j = 1 \oplus 0 = 1$.
+    \item Với vị trí $j = k$: Bit cũ là 0, bit mới là 1 $\implies \Delta_k = 0 \oplus 1 = 1$.
+    \item Với các vị trí $j > k$: Bit không đổi $\implies \Delta_j = 0$.
+\end{itemize}
+
+\textbf{Bước 2: Biểu diễn bit của mã Gray.}
+Theo định nghĩa $G(n) = n \oplus (n \gg 1)$, bit thứ $j$ của mã Gray $g_j(n)$ được tính bằng phép XOR giữa hai bit liền kề của số nhị phân:
+\begin{equation}
+g_j(n) = b_j(n) \ \oplus \ b_{j+1}(n)
+\end{equation}
+
+Xét sự thay đổi của bit thứ $j$ giữa $G(n+1)$ và $G(n)$, ký hiệu là $\delta_j = g_j(n+1) \oplus g_j(n)$:
+\begin{align}
+\delta_j &= \big[b_j(n+1) \oplus b_{j+1}(n+1)\big] \ \oplus \ \big[b_j(n) \oplus b_{j+1}(n)\big] \nonumber \\
+         &= \big[b_j(n+1) \oplus b_j(n)\big] \ \oplus \ \big[b_{j+1}(n+1) \oplus b_{j+1}(n)\big] \nonumber \\
+         &= \Delta_j \ \oplus \ \Delta_{j+1}
+\end{align}
+
+\textbf{Bước 3: Đánh giá giá trị $\delta_j$ theo ba khoảng chỉ số $j$.}
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khoảng $0 \le j < k$:} Tại khoảng này, cả $\Delta_j$ và $\Delta_{j+1}$ đều bằng 1 (vì $j+1 \le k$). Do đó:
+    \begin{equation}
+    \delta_j = 1 \ \oplus \ 1 = 0 \quad (\text{Bit thứ } j \text{ của mã Gray \textbf{không đổi}!})
+    \end{equation}
+    \item \textbf{Tại chính vị trí $j = k$:} Ta có $\Delta_k = 1$ và $\Delta_{k+1} = 0$. Do đó:
+    \begin{equation}
+    \delta_k = 1 \ \oplus \ 0 = 1 \quad (\text{Bit thứ } k \text{ của mã Gray \textbf{thay đổi}!})
+    \end{equation}
+    \item \textbf{Khoảng $j > k$:} Cả $\Delta_j$ và $\Delta_{j+1}$ đều bằng 0. Do đó:
+    \begin{equation}
+    \delta_j = 0 \ \oplus \ 0 = 0 \quad (\text{Bit thứ } j \text{ của mã Gray \textbf{không đổi}!})
+    \end{equation}
+\end{enumerate}
+
+\textbf{Kết luận toán học:} Khi chuyển từ $n$ sang $n+1$, trong toàn bộ chuỗi bit của mã Gray, \textbf{chỉ có duy nhất một bit tại vị trí $k$ (chính là số lượng bit 1 tận cùng của $n$) bị lật đảo}, khoảng cách Hamming giữa $G(n)$ và $G(n+1)$ luôn luôn bằng 1 tuyệt đối:
+\begin{equation}
+\text{HammingDistance}\big(G(n), G(n+1)\big) \equiv 1 \quad \forall n \ge 0
+\end{equation}
+
+Tính chất này đã được kịch bản \texttt{verify\_v3/ch02\_gray\_code.py} kiểm chứng tự động cho toàn bộ $1.024$ bước nhảy liên tiếp, xác nhận không có bất kỳ ngoại lệ nào.
+
+\subsubsection*{Lựa chọn kiến trúc và khuyến nghị thực hành trên Quartus}
+Từ các phân tích định lượng trên, tài liệu này xác lập quy chuẩn thực hành thiết kế FSM cho hệ thống như sau:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Mẫu viết mã (Coding Template):} Luôn áp dụng mẫu chuẩn 2 khối \texttt{always} (hoặc 3 khối \texttt{always}) rõ ràng: một khối tuần tự chốt thanh ghi trạng thái \texttt{state\_reg <= state\_next}, một khối tổ hợp thuần túy giải mã trạng thái tiếp theo \texttt{state\_next}, và các biểu thức gán liên tục gán ngõ ra. Đây là mẫu hình chuẩn mà bộ nhận dạng FSM của Quartus (State Machine Extractor) phân tích chính xác 100\%.
+    \item \textbf{Thiết lập tổng hợp:} Để tùy chọn \texttt{State Machine Processing} ở chế độ mặc định \textbf{Auto}. Trình biên dịch Quartus sẽ tự động ánh xạ FSM sang cấu hình One-Hot nhằm đạt $F_{\max}$ tối ưu.
+    \item \textbf{Kiểm tra báo cáo FSM:} Sau khi biên dịch, người thiết kế bắt buộc phải mở báo cáo \emph{Analysis \& Synthesis $\to$ State Machines} trong Quartus để đọc bảng mã hóa thực tế mà công cụ đã áp dụng \textbf{(phải đo)}.
+    \item \textbf{Tần số cực đại $F_{\max}$ thực tế:} Các giá trị $F_{\max}$ của FSM mã hóa Binary so với One-Hot là thông số \textbf{(phải đo)} thông qua công cụ Timing Analyzer (Slow 1100mV 85C Model).
+\end{enumerate}
+
+\textit{Tóm lại: Trên kiến trúc Cyclone V với 166.036 thanh ghi dồi dào, mã hóa One-Hot giải phóng hoàn toàn độ trễ giải mã tổ hợp; việc hiểu rõ bản chất toán học từ lập luận chuỗi bit 1 của mã Gray đến cấu trúc logic của One-Hot giúp ta tự tin để Quartus ở chế độ Auto và kiểm tra xác nhận qua báo cáo State Machine.}
+
+
