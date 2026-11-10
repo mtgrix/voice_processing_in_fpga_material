@@ -1,0 +1,110 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 2. Chuẩn giao tiếp Avalon-ST, ngân sách chu kỳ khi xử lý tệp và kỹ thuật mã hóa FSM}
+\addcontentsline{toc}{section}{Chương 2. Chuẩn giao tiếp Avalon-ST, ngân sách chu kỳ khi xử lý tệp và kỹ thuật mã hóa FSM}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất cơ chế bắt tay dòng chảy dữ liệu (streaming handshake) theo chuẩn giao tiếp công nghiệp Intel Avalon Streaming (Avalon-ST), phân biệt rõ ràng giữa hai tín hiệu kiểm soát \texttt{valid} (hợp lệ) và \texttt{ready} (sẵn sàng).
+    \item Phân tích cặn kẽ cạm bẫy kỹ thuật của thông số \texttt{readyLatency} (độ trễ sẵn sàng 0 chu kỳ so với 1 chu kỳ), giải mã cơ chế gây thất thoát dữ liệu âm thanh một cách im lặng khi kết nối các khối sở hữu trí tuệ (IP core) của Intel.
+    \item Xác lập ngân sách chu kỳ xung nhịp chính xác từ nguyên lý đầu tiên cho hệ thống ước lượng cao độ $F_0$ khi dữ liệu đầu vào được cấp phát từ tệp WAV thay vì từ bộ giải mã âm thanh ngoại vi; phân định rõ sự khác biệt giữa thước đo thời gian thực vật lý và tốc độ tính toán phần cứng.
+    \item Khảo sát toàn diện 6 phương án mã hóa máy trạng thái hữu hạn FSM (Finite State Machine) trên phần mềm tổng hợp Quartus Prime; đánh giá sự đánh đổi giữa tài nguyên thanh ghi flip-flop (FF) và cổng logic tổ hợp (LUT) trên kiến trúc FPGA Intel Cyclone V SoC.
+    \item Chứng minh toán học chặt chẽ tính chất chuyển mạch đơn bit của mã Gray (\texttt{n \^{} (n >> 1)}) thông qua lập luận chuỗi bit 1 tận cùng (trailing-ones argument).
+    \item Thiết kế và hiện thực hóa khối đệm trượt (Skid Buffer) hai tầng chốt bằng ngôn ngữ Verilog-2001 nhằm triệt tiêu đường phản áp tổ hợp ngược (combinational backpressure loop), bảo toàn 100\% thông lượng truyền thông.
+    \item Xây dựng mô hình song sinh phần mềm (Python twin) và kịch bản kiểm thử chu kỳ (cycle-accurate testbench) với hơn 500 vector kích thích ngẫu nhiên, chứng minh hai phương án mã hóa FSM nhị phân và one-hot cho kết quả trùng khớp hoàn toàn.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{2.1. Chuẩn giao thức Avalon-ST: Cơ chế valid/ready và cạm bẫy readyLatency}
+\addcontentsline{toc}{subsection}{2.1. Chuẩn giao thức Avalon-ST: Cơ chế valid/ready và cạm bẫy readyLatency}
+
+\subsubsection*{Vấn đề thực tế: Dòng chảy dữ liệu không xung nhịp ép bước}
+Khi thiết kế các hệ thống xử lý tín hiệu số (DSP -- Digital Signal Processing) trên vi mạch FPGA (Field-Programmable Gate Array), người lập trình thường bắt đầu với các mạch tuần tự đơn giản: mỗi nhịp xung nhịp đồng hồ, một mẫu dữ liệu mới đi vào, chạy qua các tầng thanh ghi và cho ra kết quả ở đầu bên kia. Mô hình đó hoạt động hoàn hảo khi và chỉ khi nguồn phát (source) và nơi nhận (sink) luôn luôn sẵn sàng ở mọi nhịp xung nhịp.
+
+Tuy nhiên, trong một hệ thống thực tế như thuật toán ước lượng cao độ tiếng nói $F_0$, sự thật kỹ thuật lại hoàn toàn khác:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khối giải nén và phân phối mẫu âm thanh từ bộ nhớ hàng đợi FIFO (First-In First-Out) có thể phải tạm dừng một nhịp khi bộ đệm rỗng hoặc khi chuyển đổi giữa từ 32-bit sang mẫu 16-bit.
+    \item Khối nhân tích lũy tự tương quan MAC (Multiply-Accumulate) cần tới $98.543$ chu kỳ xung nhịp để quét toàn bộ 189 độ trễ $\tau \in [26, 214]$ cho một khung 638 mẫu. Trong suốt thời gian tính toán này, khối MAC hoàn toàn không thể tiếp nhận thêm mẫu âm thanh mới của khung kế tiếp.
+    \item Nếu khối phát cứ vô tư đẩy mẫu lên bus mà không quan tâm khối nhận có đang bận hay không, các mẫu âm thanh mới sẽ ghi đè lên mẫu cũ, làm vỡ cấu trúc khung và phá hỏng toàn bộ quá trình tính toán.
+\end{itemize}
+
+Để giải quyết triệt để bài toán đồng bộ luồng dữ liệu giữa các khối có tốc độ xử lý chênh lệch, tập đoàn Intel (Altera) chuẩn hóa giao diện truyền thông điểm-tới-điểm mang tên \textbf{Avalon Streaming Interface (Avalon-ST)}, được đặc tả chi tiết trong tài liệu kỹ thuật \emph{Intel Avalon Interface Specifications} (Mã tài liệu: 683091).
+
+\subsubsection*{Nguyên lý bắt tay valid/ready: Khi nào một mẫu được coi là chuyển giao?}
+Trọng tâm của chuẩn Avalon-ST là cơ chế bắt tay hai chiều thông qua cặp tín hiệu điều khiển đơn bit:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{valid} (Phía phát đưa ra): Bằng 1 khi phía phát đã đặt một mẫu dữ liệu hợp lệ lên các đường dây dữ liệu \texttt{data}.
+    \item \texttt{ready} (Phía nhận đưa ra): Bằng 1 khi phía nhận có đủ không gian bộ đệm và sẵn sàng nuốt dữ liệu từ bus vào thanh ghi của mình.
+\end{enumerate}
+
+Nguyên lý cơ bản không thể vi phạm là: \textbf{Một giao dịch truyền nhận dữ liệu (beat) chỉ được hoàn thành tại chu kỳ xung nhịp $n$ khi và chỉ khi cả hai tín hiệu \texttt{valid} và \texttt{ready} cùng bằng 1 tại chính chu kỳ đó}:
+\begin{equation}
+\text{Transfer}(n) = \texttt{valid}(n) \ \land \ \texttt{ready}(n)
+\end{equation}
+
+Nếu \texttt{valid} = 1 nhưng \texttt{ready} = 0, phía nhận đang áp dụng cơ chế \textbf{phản áp (backpressure)}. Khi đó, không có giao dịch nào diễn ra. Quy tắc bắt buộc đối với phía phát là: \textbf{phải giữ nguyên giá trị dữ liệu \texttt{data} và giữ \texttt{valid} = 1 ở chu kỳ kế tiếp}, tuyệt đối không được tự ý thay đổi dữ liệu hoặc hạ \texttt{valid} xuống 0 cho đến khi phía nhận bật \texttt{ready} = 1 trở lại.
+
+\subsubsection*{Cạm bẫy kỹ thuật: \texttt{readyLatency} = 0 so với \texttt{readyLatency} = 1}
+Tưởng chừng nguyên lý trên đã đủ chặt chẽ, nhưng một cạm bẫy nghiêm trọng nảy sinh khi ghép nối các khối phần cứng: \emph{Tín hiệu \texttt{ready} nói về khả năng tiếp nhận ở chính nhịp này hay ở nhịp sau?} Câu trả lời nằm ở tham số cấu hình mang tên \texttt{readyLatency} (độ trễ sẵn sàng).
+
+Theo chuẩn giao tiếp Avalon-ST:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Cấu hình \texttt{readyLatency} = 0 (Bắt tay tức thời):} Quyết định nhận mẫu nằm ở \emph{chính chu kỳ hiện tại}. Nếu \texttt{ready} hạ xuống 0 ở chu kỳ $n$, mẫu đang nằm trên bus ở chu kỳ $n$ không được nhận, và phía phát phải tiếp tục giữ mẫu đó sang chu kỳ $n+1$. Ưu điểm của cấu hình này là phản hồi tức thì, không cần bộ đệm dự phòng. Nhược điểm là tạo ra một đường trễ tổ hợp (combinational path) nối thẳng từ khối nhận ngược về khối phát.
+    \item \textbf{Cấu hình \texttt{readyLatency} = 1 (Tín hiệu sẵn sàng có trễ / cơ chế tín chỉ):} Tín hiệu \texttt{ready} ở chu kỳ $n$ là \emph{lời hứa cho chu kỳ $n+1$}. Khi khối nhận bật \texttt{ready} = 1 ở chu kỳ $n$, nó phát đi một tín chỉ: ``Ở chu kỳ $n+1$, tôi chắc chắn có chỗ để nhận một mẫu''. Ngược lại, nếu khối nhận hạ \texttt{ready} = 0 ở chu kỳ $n$, điều đó có nghĩa là ở chu kỳ $n+1$ khối phát không được gửi, nhưng \emph{mẫu xuất hiện ở chính chu kỳ $n$ vẫn được tiếp nhận đầy đủ}, bởi vì lời hứa tiếp nhận cho chu kỳ $n$ đã được khối nhận cam kết từ chu kỳ $n-1$.
+\end{itemize}
+
+\textbf{Cạm bẫy nối ghép IP:} Rất nhiều khối IP lõi xử lý DSP chuyên dụng của Intel (như bộ lọc FIR Compiler hay biến đổi Fourier nhanh FFT IP) mặc định thiết lập \texttt{readyLatency} = 1 trong cửa sổ cấu hình Parameter Editor nhằm chèn thêm một tầng thanh ghi vào đường tín hiệu \texttt{ready}, giúp tăng tần số hoạt động cực đại ($F_{\max}$). Trong khi đó, các kỹ sư viết mã Verilog bằng tay thường mặc định suy nghĩ theo kiểu \texttt{readyLatency} = 0.
+
+Nếu khối phát giả định \texttt{readyLatency} = 1 trong khi khối nhận lại hoạt động với \texttt{readyLatency} = 0, thảm họa sẽ xảy ra khi đường phản áp xuất hiện: một mẫu dữ liệu sẽ bị rơi mất vĩnh viễn khỏi dòng âm thanh mà không có bất kỳ cờ cảnh báo lỗi nào được bật lên!
+
+\subsubsection*{Ví dụ tính tay và đối soát chu kỳ: Sự cố mất mẫu 12}
+Để thấy rõ cơ chế phá hỏng dòng dữ liệu, hãy khảo sát một chuỗi truyền thông thực nghiệm gồm 4 mẫu âm thanh nguyên $x = [10, 11, 12, 13]$ đi qua kênh giao tiếp Avalon-ST từ chu kỳ 3 đến chu kỳ 8. Giả sử khối nhận gặp tắc nghẽn bộ đệm và bắt buộc phải hạ tín hiệu \texttt{ready} xuống 0 duy nhất tại chu kỳ 5 (\texttt{ready} lần lượt là $[1, 1, 0, 1, 1, 1]$).
+
+Dữ liệu tính toán dưới đây được trích xuất trực tiếp từ kịch bản kiểm chứng mã nguồn\\ \texttt{verify\_v3/ch02\_avalon\_st\_trace.py}:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\caption{Đối chiếu chu kỳ truyền nhận giữa trường hợp chuẩn và trường hợp lệch tham số \texttt{readyLatency}}
+\label{tab:ch02_readylatency_trace}
+\begin{tabular}{ccccccl}
+\toprule
+Chu kỳ & \texttt{valid} & \texttt{data} & \texttt{ready} & Bắt tay (RL=0) & Phía nhận lấy? & Hành vi thực tế của khối phát \\
+\midrule
+\multicolumn{7}{l}{\textbf{Kịch bản 1: Cả hai phía thống nhất cấu hình \texttt{readyLatency} = 0}} \\
+3 & 1 & 10 & 1 & Có & Mẫu 10 & Khối phát đưa tiếp mẫu 11 lên bus. \\
+4 & 1 & 11 & 1 & Có & Mẫu 11 & Khối phát đưa tiếp mẫu 12 lên bus. \\
+5 & 1 & 12 & 0 & Không & Không & \texttt{ready}=0: Khối phát \textbf{giữ nguyên} mẫu 12. \\
+6 & 1 & 12 & 1 & Có & Mẫu 12 & Khối phát đưa tiếp mẫu 13 lên bus. \\
+7 & 1 & 13 & 1 & Có & Mẫu 13 & Đã gửi xong 4 mẫu, hạ \texttt{valid} về 0. \\
+8 & 0 & -- & 1 & Không & Không & Bus nghỉ, nhận đủ 4 mẫu: $[10, 11, 12, 13]$. \\
+\midrule
+\multicolumn{7}{l}{\textbf{Kịch bản 2: Bất đồng cấu hình (Phát hiểu RL=1, Nhận hiểu RL=0)}} \\
+3 & 1 & 10 & 1 & Có & Mẫu 10 & Khối phát gửi 10 do có tín chỉ từ CK 2. \\
+4 & 1 & 11 & 1 & Có & Mẫu 11 & Khối phát gửi 11 do có tín chỉ từ CK 3. \\
+5 & 1 & 12 & 0 & \textbf{Lệch} & \textbf{Từ chối} & Khối phát thấy CK4 \texttt{ready}=1 nên đẩy 12. \\
+  &   &    &   &        &                & \emph{Nhưng nhận (RL=0) từ chối! Mẫu 12 bị rơi.} \\
+6 & 0 & -- & 1 & Không  & Không          & Khối phát thấy CK5 \texttt{ready}=0 nên dừng phát. \\
+7 & 1 & 13 & 1 & Có     & Mẫu 13         & Khối phát thấy CK6 \texttt{ready}=1 nên gửi 13. \\
+8 & 0 & -- & 1 & Không  & Không          & Kết thúc: Khối nhận chỉ lấy $[10, 11, 13]$! \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch02_readylatency.tex}
+\caption{Dạng sóng thời gian so sánh cơ chế bắt tay Avalon-ST giữa cấu hình \texttt{readyLatency} = 0 và \texttt{readyLatency} = 1 khi xuất hiện xung phản áp ở chu kỳ 5.}
+\label{fig:ch02_readylatency}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch02_readylatency} trực quan hóa sự khác biệt bản chất giữa hai cấu hình:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Ở nửa trên (a), với \texttt{readyLatency} = 0, tại chu kỳ 5 khi tín hiệu \texttt{ready} hạ xuống mức thấp (vạch màu xanh dương), giao dịch bị đình trệ ngay lập tức. Mẫu 12 trên bus dữ liệu được giữ phẳng suốt hai chu kỳ xung nhịp (CK 5 và CK 6). Đến khi \texttt{ready} bật lên 1 ở CK 6, mẫu 12 mới được nhận và mẫu 13 nối tiếp ở CK 7. Không có bất kỳ mẫu nào bị mất.
+    \item Ở nửa dưới (b), với \texttt{readyLatency} = 1, tín hiệu \texttt{ready} mang ý nghĩa tín chỉ trễ một nhịp. Vì ở chu kỳ 4 \texttt{ready} = 1, khối phát được quyền đẩy mẫu 12 ở chu kỳ 5 bất chấp việc tại chính chu kỳ 5 \texttt{ready} đang ở mức 0. Phía phát coi như mẫu 12 đã bàn giao thành công. Sang chu kỳ 6, khối phát mới nhận lệnh dừng do \texttt{ready} ở CK 5 bằng 0.
+\end{itemize}
+
+Hậu quả của sự bất đồng này là mẫu âm thanh số 12 bị xóa sổ hoàn toàn khỏi dòng dữ liệu. Trong một khung phân tích 638 mẫu của thuật toán Praat, việc mất đúng một mẫu làm toàn bộ 637 mẫu phía sau bị dồn lên trước một vị trí thời gian. Các phép tính tự tương quan $R[\tau]$ sau đó vẫn thực thi bình thường theo công thức toán học, nhưng trên một cửa sổ tín hiệu bị lệch pha, dẫn đến sai lệch đỉnh parabol và xuất hiện lỗi thô (Gross Pitch Error) mà người lập trình không thể tìm ra nguyên nhân nếu chỉ nhìn vào mã thuật toán.
+
+\textit{Tóm lại: Tham số \texttt{readyLatency} quyết định thời điểm một mẫu dữ liệu được công nhận đã chuyển giao; hiểu lệch một nhịp giữa hai khối giao tiếp sẽ làm rơi hoặc nhân đôi mẫu âm thanh một cách im lặng mà không hề báo lỗi trên đường truyền.}

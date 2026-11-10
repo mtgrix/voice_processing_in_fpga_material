@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 clean
+.PHONY: all ch00 ch01 ch02 clean
 
-all: ch00 ch01
+all: ch00 ch01 ch02
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -43,5 +43,20 @@ ch01:
 	$(PYTHON) ch01_driver_test.py > ch01_driver_test.log
 	@echo "=== [ch01] All Chapter 1 verifications completed successfully ==="
 
+ch02:
+	@echo "=== [ch02] Running Avalon-ST handshake and readyLatency trace ==="
+	$(PYTHON) ch02_avalon_st_trace.py > ch02_avalon_st_trace.log
+	@echo "=== [ch02] Running file-driven cycle budget derivation and audit ==="
+	$(PYTHON) ch02_cycle_budget.py > ch02_cycle_budget.log
+	@echo "=== [ch02] Running Gray code trailing-ones mathematical verification ==="
+	$(PYTHON) ch02_gray_code.py > ch02_gray_code.log
+	@echo "=== [ch02] Running Skid buffer twin and vector generation ==="
+	$(PYTHON) ch02_skid_twin.py > ch02_skid_twin.log
+	@echo "=== [ch02] Running FSM twin and binary vs onehot vector generation ==="
+	$(PYTHON) ch02_fsm_twin.py > ch02_fsm_twin.log
+	@echo "=== [ch02] Checking Praat citations ==="
+	$(PYTHON) ch02_praat_lines.py > ch02_praat_lines.log
+	@echo "=== [ch02] All Chapter 2 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_*
