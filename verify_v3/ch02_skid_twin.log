@@ -1,0 +1,5 @@
+Simulation completed 600 cycles.
+Total samples sent by upstream: 292
+Total samples received by downstream: 292
+PASS: Sent stream exactly equals received stream (0 loss, 0 duplication, 100% order preserved).
+Wrote ./tb_ch02_skid_stim.txt and ./tb_ch02_skid_expected.txt successfully.

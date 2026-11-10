@@ -1,0 +1,34 @@
+=== CH02 CYCLE BUDGET DERIVATION ===
+System Clock: 50.0 MHz (Period = 20.0 ns)
+Audio Sample Rate: 16000 Hz (Period = 62.50 us)
+Real-time clock cycles per sample: 3125.0 cycles
+Frame Hop: 160 samples (10.0 ms)
+Real-time clock cycles per hop: 500,000 cycles
+--------------------------------------------------
+Window length N: 638 samples
+Lag range: tau = 26 .. 214 (189 lags)
+MACs for R[0]: 638
+MACs for lags 26..214: sum_{tau=26}^{214} (638 - tau)
+   First term (tau=26): 612
+   Last term (tau=214): 424
+   Arithmetic sum: (612 + 424) * 189 / 2 = 97,902
+Total MAC operations: 638 + 97,902 = 98,540
+Pipeline latency: 3 cycles
+Total core execution cycles: 98,543 cycles/frame
+Average cycles per audio sample: 615.89375 (~616 cycles/sample)
+Calculation wall-clock time per frame: 1.97086 ms
+RTF (MAC core): 0.197086 (~0.197)
+Estimated full core cycles: 99,700
+RTF (Full core): 0.199400 (~0.199)
+--------------------------------------------------
+=== AUDIT OF ARGON ERRONEOUS VALUES ===
+Argon claimed budget: 1,250,000 cycles/frame
+Implied hop in samples at 3125 cycles/sample: 400.0 samples
+Implied hop in milliseconds at 16 kHz: 25.0 ms (WRONG! Praat hop is 10 ms = 160 samples)
+Argon claimed cycles: 246,000 cycles
+Argon claimed RTF: 0.197
+Argon ratio (246k / 1.25M): 0.19680
+Conclusion: Argon's figures were doubled errors that accidentally matched 0.197 via cancellation:
+   1. Hop was assumed to be 25 ms (400 samples -> 1,250,000 cycles), which contradicts Praat's 10 ms hop (160 samples -> 500,000 cycles).
+   2. Cycles were assumed to be 246,000, which contradicts the true 98,543 cycles.
+   Correct reality: 98,543 / 500,000 = 0.19709 (~0.197).

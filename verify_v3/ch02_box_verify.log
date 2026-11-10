@@ -1,0 +1,13 @@
+=== [1/2] Compiling and running tb_ch02_skid_buffer ===
+=== STARTING CH02 SKID BUFFER CYCLE-BY-CYCLE VERIFICATION ===
+Simulation completed 600 cycles.
+Total comparison errors: 0
+=== [PASS] CH02 SKID BUFFER MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 600 CYCLES ===
+tb/v3/tb_ch02_skid_buffer.v:157: $finish called at 11991000 (1ps)
+=== [2/2] Compiling and running tb_ch02_fsm_equiv ===
+=== STARTING CH02 FSM BINARY VS ONE-HOT EQUIVALENCE VERIFICATION ===
+Simulation completed 500 cycles.
+Total comparison errors: 0
+=== [PASS] CH02 BINARY AND ONE-HOT FSMS MATCHED PYTHON TWIN AND EACH OTHER ON 500 CYCLES ===
+tb/v3/tb_ch02_fsm_equiv.v:212: $finish called at 9991000 (1ps)
+=== All Chapter 2 iverilog testbenches passed successfully! ===
