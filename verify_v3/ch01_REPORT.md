@@ -75,3 +75,98 @@ Toàn bộ quá trình thực hiện Chương 1 được cam kết nghiêm ngặ
 - Commit `2665df1`: `v3: ch01 1.6` (Tiểu mục 1.6: Bản đồ thanh ghi phân lập 4 Slave trên Lightweight Bridge)
 - Commit `37591de`: `v3: ch01 1.7` (Tiểu mục 1.7: Trình điều khiển C, Python twin, Testbench Verilog, Bảng 8 IP vs HDL, 4 bài tập cuối chương)
 - Commit `095be3f`: `v3: ch01 polish FSM diagram layout` (Tinh chỉnh bố cục hình vẽ TikZ FSM đạt chuẩn không chạm viền / không cắt chữ)
+- Commit `09895ac`: `v3: ch01 r1 fix fig_ch00_system label` (Sửa nhãn khối FIFO trong Hình 1 Chương 0 thành 256x32-bit (1 M10K) MM -> ST)
+- Commit `de6b0a1`: `v3: ch01 r1 twins and testbenches` (Cập nhật twin, sinh vector chu kỳ, viết tb_ch01_fifo.v và tb_ch01_fifo_out.v, run_ch01_iverilog.sh, ch01_praat_lines.py)
+- Commit `c3ac659`: `v3: ch01 r1 text revisions and listings` (Cập nhật toàn bộ nội dung văn bản Chương 1, giải thích dòng-từng-dòng, sửa 10 điểm phản biện, 0 overfull hbox)
+
+---
+
+## 6. Báo cáo sửa chữa đợt 1 (Revision Round 1 — 2026-11-11)
+
+Đợt sửa đổi này giải quyết triệt để toàn bộ 10 ý kiến đánh giá của Reviewer đối với bản build HEAD `f8ded61`:
+
+### Đính chính hợp đồng kỹ thuật (Brief & Agenda Correction)
+Theo tài liệu chính thức *Intel Embedded Peripherals IP User Guide* (mục *Avalon-MM Write Slave to Avalon-ST Source*):
+- Khi một phía là Avalon-MM và phía kia là Avalon-ST, bề rộng dữ liệu của IP On-Chip FIFO **bắt buộc cố định ở 32 bit trên cả hai giao diện** (`If Avalon-MM is selected for one interface and Avalon-ST for the other, the data width is fixed at 32 bits`).
+- Do đó, IP không thể có cấu hình $512 \times 16\text{ bit}$ như giả định ban đầu của đề cương.
+- Với bề rộng 32-bit:
+  - Cấu hình độ sâu 256 từ 32-bit: $256 \times 32 = 8.192\text{ bit} \le 10.240\text{ bit}$, chiếm đúng **1 khối M10K** và lưu được **512 mẫu âm thanh 16-bit** (tương đương 3,2 bước nhảy khung = 32 ms). Đây là cấu hình tối ưu được chọn.
+  - Cấu hình độ sâu 512 từ 32-bit: $512 \times 32 = 16.384\text{ bit} > 10.240\text{ bit}$, bắt buộc tốn tới **2 khối M10K**.
+- Về đóng gói mẫu: Giao diện Avalon-ST của IP có `Bits per symbol = 16, Symbols per beat = 2`. Theo chuẩn Avalon-ST, Symbol 0 (mẫu sớm hơn theo thời gian) nằm ở các bit cao [31:16], nên mẫu $\text{sample}_{2k}$ ở MM [15:0] sẽ xuất hiện tại ST [31:16] (*phải kiểm trong mô phỏng IP*).
+- Do IP xuất 32-bit beat (2 mẫu), phương án dùng IP (Đường A) bắt buộc phải có một bộ giải gói 32-to-16 bit phía hạ nguồn (hoặc dùng Avalon-ST Data Format Adapter của Platform Designer). Đây chính là lý do kỹ thuật trung thực vì sao phương án HDL tự viết (Đường B) tích hợp sẵn máy trạng thái Unpacker FSM.
+
+### Chi tiết xử lý 10 điểm phản biện
+
+1. **Khắc phục lỗi biên dịch Testbench & Đối soát song sinh chu kỳ (Blocker 1):**
+   - Đã sửa lỗi toán hạng không xác định kích thước trong phép nối `tb_ch01_fifo.v`.
+   - Cập nhật mô hình song sinh `verify_v3/ch01_fifo_twin.py` (chứa hai lớp `AvalonFifoTwin` và `FifoOutTwin`) để trích xuất toàn bộ dấu vết từng chu kỳ xung nhịp ra các tệp văn bản kích thích và kỳ vọng:
+     - Khối nạp: `verify_v3/tb_ch01_fifo_stim.txt` và `verify_v3/tb_ch01_fifo_expected.txt` (2.107 chu kỳ, hạt giống ngẫu nhiên 20261110, xác suất ghi $80\%$, áp lực ngược hạ nguồn $60\%$).
+     - Khối hoàn trả: `verify_v3/tb_ch01_fifo_out_stim.txt` và `verify_v3/tb_ch01_fifo_out_expected.txt` (1.217 chu kỳ).
+   - Viết mới testbench chuẩn SystemVerilog `tb/v3/tb_ch01_fifo.v` và `tb/v3/tb_ch01_fifo_out.v`: sử dụng `$fscanf` đọc trực tiếp từ tệp kích thích và tệp kỳ vọng do twin sinh ra, so sánh từng chu kỳ xung nhịp và từng bit dữ liệu/tín hiệu điều khiển (`waitrequest`, `st_valid`, `st_ready`, `st_data`, `state`, `fill_level`). Cả hai testbench biên dịch nghiêm ngặt với `iverilog -g2012 -Wall`.
+   - Tạo tập lệnh shell thực thi `verify_v3/run_ch01_iverilog.sh` (định dạng xuống dòng LF, phân quyền thực thi 755).
+   - Trong văn bản, đánh dấu vị trí kết quả kiểm thử bằng nhãn `\todo{box}` để Reviewer chạy trực tiếp trên môi trường Linux.
+
+2. **Hiệu chỉnh thông số On-Chip FIFO IP và nhãn Hình 1 Chương 0 (Blocker 2):**
+   - Bổ sung phân tích chuẩn xác về ràng buộc bề rộng 32-bit của IP On-Chip FIFO.
+   - Sửa độ sâu thành 256 từ 32-bit (1 M10K) và nêu rõ cấu hình 512 từ tốn 2 M10K.
+   - Giải thích cơ chế thứ tự byte trong luồng Avalon-ST (Symbol 0 ở bit cao) và nhu cầu bộ chuyển đổi định dạng 32-to-16 bit ở đường IP.
+   - Sửa nhãn khối FIFO trong tệp Hình 1 Chương 0 (`chuong_v3/fig_ch00_system.tex`, dòng 39) từ `512x16-bit (1 M10K)` thành `256x32-bit (1 M10K) MM -> ST`.
+   - Cập nhật Bảng 8 (đối chiếu IP vs HDL), ghi rõ độ trễ của IP là `phải kiểm trong mô phỏng`, độ trễ của HDL là `2 chu kỳ (đo bằng iverilog)`.
+
+3. **Bổ sung mã nguồn đầy đủ và giải thích dòng-từng-dòng (Blocker 3):**
+   - Nhúng toàn bộ mã nguồn Verilog của `rtl/v3/ch01_avalon_fifo.v` (199 dòng) và `rtl/v3/ch01_fifo_out.v` (104 dòng) qua lệnh `\lstinputlisting` có đánh số dòng.
+   - Nhúng toàn bộ mã nguồn Python twin của `verify_v3/ch01_fifo_twin.py` (115 dòng) gồm cả hai lớp `AvalonFifoTwin` và `FifoOutTwin`.
+   - Viết thuyết minh chi tiết từng dòng ở đẳng cấp Chương 0: phân tích các cổng và bề rộng bit, từng khối `always`, từng bước chuyển trạng thái của Unpacker FSM, thời điểm tăng con trỏ `rd_ptr`, thời điểm giương cờ `st_valid`, và hành vi của tín hiệu `waitrequest`.
+   - Bổ sung Bảng 7 trích xuất 12 chu kỳ dấu vết tiêu biểu do Python twin sinh ra, kèm thuyết minh từng nhịp đối soát trực tiếp với kết quả mô phỏng phần cứng.
+
+4. **Đồng bộ hóa các dữ kiện kỹ thuật với Agenda và Brief (Blocker 4):**
+   - Bộ lọc số tiền xử lý: đính chính thành **31 taps** (bộ lọc FIR Nyquist-edge 31-tap, mặc định bypass; khi bật sẽ dịch chuyển lưới phân tích khung đúng 15 mẫu).
+   - Khối hậu xử lý trên FPGA: đính chính thành **bộ lọc trung vị median-3 duy nhất** (không có thuật toán Viterbi trên FPGA).
+   - Định dạng tệp kết quả $F_0$: xác nhận là **số nguyên không dấu uint16 little-endian định dạng Q12.4** (`pitch_f0.bin`), giá trị 0 quy ước là khung vô thanh (unvoiced).
+   - Quy tắc xác định tính hữu thanh bằng số nguyên: dẫn xuất chuẩn xác công thức nguyên từ Brief:
+     $$\text{Voiced} \iff (100 \cdot \text{Sc}[\text{best}] - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0, 6 \cdot GP - 145 \cdot LP)$$
+     Giải thích rõ vì sao $GP$ xuất hiện dưới dạng biên độ tuyến tính (thay vì năng lượng bậc hai $GP^2$).
+   - Dải quét độ trễ: phân định rõ dải quét biên là $\tau \in [26, 214]$ và dải tìm kiếm đỉnh nội tại là $\tau \in [27, 213]$.
+
+5. **Trích dẫn chính xác mã nguồn Praat 7.0.03 (Blocker 5):**
+   - `Sampled_xToLowIndex`: `fon/Sampled.h` dòng 34--36.
+   - `Sampled_shortTermAnalysis`: `fon/Sampled.cpp` dòng 71--82.
+   - `globalPeak`: `Sound_to_Pitch.cpp` dòng 375--385.
+   - Lệnh gọi `leftSample`: `Sound_to_Pitch.cpp` dòng 52.
+   - Xây dựng kịch bản kiểm tra `verify_v3/ch01_praat_lines.py` và tích hợp vào mục tiêu `ch01` của `verify_v3/Makefile`.
+
+6. **Loại bỏ các con số ước đoán vô căn cứ (Should Fix 6):**
+   - Loại bỏ toàn bộ các ước lượng ALM và MHz chưa qua kiểm chứng vật lý trong Bảng 5 và Bảng 8; thay thế bằng ghi chú `(phải đo bằng Fitter/TimeQuest, Ch.12)`.
+   - Kiểm tra tài liệu Intel mSGDMA IP: chiều dài truyền cực đại được ấn định 32-bit (hỗ trợ tối đa 4 GB theo cấu hình descriptor chuẩn).
+
+7. **Hoàn thiện hình vẽ TikZ FSM (Should Fix 7):**
+   - Uốn cong mũi tên chuyển trạng thái từ `ST_UNPACK1` về `ST_FETCH` bằng tùy chọn `bend right=15`.
+   - Đặt nhãn điều kiện `st_ready & !empty` nằm phía trên mũi tên (`above, sloped`), bổ sung nền trắng đệm `fill=white, inner sep=1.5pt` để đường mũi tên hoàn toàn không cắt ngang qua chữ.
+
+8. **Đính chính giải mã Hex dump tại offset 44 (Should Fix 8):**
+   - Sửa thành: 4 byte tại offset 44 là mã ký tự ASCII `'INFO'` (`49 4E 46 4F`), tiếp theo là 4 byte `'INAM'`.
+
+9. **Triệt tiêu hoàn toàn Overfull `\hbox` (Should Fix 9):**
+   - Đã xử lý toàn bộ các đoạn văn bản chứa khối mã inline `\texttt{}` dài sát lề.
+   - Kết quả biên dịch XeLaTeX hai lượt đạt chuẩn tuyệt đối: **0 overfull hbox** trên toàn bộ tài liệu 58 trang.
+
+10. **Làm sạch văn phong kỹ thuật (Should Fix 10):**
+    - Loại bỏ triệt để các từ ngữ khoa trương cảm tính (như *đanh thép*, *thanh lịch*, *cực kỳ*).
+    - Thay thế toàn bộ các đề cập tới *tài liệu Argon* thành *bản thiết kế v1*.
+
+---
+
+### Danh mục tập lệnh cần Reviewer chạy kiểm chứng trên Linux
+Do môi trường máy trạm Windows của implementer không có sẵn `iverilog`/`vvp` và bộ mã nguồn Praat 7.0.03:
+1. **Kiểm tra biên dịch và mô phỏng Verilog:**
+   ```bash
+   cd verify_v3
+   ./run_ch01_iverilog.sh
+   ```
+   *Kỳ vọng:* `iverilog -g2012 -Wall` biên dịch thành công 0 cảnh báo/lỗi, `vvp` chạy qua 2.107 chu kỳ `tb_ch01_fifo.v` và 1.217 chu kỳ `tb_ch01_fifo_out.v`, báo `100% BIT-FOR-BIT & CYCLE-FOR-CYCLE MATCH`.
+2. **Kiểm tra số dòng trích dẫn mã nguồn Praat 7.0.03:**
+   ```bash
+   python3 verify_v3/ch01_praat_lines.py /workspace/tools/praat_src
+   ```
+   *Kỳ vọng:* Khớp 100% cả 4 vị trí trích dẫn trong mã nguồn Praat 7.0.03.
+
