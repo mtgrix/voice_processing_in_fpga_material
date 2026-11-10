@@ -1,0 +1,130 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Liberation Serif}
+\setsansfont{Be Vietnam Pro}
+\setmonofont{Liberation Mono}
+\usepackage[top=0.68in, bottom=0.68in, left=0.75in, right=0.75in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric,decorations.pathreplacing}
+\usepackage{tcolorbox}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{enumitem}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{black!3!white},
+    frame=single,
+    rulecolor=\color{black!20},
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=4,
+    showstringspaces=false,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=6pt,
+    keywordstyle=\color{blue!80!black}\bfseries,
+    commentstyle=\color{green!50!black}\itshape,
+    stringstyle=\color{orange!80!black}
+}
+
+\captionsetup[table]{name=Bảng, font=small, skip=3pt}
+\captionsetup[figure]{name=Hình, font=small, skip=3pt}
+\hypersetup{colorlinks=true, linkcolor=blue!70!black, urlcolor=blue!70!black}
+
+\newtcolorbox{learningobj}{
+    colback=blue!3!white, colframe=blue!60!black,
+    fonttitle=\bfseries\sffamily, fontupper=\small,
+    title={$\blacktriangleright$ MỤC TIÊU HỌC TẬP},
+    arc=1.5mm, boxrule=0.8pt, left=3mm, right=3mm, top=1.2mm, bottom=1.2mm
+}
+\newtcolorbox{physicalinsight}{
+    colback=yellow!6!white, colframe=orange!75!black,
+    fonttitle=\bfseries\sffamily,
+    title={$\blacktriangleright$ NHÌN THẤY VẬT LÝ},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+\newtcolorbox{thoughtqa}[1]{
+    colback=cyan!3!white, colframe=cyan!55!black,
+    fonttitle=\bfseries\sffamily, fontupper=\small,
+    title={$\blacktriangleright$ HỎI – ĐÁP TƯ DUY: #1},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+\newtcolorbox{equationcard}{
+    colback=green!3!white, colframe=green!45!black,
+    fonttitle=\bfseries\sffamily, title={Thẻ công thức},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+\newtcolorbox{verifygate}{
+    colback=purple!3!white, colframe=purple!65!black,
+    fonttitle=\bfseries\sffamily,
+    title={$\blacktriangleright$ CỔNG KIỂM CHỨNG PHẦN MỀM (SOFTWARE VERIFICATION GATE)},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+
+\newtcolorbox{firstprin}[1]{
+    colback=red!2!white, colframe=red!55!black,
+    fonttitle=\bfseries\sffamily, fontupper=\small,
+    title={$\bigstar$ NGUYÊN LÝ ĐẦU TIÊN: #1},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+\newtcolorbox{costbox}{
+    colback=gray!6!white, colframe=gray!55!black,
+    fonttitle=\bfseries\sffamily, fontupper=\small,
+    title={CHI PHÍ (LUT / DSP / chu kỳ)},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.2mm, bottom=1.2mm
+}
+\newtcolorbox{feynmanbox}[1]{
+    colback=yellow!5!white, colframe=orange!80!black,
+    fonttitle=\bfseries\sffamily, fontupper=\small,
+    title={$\bigstar$ BẮC CẦU FEYNMAN: #1},
+    arc=1.5mm, boxrule=0.8pt, left=3.5mm, right=3.5mm, top=1.5mm, bottom=1.5mm
+}
+
+
+\renewcommand{\thefigure}{\arabic{figure}}
+\renewcommand{\thetable}{\arabic{table}}
+
+% ===== v3 (2026-11-10): WAV 16 kHz -> HPS -> FPGA -> HPS, compared with Praat 7.0.03 =====
+% Chapter files live in chuong_v3/ and are written by the implementer (agy). Do not add chapter text here.
+\begin{document}
+
+\title{\textbf{Ước lượng cao độ $F_0$ kiểu Praat trên DE10-Standard}\\[0.35em]
+\large Từ file WAV 16 kHz qua HPS, FPGA và trở về HPS, so với Praat 7.0.03 trên laptop\\[0.2em]
+\large (Intel Quartus Prime --- hai đường: IP Catalog và HDL tự viết)}
+\author{Bản v3 --- viết lại theo đề cương chốt v2 (10/11/2026)}
+\date{}
+\maketitle
+
+\clearpage
+\phantomsection
+\renewcommand{\contentsname}{Mục lục}
+\setcounter{tocdepth}{2}
+\tableofcontents
+\clearpage
+
+\IfFileExists{chuong_v3/chuong_00_bai_toan.tex}{\input{chuong_v3/chuong_00_bai_toan.tex}}{}
+\IfFileExists{chuong_v3/chuong_01_wav_hps_cau.tex}{\input{chuong_v3/chuong_01_wav_hps_cau.tex}}{}
+\IfFileExists{chuong_v3/chuong_02_avalon_st_fsm.tex}{\input{chuong_v3/chuong_02_avalon_st_fsm.tex}}{}
+\IfFileExists{chuong_v3/chuong_03_fir_nyquist.tex}{\input{chuong_v3/chuong_03_fir_nyquist.tex}}{}
+\IfFileExists{chuong_v3/chuong_04_khung_ram_vong.tex}{\input{chuong_v3/chuong_04_khung_ram_vong.tex}}{}
+\IfFileExists{chuong_v3/chuong_05_tru_trung_binh.tex}{\input{chuong_v3/chuong_05_tru_trung_binh.tex}}{}
+\IfFileExists{chuong_v3/chuong_06_hanning.tex}{\input{chuong_v3/chuong_06_hanning.tex}}{}
+\IfFileExists{chuong_v3/chuong_07_mac.tex}{\input{chuong_v3/chuong_07_mac.tex}}{}
+\IfFileExists{chuong_v3/chuong_08_chuan_hoa_octave.tex}{\input{chuong_v3/chuong_08_chuan_hoa_octave.tex}}{}
+\IfFileExists{chuong_v3/chuong_09_dinh_parabol_chia.tex}{\input{chuong_v3/chuong_09_dinh_parabol_chia.tex}}{}
+\IfFileExists{chuong_v3/chuong_10_voicing.tex}{\input{chuong_v3/chuong_10_voicing.tex}}{}
+\IfFileExists{chuong_v3/chuong_11_median3.tex}{\input{chuong_v3/chuong_11_median3.tex}}{}
+\IfFileExists{chuong_v3/chuong_12_tich_hop.tex}{\input{chuong_v3/chuong_12_tich_hop.tex}}{}
+\IfFileExists{chuong_v3/chuong_13_kiem_chung.tex}{\input{chuong_v3/chuong_13_kiem_chung.tex}}{}
+\IfFileExists{chuong_v3/chuong_14_checklist.tex}{\input{chuong_v3/chuong_14_checklist.tex}}{}
+\IfFileExists{chuong_v3/phu_luc_a_resample.tex}{\input{chuong_v3/phu_luc_a_resample.tex}}{}
+\end{document}
