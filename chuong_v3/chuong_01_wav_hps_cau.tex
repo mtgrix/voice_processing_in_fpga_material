@@ -796,6 +796,182 @@ Phần cứng nhúng một bộ đếm số nguyên 32-bit hoạt động ở t�
 
 \textit{Tóm lại: Bản đồ thanh ghi phân lập rõ 4 Slave trong Platform Designer loại bỏ lỗi gộp khối của tài liệu cũ; các thanh ghi điều khiển cung cấp đầy đủ tham số toán học (GP biên độ 16-bit, mẫu win0, tổng số khung) và bộ đếm chu kỳ 50 MHz độc lập, bảo đảm giám sát hệ thống chính xác từng nhịp xung clock.}
 
+\subsection*{1.7. Phần mềm điều khiển trên HPS và kiểm chứng toàn diện}
+\addcontentsline{toc}{subsection}{1.7. Phần mềm điều khiển trên HPS và kiểm chứng toàn diện}
+
+\subsubsection*{Trình điều khiển phần mềm trên HPS (C Driver)}
+Toàn bộ mã nguồn điều khiển phần cứng trên vi xử lý ARM Cortex-A9 được đóng gói trong tệp \texttt{ch01\_driver.c} (trong thư mục \texttt{sw\_v3/}). Trình điều khiển vận hành hoàn toàn ở không gian người dùng (User Space) của hệ điều hành Linux nhúng thông qua cơ chế ánh xạ bộ nhớ \texttt{mmap} trên tệp thiết bị \texttt{/dev/mem}:
+
+\begin{lstlisting}[language=C, basicstyle=\small\ttfamily, frame=single]
+int fd = open("/dev/mem", O_RDWR | O_SYNC);
+void *virtual_base = mmap(NULL, HW_REGS_SPAN, 
+                          PROT_READ | PROT_WRITE, 
+                          MAP_SHARED, fd, ALT_LWFPGASLVS_OFST);
+\end{lstlisting}
+
+Quy trình điều khiển toàn tuyến được tổ chức theo 5 bước tuần tự chặt chẽ:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Phân tích tệp âm thanh:} Gọi mô-đun \texttt{ch01\_wav.c} để trích xuất mảng mẫu PCM 16-bit, kiểm định chuẩn 16 kHz mono và tính toán đỉnh biên độ toàn cục $GP = \text{round}(\max |n \cdot x - \sum x| / n)$.
+    \item \textbf{Xác định lưới phân tích khung:} Gọi mô-đun \texttt{ch01\_frames.c} theo công thức IEEE double của Praat để xác định tổng số khung $N_{\text{frames}}$, thời điểm bắt đầu $t_1$ và chỉ số mẫu bắt đầu $\text{win0}$.
+    \item \textbf{Cấu hình thanh ghi điều khiển:} Ghi các tham số cấu hình vào khối \texttt{ctrl} tại offset \texttt{0x40}:
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item Ghi $N_{\text{frames}}$ vào \texttt{REG\_CTRL\_NFRAMES} (\texttt{+0x04}).
+        \item Ghi $\text{win0}$ vào \texttt{REG\_CTRL\_FIRST\_WIN0} (\texttt{+0x08}).
+        \item Ghi $GP$ vào \texttt{REG\_CTRL\_GLOBAL\_PEAK} (\texttt{+0x0C}).
+        \item Ghi cờ bypass vào \texttt{REG\_CTRL\_CONFIG} (\texttt{+0x10}).
+    \end{itemize}
+    \item \textbf{Nạp dữ liệu dòng mẫu có thăm dò mức đầy (Streaming with Polling):} Vi xử lý ARM đóng gói hai mẫu 16-bit liên tiếp thành một từ 32-bit theo chuẩn little-endian:
+    \begin{equation}
+    W_k = (\text{sample}_{2k+1} \ll 16) \;\mid\; (\text{sample}_{2k} \;\mathbin{\&}\; \mathtt{0xFFFF})
+    \end{equation}
+    Trước khi ghi mỗi đợt từ vào \texttt{fifo\_in}, phần mềm đọc thanh ghi mức đầy \texttt{fill\_level} tại \texttt{fifo\_in\_csr}. Nếu số mẫu hiện có vượt quá 480 mẫu (ngưỡng \texttt{almost\_full}), CPU tạm thời dừng phát và nhường quyền xử lý, ngăn chặn tuyệt đối hiện tượng ghi đè hoặc nghẽn bus.
+    \item \textbf{Kích hoạt và thu nhận kết quả:} Ghi xung kích hoạt vào \texttt{REG\_CTRL\_START} (\texttt{+0x00}), sau đó thăm dò cờ \texttt{STATUS\_DONE} trên thanh ghi \texttt{REG\_CTRL\_STATUS} (\texttt{+0x14}). Khi hoàn tất, CPU đọc bộ đếm chu kỳ hiệu năng \texttt{TOTAL\_CYCLES} (\texttt{+0x18}) và rút toàn bộ $N_{\text{frames}}$ từ kết quả F0 định dạng fixed-point Q12.4 từ \texttt{fifo\_out} (\texttt{+0x80}), xuất ra tệp nhị phân \texttt{pitch\_f0.bin} và tệp báo cáo văn bản \texttt{pitch\_meta.txt}.
+\end{enumerate}
+
+\paragraph{Chế độ giả lập không bo mạch (-DSIM).}
+Nhằm phục vụ kiểm thử tự động trong môi trường phát triển (CI/CD) khi chưa gắn bo mạch DE10-Standard vật lý, tệp \texttt{ch01\_driver.c} hỗ trợ cờ biên dịch \texttt{-DSIM}. Khi kích hoạt cờ này, các hàm truy xuất bộ nhớ \texttt{mmap} được thay thế bằng cấu trúc bộ nhớ giả lập \texttt{mock\_hardware\_t}. 
+
+Kịch bản kiểm thử \texttt{ch01\_driver\_test.py} (thư mục \texttt{verify\_v3/}) chạy kiểm tra trên tệp âm thanh thực \texttt{synth\_glide\_vuv\_16k.wav} (thư mục \texttt{golden\_v2/}, độ dài 2,8 giây, 277 khung), ghi nhận kết quả xuất ra tệp nhị phân \texttt{pitch\_f0.bin} có kích thước chính xác 554 byte ($277 \times 2\text{ byte}$) mà không gặp bất kỳ lỗi logic nào.
+
+\subsubsection*{Mô hình song sinh kiểm chứng chu kỳ (Python Cycle-Accurate Twin)}
+Để bảo đảm thiết kế phần cứng hoàn toàn không có sai số tiềm ẩn trước khi nạp lên FPGA, mô hình phần mềm song sinh \texttt{ch01\_fifo\_twin.py} (thư mục \texttt{verify\_v3/}) được xây dựng để mô phỏng chính xác từng sườn xung nhịp của khối \texttt{ch01\_avalon\_fifo.v}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Mảng nhớ \texttt{mem} gồm 256 phần tử số nguyên 32-bit.
+    \item Hai con trỏ \texttt{wr\_ptr} và \texttt{rd\_ptr} độ rộng 9-bit có bit vòng mô phỏng chính xác phép toán bù 2 modulo 512.
+    \item Máy trạng thái 4 bước (\texttt{ST\_IDLE}, \texttt{ST\_FETCH}, \texttt{ST\_UNPACK0}, \texttt{ST\_UNPACK1}) với quy tắc chuyển trạng thái giống hệt mã Verilog.
+    \item Cung cấp thuộc tính \texttt{fill\_level\_samples} tính gộp cả số mẫu trong RAM lẫn số mẫu đang nằm trên thanh ghi giải gói \texttt{holding\_word}.
+\end{itemize}
+
+Kịch bản kiểm thử \texttt{ch01\_fifo\_test.py} (thư mục \texttt{verify\_v3/}) sử dụng Python Twin làm chuẩn đối sánh để kiểm tra 500 mẫu âm thanh dưới tác động của áp lực ngược ngẫu nhiên trên tín hiệu \texttt{st\_ready}. Kết quả kiểm tra đạt độ chính xác bit-exact $100\%$ không mất mẫu, đồng thời xác nhận trạng thái bão hòa đầy ở ngưỡng 257 từ ghi (256 từ trong RAM và 1 từ trong bộ giải gói) cùng hành vi bật cờ tràn dính \texttt{ovf\_sticky}.
+
+\subsubsection*{Kiểm thử phần cứng Verilog với Testbench chuyên dụng}
+Tệp kiểm thử Verilog \texttt{tb\_ch01\_fifo.v} (thư mục \texttt{tb/v3/}) kích thích khối phần cứng với một chuỗi 250 giao dịch ghi Avalon-MM (tổng cộng 500 mẫu âm thanh):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tạo áp lực ngược ngẫu nhiên bằng cách kéo \texttt{st\_ready} xuống 0 ngẫu nhiên với xác suất $33\%$ (sử dụng biểu thức \texttt{\$random \% 3 == 0} trong Verilog).
+    \item Kiểm tra thứ tự giải gói little-endian: nửa từ thấp xuất trước, nửa từ cao xuất sau.
+    \item Kiểm tra khẳng định (assertion): tổng số mẫu nhận được ở ngõ ra đúng bằng 500, không bị mất bất kỳ mẫu nào và không bị lặp mẫu.
+    \item Kiểm tra hành vi của tín hiệu \texttt{mm\_waitrequest} khi ép nạp đầy bộ nhớ và xác minh cờ \texttt{ovf\_sticky} qua cổng CSR.
+\end{itemize}
+
+\subsubsection*{Bảng so sánh tổng kết: IP On-Chip FIFO của Intel so với HDL tự viết}
+Bảng \ref{tab:ch01_ip_vs_hdl} cung cấp bức tranh đối chiếu toàn diện giữa phương án sử dụng IP đóng gói sẵn của Intel và phương án tự hiện thực bằng HDL:
+
+\begin{table}[H]
+\centering
+\caption{So sánh toàn diện giữa Intel On-Chip FIFO IP và mã HDL tự viết.}
+\label{tab:ch01_ip_vs_hdl}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Tiêu chí so sánh} & \textbf{Intel On-Chip FIFO IP} & \textbf{HDL tự viết (\texttt{ch01\_avalon\_fifo})} \\
+\midrule
+Khối nhớ nhúng M10K & 1 khối (cấu hình $512 \times 20$) & 1 khối (cấu hình $256 \times 32$) \\
+Tài nguyên logic ALM & $\approx 60$--$80$ ALM \textbf{(phải đo)} & $\approx 45$--$65$ ALM \textbf{(phải đo)} \\
+Tần số cực đại $F_{\max}$ & $\approx 300\text{ MHz}$ \textbf{(phải đo)} & $\approx 320\text{ MHz}$ \textbf{(phải đo)} \\
+Độ trễ ghi tới hợp lệ (Latency) & 2 chu kỳ xung nhịp & 2 chu kỳ xung nhịp \\
+Đóng gói mẫu âm thanh & Tự động theo Symbol & Tự động qua Unpacker FSM 4 bước \\
+Khả năng mô phỏng ngoài Quartus & Cần thư viện mã hóa Intel & Chạy ngay trên iverilog / Verilator \\
+Khả năng kiểm soát chu kỳ & Hộp đen (Black-box) & Hoàn toàn minh bạch (White-box) \\
+Độ phức tạp tích hợp & Nhấp chuột trong Qsys & Khai báo module Verilog chuẩn \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Cả hai giải pháp đều đạt hiệu quả tối ưu về mặt tài nguyên bộ nhớ nhúng khi chỉ tiêu tốn đúng 1 khối M10K duy nhất trên chip Cyclone V và có cùng độ trễ đường ống là 2 chu kỳ. Tuy nhiên, khối HDL tự viết mang lại lợi thế vượt trội về tính độc lập: mã nguồn hoàn toàn mở, dễ dàng kiểm chứng trên các trình mô phỏng nhẹ như Icarus Verilog mà không đòi hỏi bộ thư viện bản quyền nặng nề của Intel.
+
+\subsubsection*{Bài tập cuối chương có lời giải chi tiết}
+
+\paragraph{Bài tập 1: Tính toán RTF truyền tải cho tín hiệu chuẩn âm thanh chất lượng cao.}
+Giả sử hệ thống nâng cấp để xử lý tín hiệu âm thanh phòng thu với tần số lấy mẫu $f_s = 48\text{ kHz}$, độ phân giải 24-bit (mỗi mẫu được lưu trữ trong một từ 32-bit). Hệ thống vẫn dùng cơ chế PIO qua cầu Lightweight Bridge 32-bit ở tần số 50 MHz. Giả định thời gian thực hiện một lệnh ghi PIO bi quan nhất của CPU là $1\ \mu\text{s}$.
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tính lưu lượng dữ liệu cần truyền tải trong một giây âm thanh.
+    \item Tính hệ số thời gian thực $\text{RTF}_{\text{transfer}}$ của khâu truyền tải và đưa ra kết luận kỹ thuật.
+\end{enumerate}
+
+\noindent\textbf{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Vì mỗi mẫu 24-bit chiếm một từ 32-bit (4 byte), lưu lượng dữ liệu trong một giây là:
+    \begin{equation}
+    B = 48.000\text{ mẫu/giây} \times 4\text{ byte} = 192.000\text{ byte/giây} = 192\text{ KB/s} = 0{,}192\text{ MB/s}
+    \end{equation}
+    So với băng thông $200\text{ MB/s}$ của cầu Lightweight Bridge, lưu lượng này chỉ chiếm $0{,}192 / 200 = 0{,}096\%$ dung lượng bus.
+    \item Mỗi giây âm thanh cần thực hiện đúng $48.000$ thao tác ghi 32-bit. Với thời gian $1\ \mu\text{s}$ cho mỗi thao tác ghi, tổng thời gian CPU tiêu tốn là:
+    \begin{equation}
+    T_{\text{CPU}} = 48.000 \times 1\ \mu\text{s} = 0{,}048\text{ giây} = 48\text{ ms}
+    \end{equation}
+    Hệ số thời gian thực của khâu truyền dữ liệu là:
+    \begin{equation}
+    \text{RTF}_{\text{transfer}} = \frac{T_{\text{CPU}}}{1\text{ giây}} = \mathbf{0{,}048}
+    \end{equation}
+    \emph{Kết luận:} CPU chỉ tốn $4{,}8\%$ thời gian cho việc truyền tải âm thanh 48 kHz 24-bit ($95{,}2\%$ thời gian còn lại rảnh rỗi). Do đó, ngay cả ở chuẩn 48 kHz, cơ chế PIO qua Lightweight Bridge vẫn hoàn toàn đáp ứng thời gian thực với biên dư dồi dào mà chưa cần thiết phải chuyển sang dùng DMA.
+\end{enumerate}
+
+\paragraph{Bài tập 2: Số học bit vòng và điều kiện rỗng/đầy cho bộ đệm có độ sâu tùy ý.}
+Xét một bộ đệm FIFO có độ sâu $N$ từ, trong đó $N$ không phải là lũy thừa của 2 (ví dụ $N = 300$). 
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tại sao kỹ thuật kiểm tra bit vòng MSB đơn giản ($\texttt{wr\_ptr[k]} \neq \texttt{rd\_ptr[k]}$) không còn áp dụng được trực tiếp?
+    \item Nêu giải pháp phần cứng chuẩn mực để giải quyết bài toán này mà vẫn duy trì tần số hoạt động cao.
+\end{enumerate}
+
+\noindent\textbf{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Khi $N = 2^k$, không gian đếm tự nhiên của thanh ghi $k$-bit quay vòng chính xác tại $2^k - 1 \to 0$. Khi thêm bit thứ $k+1$, nửa vòng đầu và nửa vòng sau có các bit thấp giống hệt nhau. Nhưng khi $N = 300 \neq 2^k$, sau khi con trỏ ghi đạt giá trị 299, nó phải được reset cưỡng bức về 0 thay vì tràn tự nhiên qua 511. Sự lệch pha này khiến khoảng cách giữa hai con trỏ không thể suy ra bằng phép trừ bit thông thường, làm sai lệch điều kiện so sánh bằng của các bit thấp.
+    \item Giải pháp chuẩn mực trong thiết kế phần cứng:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Duy trì một bộ đếm số phần tử độc lập mang tên \texttt{count} (độ rộng 9 bit).
+        \item Mỗi chu kỳ: nếu chỉ ghi thì $\texttt{count} \leftarrow \texttt{count} + 1$; nếu chỉ đọc thì $\texttt{count} \leftarrow \texttt{count} - 1$; nếu đồng thời cả đọc và ghi thì \texttt{count} giữ nguyên.
+        \item Điều kiện rỗng là $\texttt{count} == 0$, điều kiện đầy là $\texttt{count} == 300$. Các con trỏ \texttt{wr\_ptr} và \texttt{rd\_ptr} được so sánh với 299 để tự reset về 0.
+    \end{itemize}
+\end{enumerate}
+
+\paragraph{Bài tập 3: Phân tích xung đột tương tranh (Race Condition) và cơ chế khóa.}
+Trong kiến trúc streaming âm thanh giữa HPS và FPGA, CPU ghi mẫu âm thanh vào FIFO trong khi lõi tính toán FPGA đọc mẫu ra để tính cửa sổ Hanning. 
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tại sao hệ thống trong chương này không cần sử dụng các cấu trúc khóa bảo vệ phức tạp (như mutex hay spinlock) giữa CPU và FPGA?
+    \item Điều gì sẽ xảy ra nếu CPU đọc thanh ghi \texttt{fill\_level} đúng vào chu kỳ mà FPGA vừa đọc một từ ra khỏi FIFO?
+\end{enumerate}
+
+\noindent\textbf{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Hệ thống không cần mutex vì kiến trúc tuân thủ nguyên tắc Producer-Consumer một chiều trên hai miền giao tiếp độc lập:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Phía HPS là bên sản xuất (Producer): HPS chỉ có quyền ghi vào mảng RAM và chỉ có quyền sửa đổi con trỏ \texttt{wr\_ptr}. HPS hoàn toàn không thể thay đổi \texttt{rd\_ptr}.
+        \item Phía FPGA là bên tiêu thụ (Consumer): FPGA chỉ có quyền đọc mảng RAM và chỉ có quyền sửa đổi con trỏ \texttt{rd\_ptr}. FPGA hoàn toàn không thể thay đổi \texttt{wr\_ptr}.
+    \end{itemize}
+    Vì mỗi bên chỉ sở hữu độc quyền một con trỏ, không có biến trạng thái chung nào bị xung đột ghi đồng thời (write-write race condition).
+    \item Nếu CPU đọc \texttt{fill\_level} đúng nhịp FPGA cập nhật \texttt{rd\_ptr}: Trong trường hợp xấu nhất, CPU có thể đọc được giá trị \texttt{fill\_level} cũ (chưa giảm đi 2 mẫu). Điều này hoàn toàn an toàn (fail-safe): CPU sẽ cho rằng bộ đệm đầy hơn thực tế một chút, do đó nó sẽ ghi thận trọng hơn chứ tuyệt đối không bao giờ gây ra hiện tượng ghi tràn bộ đệm.
+\end{enumerate}
+
+\paragraph{Bài tập 4: Đánh giá tác động của lỗi thứ tự byte (Endianness) lên ước lượng F0.}
+Một lập trình viên sơ suất đóng gói hai mẫu âm thanh 16-bit vào từ 32-bit theo chuẩn Big-Endian: $\text{sample}_0$ nằm ở \texttt{[31:16]} và $\text{sample}_1$ nằm ở \texttt{[15:0]}. Tuy nhiên, phần cứng giải gói FPGA vẫn vận hành theo chuẩn Little-Endian (phát \texttt{[15:0]} trước, \texttt{[31:16]} sau).
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Mô tả sự xáo trộn xảy ra trên chuỗi mẫu âm thanh đi vào lõi tính toán.
+    \item Phân tích định tính ảnh hưởng của lỗi này lên hàm tự tương quan $R[\tau]$ và ước lượng tần số cơ bản F0.
+\end{enumerate}
+
+\noindent\textbf{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Chuỗi âm thanh ban đầu $x[0], x[1], x[2], x[3], \dots$ sẽ bị hoán đổi từng cặp mẫu kế tiếp:
+    \begin{equation}
+    x_{\text{FPGA}} = \{x[1], x[0], x[3], x[2], x[5], x[4], \dots\}
+    \end{equation}
+    Mỗi mẫu chẵn và lẻ bị tráo đổi vị trí cho nhau trên toàn bộ chiều dài tệp.
+    \item \emph{Ảnh hưởng lên F0:} 
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Phép đảo cặp này tạo ra một thành phần nhiễu tần số cực cao ở tần số Nyquist $f_s / 2 = 8\text{ kHz}$ (bởi vì hiệu số giữa hai mẫu liên tiếp $x[2k+1] - x[2k]$ bị đảo dấu liên tục theo chu kỳ 2 mẫu).
+        \item Tuy nhiên, các đỉnh tự tương quan của chu kỳ cơ bản giọng nói ($F_0 \in [75, 600]\text{ Hz}$) tương ứng với các độ trễ lag rất lớn:
+        \begin{equation}
+        \tau \in [26, 213]\text{ mẫu}
+        \end{equation}
+        Khi dịch đi $\tau$ mẫu (với $\tau \gg 2$), hình dạng bao sóng năng lượng tổng thể vẫn bảo toàn tính tuần hoàn cơ bản. Kết quả là đỉnh $R[\tau]$ vẫn xuất hiện gần vị trí lag thực tế, nhưng đỉnh sẽ bị răng cưa nghiêm trọng và giá trị nội suy cực trị parabol bị kéo lệch, dẫn đến việc tăng vọt sai số cent mịn và gây ra các quyết định nhảy quãng tám (octave jump) thất thường.
+    \end{itemize}
+\end{enumerate}
+
+\textit{Tóm lại: Trình điều khiển HPS giao tiếp mmap với bộ đệm và bản đồ thanh ghi đã được kiểm chứng bit-exact qua Python twin và testbench Verilog; so sánh tổng hợp khẳng định HDL tự viết đạt trần hiệu năng phần cứng ngang ngửa IP Intel nhưng mang lại tính minh bạch và khả năng kiểm thử độc lập tối đa.}
+
+
+
 
 
 
