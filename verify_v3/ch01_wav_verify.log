@@ -1,0 +1,45 @@
+======================================================================
+VERIFICATION: CH01 WAV PARSER AND GLOBAL PEAK
+======================================================================
+Compiling C WAV parser: gcc -Wall -Wextra -O2 /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_wav.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/test_ch01_wav.c -I /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3 -o /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/test_ch01_wav_bin
+Compilation successful.
+
+Test 1: Golden clean WAV (golden_v2/synth_glide_vuv_16k.wav)
+  Return code: 0 (expected 0)
+  Num samples: 44800 (expected 44800)
+  Sample rate: 16000 (expected 16000)
+  Channels:    1 (expected 1)
+  Bits/sample: 16 (expected 16)
+  globalPeak:  22946 (expected 22946)
+
+Test 2: Golden noisy SNR 5dB WAV (golden_v2/synth_glide_vuv_16k_snr5.wav)
+  Return code: 0 (expected 0)
+  Num samples: 44800 (expected 44800)
+  globalPeak:  22937 (expected 22937)
+
+Test 3: Miniature speech WAV (verify_v3/data/mini_speech.wav)
+  Return code: 0
+  Num samples: 8 (expected 8)
+  globalPeak:  650
+  Samples:     0 100 -200 300 -400 500 -600 700
+
+Test 4: Edge case LIST chunk (verify_v3/data/edge_list_chunk.wav)
+  Return code: 0 (expected 0)
+  Num samples: 160 (expected 160)
+
+Test 5: Edge case odd-sized chunk with pad (verify_v3/data/edge_odd_chunk.wav)
+  Return code: 0 (expected 0)
+  Num samples: 4 (expected 4)
+
+Test 6: Invalid sample rate 44.1 kHz (verify_v3/data/edge_wrong_rate.wav)
+  Return code: -7 (expected -7: WAV_ERR_UNSUPPORTED_RATE)
+
+Test 7: Invalid channel count stereo (verify_v3/data/edge_stereo.wav)
+  Return code: -6 (expected -6: WAV_ERR_UNSUPPORTED_CHANNELS)
+
+Test 8: Truncated audio data (verify_v3/data/edge_truncated.wav)
+  Return code: -10 (expected -10: WAV_ERR_TRUNCATED)
+
+======================================================================
+ALL 8 WAV PARSER AND GLOBAL PEAK TESTS PASSED!
+======================================================================

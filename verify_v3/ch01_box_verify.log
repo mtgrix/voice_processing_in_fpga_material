@@ -1,0 +1,4 @@
+Box verification ch01 2026-11-11 04:56:44 +0700 on HEAD f8ded61
+Python: ch01_wav_verify, ch01_frames_verify, ch01_fifo_test (twin only), ch01_driver_test: all exit 0, all PASS (gcc builds of sw_v3 OK)
+iverilog 12.0 -g2012: tb/v3/tb_ch01_fifo.v FAILS TO ELABORATE (line 76: concatenation operand of indefinite width); RTL vs twin never run
+xelatex x2: 0 errors, 4 overfull hboxes, 53 pages

@@ -1,0 +1,19 @@
+======================================================================
+VERIFICATION: CH01 AVALON-MM TO AVALON-ST FIFO TWIN
+======================================================================
+Generated 250 32-bit test words (500 audio samples) to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch01_fifo_stim.txt
+
+Simulation completed in 1117 cycles.
+Total 32-bit words written: 250/250
+Total 16-bit samples received: 500/500
+FIFO full / waitrequest occurrences: 0
+Verification PASSED: 100% bit-exact match with zero sample loss or duplication.
+Little-endian order verified: lower 16-bit sample emitted before upper 16-bit sample.
+
+Testing FIFO capacity saturation:
+  After 257 writes: words_used=256, full=True, waitrequest=True, fill_samples=514
+  Overflow protection and ovf_sticky verified.
+
+======================================================================
+ALL AVALON FIFO TWIN TESTS PASSED!
+======================================================================

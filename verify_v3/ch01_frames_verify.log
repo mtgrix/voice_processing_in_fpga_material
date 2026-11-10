@@ -1,0 +1,27 @@
+======================================================================
+VERIFICATION: CH01 PRAAT FRAME GRID AND ODD-SAMPLE FLOOR TRAP
+======================================================================
+Compiling C frames grid calculator: gcc -Wall -Wextra -O2 /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_frames.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/test_ch01_frames.c -I /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3 -lm -o /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/test_ch01_frames_bin
+Compilation successful.
+
+Test 1: File 1.234 s (nx = 19744)
+  C output:  nframes = 120, t1 = 0.022000, win0[0] = 33
+  Py output: nframes = 120, t1 = 0.022000, win0[0] = 33
+
+Test 2: File 2.8 s (nx = 44800)
+  C output:  nframes = 277, t1 = 0.020000, win0[0] = 1
+  Py output: nframes = 277, t1 = 0.020000, win0[0] = 1
+
+Test 3: 200 random file lengths (100 even, 100 odd)...
+  Verified 200/200 lengths against Python twin (100% bit-exact).
+  Even lengths tested: 100, non-160 hop count = 0 (0.0%).
+  Odd lengths tested:  100, non-160 hop count = 86 (86.0%).
+
+Floor trap insight: When nx is odd, 0.5 * duration lands on exact integers,
+causing double precision floating-point rounding to occasionally drop by 1 ulp,
+which produces occasional hops of 159 or 161 in Praat's Sampled_xToLowIndex.
+The HPS code reproduces Praat's exact behavior and flags any irregular hop.
+
+======================================================================
+ALL PRAAT FRAME GRID VERIFICATIONS PASSED!
+======================================================================

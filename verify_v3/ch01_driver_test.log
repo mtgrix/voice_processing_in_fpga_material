@@ -1,0 +1,41 @@
+======================================================================
+VERIFICATION: CH01 HPS C DRIVER (-DSIM MODE)
+======================================================================
+Compiling HPS driver in -DSIM mode: gcc -Wall -Wextra -O2 -DSIM /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_driver.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_wav.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_frames.c -I /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3 -lm -o /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/ch01_driver_sim
+Compilation successful.
+
+Executing driver on /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/golden_v2/synth_glide_vuv_16k.wav...
+=== HPS F0 PROCESSING DRIVER ===
+Loading WAV: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/golden_v2/synth_glide_vuv_16k.wav
+WAV loaded successfully:
+  Samples:    44800 (2.800 s)
+  Rate:       16000 Hz, Channels: 1, Bits: 16
+  globalPeak: 22946 (amplitude)
+Frame Grid calculated:
+  n_frames:   277
+  t1:         0.020000 s
+  first_win0: 1
+  hop_regular:1
+Simulation mode (-DSIM) active: using software mock memory.
+Streaming 44800 samples (packing 2 samples per 32-bit word)...
+Sent 22400 32-bit words (44800 samples).
+Triggering FPGA processing START...
+Polling STATUS for completion...
+FPGA Processing COMPLETE!
+  Total FPGA cycles: 27296411
+  Cycles/frame:      98543
+Saved 277 F0 words to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_f0.bin
+Saved metadata to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_meta.txt
+=== DRIVER FINISHED SUCCESSFULLY ===
+
+Checking /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_f0.bin: size = 554 bytes (expected 554 bytes)
+Checking /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_meta.txt:
+t1=0.020000
+dt=0.010000
+n_frames=277
+first_win0=1
+global_peak=22946
+
+======================================================================
+ALL HPS C DRIVER SIMULATION TESTS PASSED!
+======================================================================
