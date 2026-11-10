@@ -1,0 +1,6 @@
+Box verification 2026-11-11 02:24:10 +07
+Praat: Praat 7.0.03 (November 8 2026)
+praat R1/R2 clean+snr5 regenerated: identical to golden_v2/out/praat*_R{1,2}.tsv (4/4)
+golden_v2/compare.py rerun: compare_report.md unchanged
+hdl_check tb_mac638: results checked = 3040, errors = 0
+pair_counter: TEST SUMMARY: Total tests = 201, Total errors = 0

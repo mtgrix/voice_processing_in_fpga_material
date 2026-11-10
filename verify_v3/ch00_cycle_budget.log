@@ -1,0 +1,21 @@
+=== Cycle Budget from First Principles ===
+Clock frequency: 50.0 MHz (T_clk = 20.0 ns)
+Audio sampling rate: 16000 Hz (T_s = 62.50 us)
+Cycles available per audio sample: 50000000 / 16000 = 3125 cycles
+Hop size: 160 samples (10.0 ms)
+Cycles available per hop (real-time budget): 160 * 3125 = 500000 cycles
+
+=== MAC Count Derivation ===
+Window length: N = 638
+Lags: tau = 26 .. 214 (189 lags)
+sum(tau) for tau in 26..214 = 189 * (26 + 214) / 2 = 189 * 240 / 2 = 22680
+189 * 638 = 120582
+MACs for lags 26..214: 120582 - 22680 = 97902 MACs
+Energy R[0] MACs: 638 MACs
+Total MAC pairs issued per frame: 97902 + 638 = 98540 pairs
+MAC pipeline latency: 3 cycles
+Total cycles from first pair issued to final R[214] valid: 98540 + 3 = 98543 cycles
+MAC Real-Time Factor (RTF): 98543 / 500000 = 0.197086 (approx 0.197)
+
+Estimated total core cycles: 99700 cycles
+Core RTF: 99700 / 500000 = 0.199400 (approx 0.199)

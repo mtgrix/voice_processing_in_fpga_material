@@ -1,0 +1,6 @@
+=== 1. Verifying 10-step Integer Spec Constants ===
+  All constants match canonical values in BRIEF_v3 §7 perfectly.
+
+=== 2. Canonical Comparison Results from golden_v2/out/compare_report.md ===
+  File read successfully. Length: 2438 bytes.
+  Found synthetic clean and noisy 5 dB sections.

@@ -1,0 +1,42 @@
+=== Exercise 1: Zero-crossing failure with strong 2nd harmonic ===
+  Fundamental period T0 = 8.33 ms
+  Observation window T_obs = 50.0 ms -> 6.0 periods
+  Roots in one period (rad): 0, 2.2459, 3.1416, 4.0373 -> 4 crossings/period
+  Total zero crossings in 0.05s: 24
+  Estimated frequency: 240.0 Hz (double the true F0 = 120 Hz!)
+
+=== Exercise 2: FFT resolution and cent error ===
+  FFT bin spacing df = 16000 / 640 = 25.0 Hz
+  True frequency: 162.5 Hz, midway between bin 6 (150.0 Hz) and bin 7 (175.0 Hz)
+  Max frequency error: 12.5 Hz
+  Cent error vs bin 7: 128.30 cents
+  Cent error vs bin 6: 138.57 cents
+
+=== Exercise 3: Window normalization on small vector ===
+  xw = [0.5 2.  6.  6.  2.  0.5]
+  R_xw(0) = 80.500, R_xw(2) = 30.000
+  R_w(0) = 2.6250, R_w(2) = 1.5000
+  r_unnorm(2) = 0.3727
+  r_norm(2) = 0.6522
+
+=== Exercise 4: Metrics (VDE, GPE, FFE, cents) ===
+  Total frames: 6
+  VDE frames: [1, 2] -> VDE = 2/6 = 33.33%
+  Both voiced frames: [0, 3, 4]
+  GPE frames: [3] -> GPE = 1/3 = 33.33%
+  FFE frames: [1, 2, 3] -> FFE = 3/6 = 50.00%
+    Frame 1: +14.37 cents
+    Frame 5: +38.91 cents
+  Mean absolute fine cents: 26.64 cents
+
+=== Exercise 5: Cycle budget and RTF at 25 MHz and 100 MHz ===
+  At 25 MHz:
+    Budget per 10 ms hop = 250000 cycles
+    RTF_mac = 98543/250000 = 0.3942
+    RTF_core = 99700/250000 = 0.3988
+  At 100 MHz:
+    Budget per 10 ms hop = 1000000 cycles
+    RTF_mac = 98543/1000000 = 0.0985
+    RTF_core = 99700/1000000 = 0.0997
+  8-channel multiplexing total cycles per 10 ms = 797600
+  Minimum clock frequency = 79.76 MHz

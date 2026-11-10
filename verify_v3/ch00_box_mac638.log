@@ -1,0 +1,20 @@
+ERROR: tb_mac638.v:26: $readmemh: Unable to open xw.hex for reading.
+ERROR: tb_mac638.v:26: $readmemh: Unable to open exp.hex for reading.
+frame 0: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 1: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 2: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 3: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 4: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 5: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 6: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 7: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 8: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 9: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 10: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 11: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 12: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 13: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 14: issue cycles = 98540, first-address -> last result = 98543 cycles
+frame 15: issue cycles = 98540, first-address -> last result = 98543 cycles
+results checked = 3040, errors = 0
+tb_mac638.v:48: $finish called at 31534740000 (1ps)

@@ -1,0 +1,43 @@
+=== Verifying against golden_v2 compare results ===
+File synth_glide_vuv_16k.wav: 277 frames
+  fixed_raw vs praat_R2              : VDE=0/277 (0.0000), GPE=0/208 (0.0000), FFE=0.0000, cents=0.2102 (p95=0.4834, max=1.08)
+  fixed_med3 vs praat_R1             : VDE=0/277 (0.0000), GPE=0/208 (0.0000), FFE=0.0000, cents=0.3734 (p95=0.6363, max=12.96)
+File synth_glide_vuv_16k_snr5.wav: 277 frames
+  fixed_raw vs praat_R2              : VDE=0/277 (0.0000), GPE=3/207 (0.0145), FFE=0.0108, cents=20.37 (p95=10.56, max=32.91)
+  fixed_med3 vs praat_R1             : VDE=0/277 (0.0000), GPE=15/207 (0.0725), FFE=0.0542, cents=91.24 (p95=1182, max=48.41)
+
+=== Pedagogical 10-Frame Example ===
+Frame | Ref (Hz) | Test (Hz) | Status                | Rel Err (%) | Cents     | Gross?
+------+----------+-----------+-----------------------+-------------+-----------+-------
+   0  |      0.0 |       0.0 | Both unvoiced (UV)    |           - |         - | No
+   1  |    120.0 |     120.0 | Both voiced (V)       |       0.00% |     +0.00 | No (fine)
+   2  |    150.0 |     152.0 | Both voiced (V)       |       1.33% |    +22.93 | No (fine)
+   3  |    200.0 |     196.0 | Both voiced (V)       |       2.00% |    -34.98 | No (fine)
+   4  |    220.0 |     224.0 | Both voiced (V)       |       1.82% |    +31.19 | No (fine)
+   5  |      0.0 |     130.0 | Voicing error (V/UV)  |           - |         - | VDE
+   6  |    140.0 |       0.0 | Voicing error (V/UV)  |           - |         - | VDE
+   7  |    100.0 |     200.0 | Both voiced (V)       |     100.00% |  +1200.00 | YES (GPE)
+   8  |    300.0 |     150.0 | Both voiced (V)       |      50.00% |  -1200.00 | YES (GPE)
+   9  |      0.0 |       0.0 | Both unvoiced (UV)    |           - |         - | No
+
+--- Summary Breakdown ---
+Total frames: N = 10
+Voiced in Ref: 7, Voiced in Test: 7
+Both voiced frames: N_both = 6 (Frames 1, 2, 3, 4, 7, 8)
+Voicing errors (VDE): 2 frames (Frames 5, 6) -> VDE = 2/10 = 20.0%
+Gross Pitch Errors (GPE): 2 frames (Frames 7, 8) out of 6 both-voiced frames -> GPE = 2/6 = 33.3%
+F0 Frame Errors (FFE): VDE + GPE = 2 + 2 = 4 -> FFE = 4/10 = 40.0%
+Fine cents (excluding GPE frames 7 and 8, on frames 1, 2, 3, 4):
+  Frame 1:  0.00 cent
+  Frame 2: +22.96 cent
+  Frame 3: -34.97 cent
+  Frame 4: +31.18 cent
+  Mean absolute cents: 22.28 cent
+  Std of cents: 25.64 cent
+  95th percentile: 34.41 cent
+  Max fine cent error: 34.98 cent
+
+Explanation of 20% threshold:
+20% frequency ratio: 1200 * log2(1.20) = 315.64 cents = 3.16 semitones.
+Why exclude gross errors from fine-cent statistics?
+An octave error (2x) is 1200 cents! If included, a single octave error would distort the mean cent error from 22 cents to hundreds of cents, hiding the true precision of the fine interpolation algorithm.
