@@ -19,6 +19,7 @@ from fixed_twin import analyse_fixed
 
 PRAAT = sys.argv[1] if len(sys.argv) > 1 else '/workspace/tools/praat7003/praat_barren'
 FILES = ['synth_glide_vuv_16k.wav', 'synth_glide_vuv_16k_snr5.wav']
+TRUTH = {'synth_glide_vuv_16k.wav': 'out/truth_f0.npy', 'synth_glide_vuv_16k_snr5.wav': 'out/truth_f0_snr5.npy'}
 
 
 def run_praat(wav, jump, vuv):
@@ -58,6 +59,7 @@ def main():
         raw = np.array(fx['f0q']) / 16.0
         med = np.array(fx['f0q_med']) / 16.0
         f2med = median3(f2)
+        truth = np.load(TRUTH[wav])[np.round(t1 * K.FS - 0.5).astype(int)]   # true F0 at frame centre
         rows = {
             'float_R2 vs praat_R2': metrics(p2, f2),
             'float_R1 vs praat_R1': metrics(p1, f1),
@@ -67,6 +69,10 @@ def main():
             'fixed_med3 vs float_R2+med3': metrics(f2med, med),
             'fixed_med3 vs praat_R2': metrics(p2, med),
             'fixed_med3 vs praat_R1': metrics(p1, med),
+            'praat_R1 vs truth': metrics(truth, p1),
+            'praat_R2 vs truth': metrics(truth, p2),
+            'fixed_raw vs truth': metrics(truth, raw),
+            'fixed_med3 vs truth': metrics(truth, med),
         }
         summary[wav] = dict(nframes=len(t1), t1=float(t1[0]), gp=fx['gp'],
                             hop_values=sorted(set(int(h) for h in hops)), first_window_start0=fx['starts'][0],
