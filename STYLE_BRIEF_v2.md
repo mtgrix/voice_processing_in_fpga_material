@@ -223,3 +223,69 @@ Fix all of these. Page numbers are printed pages of the current PDF.
   - a per-section table: section | Feynman 6 points (y/n each) | twin+HDL (iverilog result) | numbers verified (script) | audit items fixed;
   - word, figure, table and listing counts before and after;
   - remaining honest issues.
+
+## Bổ sung 2026-11-10 tối (Tú's new rules; these override earlier sections where they conflict)
+
+### N1. Direction changed: WAV input, compared with Praat on a laptop
+- The input is an existing **16 kHz WAV file** read by the HPS (ARM Linux) from the SD card. The PCM is streamed to the FPGA over the HPS–FPGA bridge (mSGDMA, or Avalon-MM into a FIFO, then Avalon-ST). F0 Q12.4 per frame goes back to the HPS as `pitch_f0.bin`.
+- There is NO microphone, WM8731, I²S or PLL/MCLK capture in the main flow. Ch.2 PLL/I²S/CDC becomes at most a short appendix.
+- The target is to compare with Praat `To Pitch (ac)` on a laptop, using the same WAV and the same parameters.
+  - Accuracy: GPE, VDE, FFE and cents per frame.
+  - Time: FPGA cycles (cycle counter), HPS end-to-end wall time including transfer, and Praat wall time on the laptop.
+  - RTF for each of the three.
+- **Decisions:**
+  - No resampling in the main flow. Step 1 is only the soft Nyquist-edge FIR near 8 kHz (IP FIR Compiler II vs HDL).
+  - Resampling to 16 kHz is an OPTIONAL chapter:
+    - 48→16 is 1/3, done either as a direct ↓3 or as half-band 48→24 followed by the 2/3 even/odd polyphase;
+    - 44.1→16 is 160/441, needing a rational polyphase or Farrow approach. It must NOT be treated as 2/3.
+  - Autocorrelation is MAC only (no FFT path).
+  - No Viterbi: median-3 is the smoother, and Viterbi is explained only as the reason it is dropped.
+  - The DC-blocker is optional.
+- The chapter plan follows the Sound_to_Pitch components in order; see `/workspace/writing_material/direction_audit_wav_2026-11-10.md`.
+
+### N2. Narrative floor and keyword-dump rejection
+- Ch.0's narrative level (old file) is the MINIMUM bar for every chapter.
+- A result may appear only after the reader has been led to it, in this order: the problem → why the naive approach fails → the derivation step by step, with bridge sentences → a hand example → the number.
+- Reject any section whose paragraphs are mostly a term plus a number, a list of facts, or results without a derivation. The reviewer samples paragraphs and rejects them if they do not explain WHY.
+- Merge the bolted-on subsections into the main flow with transitions, or turn each one into a clearly motivated part, without losing content. This applies to 3.3b, 3.4b, 4.1b, 4.3b, 4.4b, 5.1b, 5.2b, 5.3b, 8.4b/c, 8.5b, 9.4b/c, 9.5b, 11.3b, 11.4b, 11.5b/c, 12.7b–d, 13.4b–13.7c, 14.2b, 14.3b and 14.4b–d.
+
+### N3. Two implementations side by side for every Praat component
+- **(A) Intel IP**, as applicable: FIR Compiler II, LPM_MULT/DSP, altsyncram/ROM, LPM_DIVIDE, DCFIFO, mSGDMA.
+- **(B) Self-written HDL** that reproduces A bit-exactly and cycle-exactly, with an explanation of why. Both are checked against the Python twin with iverilog.
+- If no sensible IP exists (median-3, voicing compare, FSM), say so explicitly and explain why only HDL is used.
+- Each component ends with an IP-vs-HDL comparison table: resources, latency, flexibility.
+
+### N4. Options, trade-offs, our choice, why (with numbers) for every hardware block
+- **Example, the multiplier:**
+  - Combinational: the output arrives in the same cycle, the critical path is long, Fmax is lower, and there is no latency.
+  - Registered/pipelined: LPM_PIPELINE = N, i.e. the DSP input/output registers. Fmax is higher, and N cycles of latency must be handled by the FSM.
+  - We choose pipelined, because:
+    - the clock is 50 MHz versus the Cyclone V DSP timing;
+    - there are 3125 cycles per 16 kHz sample, so latency is cheap;
+    - the registers inside the DSP block are free;
+    - it stays bit-exact with the IP's pipeline setting.
+- **Apply the same structure to:**
+  - memory read mode (registered vs unregistered; Old Data vs New Data/Don't Care);
+  - the divider (combinational vs pipelined LPM_DIVIDE vs iterative);
+  - the FIFO type;
+  - FSM encoding;
+  - the accumulator width, and the like.
+
+### N5. IP path: explain every parameter, what the IP produces, and tie it back to theory
+1. Walk through each parameter shown in the IP Parameter Editor:
+   - LPM_MULT: input widths, signed/unsigned, LPM_PIPELINE, DSP vs logic;
+   - altsyncram: operation mode, widths and depth, outdata_reg, read-during-write mode, init file;
+   - LPM_DIVIDE: widths, LPM_PIPELINE, LPM_REMAINDERPOSITIVE;
+   - FIR Compiler II: coefficient width, symmetry, interpolation/decimation factors, clock rate vs sample rate (the folding factor).
+   For each one, say what it means and why we pick that value.
+2. State what the IP produces: the generated ports, the latency it reports, the resource report (DSP, M10K, ALM), and the output width and scaling.
+3. Reflect each parameter and result back to the theory:
+   - coefficient width ↔ stopband attenuation;
+   - symmetry ↔ linear phase and half the multipliers;
+   - folding factor ↔ the 3125-cycle budget.
+4. For the HDL path, show HOW the RTL produces each trade-off:
+   - which register stage corresponds to LPM_PIPELINE;
+   - how to code a signed multiply so it infers a DSP block;
+   - how to get Old Data behaviour;
+   - how to fold symmetric taps through the pre-adder.
+   Then show how changing an RTL choice moves Fmax, latency and resources.
