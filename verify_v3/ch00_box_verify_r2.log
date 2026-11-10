@@ -1,0 +1,6 @@
+Box verification r2 2026-11-11 03:58:48 +0700 on HEAD b0a34f8
+Praat source used for line check: /workspace/tools/praat_src (7.0.03, commit 6a9874e)
+python verify scripts (naive_methods norm_sine praat_lines metrics table_golden cycle_budget golden_spec exercises): all exit 0
+ch00_praat_lines.py: ALL PRAAT 7.0.03 CITATIONS VERIFIED SUCCESSFULLY (38 PASS tokens, 0 FAIL)
+ch00_test_pair_counter.py (iverilog): 201/201 tests PASSED bit- and cycle-exact
+xelatex x2 phan_moi_v3.tex: 0 errors, 0 overfull boxes, 31 pages
