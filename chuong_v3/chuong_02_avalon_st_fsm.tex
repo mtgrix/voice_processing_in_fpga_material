@@ -398,4 +398,203 @@ Từ các phân tích định lượng trên, tài liệu này xác lập quy ch
 
 \textit{Tóm lại: Trên kiến trúc Cyclone V với 166.036 thanh ghi dồi dào, mã hóa One-Hot giải phóng hoàn toàn độ trễ giải mã tổ hợp; việc hiểu rõ bản chất toán học từ lập luận chuỗi bit 1 của mã Gray đến cấu trúc logic của One-Hot giúp ta tự tin để Quartus ở chế độ Auto và kiểm tra xác nhận qua báo cáo State Machine.}
 
+\subsection*{2.4. Khối đệm trượt (Skid Buffer): Cắt đứt đường phản áp tới hạn}
+\addcontentsline{toc}{subsection}{2.4. Khối đệm trượt (Skid Buffer): Cắt đứt đường phản áp tới hạn}
+
+\subsubsection*{Vấn đề thực tế: Vòng lặp phản áp tổ hợp làm suy giảm Fmax}
+Khi thiết kế các chuỗi đường ống (pipeline) nhiều tầng theo chuẩn Avalon-ST, các khối chức năng được mắc nối tiếp nhau: đầu ra của khối này (source) nối vào đầu vào của khối tiếp theo (sink). 
+
+Để dòng dữ liệu chuyển động về phía trước (forward path), người thiết kế dễ dàng chèn các tầng thanh ghi flip-flop trên đường \texttt{data} và \texttt{valid}. Tuy nhiên, thách thức kỹ thuật nan giải lại nằm ở \textbf{đường tín hiệu phản áp đi ngược chiều (backward path)}: tín hiệu \texttt{ready}.
+
+Hãy xét một tầng đệm đường ống đơn giản thông thường:
+\begin{lstlisting}[language=Verilog, caption={Tầng chốt đường ống ngây thơ với đường ready tổ hợp thuần}]
+always @(posedge clk) begin
+    if (m_ready) begin
+        m_data  <= s_data;
+        m_valid <= s_valid;
+    end
+end
+assign s_ready = m_ready | ~m_valid;
+\end{lstlisting}
+
+Nhìn vào dòng lệnh gán liên tục cuối cùng: \texttt{s\_ready = m\_ready | \~{}m\_valid}. Tín hiệu \texttt{s\_ready} ở đầu vào phụ thuộc trực tiếp vào tín hiệu \texttt{m\_ready} ở đầu ra thông qua một cổng logic tổ hợp OR. 
+
+Nếu ta ghép 5 khối xử lý như vậy nối tiếp nhau (ví dụ: Unpacker $\to$ DC-Blocker $\to$ FIR $\to$ Window RAM $\to$ MAC), tín hiệu \texttt{ready} từ khối MAC cuối cùng sẽ phải chạy xuyên qua 5 cổng tổ hợp OR ngược dòng từ hạ nguồn về tận bộ đệm FIFO ở thượng nguồn trong \textbf{cùng một chu kỳ xung nhịp 20 ns}. Đường dây phản áp này đi qua nhiều vùng logic khác nhau trên chip, chịu độ trễ dây dẫn (routing delay) rất lớn và trở thành \textbf{đường tới hạn (critical path)} quyết định tần số hoạt động cực đại $F_{\max}$ của cả hệ thống.
+
+\textbf{Vì sao không thể chốt \texttt{ready} bằng một thanh ghi đơn giản?}
+Một trực giác tự nhiên là đặt thêm một thanh ghi flip-flop trên đường \texttt{ready}: \texttt{always @(posedge clk) s\_ready <= m\_ready;}. 
+
+Nhưng giải pháp ngây thơ này sẽ phá vỡ hoàn toàn giao thức bắt tay và làm mất dữ liệu:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Giả sử ở chu kỳ $n$, phía hạ nguồn bất ngờ bị nghẽn và hạ \texttt{m\_ready} xuống 0.
+    \item Do tín hiệu \texttt{ready} bị trễ 1 nhịp qua thanh ghi, ở chính chu kỳ $n$ phía thượng nguồn vẫn nhìn thấy \texttt{s\_ready} = 1!
+    \item Phía thượng nguồn yên tâm phát đi một mẫu dữ liệu mới $D_{\text{mới}}$ ở chu kỳ $n$.
+    \item Sang chu kỳ $n+1$, mẫu $D_{\text{mới}}$ này bay tới cửa vào của tầng đệm, nhưng hạ nguồn vẫn đang nghẽn (\texttt{m\_ready} = 0) và thanh ghi chính của tầng đệm đang bận giữ mẫu cũ $D_{\text{cũ}}$. 
+    \item Vì không có chỗ chứa, mẫu $D_{\text{mới}}$ sẽ \textbf{ghi đè lên mẫu cũ hoặc bị rơi mất vĩnh viễn}.
+\end{itemize}
+
+Hiện tượng mẫu dữ liệu tiếp tục bay tới thêm 1 nhịp sau khi tín hiệu dừng đã được phát đi được gọi là hiện tượng \textbf{trượt quán tính (skid)}. Khối mạch giải quyết trọn vẹn bài toán này mang tên \textbf{Khối đệm trượt (Skid Buffer)}.
+
+\subsubsection*{Bản chất của Skid Buffer: Hai tầng chốt bảo toàn 100\% thông lượng}
+Bản chất của Skid Buffer là cung cấp vừa đúng \textbf{hai vị trí lưu trữ dữ liệu} độc lập:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Thanh ghi chính (Main Register - \texttt{main\_data}):} Giữ mẫu dữ liệu đang được trình diện ra phía hạ nguồn (\texttt{m\_data}).
+    \item \textbf{Thanh ghi trượt (Skid Register - \texttt{skid\_data}):} Đóng vai trò vùng đệm dự phòng khẩn cấp, chuyên hấp thụ đúng 1 mẫu dữ liệu đang bay tới khi hạ nguồn đột ngột dừng tiếp nhận.
+\end{enumerate}
+
+Nguyên lý ngắt đường trễ tổ hợp của Skid Buffer thể hiện ở chỗ:
+\begin{equation}
+\texttt{s\_ready} = \overline{\texttt{skid\_valid}}
+\end{equation}
+Tín hiệu \texttt{s\_ready} báo cho phía thượng nguồn biết tầng đệm còn nhận được dữ liệu hay không \textbf{chỉ phụ thuộc vào cờ thanh ghi nội bộ \texttt{skid\_valid}}, hoàn toàn không có bất kỳ cổng logic tổ hợp nào nối từ \texttt{m\_ready}! Đường phản áp đi ngược đã bị cắt đứt hoàn toàn bởi một thanh ghi flip-flop. Đồng thời, đường dữ liệu đi xuôi \texttt{m\_data} và \texttt{m\_valid} cũng được xuất trực tiếp từ các thanh ghi nội bộ. Cả hai chiều giao tiếp đều được cô lập 100\% bởi các phần tử nhớ tuần tự.
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch02_skid_buffer.tex}
+\caption{Kiến trúc phần cứng của khối đệm trượt (Skid Buffer) hai tầng chốt: Đường phản áp \texttt{s\_ready} được điều khiển hoàn toàn bởi cờ nội bộ \texttt{skid\_valid}, ngắt đứt đường trễ tổ hợp giữa hai miền giao tiếp.}
+\label{fig:ch02_skid_buffer}
+\end{figure}
+
+\textbf{Đọc hình.} Quan sát Hình~\ref{fig:ch02_skid_buffer}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Đường dữ liệu (vạch đậm màu xanh mòng két) đi vào từ \texttt{s\_data[15:0]}. Nó được rẽ làm hai nhánh: một nhánh đi thẳng vào bộ ghép kênh MUX 2:1 để nạp vào Thanh ghi chính, nhánh còn lại đi vào Thanh ghi trượt (\texttt{skid\_data}).
+    \item Khi hạ nguồn sẵn sàng (\texttt{m\_ready} = 1) và thanh ghi trượt rỗng (\texttt{skid\_valid} = 0), dữ liệu đi thẳng qua MUX vào Thanh ghi chính mỗi chu kỳ xung nhịp, duy trì thông lượng liên tục $100\%$ ($1\text{ mẫu/nhịp}$).
+    \item Khi hạ nguồn tạm dừng (\texttt{m\_ready} = 0) trong lúc thượng nguồn vẫn phát dữ liệu (\texttt{s\_valid} = 1), Thanh ghi chính bị khóa để bảo toàn dữ liệu cũ, và mẫu dữ liệu mới lập tức trượt vào lưu trú an toàn trong Thanh ghi trượt (\texttt{skid\_data}). Đồng thời, cờ \texttt{skid\_valid} bật lên 1, kích hoạt cổng đảo hạ \texttt{s\_ready} xuống 0 để chặn đứng hoàn toàn thượng nguồn ở chu kỳ kế tiếp.
+\end{itemize}
+
+\subsubsection*{Ví dụ tính tay 2 nhịp trượt (Hand Trace Walkthrough)}
+Hãy theo dõi vết hoạt động chi tiết của Skid Buffer qua 5 chu kỳ xung nhịp liên tiếp với dòng dữ liệu gồm 3 mẫu $D_1, D_2, D_3$:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Bảng tính tay từng nhịp hoạt động của khối Skid Buffer khi xuất hiện phản áp}
+\label{tab:ch02_skid_trace}
+\begin{tabular}{cccccccp{4.8cm}}
+\toprule
+CK & \texttt{s\_dat} & \texttt{s\_vld} & \texttt{m\_rdy} & \texttt{main\_dat} & \texttt{skid\_dat} & \texttt{sk\_vld} & Hành động của mạch \\
+\midrule
+0 & $D_1$ & 1 & 1 & Trống & Trống & 0 & Mạch rỗng. $D_1$ chuẩn bị nạp vào Main. \\
+1 & $D_2$ & 1 & \textbf{0} & $D_1$ & Trống & 0 & Hạ nguồn tắc (\texttt{m\_rdy}=0). $D_2$ bay tới! \\
+2 & $D_3$ & 1 & \textbf{0} & $D_1$ & \textbf{$D_2$} & \textbf{1} & $D_2$ trượt vào Skid. \texttt{s\_ready}=0 chặn nguồn! \\
+3 & $D_3$ & 1 & \textbf{1} & \textbf{$D_2$} & Trống & \textbf{0} & Hạ nguồn thông: $D_1$ xuất, $D_2$ sang Main! \\
+4 & -- & 0 & 1 & $D_3$ & Trống & 0 & $D_2$ xuất, $D_3$ vào Main. Hoàn tất. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Ở chu kỳ 1:} Thanh ghi chính đang giữ mẫu $D_1$ và chuẩn bị xuất ra. Bất ngờ hạ nguồn báo bận (\texttt{m\_ready} = 0). Cùng lúc đó, thượng nguồn đẩy mẫu $D_2$ lên bus với \texttt{s\_valid} = 1 (vì ở CK 1 \texttt{s\_ready} đang bằng 1).
+    \item \textbf{Ở chu kỳ 2:} Đến cạnh xung nhịp của CK 2, do $D_1$ chưa được hạ nguồn tiếp nhận nên nó tiếp tục nằm lại trên Thanh ghi chính. Mẫu $D_2$ không thể vào Thanh ghi chính nên lập tức được chốt vào Thanh ghi trượt (\texttt{skid\_data} = $D_2$, \texttt{skid\_valid} = 1). Khi \texttt{skid\_valid} lên 1, \texttt{s\_ready} lập tức bị kéo xuống 0. Thượng nguồn dù có muốn gửi tiếp $D_3$ cũng bị chặn lại. Không có mẫu nào bị ghi đè!
+    \item \textbf{Ở chu kỳ 3:} Hạ nguồn thông tắc (\texttt{m\_ready} = 1). Mẫu $D_1$ được chuyển giao thành công. Ngay lập tức, mạch điều khiển chuyển mẫu $D_2$ từ Thanh ghi trượt sang nạp đè vào Thanh ghi chính, và xóa cờ \texttt{skid\_valid} về 0. Cờ \texttt{s\_ready} tự động bật lên 1 trở lại, cho phép mẫu $D_3$ được nạp vào ở chu kỳ tiếp theo.
+\end{itemize}
+
+\subsubsection*{So sánh các phương án và lựa chọn thiết kế}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Phương án 1: Nối thẳng tổ hợp (Direct Combinational Ready):} Không tốn thêm thanh ghi, nhưng đường phản áp tổ hợp xuyên suốt nhiều khối làm giảm tần số hoạt động cực đại $F_{\max}$ \textbf{(phải đo)}. Chỉ phù hợp với các hệ thống có ít tầng xử lý và khoảng cách vật lý ngắn.
+    \item \textbf{Phương án 2: Chèn Skid Buffer hai tầng chốt:} Tốn thêm $16\text{ bit} \times 2 = 32\text{ thanh ghi FF}$ dữ liệu và 2 FF điều khiển (khoảng $34\text{ FF}$ trên ALM, zero khối M10K), nhưng cô lập hoàn toàn cả hai chiều truyền thông bằng thanh ghi, giữ nguyên $100\%$ thông lượng tối đa ($1\text{ mẫu/nhịp}$).
+\end{itemize}
+
+\textbf{Lựa chọn của tài liệu:} Ta chọn \textbf{Phương án 2 (Skid Buffer)} tại các điểm giao tiếp phân chia miền chức năng quan trọng (như giữa bộ giải gói Unpacker và bộ nhớ RAM khung) để đảm bảo hệ thống luôn đạt $F_{\max} \ge 50\text{ MHz}$ một cách an toàn mà không phụ thuộc vào kết quả định tuyến ngẫu nhiên của phần mềm Quartus Fitter.
+
+\subsubsection*{Đường (A): Khối IP Intel Avalon-ST Pipeline Stage}
+Trong bộ công cụ thiết kế hệ thống Platform Designer (Qsys), tập đoàn Intel cung cấp sẵn một khối IP có chức năng tương tự mang tên \textbf{Avalon-ST Pipeline Stage}. 
+
+Các tham số cấu hình chính trong Parameter Editor của IP gồm:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{Data Width}: Bề rộng dữ liệu (chọn 16 bit cho mẫu âm thanh PCM).
+    \item \texttt{Ready Latency}: Độ trễ sẵn sàng (chọn 0 chu kỳ).
+    \item \texttt{Pipeline Type}: Kiểu đường ống. IP cho phép chọn một trong ba chế độ:
+    \begin{enumerate}
+        \item \emph{Forward}: Chỉ chốt thanh ghi trên đường \texttt{data} và \texttt{valid} (đường \texttt{ready} vẫn là tổ hợp).
+        \item \emph{Backward}: Chỉ chốt thanh ghi trên đường \texttt{ready} (đòi hỏi xử lý trượt 1 nhịp).
+        \item \emph{Both}: Chốt thanh ghi trên cả hai chiều. Khi chọn chế độ này, mã nguồn bên trong của IP sẽ tự động tổng hợp ra kiến trúc mạch đệm trượt hai vị trí lưu trữ hoàn toàn tương đương với Skid Buffer.
+    \end{enumerate}
+\end{itemize}
+
+Hạn chế của việc sử dụng IP hộp đen là cấu trúc sinh ra bởi Platform Designer thường kèm theo nhiều tín hiệu thừa (như \texttt{channel}, \texttt{error}, \texttt{empty}), gây cồng kềnh khi mô phỏng độc lập. Do đó, trong các thiết kế lõi DSP chuyên sâu, việc tự viết một mô-đun Skid Buffer chuẩn bằng Verilog-2001 (Đường B) luôn là lựa chọn ưu tiên hàng đầu của các kỹ sư FPGA.
+
+\subsubsection*{Đường (B): Mã nguồn HDL tự viết chuẩn Verilog-2001}
+Mã nguồn đầy đủ của khối đệm trượt được hiện thực hóa trong tệp \texttt{rtl/v3/ch02\_skid\_buffer.v}:
+
+\begin{lstlisting}[language=Verilog, caption={Mô-đun Skid Buffer hai tầng chốt chuẩn hóa (rtl/v3/ch02\_skid\_buffer.v)}]
+module ch02_skid_buffer #(
+    parameter DATA_WIDTH = 16
+) (
+    input  wire                  clk,
+    input  wire                  rst_n,
+
+    // Giao dien Avalon-ST Sink (Dau vao tu thuong nguon)
+    input  wire                  s_valid,
+    input  wire [DATA_WIDTH-1:0] s_data,
+    output wire                  s_ready,
+
+    // Giao dien Avalon-ST Source (Dau ra toi ha nguon)
+    output wire                  m_valid,
+    output wire [DATA_WIDTH-1:0] m_data,
+    input  wire                  m_ready
+);
+    // Thanh ghi chinh: giu du lieu dang xuat cho ha nguon
+    reg [DATA_WIDTH-1:0] main_data;
+    reg                  main_valid;
+
+    // Thanh ghi truot: giu du lieu bay toi khi ha nguon bi nghen
+    reg [DATA_WIDTH-1:0] skid_data;
+    reg                  skid_valid;
+
+    // Tin hieu s_ready chi phu thuoc vao FF skid_valid, triet tieu duong to hop
+    assign s_ready = ~skid_valid;
+    assign m_valid = main_valid;
+    assign m_data  = main_data;
+
+    wire s_handshake = s_valid & s_ready;
+    wire m_handshake = main_valid & m_ready;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            main_data  <= {DATA_WIDTH{1'b0}};
+            main_valid <= 1'b0;
+            skid_data  <= {DATA_WIDTH{1'b0}};
+            skid_valid <= 1'b0;
+        end else begin
+            if (m_handshake) begin
+                if (skid_valid) begin
+                    main_data  <= skid_data;
+                    main_valid <= 1'b1;
+                    skid_valid <= 1'b0;
+                end else if (s_handshake) begin
+                    main_data  <= s_data;
+                    main_valid <= 1'b1;
+                end else begin
+                    main_valid <= 1'b0;
+                end
+            end else begin
+                if (s_handshake) begin
+                    if (main_valid) begin
+                        skid_data  <= s_data;
+                        skid_valid <= 1'b1;
+                    end else begin
+                        main_data  <= s_data;
+                        main_valid <= 1'b1;
+                    end
+                end
+            end
+        end
+    end
+endmodule
+\end{lstlisting}
+
+\textbf{Giải thích mã nguồn dòng-từng-dòng:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Dòng 21--26: Khai báo 4 thanh ghi nội bộ đại diện cho 2 vị trí lưu trữ: \texttt{main\_data} (16-bit) và \texttt{main\_valid} (1-bit); \texttt{skid\_data} (16-bit) và \texttt{skid\_valid} (1-bit).
+    \item Dòng 29: \texttt{assign s\_ready = \~{}skid\_valid;}. Đây là dòng mã quan trọng nhất của toàn khối: phía thượng nguồn được phép gửi dữ liệu khi và chỉ khi thanh ghi trượt đang rỗng. Biểu thức này không hề chứa biến \texttt{m\_ready}, chứng minh mạch đã triệt tiêu hoàn toàn đường trễ phản áp tổ hợp ngược.
+    \item Dòng 36--41: Nhánh reset bất đồng bộ tích cực mức thấp, đưa toàn bộ 4 thanh ghi về trạng thái rỗng ban đầu.
+    \item Dòng 43--52: Trường hợp hạ nguồn hoàn tất một giao dịch (\texttt{m\_handshake} = 1). Nếu trong thanh ghi trượt đang có sẵn mẫu dữ liệu lưu cữu (\texttt{skid\_valid} = 1), mẫu đó lập tức được nạp sang \texttt{main\_data} và \texttt{skid\_valid} được xóa về 0. Nếu không có dữ liệu trượt nhưng thượng nguồn đang đưa mẫu mới vào (\texttt{s\_handshake} = 1), mẫu mới được nạp thẳng vào \texttt{main\_data}. Nếu cả hai nguồn đều không có dữ liệu, thanh ghi chính rỗng (\texttt{main\_valid} $\le$ 0).
+    \item Dòng 53--63: Trường hợp hạ nguồn tắc nghẽn (\texttt{m\_handshake} = 0). Nếu thượng nguồn gửi dữ liệu tới (\texttt{s\_handshake} = 1): khi thanh ghi chính đã đầy (\texttt{main\_valid} = 1), mẫu mới bắt buộc phải rẽ nhánh vào chốt trong thanh ghi trượt (\texttt{skid\_data} $\le$ \texttt{s\_data}) và cờ \texttt{skid\_valid} bật lên 1. Nếu thanh ghi chính đang rỗng, dữ liệu được nạp vào thanh ghi chính.
+\end{itemize}
+
+\textit{Tóm lại: Khối đệm trượt (Skid Buffer) giải quyết mâu thuẫn giữa độ trễ tổ hợp của đường phản áp và yêu cầu toàn vẹn dữ liệu; với đúng hai tầng thanh ghi trong silicon, nó cho phép chốt chặn cả hai chiều phát-nhận mà vẫn duy trì thông lượng tối đa 1 mẫu/chu kỳ không một nhịp trễ.}
+
+
 

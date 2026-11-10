@@ -58,9 +58,9 @@
 
     % Connections - Data path
     % s_data to Skid Register and MUX input 0
-    \draw[dataline] (-3.2, 1.5) -- (-0.8, 1.5) |- (skid_reg.west);
-    \draw[dataline] (-1.8, 1.5) |- (0.2, 1.2) -- (mux_main.west |- 0, 1.2);
-    \node[font=\tiny, anchor=south] at (-2.2, 1.5) {dữ liệu vào};
+    \draw[dataline] (-3.2, 1.5) -- (-2.0, 1.5) |- (skid_reg.west);
+    \draw[dataline] (-2.2, 1.5) |- (0.2, 1.2) -- (mux_main.west |- 0, 1.2);
+    \node[font=\tiny, anchor=south] at (-2.6, 1.5) {dữ liệu vào};
 
     % Skid register to MUX input 1
     \draw[dataline] (skid_reg.east) -- (0.6, 1.8) |- (mux_main.west |- 0, 1.8);
@@ -70,7 +70,7 @@
 
     % Main Register to m_data
     \draw[dataline] (main_reg.east) -- (6.8, 1.5);
-    \node[font=\tiny, anchor=south] at (5.7, 1.5) {chốt ra};
+    \node[font=\tiny, anchor=south] at (6.1, 1.5) {chốt ra};
 
     % Connections - Control path
     % s_valid in
@@ -86,7 +86,7 @@
 
     % skid_valid drives MUX select and s_ready inverter
     \draw[ctrlline] (skid_ctrl.north) -- (-0.8, 0.5) -| (mux_main.south);
-    \node[font=\tiny, color=purple!80!black] at (0.8, 0.4) {sel=skid\_valid};
+    \node[font=\tiny, color=purple!80!black, anchor=south east] at (1.3, 0.5) {sel=skid\_valid};
 
     \draw[ctrlline] (skid_ctrl.south) -- (-0.8, -1.8) -- (inv.east);
     \draw[ctrlline] (inv.west) -- (-3.2, -1.8);
