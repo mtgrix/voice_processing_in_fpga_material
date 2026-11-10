@@ -1,0 +1,50 @@
+\clearpage
+\phantomsection
+\section*{Chương 1. WAV trên HPS và cầu HPS–FPGA, chiều đi và chiều về}
+\addcontentsline{toc}{section}{Chương 1. WAV trên HPS và cầu HPS–FPGA, chiều đi và chiều về}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Hiểu rõ bản chất vấn đề phân chia nhiệm vụ và truyền nhận dữ liệu giữa hai miền xử lý độc lập trên chip Cyclone V SoC: bộ vi xử lý HPS (ARM Cortex-A9) và vùng logic khả trình FPGA.
+    \item Nắm vững cấu trúc nhị phân của tệp RIFF/WAVE theo từng byte, hiểu rõ lý do vì sao việc nhảy cóc cố định vào độ lệch offset 44 dẫn tới sai lệch dữ liệu nghiêm trọng, và xây dựng bộ bóc tách định dạng WAV tin cậy bằng ngôn ngữ C trên nền tảng Linux.
+    \item Dẫn xuất công thức tính đỉnh biên độ toàn cục $\text{globalPeak}$ (GP) của Praat bằng số học nguyên chính xác, triệt tiêu hoàn toàn sự phụ thuộc vào số thực dấu phẩy động trên phần cứng.
+    \item Phân tích tường tận thuật toán tạo lưới phân tích khung ngắn hạn (\texttt{Sampled\_shortTermAnalysis} và \texttt{Sampled\_xToLowIndex}), giải mã hiện tượng bẫy sàn số lẻ (odd-sample floor trap) và cách thức mã nguồn HPS bảo vệ tính đều đặn của bước nhảy khung.
+    \item Đánh giá định lượng thông lượng truyền thông qua ba phương án phần cứng: PIO qua cầu Lightweight HPS-to-FPGA, DMA thông qua cầu Full Bridge, và bộ điều khiển mSGDMA; hiểu rõ sự đánh đổi giữa thông lượng, độ phức tạp phần mềm và việc bảo toàn tính nhất quán bộ đệm cache.
+    \item Nắm vững kiến trúc và từng tham số cấu hình của khối IP hàng đợi Intel \texttt{altera\_avalon\_fifo} (On-Chip FIFO Memory), giải thích cơ chế phân rã từ dữ liệu 32-bit thành hai mẫu 16-bit theo thứ tự byte nhỏ (little-endian) và tài nguyên khối nhớ M10K.
+    \item Tự thiết kế và hiện thực khối hàng đợi Avalon-MM write slave sang Avalon-ST source bằng ngôn ngữ Verilog-2001, hiểu rõ cơ chế con trỏ có bit vòng, hành vi tín hiệu \texttt{waitrequest} bảo vệ bus và cơ chế phản áp dòng chảy dữ liệu.
+    \item Định nghĩa tường minh bản đồ không gian thanh ghi điều khiển cho toàn bộ lõi xử lý F0 và lập trình trình điều khiển (C driver) tương tác qua giao tiếp ánh xạ bộ nhớ \texttt{mmap} trên Linux.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{1.1. Vấn đề truyền dữ liệu giữa hai miền HPS và FPGA}
+\addcontentsline{toc}{subsection}{1.1. Vấn đề truyền dữ liệu giữa hai miền HPS và FPGA}
+
+Một hệ thống nhúng thực tế không bao giờ bắt đầu bằng một khối logic đứng cô lập. Tín hiệu tiếng nói thu nhận từ micro hoặc lưu trữ sẵn dưới dạng tệp âm thanh WAV được đặt trong hệ thống tệp tin định dạng FAT32 hoặc ext4 trên thẻ nhớ SD. Thẻ nhớ này kết nối trực tiếp với bộ điều khiển ngoại vi của hệ thống vi xử lý cứng HPS (Hard Processor System, gồm hai lõi ARM Cortex-A9 MPCore chạy hệ điều hành Linux) trên bo mạch DE10-Standard (Cyclone V SoC 5CSXFC6D6F31C6N). Trong khi đó, toàn bộ chuỗi xử lý tín hiệu số chuyên dụng tốc độ cao---từ các phép tích lũy tự tương quan MAC, tra cứu trọng số cửa sổ Hanning, tìm đỉnh parabol cho đến bộ lọc trung vị median-3---lại được hiện thực hóa bên trong lưới logic khả trình FPGA.
+
+Sự thật kỹ thuật đầu tiên cần đối mặt là: \textbf{mẫu âm thanh nằm trong bộ nhớ DDR của HPS, còn logic tính toán lại nằm ở FPGA}. Hai miền này thuộc về hai thế giới hoàn toàn tách biệt:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Miền vi xử lý HPS hoạt động ở xung nhịp cao (thường là 800 MHz đến 925 MHz), có bộ quản lý bộ nhớ MMU (Memory Management Unit), cơ chế dịch địa chỉ ảo (virtual address translation) và bộ nhớ đệm đa tầng (L1/L2 cache).
+    \item Miền logic FPGA hoạt động ở xung nhịp đồng bộ của hệ thống lõi (trong thiết kế này được ấn định là 50 MHz), giao tiếp theo từng chu kỳ xung nhịp xác định thông qua các đường bus chuẩn công nghiệp.
+\end{itemize}
+
+Để kết nối hai miền xử lý này, kiến trúc phần cứng Cyclone V SoC đúc sẵn ba cầu nối giao tiếp AXI (Advanced eXtensible Interface) chuyên dụng đi xuyên qua ranh giới vật lý giữa HPS và FPGA:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Cầu HPS-to-FPGA (Full Bridge):} Đây là cầu nối master tốc độ cao do vi xử lý làm chủ, hỗ trợ bề rộng dữ liệu cấu hình được là 32, 64 hoặc 128 bit, xung nhịp độc lập với miền HPS và được đồng bộ vào miền xung nhịp FPGA. Cầu nối này chiếm một không gian địa chỉ vật lý rộng lớn (từ \texttt{0xC0000000} đến \texttt{0xFBFFFFFF}, dung lượng gần 1 GB), chuyên chở các khối dữ liệu khổng lồ như khung hình video hoặc bộ đệm mạng.
+    \item \textbf{Cầu Lightweight HPS-to-FPGA (LWHPS-to-FPGA Bridge):} Đây là cầu nối master thứ hai từ phía HPS, nhưng được thu gọn với bề rộng dữ liệu cố định đúng 32 bit và độ trễ truy xuất thấp. Cầu nối này được ánh xạ cố định vào cửa sổ địa chỉ vật lý \texttt{0xFF200000} với độ mở span đúng 2 MB (tới \texttt{0xFF3FFFFF}). Cầu Lightweight được sinh ra nhằm mục đích điều khiển các thanh ghi trạng thái (CSR) và các cổng ngoại vi giao tiếp nhẹ mà không làm tiêu tốn tài nguyên quản lý bus phức tạp của vi xử lý.
+    \item \textbf{Cầu FPGA-to-HPS:} Đây là cầu nối theo chiều ngược lại, cho phép các bộ master nằm trong vùng logic FPGA (tiêu biểu như bộ điều khiển DMA) chủ động phát lệnh đọc hoặc ghi trực tiếp vào không gian bộ nhớ DDR3 của HPS.
+\end{enumerate}
+
+Câu hỏi thiết kế đặt ra là: \textbf{Ta nên chọn cầu nào và cơ chế vận chuyển nào cho bài toán ước lượng cao độ $F_0$?}
+
+Nếu ta dồn toàn bộ việc đọc tệp, giải mã tệp WAV và tính toán lưới khung vào FPGA, ta sẽ phải hiện thực một bộ điều khiển hệ thống tệp (FAT32/ext4) phức tạp trên phần cứng, tiêu tốn hàng nghìn khối logic ALM vô ích mà không đem lại tốc độ nhanh hơn. Ngược lại, nếu ta dồn toàn bộ thuật toán tự tương quan vào vi xử lý ARM, việc tính toán 98.540 phép nhân-cộng trên từng khung 10 ms sẽ chiếm dụng đáng kể thời gian của CPU, làm giảm khả năng đáp ứng của các tác vụ hệ thống khác.
+
+Giải pháp phân chia tối ưu là thực hiện một ranh giới rõ ràng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Phía HPS chạy chương trình bằng ngôn ngữ C trên Linux, đảm nhiệm việc bóc tách định dạng tệp WAV, kiểm tra tính hợp lệ của âm thanh, tính toán các tham số thống kê toàn cục ($\text{globalPeak}$, số khung, mốc thời gian $t_1$, mẫu bắt đầu của từng khung) và quản lý tiến trình.
+    \item Phía FPGA đón nhận luồng dữ liệu mẫu âm thanh thông qua bộ đệm hàng đợi (FIFO), tự động thực hiện chuỗi thuật toán xử lý tín hiệu số ở tốc độ phần cứng, và gửi kết quả cao độ $F_0$ cùng các cờ trạng thái trở lại cho HPS.
+\end{itemize}
+
+Việc truyền tải dữ liệu giữa hai miền thông qua cầu nối không chỉ đơn thuần là đẩy dữ liệu lên dây dẫn mà còn phải đảm bảo không bao giờ làm tràn bộ nhớ, không làm rơi rụng mẫu âm thanh và không gây nghẽn bus hệ thống. Trong các tiểu mục tiếp theo, ta sẽ lần lượt bóc tách chi tiết từng khâu: từ giải mã tệp WAV, lựa chọn cầu nối với các con số định lượng, thiết kế bộ đệm FIFO ở cả hai hướng (IP và HDL tự viết), cho đến việc thiết lập bản đồ thanh ghi điều khiển thống nhất.
+
+\textit{Tóm lại: Dữ liệu âm thanh nằm trong DDR của vi xử lý còn thuật toán tính toán nằm ở logic FPGA; bài toán trung tâm là phân định ranh giới xử lý và lựa chọn cầu nối sao cho việc truyền tải vừa đủ nhanh để đáp ứng thời gian thực, vừa giữ cấu trúc phần cứng và trình điều khiển ở mức đơn giản nhất.}
+

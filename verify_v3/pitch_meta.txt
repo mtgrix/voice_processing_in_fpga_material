@@ -1,0 +1,5 @@
+t1=0.020000
+dt=0.010000
+n_frames=277
+first_win0=1
+global_peak=22946

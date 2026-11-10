@@ -1,11 +1,11 @@
 # verify_v3/Makefile
 # Target ch00: runs all verification scripts for Chapter 0
 
-PYTHON ?= python3
+PYTHON ?= python
 
-.PHONY: all ch00 clean
+.PHONY: all ch00 ch01 clean
 
-all: ch00
+all: ch00 ch01
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -28,5 +28,18 @@ ch00:
 	cd .. && $(PYTHON) verify_v3/ch00_test_pair_counter.py
 	@echo "=== [ch00] All Chapter 0 verifications completed successfully ==="
 
+ch01:
+	@echo "=== [ch01] Generating test WAV stimuli ==="
+	$(PYTHON) make_test_wavs.py
+	@echo "=== [ch01] Running WAV parser and globalPeak verification ==="
+	$(PYTHON) ch01_wav_verify.py > ch01_wav_verify.log
+	@echo "=== [ch01] Running Praat frame grid and floor trap verification ==="
+	$(PYTHON) ch01_frames_verify.py > ch01_frames_verify.log
+	@echo "=== [ch01] Running Avalon FIFO twin and backpressure test ==="
+	$(PYTHON) ch01_fifo_test.py > ch01_fifo_test.log
+	@echo "=== [ch01] Running HPS C driver end-to-end simulation test ==="
+	$(PYTHON) ch01_driver_test.py > ch01_driver_test.log
+	@echo "=== [ch01] All Chapter 1 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt
