@@ -616,21 +616,24 @@ Dữ liệu lưu trong RAM là các từ 32-bit gồm hai mẫu âm thanh gộp 
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[->, >=stealth, node distance=2.9cm, auto, thick,
-    state/.style={circle, draw=blue!70!black, fill=blue!10, text width=2.0cm, align=center, font=\scriptsize\bfseries}]
-  \node[state] (IDLE) {ST\_IDLE\\(00)};
-  \node[state, right of=IDLE] (FETCH) {ST\_FETCH\\(01)};
-  \node[state, right of=FETCH] (UNP0) {ST\_UNPACK0\\(10)};
-  \node[state, below of=UNP0, node distance=2.2cm] (UNP1) {ST\_UNPACK1\\(11)};
+\begin{tikzpicture}[->, >=stealth, auto, thick,
+    state/.style={rectangle, rounded corners=6pt, draw=blue!70!black, fill=blue!8, minimum width=2.8cm, minimum height=1.3cm, align=center, font=\small\bfseries}]
+  
+  % Dinh vi 4 trang thai theo luoi 2x2 thong thoang
+  \node[state] (IDLE)  at (0, 3.2) {ST\_IDLE\\[2pt]\footnotesize\mdseries(2'b00)};
+  \node[state] (FETCH) at (6.5, 3.2) {ST\_FETCH\\[2pt]\footnotesize\mdseries(2'b01)};
+  \node[state] (UNP0)  at (6.5, 0)   {ST\_UNPACK0\\[2pt]\footnotesize\mdseries(2'b10)};
+  \node[state] (UNP1)  at (0, 0)     {ST\_UNPACK1\\[2pt]\footnotesize\mdseries(2'b11)};
 
-  \path (IDLE) edge [bend left=15] node[above] {\scriptsize !empty} (FETCH)
-        (IDLE) edge [loop left] node {\scriptsize empty} (IDLE)
-        (FETCH) edge node[above] {\scriptsize 1 nhịp RAM} (UNP0)
-        (UNP0) edge [bend left=20] node[right] {\scriptsize ready} (UNP1)
-        (UNP0) edge [loop above] node {\scriptsize !ready} (UNP0)
-        (UNP1) edge [bend left=20] node[left] {\scriptsize ready \& !empty} (FETCH)
-        (UNP1) edge [bend left=30] node[below] {\scriptsize ready \& empty} (IDLE)
-        (UNP1) edge [loop below] node {\scriptsize !ready} (UNP1);
+  % Cac duong chuyen trang thai
+  \path (IDLE)  edge [loop above] node[above=2pt] {\scriptsize \texttt{fifo\_empty}} (IDLE)
+        (IDLE)  edge node[above=3pt] {\scriptsize \texttt{!fifo\_empty}} (FETCH)
+        (FETCH) edge node[right=4pt] {\scriptsize 1 nhịp đọc RAM} (UNP0)
+        (UNP0)  edge [loop right] node[right=2pt] {\scriptsize \texttt{!st\_ready}} (UNP0)
+        (UNP0)  edge node[below=3pt] {\scriptsize \texttt{st\_ready == 1}} (UNP1)
+        (UNP1)  edge [loop left] node[left=2pt] {\scriptsize \texttt{!st\_ready}} (UNP1)
+        (UNP1)  edge node[left=4pt] {\scriptsize \texttt{st\_ready \& empty}} (IDLE)
+        (UNP1)  edge [bend right=15] node[above, sloped, pos=0.55] {\scriptsize \texttt{st\_ready \& !empty}} (FETCH);
 \end{tikzpicture}
 \caption{Lược đồ chuyển trạng thái của khối FSM giải gói mẫu 32-to-16 bit.}
 \label{fig:ch01_unpacker_fsm}
