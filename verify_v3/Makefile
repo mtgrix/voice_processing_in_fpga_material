@@ -18,6 +18,8 @@ ch00:
 	$(PYTHON) ch00_cycle_budget.py > ch00_cycle_budget.log
 	@echo "=== [ch00] Running golden v2 spec verification ==="
 	$(PYTHON) ch00_golden_spec.py > ch00_golden_spec.log
+	@echo "=== [ch00] Running chapter exercises verification ==="
+	$(PYTHON) ch00_exercises.py > ch00_exercises.log
 	@echo "=== [ch00] Running pair counter RTL + TB verification (iverilog) ==="
 	cd .. && $(PYTHON) verify_v3/ch00_test_pair_counter.py
 	@echo "=== [ch00] All Chapter 0 verifications completed successfully ==="

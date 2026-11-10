@@ -811,3 +811,263 @@ Twin + median-3 vs Ground-Truth & 3/277 & 15/207 & 0,0650 & 94,99 & 1179 & 32,68
 
 \textit{Tóm lại: Bản đồ kiểm chứng ba tầng bảo đảm sự nhất quán tuyệt đối giữa mã nguồn Python twin số nguyên, mô phỏng RTL, phần cứng thực tế trên kit DE10-Standard và chuẩn Praat 7.0.03; trên tín hiệu sạch, lõi phần cứng đạt sai số cent trung bình chỉ $0{,}21$ cent và $GPE = 0$, còn trên tín hiệu ồn 5 dB, bộ lọc median-3 giúp giảm lỗi thô từ 22 khung xuống 15 khung.}
 
+% ==============================================================================
+% BÀI TẬP CUỐI CHƯƠNG
+% ==============================================================================
+\subsection{Bài tập cuối chương}
+
+Dưới đây là các bài tập vận dụng nhằm củng cố các nguyên lý nền tảng đã trình bày trong Chương 0. Tất cả các bài tập đều có lời giải chi tiết và số liệu đã được kiểm chứng bằng kịch bản \texttt{verify\_v3/}\allowbreak\texttt{ch00\_exercises.py}.
+
+% --- BÀI TẬP 1 ---
+\paragraph{Bài tập 1 (Hiện tượng nhân đôi tần số khi đếm điểm qua không).}
+Cho tín hiệu âm thanh liên tục có dạng:
+\begin{equation}
+    s(t) = \sin(2\pi \cdot 120 t) + 0{,}8 \sin(2\pi \cdot 240 t)
+\end{equation}
+Tín hiệu được lấy mẫu ở tần số $f_s = 16\text{ kHz}$.
+\begin{enumerate}[label=\alph*)]
+    \item Xác định chu kỳ cơ bản thực tế $T_0$ và tần số cơ bản $F_0$ của tín hiệu.
+    \item Tìm tất cả các thời điểm tín hiệu đổi dấu ($s(t) = 0$) trong một chu kỳ $[0, T_0)$.
+    \item Nếu một thuật toán đếm số lần đổi dấu để ước lượng F0 trong khoảng thời gian quan sát $T_{\text{obs}} = 0{,}05\text{ s}$ ($50\text{ ms}$), hãy tính tổng số điểm qua không ghi nhận được và tần số ước lượng $\hat{F}_0$. Nhận xét về kết quả này.
+\end{enumerate}
+
+\noindent\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=\alph*)]
+    \item Tín hiệu $s(t)$ là tổng của hai thành phần tần số $120\text{ Hz}$ và $240\text{ Hz}$. Ước số chung lớn nhất của $120$ và $240$ là $120\text{ Hz}$. Do đó, tần số cơ bản thực tế là $F_0 = 120\text{ Hz}$, tương ứng với chu kỳ cơ bản:
+    \begin{equation}
+        T_0 = \frac{1}{120}\text{ s} \approx 8{,}333\text{ ms}
+    \end{equation}
+
+    \item Đặt $\theta = 2\pi \cdot 120 t = \omega_0 t$. Khi $t \in [0, T_0)$, góc pha biến thiên trong khoảng $\theta \in [0, 2\pi)$. Ta có:
+    \begin{equation}
+        s(t) = \sin(\theta) + 0{,}8 \sin(2\theta) = \sin(\theta) + 1{,}6 \sin(\theta)\cos(\theta) = \sin(\theta) \cdot (1 + 1{,}6 \cos(\theta))
+    \end{equation}
+    Phương trình $s(t) = 0$ tương đương với hai trường hợp:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item $\sin(\theta) = 0 \implies \theta_1 = 0$, $\theta_3 = \pi \approx 3{,}1416\text{ rad}$.
+        \item $1 + 1{,}6 \cos(\theta) = 0 \implies \cos(\theta) = -\frac{1}{1{,}6} = -0{,}625$. Trong khoảng $[0, 2\pi)$, phương trình có hai nghiệm: $\theta_2 = \arccos(-0{,}625) \approx 2{,}2459\text{ rad}$ và $\theta_4 = 2\pi - 2{,}2459 \approx 4{,}0373\text{ rad}$.
+    \end{itemize}
+    Như vậy, trong một chu kỳ $T_0$, tín hiệu $s(t)$ cắt trục hoành tại đúng 4 điểm pha:
+    $\theta \in \{0;\, 2{,}2459;\, 3{,}1416;\, 4{,}0373\}$.
+
+    \item Trong khoảng thời gian $T_{\text{obs}} = 0{,}05\text{ s}$, số lượng chu kỳ cơ bản hoàn chỉnh là:
+    \begin{equation}
+        N_{\text{period}} = \frac{T_{\text{obs}}}{T_0} = \frac{0{,}05}{1/120} = 6{,}0\text{ chu kỳ}
+    \end{equation}
+    Mỗi chu kỳ có 4 điểm qua không, do đó tổng số lần đổi dấu trong $0{,}05\text{ s}$ là:
+    \begin{equation}
+        N_{\text{zeros}} = 6{,}0 \times 4 = 24\text{ điểm}
+    \end{equation}
+    Vì mỗi chu kỳ sóng chuẩn chỉ có 2 lần đổi dấu (nửa chu kỳ dương và nửa chu kỳ âm), thuật toán ngây thơ ước lượng tần số theo công thức:
+    \begin{equation}
+        \hat{F}_0 = \frac{N_{\text{zeros}}}{2 \cdot T_{\text{obs}}} = \frac{24}{2 \times 0{,}05} = 240{,}0\text{ Hz}
+    \end{equation}
+    \textbf{Nhận xét:} Tần số ước lượng bị nhân đôi ($\hat{F}_0 = 240\text{ Hz}$ thay vì $120\text{ Hz}$), dẫn tới sai số $100\%$ ($1200\text{ cent}$). Nguyên nhân là do thành phần hài âm bậc hai có biên độ lớn ($0{,}8$) đã làm uốn cong dạng sóng và tạo thêm hai điểm cắt giả trong mỗi chu kỳ.
+\end{enumerate}
+
+% --- BÀI TẬP 2 ---
+\paragraph{Bài tập 2 (Độ phân giải phổ FFT và sai số cent ở tần số 150 Hz).}
+Một thuật toán ước lượng F0 thực hiện lấy đỉnh biên độ phổ sau biến đổi Fourier nhanh (FFT) độ dài $N = 640$ mẫu tại tần số lấy mẫu $f_s = 16\text{ kHz}$.
+\begin{enumerate}[label=\alph*)]
+    \item Tính độ rộng của mỗi vạch phổ (bin spacing $\Delta f$).
+    \item Giả sử giọng người nói có tần số cơ bản thực tế rơi vào $F_{\text{true}} = 162{,}5\text{ Hz}$ (nằm chính giữa hai bin kề nhau). Hãy xác định hai bin lân cận và sai số tần số cực đại nếu chọn đỉnh rời rạc lớn nhất mà không dùng thuật toán nội suy.
+    \item Tính sai số cực đại này theo đơn vị cent âm học so với tần số thực tế $162{,}5\text{ Hz}$. So sánh sai số này với ngưỡng nghe nhận biết cao độ của tai người ($5 \dots 10\text{ cent}$).
+\end{enumerate}
+
+\noindent\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=\alph*)]
+    \item Độ phân giải tần số của phép biến đổi FFT độ dài $N = 640$ mẫu là:
+    \begin{equation}
+        \Delta f = \frac{f_s}{N} = \frac{16.000}{640} = 25{,}0\text{ Hz}
+    \end{equation}
+
+    \item Các vạch phổ rời rạc có tần số $f_k = k \cdot \Delta f = k \cdot 25\text{ Hz}$ ($k \in \mathbb{N}$). Với $F_{\text{true}} = 162{,}5\text{ Hz}$:
+    \begin{equation}
+        k = \frac{162{,}5}{25} = 6{,}5
+    \end{equation}
+    Tần số này nằm chính giữa bin $k = 6$ ($f_6 = 6 \times 25 = 150{,}0\text{ Hz}$) và bin $k = 7$ ($f_7 = 7 \times 25 = 175{,}0\text{ Hz}$). Nếu chỉ chọn bin có biên độ cực đại rời rạc, thuật toán sẽ chọn bin 6 hoặc bin 7. Sai số tần số cực đại trong trường hợp xấu nhất là nửa bin:
+    \begin{equation}
+        |\Delta F_{\max}| = \frac{\Delta f}{2} = \frac{25{,}0}{2} = 12{,}5\text{ Hz}
+    \end{equation}
+
+    \item Sai số theo thang cent âm học khi làm tròn về bin 7 ($175\text{ Hz}$) là:
+    \begin{equation}
+        E_{\text{cent}} = 1200 \cdot \log_2\left(\frac{175{,}0}{162{,}5}\right) = 1200 \cdot \log_2(1{,}07692) \approx 128{,}30\text{ cent}
+    \end{equation}
+    Nếu làm tròn về bin 6 ($150\text{ Hz}$), sai số là:
+    \begin{equation}
+        E_{\text{cent}} = 1200 \cdot \left|\log_2\left(\frac{150{,}0}{162{,}5}\right)\right| = 1200 \cdot \log_2(1{,}08333) \approx 138{,}57\text{ cent}
+    \end{equation}
+    \textbf{Nhận xét:} Sai số $128 \dots 138\text{ cent}$ tương đương hơn 1,3 bán âm (vượt quá khoảng cách giữa nốt Đô và Đô thăng trên phím đàn piano). Trong khi đó, tai người bình thường có thể phân biệt được độ chênh lệch cao độ chỉ từ $5$ đến $10\text{ cent}$. Do đó, phương pháp tìm đỉnh FFT thô hoàn toàn không đáp ứng được yêu cầu phân tích ngữ điệu giọng nói.
+\end{enumerate}
+
+% --- BÀI TẬP 3 ---
+\paragraph{Bài tập 3 (Bù suy giảm cửa sổ Hanning trong miền tự tương quan).}
+Xét một chuỗi mẫu tín hiệu ngắn đối xứng gồm 6 điểm:
+\begin{equation}
+    x = [2,\, 4,\, 6,\, 6,\, 4,\, 2]
+\end{equation}
+được nhân với một cửa sổ đối xứng hình chuông:
+\begin{equation}
+    w = [0{,}25,\, 0{,}50,\, 1{,}00,\, 1{,}00,\, 0{,}50,\, 0{,}25]
+\end{equation}
+\begin{enumerate}[label=\alph*)]
+    \item Xác định chuỗi mẫu sau khi nhân cửa sổ $xw[n] = x[n] \cdot w[n]$ ($n = 0 \dots 5$).
+    \item Tính hàm tự tương quan không chuẩn hóa của tín hiệu $R_{xw}(\tau)$ tại $\tau = 0$ và $\tau = 2$.
+    \item Tính hàm tự tương quan của chính cửa sổ $R_w(\tau)$ tại $\tau = 0$ và $\tau = 2$.
+    \item Tính hệ số tương quan chưa chuẩn hóa $r_{\text{unnorm}}(2) = R_{xw}(2) / R_{xw}(0)$ và hệ số tương quan chuẩn hóa theo công thức Boersma $r(2) = \frac{R_{xw}(2)/R_w(2)}{R_{xw}(0)/R_w(0)}$. Nhận xét sự khác biệt.
+\end{enumerate}
+
+\noindent\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=\alph*)]
+    \item Nhân từng phần tử giữa chuỗi $x$ và cửa sổ $w$:
+    \begin{align}
+        xw[0] &= 2 \times 0{,}25 = 0{,}5, \quad xw[1] = 4 \times 0{,}50 = 2{,}0, \quad xw[2] = 6 \times 1{,}00 = 6{,}0 \\
+        xw[3] &= 6 \times 1{,}00 = 6{,}0, \quad xw[4] = 4 \times 0{,}50 = 2{,}0, \quad xw[5] = 2 \times 0{,}25 = 0{,}5
+    \end{align}
+    Như vậy $xw = [0{,}5,\, 2{,}0,\, 6{,}0,\, 6{,}0,\, 2{,}0,\, 0{,}5]$.
+
+    \item Tính tự tương quan của tín hiệu $xw$:
+    \begin{align}
+        R_{xw}(0) &= \sum_{n=0}^{5} xw[n]^2 = 0{,}5^2 + 2{,}0^2 + 6{,}0^2 + 6{,}0^2 + 2{,}0^2 + 0{,}5^2 \notag \\
+        &= 0{,}25 + 4{,}0 + 36{,}0 + 36{,}0 + 4{,}0 + 0{,}25 = 80{,}500 \\
+        R_{xw}(2) &= \sum_{n=0}^{3} xw[n] \cdot xw[n+2] = (0{,}5 \times 6{,}0) + (2{,}0 \times 6{,}0) + (6{,}0 \times 2{,}0) + (6{,}0 \times 0{,}5) \notag \\
+        &= 3{,}0 + 12{,}0 + 12{,}0 + 3{,}0 = 30{,}000
+    \end{align}
+
+    \item Tính tự tương quan của cửa sổ $w$:
+    \begin{align}
+        R_w(0) &= \sum_{n=0}^{5} w[n]^2 = 0{,}25^2 + 0{,}50^2 + 1{,}00^2 + 1{,}00^2 + 0{,}50^2 + 0{,}25^2 \notag \\
+        &= 0{,}0625 + 0{,}25 + 1{,}0 + 1{,}0 + 0{,}25 + 0{,}0625 = 2{,}6250 \\
+        R_w(2) &= \sum_{n=0}^{3} w[n] \cdot w[n+2] = (0{,}25 \times 1{,}0) + (0{,}50 \times 1{,}0) + (1{,}0 \times 0{,}50) + (1{,}0 \times 0{,}25) \notag \\
+        &= 0{,}25 + 0{,}50 + 0{,}50 + 0{,}25 = 1{,}5000
+    \end{align}
+
+    \item So sánh hai hệ số tương quan:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Hệ số tương quan chưa chuẩn hóa (ngây thơ):
+        \begin{equation}
+            r_{\text{unnorm}}(2) = \frac{R_{xw}(2)}{R_{xw}(0)} = \frac{30{,}000}{80{,}500} \approx 0{,}3727
+        \end{equation}
+        \item Hệ số tương quan chuẩn hóa Boersma (chia cho tự tương quan cửa sổ):
+        \begin{equation}
+            r(2) = \frac{R_{xw}(2) / R_w(2)}{R_{xw}(0) / R_w(0)} = \frac{30{,}000 / 1{,}5000}{80{,}500 / 2{,}6250} = \frac{20{,}000}{30{,}6667} \approx 0{,}6522
+        \end{equation}
+    \end{itemize}
+    \textbf{Nhận xét:} Do hiệu ứng vát biên của cửa sổ, hệ số chưa chuẩn hóa bị nén giảm giả tạo xuống chỉ còn $0{,}3727$ (giảm tới $62{,}7\%$), có thể rơi xuống dưới ngưỡng hữu thanh $0{,}45$ và bị gán nhầm thành vô thanh. Phép chuẩn hóa Boersma đã phục hồi giá trị thực lên $0{,}6522$, phản ánh chính xác tính tuần hoàn của tín hiệu.
+\end{enumerate}
+
+% --- BÀI TẬP 4 ---
+\paragraph{Bài tập 4 (Tính toán các chỉ số đánh giá GPE, VDE, FFE và sai số cent).}
+Một thử nghiệm so sánh giữa phần mềm chuẩn (Ref) và hệ thống FPGA (Test) trên 6 khung phân tích cho kết quả tần số ước lượng như sau:
+\begin{center}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Khung} & \textbf{Khung 1} & \textbf{Khung 2} & \textbf{Khung 3} & \textbf{Khung 4} & \textbf{Khung 5} & \textbf{Khung 6} \\
+\midrule
+$F_{\text{Ref}}$ (Hz) & 120{,}0 & 0{,}0 & 180{,}0 & 100{,}0 & 220{,}0 & 0{,}0 \\
+$F_{\text{Test}}$ (Hz) & 121{,}0 & 150{,}0 & 0{,}0 & 200{,}0 & 225{,}0 & 0{,}0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+(Quy ước: Giá trị 0 Hz biểu diễn khung vô thanh).
+\begin{enumerate}[label=\alph*)]
+    \item Xác định các khung mắc lỗi quyết định hữu thanh và tính tỷ lệ lỗi VDE.
+    \item Xác định các khung cùng hữu thanh, phân loại các khung mắc lỗi bước nhảy thô và tính tỷ lệ lỗi GPE (với ngưỡng chuẩn 20\%).
+    \item Tính tỷ lệ lỗi tổng hợp toàn khung FFE.
+    \item Tính sai số cent của từng khung hữu thanh không bị lỗi thô và sai số cent mịn trung bình trị tuyệt đối.
+\end{enumerate}
+
+\noindent\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=\alph*)]
+    \item Tổng số khung phân tích là $N = 6$. Khung mắc lỗi quyết định hữu thanh (VDE) là khung có trạng thái $V/UV$ giữa Ref và Test khác nhau:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Khung 2: Ref = 0 Hz (UV), Test = 150 Hz (V) $\implies$ Lỗi VDE (nhận nhầm vô thanh thành hữu thanh).
+        \item Khung 3: Ref = 180 Hz (V), Test = 0 Hz (UV) $\implies$ Lỗi VDE (bỏ sót khung hữu thanh).
+    \end{itemize}
+    Tổng cộng có 2 khung lỗi VDE. Tỷ lệ lỗi là:
+    \begin{equation}
+        \text{VDE} = \frac{2}{6} \approx 33{,}33\%
+    \end{equation}
+
+    \item Các khung mà cả hai hệ thống cùng phân loại là hữu thanh gồm: Khung 1, Khung 4 và Khung 5 ($N_{\text{both}} = 3$ khung). Ta kiểm tra độ lệch tương đối $|F_{\text{Test}} - F_{\text{Ref}}| / F_{\text{Ref}}$:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Khung 1: $|121 - 120| / 120 = 1 / 120 \approx 0{,}83\% < 20\%$ (Hợp lệ, lỗi mịn).
+        \item Khung 4: $|200 - 100| / 100 = 100 / 100 = 100\% \ge 20\%$ $\implies$ Lỗi bước nhảy thô GPE (nhảy quãng tám).
+        \item Khung 5: $|225 - 220| / 220 = 5 / 220 \approx 2{,}27\% < 20\%$ (Hợp lệ, lỗi mịn).
+    \end{itemize}
+    Trong số 3 khung cùng hữu thanh, có 1 khung bị lỗi GPE (Khung 4). Tỷ lệ lỗi bước nhảy thô là:
+    \begin{equation}
+        \text{GPE} = \frac{1}{3} \approx 33{,}33\%
+    \end{equation}
+
+    \item Tập hợp các khung mắc lỗi phân loại hoặc lỗi tần số thô bao gồm: Khung 2, Khung 3 (lỗi VDE) và Khung 4 (lỗi GPE). Tổng số khung lỗi là $2 + 1 = 3$ khung. Tỷ lệ lỗi tổng hợp FFE là:
+    \begin{equation}
+        \text{FFE} = \frac{3}{6} = 50{,}00\%
+    \end{equation}
+
+    \item Các khung cùng hữu thanh và không mắc lỗi thô gồm Khung 1 và Khung 5 ($N_{\text{fine}} = 2$):
+    \begin{align}
+        C_1 &= 1200 \cdot \log_2\left(\frac{121{,}0}{120{,}0}\right) = 1200 \cdot \log_2(1{,}008333) \approx +14{,}37\text{ cent} \\
+        C_5 &= 1200 \cdot \log_2\left(\frac{225{,}0}{220{,}0}\right) = 1200 \cdot \log_2(1{,}022727) \approx +38{,}91\text{ cent}
+    \end{align}
+    Sai số cent mịn trung bình trị tuyệt đối là:
+    \begin{equation}
+        \overline{|C|} = \frac{|14{,}37| + |38{,}91|}{2} = \frac{53{,}28}{2} = 26{,}64\text{ cent}
+    \end{equation}
+\end{enumerate}
+
+% --- BÀI TẬP 5 ---
+\paragraph{Bài tập 5 (Phân tích ngân sách chu kỳ và hệ số RTF ở tần số xung nhịp 25 MHz và 100 MHz).}
+Một hệ thống ước lượng F0 xử lý tín hiệu âm thanh lấy mẫu ở $f_s = 16\text{ kHz}$, độ dài khung $N = 638$ mẫu, bước nhảy khung $hop = 160$ mẫu ($10\text{ ms}$). Khối nhân-cộng tự tương quan MAC cần $98.543$ chu kỳ/khung và tổng toàn lõi xử lý ước tính cần $99.700$ chu kỳ/khung.
+\begin{enumerate}[label=\alph*)]
+    \item Tính ngân sách chu kỳ tối đa của một bước nhảy $10\text{ ms}$ khi mạch làm việc ở tần số xung nhịp $f_{\text{clk}} = 25\text{ MHz}$ và $f_{\text{clk}} = 100\text{ MHz}$.
+    \item Xác định hệ số thời gian thực của khối tự tương quan $\text{RTF}_{\text{MAC}}$ và toàn bộ lõi xử lý $\text{RTF}_{\text{core}}$ ở cả hai mức xung nhịp trên.
+    \item Nếu hệ thống hoạt động ở tần số $25\text{ MHz}$, nó có đáp ứng được yêu cầu thời gian thực không? Giả sử cần ghép kênh để xử lý đồng thời $M = 8$ luồng âm thanh độc lập trong thời gian thực trên cùng một FPGA, hãy xác định tần số xung nhịp tối thiểu của lõi tuần tự này.
+\end{enumerate}
+
+\noindent\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=\alph*)]
+    \item Thời gian vật lý của một bước nhảy khung là $T_{\text{hop}} = 10\text{ ms} = 0{,}010\text{ s}$. Ngân sách chu kỳ tối đa cho phép là:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Ở tần số $f_{\text{clk}} = 25\text{ MHz}$:
+        \begin{equation}
+            N_{\text{budget}} = 25 \times 10^6 \times 0{,}010 = 250.000\text{ chu kỳ}
+        \end{equation}
+        \item Ở tần số $f_{\text{clk}} = 100\text{ MHz}$:
+        \begin{equation}
+            N_{\text{budget}} = 100 \times 10^6 \times 0{,}010 = 1.000.000\text{ chu kỳ}
+        \end{equation}
+    \end{itemize}
+
+    \item Hệ số thời gian thực $\text{RTF} = N_{\text{cycles}} / N_{\text{budget}}$:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Ở tần số $25\text{ MHz}$:
+        \begin{align}
+            \text{RTF}_{\text{MAC}} &= \frac{98.543}{250.000} \approx 0{,}3942 \\
+            \text{RTF}_{\text{core}} &= \frac{99.700}{250.000} \approx 0{,}3988
+        \end{align}
+        \item Ở tần số $100\text{ MHz}$:
+        \begin{align}
+            \text{RTF}_{\text{MAC}} &= \frac{98.543}{1.000.000} \approx 0{,}0985 \\
+            \text{RTF}_{\text{core}} &= \frac{99.700}{1.000.000} \approx 0{,}0997
+        \end{align}
+    \end{itemize}
+
+    \item Đánh giá khả năng thời gian thực và ghép kênh:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Vì ở $25\text{ MHz}$, $\text{RTF}_{\text{core}} \approx 0{,}3988 < 1{,}0$, hệ thống hoàn toàn đáp ứng yêu cầu xử lý thời gian thực. Lõi phần cứng chỉ sử dụng khoảng $39{,}9\%$ năng lực xử lý của xung nhịp và có thời gian nghỉ rỗi hơn $60\%$.
+        \item Để xử lý đồng thời $M = 8$ kênh âm thanh trong mỗi khoảng thời gian $10\text{ ms}$, tổng số chu kỳ xử lý cần thiết của toàn bộ 8 kênh là:
+        \begin{equation}
+            N_{\text{total}} = 8 \times 99.700 = 797.600\text{ chu kỳ}
+        \end{equation}
+        Tần số xung nhịp tối thiểu để hoàn thành $797.600$ chu kỳ trong $10\text{ ms}$ là:
+        \begin{equation}
+            f_{\min} = \frac{N_{\text{total}}}{T_{\text{hop}}} = \frac{797.600}{0{,}010\text{ s}} = 79.760.000\text{ Hz} = 79{,}76\text{ MHz}
+        \end{equation}
+    \end{itemize}
+    \textbf{Kết luận:} Một mức xung nhịp hệ thống phổ thông $100\text{ MHz}$ trên Cyclone V (lớn hơn $79{,}76\text{ MHz}$) hoàn toàn đủ khả năng ghép kênh xử lý cùng lúc 8 luồng âm thanh thời gian thực chỉ với duy nhất một bộ nhân-cộng DSP tuần tự!
+\end{enumerate}
+
+
