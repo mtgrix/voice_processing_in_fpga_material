@@ -689,6 +689,115 @@ Trong quá trình thiết kế, hai phương án thay thế thường được �
 
 \textit{Tóm lại: Khối FIFO Verilog tự viết dùng con trỏ 9-bit có bit vòng để nhận biết trạng thái đầy/rỗng, suy diễn đúng 1 khối M10K và dùng máy trạng thái 4 bước chốt thanh ghi để tách mẫu 32-to-16 bit; độ trễ 2 chu kỳ và hành vi waitrequest khớp hoàn hảo với IP Intel nhưng cho phép kiểm soát toàn diện mã nguồn và mô phỏng chu kỳ.}
 
+\subsection*{1.6. Bản đồ thanh ghi và giao tiếp điều khiển lõi xử lý}
+\addcontentsline{toc}{subsection}{1.6. Bản đồ thanh ghi và giao tiếp điều khiển lõi xử lý}
+
+\subsubsection*{Kiến trúc bus trong Platform Designer: Vì sao phải tách riêng các Slave?}
+Khi xây dựng hệ thống nhúng SoC với công cụ Platform Designer của Intel, toàn bộ không gian địa chỉ vật lý của cầu nối Lightweight HPS-to-FPGA bắt đầu từ địa chỉ cơ sở:
+\begin{equation}
+\text{ALT\_LWFPGASLVS\_OFST} = \mathtt{0xFF20\_0000}
+\end{equation}
+với cửa sổ ánh xạ có độ rộng 2 MB ($\mathtt{0x0020\_0000}$). Mạng chuyển mạch liên kết (Avalon-MM Interconnect Fabric) tự động định tuyến các giao dịch đọc/ghi của CPU ARM tới từng thiết bị ngoại vi dựa trên dải địa chỉ offset được phân bổ.
+
+Một sai lầm phổ biến mà tài liệu sơ khai của Argon từng mắc phải là: \emph{Cố gắng gộp tất cả dữ liệu âm thanh, cờ điều khiển và trạng thái vào một dải thanh ghi nguyên khối liên tục từ \texttt{0x00} đến \texttt{0x14}}. 
+
+Cách làm này vi phạm nghiêm trọng tính module hóa của kiến trúc phần cứng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khối IP On-Chip FIFO chuẩn của Intel (\texttt{altera\_avalon\_fifo}) sinh ra hai cổng Avalon-MM độc lập: cổng nạp dữ liệu \texttt{in} và cổng thanh ghi điều khiển/trạng thái \texttt{in\_csr}. Mỗi cổng là một Slave riêng biệt với giao thức và tập thanh ghi cố định.
+    \item Nếu cố nhồi nhét các thanh ghi điều khiển nghiệp vụ (như tham số Praat $GP$, số khung, lệnh khởi động) vào chung khối FIFO, ta sẽ phá vỡ cấu trúc IP chuẩn, không thể sử dụng lại IP thư viện của hãng và khiến việc mô phỏng cô lập từng khối trở nên bất khả thi.
+\end{itemize}
+
+Do đó, thiết kế chuẩn mực của dự án phân định rõ ràng 4 thiết bị Slave riêng biệt trong Platform Designer, bố trí tại các vùng địa chỉ cố định trên cầu Lightweight Bridge như trình bày trong Bảng \ref{tab:ch01_reg_map}.
+
+\begin{table}[H]
+\centering
+\caption{Bản đồ không gian địa chỉ các Slave trên cầu Lightweight HPS-to-FPGA.}
+\label{tab:ch01_reg_map}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llccl}
+\toprule
+\textbf{Tên Slave} & \textbf{Địa chỉ vật lý (Offset)} & \textbf{Truy xuất} & \textbf{Bề rộng} & \textbf{Chức năng phần cứng} \\
+\midrule
+\texttt{fifo\_in}      & \texttt{0xFF20\_0000 (+0x00)} & W   & 32 bit & Cổng nạp 2 mẫu âm thanh PCM 16-bit \\
+\texttt{fifo\_in\_csr}  & \texttt{0xFF20\_0020 (+0x20)} & R/W & 32 bit & Trạng thái bộ đệm nạp (\texttt{fill\_level}, lỗi tràn) \\
+\texttt{ctrl}          & \texttt{0xFF20\_0040 (+0x40)} & R/W & 32 bit & Thanh ghi điều khiển và đo đạc lõi F0 \\
+\texttt{fifo\_out}     & \texttt{0xFF20\_0080 (+0x80)} & R   & 32/16 bit & Cổng đọc kết quả F0 định dạng Q12.4 \\
+\texttt{fifo\_out\_csr} & \texttt{0xFF20\_00A0 (+0xA0)} & R/W & 32 bit & Trạng thái bộ đệm trả kết quả \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Tập thanh ghi của khối điều khiển lõi (CTRL Slave)}
+Khối \texttt{ctrl} nằm tại offset \texttt{0x40} (địa chỉ vật lý \texttt{0xFF20\_0040}) chứa toàn bộ các tham số cấu hình toán học và bộ đếm chu kỳ phục vụ đo đạc hiệu năng. Bảng \ref{tab:ch01_ctrl_regs} liệt kê chi tiết từng thanh ghi 32-bit:
+
+\begin{table}[H]
+\centering
+\caption{Chi tiết các thanh ghi điều khiển lõi xử lý F0 (\texttt{ctrl}).}
+\label{tab:ch01_ctrl_regs}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccl}
+\toprule
+\textbf{Thanh ghi} & \textbf{Offset nội bộ} & \textbf{Quyền} & \textbf{Độ rộng} & \textbf{Ý nghĩa chức năng} \\
+\midrule
+\texttt{REG\_CTRL\_START}        & \texttt{0x00} & W   & 1 bit  & Ghi 1 để kích hoạt chuỗi xử lý F0 toàn tuyến \\
+\texttt{REG\_CTRL\_NFRAMES}      & \texttt{0x04} & R/W & 32 bit & Tổng số khung phân tích $N_{\text{frames}}$ cần tính \\
+\texttt{REG\_CTRL\_FIRST\_WIN0}  & \texttt{0x08} & R/W & 32 bit & Chỉ số mẫu bắt đầu của cửa sổ đầu tiên ($\text{win0}$) \\
+\texttt{REG\_CTRL\_GLOBAL\_PEAK} & \texttt{0x0C} & R/W & 16 bit & Giá trị đỉnh biên độ toàn cục $GP$ (số nguyên) \\
+\texttt{REG\_CTRL\_CONFIG}       & \texttt{0x10} & R/W & 2 bit  & Bit 0: Bypass FIR; Bit 1: Cờ bước nhảy chuẩn 160 \\
+\texttt{REG\_CTRL\_STATUS}       & \texttt{0x14} & R   & 4 bit  & Bit 0: Busy; Bit 1: Done; Bit 2--3: Cờ tràn FIFO \\
+\texttt{REG\_CTRL\_TOTAL\_CYCLES}& \texttt{0x18} & R   & 32 bit & Tổng chu kỳ phần cứng (xung 50 MHz) từ Start tới Done \\
+\texttt{REG\_CTRL\_FRAME\_CYCLES}& \texttt{0x1C} & R   & 32 bit & Số chu kỳ phần cứng xử lý khung gần nhất \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Giải thích cặn kẽ từng thanh ghi điều khiển}
+Mỗi thanh ghi đều gắn liền trực tiếp với một khâu giải thuật trong chuỗi tính toán Praat:
+
+\paragraph{1. Thanh ghi kích hoạt (\texttt{REG\_CTRL\_START}, Offset 0x00).}
+Sau khi nạp toàn bộ cấu hình vào các thanh ghi và nạp trước một lượng mẫu âm thanh vào \texttt{fifo\_in}, HPS ghi giá trị \texttt{0x0000\_0001} vào thanh ghi này. Lõi F0 sẽ tạo một xung kích hoạt nội bộ kéo dài 1 chu kỳ, chuyển FSM đỉnh từ trạng thái nghỉ (IDLE) sang trạng thái tính toán cửa sổ và tự tương quan.
+
+\paragraph{2. Thanh ghi tổng số khung (\texttt{REG\_CTRL\_NFRAMES}, Offset 0x04).}
+Chứa giá trị nguyên $N_{\text{frames}}$ do thuật toán \texttt{Sampled\_shortTermAnalysis} tính ra từ kích thước tệp âm thanh (ví dụ: 120 khung cho tệp 1,234 s hoặc 277 khung cho tệp 2,8 s). Bộ lặp FSM trên FPGA dựa vào giá trị này để đếm chính xác số khung cần xuất kết quả trước khi giương cờ kết thúc.
+
+\paragraph{3. Thanh ghi mẫu bắt đầu cửa sổ đầu (\texttt{REG\_CTRL\_FIRST\_WIN0}, Offset 0x08).}
+Đây là chỉ số mẫu bắt đầu của khung phân tích đầu tiên ($\text{win0}$ tính từ 0), thu được từ hàm \texttt{Sampled\_xToLowIndex} ở Mục 1.2 (ví dụ: mẫu thứ 33 đối với tệp 1,234 s, hoặc mẫu thứ 1 đối với tệp 2,8 s). Khối đệm trượt (sliding window) trên FPGA sử dụng giá trị này để loại bỏ đúng số lượng mẫu đệm ban đầu trước khi bắt đầu áp cửa sổ Hanning cho khung thứ nhất.
+
+\paragraph{4. Thanh ghi đỉnh biên độ toàn cục (\texttt{REG\_CTRL\_GLOBAL\_PEAK}, Offset 0x0C).}
+Lưu trữ giá trị nguyên 16-bit $GP = \text{round}(\max |n \cdot x - \sum x| / n)$ do HPS tính toán trong lượt quét RIFF WAV. Giá trị này được đưa thẳng vào khối quyết định V/UV ở Chương 10 để tính toán ngưỡng biên độ ứng viên vô thanh:
+\begin{equation}
+R[0] \cdot GP \cdot \text{silence\_threshold}
+\end{equation}
+Khác với phương án cũ của golden v1 lưu năng lượng $GP^2$ (đòi hỏi phép nhân 32-bit và căn bậc hai), việc lưu trực tiếp biên độ $GP$ 16-bit giúp FPGA nhân chéo số nguyên cực kỳ gọn nhẹ mà hoàn toàn trung thực với công thức gốc của Boersma.
+
+\paragraph{5. Thanh ghi cấu hình (\texttt{REG\_CTRL\_CONFIG}, Offset 0x10).}
+Chứa các cờ điều khiển chế độ vận hành linh hoạt của phần cứng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Bit 0 (\texttt{BYPASS\_FIR}):} Khi ghi 1, dòng mẫu âm thanh từ FIFO sẽ đi vòng qua khối lọc làm mềm mép Nyquist FIR để vào thẳng bộ nhớ khung. Thiết lập này dùng để đối chiếu bit-exact với Praat 7.0.03 (phiên bản không bật FIR). Khi ghi 0, bộ lọc FIR 65-tap được kích hoạt.
+    \item \textbf{Bit 1 (\texttt{HOP\_REGULAR}):} Cho phép chọn giữa bước nhảy đều cố định 160 mẫu (\texttt{HOP\_REGULAR = 1}) hoặc bám sát danh sách bước nhảy double của Praat (\texttt{HOP\_REGULAR = 0}) đối với các tệp có kích thước số mẫu lẻ.
+\end{itemize}
+
+\paragraph{6. Thanh ghi trạng thái (\texttt{REG\_CTRL\_STATUS}, Offset 0x14).}
+Phần mềm trên HPS đọc định kỳ thanh ghi này để kiểm soát luồng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Bit 0 (\texttt{BUSY}):} Bằng 1 trong suốt thời gian lõi FPGA đang xử lý tính toán.
+    \item \textbf{Bit 1 (\texttt{DONE}):} Tự động nhảy lên 1 khi khung cuối cùng hoàn tất và kết quả F0 đã được đẩy trọn vẹn vào \texttt{fifo\_out}.
+    \item \textbf{Bit 2 (\texttt{FIFO\_IN\_OVF}) và Bit 3 (\texttt{FIFO\_OUT\_OVF}):} Các cờ báo lỗi dính nếu một trong hai bộ đệm bị ghi tràn.
+\end{itemize}
+
+\paragraph{7. Thanh ghi bộ đếm chu kỳ (\texttt{TOTAL\_CYCLES} và \texttt{FRAME\_CYCLES}, Offset 0x18--0x1C).}
+Phần cứng nhúng một bộ đếm số nguyên 32-bit hoạt động ở tần số xung nhịp đồng bộ 50 MHz. Bộ đếm tự động kích hoạt khi có xung \texttt{START} và dừng lại ngay khi xuất hiện cờ \texttt{DONE}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{TOTAL\_CYCLES} trả về tổng thời gian thực thi phần cứng của toàn bộ tệp âm thanh. Chia số chu kỳ này cho tần số 50 MHz cho ra thời gian tính toán thực tế $T_{\text{FPGA}}$ \textbf{(phải đo)}.
+    \item \texttt{FRAME\_CYCLES} ghi lại số chu kỳ cần thiết để hoàn thành một khung đơn lẻ (lý thuyết là 98.543 chu kỳ xung nhịp cho khâu MAC và tìm đỉnh).
+\end{itemize}
+
+\textit{Tóm lại: Bản đồ thanh ghi phân lập rõ 4 Slave trong Platform Designer loại bỏ lỗi gộp khối của tài liệu cũ; các thanh ghi điều khiển cung cấp đầy đủ tham số toán học (GP biên độ 16-bit, mẫu win0, tổng số khung) và bộ đếm chu kỳ 50 MHz độc lập, bảo đảm giám sát hệ thống chính xác từng nhịp xung clock.}
+
+
+
 
 
 
