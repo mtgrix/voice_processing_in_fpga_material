@@ -157,7 +157,6 @@ class FifoOutTwin:
         """Simulate one clock edge of rtl/v3/ch01_fifo_out.v."""
         ready_before = self.st_ready
         empty_before = self.fifo_empty
-        mm_waitrequest_out = 1 if (mm_read and empty_before) else 0
 
         # Push to FIFO
         if st_valid and ready_before:
@@ -173,6 +172,7 @@ class FifoOutTwin:
 
         # Visible signals after clock edge
         st_ready_out = self.st_ready
+        mm_waitrequest_out = 1 if (mm_read and self.fifo_empty) else 0
         mm_readdata_out = self.rdata_reg & 0xFFFF
         words_used_out = self.words_used
 
@@ -331,11 +331,11 @@ def write_test_files(out_dir="verify_v3"):
     stim_in_path = os.path.join(out_dir, "tb_ch01_fifo_stim.txt")
     exp_in_path = os.path.join(out_dir, "tb_ch01_fifo_expected.txt")
 
-    with open(stim_in_path, "w") as f:
+    with open(stim_in_path, "w", newline="\n") as f:
         for w, wd, rdy in in_stim:
             f.write(f"{w} {wd:08x} {rdy}\n")
 
-    with open(exp_in_path, "w") as f:
+    with open(exp_in_path, "w", newline="\n") as f:
         for c, w, wd, wreq, vld, rdy, data, st, fill in in_trace:
             f.write(f"{c} {w} {wd:08x} {wreq} {vld} {rdy} {data:04x} {st} {fill}\n")
 
@@ -346,11 +346,11 @@ def write_test_files(out_dir="verify_v3"):
     stim_out_path = os.path.join(out_dir, "tb_ch01_fifo_out_stim.txt")
     exp_out_path = os.path.join(out_dir, "tb_ch01_fifo_out_expected.txt")
 
-    with open(stim_out_path, "w") as f:
+    with open(stim_out_path, "w", newline="\n") as f:
         for vld, sdata, rd in out_stim:
             f.write(f"{vld} {sdata:04x} {rd}\n")
 
-    with open(exp_out_path, "w") as f:
+    with open(exp_out_path, "w", newline="\n") as f:
         for c, vld, sdata, rd, rdy, wreq, rdata, used in out_trace:
             f.write(f"{c} {vld} {sdata:04x} {rd} {rdy} {wreq} {rdata:04x} {used}\n")
 

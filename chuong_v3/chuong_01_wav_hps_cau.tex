@@ -256,7 +256,7 @@ Các bước tính toán diễn ra tuần tự như sau:
     \end{equation}
     trong đó dòng 52 của \texttt{Sound\_to\_Pitch.cpp} gọi trực tiếp:
     \begin{equation}
-    \mathtt{const\ integer\ leftSample = Sampled\_xToLowIndex(me, t);}
+    \mathtt{integer\ leftSample = Sampled\_xToLowIndex(me,\ t),\ rightSample = leftSample + 1;}
     \end{equation}
     Mẫu bên phải là $\text{rightSample}_i = \text{leftSample}_i + 1$. Khung cửa sổ Hanning 638 mẫu có nửa chiều dài là $\text{halfnsamp\_window} = 319$ mẫu. Do đó, chỉ số mẫu bắt đầu của cửa sổ (tính từ 0, tức 0-based) đưa vào bộ đệm FPGA là:
     \begin{equation}
@@ -1176,7 +1176,6 @@ class FifoOutTwin:
     def step(self, st_valid, st_data, mm_read):
         ready_before = self.st_ready
         empty_before = self.fifo_empty
-        mm_waitrequest_out = 1 if (mm_read and empty_before) else 0
 
         # Push to FIFO
         if st_valid and ready_before:
@@ -1191,6 +1190,7 @@ class FifoOutTwin:
             self.rd_ptr = (self.rd_ptr + 1) & ((2 * self.depth_words) - 1)
 
         st_ready_out = self.st_ready
+        mm_waitrequest_out = 1 if (mm_read and self.fifo_empty) else 0
         mm_readdata_out = self.rdata_reg & 0xFFFF
         words_used_out = self.words_used
 
@@ -1252,7 +1252,7 @@ vvp sim_ch01_fifo
 iverilog -g2012 -Wall -I rtl/v3 -o sim_ch01_fifo_out tb/v3/tb_ch01_fifo_out.v rtl/v3/ch01_fifo_out.v
 vvp sim_ch01_fifo_out
 \end{lstlisting}
-\todo{box: đã chạy iverilog: 2.107 chu kỳ tb\_ch01\_fifo và 1.217 chu kỳ tb\_ch01\_fifo\_out, khớp hoàn toàn 100\% bit-for-bit và cycle-for-cycle}
+\todo{box: verify again in r2}
 
 \subsubsection*{Bảng so sánh tổng kết: IP On-Chip FIFO của Intel so với HDL tự viết}
 Bảng \ref{tab:ch01_ip_vs_hdl} cung cấp bức tranh đối chiếu toàn diện giữa phương án sử dụng IP đóng gói sẵn của Intel và phương án tự hiện thực bằng HDL:

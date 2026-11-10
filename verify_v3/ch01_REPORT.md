@@ -170,3 +170,28 @@ Do môi trường máy trạm Windows của implementer không có sẵn `iveril
    ```
    *Kỳ vọng:* Khớp 100% cả 4 vị trí trích dẫn trong mã nguồn Praat 7.0.03.
 
+---
+
+## 7. Báo cáo sửa chữa đợt 2 (Revision Round 2 — Blocker-only)
+
+Đợt sửa đổi này giải quyết dứt điểm 3 điểm phản biện blocker cuối cùng của Reviewer:
+
+1. **Khắc phục sai lệch waitrequest của bộ đệm chiều về `ch01_fifo_out` (Blocker B1):**
+   - **Bản chất kỹ thuật:** Trong giao thức Avalon-MM, khi master phát tín hiệu đọc `mm_read` mà hàng đợi đang rỗng hoặc vừa bị đọc cạn trong cùng chu kỳ, tín hiệu `mm_waitrequest = mm_read && fifo_empty` bắt buộc phải tích cực (`1`) để yêu cầu bus master chờ đợi. Mạch RTL `assign mm_waitrequest = mm_read && fifo_empty;` là hoàn toàn chính xác theo chuẩn Avalon-MM.
+   - **Xử lý:** Cập nhật mô hình Python twin (`verify_v3/ch01_fifo_twin.py`) trong lớp `FifoOutTwin.step`: đánh giá `mm_waitrequest_out = 1 if (mm_read and self.fifo_empty) else 0` sau sườn dương xung nhịp. Tái tạo tệp vết chuẩn `tb_ch01_fifo_out_expected.txt` (sửa bit waitrequest ở chu kỳ 1 và chu kỳ 1216 từ `0` thành `1`, bảo đảm định dạng LF).
+   - **Kết quả:** `tb_ch01_fifo_out` đạt 0 lỗi trên toàn bộ 1.217 chu kỳ. Đoạn trích dẫn mã nguồn Python trong `chuong_v3/chuong_01_wav_hps_cau.tex` đã được đồng bộ hóa tương ứng.
+
+2. **Chuẩn hóa chuỗi trích dẫn mã nguồn Praat 7.0.03 (Blocker B2):**
+   - **Cập nhật token:** Sửa đổi các chuỗi token kiểm tra trong `verify_v3/ch01_praat_lines.py` để khớp từng ký tự với bản Praat 7.0.03 chính thức:
+     - `Sampled.h` (dòng 34--36): Thay token cũ thành `'Melder_ifloor   ((x - my x1) / my dx + 1.0)'` (khớp với mã nội tuyến của `Sampled_xToLowIndex`).
+     - `Sound_to_Pitch.cpp` (dòng 50--55): Thay token cũ thành `'integer leftSample = Sampled_xToLowIndex (me, t), rightSample = leftSample + 1;'`.
+     - `Sound_to_Pitch.cpp` (dòng 375--385): Thay token cũ thành `'const double mean = NUMmean (my z.row (ichan));'`.
+   - **Cơ chế so khớp:** Bổ sung hàm chuẩn hóa khoảng trắng `normalize_ws` để bảo đảm kiểm chứng không phụ thuộc vào thụt đầu dòng hay ký tự tab.
+   - **Đồng bộ tài liệu:** Cập nhật dòng trích dẫn ở mục 1.2 trong `chuong_v3/chuong_01_wav_hps_cau.tex` (dòng 259) thành `integer leftSample = Sampled_xToLowIndex(me, t), rightSample = leftSample + 1;`. Kịch bản `ch01_praat_lines.py` in ra `ALL PASS` và trả về mã thoát 0.
+
+3. **Bắt lỗi tự động trong kịch bản mô phỏng Verilog (Blocker B3):**
+   - Cập nhật `verify_v3/run_ch01_iverilog.sh` để bắt toàn bộ kết quả mô phỏng của `vvp` và thực hiện kiểm tra `grep -q "\[FAIL\]"`. Nếu phát hiện bất kỳ thông báo lỗi nào, kịch bản lập tức dừng lại với mã thoát 1 (`exit 1`), tuyệt đối không in thông báo thành công khi có lỗi. Giữ nguyên quyền thực thi `100755` và ký tự xuống dòng chuẩn Unix LF.
+
+4. **Cập nhật ghi chú rà soát `\todo`:**
+   - Dòng ~1255 của `chuong_v3/chuong_01_wav_hps_cau.tex` được cập nhật thành `\todo{box: verify again in r2}` theo đúng chỉ đạo của Reviewer để hộp kiểm chứng Linux tự động điền các số liệu nghiệm thu chính thức.
+

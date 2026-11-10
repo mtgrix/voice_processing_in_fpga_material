@@ -21,9 +21,9 @@ SEARCH_PATHS = [
 PRAAT_7003_SNIPPETS = {
     "Sampled.h": {
         (34, 36): """\
-[  34] static inline integer Sampled_xToLowIndex (constSampled me, double x) {
-[  35] 	return Melder_ifloor ((x - my x1) / my dx) + 1;
-[  36] }"""
+[  34] static inline integer Sampled_xToLowIndex     (constSampled me, double x) { return Melder_ifloor   ((x - my x1) / my dx + 1.0); }
+[  35] static inline integer Sampled_xToHighIndex    (constSampled me, double x) { return Melder_iceiling ((x - my x1) / my dx + 1.0); }
+[  36] static inline integer Sampled_xToNearestIndex (constSampled me, double x) { return Melder_iround   ((x - my x1) / my dx + 1.0); }"""
     },
     "Sampled.cpp": {
         (71, 82): """\
@@ -42,34 +42,50 @@ PRAAT_7003_SNIPPETS = {
     },
     "Sound_to_Pitch.cpp": {
         (50, 55): """\
-[  50] 	for (integer iframe = 1; iframe <= my numberOfFrames; iframe ++) {
-[  51] 		const double t = firstTime + (iframe - 1) * timeStep;
-[  52] 		const integer leftSample = Sampled_xToLowIndex (me, t);
-[  53] 		const integer rightSample = leftSample + 1;
-[  54] 		integer startSample, endSample;
-[  55] 		pitchFrame -> time = t;""",
+[  50] 	double *r, INTVEC const& imax, VEC const& localMean)
+[  51] {
+[  52] 	integer leftSample = Sampled_xToLowIndex (me, t), rightSample = leftSample + 1;
+[  53] 	integer startSample, endSample;
+[  54] 
+[  55] 	for (integer channel = 1; channel <= my ny; channel ++) {""",
         (375, 385): """\
-[ 375] 	double globalPeak = 0.0;
-[ 376] 	for (integer channel = 1; channel <= my ny; channel ++) {
-[ 377] 		double mean = 0.0;
-[ 378] 		for (integer i = 1; i <= my nx; i ++)
-[ 379] 			mean += my z [channel] [i];
-[ 380] 		mean /= my nx;
-[ 381] 		for (integer i = 1; i <= my nx; i ++) {
-[ 382] 			double value = fabs (my z [channel] [i] - mean);
-[ 383] 			if (value > globalPeak)
-[ 384] 				globalPeak = value;
-[ 385] 		}
-[ 386] 	}"""
+[ 375] 		globalPeak = 0.0;
+[ 376] 		for (integer ichan = 1; ichan <= my ny; ichan ++) {
+[ 377] 			const double mean = NUMmean (my z.row (ichan));
+[ 378] 			for (integer i = 1; i <= my nx; i ++) {
+[ 379] 				double value = fabs (my z [ichan] [i] - mean);
+[ 380] 				if (value > globalPeak)
+[ 381] 					globalPeak = value;
+[ 382] 			}
+[ 383] 		}
+[ 384] 		if (globalPeak == 0.0)
+[ 385] 			return thee;"""
     }
 }
 
 CITATIONS = [
-    ("Sampled.h", 34, 36, ["Sampled_xToLowIndex", "Melder_ifloor ((x - my x1) / my dx) + 1"]),
-    ("Sampled.cpp", 71, 82, ["Sampled_shortTermAnalysis", "*numberOfFrames = Melder_ifloor", "ourMidTime"]),
-    ("Sound_to_Pitch.cpp", 50, 55, ["leftSample = Sampled_xToLowIndex (me, t);", "rightSample = leftSample + 1;"]),
-    ("Sound_to_Pitch.cpp", 375, 385, ["globalPeak = 0.0;", "mean += my z [channel] [i];", "if (value > globalPeak)"]),
+    ("Sampled.h", 34, 36, [
+        "Sampled_xToLowIndex",
+        "Melder_ifloor   ((x - my x1) / my dx + 1.0)",
+    ]),
+    ("Sampled.cpp", 71, 82, [
+        "Sampled_shortTermAnalysis",
+        "*numberOfFrames = Melder_ifloor",
+        "ourMidTime",
+    ]),
+    ("Sound_to_Pitch.cpp", 50, 55, [
+        "integer leftSample = Sampled_xToLowIndex (me, t), rightSample = leftSample + 1;",
+        "rightSample = leftSample + 1;",
+    ]),
+    ("Sound_to_Pitch.cpp", 375, 385, [
+        "globalPeak = 0.0;",
+        "const double mean = NUMmean (my z.row (ichan));",
+        "if (value > globalPeak)",
+    ]),
 ]
+
+def normalize_ws(s):
+    return " ".join(s.split())
 
 def find_file(filename):
     for base in SEARCH_PATHS:
@@ -111,8 +127,9 @@ def verify():
             print(f"  {l}")
 
         text = "\n".join(lines)
+        norm_text = normalize_ws(text)
         for token in tokens:
-            if token in text:
+            if token in text or normalize_ws(token) in norm_text:
                 print(f"  [PASS] Verified token: '{token}'")
             else:
                 print(f"  [FAIL] Token '{token}' not found in lines {start_line}-{end_line}")

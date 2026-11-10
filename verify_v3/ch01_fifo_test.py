@@ -61,9 +61,9 @@ def main():
     # Push 1 word
     rdy, wreq, rdata, used = twin_out.step(1, 0x1234, 0)
     assert rdy == 1 and wreq == 0 and used == 1, "FifoOut push failed!"
-    # Read 1 word
+    # Read 1 word (after pop, FIFO becomes empty and mm_waitrequest is asserted)
     rdy, wreq, rdata, used = twin_out.step(0, 0, 1)
-    assert rdy == 1 and wreq == 0 and rdata == 0x1234 and used == 0, "FifoOut read failed!"
+    assert rdy == 1 and wreq == 1 and rdata == 0x1234 and used == 0, "FifoOut read failed!"
     # Read when empty -> waitrequest
     rdy, wreq, rdata, used = twin_out.step(0, 0, 1)
     assert wreq == 1, "FifoOut waitrequest on empty read failed!"
