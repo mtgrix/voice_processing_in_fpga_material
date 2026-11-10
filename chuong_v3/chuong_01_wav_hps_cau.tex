@@ -48,3 +48,285 @@ Việc truyền tải dữ liệu giữa hai miền thông qua cầu nối khôn
 
 \textit{Tóm lại: Dữ liệu âm thanh nằm trong DDR của vi xử lý còn thuật toán tính toán nằm ở logic FPGA; bài toán trung tâm là phân định ranh giới xử lý và lựa chọn cầu nối sao cho việc truyền tải vừa đủ nhanh để đáp ứng thời gian thực, vừa giữ cấu trúc phần cứng và trình điều khiển ở mức đơn giản nhất.}
 
+\subsection*{1.2. Đọc tệp WAV đúng chuẩn và tính toán tham số toàn cục trên HPS}
+\addcontentsline{toc}{subsection}{1.2. Đọc tệp WAV đúng chuẩn và tính toán tham số toàn cục trên HPS}
+
+\subsubsection*{Cạm bẫy ngây thơ: Vì sao giả định dữ liệu ở offset 44 luôn thất bại?}
+Một sai lầm kinh điển mà người mới làm việc với âm thanh số trên FPGA thường mắc phải là mở tệp WAV, bỏ qua 44 byte đầu tiên rồi giả định rằng mẫu âm thanh PCM bắt đầu cố định từ byte thứ 44. Con số 44 byte này chỉ đúng trong trường hợp lý tưởng tối giản nhất: một tệp chỉ chứa duy nhất khối \texttt{RIFF} tiêu đề (12 byte), một khối định dạng \texttt{fmt~} cơ bản không có phần mở rộng (24 byte gồm 8 byte tiêu đề và 16 byte dữ liệu), và 8 byte tiêu đề của khối \texttt{data} ($12 + 24 + 8 = 44$).
+
+Tuy nhiên, trong thực tế sản xuất âm thanh, hầu hết các phần mềm biên tập chuẩn (như Audacity, Adobe Audition, Praat hay các công cụ ghi âm hiện đại) đều tự động chèn thêm các khối dữ liệu phụ trợ (auxiliary metadata chunks) vào tiêu đề để lưu trữ thông tin bản quyền, tên nghệ sĩ, mốc thời gian ghi âm hoặc thông số phát sóng. Tiêu biểu nhất là khối danh sách thông tin \texttt{LIST} (chứa các thẻ con như \texttt{INFO}, \texttt{INAM}, \texttt{IART}) hoặc khối thông tin phát sóng \texttt{bext} (Broadcast Audio Extension). Các khối này thường được đặt ngay sau khối \texttt{fmt~} và nằm phía trước khối \texttt{data}.
+
+Để thấy rõ sự sụp đổ này bằng số liệu cụ thể, hãy kiểm tra tệp âm thanh thử nghiệm \texttt{edge\_list\_chunk.wav} (tại thư mục \texttt{verify\_v3/data/}, tạo bởi \texttt{make\_test\_wavs.py}). Tệp này chèn một khối \texttt{LIST} kích thước 18 byte mang nhãn tiêu đề bản ghi ``DE10'' nằm xen vào giữa khối \texttt{fmt~} và khối \texttt{data}. 
+
+Quan sát trích xuất hex dump thực tế từ tệp \texttt{edge\_list\_chunk.wav}:
+\begin{center}
+\footnotesize
+\begin{tabular}{llll}
+\toprule
+Offset & Dữ liệu Hex & Ký tự ASCII & Nhận diện khối \\
+\midrule
+\texttt{0x0000} & \texttt{52 49 46 46 7e 01 00 00} & \texttt{RIFF\textasciitilde...} & Khối \texttt{RIFF} tiêu đề tệp \\
+\texttt{0x0008} & \texttt{57 41 56 45 66 6d 74 20} & \texttt{WAVEfmt } & Định dạng WAVE + Khối \texttt{fmt } \\
+\texttt{0x0010} & \texttt{10 00 00 00 01 00 01 00} & \texttt{........} & 16 byte, PCM không nén, mono \\
+\texttt{0x0018} & \texttt{80 3e 00 00 00 7d 00 00} & \texttt{.>...\}..} & 16.000 Hz, 32.000 byte/s \\
+\texttt{0x0020} & \texttt{02 00 10 00 4c 49 53 54} & \texttt{....LIST} & 16-bit, bắt đầu khối \texttt{LIST} \\
+\texttt{0x0028} & \texttt{12 00 00 00 49 4e 46 4f} & \texttt{....INFO} & Kích thước 18 byte, nhãn \texttt{INFO} \\
+\texttt{0x0030} & \texttt{49 4e 41 4d 06 00 00 00} & \texttt{INAM....} & Thẻ \texttt{INAM}, độ dài 6 byte \\
+\texttt{0x0038} & \texttt{44 45 31 30 00 00 64 61} & \texttt{DE10..da} & Dữ liệu ``DE10'', đầu khối \texttt{data} \\
+\texttt{0x0040} & \texttt{74 61 40 01 00 00 00 00} & \texttt{ta@.....} & Ký tự \texttt{ta}, kích thước 320 byte \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Nếu một bộ đọc ngây thơ nhảy cóc thẳng vào vị trí byte 44 (\texttt{0x002C}), nó sẽ đọc đúng 4 byte ký tự ASCII \texttt{"INFOINAM"} (mã hex: \texttt{49 4E 46 4F}) và nhầm tưởng đó là các mẫu âm thanh PCM 16-bit! 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Hai byte đầu tiên tại offset 44 là \texttt{0x49} và \texttt{0x4E}. Theo quy ước số nguyên có dấu bù hai byte nhỏ (little-endian), chúng ghép lại thành mẫu số nguyên:
+    \begin{equation}
+    x_{\text{rác}}[0] = \texttt{0x4E49} = +20.041
+    \end{equation}
+    \item Hai byte tiếp theo tại offset 46 là \texttt{0x46} và \texttt{0x4F}, ghép lại thành mẫu số nguyên:
+    \begin{equation}
+    x_{\text{rác}}[1] = \texttt{0x4F46} = +20.294
+    \end{equation}
+\end{itemize}
+Hai mẫu rác này có biên độ cực lớn (vượt quá 61\% thang đo cực đại của PCM 16-bit), trong khi khối âm thanh thật sự \texttt{data} phải tới byte 62 (\texttt{0x003E}) mới xuất hiện và các mẫu âm thanh thực tế chỉ bắt đầu từ byte 70 (\texttt{0x0046}). Hệ quả là:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Âm thanh giải mã bị lệch pha đúng 26 byte (13 mẫu âm thanh), làm toàn bộ các khung phân tích bị trôi mốc thời gian so với phần mềm Praat.
+    \item Hai mẫu văn bản bị đọc nhầm thành hai xung đột biến biên độ $> 20.000$, tạo ra một tiếng nổ ``bụp'' chát chúa ở đầu tệp và làm sai lệch nghiêm trọng giá trị đỉnh biên độ toàn cục $\text{globalPeak}$, từ đó phá hỏng toàn bộ logic cổng im lặng ở Chương 10.
+\end{enumerate}
+
+\subsubsection*{Cấu trúc phân cấp chuẩn của tệp RIFF/WAVE từ mức byte}
+Định dạng tệp WAV thuộc họ tệp hoán đổi tài nguyên RIFF (Resource Interchange File Format) do Microsoft và IBM đồng phát triển. Một tệp RIFF được tổ chức thành một cây chứa các khối (chunks) lồng nhau. Mỗi khối bắt buộc phải có cấu trúc tiêu đề 8 byte mở đầu gồm:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Mã nhận diện khối (Chunk ID):} 4 byte ký tự ASCII (FourCC, Four Character Code) xác định loại khối.
+    \item \textbf{Kích thước khối (Chunk Size):} số nguyên không dấu 32-bit ở định dạng byte nhỏ (little-endian), cho biết độ dài chính xác của phần dữ liệu bên trong khối (không tính 8 byte tiêu đề của chính nó).
+\end{itemize}
+
+Tiêu đề tệp bắt đầu bằng chuỗi nhận diện \texttt{"RIFF"}, theo sau là kích thước toàn tệp trừ 8 byte đầu, và mã định dạng \texttt{"WAVE"}. Sau 12 byte đầu tiên này là một chuỗi các khối nằm liên tiếp nhau. Một trình đọc chuẩn bắt buộc phải duyệt tuần tự qua từng khối theo thuật toán nhảy cóc (chunk jumping): đọc 4 byte ID, đọc 4 byte kích thước $S$, kiểm tra xem khối đó có phải là khối ta cần hay không; nếu không phải, dùng hàm dịch chuyển con trỏ tệp (\texttt{fseek}) để nhảy qua đúng $S$ byte nhằm đến đầu khối tiếp theo.
+
+\textbf{Quy tắc đệm từ của chuẩn RIFF (Word Alignment Padding):} Đây là một chi tiết kỹ thuật cốt lõi thường bị bỏ quên. Chuẩn kỹ thuật RIFF quy định: \textbf{mọi khối bắt buộc phải bắt đầu tại một địa chỉ byte chẵn}. Do đó, nếu kích thước dữ liệu $S$ của một khối là một số lẻ (tức $S \pmod 2 \neq 0$), bên ghi tệp bắt buộc phải chèn thêm đúng 1 byte đệm có giá trị \texttt{0x00} vào ngay sau dữ liệu của khối đó. Khi nhảy qua khối, trình đọc phải dịch chuyển con trỏ một khoảng là:
+\begin{equation}
+\Delta_{\text{jump}} = S + (S \ \& \ 1)
+\end{equation}
+Nếu bỏ qua việc kiểm tra bit lẻ này, khi gặp các khối siêu dữ liệu có kích thước lẻ (như tệp \texttt{edge\_odd\_chunk.wav} trong bộ thử nghiệm), con trỏ tệp sẽ bị lệch đi 1 byte lẻ. Toàn bộ các mã FourCC tiếp theo bị đọc lệch thành các chuỗi byte vô nghĩa và quá trình giải mã thất bại hoàn toàn.
+
+Một trình đọc WAV đúng chuẩn trên vi xử lý HPS bắt buộc phải kiểm tra nghiêm ngặt 5 điều kiện hợp lệ của khối \texttt{fmt~}:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{AudioFormat == 1}: bắt buộc là định dạng PCM tuyến tính không nén. Các định dạng nén như A-law, $\mu$-law hay IEEE Float đều bị từ chối với mã lỗi \texttt{WAV\_ERR\_UNSUPPORTED\_FORMAT}.
+    \item \texttt{NumChannels == 1}: bắt buộc là kênh đơn (mono). Nếu tệp có hai kênh\\
+    (stereo, như \texttt{edge\_stereo.wav}), dữ liệu hai kênh trái-phải đan xen sẽ làm hỏng hoàn toàn phép tính tự tương quan; trình đọc từ chối với mã lỗi \texttt{WAV\_ERR\_UNSUPPORTED\_CHANNELS}.
+    \item \texttt{SampleRate == 16000}: tần số lấy mẫu bắt buộc là 16 kHz để phù hợp với thông số thiết kế cửa sổ 40 ms và dải quét độ trễ của FPGA. Tệp có tần số khác (như 44,1 kHz trong \texttt{edge\_wrong\_rate.wav}) bị từ chối với mã \texttt{WAV\_ERR\_UNSUPPORTED\_RATE}.
+    \item \texttt{BitsPerSample == 16}: mỗi mẫu âm thanh biểu diễn bởi đúng 16 bit số nguyên có dấu bù hai (dải biểu diễn từ $-32.768$ đến $+32.767$).
+    \item \texttt{BlockAlign == 2}: mỗi mẫu chiếm đúng 2 byte dữ liệu.
+\end{enumerate}
+
+\subsubsection*{Ví dụ bóc tách tệp thực tế: Tệp mẫu thu nhỏ \texttt{mini\_speech.wav}}
+Để quan sát tường tận cấu trúc nhị phân ở mức từng byte, hãy xem xét toàn bộ nội dung của tệp âm thanh thu nhỏ \texttt{mini\_speech.wav} gồm đúng 8 mẫu âm thanh:
+\begin{equation}
+s = [0, 100, -200, 300, -400, 500, -600, 700]
+\end{equation}
+\begin{center}
+\small
+\begin{tabular}{lll}
+\toprule
+Địa chỉ Offset & Giá trị Hex (Little-Endian) & Ý nghĩa giải mã kỹ thuật \\
+\midrule
+\texttt{0x0000 -- 0x0003} & \texttt{52 49 46 46} & Ký tự FourCC: \texttt{"RIFF"} \\
+\texttt{0x0004 -- 0x0007} & \texttt{34 00 00 00} & Kích thước phần còn lại: $52\text{ byte}$ ($60 - 8 = 52$) \\
+\texttt{0x0008 -- 0x000B} & \texttt{57 41 56 45} & Định dạng tài nguyên: \texttt{"WAVE"} \\
+\midrule
+\texttt{0x000C -- 0x000F} & \texttt{66 6d 74 20} & Ký tự FourCC: \texttt{"fmt "} \\
+\texttt{0x0010 -- 0x0013} & \texttt{10 00 00 00} & Kích thước khối định dạng: $16\text{ byte}$ cơ bản \\
+\texttt{0x0014 -- 0x0015} & \texttt{01 00} & \texttt{AudioFormat = 1} (PCM không nén) \\
+\texttt{0x0016 -- 0x0017} & \texttt{01 00} & \texttt{NumChannels = 1} (kênh đơn mono) \\
+\texttt{0x0018 -- 0x001B} & \texttt{80 3e 00 00} & \texttt{SampleRate = 16.000 Hz} ($0\text{x}00003\text{E}80 = 16.000$) \\
+\texttt{0x001C -- 0x001F} & \texttt{00 7d 00 00} & \texttt{ByteRate = 32.000 byte/s} ($16.000 \times 2 = 32.000$) \\
+\texttt{0x0020 -- 0x0021} & \texttt{02 00} & \texttt{BlockAlign = 2 byte/mẫu} \\
+\texttt{0x0022 -- 0x0023} & \texttt{10 00} & \texttt{BitsPerSample = 16 bit/mẫu} \\
+\midrule
+\texttt{0x0024 -- 0x0027} & \texttt{64 61 74 61} & Ký tự FourCC: \texttt{"data"} \\
+\texttt{0x0028 -- 0x002B} & \texttt{10 00 00 00} & Kích thước dữ liệu âm thanh: $16\text{ byte}$ (8 mẫu) \\
+\texttt{0x002C -- 0x002D} & \texttt{00 00} & Mẫu $0$: $0$ \\
+\texttt{0x002E -- 0x002F} & \texttt{64 00} & Mẫu $1$: $+100$ ($0\text{x}0064$) \\
+\texttt{0x0030 -- 0x0031} & \texttt{38 ff} & Mẫu $2$: $-200$ ($0\text{xFF38}$) \\
+\texttt{0x0032 -- 0x0033} & \texttt{2c 01} & Mẫu $3$: $+300$ ($0\text{x}012\text{C}$) \\
+\texttt{0x0034 -- 0x0035} & \texttt{70 fe} & Mẫu $4$: $-400$ ($0\text{xFE70}$) \\
+\texttt{0x0036 -- 0x0037} & \texttt{f4 01} & Mẫu $5$: $+500$ ($0\text{x}01\text{F}4$) \\
+\texttt{0x0038 -- 0x0039} & \texttt{a8 fd} & Mẫu $6$: $-600$ ($0\text{xFDA8}$) \\
+\texttt{0x003A -- 0x003B} & \texttt{bc 02} & Mẫu $7$: $+700$ ($0\text{x}02\text{BC}$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Trình đọc C trong tệp \texttt{sw\_v3/ch01\_wav.c} hiện thực hóa chính xác giải thuật duyệt khối này và đã được kiểm chứng vượt qua toàn bộ 8 tệp kiểm thử (từ tệp chuẩn tới các tệp biên lỗi) trong kịch bản \texttt{ch01\_wav\_verify.py}.
+
+\subsubsection*{Dẫn xuất đỉnh biên độ toàn cục $\text{globalPeak}$ bằng số nguyên}
+Trong mã nguồn Praat \texttt{Sound\_to\_Pitch.cpp} (dòng 375--383), trước khi chia khung, Praat tính toán đỉnh biên độ toàn cục của toàn bộ tệp âm thanh:
+\begin{equation}
+\text{GP}_{\text{praat}} = \max_{1 \le i \le n} |x[i] - \bar{x}|
+\end{equation}
+trong đó $\bar{x} = \frac{1}{n} \sum_{i=1}^n x[i]$ là giá trị trung bình DC của toàn bộ tệp và mẫu âm thanh $x[i] \in [-1{,}0, +1{,}0)$ được biểu diễn dưới dạng số thực dấu phẩy động đôi (double). 
+
+Đại lượng này đóng vai trò sống còn trong việc đánh giá mức cường độ âm thanh tương đối:
+\begin{equation}
+\text{intensity} = \frac{\text{localPeak}}{\text{globalPeak}}
+\end{equation}
+ở Chương 10. Nếu một đoạn âm thanh có biên độ nhỏ nhưng vẫn tuần hoàn rõ rệt (ví dụ khi người nói phát âm thì thầm hoặc nói nhỏ dần ở cuối câu), năng lượng tuyệt đối $R[0]$ giảm xuống rất thấp. Tuy nhiên, tỉ số $\text{localPeak} / \text{globalPeak}$ vẫn giữ được giá trị đáng kể, giúp bộ phân loại vô thanh/hữu thanh không bị nhầm lẫn tiếng nói nhỏ thành khoảng lặng hoàn toàn.
+
+\textbf{Chuyển đổi sang số nguyên không mất độ chính xác:}
+Trên vi xử lý nhúng HPS, ta hoàn toàn có thể tính toán đại lượng này bằng số thực \texttt{double}. Tuy nhiên, để cấu hình cho thanh ghi 16-bit của FPGA và đảm bảo không xảy ra bất kỳ sự phân kỳ nào giữa các trình biên dịch, ta quy đổi công thức trên về số nguyên thuần túy. Mẫu số nguyên 16-bit $s[i]$ liên hệ với mẫu thực của Praat qua tỉ lệ $x[i] = s[i] / 32.768$. Thay vào công thức trung bình:
+\begin{equation}
+x[i] - \bar{x} = \frac{s[i]}{32.768} - \frac{\sum_{j=1}^n s[j]}{n \cdot 32.768} = \frac{n \cdot s[i] - \sum_{j=1}^n s[j]}{n \cdot 32.768}
+\end{equation}
+Để đưa giá trị độ lệch cực đại về cùng thang đo với mẫu số nguyên 16-bit (tức nhân lại với $32.768$), ta nhận được công thức nguyên chính xác:
+\begin{equation}
+\text{GP} = \operatorname{round}\left( \frac{\max_{1 \le i \le n} |n \cdot s[i] - S|}{n} \right)
+\end{equation}
+với $S = \sum_{j=1}^n s[j]$ là tổng tích lũy của toàn bộ $n$ mẫu trong tệp.
+
+\textbf{Nhìn thấy toán học: Rút gọn phép tìm cực đại về hai điểm biên.}
+Quan sát hàm bậc nhất $f(s) = n \cdot s - S$. Đây là một hàm đơn điệu tăng nghiêm ngặt theo giá trị mẫu $s$. Do đó, độ lớn tuyệt đối $|n \cdot s - S|$ là một hàm lồi (convex), và giá trị cực đại của nó trên toàn bộ tập mẫu \textbf{chỉ có thể đạt được tại một trong hai điểm cực trị}: mẫu có giá trị nhỏ nhất $s_{\min} = \min_i s[i]$ hoặc mẫu có giá trị lớn nhất $s_{\max} = \max_i s[i]$!
+
+Nhờ định lý đơn giản này, mã nguồn C trên HPS không cần phải lưu trữ toàn bộ mảng mẫu rồi quét lại lần thứ hai. Ngay trong lượt đọc tệp đầu tiên, ta đồng thời tính tổng tích lũy $S$ (dùng biến 64-bit \texttt{int64\_t} để chống tràn), cập nhật $s_{\min}$ và $s_{\max}$. Sau khi đọc xong $n$ mẫu, giá trị GP được tính trực tiếp trong đúng một phép so sánh:
+\begin{align}
+\Delta_1 &= |n \cdot s_{\max} - S| \\
+\Delta_2 &= |n \cdot s_{\min} - S| \\
+\text{max\_diff} &= \max(\Delta_1, \Delta_2) \\
+\text{GP} &= \left\lfloor \frac{\text{max\_diff} + \lfloor n / 2 \rfloor}{n} \right\rfloor
+\end{align}
+trong đó việc cộng thêm $\lfloor n / 2 \rfloor$ trước khi chia nguyên thực hiện chính xác phép làm tròn số học (\texttt{round}) về số nguyên gần nhất.
+
+\textbf{Ví dụ tính tay trên dãy mẫu thu nhỏ} (\texttt{mini\_speech.wav}):\\
+Xét dãy 8 mẫu âm thanh:
+\begin{equation}
+s = [0, 100, -200, 300, -400, 500, -600, 700]
+\end{equation}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Số lượng mẫu: $n = 8$.
+    \item Tổng tích lũy: $S = 0 + 100 - 200 + 300 - 400 + 500 - 600 + 700 = 400$.
+    \item Giá trị cực tiểu: $s_{\min} = -600$; Giá trị cực đại: $s_{\max} = 700$.
+    \item Độ lệch tại cực tiểu: $\Delta_2 = |8 \times (-600) - 400| = |-4.800 - 400| = |-5.200| = 5.200$.
+    \item Độ lệch tại cực đại: $\Delta_1 = |8 \times 700 - 400| = |5.600 - 400| = 5.200$.
+    \item Cực đại độ lệch: $\text{max\_diff} = 5.200$.
+    \item Giá trị GP:
+    \begin{equation}
+    \text{GP} = \left\lfloor \frac{5.200 + \lfloor 8 / 2 \rfloor}{8} \right\rfloor = \left\lfloor \frac{5.204}{8} \right\rfloor = 650
+    \end{equation}
+\end{itemize}
+Con số $650$ thu được khớp chính xác với kiểm chứng tự động của kịch bản \texttt{ch01\_wav\_verify.py}.
+
+Áp dụng trên hai tệp âm thanh chuẩn 2,8 s (44.800 mẫu) của đề cương (mục 7):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tệp âm thanh sạch (\texttt{synth\_glide\_vuv\_16k.wav}): $s_{\max} = 22.939$, $s_{\min} = -22.939$, tổng tích lũy $S = -317.078$, tính ra $\text{GP} = \mathbf{22.946}$ (đã kiểm bằng \texttt{ch01\_wav\_verify.py}).
+    \item Tệp âm thanh có ồn SNR 5 dB (\texttt{synth\_glide\_vuv\_16k\_snr5.wav}): $s_{\max} = 22.938$, $s_{\min} = -22.278$, tính ra $\text{GP} = \mathbf{22.937}$ (đã kiểm bằng \texttt{ch01\_wav\_verify.py}).
+\end{itemize}
+
+\subsubsection*{Lưới phân tích khung ngắn hạn: Dẫn xuất thuật toán của Praat}
+Một điểm khác biệt sâu sắc giữa Praat và các hệ thống xử lý tín hiệu thông thường là cách xác định tâm thời gian của các khung. Trong các giáo trình cơ bản, người ta thường cố định khung 0 bắt đầu từ mẫu 0 ($t = 0$), rồi tịnh tiến đều đặn theo từng bước nhảy $\text{hop}$. Ngược lại, Boersma thiết kế thuật toán phân tích ngắn hạn \texttt{Sampled\_shortTermAnalysis} (\texttt{fon/Sampled.cpp} dòng 74) theo nguyên lý \textbf{căn giữa đối xứng}: toàn bộ chuỗi khung phân tích phải được đặt đối xứng hoàn hảo xung quanh tâm của tệp âm thanh. 
+
+Các bước tính toán diễn ra tuần tự như sau:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Xác định số lượng khung phân tích $n_{\text{frames}}$:}
+    Với tần số lấy mẫu $f_s = 16.000\text{ Hz}$, chu kỳ lấy mẫu là $dx = 1 / 16.000 = 0{,}0000625\text{ s}$. Thời lượng vật lý của tệp âm thanh có $n_x$ mẫu là:
+    \begin{equation}
+    \text{my\_duration} = n_x \cdot dx
+    \end{equation}
+    Độ dài cửa sổ vật lý là $\Delta t_{\text{window}} = 3 / 75 = 0{,}04\text{ s}$ (tương ứng 640 mẫu danh định, Praat làm tròn thành 638 mẫu). Bước nhảy thời gian danh định giữa hai khung là $\Delta t = 0{,}75 / 75 = 0{,}01\text{ s}$ (tương ứng $\text{hop} = 160$ mẫu). Số lượng khung phân tích hợp lệ được tính bằng:
+    \begin{equation}
+    n_{\text{frames}} = \left\lfloor \frac{\text{my\_duration} - \Delta t_{\text{window}}}{\Delta t} \right\rfloor + 1
+    \end{equation}
+    
+    \item \textbf{Căn tâm và tính mốc thời gian khung đầu tiên $t_1$:}
+    Quy ước tọa độ thời gian của Praat (\texttt{Sound.cpp}) đặt mẫu đầu tiên tại $x_1 = 0{,}5 \cdot dx$ (tâm của khoảng lấy mẫu đầu tiên). Điểm chính giữa của tệp âm thanh là:
+    \begin{equation}
+    \text{our\_mid} = x_1 - 0{,}5 \cdot dx + 0{,}5 \cdot \text{my\_duration} = 0{,}5 \cdot \text{my\_duration}
+    \end{equation}
+    Khoảng thời gian mà $n_{\text{frames}}$ khung chiếm dụng là $\text{thy\_duration} = n_{\text{frames}} \cdot \Delta t$. Để chuỗi khung nằm cân đối ở giữa tệp, mốc thời gian của tâm khung đầu tiên $t_1$ bắt buộc phải là:
+    \begin{equation}
+    t_1 = \text{our\_mid} - 0{,}5 \cdot \text{thy\_duration} + 0{,}5 \cdot \Delta t
+    \end{equation}
+    
+    \item \textbf{Tính mốc thời gian $t_i$ và chỉ số mẫu bắt đầu cửa sổ:}
+    Tâm thời gian của khung thứ $i$ ($i = 1, 2, \dots, n_{\text{frames}}$) là:
+    \begin{equation}
+    t_i = t_1 + (i - 1) \cdot \Delta t
+    \end{equation}
+    Để chuyển từ mốc thời gian liên tục $t_i$ sang chỉ số mẫu rời rạc, Praat gọi hàm \texttt{Sampled\_xToLowIndex} (\texttt{Sampled.cpp} dòng 35):
+    \begin{equation}
+    \text{leftSample}_i = \left\lfloor \frac{t_i - x_1}{dx} + 1{,}0 \right\rfloor
+    \end{equation}
+    Mẫu bên phải là $\text{rightSample}_i = \text{leftSample}_i + 1$. Khung cửa sổ Hanning 638 mẫu có nửa chiều dài là $\text{halfnsamp\_window} = 319$ mẫu. Do đó, chỉ số mẫu bắt đầu của cửa sổ (tính từ 0, tức 0-based) đưa vào bộ đệm FPGA là:
+    \begin{equation}
+    \text{win0}_i = \text{rightSample}_i - 319 - 1 = \text{leftSample}_i - 319
+    \end{equation}
+\end{enumerate}
+
+\textbf{Ví dụ tính tay trên hai tệp âm thanh tiêu biểu:}
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Tệp có thời lượng 1,234 s ($n_x = 19.744$ mẫu):}
+    Thời lượng: $\text{my\_duration} = 19.744 \times 0{,}0000625 = 1{,}234\text{ s}$.
+    Số khung: $n_{\text{frames}} = \lfloor (1{,}234 - 0{,}04) / 0{,}01 \rfloor + 1 = \lfloor 119{,}4 \rfloor + 1 = 120\text{ khung}$.
+    Tâm tệp: $\text{our\_mid} = 0{,}5 \times 1{,}234 = 0{,}617\text{ s}$.
+    Thời lượng phủ: $\text{thy\_duration} = 120 \times 0{,}01 = 1{,}200\text{ s}$.
+    Mốc thời gian khung đầu: $t_1 = 0{,}617 - 0{,}5 \times 1{,}200 + 0{,}005 = 0{,}022000\text{ s}$.
+    Tại khung $1$: $t_1 = 0{,}022\text{ s}$. Vì $x_1 = 0{,}5 \times 0{,}0000625 = 0{,}00003125\text{ s}$, ta có:
+    \begin{equation}
+    \text{leftSample}_1 = \left\lfloor \frac{0{,}022 - 0{,}00003125}{0{,}0000625} + 1{,}0 \right\rfloor = \lfloor 351{,}5 + 1{,}0 \rfloor = \lfloor 352{,}5 \rfloor = 352
+    \end{equation}
+    Chỉ số mẫu bắt đầu cửa sổ đầu tiên: $\text{win0}_0 = 352 - 319 = \mathbf{33}$. 
+    Khung đầu tiên trên FPGA không bắt đầu ở mẫu 0 mà bắt đầu từ mẫu 33 để khớp hoàn hảo với Praat! Khung cuối cùng ($i=120$) bắt đầu tại mẫu $\text{win0}_{119} = 19.073$.
+    
+    \item \textbf{Tệp chuẩn 2,8 s ($n_x = 44.800$ mẫu):}
+    Thời lượng: $\text{my\_duration} = 44.800 \times 0{,}0000625 = 2{,}800\text{ s}$.
+    Số khung: $n_{\text{frames}} = \lfloor (2{,}800 - 0{,}04) / 0{,}01 \rfloor + 1 = 276 + 1 = 277\text{ khung}$.
+    Tâm tệp: $\text{our\_mid} = 1{,}400\text{ s}$; $\text{thy\_duration} = 277 \times 0{,}01 = 2{,}770\text{ s}$.
+    Mốc thời gian khung đầu: $t_1 = 1{,}400 - 0{,}5 \times 2{,}770 + 0{,}005 = \mathbf{0{,}020000\text{ s}}$.
+    Tại khung $1$: $t_1 = 0{,}020\text{ s} \implies \text{leftSample}_1 = \lfloor 0{,}020 / 0{,}0000625 + 0{,}5 \rfloor = \lfloor 320{,}5 \rfloor = 320$.
+    Chỉ số mẫu bắt đầu cửa sổ đầu tiên: $\text{win0}_0 = 320 - 319 = \mathbf{1}$.
+    Toàn bộ 277 khung đều có bước nhảy $\text{hop} = \text{win0}_i - \text{win0}_{i-1} = 160$ mẫu đều đặn tuyệt đối!
+\end{itemize}
+
+\subsubsection*{Đón trước chỗ vướng: Bẫy sàn số lẻ (Odd-sample floor trap)}
+\begin{thoughtqa}{Vì sao bước nhảy khung trong Praat đôi khi bị co thành 159 hoặc giãn thành 161 mẫu?}
+Hãy quan sát biểu thức tính toán trong hàm \texttt{Sampled\_xToLowIndex}:
+\begin{equation}
+y_i = \frac{t_i - x_1}{dx} + 1{,}0 = \frac{t_i}{dx} + 0{,}5
+\end{equation}
+Thay biểu thức của $t_i$ từ các bước trên vào, ta biến đổi đại số chính xác:
+\begin{align}
+y_i &= \frac{0{,}5 \cdot n_x \cdot dx - 0{,}5 \cdot n_{\text{frames}} \cdot \Delta t + 0{,}5 \cdot \Delta t + (i - 1) \cdot \Delta t}{dx} + 0{,}5 \nonumber \\
+    &= 0{,}5 \cdot n_x - \frac{0{,}5 \cdot n_{\text{frames}} \cdot \Delta t}{dx} + \frac{(i - 0{,}5) \cdot \Delta t}{dx} + 0{,}5
+\end{align}
+Vì tỉ số $\Delta t / dx = 0{,}01 / 0{,}0000625 = 160$ là một \textbf{số nguyên chẵn tuyệt đối}, nên biểu thức rút gọn thành:
+\begin{equation}
+y_i = 0{,}5 \cdot n_x - 80 \cdot n_{\text{frames}} + 160 \cdot i - 80 + 0{,}5
+\end{equation}
+Bản chất số học lộ diện ở đây:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khi $n_x$ là số chẵn ($n_x = 2k$):} Đại lượng $0{,}5 \cdot n_x = k$ là một số nguyên. Khi đó $y_i = \text{nguyên} + 0{,}5$. Giá trị luôn rơi vào chính giữa hai số nguyên liên tiếp (phần thập phân là đúng $0{,}5$). Khoảng cách tới biên số nguyên là $0{,}5$, rất lớn so với sai số làm tròn $10^{-16}$ của số thực double. Do đó hàm lấy sàn $\lfloor y_i \rfloor$ hoàn toàn miễn nhiễm với sai số dấu phẩy động; bước nhảy giữa hai khung liên tiếp luôn bằng đúng:
+    \begin{equation}
+    \text{hop} = \lfloor y_{i+1} \rfloor - \lfloor y_i \rfloor = (M + 160) - M = 160\text{ mẫu (ổn định tuyệt đối)}.
+    \end{equation}
+    \item \textbf{Khi $n_x$ là số lẻ ($n_x = 2k + 1$):} Đại lượng $0{,}5 \cdot n_x = k + 0{,}5$. Khi cộng với $0{,}5$ ở cuối công thức, ta thu được:
+    \begin{equation}
+    y_i = (k + 0{,}5) - 80 \cdot n_{\text{frames}} + 160 \cdot i - 80 + 0{,}5 = \text{SỐ NGUYÊN CHÍNH XÁC}!
+    \end{equation}
+    Đây chính là cái bẫy chết người: $y_i$ về mặt lý thuyết là một số nguyên hoàn hảo (ví dụ $32.173{,}0$). Nhưng trong chuẩn số thực dấu phẩy động IEEE 754, giá trị thời gian $\Delta t = 0{,}01\text{ s}$ là một phân số vô hạn tuần hoàn trong hệ nhị phân ($0{,}01_{10} \approx 0{,}000000101000111101..._2$). Khi nhân và cộng dồn qua hàng trăm khung, sai số làm tròn tích lũy ở bit thấp nhất (ULP, Unit in the Last Place) có thể làm giá trị thực tế bị hụt một lượng vô cùng nhỏ:
+    \begin{equation}
+    y_i^{\text{thực tế}} = 32.172{,}999999999996362
+    \end{equation}
+    Hàm lấy sàn $\lfloor \cdot \rfloor$ lập tức đánh rơi giá trị xuống $32.172$ thay vì $32.173$! Kết quả là bước nhảy khung bị co lại thành $159$ mẫu, và khung ngay sau đó bị bù giãn thành $161$ mẫu!
+\end{itemize}
+\end{thoughtqa}
+
+Thực nghiệm kiểm chứng trên 200 tệp âm thanh ngẫu nhiên trong kịch bản \texttt{ch01\_frames\_verify.py} đã chứng thực định lý này:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Với 100 tệp có độ dài chẵn ($n_x$ chẵn): tỷ lệ xuất hiện bước nhảy lệch 160 là \textbf{đúng 0{,}0\%} (100/100 tệp đều có hop 160 hoàn hảo).
+    \item Với 100 tệp có độ dài lẻ ($n_x$ lẻ): có tới \textbf{86{,}0\%} số tệp xuất hiện hiện tượng bước nhảy bị giật $159$ hoặc $161$ mẫu do bẫy sàn số lẻ của Praat!
+\end{itemize}
+
+Để giải quyết triệt để vấn đề này, chương trình C trên HPS (\texttt{sw\_v3/ch01\_frames.c}) tính toán chính xác bằng kiểu \texttt{double} theo đúng công thức của Praat nhằm bám sát vị trí khung tham chiếu đến từng mẫu, đồng thời tích hợp cờ \texttt{hop\_regular}. Nếu phát hiện bước nhảy không đều do số mẫu lẻ, trình điều khiển sẽ phát cảnh báo rõ ràng để người dùng nhận biết nguồn gốc sai lệch tiềm tàng.
+
+\textit{Tóm lại: Đọc WAV đúng cách là duyệt theo từng chunk RIFF để tránh bẫy offset 44 và xử lý byte đệm số lẻ; tính đỉnh GP bằng công thức số nguyên quét cực trị một lượt tránh số thực; và lưới khung Praat phải được tính bằng double để nhận diện bẫy sàn số lẻ khi số mẫu âm thanh không chia hết cho hai.}
+
+
+
