@@ -91,9 +91,14 @@ def compute_metrics(ref, test):
 def verify_against_golden():
     print("=== Verifying against golden_v2 compare results ===")
     import os
-    if os.path.exists('golden_v2/out/compare_summary.json'):
+    path = None
+    for candidate in ['golden_v2/out/compare_summary.json', '../golden_v2/out/compare_summary.json']:
+        if os.path.exists(candidate):
+            path = candidate
+            break
+    if path is not None:
         import json
-        with open('golden_v2/out/compare_summary.json') as f:
+        with open(path) as f:
             data = json.load(f)
         for wav, info in data.items():
             print(f"File {wav}: {info['nframes']} frames")
