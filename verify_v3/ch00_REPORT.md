@@ -161,9 +161,58 @@ Dưới đây là bảng tổng hợp chi tiết việc khắc phục toàn bộ
 
 ---
 
-## 6. Lịch sử các Commit Git trên nhánh v3
+## 6. Báo cáo Chi tiết Vòng Sửa đổi 2 (Revision Round 2)
+
+**Ngày hoàn thành đợt sửa đổi 2:** 11/11/2026  
+Khắc phục triệt để 3 điểm tồn đọng duy nhất từ phản biện (Reviewer Feedback Round 2) cùng 2 điểm cải thiện phi chặn:
+
+### 6.1. Khắc phục lỗi Hình 1 (chuong_v3/fig_ch00_system.tex)
+1. **Khoảng cách và chống va chạm các hộp HPS (Mục 1.a):**
+   - Đặt lại tọa độ tâm 4 khối HPS thành $x = 3{,}5; 6{,}5; 9{,}5; 12{,}5$ cm (bước cách $3{,}0$ cm), bề rộng mỗi khối cố định $2{,}2$ cm, tạo ra khoảng hở thực tế giữa mọi cặp khối kề nhau là **$0{,}80$ cm** (vượt xa yêu cầu $\ge 0{,}4$ cm).
+   - Rút gọn văn bản trong từng khối để đảm bảo đệm an toàn tuyệt đối, không chạm viền:
+     - Khối `WAV Parser`: `Kiểm tra RIFF / Bỏ qua LIST`.
+     - Khối `globalPeak`: `Đỉnh biên độ GP / max |x - xbar| (16-bit)`.
+     - Khối `Lưới khung`: `Căn giữa tệp / t1, hop 160 mẫu`.
+     - Khối `C Driver`: `PIO, 2 mẫu/từ / Ghi 32-bit MM`.
+   - Mở rộng khung nét đứt HPS bao bọc từ $x=2{,}1$ đến $x=14{,}0$ cm; mũi tên liên kết `(grid) -> (drv)` có độ dài $0{,}80$ cm hiển thị rõ ràng, không còn va chạm viền hay đè chữ.
+2. **Đường truyền dữ liệu C Driver $\to$ FIFO và nhãn cầu nối (Mục 1.b):**
+   - Định tuyến đường bus cam từ `C Driver` đi thẳng vào góc trên bên trái của khối `On-Chip FIFO` (`(drv.south) -- (fifo_in.north -| drv.south)`) tại tọa độ $x = 12{,}5$ cm.
+   - Bố trí nhãn `Cầu nối HPS--FPGA \\ (Lightweight)` tại $x = 12{,}7$ cm với `anchor=west, fill=white, inner sep=1.5pt` (nằm lệch về bên phải đường bus cam $0{,}2$ cm).
+   - Ngắt nhãn thành 2 dòng giúp bề ngang nhãn chỉ còn $\approx 2{,}2$ cm, vừa vặn hoàn hảo bên trong khung viền cam cầu nối $[11{,}0; 15{,}4]$ cm. Đường mũi tên bus cam tuyệt đối không cắt qua nhãn chữ; nhãn không tràn ra ngoài viền khung.
+   - Kiểm tra trực quan bằng `pdftoppm` ở độ phân giải 300 DPI xác nhận 100% các cạnh hộp, nhãn và đường liên kết đều cách biệt, sắc nét và đạt chuẩn xuất bản.
+
+### 6.2. Hiệu chỉnh số dòng trích dẫn theo đúng bản Praat 7.0.03 (commit 6a9874e)
+1. Cập nhật toàn bộ các mốc số dòng trong `chuong_v3/chuong_00_bai_toan.tex`:
+   - `globalPeak`: `Sound_to_Pitch.cpp` dòng 375--385 (dòng 375: `globalPeak = 0.0;`, hàm `NUMmean`).
+   - Làm tròn cửa sổ 638 mẫu: `Sound_to_Pitch.cpp` dòng 335--339 (`halfnsamp_window = nsamp_window / 2 - 1`).
+   - Công thức cửa sổ Hanning $N+1$: `Sound_to_Pitch.cpp` dòng 422--425 (`0.5 - 0.5 * cos`).
+   - FFT cửa sổ, `windowR`, chuẩn hóa và `brent_ixmax`: `Sound_to_Pitch.cpp` dòng 430--445.
+   - FFT khung tín hiệu: `Sound_to_Pitch.cpp` dòng 147--157 (`NUMfft_forward` tại dòng 150).
+   - Chuẩn hóa Boersma $r[\tau]$: `Sound_to_Pitch.cpp` dòng 163--165.
+   - Dò ứng viên và tinh chỉnh: quét đỉnh dòng 185--200; nội suy sinc70 + Brent dòng 254--270 (`NUMimproveMaximum` tại dòng 258).
+   - Lưới khung thời gian: `Sampled_getWindowSamples` bắt đầu từ `Sampled.cpp` dòng 53; hàm nội tuyến `Sampled_xToLowIndex` trong `Sampled.h` dòng 34; `Sampled_shortTermAnalysis` dòng 71--82.
+   - Giữ nguyên các trích dẫn đã chính xác: dòng 56--66, 68--84, 87--102, 102, và `Pitch.cpp` dòng 543--545, 550--565, 558.
+2. Cập nhật kịch bản `verify_v3/ch00_praat_lines.py`:
+   - Đặt đường dẫn `/workspace/tools/praat_src` lên đầu tiên trong `SEARCH_PATHS`.
+   - Bổ sung cơ chế kiểm tra tính hợp lệ của cây mã nguồn Praat: tự động từ chối cây mã nguồn nếu dòng 375 của `Sound_to_Pitch.cpp` không chứa `globalPeak = 0.0;` (ngăn chặn nhầm lẫn với các cây mã nguồn cũ).
+   - Tích hợp các đoạn trích dẫn chuẩn của Praat 7.0.03 commit 6a9874e làm fallback khi chạy trên máy chưa gắn thư mục `/workspace/tools/praat_src`.
+   - Kết quả kiểm chứng đạt **17/17 trích dẫn PASS 100%**, in ra thông báo `ALL PRAAT 7.0.03 CITATIONS VERIFIED SUCCESSFULLY.` (nhật ký lưu tại `verify_v3/ch00_praat_lines.log`).
+
+### 6.3. Sửa định nghĩa ngưỡng im lặng Silence Threshold
+- Viết lại câu mô tả tại trang 9 (dòng 275 trong `.tex`): Praat không bao giờ hạ độ mạnh của ứng viên có thanh bằng ngưỡng này. Thực tế, khi cường độ $\text{intensity}$ giảm xuống dưới ngưỡng, Praat kích hoạt vùng dốc phi tuyến nhằm **nâng cao độ mạnh của ứng viên vô thanh** qua công thức $0{,}45 + \max(0, \; 2 - \text{intensity}/(0{,}03/1{,}45))$ (`Pitch.cpp` dòng 553--555), giúp ứng viên vô thanh giành thắng thế trong các khung thì thầm hoặc yên lặng.
+
+### 6.4. Các hiệu chỉnh bổ sung (Non-blockers)
+- Lược bỏ câu văn tán dương "Đây chính là linh hồn toán học giải thích vì sao phần mềm Praat đạt được độ tin cậy và danh tiếng vượt trội..." tại dòng 199 để văn phong thuần túy kỹ thuật và khách quan.
+- Chỉnh sửa dòng 3 trong Bảng 2 từ "tích lũy 48-bit" thành "cần 43 bit, dùng 48 bit" để phản ánh chính xác kết quả phân tích độ rộng bit ở Chương 7.
+
+---
+
+## 7. Lịch sử các Commit Git trên nhánh v3
 
 ```text
+3dd693e v3: ch00 r2 fixes
+7398d87 v3: ch00 r1 box-verified logs
+0d0819d v3: ch00 revision
 0eae97d v3: ch00 box-verified logs
 17a6fcd v3: restore LF / exec bit on run_agy*.sh (Windows mode change)
 8ca267f v3: ch00 done
@@ -177,4 +226,3 @@ be9e12a v3: ch00 0.6 ngân sách chu kỳ rtf và mạch pair counter
 fbf57fa v3: ch00 0.2 ý tưởng của Boersma
 6812dd9 v3: ch00 0.1 một file hai câu trả lời
 ```
-*(Tiếp theo sẽ là commit `v3: ch00 revision` sau khi hoàn thành đợt sửa đổi này)*
