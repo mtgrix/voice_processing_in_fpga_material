@@ -35,6 +35,8 @@ ch01:
 	$(PYTHON) ch01_wav_verify.py > ch01_wav_verify.log
 	@echo "=== [ch01] Running Praat frame grid and floor trap verification ==="
 	$(PYTHON) ch01_frames_verify.py > ch01_frames_verify.log
+	@echo "=== [ch01] Running Praat 7.0.03 line citations verification ==="
+	$(PYTHON) ch01_praat_lines.py > ch01_praat_lines.log
 	@echo "=== [ch01] Running Avalon FIFO twin and backpressure test ==="
 	$(PYTHON) ch01_fifo_test.py > ch01_fifo_test.log
 	@echo "=== [ch01] Running HPS C driver end-to-end simulation test ==="
@@ -42,4 +44,4 @@ ch01:
 	@echo "=== [ch01] All Chapter 1 verifications completed successfully ==="
 
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt
