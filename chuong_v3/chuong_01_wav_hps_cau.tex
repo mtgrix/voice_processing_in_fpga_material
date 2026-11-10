@@ -457,6 +457,108 @@ Từ các phân tích định lượng trên, đề cương quyết định lự
 
 \textit{Tóm lại: Với lưu lượng âm thanh chỉ 32 KB/s (8.000 lần ghi 32-bit mỗi giây), cơ chế PIO qua cầu Lightweight bridge chỉ tiêu tốn RTF $\le 0{,}008$ mà loại bỏ hoàn toàn gánh nặng bộ đệm vật lý và xả cache của DMA, là lựa chọn tối ưu về cả hiệu năng lẫn độ tin cậy.}
 
+\subsection*{1.4. Đường (A): Xây dựng bộ đệm bằng Intel On-Chip FIFO IP}
+\addcontentsline{toc}{subsection}{1.4. Đường (A): Xây dựng bộ đệm bằng Intel On-Chip FIFO IP}
+
+\subsubsection*{Nguyên lý của On-Chip FIFO trong Platform Designer}
+Trong luồng thiết kế tiêu chuẩn của hệ sinh thái Intel Quartus Prime, công cụ tích hợp hệ thống Platform Designer (tên cũ là Qsys) cung cấp sẵn khối IP lõi mang tên \texttt{altera\_avalon\_fifo} (On-Chip FIFO Memory). Khối IP này đóng vai trò cầu nối thích ứng giữa hai miền giao thức hoàn toàn khác biệt:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Miền giao diện bộ nhớ (Avalon-MM):} Do vi xử lý ARM HPS làm chủ (Master). CPU thực hiện các thao tác ghi dữ liệu theo từng khối rời rạc, phụ thuộc vào tiến trình lập lịch của hệ điều hành Linux.
+    \item \textbf{Miền luồng dữ liệu (Avalon-ST):} Cung cấp dữ liệu trực tiếp cho lõi xử lý F0 trên FPGA (Sink). Lõi phần cứng yêu cầu dữ liệu mẫu âm thanh chảy liên tục, tuần tự và phải có cơ chế báo bận (backpressure) tức thời.
+\end{itemize}
+
+Để cấu hình IP này hoạt động chính xác và khai thác tối ưu tài nguyên phần cứng của chip Cyclone V 5CSXFC6D6F31C6N, người kỹ sư không được phép nhấp chuột tùy tiện mà phải hiểu rõ ý nghĩa vật lý của từng tham số cấu hình.
+
+\subsubsection*{Giải thích chi tiết từng tham số cấu hình của Intel On-Chip FIFO}
+Dưới đây là phân tích cặn kẽ từng tham số trên giao diện đồ họa Platform Designer:
+
+\paragraph{1. Độ sâu bộ đệm (FIFO Depth = 512 từ).}
+Khối bộ nhớ nhúng cơ bản trên dòng FPGA Cyclone V là khối M10K, với dung lượng lưu trữ vật lý danh định là 10.240 bit (bao gồm cả các bit kiểm tra chẵn lẻ parity). Khối M10K hỗ trợ các cấu hình tỷ lệ linh hoạt như $256 \times 40$, $512 \times 20$, $1024 \times 10$, v.v.
+
+Khi cấu hình FIFO lưu trữ các mẫu âm thanh 16-bit, dung lượng logic cần thiết cho độ sâu 512 từ là:
+\begin{equation}
+N_{\text{bits}} = 512 \times 16\text{ bit} = 8.192\text{ bit}
+\end{equation}
+Vì $8.192 \le 10.240$, toàn bộ bộ đệm 512 từ này được ánh xạ vừa vặn vào \textbf{đúng 1 khối M10K duy nhất} (ở chế độ phần cứng $512 \times 20$ bit, bỏ qua 4 bit dư thừa). 
+
+Ngược lại, nếu thiết lập độ sâu là 1024 từ (như tài liệu cũ của Argon đề xuất):
+\begin{equation}
+N_{\text{bits, 1024}} = 1024 \times 16\text{ bit} = 16.384\text{ bit} > 10.240\text{ bit}
+\end{equation}
+Trình biên dịch Quartus Fitter bắt buộc phải cấp phát tới 2 khối M10K vật lý! Đây là minh chứng rõ ràng cho việc tính toán sai cấu hình phần cứng nhúng.
+
+Về mặt đệm thời gian, với tần số lấy mẫu 16 kHz và bước nhảy khung tiêu chuẩn của Praat là 10 ms ($H = 160$ mẫu), dung lượng 512 mẫu chứa được:
+\begin{equation}
+N_{\text{hops}} = \frac{512}{160} = 3{,}2\text{ khung nhảy}
+\end{equation}
+tương đương với hơn 32 ms âm thanh. Khoảng đệm 32 ms này là quá đủ để hấp thu các đợt trễ lập lịch (scheduling latency) thông thường của nhân hệ điều hành Linux (thường dưới 5--10 ms), đảm bảo lõi FPGA không bao giờ bị đói dữ liệu (underrun).
+
+\paragraph{2. Chế độ xung nhịp (Clock Setting = Single Clock Mode).}
+Cả bus giao tiếp Lightweight HPS-to-FPGA lẫn lõi tính toán F0 đều được đấu nối vào cùng một nguồn dao động xung nhịp hệ thống 50 MHz (\texttt{clk}). Do đó, ta chọn chế độ \emph{Single Clock Mode}. Lựa chọn này giúp IP loại bỏ hoàn toàn các mạch đồng bộ hóa hai miền xung nhịp (như chuỗi đồng bộ kép flip-flop kép 2-FF synchronizer và bộ chuyển đổi mã Gray cho các con trỏ), qua đó tiết kiệm đáng kể tài nguyên logic ALM và giảm tối đa độ trễ truyền dữ liệu qua FIFO.
+
+\paragraph{3. Cổng vào và cổng ra (Input / Output Interfaces).}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cổng vào (Input):} Thiết lập là \texttt{AVALONMM\_WRITE}. Bề rộng dữ liệu bus Avalon-MM được đặt là 32-bit. Thiết lập này cho phép CPU ARM ghi một cặp hai mẫu âm thanh 16-bit (sample 0 và sample 1) trong một chu kỳ bus duy nhất, giảm 50\% số lượng giao dịch bus qua cầu nối.
+    \item \textbf{Cổng ra (Output):} Thiết lập là \texttt{AVALONST\_SOURCE}. Bề rộng dữ liệu ngõ ra là 16-bit, tương thích trực tiếp với đầu vào của lõi xử lý DSP trên FPGA.
+\end{itemize}
+
+\paragraph{4. Kích thước ký hiệu và số ký hiệu mỗi nhịp (Bits per symbol và Symbols per beat).}
+Hai tham số này đóng vai trò quyết định cơ chế tách từ (unpacking) 32-bit thành hai mẫu 16-bit:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Bits per symbol:} Đặt là 16. Mỗi ký hiệu âm thanh là một mẫu nguyên có dấu 16-bit.
+    \item \textbf{Symbols per beat:} Ở cổng vào Avalon-MM 32-bit, số ký hiệu trên mỗi nhịp (beat) là 2. Ở cổng ra Avalon-ST 16-bit, số ký hiệu trên mỗi nhịp tự động quy về 1.
+\end{itemize}
+Nhờ thiết lập này, khối On-Chip FIFO tự động quản lý logic dồn dịch dữ liệu theo thứ tự endian chuẩn: nửa từ thấp \texttt{data[15:0]} là mẫu xuất hiện trước (symbol 0), nửa từ cao \texttt{data[31:16]} là mẫu xuất hiện sau (symbol 1).
+
+\paragraph{5. Cho phép áp lực ngược (Allow Backpressure = YES).}
+Tham số này bắt buộc phải bật. Khi bật, cổng ra Avalon-ST sẽ sinh ra tín hiệu điều khiển \texttt{ready}. Nếu khối tính toán cửa sổ hoặc khối tự tương quan phía sau đang bận tính toán và chưa sẵn sàng nhận mẫu mới, nó sẽ kéo \texttt{ready} xuống mức 0. FIFO sẽ lập tức giữ nguyên dữ liệu trên bus \texttt{data} và không tăng con trỏ đọc, bảo đảm dòng dữ liệu không bị thất thoát mẫu.
+
+\paragraph{6. Tạo giao diện trạng thái cho cổng vào (Create status interface for input = YES).}
+Khi tùy chọn này được kích hoạt, Platform Designer sẽ sinh thêm một cổng phụ mang tên \texttt{in\_csr} (Avalon-MM Control and Status Register). Giao diện này cực kỳ quan trọng: nó cho phép vi xử lý HPS đọc mức đầy hiện tại (\texttt{fill\_level}) của bộ đệm trước khi thực hiện ghi dữ liệu. Nếu không có cổng \texttt{in\_csr}, phần mềm trên ARM sẽ hoàn toàn ``mù'' về trạng thái FIFO và buộc phải dựa vào tín hiệu \texttt{waitrequest} của bus phần cứng, dễ dẫn tới việc nghẽn luồng thực thi của CPU.
+
+\subsubsection*{Các giao diện phần cứng và thanh ghi do IP sinh ra}
+Khi được khởi tạo thành công trong hệ thống, khối IP On-Chip FIFO xuất ra ba giao diện chính:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Giao diện dữ liệu nạp \texttt{in} (Avalon-MM Slave):} Ánh xạ vào không gian bộ nhớ của cầu Lightweight. Gồm tín hiệu địa chỉ, tín hiệu cho phép ghi \texttt{write}, dữ liệu ghi 32-bit \texttt{writedata[31:0]} và tín hiệu phản hồi chờ \texttt{waitrequest}.
+    \item \textbf{Giao diện điều khiển và trạng thái \texttt{in\_csr} (Avalon-MM Slave):} Cung cấp tập thanh ghi 32-bit chuẩn của Intel để HPS theo dõi hoạt động:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Thanh ghi \texttt{fill\_level} (Offset 0x00):} Trả về số lượng từ 32-bit hiện đang nằm trong bộ đệm.
+        \item \emph{Thanh ghi \texttt{status} (Offset 0x04):} Chứa các cờ trạng thái tức thời, bao gồm bit 0 (\texttt{full}) và bit 1 (\texttt{empty}).
+        \item \emph{Thanh ghi \texttt{event} (Offset 0x08):} Chứa các cờ sự kiện dính (sticky flags) như tràn bộ đệm (\texttt{overflow}) hoặc cạn bộ đệm (\texttt{underflow}). Cờ này chỉ được xóa khi phần mềm ghi số 1 vào bit tương ứng (Write-1-to-Clear).
+        \item \emph{Thanh ghi \texttt{almostfull} (Offset 0x10) và \texttt{almostempty} (Offset 0x14):} Cấu hình ngưỡng cảnh báo sớm mức đầy.
+    \end{itemize}
+    \item \textbf{Giao diện luồng ngõ ra \texttt{out} (Avalon-ST Source):} Bao gồm dữ liệu âm thanh 16-bit \texttt{data[15:0]}, tín hiệu hợp lệ \texttt{valid} và tín hiệu sẵn sàng \texttt{ready}.
+\end{enumerate}
+
+\paragraph{Độ trễ truyền nhận (Latency).}
+Trong kiến trúc FIFO của Intel, từ thời điểm CPU ghi thành công một từ vào cổng \texttt{in} cho tới khi dữ liệu đó xuất hiện trên cổng \texttt{out} và giương cờ \texttt{valid = 1}, hệ thống tiêu tốn một độ trễ cố định từ 1 đến 2 chu kỳ xung nhịp (phụ thuộc vào việc cấu hình thanh ghi đệm ngõ ra). Giá trị độ trễ chính xác này \textbf{(phải kiểm trong mô phỏng IP)} trước khi tích hợp vào đường ống xử lý.
+
+\subsubsection*{Cấu hình mSGDMA dùng làm mục đối chiếu chuyên sâu}
+Để phục vụ cho các thực nghiệm so sánh định lượng ở Chương 13, khối IP Modular Scatter-Gather DMA (mSGDMA) của Intel được cấu hình với các tham số tối ưu hóa cho bài toán dòng như sau:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{DMA Mode:} Chọn \texttt{Memory-Mapped to Streaming} (MM-to-ST). Bộ điều khiển sẽ tự động đọc dữ liệu từ vùng nhớ đệm DDR3 của HPS và đẩy ra cổng luồng Avalon-ST cấp cho FPGA.
+    \item \textbf{Data Width:} Đặt là 32-bit để tận dụng trần truyền tải dữ liệu của bus HPS.
+    \item \textbf{Data Path FIFO Depth:} Cấu hình độ sâu đệm đường truyền là 64 hoặc 128 từ nhằm hấp thu biến động độ trễ truy xuất bus bộ nhớ DDR.
+    \item \textbf{Descriptor FIFO Depth:} Đặt là 16 hoặc 32 bộ mô tả (descriptors). Với các tệp âm thanh ngắn vài giây, chỉ cần 1 descriptor duy nhất mô tả toàn bộ khối dữ liệu là đủ.
+    \item \textbf{Maximum Transfer Length:} Thiết lập $2^{32}$ byte (hoặc tối thiểu $2^{16} = 64\text{ KB}$), cho phép truyền trọn vẹn tệp âm thanh trong một lệnh gọi duy nhất.
+    \item \textbf{Burst Enable:} Bật tính năng truyền liên tục (Burst mode) với \texttt{Maximum Burst Count = 16} hoặc 32 nhịp, giúp tăng tối đa hiệu suất đọc từ bộ điều khiển DDR3 SDRAM.
+    \item \textbf{Response Port:} Tắt (Disabled) vì phía phần mềm chỉ cần nhận ngắt kết thúc truyền tải từ bộ mô tả chứ không cần cổng trả về dữ liệu phụ.
+\end{itemize}
+
+\subsubsection*{Bộ đệm chiều về: Thu nhận kết quả F0 từ FPGA về HPS}
+Không chỉ có chiều đi nạp mẫu âm thanh, hệ thống còn cần kênh truyền chiều về (Return Path) để HPS đọc chuỗi tần số cơ bản F0 do lõi tính toán trên FPGA sinh ra.
+
+Ở chiều về, kiến trúc đảo ngược hoàn toàn:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khối hậu xử lý trên FPGA (thuật toán Viterbi / Median-3) tính toán xong mỗi khung sẽ đẩy ra một từ F0 định dạng số nguyên bù 2 định dạng fixed-point Q12.4 (16-bit).
+    \item Dữ liệu này được đưa vào một bộ đệm On-Chip FIFO cấu hình \texttt{Input: AVALONST\_SINK} (16-bit) và \texttt{Output: AVALONMM\_READ} (32-bit hoặc 16-bit), đặt tên là \texttt{fifo\_out}.
+    \item Vi xử lý HPS chỉ cần thăm dò thanh ghi trạng thái của \texttt{fifo\_out\_csr}, khi có kết quả hợp lệ sẽ đọc trực tiếp dữ liệu qua cầu Lightweight Bridge để lưu vào tệp kết quả \texttt{pitch\_f0.bin}.
+\end{itemize}
+
+\textit{Tóm lại: Khối IP On-Chip FIFO của Intel ở độ sâu 512 từ khớp hoàn hảo với đúng 1 khối nhớ M10K vật lý của Cyclone V, cung cấp 32 ms đệm chống giật tiến trình Linux và tách mẫu tự động 32-to-16 bit; chiều về dùng FIFO ST-sink sang MM-read để trả kết quả F0 định dạng Q12.4 một cách đồng bộ và an toàn.}
+
+
+
 
 
 
