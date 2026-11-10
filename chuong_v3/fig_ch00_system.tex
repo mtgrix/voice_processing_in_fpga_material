@@ -18,7 +18,7 @@
 % ============================================================================
 \node[extbox, minimum width=2.2cm, minimum height=1.0cm] (sd) at (0.8, 7.2) {\textbf{Thẻ nhớ SD}\\[1pt]Tệp WAV 16 kHz\\16-bit PCM mono};
 
-\node[extbox, draw=purple!70!black, fill=purple!4!white, minimum width=3.4cm, minimum height=1.0cm] (praat) at (0.8, 8.8) {\textbf{Praat 7.0.03 (Laptop)}\\[1pt]To Pitch (raw ac)...\\10 tham số chuẩn $\to R_1, R_2$};
+\node[extbox, draw=purple!70!black, fill=purple!4!white, minimum width=3.4cm, minimum height=1.0cm] (praat) at (0.8, 9.3) {\textbf{Praat 7.0.03 (Laptop)}\\[1pt]To Pitch (raw ac)...\\10 tham số chuẩn $\to R_1, R_2$};
 
 % ============================================================================
 % 2. HPS Domain (Red border)
@@ -95,7 +95,7 @@
 \draw[dashbus] (sd.north) -- (praat.south);
 
 % Comparison path from out_bin to Praat: routed around HPS through the clear gap between HPS and Bridge
-\draw[dashbus] (out_bin.north) -- (4.3, 6.0) -- node[above, font=\scriptsize\bfseries, text=purple!80!black, fill=white, inner sep=2pt] {Đối sánh Ch.13: GPE, VDE, FFE, Cent, RTF} (-1.2, 6.0) -- (-1.2, 8.8) -- (praat.west);
+\draw[dashbus] (out_bin.east) -- (6.1, 4.75) -- (6.1, 6.0) -- node[font=\scriptsize\bfseries, text=purple!80!black, fill=white, inner sep=1.2pt] {Đối sánh Ch.13: GPE, VDE, FFE, Cent, RTF} (-1.2, 6.0) -- (-1.2, 9.3) -- (praat.west);
 
 \end{tikzpicture}
 \caption{Kiến trúc tổng thể hệ thống ước lượng cao độ $F_0$: luồng dữ liệu từ tệp WAV qua HPS, cầu Lightweight, lõi xử lý phần cứng FPGA, đường hoàn trả kết quả và nhánh đối sánh với Praat trên máy tính.}
