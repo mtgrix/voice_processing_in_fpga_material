@@ -1,4 +1,5 @@
-// tb/v2/tb_q15_saturate.v
+// tb/v2/tb_q15_saturate.v: Testbench for q15_saturate module.
+// Tests 256 vectors including corner cases and seeded pseudorandom vectors.
 `timescale 1ns/1ps
 
 module tb_q15_saturate;
@@ -21,34 +22,29 @@ module tb_q15_saturate;
 
     always #5 clk = ~clk;
 
-    reg signed [31:0] vec [0:9];
-    integer i;
+    reg signed [31:0] mem_in  [0:255];
+    reg signed [15:0] mem_exp [0:255];
+    integer i, errors;
 
     initial begin
-        vec[0] = 32'sd0;
-        vec[1] = 32'sd1073709056;
-        vec[2] = 32'sd2000000000;
-        vec[3] = -32'sd2000000000;
-        vec[4] = 32'sd16384;
-        vec[5] = 32'sd16383;
-        vec[6] = -32'sd16384;
-        vec[7] = -32'sd16385;
-        vec[8] = -32'sd536870912;
-        vec[9] = 32'sd1073730000;
-
         clk = 0;
         rst_n = 0;
         valid_in = 0;
         data_in = 0;
+        errors = 0;
+
+        $readmemh("tb/v2/q15_vec_in.hex", mem_in);
+        $readmemh("tb/v2/q15_vec_exp.hex", mem_exp);
+
         #22;
         rst_n = 1;
         #10;
 
-        for (i = 0; i < 10; i = i + 1) begin
+        for (i = 0; i < 256; i = i + 1) begin
             @(posedge clk);
             #1;
             valid_in = 1'b1;
-            data_in  = vec[i];
+            data_in  = mem_in[i];
         end
 
         @(posedge clk);
@@ -57,12 +53,23 @@ module tb_q15_saturate;
         data_in  = 0;
 
         #100;
+        if (errors == 0) begin
+            $display("PASS_ALL_256_VECTORS");
+        end else begin
+            $display("FAILED_WITH_%0d_ERRORS", errors);
+        end
         $finish;
     end
 
+    integer out_idx = 0;
     always @(posedge clk) begin
         if (valid_out) begin
-            $display("OUT: %d", data_out);
+            if (data_out !== mem_exp[out_idx]) begin
+                $display("MISMATCH at index %0d: in=%0d, got=%0d, exp=%0d",
+                         out_idx, mem_in[out_idx], data_out, mem_exp[out_idx]);
+                errors = errors + 1;
+            end
+            out_idx = out_idx + 1;
         end
     end
 

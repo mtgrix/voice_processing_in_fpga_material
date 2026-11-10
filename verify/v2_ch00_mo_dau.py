@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 verify/v2_ch00_mo_dau.py: Verification script for Chapter 0.
-Checks all numerical claims and verifies q15_saturate HDL against Python twin.
+Checks all numerical claims and verifies q15_saturate HDL against Python twin with 256 vectors.
 """
 
 import math
@@ -89,7 +89,7 @@ def test_ch00_numbers():
     assert blocks_for_640 == 2
     print(f"[OK] M10K 640x16 requires ceil(640/512) = {blocks_for_640} blocks")
 
-def python_q15_saturate_twin(val_32):
+def python_q15_saturate_twin(val_32: int) -> int:
     """Python twin for q15_saturate RTL: round bit 14, clamp to [-32768, 32767]."""
     # 33-bit addition with round half LSB (+16384)
     rounded = val_32 + 16384
@@ -102,8 +102,9 @@ def python_q15_saturate_twin(val_32):
         return shifted
 
 def test_q15_saturate_iverilog():
-    print("\n=== Testing q15_saturate RTL vs Python Twin ===")
-    test_vectors = [
+    print("\n=== Testing q15_saturate RTL vs Python Twin with 256 Vectors ===")
+    np.random.seed(42)
+    edge_cases = [
         0,
         1073709056,
         2000000000,
@@ -113,9 +114,30 @@ def test_q15_saturate_iverilog():
         -16384,
         -16385,
         -536870912,
-        1073730000
+        1073730000,
+        32767 * 32767,
+        -32768 * -32768,
+        -32768 * 32767,
+        2147483647,
+        -2147483648,
+        32767,
+        -32768
     ]
+    n_rand = 256 - len(edge_cases)
+    random_vectors = np.random.randint(-2147483648, 2147483647, size=n_rand, dtype=np.int64).tolist()
+    test_vectors = edge_cases + [int(x) for x in random_vectors]
+    assert len(test_vectors) == 256
+
     expected_outputs = [python_q15_saturate_twin(v) for v in test_vectors]
+
+    # Write hex files for Verilog $readmemh
+    with open("tb/v2/q15_vec_in.hex", "w") as fin, open("tb/v2/q15_vec_exp.hex", "w") as fexp:
+        for v, exp in zip(test_vectors, expected_outputs):
+            # 32-bit unsigned hex representation
+            u32 = v & 0xFFFFFFFF
+            u16 = exp & 0xFFFF
+            fin.write(f"{u32:08x}\n")
+            fexp.write(f"{u16:04x}\n")
 
     # Compile with iverilog
     cmd_compile = [
@@ -131,19 +153,9 @@ def test_q15_saturate_iverilog():
     cmd_run = ["vvp", "/tmp/sim_q15_saturate"]
     res_r = subprocess.run(cmd_run, capture_output=True, text=True)
     assert res_r.returncode == 0, f"vvp execution failed: {res_r.stderr}"
+    assert "PASS_ALL_256_VECTORS" in res_r.stdout, f"RTL testbench failed:\n{res_r.stdout}"
 
-    # Parse simulation output
-    rtl_outputs = []
-    for line in res_r.stdout.strip().split("\n"):
-        if line.startswith("OUT:"):
-            rtl_outputs.append(int(line.split(":")[1].strip()))
-
-    print(f"RTL outputs:      {rtl_outputs}")
-    print(f"Expected outputs: {expected_outputs}")
-    assert len(rtl_outputs) == len(expected_outputs), f"Output count mismatch: {len(rtl_outputs)} vs {len(expected_outputs)}"
-    for i, (rtl_val, exp_val) in enumerate(zip(rtl_outputs, expected_outputs)):
-        assert rtl_val == exp_val, f"Vector {i} (input {test_vectors[i]}): RTL={rtl_val} != Twin={exp_val}"
-    print(f"[OK] iverilog simulation passed: {len(test_vectors)} vectors matched 100% bit-exact with Python twin!")
+    print(f"[OK] iverilog simulation passed: 256 vectors matched 100% bit-exact with Python twin!")
 
 if __name__ == "__main__":
     test_ch00_numbers()
