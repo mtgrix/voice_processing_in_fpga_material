@@ -1,0 +1,57 @@
+================================================================================
+PRAAT 7.0.03 SOURCE CODE CITATION VERIFICATION (CHAPTER 1)
+================================================================================
+
+Verifying Sampled.h (lines 34-36):
+  [  34] static inline integer Sampled_xToLowIndex     (constSampled me, double x) { return Melder_ifloor   ((x - my x1) / my dx + 1.0); }
+  [  35] static inline integer Sampled_xToHighIndex    (constSampled me, double x) { return Melder_iceiling ((x - my x1) / my dx + 1.0); }
+  [  36] static inline integer Sampled_xToNearestIndex (constSampled me, double x) { return Melder_iround   ((x - my x1) / my dx + 1.0); }
+  [PASS] Verified token: 'Sampled_xToLowIndex'
+  [FAIL] Token 'Melder_ifloor ((x - my x1) / my dx) + 1' not found in lines 34-36
+
+Verifying Sampled.cpp (lines 71-82):
+  [  71] void Sampled_shortTermAnalysis (constSampled me, double windowDuration, double timeStep, integer *numberOfFrames, double *firstTime) {
+  [  72] 	Melder_assert (windowDuration > 0.0);
+  [  73] 	Melder_assert (timeStep > 0.0);
+  [  74] 	volatile double myDuration = my dx * my nx;   // volatile, because we need to truncate to 64 bits
+  [  75] 	if (windowDuration > myDuration)
+  [  76] 		Melder_throw (me, U": shorter than window length.");
+  [  77] 	*numberOfFrames = Melder_ifloor ((myDuration - windowDuration) / timeStep) + 1;
+  [  78] 	Melder_assert (*numberOfFrames >= 1);
+  [  79] 	const double ourMidTime = my x1 - 0.5 * my dx + 0.5 * myDuration;
+  [  80] 	const double thyDuration = *numberOfFrames * timeStep;
+  [  81] 	*firstTime = ourMidTime - 0.5 * thyDuration + 0.5 * timeStep;
+  [  82] }
+  [PASS] Verified token: 'Sampled_shortTermAnalysis'
+  [PASS] Verified token: '*numberOfFrames = Melder_ifloor'
+  [PASS] Verified token: 'ourMidTime'
+
+Verifying Sound_to_Pitch.cpp (lines 50-55):
+  [  50] 	double *r, INTVEC const& imax, VEC const& localMean)
+  [  51] {
+  [  52] 	integer leftSample = Sampled_xToLowIndex (me, t), rightSample = leftSample + 1;
+  [  53] 	integer startSample, endSample;
+  [  54] 
+  [  55] 	for (integer channel = 1; channel <= my ny; channel ++) {
+  [FAIL] Token 'leftSample = Sampled_xToLowIndex (me, t);' not found in lines 50-55
+  [PASS] Verified token: 'rightSample = leftSample + 1;'
+
+Verifying Sound_to_Pitch.cpp (lines 375-385):
+  [ 375] 		globalPeak = 0.0;
+  [ 376] 		for (integer ichan = 1; ichan <= my ny; ichan ++) {
+  [ 377] 			const double mean = NUMmean (my z.row (ichan));
+  [ 378] 			for (integer i = 1; i <= my nx; i ++) {
+  [ 379] 				double value = fabs (my z [ichan] [i] - mean);
+  [ 380] 				if (value > globalPeak)
+  [ 381] 					globalPeak = value;
+  [ 382] 			}
+  [ 383] 		}
+  [ 384] 		if (globalPeak == 0.0)
+  [ 385] 			return thee;
+  [PASS] Verified token: 'globalPeak = 0.0;'
+  [FAIL] Token 'mean += my z [channel] [i];' not found in lines 375-385
+  [PASS] Verified token: 'if (value > globalPeak)'
+
+================================================================================
+SOME CITATIONS FAILED VERIFICATION.
+================================================================================
