@@ -308,3 +308,53 @@ Ba sự khác biệt có chủ ý nằm ở: (1) nội suy parabol thay cho sinc
 Nhờ định nghĩa này, phép so sánh giữa FPGA (trước bộ lọc median) và Praat $R_2$ trở thành một phép so sánh \textbf{ngang hàng tuyệt đối (apples-to-apples)}: cả hai đều chọn ứng viên tốt nhất trên từng khung độc lập. Hiệu số giữa Praat $R_1$ và Praat $R_2$ sẽ bóc tách và định lượng chính xác phần đóng góp riêng biệt của thuật toán Viterbi, giúp anh Tú trả lời trọn vẹn câu hỏi: phần chênh lệch nào do phần cứng số nguyên gây ra, và phần nào do sự vắng mặt của thuật toán quy hoạch động toàn cục.
 
 \textit{Tóm lại: Praat vận hành qua 8 bước chặt chẽ với 10 tham số chuẩn; trên FPGA ta bám sát Praat ở kích thước cửa sổ 638 mẫu, trung bình 426 mẫu và chuẩn hóa cửa sổ, đồng thời thay thế sinc70+Brent bằng parabol và Viterbi bằng median-3, sử dụng mốc Praat $R_2$ làm chuẩn đối sánh ngang hàng trực tiếp.}
+
+\subsection*{0.4. Kiến trúc hệ thống và bản đồ các chương}
+\addcontentsline{toc}{subsection}{0.4. Kiến trúc hệ thống và bản đồ các chương}
+
+Để hiện thực hóa thuật toán ước lượng cao độ kiểu Praat trên hệ thống phần cứng dị thể SoC (System-on-Chip) Altera Cyclone V (DE10-Standard), toàn bộ quy trình xử lý được phân bổ khoa học giữa hệ thống vi xử lý ARM Cortex-A9 (HPS) và vùng logic khả trình FPGA. 
+
+Hình \ref{fig:ch00_system} phác họa toàn cảnh kiến trúc luồng dữ liệu hai chiều: đi từ tệp âm thanh WAV trên thẻ nhớ SD, qua phần mềm HPS, đổ vào bộ đệm FIFO thông qua cầu nối bus Lightweight, chạy qua chuỗi xử lý số tín hiệu nối tiếp trong FPGA, rồi quay trở lại HPS để ghi tệp nhị phân kết quả, song song với nhánh đối chứng Praat 7.0.03 chạy trên máy tính cá nhân.
+
+\input{chuong_v3/fig_ch00_system.tex}
+
+\textbf{Đọc hình.} Hãy quan sát kỹ từng phân vùng chức năng trên sơ đồ kiến trúc:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Phân vùng HPS (màu đỏ):} Bắt đầu từ tệp âm thanh WAV chuẩn nằm trên thẻ nhớ SD. Khối \texttt{WAV Parser} đọc và bóc tách cấu trúc nhị phân RIFF/WAVE, kiểm tra tần số lấy mẫu 16 kHz, định dạng 16-bit PCM mono và bỏ qua các khối mở rộng (như khối \texttt{LIST}). Khối tiếp theo tính toán đỉnh biên độ toàn cục $\text{globalPeak}$ (GP) của cả tệp. Khối \texttt{Lưới khung} tính số khung, mốc thời gian $t_1$ và chỉ số mẫu bắt đầu của từng khung theo công thức đối xứng của Praat. Cuối cùng, khối điều khiển \texttt{C Driver} thực hiện ánh xạ bộ nhớ (\texttt{mmap}) thanh ghi cầu nối và phát các lệnh ghi mẫu PCM theo cơ chế PIO (Programmed I/O).
+    \item \textbf{Vùng cầu nối và hàng đợi (màu cam):} Cầu nối \texttt{Lightweight HPS-to-FPGA} (32-bit Avalon-MM) tiếp nhận các giao dịch ghi từ vi xử lý. Dữ liệu PCM được nạp vào khối bộ nhớ đệm \texttt{On-Chip FIFO} (dung lượng 512 từ 16-bit, chiếm đúng 1 khối RAM M10K) có chức năng đệm mẫu và chuyển đổi giao thức từ bus nhớ Avalon-MM sang giao tiếp luồng Avalon-ST (\texttt{valid/ready}).
+    \item \textbf{Phân vùng lõi xử lý phần cứng FPGA (màu xanh lá):} Các mẫu âm thanh lần lượt đi qua chuỗi khối chuyên biệt:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Khối lọc \texttt{FIR 31-tap} làm mềm mép phổ Nyquist (có công tắc bypass khi đo đối chiếu Praat);
+        \item Bộ đệm \texttt{RAM vòng} 1024 mẫu (sử dụng 2 khối M10K) tích lũy đủ 638 mẫu cho mỗi khung và dịch chuyển mốc đọc \texttt{hop} = 160 mẫu;
+        \item Khối \texttt{Trừ trung bình} cục bộ trên 426 mẫu quanh tâm khung, sử dụng phép nhân hằng số nghịch đảo $M = 10.082.083$ trên bộ nhân DSP cứng 25$\times$24;
+        \item Khối \texttt{Cửa sổ Hanning} nhân khung tín hiệu với mảng trọng số 638 mẫu lưu trong bộ nhớ ROM Q1.15;
+        \item Khối tích lũy \texttt{MAC tự tương quan} sử dụng 1 khối DSP 18$\times$18 chạy liên tục 98.543 chu kỳ để tính năng lượng $R[0]$ và 189 giá trị $R[\tau]$ ($\tau = 26 \dots 214$);
+        \item Khối \texttt{Chuẩn hóa và Octave} tra bảng ROM $256 \times 32$ để nhân hệ số bù $C[\tau]$ và trừ chi phí quãng tám $K[\tau]$;
+        \item Khối \texttt{Parabol và Bộ chia} dò tìm đỉnh cục bộ lớn nhất trên dải $[27, 213]$ và thực thi một phép chia số nguyên duy nhất để tính $F_0$ định dạng Q12.4;
+        \item Khối \texttt{Quyết định Voicing} so sánh độ mạnh đỉnh với năng lượng và biên độ $GP, LP$ qua bất đẳng thức nhân chéo số nguyên;
+        \item Khối \texttt{Bộ lọc Median-3} nhận chuỗi kết quả theo cơ chế dòng (streaming), loại bỏ các gai cao độ đơn lẻ với độ trễ cố định 1 khung.
+    \end{itemize}
+    \item \textbf{Đường trả kết quả và nhánh đối chứng (màu tím):} Giá trị $F_0$ tính được cùng trạng thái có thanh/vô thanh được đẩy vào FIFO ngõ ra F0. Bộ điều khiển HPS đọc từ FIFO này qua cầu nối và ghi tuần tự vào tệp nhị phân \texttt{pitch\_f0.bin} kèm tệp mô tả meta. Song song trên máy tính, phần mềm Praat 7.0.03 xử lý cùng tệp WAV với 10 tham số chuẩn, xuất ra hai đường tham chiếu $R_1$ và $R_2$ để phục vụ phân tích sai số toàn diện ở Chương 13.
+\end{enumerate}
+
+\subsubsection*{Bản đồ phân công nội dung chi tiết theo từng chương}
+Mỗi khối chức năng trong kiến trúc tổng thể trên được nghiên cứu, thiết kế và kiểm chứng chi tiết trong từng chương chuyên biệt của tài liệu này:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Chương 1 (WAV trên HPS và Cầu giao tiếp):} Phân tích định dạng WAV nhị phân, giải thuật tính GP và lưới khung Praat bằng C; phân tích đánh đổi lưu lượng và thiết kế On-Chip FIFO (IP \texttt{altera\_avalon\_fifo} và HDL tự viết).
+    \item \textbf{Chương 2 (Giao thức Avalon-ST và Mã hóa FSM):} Bản chất giao tiếp bắt tay \texttt{valid/ready}, quy tắc \texttt{readyLatency} 0 và 1, ngân sách chu kỳ chế độ tệp (file-driven), và so sánh tài nguyên các kiểu mã hóa máy trạng thái FSM (One-Hot, Binary, Gray).
+    \item \textbf{Chương 3 (Lọc mép Nyquist FIR):} Hiện thực bộ lọc FIR 31-tap đối xứng bằng FIR Compiler II và HDL gấp tap qua pre-adder; phân tích đáp ứng tần số và cơ chế bypass khi so với Praat.
+    \item \textbf{Chương 4 (Chia khung và RAM vòng):} Kỹ thuật đệm trượt 638 mẫu trên RAM vòng 1024$\times$16 (2 khối M10K) với chế độ đọc trước ghi (read-during-write) và quản lý con trỏ cơ sở \texttt{rd\_base}.
+    \item \textbf{Chương 5 (Trừ trung bình cục bộ và DC-Blocker):} Thuật toán trừ trung bình 426 mẫu bằng phép nhân nghịch đảo khớp bit $M=10.082.083$, $k=32$; bộ lọc IIR DC-blocker tùy chọn $\alpha = 1 - 2^{-8}$.
+    \item \textbf{Chương 6 (Cửa sổ Hanning $N+1$):} Thiết kế bộ nhớ ROM chứa 638 hệ số Hanning định dạng Q1.15, tối ưu hóa một nửa ROM đối xứng và bộ nhân có chốt thanh ghi.
+    \item \textbf{Chương 7 (Tự tương quan bằng MAC):} Trục tính toán nặng nhất của hệ thống: dẫn xuất 98.540 phép nhân-cộng 17-bit, cấu hình khối DSP cứng 18$\times$18 kết hợp cờ \texttt{sload} để chuyển độ trễ với 0 nhịp nghỉ.
+    \item \textbf{Chương 8 (Chuẩn hóa cửa sổ và Chi phí quãng tám):} Bộ nhớ ROM $256 \times 32$ chứa hệ số $C[\tau]$ và $K[\tau]$, kỹ thuật chuẩn hóa $R[\tau]$ về 27 bit để phép nhân vừa vặn trong 1 khối DSP.
+    \item \textbf{Chương 9 (Dò đỉnh Parabol và Bộ chia gộp):} Điều kiện tìm đỉnh cục bộ trên dải $[27, 213]$, công thức nội suy parabol đúng dấu, và kiến trúc bộ chia số nguyên LPM\_DIVIDE gộp cả nội suy lẫn đổi ra Hz thành một phép chia duy nhất.
+    \item \textbf{Chương 10 (Quyết định Voicing):} Bất đẳng thức nhân chéo số nguyên kiểm tra năng lượng và biên độ $GP, LP$, thay thế hoàn toàn phép chia số thực của Praat.
+    \item \textbf{Chương 11 (Bộ lọc trung vị Median-3):} Mạch so sánh lọc trung vị 3 khung nối tiếp, đánh giá khả năng sửa lỗi nhảy quãng tám và tác động tới sai số phân loại vô thanh.
+    \item \textbf{Chương 12 (Tích hợp hệ thống và FSM đỉnh):} Kết nối liên hoàn toàn bộ các khối phần cứng, lập bảng phân bổ chu kỳ từng khung, bộ đếm chu kỳ hiệu năng và đóng gói tệp \texttt{pitch\_f0.bin}.
+    \item \textbf{Chương 13 (Kiểm chứng và Đo đạc đối sánh):} Thực hiện đo đạc 3 chiều: sai số chất lượng (GPE, VDE, FFE, cent) so với Praat $R_1, R_2$; đo thời gian ba phía (chu kỳ FPGA, HPS end-to-end, Praat trên máy tính); bảng so sánh tài nguyên IP và HDL từ báo cáo Fitter.
+    \item \textbf{Chương 14 (Bảng kiểm tra lỗi Checklist):} Bảng rà soát 25 tiêu chí kỹ thuật: độ rộng bit, tràn số, độ trễ nhịp, tham số IP và bảo đảm tính tái lập của mã nguồn.
+    \item \textbf{Phụ lục A (Bộ chuyển đổi tần số lấy mẫu Resampling):} Thiết kế khối lọc đa pha chuyển đổi tần số âm thanh từ 48 kHz và 44,1 kHz về chuẩn 16 kHz.
+\end{itemize}
+
+\textit{Tóm lại: Hệ thống phân chia rành mạch giữa HPS (quản lý tệp, căn lưới thời gian, giao tiếp bus) và FPGA (xử lý số tín hiệu nối tiếp theo dòng); từng khối phần cứng được ánh xạ tương ứng vào từng chương độc lập với kiểm chứng song song hai đường IP và HDL tự viết.}

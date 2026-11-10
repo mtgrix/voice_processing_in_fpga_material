@@ -1,0 +1,80 @@
+% chuong_v3/fig_ch00_system.tex
+% So do kien truc he thong toan tuyen WAV -> HPS -> FPGA -> HPS va doi chieu Praat
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    scale=0.88, transform shape,
+    box/.style={rectangle, draw=blue!70!black, fill=blue!4!white, rounded corners=1.5mm, thick, align=center, font=\footnotesize},
+    hpsbox/.style={rectangle, draw=red!70!black, fill=red!4!white, rounded corners=1.5mm, thick, align=center, font=\footnotesize},
+    fpgabox/.style={rectangle, draw=green!60!black, fill=green!4!white, rounded corners=1.5mm, thick, align=center, font=\footnotesize},
+    extbox/.style={rectangle, draw=gray!70!black, fill=gray!6!white, rounded corners=1.5mm, thick, align=center, font=\footnotesize},
+    bus/.style={->, >=latex, thick, color=blue!80!black},
+    databus/.style={->, >=latex, very thick, color=orange!80!black},
+    dashbus/.style={->, >=latex, dashed, thick, color=purple!70!black}
+]
+
+% 1. Input Source
+\node[extbox, minimum width=2.4cm, minimum height=1.0cm] (sd) at (0, 7.2) {\textbf{Thẻ nhớ SD}\\[1pt]Tệp WAV 16 kHz\\16-bit PCM};
+
+% 2. HPS Domain (Red border)
+\draw[rounded corners=2mm, fill=red!2!white, draw=red!50!black, dashed, thick] (3.0, 5.8) rectangle (14.6, 8.6);
+\node[font=\bfseries\footnotesize, text=red!70!black, anchor=north west] at (3.1, 8.5) {HPS (Hard Processor System: Dual ARM Cortex-A9)};
+
+\node[hpsbox, minimum width=2.4cm, minimum height=1.1cm] (wav) at (4.6, 7.1) {\textbf{WAV Parser}\\[1pt]Kiểm tra định dạng\\Bỏ qua LIST chunk};
+\node[hpsbox, minimum width=2.4cm, minimum height=1.1cm] (gp) at (7.6, 7.1) {\textbf{globalPeak (GP)}\\[1pt]Đỉnh biên độ tệp\\$\max |x - \bar{x}|$ (16-bit)};
+\node[hpsbox, minimum width=2.6cm, minimum height=1.1cm] (grid) at (10.6, 7.1) {\textbf{Lưới khung}\\[1pt]Căn đối xứng tệp\\$t_1$, hop 160 mẫu};
+\node[hpsbox, minimum width=2.4cm, minimum height=1.1cm] (drv) at (13.3, 7.1) {\textbf{C Driver}\\[1pt]Ghi PIO qua cầu\\Polling / Quản lý};
+
+% 3. Bridge and FIFO
+\draw[rounded corners=2mm, fill=orange!3!white, draw=orange!60!black, thick] (11.0, 4.0) rectangle (14.6, 5.4);
+\node[font=\bfseries\scriptsize, text=orange!80!black, anchor=north] at (12.8, 5.35) {Cầu nối HPS--FPGA (Lightweight)};
+\node[box, fill=orange!10!white, draw=orange!70!black, minimum width=3.2cm, minimum height=0.7cm] (fifo_in) at (12.8, 4.45) {\textbf{On-Chip FIFO vào} (512$\times$16 bit)\\[1pt]\scriptsize Avalon-MM $\to$ Avalon-ST (1 M10K)};
+
+% 4. FPGA Domain (Green border)
+\draw[rounded corners=2mm, fill=green!2!white, draw=green!50!black, dashed, thick] (-0.2, 0.4) rectangle (14.6, 3.6);
+\node[font=\bfseries\footnotesize, text=green!60!black, anchor=north west] at (0.0, 3.5) {Lõi xử lý số phần cứng FPGA (Altera Cyclone V 5CSXFC6D6F31C6N)};
+
+% Pipeline rows on FPGA
+\node[fpgabox, minimum width=2.0cm, minimum height=1.0cm] (fir) at (1.2, 2.3) {\textbf{Ch.3: FIR}\\[1pt]31-tap mép Nyquist\\(mặc định bypass)};
+\node[fpgabox, minimum width=2.2cm, minimum height=1.0cm] (ram) at (3.8, 2.3) {\textbf{Ch.4: RAM vòng}\\[1pt]638 mẫu, hop 160\\2 M10K (1024$\times$16)};
+\node[fpgabox, minimum width=2.3cm, minimum height=1.0cm] (mean) at (6.5, 2.3) {\textbf{Ch.5: Trừ mean}\\[1pt]426 mẫu quanh tâm\\$M=10.082.083$};
+\node[fpgabox, minimum width=2.2cm, minimum height=1.0cm] (han) at (9.2, 2.3) {\textbf{Ch.6: Hanning}\\[1pt]Cửa sổ $N+1$ (638)\\ROM Q1.15, DSP};
+\node[fpgabox, minimum width=2.4cm, minimum height=1.0cm] (mac) at (12.4, 2.3) {\textbf{Ch.7: MAC}\\[1pt]98.543 chu kỳ\\Toán hạng 17-bit};
+
+\node[fpgabox, minimum width=2.6cm, minimum height=1.0cm] (ck) at (12.4, 1.1) {\textbf{Ch.8: Chuẩn hóa}\\[1pt]Chia $R_w$, trừ $K[\tau]$\\ROM $256\times 32$};
+\node[fpgabox, minimum width=2.6cm, minimum height=1.0cm] (peak) at (8.8, 1.1) {\textbf{Ch.9: Parabol/Chia}\\[1pt]Dò đỉnh $[27, 213]$\\Gộp 1 phép chia $F_0$};
+\node[fpgabox, minimum width=2.6cm, minimum height=1.0cm] (vuv) at (5.2, 1.1) {\textbf{Ch.10: Voicing}\\[1pt]So sánh GP/LP\\Nhân chéo số nguyên};
+\node[fpgabox, minimum width=2.4cm, minimum height=1.0cm] (med) at (1.6, 1.1) {\textbf{Ch.11: Median-3}\\[1pt]Lọc trung vị 3 khung\\Streaming trễ 1 khung};
+
+% 5. Return Path
+\node[box, fill=orange!10!white, draw=orange!70!black, minimum width=2.8cm, minimum height=0.7cm] (fifo_out) at (0.2, 4.45) {\textbf{FIFO ra $F_0$}\\[1pt]\scriptsize ST-sink $\to$ MM-read};
+\node[hpsbox, minimum width=2.4cm, minimum height=1.0cm] (out_bin) at (3.6, 4.45) {\textbf{pitch\_f0.bin}\\[1pt]uint16 LE Q12.4\\+ tệp mô tả meta};
+
+% 6. Reference Path on Laptop (Praat)
+\node[extbox, draw=purple!70!black, fill=purple!4!white, minimum width=3.8cm, minimum height=1.2cm] (praat) at (0, 8.8) {\textbf{Praat 7.0.03 trên Laptop}\\[1pt]To Pitch (raw ac)...\\10 tham số chuẩn $\to R_1, R_2$};
+
+% Connections
+\draw[bus] (sd) -- (wav);
+\draw[bus] (wav) -- (gp);
+\draw[bus] (gp) -- (grid);
+\draw[bus] (grid) -- (drv);
+\draw[databus] (drv.south) -- (fifo_in.north);
+\draw[databus] (fifo_in.south) -- ++(0,-0.4) -| (fir.north);
+\draw[bus] (fir) -- (ram);
+\draw[bus] (ram) -- (mean);
+\draw[bus] (mean) -- (han);
+\draw[bus] (han) -- (mac);
+\draw[bus] (mac.south) -- (ck.north);
+\draw[bus] (ck) -- (peak);
+\draw[bus] (peak) -- (vuv);
+\draw[bus] (vuv) -- (med);
+\draw[databus] (med.north) |- (fifo_out.south);
+\draw[databus] (fifo_out) -- (out_bin);
+
+\draw[dashbus] (sd.north) -- (praat.south);
+\draw[dashbus] (out_bin.north) |- (6.0, 5.6) -| (praat.south east) node[pos=0.25, above, font=\scriptsize\bfseries, text=purple!80!black] {Đối sánh Ch.13: GPE, VDE, FFE, Cent, RTF};
+
+\end{tikzpicture}
+\caption{Kiến trúc tổng thể hệ thống ước lượng cao độ $F_0$: luồng dữ liệu từ tệp WAV qua HPS, cầu Lightweight, lõi xử lý phần cứng FPGA, đường hoàn trả kết quả và nhánh đối sánh với Praat trên máy tính}
+\label{fig:ch00_system}
+\end{figure}
