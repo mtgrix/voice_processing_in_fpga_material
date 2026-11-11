@@ -823,10 +823,24 @@ Giải thích chi tiết từng dòng mã nguồn của khối MAC lõi:
     \item \textbf{Dòng 69:} Cờ \texttt{out\_valid} được gán bằng \texttt{v\_r \& last\_r}, đảm bảo chỉ tích cực mức cao đúng 1 chu kỳ tại thời điểm thanh ghi \texttt{acc} chứa tổng hoàn chỉnh của toàn bộ $638-\tau$ tích số.
 \end{itemize}
 
+\subsubsection*{Phân tích đoạn mã Verilog khối điều khiển và phát địa chỉ ch07\_mac\_engine.v}
+Khối \texttt{rtl/v3/ch07\_mac\_engine.v} tích hợp FSM điều khiển, bộ phát địa chỉ zero-bubble và các tầng thanh ghi cân bằng trễ đường ống. Dưới đây là 40 dòng mã nguồn cốt lõi trong trạng thái tính toán \texttt{S\_CALC} (các dòng từ 128 đến 167):
+
+\lstinputlisting[language=Verilog, firstline=128, lastline=167, firstnumber=128, caption={Đoạn mã Verilog bộ phát địa chỉ và máy trạng thái Zero-Bubble (rtl/v3/ch07\_mac\_engine.v).}]{\detokenize{rtl/v3/ch07_mac_engine.v}}
+
+Giải thích chi tiết các bước xử lý trong khối phát địa chỉ và điều khiển:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 128--130:} Trạng thái \texttt{S\_CALC} tăng biến đếm chu kỳ \texttt{cycle\_count} ở mỗi nhịp xung nhịp để đo đạc thời gian thực thi của khung dữ liệu.
+    \item \textbf{Dòng 131--140:} Kiểm tra điều kiện hoàn tất lag cuối cùng (\texttt{is\_last\_n \&\& is_last\_lag}, tương ứng với $\tau = 214$ và $n = 423$). Khi cặp địa chỉ cuối cùng của khung được phát xong, bộ phát hạ cờ \texttt{gen\_valid}, \texttt{gen\_sload}, \texttt{gen\_last} về 0 và chuyển sang trạng thái \texttt{S\_DRAIN} để đợi xả đường ống.
+    \item \textbf{Dòng 141--156 (Chuyển tiếp Zero-Bubble):} Khi mẫu cuối cùng của một lag kết thúc (\texttt{is\_last\_n = 1}), ngay trong chu kỳ kế tiếp, FSM tăng chỉ số lag \texttt{lag\_idx <= lag\_idx + 1}, đặt lại bộ đếm mẫu \texttt{n\_cnt <= 0}, phát cờ \texttt{gen\_sload <= 1} (yêu cầu nạp đè tích số mới vào bộ tích lũy), và phát ngay địa chỉ đầu tiên của lag mới (\texttt{gen\_addr\_a <= 0}, \texttt{gen\_addr\_b <= next\_t}). Quá trình này không chèn bất kỳ chu kỳ trống nào.
+    \item \textbf{Dòng 157--166:} Tăng tiến mẫu nội bộ trong từng lag (\texttt{!is\_last\_n}): \texttt{n\_cnt} tăng 1, \texttt{gen\_sload} hạ về 0, \texttt{gen\_last} tích cực mức cao tại mẫu cuối cùng của lag (\texttt{n\_cnt + 1 == current\_max\_n}), hai địa chỉ phát ra là \texttt{gen\_addr\_a = n\_cnt + 1} và \texttt{gen\_addr\_b = n\_cnt + 1 + current\_tau}.
+    \item \textbf{Các dòng 215--249 (Cân bằng trễ đường ống):} Khối logic chốt trễ 1 chu kỳ (\texttt{ram\_vld\_r, ram\_sload\_r, ram\_last\_r, ram\_tau\_r}) để đồng bộ các cờ điều khiển với dữ liệu đọc ra từ RAM M10K (vốn có trễ đọc 1 chu kỳ). Nhãn lag \texttt{tau} tiếp tục được chốt trễ thêm 2 chu kỳ (\texttt{mac\_tau\_d1, mac\_tau\_d2}) để xuất hiện tại ngõ ra \texttt{out\_tau} đồng thời với cờ kết quả \texttt{out\_valid} từ khối MAC.
+\end{itemize}
+
 \subsubsection*{Mô hình song sinh Python chu-kỳ-đối-chu-kỳ (Cycle-Accurate Twin)}
 Để phục vụ việc tự động sinh vector kiểm chứng cho testbench mà không phụ thuộc vào các hàm ngẫu nhiên hay giả định chủ quan, mô hình song sinh phần mềm \texttt{verify\_v3/ch07\_mac\_twin.py} được xây dựng với hành vi chính xác tới từng chu kỳ và từng bit dữ liệu. Hàm cập nhật trạng thái \texttt{step()} của lớp \texttt{MacUnitTwin} được thể hiện trong Listing sau:
 
-\lstinputlisting[language=Python, firstline=50, lastline=98, firstnumber=50, caption={Hàm cập nhật chu kỳ từng nhịp của mô hình song sinh Python (verify/v3/ch07\_mac\_twin.py).}]{\detokenize{verify_v3/ch07_mac_twin.py}}
+\lstinputlisting[language=Python, firstline=50, lastline=98, firstnumber=50, caption={Hàm cập nhật chu kỳ từng nhịp của mô hình song sinh Python (verify\_v3/ch07\_mac\_twin.py).}]{\detokenize{verify_v3/ch07_mac_twin.py}}
 
 Giải thích chi tiết các bước thực thi trong hàm \texttt{step()}:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -846,10 +860,12 @@ Bảng~\ref{tab:ch07_twin_vs_hdl} đối chiếu chi tiết giữa từng khối
 \small
 \caption{Đối chiếu chi tiết giữa mô hình song sinh Python Twin và mã nguồn Verilog HDL.}
 \label{tab:ch07_twin_vs_hdl}
-\begin{tabularx}{\textwidth}{p{3.2cm} p{3.2cm} X}
+\begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} X}
 \toprule
 \textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa kỹ thuật và cơ chế hoạt động} \\
 \midrule
+\multicolumn{3}{l}{\textit{\textbf{Khối tính toán lõi MAC (rtl/v3/ch07\_mac\_unit.v)}}} \\
+\addlinespace[2pt]
 Dòng 58--63 & Dòng 38--44, 62--64 & Khởi tạo và reset tích cực mức thấp, xóa toàn bộ thanh ghi Tầng 1 và Tầng 2 về 0. \\
 \addlinespace[3pt]
 Dòng 66, 93 & Dòng 69 & Tạo cờ ngõ ra \texttt{out\_valid = v\_r \& last\_r}, tích cực mức cao đúng nhịp mẫu cuối cùng. \\
@@ -861,6 +877,16 @@ Dòng 71--74 & Dòng 58, 67 & Nạp đè tích mới khi \texttt{sload\_r = 1} (
 Dòng 76 & Dòng 20, 29, 60 & Ràng buộc dải động thanh ghi tích lũy $48\text{ bit}$ có dấu bù hai, chống tràn số học. \\
 \addlinespace[3pt]
 Dòng 78--90 & Dòng 45--50 & Chốt các toán hạng và cờ điều khiển vào Tầng thanh ghi đầu vào ở cạnh lên xung nhịp. \\
+\midrule
+\multicolumn{3}{l}{\textit{\textbf{Khối điều khiển và phát địa chỉ (rtl/v3/ch07\_mac\_engine.v)}}} \\
+\addlinespace[2pt]
+Dòng 167--173 & Dòng 128--167 & Bộ phát địa chỉ quét $98.540$ cặp $(n, n+\tau)$ liền mạch; sinh cờ \texttt{sload} ở mẫu đầu và cờ \texttt{last} ở mẫu cuối từng lag. \\
+\addlinespace[3pt]
+Dòng 108 & Dòng 215--233 & Tầng trễ 1 chu kỳ cân bằng nhịp đọc RAM M10K cho các cờ điều khiển (\texttt{ram\_sload\_r, ram\_last\_r}). \\
+\addlinespace[3pt]
+Dòng 108--112 & Dòng 235--250 & Tầng trễ 2 chu kỳ chốt nhãn lag (\texttt{mac\_tau\_d1, mac\_tau\_d2}) đồng bộ hoàn toàn với độ trễ tính toán của khối MAC. \\
+\addlinespace[3pt]
+Dòng 174--176 & Dòng 169--180 & Trạng thái \texttt{S\_DRAIN} đợi 3 chu kỳ xả đường ống để hoàn tất mẫu cuối cùng trước khi báo cờ \texttt{done}. \\
 \bottomrule
 \end{tabularx}
 \end{table}
