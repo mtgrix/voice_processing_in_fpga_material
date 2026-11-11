@@ -17,9 +17,9 @@
 
     % Frame boundary
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-8.8, -4.6) rectangle (9.2, 4.6);
-    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=blue!1, inner sep=2pt] 
-        at (-8.5, 4.45) {Kiến trúc bộ lọc triệt tiêu một chiều DC-Blocker (\texttt{ch05\_dc\_blocker.v})};
+        (-8.8, -4.6) rectangle (9.2, 5.3);
+    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
+        at (-8.5, 5.08) {Kiến trúc bộ lọc triệt tiêu một chiều DC-Blocker (\texttt{ch05\_dc\_blocker.v})};
 
     % Left Ports (Sink Interface)
     \node[portlabel, anchor=east] (p_s_data)  at (-9.0,  2.2) {\texttt{sink\_data[15:0]}};
@@ -96,7 +96,7 @@
     \draw[dataline] (mux.east) -- (p_d_data);
 
     % Handshake lines
-    \draw[ctrlline] (p_s_valid) -- (p_d_valid);
-    \draw[ctrlline] (p_d_ready) -- (p_s_ready);
+    \draw[ctrlline] (p_s_valid) -- (-7.2, 0.8) -- (-7.2, 0.0) -- (8.2, 0.0) -- (8.2, 0.8) -- (p_d_valid);
+    \draw[ctrlline] (p_d_ready) -- (8.6, -0.6) -- (8.6, -2.0) -- (-7.4, -2.0) -- (-7.4, -0.6) -- (p_s_ready);
 
 \end{tikzpicture}

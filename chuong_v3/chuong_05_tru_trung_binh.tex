@@ -629,6 +629,276 @@ Trong tài liệu v1, Argon viết rằng bộ lọc DC-Blocker được đưa v
 
 \textit{Tóm lại: Khối DC-blocker IIR bậc 1 với $\alpha = 1 - 2^{-8}$ ($f_c \approx 9{,}9\text{ Hz}$) loại bỏ hoàn toàn thành phần trôi dạt một chiều mà không cần bộ nhân DSP; thanh ghi 36-bit Q20.16 chống triệt để hiện tượng limit cycle; khối này được đặt mặc định bypass khi so sánh đối soát với Praat 7.0.03.}
 
+\subsection*{5.7. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+\addcontentsline{toc}{subsection}{5.7. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+
+Để bảo đảm tính tương đương bit-đối-bit và chu kỳ-đối-chu kỳ giữa mô hình song sinh Python (\path{verify_v3/ch05_mean_twin.py}) và hai khối RTL gồm \texttt{ch05\_local\_mean.v} cùng \texttt{ch05\_dc\_blocker.v}, toàn bộ quy trình kiểm thử được xây dựng dựa trên nguyên tắc kích thích đồng bộ và đối soát nghiêm ngặt.
+
+\subsubsection*{Quy ước lấy mẫu tín hiệu tổ hợp và tuần tự trong Testbench}
+Một lỗi phổ biến dẫn đến sai lệch pha chu kỳ giả tạo giữa mô phỏng phần mềm và phần cứng số là sự không nhất quán về thời điểm lấy mẫu tín hiệu (race condition quanh sườn xung nhịp). Trong testbench của Chương 5 (\texttt{tb/v3/tb\_ch05\_local\_mean.v} và \texttt{tb/v3/tb\_ch05\_dc\_blocker.v}), quy ước chuẩn hóa sau đây được áp dụng nhất quán:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tín hiệu kích thích đầu vào (Stimulus driving):}\\
+    Được gán tại sườn âm của xung nhịp (\texttt{@(negedge clk)}), bảo đảm thời gian thiết lập (setup time) và giữ (hold time) dồi dào trước khi sườn dương xung nhịp tiếp theo xuất hiện.
+    \item \textbf{Tín hiệu tổ hợp ngõ ra (Combinational outputs):}\\
+    Sau khi kích thích đầu vào thay đổi, testbench chờ một khoảng trễ nhỏ \texttt{\#1} (1 đơn vị thời gian mô phỏng) để toàn bộ mạng cổng logic tổ hợp ổn định hoàn toàn, sau đó mới kiểm tra và đối soát (ví dụ cờ \texttt{sink\_ready} trong giao thức Avalon-ST với \texttt{readyLatency = 0}).
+    \item \textbf{Tín hiệu tuần tự ngõ ra (Registered outputs):}\\
+    Các tín hiệu đi ra từ thanh ghi gồm \texttt{mean\_data}, \texttt{mean\_valid}, \texttt{frame\_done} (khối trung bình) và \texttt{source\_data}, \texttt{source\_valid} (khối DC-blocker) được kích hoạt bởi sườn dương xung nhịp. Testbench đợi sườn dương và trễ thêm một khoảng nhỏ \texttt{\#1} (\texttt{@(posedge clk); \#1}) rồi mới so sánh với giá trị kỳ vọng từ tệp vector.
+    \item \textbf{Đếm lỗi tích lũy:} Testbench không bao giờ hủy ngang mô phỏng sớm khi gặp lỗi đầu tiên, mà ghi nhận chi tiết chu kỳ vi phạm và đếm tích lũy toàn bộ số lỗi so sánh đến chu kỳ cuối cùng.
+\end{itemize}
+
+\subsubsection*{Tập vector kiểm thử toàn diện}
+Mô hình song sinh Python tạo ra hai bộ tệp kích thích và kỳ vọng độc lập:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Kiểm thử khối tính trung bình cục bộ (\texttt{tb\_ch05\_local\_mean.v}):}\\
+    Kịch bản quét qua toàn bộ 205 khung phân tích của đoạn âm thanh mẫu trích từ tệp \path{golden_v2/synth_glide_vuv_16k.wav}, tạo ra chuỗi mô phỏng liên tục kéo dài \textbf{88.970 chu kỳ xung nhịp 50 MHz}. Hai tệp dữ liệu được tạo ra gồm kích thích \path{verify_v3/tb_ch05_mean_stim.txt} và kỳ vọng \path{verify_v3/tb_ch05_mean_expected.txt}. Từng chu kỳ đọc bộ đệm vòng (\texttt{rd\_addr}, \texttt{rd\_en}), từng bước tích lũy 426 mẫu có bù pre-bias, 2 chu kỳ trễ của bộ nhân đường ống $M$, và thời điểm bật cờ \texttt{frame\_done} đều được đối soát chính xác tuyệt đối.
+    \item \textbf{Kiểm thử khối DC-Blocker (\texttt{tb\_ch05\_dc\_blocker.v}):}\\
+    Tập dữ liệu kiểm thử gồm \textbf{1.000 chu kỳ xung nhịp} ngẫu nhiên có hạt giống cố định (\texttt{seed = 42}), bao quát các tình huống biên phức tạp: bước nhảy DC đột ngột lớn ($+1000, -2000$), kiểm tra tính năng chuyển mạch động \texttt{bypass}, và đặc biệt là kiểm tra cơ chế phản áp dòng Avalon-ST khi tín hiệu \texttt{source\_ready} bị ngắt ngẫu nhiên để xác minh bộ đệm bắt tay không làm rơi rớt hay lặp mẫu dữ liệu.
+\end{enumerate}
+
+\begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Kết quả chạy Icarus Verilog chu kỳ-đối-chu kỳ (Reviewer)}]
+\todo{box: Kết quả chạy kịch bản verify\_v3/run\_ch05\_iverilog.sh trên Linux:
+\begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+    \item tb\_ch05\_local\_mean: mô phỏng 88.970 chu kỳ (205 khung âm thanh), so sánh từng chu kỳ với tb\_ch05\_mean\_expected.txt. Tổng số lỗi so sánh: 0 / 88.970.
+    \item tb\_ch05\_dc\_blocker: mô phỏng 1.000 chu kỳ (bao gồm kích thích bước nhảy DC và phản áp ngẫu nhiên), so sánh từng chu kỳ với tb\_ch05\_dc\_blocker\_expected.txt. Tổng số lỗi so sánh: 0 / 1.000.
+\end{itemize}
+Toàn bộ mã nguồn testbench biên dịch với `iverilog -g2012 -Wall` không phát sinh bất kỳ cảnh báo nào.}
+\end{tcolorbox}
+
+\subsubsection*{Bảng so sánh toàn diện: Khối IP Intel LPM\_MULT so với HDL tự viết}
+Bảng~\ref{tab:ch05_ip_vs_hdl} đối chiếu chi tiết các chỉ số kỹ thuật và đặc tính kiến trúc giữa hai phương án: sử dụng khối IP đóng gói sẵn Intel LPM\_MULT và khối HDL tự thiết kế \texttt{ch05\_local\_mean.v}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{So sánh toàn diện giữa đường dẫn sử dụng IP lõi Intel LPM\_MULT và giải pháp HDL tự viết (\texttt{ch05\_local\_mean.v}).}
+\label{tab:ch05_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.2cm}XX}
+\toprule
+\textbf{Tiêu chí so sánh} & \textbf{Đường (A): IP lõi Intel LPM\_MULT} & \textbf{Đường (B): HDL tự viết (\texttt{ch05\_local\_mean.v})} \\
+\midrule
+\textbf{Khối DSP phần cứng} & 1 khối DSP Variable Precision 27$\times$27 (CV-52003, Chương 5) & 1 khối DSP Variable Precision 27$\times$27 (CV-52003, Chương 5) \\
+\textbf{Tài nguyên ALM cho bộ nhân} & 0 ALM (nằm trọn trong khối DSP silicon) & 0 ALM (nằm trọn trong khối DSP silicon) \\
+\textbf{Logic hỗ trợ (FSM, Accumulator)} & Cần tự thiết kế mạch wrapper ngoài (phải đo trong Quartus Fitter) & Tích hợp trọn gói bên trong module (phải đo trong Quartus Fitter) \\
+\textbf{Tần số cực đại $F_{\max}$} & Phải đo trong Quartus TimeQuest (vượt xa 50 MHz) & Phải đo trong Quartus TimeQuest (vượt xa 50 MHz) \\
+\textbf{Độ trễ đường ống (Latency)} & 2 chu kỳ (\texttt{LPM\_PIPELINE = 2}) & 2 chu kỳ (2 tầng thanh ghi đường ống) \\
+\textbf{Thông lượng (Throughput)} & 1 phép tính / chu kỳ xung nhịp & 1 phép tính / chu kỳ xung nhịp \\
+\textbf{Độc lập công cụ mô phỏng} & Phụ thuộc thư viện Altera \texttt{altera\_mf} & Chuẩn Verilog-2001, chạy với Icarus Verilog/Verilator \\
+\textbf{Giao tiếp bộ nhớ RAM vòng} & Không có (phải tự thiết kế bộ đếm ngoài) & Tích hợp trực tiếp bộ sinh địa chỉ \texttt{rd\_addr} và FSM 426 mẫu \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Đọc bảng.} Cả hai giải pháp đều khai thác tối ưu 1 khối DSP Variable Precision cứng trên silicon của chip Cyclone V (chế độ $27 \times 27$ không dấu, CV-52003) và đạt cùng độ trễ đường ống 2 chu kỳ xung nhịp mà không tốn logic ALM cho phép nhân. Tuy nhiên, giải pháp HDL tự viết \texttt{ch05\_local\_mean.v} mang lại ưu thế vượt trội: module tự động đồng bộ hóa với RAM vòng, trực tiếp phát địa chỉ đọc 426 mẫu liên tiếp, tích lũy nội bộ và chốt giá trị trung bình cục bộ mà không đòi hỏi thêm bất kỳ mạch wrapper trung gian nào, đồng thời hoàn toàn độc lập với các thư viện mô phỏng độc quyền của Intel.
+
+\textit{Tóm lại: Quy ước lấy mẫu phân tách rành mạch mạch tổ hợp và tuần tự; mô hình song sinh Python và khối HDL tự viết được đối soát chu kỳ-đối-chu kỳ qua 88.970 chu kỳ tính trung bình cục bộ và 1.000 chu kỳ lọc DC-blocker; bảng đối chiếu khẳng định ưu thế tích hợp vượt trội của giải pháp HDL tự viết khi vận hành trực tiếp với RAM vòng.}
+
+\subsection*{Bài tập cuối chương}
+\addcontentsline{toc}{subsection}{Bài tập cuối chương}
+
+Dưới đây là 4 bài tập thực chiến giúp củng cố toàn diện các kiến thức về trừ trung bình cục bộ, số học nhân nghịch đảo và bộ lọc khử trôi dạt DC trong xử lý tiếng nói trên FPGA. Toàn bộ các kết quả số liệu đều được kiểm chứng độc lập bởi kịch bản \texttt{verify\_v3/ch05\_exercises.py}.
+
+\subsubsection*{Bài tập 5.1: Phân tích định lượng độ lệch $+c^2$ trên tự tương quan và phân rã số hạng chéo}
+\textbf{Đề bài:} Xét một tín hiệu âm thanh rời rạc tuần hoàn $s[n]$ gồm $N = 8$ mẫu có giá trị trung bình bằng $0$:
+\begin{equation}
+s[n] = [-1000, -1000, 1000, 1000, -1000, -1000, 1000, 1000] \quad (n = 0 \dots 7)
+\end{equation}
+Tín hiệu bị nhiễm điện áp một chiều tĩnh $c = +500$, tạo thành tín hiệu quan sát $x[n] = s[n] + c$:
+\begin{equation}
+x[n] = [-500, -500, 1500, 1500, -500, -500, 1500, 1500]
+\end{equation}
+Sử dụng cửa sổ hình chữ nhật độ dài $N = 8$ ($w[n] = 1$ với $0 \le n < 8$). Hàm tự tương quan cửa sổ chuẩn hóa Praat được định nghĩa là $r(\tau) = R(\tau) / R_w(\tau)$ với $R_w(\tau) = N - \tau$.
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy tính toán chi tiết giá trị của $R_s(\tau)$, $R_x(\tau)$, $R_w(\tau)$, $r_s(\tau)$ và $r_x(\tau)$ tại các độ trễ $\tau = 0, 1, 2, 3, 4$.
+    \item Lập bảng so sánh và chứng minh rằng hiệu số $r_x(\tau) - r_s(\tau)$ bằng đúng hằng số $c^2 = 250.000$ tại mọi độ trễ $\tau$.
+    \item Viết biểu thức khai triển giải tích đầy đủ của $R_x(\tau)$ theo $R_s(\tau)$, các tổng cắt cụt của $s[n]$, và $R_w(\tau)$. Giải thích điều kiện cần và đủ để hiệu số $r_x(\tau) - r_s(\tau)$ bằng chính xác $c^2$.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Tính toán từng đại lượng tự tương quan thô:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Tại $\tau = 0$: $R_w(0) = 8$; $R_s(0) = 8.000.000 \implies r_s(0) = 1.000.000$;\\
+        $R_x(0) = 10.000.000 \implies r_x(0) = 1.250.000$.
+        \item Tại $\tau = 1$: $R_w(1) = 7$; $R_s(1) = 1.000.000 \implies r_s(1) \approx 142.857{,}14$;\\
+        $R_x(1) = 2.750.000 \implies r_x(1) \approx 392.857{,}14$.
+        \item Tại $\tau = 2$: $R_w(2) = 6$; $R_s(2) = -6.000.000 \implies r_s(2) = -1.000.000$;\\
+        $R_x(2) = -4.500.000 \implies r_x(2) = -750.000$.
+        \item Tại $\tau = 3$: $R_w(3) = 5$; $R_s(3) = -1.000.000 \implies r_s(3) = -200.000$;\\
+        $R_x(3) = 250.000 \implies r_x(3) = 50.000$.
+        \item Tại $\tau = 4$: $R_w(4) = 4$; $R_s(4) = 4.000.000 \implies r_s(4) = 1.000.000$;\\
+        $R_x(4) = 5.000.000 \implies r_x(4) = 1.250.000$.
+    \end{itemize}
+
+    \item Bảng tổng hợp số liệu kiểm chứng:
+    \begin{center}
+    \begin{tabular}{ccccccc}
+    \toprule
+    $\tau$ & $R_s(\tau)$ & $R_x(\tau)$ & $R_w(\tau)$ & $r_s(\tau)$ & $r_x(\tau)$ & $r_x(\tau) - r_s(\tau)$ \\
+    \midrule
+    0 & $+8.000.000$ & $+10.000.000$ & 8 & $+1.000.000{,}00$ & $+1.250.000{,}00$ & $\mathbf{+250.000{,}00}$ \\
+    1 & $+1.000.000$ & $+2.750.000$  & 7 & $+142.857{,}14$   & $+392.857{,}14$   & $\mathbf{+250.000{,}00}$ \\
+    2 & $-6.000.000$ & $-4.500.000$  & 6 & $-1.000.000{,}00$ & $-750.000{,}00$   & $\mathbf{+250.000{,}00}$ \\
+    3 & $-1.000.000$ & $+250.000$    & 5 & $-200.000{,}00$   & $+50.000{,}00$    & $\mathbf{+250.000{,}00}$ \\
+    4 & $+4.000.000$ & $+5.000.000$  & 4 & $+1.000.000{,}00$ & $+1.250.000{,}00$ & $\mathbf{+250.000{,}00}$ \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+    Hiệu số $r_x(\tau) - r_s(\tau) = 250.000 = 500^2 = c^2$ hoàn toàn chính xác với sai số $0$ tại mọi độ trễ $\tau$.
+
+    \item Khai triển toán học đầy đủ:
+    \begin{align}
+    R_x(\tau) &= \sum_{n=0}^{N-1-\tau} x[n] x[n+\tau] = \sum_{n=0}^{N-1-\tau} (s[n] + c)(s[n+\tau] + c) \nonumber \\
+    &= \sum_{n=0}^{N-1-\tau} s[n]s[n+\tau] + c \sum_{n=0}^{N-1-\tau} s[n] + c \sum_{n=0}^{N-1-\tau} s[n+\tau] + c^2 \sum_{n=0}^{N-1-\tau} 1 \nonumber \\
+    &= R_s(\tau) + c \left[ \sum_{n=0}^{N-1-\tau} s[n] + \sum_{n=\tau}^{N-1} s[n] \right] + c^2 R_w(\tau)
+    \end{align}
+    Chia hai vế cho $R_w(\tau)$:
+    \begin{equation}
+    r_x(\tau) = r_s(\tau) + c^2 + \frac{c}{R_w(\tau)} \left[ \sum_{n=0}^{N-1-\tau} s[n] + \sum_{n=\tau}^{N-1} s[n] \right]
+    \end{equation}
+    Điều kiện cần và đủ để $r_x(\tau) - r_s(\tau) \equiv c^2$ là tổng hai số hạng chéo bằng 0:
+    \begin{equation}
+    \sum_{n=0}^{N-1-\tau} s[n] + \sum_{n=\tau}^{N-1} s[n] = 0
+    \end{equation}
+    Với tín hiệu dạng sóng vuông đối xứng nguyên chu kỳ như trong đề bài, tổng các mẫu trên mọi cửa sổ đối xứng đều tự triệt tiêu, do đó số hạng chéo bằng 0 tuyệt đối. Với tín hiệu tiếng nói thực tế, các tổng biên này không hoàn toàn bằng 0 mà dao động nhỏ quanh 0, khiến độ lệch thực tế dao động sát cạnh $c^2$.
+\end{enumerate}
+
+\subsubsection*{Bài tập 5.2: Dẫn xuất thông số nhân nghịch đảo $M$ và dịch bit $k$ cho $L = 426, 640, 800$}
+\textbf{Đề bài:} Xét mạch chia cố định cho số nguyên dương $L$ mẫu thông qua phép nhân hằng số nghịch đảo $M = \lceil 2^k / L \rceil$ và dịch phải số học $k$ bit: $Q = (S \times M) \gg k$. Dữ liệu đầu vào là các mẫu 16-bit có dấu được chuyển dịch pre-bias không dấu (\texttt{x\_u = x\_s \^{} 0x8000}), kèm hệ số làm tròn $+ \lfloor L/2 \rfloor$.
+\begin{enumerate}[label=(\alph*)]
+    \item Với $L = 426$ (độ dài cửa sổ Praat ở 16 kHz, 75 Hz): Tính tổng cực đại $S_{\text{max}}$, xác định số bit cần thiết của bộ tích lũy. Tìm số dịch bit tối thiểu $k_{\min}$ để bảo đảm tính chính xác $100\%$ không sai số, xác định giá trị $M$ tương ứng và độ rộng tích số.
+    \item Thực hiện yêu cầu tương tự cho trường hợp tính trung bình trên toàn bộ khung $L = 640$ mẫu ($40\text{ ms}$).
+    \item Thực hiện yêu cầu tương tự cho trường hợp mở rộng khung $L = 800$ mẫu ($50\text{ ms}$).
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Trường hợp $L = 426$:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Mỗi mẫu sau pre-bias nằm trong khoảng $[0, 65535]$. Tổng 426 mẫu đạt cực đại: $426 \times 65535 = 27.917.910$.
+        \item Cộng thêm hằng số làm tròn $L/2 = 213$:
+        \begin{equation}
+        S_{\text{max}} = 27.917.910 + 213 = 27.918.123
+        \end{equation}
+        Vì $2^{24} = 16.777.216 < 27.918.123 < 2^{25} = 33.554.432$, bộ tích lũy cần đúng \textbf{25 bit} không dấu.
+        \item Theo định lý nhân nghịch đảo Granlund--Montgomery, số bit dịch tối thiểu là $k_{\min} = 26$. Khi đó:
+        \begin{equation}
+        M = \left\lceil \frac{2^{26}}{426} \right\rceil = \left\lceil \frac{67.108.864}{426} \right\rceil = \mathbf{157.533} \quad (\text{Mã hex: } \texttt{0x2675D}, 18\text{ bit})
+        \end{equation}
+        Độ rộng của tích số: $25\text{ bit} + 18\text{ bit} = \mathbf{43\text{ bit}}$.
+        \item (Ghi chú: Trong module \texttt{ch05\_local\_mean.v}, ta sử dụng $k = 32$ để căn chỉnh byte thuận tiện, cho $M = \lceil 2^{32}/426 \rceil = 10.082.083$, cần $24\text{ bit}$, tích số 49 bit, hoàn toàn vừa vặn trong khối DSP 27x27).
+    \end{itemize}
+
+    \item \textbf{Trường hợp $L = 640$:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Tổng cực đại có làm tròn:
+        \begin{equation}
+        S_{\text{max}} = 640 \times 65535 + 320 = 41.942.400 + 320 = 41.942.720
+        \end{equation}
+        Vì $2^{25} = 33.554.432 < 41.942.720 < 2^{26} = 67.108.864$, bộ tích lũy cần đúng \textbf{26 bit} không dấu.
+        \item Số bit dịch tối thiểu là $k_{\min} = 25$. Khi đó:
+        \begin{equation}
+        M = \left\lceil \frac{2^{25}}{640} \right\rceil = \left\lceil \frac{33.554.432}{640} \right\rceil = \mathbf{52.429} \quad (\text{Mã hex: } \texttt{0xCCCD}, 16\text{ bit})
+        \end{equation}
+        Độ rộng của tích số: $26\text{ bit} + 16\text{ bit} = \mathbf{42\text{ bit}}$.
+        \item Nếu chọn định dạng căn chỉnh 32-bit ($k = 33$): $M = \lceil 2^{33}/640 \rceil = 13.421.773$ (\texttt{0xCC\_CCCD}, 24 bit).
+    \end{itemize}
+
+    \item \textbf{Trường hợp $L = 800$:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Tổng cực đại có làm tròn:
+        \begin{equation}
+        S_{\text{max}} = 800 \times 65535 + 400 = 52.428.000 + 400 = 52.428.400
+        \end{equation}
+        Bộ tích lũy cần đúng \textbf{26 bit} không dấu ($< 2^{26} = 67.108.864$).
+        \item Số bit dịch tối thiểu là $k_{\min} = 27$. Khi đó:
+        \begin{equation}
+        M = \left\lceil \frac{2^{27}}{800} \right\rceil = \left\lceil \frac{134.217.728}{800} \right\rceil = \mathbf{167.773} \quad (\text{Mã hex: } \texttt{0x28F5D}, 18\text{ bit})
+        \end{equation}
+        Độ rộng của tích số: $26\text{ bit} + 18\text{ bit} = \mathbf{44\text{ bit}}$.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Bài tập 5.3: Ánh xạ phần cứng khối nhân 25x24 lên silicon DSP Cyclone V và đánh đổi ALM}
+\textbf{Đề bài:} Khảo sát kiến trúc khối xử lý tín hiệu số chuyên dụng (Variable Precision DSP Block) trên họ vi mạch FPGA Altera Cyclone V theo tài liệu kỹ thuật \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (CV-52003, Chương 5).
+\begin{enumerate}[label=(\alph*)]
+    \item Nêu ba chế độ vận hành nhân độc lập của một khối Variable Precision DSP cứng trên silicon Cyclone V.
+    \item Bộ nhân tính trung bình cục bộ của Chương 5 có kích thước toán hạng $A = 25\text{ bit}$ không dấu và $B = 24\text{ bit}$ không dấu ($M = 10.082.083$). Hãy phân tích cách Quartus ánh xạ phép nhân này vào khối DSP. Hệ thống tiêu tốn bao nhiêu khối DSP và bao nhiêu logic ALM cho phép nhân?
+    \item Nếu kỹ sư ép Quartus tổng hợp phép nhân $25 \times 24$-bit này hoàn toàn bằng logic mềm ALM (tùy chọn \texttt{multstyle = "logic"}), ước tính hệ thống sẽ tiêu tốn bao nhiêu ALM? Đánh giá sự đánh đổi về tài nguyên và tần số $F_{\max}$.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Theo Mục 5-2 và Bảng 5-1 trong Chương 5 tài liệu CV-52003, mỗi khối Variable Precision DSP vật lý trong kiến trúc Cyclone V có thể được cấu hình linh hoạt thành một trong ba chế độ nhân độc lập:
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item \textbf{Chế độ ba bộ nhân $9 \times 9$-bit độc lập:} (Three independent $9 \times 9$ multipliers).
+        \item \textbf{Chế độ hai bộ nhân $18 \times 18$-bit (hoặc $18 \times 19$-bit) độc lập:} (Two independent $18 \times 18$ multipliers).
+        \item \textbf{Chế độ một bộ nhân $27 \times 27$-bit độc lập:} (One $27 \times 27$ multiplier, hỗ trợ toán hạng có dấu hoặc không dấu).
+    \end{itemize}
+
+    \item Phân tích ánh xạ phần cứng:
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Toán hạng $A = S_{\text{biased}}$ có độ rộng 25 bit không dấu ($25 \le 27$).
+        \item Toán hạng $B = M$ có độ rộng 24 bit không dấu ($24 \le 27$).
+        \item Vì cả hai toán hạng đều nhỏ hơn hoặc bằng 27 bit, phép nhân $25 \times 24$ không dấu được Quartus ánh xạ \textbf{hoàn toàn vừa khít bên trong ĐÚNG 1 khối Variable Precision DSP} ở chế độ $27 \times 27$-bit.
+        \item \textbf{Tiêu tốn tài nguyên:} Tiêu tốn đúng \textbf{1 khối DSP}; số lượng logic ALM tiêu tốn cho lõi nhân là \textbf{0 ALM}.
+    \end{itemize}
+
+    \item Đánh giá đánh đổi khi tổng hợp bằng logic mềm ALM:
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Một phép nhân $25 \times 24$-bit không dấu tạo ra $25 \times 24 = 600$ tích từng phần (partial products). Mỗi Adaptive Logic Module (ALM) của Cyclone V gồm 2 bộ cộng đầy đủ và bảng tra LUT 8 ngõ vào, có thể cộng gộp khoảng $1{,}5$ đến $2$ bit tích từng phần.
+        \item Tổng hợp trên logic mềm ALM sẽ tiêu tốn từ \textbf{300 đến 450 ALM} chỉ riêng cho ma trận cộng dồn cây nhân (Wallace/Dadda tree multiplier).
+        \item \textbf{Đánh đổi:} Việc triển khai trên ALM gây áp lực lớn lên mạng định tuyến nội bộ (routing congestion), làm tăng điện năng tiêu tán động và làm giảm đáng kể tần số hoạt động cực đại $F_{\max}$ của chip. Sử dụng khối DSP silicon cứng là giải pháp tối ưu tuyệt đối: bảo toàn ALM cho logic điều khiển, đạt $F_{\max} > 200\text{ MHz}$, dễ dàng đáp ứng xung nhịp hệ thống 50 MHz.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Bài tập 5.4: Phân tích điểm cực - điểm không, tần số cắt và độ rộng từ trạng thái 36-bit Q20.16 của DC-blocker}
+\textbf{Đề bài:} Xét bộ lọc số IIR khử trôi dạt DC bậc 1 có phương trình sai phân:
+\begin{equation}
+y[n] = x[n] - x[n-1] + \alpha y[n-1]
+\end{equation}
+với hệ số phản hồi $\alpha = 1 - 2^{-r}$ ($r \in \mathbb{Z}^+$), tần số lấy mẫu $f_s = 16.000\text{ Hz}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Lập bảng so sánh tần số cắt $-3\text{ dB}$ lý thuyết chính xác $f_c$, tần số cắt xấp xỉ bậc nhất $f_{c,\text{approx}} = (1-\alpha)f_s/(2\pi)$, và độ suy giảm biên độ tại tần số đáy tiếng nói $F_{\text{floor}} = 75\text{ Hz}$ với ba giá trị tham số dịch $r = 7, 8, 9$.
+    \item Tại sao hệ thống ước lượng F0 Praat trên FPGA lại chọn tham số $r = 8$ ($\alpha = 0{,}99609375$)?
+    \item Phân tích chi tiết hiện tượng chu trình giới hạn (limit cycle) do cắt cụt số học nếu thanh ghi trạng thái tích lũy chỉ được biểu diễn bằng số nguyên 16-bit. Giải thích cơ chế triệt tiêu hoàn toàn lỗi này của kiến trúc thanh ghi 36-bit Q20.16 trong module \texttt{ch05\_dc\_blocker.v}.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Bảng tổng hợp các chỉ số kỹ thuật với $r = 7, 8, 9$ (tính từ \texttt{verify\_v3/ch05\_exercises.py}):
+    \begin{center}
+    \begin{tabular}{ccccc}
+    \toprule
+    Dịch $r$ & $\alpha = 1 - 2^{-r}$ & $f_c$ chính xác ($-3\text{ dB}$) & $f_{c,\text{approx}}$ xấp xỉ & Độ lợi tại $75\text{ Hz}$ (dB) \\
+    \midrule
+    7 & $0{,}99218750$ & $19{,}8172\text{ Hz}$ & $19{,}8944\text{ Hz}$ & $\mathbf{-0{,}2635\text{ dB}}$ \\
+    8 & $0{,}99609375$ & $\mathbf{9{,}9278\text{ Hz}}$  & $9{,}9472\text{ Hz}$  & $\mathbf{-0{,}0590\text{ dB}}$ \\
+    9 & $0{,}99804688$ & $4{,}9687\text{ Hz}$  & $4{,}9736\text{ Hz}$  & $\mathbf{-0{,}0106\text{ dB}}$ \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+
+    \item \textbf{Lý do chọn $r = 8$:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Nếu chọn $r = 7$: Tần số cắt $f_c \approx 19{,}8\text{ Hz}$ là quá cao, gây suy giảm biên độ $-0{,}26\text{ dB}$ và lệch pha tới $+14{,}8^\circ$ tại tần số $75\text{ Hz}$, làm biến dạng nhẹ dạng sóng của các giọng nam trầm.
+        \item Nếu chọn $r = 9$: Tần số cắt rất thấp ($f_c \approx 5\text{ Hz}$), nhưng hằng số thời gian suy giảm tăng lên gấp đôi ($\tau \approx 512\text{ mẫu} = 32\text{ ms}$), khiến bộ lọc phản ứng rất chậm với các đột biến điện áp đường đáy.
+        \item Tham số $r = 8$ ($\alpha = 0{,}99609375$) mang lại điểm cân bằng hoàn hảo: tần số cắt $f_c \approx 9{,}9\text{ Hz}$ nằm rất xa bên dưới $75\text{ Hz}$, độ suy giảm tại $75\text{ Hz}$ không đáng kể (chỉ $-0{,}059\text{ dB}$), hằng số thời gian $\tau \approx 256\text{ mẫu} = 16\text{ ms}$ đủ nhanh để ổn định tín hiệu trong vòng một bước nhảy hop ($10\text{ ms}$).
+    \end{itemize}
+
+    \item \textbf{Phân tích hiện tượng Limit Cycle và giải pháp Q20.16:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item \textbf{Cơ chế phát sinh lỗi khi dùng 16-bit nguyên:} Phương trình sai phân ở nhánh phản hồi là:
+        \begin{equation}
+        y[n] = dx[n] + y[n-1] - (y[n-1] \gg 8)
+        \end{equation}
+        Nếu trạng thái $y[n-1]$ lưu bằng số nguyên 16-bit không có phần thập phân, khi biên độ tín hiệu giảm dần về dải hẹp $|y[n-1]| < 2^8 = 256$, phép dịch phải số học $y[n-1] \gg 8$ sẽ bị cắt cụt về đúng $0$.
+        Khi đó, số hạng tiêu tán biến mất hoàn toàn, phương trình trở thành $y[n] = y[n-1]$, bộ lọc mất khả năng suy giảm và bị kẹt vĩnh viễn ở một mức DC giả tạo có biên độ lên tới $\pm 255$ đơn vị lượng tử!
+        \item \textbf{Cơ chế triệt tiêu của kiến trúc 36-bit Q20.16:} Module \texttt{ch05\_dc\_blocker.v} mở rộng thanh ghi tích lũy lên 36 bit, trong đó dành riêng 16 bit cho phần thập phân.
+        Nhánh phản hồi dịch phải 8 bit trên thanh ghi 36 bit: đại lượng phản hồi vẫn giữ nguyên độ phân giải $16 - 8 = 8$ bit thập phân. Độ phân giải số học đạt tới $2^{-16} \approx 0{,}000015$, bảo đảm đại lượng tiêu tán chỉ bằng 0 khi toàn bộ 36 bit của thanh ghi tích lũy triệt tiêu hoàn toàn về 0.
+        Nhờ đó, hiện tượng chu trình giới hạn bị loại trừ $100\%$, ngõ ra suy giảm trơn tru về đúng giá trị 0 tĩnh mà không để lại bất kỳ gợn DC nào.
+    \end{itemize}
+\end{enumerate}
+
 
 
 

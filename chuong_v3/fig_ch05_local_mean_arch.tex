@@ -18,9 +18,9 @@
 
     % Frame boundary
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-8.8, -5.2) rectangle (9.8, 5.2);
-    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=blue!1, inner sep=2pt] 
-        at (-8.5, 5.05) {Kiến trúc vi mô khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v})};
+        (-8.8, -5.2) rectangle (9.8, 5.8);
+    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
+        at (-8.5, 5.55) {Kiến trúc vi mô khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v})};
 
     % Left Ports (Inputs)
     \node[portlabel, anchor=east] (p_start)      at (-9.0,  3.6) {\texttt{start}};
@@ -51,25 +51,25 @@
         {Bộ tích lũy 25-bit\\$\texttt{acc} \Leftarrow \texttt{acc} + u_{16}$\\(Khởi tạo nạp sẵn $+213$)};
 
     % 4. 25x24 Unsigned Multiplier (DSP Block, Center)
-    \node[dspbox, minimum width=3.4cm, minimum height=1.8cm] (mult_box) at (2.2, 1.2)
-        {\textbf{Bộ nhân LPM\_MULT (1 DSP)}\\$25 \times 24$-bit không dấu\\Toán hạng A: $\texttt{acc}$\\Toán hạng B: $M = 10.082.083$\\Tích số: 49-bit};
+    \node[dspbox, minimum width=4.8cm, minimum height=1.9cm] (mult_box) at (1.9, 1.2)
+        {\textbf{Bộ nhân LPM\_MULT (1 DSP)}\\$25 \times 24$-bit không dấu\\Số bị nhân A: $\texttt{acc}$ (25-bit)\\Hằng số B: $M = 10.082.083$\\Tích số: 49-bit};
 
     % 5. Truncation & Sign Restore (Center Right)
-    \node[calcbox, minimum width=2.6cm, minimum height=1.2cm] (restore_box) at (6.8, 1.2)
+    \node[calcbox, minimum width=2.6cm, minimum height=1.2cm] (restore_box) at (7.2, 1.2)
         {Trích xuất \& Đổi dấu\\$Q_{\text{biased}} = \texttt{prod}[47:32]$\\$\texttt{mean} = Q_{\text{biased}} - 32768$};
 
     % 6. Subtraction Unit (Bottom Center)
-    \node[calcbox, minimum width=3.6cm, minimum height=1.4cm] (sub_box) at (2.2, -4.0)
+    \node[calcbox, minimum width=3.6cm, minimum height=1.4cm] (sub_box) at (1.9, -4.0)
         {Bộ trừ 17-bit có dấu\\$d[n] = x[n] - \texttt{mean\_out}$\\Dải giá trị: $[-65535, +65535]$};
 
     % Interconnections
     % Control from start to FSM
     \draw[ctrlline] (p_start) -- (fsm);
-    \draw[ctrlline] (fsm.north) -- ++(0, 0.5) -| (p_busy);
+    \draw[ctrlline] (fsm.north) -- ++(0, 0.45) -| (p_busy);
 
     % Address outputs from FSM to right ports
-    \draw[addrline] (fsm.east) -- (-4.2, 3.6) |- (3.8, -1.0) -- (p_rd_en);
-    \draw[addrline] (-4.2, 3.6) |- (3.8, -2.2) -- (p_rd_idx);
+    \draw[addrline] (fsm.east) -- (5.0, 3.6) |- (p_rd_en);
+    \draw[addrline] (5.0, 3.6) |- (p_rd_idx);
 
     % rd_data through XOR to Accumulator
     \draw[dataline] (p_rd_data) -- (xor_box);
@@ -77,7 +77,7 @@
     \draw[ctrlline] (p_rd_valid) -- (-7.6, 1.8) |- (acc_box.north west);
 
     % Accumulator to Multiplier
-    \draw[dataline] (acc_box.east) -- (mult_box.west) 
+    \draw[dataline] (acc_box.east) -- (mult_box.195) 
         node[midway, above, font=\tiny\bfseries, fill=white] {$S_{\text{biased}}$ (25-bit)};
 
     % Multiplier to Restore box
