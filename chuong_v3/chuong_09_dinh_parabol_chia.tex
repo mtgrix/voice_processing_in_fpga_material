@@ -557,6 +557,140 @@ Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div
 
 \textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP LPM_DIVIDE chuẩn của Intel với LPM_WIDTHN = 44, LPM_WIDTHD = 34 và LPM_PIPELINE = 44; cấu hình này đạt Fmax vượt trội trên 150 MHz nhưng tiêu tốn khoảng 450-600 ALM vì phải duy trì thông lượng 1 kết quả/chu kỳ không cần thiết.}
 
+\subsection*{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
+\addcontentsline{toc}{subsection}{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
+
+\subsubsection*{Kiến trúc vi mô toàn diện của Tuyến HDL tự viết}
+Khác với việc phó thác toàn bộ vào trình sinh IP Catalog, Tuyến thiết kế (B) hiện thực hóa trọn vẹn toàn bộ các khối chức năng của Chương 9 bằng ngôn ngữ Verilog-2001 khả tổng hợp chuẩn xác. Luồng xử lý phần cứng được phân tách thành ba module phân tầng rõ ràng:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Module dò đỉnh và chọn ứng viên \texttt{ch09\_peak\_finder.v}:} Tiếp nhận dòng dữ liệu tương quan $U[\tau], Sc[\tau]$ quét từ $\tau = 26$ đến $214$ phát ra từ Chương 8, thực hiện đệm trượt 3 nhịp để đánh giá điều kiện đỉnh cục bộ trên $\tau \in [27, 213]$ và theo dõi giá trị $\operatorname{argmax} Sc[\tau]$.
+    \item \textbf{Module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v}:} Bộ chia $44/34\text{ bit}$ tự viết sử dụng đúng 1 bộ trừ $44\text{ bit}$ và thanh ghi dịch vòng, hoàn tất trong đúng 44 chu kỳ đồng hồ.
+    \item \textbf{Module tích hợp đỉnh \texttt{ch09\_f0\_calc.v}:} Đóng vai trò máy trạng thái điều phối trung tâm (FSM), tự động tính toán $num, den$, giải mã ưu tiên độ dịch $s_2$, thực hiện phép nhân $512000 \cdot den_n$ không tốn DSP, nạp dữ liệu vào bộ chia và xuất kết quả $F_{0, \text{Q12.4}}$ sang Chương 10.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch09_calc_pipeline.tex}
+\caption{Sơ đồ kiến trúc vi mô toàn bộ luồng phần cứng Chương 9 (module \texttt{ch09\_f0\_calc.v}).}
+\label{fig:ch09_calc_pipeline}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch09_calc_pipeline} mô tả tường minh luồng dữ liệu một chiều từ trái sang phải. Ở Cột 0, dòng dữ liệu từ Chương 8 chảy vào bộ dò đỉnh \texttt{ch09\_peak\_finder} (Cột 1). Nhờ bộ đệm dịch 3 tầng, ứng viên trung tâm tại $\tau - 1$ được so sánh ngay lập tức với hàng xóm cũ và mẫu mới đến mà không cần lưu trữ toàn bộ 189 lag vào RAM. Khi cờ \texttt{in\_last} kích hoạt ở $\tau = 214$, bộ dò đỉnh phát \texttt{peak\_valid} kích hoạt trạng thái \texttt{S\_PREP} (Cột 2). Tại đây, mạch tính toán $s_2$, nhân dịch--trừ $512000$ và ghép thành tử số $N$ ($44\text{ bit}$) và mẫu số $D$ ($34\text{ bit}$) trước khi bắn lệnh \texttt{div\_start} sang bộ chia Radix-2 (Cột 3). Sau 44 chu kỳ, cờ \texttt{div\_done} chốt kết quả vào thanh ghi ngõ ra (Cột 4) để chuyển giao sang Chương 10.
+
+\subsubsection*{Mã nguồn Verilog và phân tích từng dòng: Khối dò đỉnh \texttt{ch09\_peak\_finder.v}}
+Dưới đây là đoạn mã nguồn lõi của module dò đỉnh \path{rtl/v3/ch09_peak_finder.v}:
+
+\lstinputlisting[
+    language=Verilog,
+    caption={Mã nguồn Verilog khối dò đỉnh cục bộ và chọn cực đại Sc (\path{rtl/v3/ch09_peak_finder.v}).},
+    label={lst:ch09_peak_finder},
+    firstline=57,
+    lastline=145,
+    firstnumber=57
+]{rtl/v3/ch09_peak_finder.v}
+
+\textbf{Phân tích dòng mã Listing~\ref{lst:ch09_peak_finder}:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 62--64:} Mạch logic tổ hợp tính toán biểu thức $40 \cdot U$ và $9 \cdot R_{0n}$. Đại lượng $40 \cdot U$ được ghép từ hai phép dịch số học $(U \ll 5) + (U \ll 3) = 32U + 8U$ với mở rộng dấu tường minh lên $35\text{ bit}$. Đại lượng $9 \cdot R_{0n}$ ghép từ $(R_{0n} \ll 3) + R_{0n} = 8R_{0n} + R_{0n}$. Toàn bộ phép tính này không sử dụng bất kỳ khối DSP nào.
+    \item \textbf{Dòng 66--69:} Đánh giá cờ \texttt{is\_cand}. Điều kiện bao gồm: chỉ số trễ nằm trong khoảng $[27, 213]$, giá trị mẫu giữa $u_{\text{prev1}}$ lớn hơn chặt hàng xóm trái $u_{\text{prev2}}$, lớn hơn hoặc bằng mẫu ngõ vào hiện tại $in\_U$ (hàng xóm phải), và thỏa mãn ngưỡng thanh âm sơ bộ.
+    \item \textbf{Dòng 102--110:} Khi lag đầu tiên $\tau = 26$ xuất hiện, mạch chốt giá trị năng lượng khung chuẩn hóa $R_{0n}$ vào thanh ghi \texttt{r0n\_latched}, đồng thời khởi tạo lại thanh ghi theo dõi cực đại với giá trị âm sâu nhất $-2^{27}$ để sẵn sàng cho lượt quét mới.
+    \item \textbf{Dòng 113--122:} Cơ chế theo dõi $\operatorname{argmax} Sc[\tau]$. Khi một độ trễ thỏa mãn \texttt{is\_cand}, mạch so sánh điểm $Sc$ của nó với giá trị kỷ lục hiện tại \texttt{best\_sc}. Phép so sánh sử dụng dấu lớn hơn chặt (\texttt{sc\_prev1 > best\_sc}), đảm bảo đúng luật của Praat: nếu hai đỉnh có điểm số bằng nhau, đỉnh xuất hiện trước (độ trễ nhỏ hơn) sẽ được giữ lại.
+    \item \textbf{Dòng 125--128:} Dịch thanh ghi 3 nhịp để đón mẫu tiếp theo trên cạnh xung nhịp dương.
+    \item \textbf{Dòng 131--145:} Khi cờ \texttt{in\_last} kích hoạt ở nhịp $\tau = 214$, ứng viên cuối cùng tại $\tau = 213$ vừa được đánh giá xong. Mạch bật cờ \texttt{peak\_valid} lên 1 chu kỳ, đồng thời xuất toàn bộ các thanh ghi cực trị $\tau_p, y_{-1}, y_0, y_{+1}$ ra ngõ ra.
+\end{itemize}
+
+\subsubsection*{Mã nguồn Verilog và phân tích từng dòng: Bộ chia tuần tự Radix-2}
+Module \path{rtl/v3/ch09_radix2_div.v} hiện thực hóa thuật toán chia khôi phục nhị phân (Binary Restoring Division):
+
+\lstinputlisting[
+    language=Verilog,
+    caption={Mã nguồn Verilog bộ chia tuần tự Radix-2 khôi phục 44/34 bit (\path{rtl/v3/ch09_radix2_div.v}).},
+    label={lst:ch09_radix2_div},
+    firstline=43,
+    lastline=95,
+    firstnumber=43
+]{rtl/v3/ch09_radix2_div.v}
+
+\textbf{Phân tích dòng mã Listing~\ref{lst:ch09_radix2_div}:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 44--47:} Mạch logic tổ hợp của bước chia khôi phục. Đại lượng \texttt{next\_rem} được tạo ra bằng cách dịch trái số dư tạm thời \texttt{rem\_reg} 1 bit và kéo bit cao nhất (MSB) của thanh ghi thương số \texttt{quo\_reg} vào vị trí LSB. Mẫu số \texttt{div\_reg} ($34\text{ bit}$) được mở rộng lên cùng độ rộng \texttt{ext\_div}. Cờ \texttt{sub\_ok} kiểm tra xem phần dư mới có lớn hơn hoặc bằng số chia hay không.
+    \item \textbf{Dòng 64--74 (Trạng thái \texttt{S\_IDLE}):} Khi cờ \texttt{start} kích hoạt, bộ chia nạp tử số vào \texttt{quo\_reg}, xóa sạch \texttt{rem\_reg} về 0, chốt mẫu số vào \texttt{div\_reg}, nạp bộ đếm \texttt{count} bằng đúng độ rộng tử số $44$, và chuyển sang trạng thái tính toán \texttt{S\_CALC}.
+    \item \textbf{Dòng 76--88 (Trạng thái \texttt{S\_CALC}):} Mỗi chu kỳ đồng hồ, mạch thực hiện một bước chia:
+    \begin{itemize}
+        \item Nếu $\texttt{sub\_ok} = 1$: Phép trừ thành công, phần dư mới nhận kết quả hiệu \texttt{sub\_diff}, và bit 1 được dịch vào LSB của \texttt{quo\_reg}.
+        \item Nếu $\texttt{sub\_ok} = 0$: Số chia lớn hơn phần dư, ta khôi phục phần dư gốc \texttt{next\_rem}, và bit 0 được dịch vào LSB của \texttt{quo\_reg}.
+    \end{itemize}
+    Bộ đếm \texttt{count} giảm 1 mỗi nhịp. Khi $\texttt{count} == 1$, toàn bộ 44 bit thương số đã được tính xong, FSM chuyển sang \texttt{S\_DONE}.
+    \item \textbf{Dòng 90--95 (Trạng thái \texttt{S\_DONE}):} Mạch hạ cờ \texttt{busy}, phát xung \texttt{done} trong đúng 1 chu kỳ, chốt giá trị thương số và số dư hoàn chỉnh ra ngõ ra, rồi quay về \texttt{S\_IDLE}.
+\end{itemize}
+
+\subsubsection*{Mã nguồn Verilog và phân tích từng dòng: Khối tính toán F0 tích hợp}
+Module \path{rtl/v3/ch09_f0_calc.v} kết nối bộ dò đỉnh, bộ chia và thực thi giải thuật nội suy parabol:
+
+\lstinputlisting[
+    language=Verilog,
+    caption={Mã nguồn Verilog khối tính toán F0 parabol và điều phối tích hợp (\path{rtl/v3/ch09_f0_calc.v}).},
+    label={lst:ch09_f0_calc},
+    firstline=120,
+    lastline=225,
+    firstnumber=120
+]{rtl/v3/ch09_f0_calc.v}
+
+\textbf{Phân tích dòng mã Listing~\ref{lst:ch09_f0_calc}:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 120--127:} Mạch giải mã ưu tiên (Priority Encoder) 5 tầng xác định tức thời độ dịch chuẩn hóa $s_2 \in [0, 5]$ từ các bit cao của $den$.
+    \item \textbf{Dòng 129--131:} Dịch phải $s_2$ bit cho cả $num$ (dịch số học giữ dấu \texttt{>>>}) và $den$ (dịch logic \texttt{>>}). Đại lượng $den_n$ được bảo đảm nằm trong $24\text{ bit}$.
+    \item \textbf{Dòng 134--139:} Tính toán mẫu số $D = 2 \cdot den_n \cdot \tau_p + num_n$. Phép nhân $den_n \cdot \tau_p$ ($24 \times 8\text{ bit}$) được thực hiện bằng toán tử nhân không dấu, sau đó dịch trái 1 bit để nhân 2, rồi cộng đại số với $num_n$ (có mở rộng dấu). Mẫu số $D$ nằm trọn vẹn trong $34\text{ bit}$.
+    \item \textbf{Dòng 142--147:} Phép nhân tử số $512000 \cdot den_n$ được tối ưu hóa xuất sắc qua 3 số hạng dịch--trừ:
+    \begin{equation}
+    512000 \cdot den_n = (den_n \ll 19) - (den_n \ll 13) - (den_n \ll 12)
+    \end{equation}
+    Vì $524288 - 8192 - 4096 = 512000$, phép tính này được tổng hợp hoàn toàn bằng logic ALM thông thường, tiết kiệm thêm một bộ nhân DSP quý giá. Sau đó, mạch cộng thêm lượng bù làm tròn nửa mẫu số $D[33:1]$ để hoàn tất tử số $44\text{ bit}$ $N_{\text{comb}}$.
+    \item \textbf{Dòng 176--215:} Điều khiển FSM: Nếu \texttt{peak\_valid} báo không tìm thấy ứng viên hợp lệ (\texttt{!peak\_found}), mạch xuất ngay $F_{0, \text{raw}} = 0$ và cờ \texttt{out\_found} = 0 trong 1 nhịp. Nếu có đỉnh, FSM chuyển qua trạng thái chuẩn bị \texttt{S\_PREP} trong 1 nhịp để chốt các toán hạng $N, D$, sau đó kích hoạt bộ chia ở \texttt{S\_DIV}. Khi bộ chia hoàn tất sau 44 chu kỳ, kết quả thương số được bão hòa $16\text{ bit}$ (\texttt{min(Q, 65535)}) và xuất ra ngõ ra \texttt{out\_f0\_raw} chuẩn Q12.4.
+\end{itemize}
+
+\subsubsection*{Bảng đối chiếu từng dòng giữa Python Twin và Verilog HDL}
+Bảng~\ref{tab:ch09_twin_vs_hdl} đối chiếu chi tiết mối liên hệ ánh xạ 1-1 giữa các dòng mã nguồn trong mô hình song sinh Python (\path{golden_v2/fixed_twin.py} và \path{verify_v3/ch09_twin.py}) với mã phần cứng Verilog (\path{rtl/v3/ch09_f0_calc.v}):
+
+\begin{table}[H]
+\centering
+\small
+\caption{Bảng đối chiếu chức năng dòng-đối-dòng giữa mô hình Python Twin và phần cứng Verilog HDL.}
+\label{tab:ch09_twin_vs_hdl}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa chức năng và cơ chế silicon} \\
+\midrule
+\texttt{fixed\_twin.py: 73} & \texttt{ch09\_peak\_finder.v: 66--69} & Điều kiện đỉnh cục bộ 3 điểm $U > u_{-1} \land U \ge u_{+1}$ và cổng thanh âm $40U > 9R_{0n}$ \\
+\texttt{fixed\_twin.py: 74--75} & \texttt{ch09\_peak\_finder.v: 114--121} & Tuyển chọn ứng viên $\operatorname{argmax} Sc$, ưu tiên ứng viên có $\tau$ nhỏ hơn khi điểm số hòa nhau \\
+\texttt{fixed\_twin.py: 82--83} & \texttt{ch09\_f0\_calc.v: 194--197} & Tính toán tham số parabol: $num = y_{+1} - y_{-1}$ và $den = 2y_0 - y_{-1} - y_{+1}$ \\
+\texttt{fixed\_twin.py: 85} & \texttt{ch09\_f0_calc.v: 120--127} & Mạch giải mã ưu tiên 5 tầng xác định độ dịch chuẩn hóa $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ \\
+\texttt{fixed\_twin.py: 86} & \texttt{ch09\_f0_calc.v: 129--131} & Dịch phải số học $num \ggg s_2$ và dịch logic $den \gg s_2$ để đưa $den_n \le 2^{24}-1$ \\
+\texttt{fixed\_twin.py: 87} & \texttt{ch09\_f0_calc.v: 134--139} & Tính toán mẫu số tổng hợp $D = 2 \cdot den_n \cdot \tau_p + num_n$ ($34\text{ bit}$ không dấu) \\
+\texttt{fixed\_twin.py: 88} & \texttt{ch09\_f0_calc.v: 142--147} & Nhân $512000 \cdot den_n$ bằng dịch--trừ và cộng bù làm tròn nửa mẫu số $D//2$ ($44\text{ bit}$) \\
+\texttt{fixed\_twin.py: 88} & \texttt{ch09\_radix2_div.v: 76--88} & Thực thi phép chia nguyên tuần tự 44 chu kỳ: $Q = \lfloor N / D \rfloor$ \\
+\texttt{fixed\_twin.py: 90} & \texttt{ch09\_f0_calc.v: 219--223} & Chốt kết quả $F_{0, \text{raw}}$ (Q12.4) và các cờ trạng thái chuyển tiếp sang Chương 10 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Vì sao Tuyến (B) khớp hoàn toàn với Tuyến (A)}
+Cả hai tuyến thiết kế đều bắt nguồn từ cùng một mô hình toán học giải tích:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cùng kích thước toán hạng:} Tử số $N$ ($44\text{ bit}$) và mẫu số $D$ ($34\text{ bit}$).
+    \item \textbf{Cùng độ trễ định thời:} Cả bộ chia tuần tự khôi phục Radix-2 và khối \texttt{LPM\_DIVIDE} (cấu hình $\texttt{LPM\_PIPELINE} = 44$) đều tiêu tốn đúng \textbf{44 chu kỳ đồng hồ} kể từ thời điểm phát xung kích hoạt \texttt{start} đến khi cờ hợp lệ \texttt{done} bật lên.
+    \item \textbf{Cùng kết quả số học từng bit:} Thuật toán chia khôi phục nhị phân trong \texttt{ch09\_radix2\_div.v} thực hiện đúng định nghĩa phép chia số nguyên không dấu tiêu chuẩn, cho ra thương số $Q$ và số dư $R$ trùng khít $100\%$ với kết quả của lõi IP Intel trên toàn bộ dải giá trị đầu vào.
+\end{itemize}
+
+\subsubsection*{Đổi lựa chọn thì sao?}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Nếu đổi sang bộ chia Radix-4:} Mỗi chu kỳ tính được 2 bit thương số, giúp giảm độ trễ từ 44 chu kỳ xuống 22 chu kỳ. Tuy nhiên, mạch trừ phải tính toán đồng thời các bội số $1D, 2D, 3D$, đòi hỏi thêm bộ cộng và bộ dồn kênh 4:1 phức tạp, làm tăng diện tích ALM lên gần gấp đôi và kéo dài đường tới hạn. Vì ngân sách khung là $500.000\text{ chu kỳ}$, việc tiết kiệm 22 chu kỳ hoàn toàn không mang lại giá trị thực tế nào. Do đó, lựa chọn Radix-2 là tối ưu nhất.
+    \item \emph{Nếu đổi sang bộ chia không khôi phục (Non-restoring Divider):} Tránh được thao tác khôi phục số dư bằng cách thay phiên cộng hoặc trừ tùy theo dấu của số dư vòng trước. Tuy nhiên, ở chu kỳ cuối cùng nếu số dư âm, mạch vẫn phải thực hiện một phép cộng sửa sai bù 2, khiến cấu trúc điều khiển phức tạp hơn trong khi diện tích silicon gần như tương đương.
+\end{itemize}
+
+\textit{Tóm lại: Tuyến (B) hiện thực hóa trọn vẹn luồng tìm đỉnh dòng 3 nhịp không tốn DSP và bộ chia tuần tự Radix-2 44 nhịp; cấu trúc FSM phân tầng mạch lạc ánh xạ 1-1 với mô hình Python Twin và khớp đúng 44 chu kỳ trễ với lõi IP Intel.}
+
+
 
 
 
