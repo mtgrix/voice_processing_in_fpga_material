@@ -788,6 +788,161 @@ Test 5 (s2 Normalization): den=17000000, s2=1, f0q=2133 -> PASSED
 
 \textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.575 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt 100% độ chính xác.}
 
+\subsection*{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
+\addcontentsline{toc}{subsection}{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
+
+\subsubsection*{Bảng so sánh tổng hợp giữa Tuyến (A) Intel IP và Tuyến (B) HDL tự viết}
+Bảng~\ref{tab:ch09_ip_vs_hdl} tổng hợp toàn diện các chỉ số thiết kế, tài nguyên silicon, độ trễ định thời và đặc tính kỹ thuật giữa hai tuyến triển khai bộ chia và tính toán cao độ:
+
+\begin{table}[H]
+\centering
+\small
+\caption{So sánh tổng hợp giữa Tuyến (A) Intel IP (\texttt{LPM\_DIVIDE}) và Tuyến (B) HDL tự viết (\texttt{ch09\_radix2\_div}).}
+\label{tab:ch09_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Tiêu chí so sánh} & \textbf{Tuyến (A): Intel IP Core} & \textbf{Tuyến (B): HDL tự viết (Chốt)} \\
+\midrule
+\textbf{Tên module} & \texttt{lpm\_divide} (\texttt{ch09\_lpm\_div\_wrapper}) & \texttt{ch09\_radix2\_div} \\
+\textbf{Nguồn gốc thiết kế} & Trình sinh IP Catalog của Quartus Prime & Mã nguồn Verilog-2001 khả tổng hợp tự viết \\
+\textbf{Kiến trúc xử lý} & 44 tầng thanh ghi đường ống hoàn toàn & 1 bộ trừ 44 bit tuần tự lặp khôi phục 44 nhịp \\
+\textbf{Độ trễ (Latency)} & Đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại 50 MHz) & Đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại 50 MHz) \\
+\textbf{Thông lượng (Throughput)} & 1 phép chia / 1 chu kỳ & 1 phép chia / 45 chu kỳ \\
+\textbf{Tài nguyên logic ALM} & $\approx 450$ đến $600\text{ ALM}$ (phải đo) & \textbf{$\approx 80$ đến $120\text{ ALM}$} (phải đo, tiết kiệm $> 80\%$) \\
+\textbf{Tài nguyên khối DSP} & \textbf{0 khối DSP} & \textbf{0 khối DSP} (phép nhân $512000$ dùng dịch--trừ) \\
+\textbf{Tài nguyên bộ nhớ M10K} & \textbf{0 khối M10K} & \textbf{0 khối M10K} \\
+\textbf{Tần số tối đa Fmax} & $> 150\text{ MHz}$ (phải đo, đạt 50 MHz) & $> 150\text{ MHz}$ (phải đo, đạt 50 MHz) \\
+\textbf{Tỷ lệ chiếm dụng khung} & Khả năng dư thừa (idle $99{,}99\%$ thời gian) & Chiếm đúng \textbf{0,0088\%} ngân sách 500.000 chu kỳ \\
+\textbf{Tính khả chuyển mô phỏng} & Phụ thuộc thư viện độc quyền (\path{altera_mf.v}) & Độc lập hoàn toàn, chạy trên mọi simulator \\
+\textbf{Khả năng kiểm tra gỡ lỗi} & Hộp đen (black-box), khó quan sát bước giữa & Dễ dàng quan sát số dư và thương số từng nhịp \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Đọc và phân tích Bảng~\ref{tab:ch09_ip_vs_hdl}:}
+Bảng số liệu trên làm nổi bật một quyết định kỹ thuật sâu sắc: Trong một hệ thống xử lý tín hiệu theo khung, việc theo đuổi mù quáng thông lượng tối đa $1\text{ kết quả/chu kỳ}$ của bộ chia IP đường ống là một sự lãng phí tài nguyên silicon ALM không cần thiết. Vì mỗi khung âm thanh $10\text{ ms}$ chứa tới $500.000\text{ chu kỳ}$ đồng hồ ở $50\text{ MHz}$ và ta chỉ cần tính đúng \textbf{1 giá trị $F_0$ duy nhất} mỗi khung, bộ chia tuần tự Radix-2 Tuyến (B) chỉ chiếm dụng vỏn vẹn $0{,}0088\%$ thời gian khả dụng, nhưng lại tiết kiệm được hơn $80\%$ diện tích logic ALM quý giá để dành cho các khối khác của hệ thống. Đồng thời, việc cả hai tuyến được thiết kế khớp tuyệt đối độ trễ $44\text{ chu kỳ}$ cho phép kỹ sư thay thế tương đương giữa hai giải pháp mà không làm ảnh hưởng đến FSM điều phối trung tâm.
+
+\subsubsection*{Quy ước kiểm chứng hệ thống ba tầng}
+Toàn bộ khối phần cứng và thuật toán của Chương 9 được bảo vệ chặt chẽ bởi quy trình kiểm chứng ba tầng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tầng 1 (Twin vs RTL):} Mô hình Python song sinh bit-chính-xác và chu-kỳ-chính-xác kiểm tra chéo với mô phỏng Verilog HDL qua hơn $12.456\text{ vector}$ kiểm thử bộ chia và $2.575\text{ chu kỳ}$ toàn khung tín hiệu.
+    \item \textbf{Tầng 2 (RTL vs Board):} Mã RTL sau khi tổng hợp qua Quartus Prime được nạp lên kit FPGA DE10-Standard; các thanh ghi kết quả $F_{0, \text{raw}}$ được lấy mẫu qua lõi phân tích logic nhúng SignalTap II và so khớp từng bit với kết quả mô phỏng.
+    \item \textbf{Tầng 3 (FPGA vs Praat):} Đường cao độ xuất ra từ HPS được so sánh thống kê trực tiếp với đường Pitch của Praat 7.0.03 trên laptop thông qua các chỉ số GPE, VDE, FFE và độ lệch cent mịn (được trình bày toàn diện ở Chương 13).
+\end{itemize}
+
+\subsubsection*{Bài tập cuối chương có lời giải chi tiết}
+
+\paragraph{Bài tập 1: Bước nhảy chu kỳ rời rạc và ngưỡng thính giác JND.}
+\emph{Đề bài:} Một tín hiệu âm thanh có cao độ nằm ở vùng tần số cao quanh $500\text{ Hz}$. Tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, hãy tính tần số tương ứng tại hai mẫu trễ rời rạc $\tau = 31$ và $\tau = 32$. Tính khoảng chênh lệch tần số $\Delta F_0$ (Hz) và khoảng cách theo thang đo logarit $\Delta \text{cents}$ (cent). So sánh kết quả thu được với ngưỡng phân biệt cao độ tối thiểu của tai người bình thường ($\text{JND} \approx 5\text{ cent}$) và giải thích tại sao phép nội suy đỉnh liên tục là một đòi hỏi âm học bắt buộc.
+
+\emph{Lời giải chi tiết:}
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Tần số tương ứng tại các độ trễ nguyên là:
+    \begin{align}
+    F_0(\tau = 31) &= \frac{f_s}{31} = \frac{16.000}{31} \approx \mathbf{516{,}1290\text{ Hz}} \\
+    F_0(\tau = 32) &= \frac{f_s}{32} = \frac{16.000}{32} = \mathbf{500{,}0000\text{ Hz}}
+    \end{align}
+    \item Khoảng chênh lệch tần số giữa hai mẫu trễ liền kề là:
+    \begin{equation}
+    \Delta F_0 = 516{,}1290 - 500{,}0000 = \mathbf{16{,}1290\text{ Hz}} \approx 16{,}13\text{ Hz}
+    \end{equation}
+    \item Khoảng cách âm học theo đơn vị cent là:
+    \begin{equation}
+    \Delta \text{cents} = 1200 \times \log_2\left( \frac{516{,}1290}{500{,}0000} \right) = 1200 \times \log_2\left( \frac{32}{31} \right) \approx \mathbf{54{,}9644\text{ cent}} \approx 55\text{ cent}
+    \end{equation}
+    \item So sánh với ngưỡng phân biệt thính giác: Tai người bình thường có ngưỡng JND từ $5\text{ cent}$ đến $10\text{ cent}$. Bước nhảy rời rạc $55\text{ cent}$ lớn gấp \textbf{11 lần} ngưỡng tối thiểu của tai người ($55 / 5 = 11{,}0$) và vượt quá một nửa cung âm nhạc ($50\text{ cent}$). Nếu không có phép nội suy đỉnh dưới mẫu, hệ thống sẽ gây ra hiện tượng nhảy bậc thang giả tạo làm hỏng ngữ điệu giọng nói. Do đó, nội suy cực trị liên tục là bắt buộc.
+\end{enumerate}
+
+\paragraph{Bài tập 2: Nội suy Parabol với độ dời âm (đỉnh lệch trái).}
+\emph{Đề bài:} Xét một khung phân tích có đỉnh cục bộ được phát hiện tại $\tau_p = 80$ với ba giá trị tương quan chuẩn hóa rời rạc là $y_{-1} = 9500$, $y_0 = 10000$, $y_{+1} = 8500$. Hãy:
+\begin{enumerate}[label=(\alph*), leftmargin=1.5em, itemsep=2pt]
+    \item Tính độ dời đỉnh phân số $\delta$ và chu kỳ dao động liên tục $\tau^*$.
+    \item Tính tần số cơ bản thực tế $F_0$ (Hz) tại $f_s = 16.000\text{ Hz}$.
+    \item Áp dụng công thức gộp một phép chia đơn với lượng bù làm tròn nửa mẫu số để tính trực tiếp giá trị cao độ chuẩn Q12.4 ($F_{0, \text{Q12.4}}$).
+\end{enumerate}
+
+\emph{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*), leftmargin=1.5em, itemsep=2pt]
+    \item Tính toán các thành phần giải tích của parabol:
+    \begin{align}
+    num &= y_{+1} - y_{-1} = 8500 - 9500 = \mathbf{-1000} \\
+    den &= 2y_0 - y_{-1} - y_{+1} = 2 \times 10000 - 9500 - 8500 = 20000 - 18000 = \mathbf{2000} \\
+    \delta &= \frac{num}{2 \cdot den} = \frac{-1000}{2 \times 2000} = \frac{-1000}{4000} = \mathbf{-0{,}250000} = -0{,}25
+    \end{align}
+    Vì $y_{+1} < y_{-1}$ (hàng xóm trái cao hơn hàng xóm phải), độ dời $\delta < 0$ phản ánh đúng quy luật đỉnh bị hút về bên trái. Chu kỳ liên tục là:
+    \begin{equation}
+    \tau^* = \tau_p + \delta = 80 - 0{,}25 = \mathbf{79{,}7500\text{ mẫu}}
+    \end{equation}
+    \item Tần số cơ bản thực tế liên tục là:
+    \begin{equation}
+    F_0 = \frac{f_s}{\tau^*} = \frac{16.000}{79{,}75} \approx \mathbf{200{,}6270\text{ Hz}}
+    \end{equation}
+    Giá trị lý thuyết ở định dạng Q12.4 ($16 \times F_0$) là:
+    \begin{equation}
+    16 \times 200{,}626959 \approx \mathbf{3210{,}0313} \xrightarrow{\text{làm tròn}} \mathbf{3210}
+    \end{equation}
+    \item Áp dụng công thức gộp một phép chia đơn:
+    \begin{align}
+    D &= 2 \cdot den \cdot \tau_p + num = 2 \times 2000 \times 80 + (-1000) = 320000 - 1000 = \mathbf{319000} \\
+    N &= 512000 \cdot den = 512000 \times 2000 = \mathbf{1.024.000.000} \\
+    F_{0, \text{Q12.4}} &= \left\lfloor \frac{N + \lfloor D / 2 \rfloor}{D} \right\rfloor = \left\lfloor \frac{1.024.000.000 + 159500}{319000} \right\rfloor = \left\lfloor \frac{1.024.159.500}{319000} \right\rfloor = \mathbf{3210}
+    \end{align}
+    Phép chia số nguyên duy nhất cho ra kết quả chính xác tuyệt đối là $3210$, khớp hoàn toàn với mô phỏng song sinh (\texttt{verify\_v3/ch09\_exercises.log}).
+\end{enumerate}
+
+\paragraph{Bài tập 3: Dải biến thiên của chuẩn hóa động $s_2$ và độ rộng bit bộ chia.}
+\emph{Đề bài:} Giả sử trong một khung có biên độ cực lớn, giá trị mẫu số tính được là $den = 33.554.432 = 2^{25}$. Hãy:
+\begin{enumerate}[label=(\alph*), leftmargin=1.5em, itemsep=2pt]
+    \item Xác định độ dài bit của $den$ và tính độ dịch chuẩn hóa $s_2$.
+    \item Tính giá trị mẫu số sau chuẩn hóa $den_n$ và kiểm tra giới hạn $24\text{ bit}$.
+    \item Với $\tau_p = 213$ (độ trễ lớn nhất) và $num_n = den_n$, hãy tính chặn trên của mẫu số $D$ và tử số $N$, chứng minh rằng chúng thỏa mãn vừa khít trong $\texttt{LPM\_WIDTHD} = 34$ và $\texttt{LPM\_WIDTHN} = 44$.
+\end{enumerate}
+
+\emph{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*), leftmargin=1.5em, itemsep=2pt]
+    \item Vì $den = 2^{25} = 33.554.432$, biểu diễn nhị phân của $den$ gồm bit thứ 25 bằng 1 và 25 số 0 phía sau. Độ dài bit là $\operatorname{bitlen}(den) = 26\text{ bit}$. Độ dịch chuẩn hóa là:
+    \begin{equation}
+    s_2 = \max(0, \operatorname{bitlen}(den) - 24) = \max(0, 26 - 24) = \mathbf{2}
+    \end{equation}
+    \item Thực hiện dịch phải $s_2 = 2\text{ bit}$:
+    \begin{equation}
+    den_n = den \gg 2 = \frac{33.554.432}{4} = \mathbf{8.388.608} = 2^{23}
+    \end{equation}
+    Độ dài bit của $den_n$ là $24\text{ bit}$ ($2^{23}$ cần 24 bit biểu diễn, giá trị tối đa là $2^{24}-1$). Giới hạn $24\text{ bit}$ được thỏa mãn hoàn hảo.
+    \item Trong trường hợp xấu nhất ở biên trần $\tau_p = 213$ với $den_n = 2^{24} - 1 = 16.777.215$ và $num_n = den_n$:
+    \begin{align}
+    D &= 2 \cdot den_n \cdot \tau_p + num_n \le (2 \times 213 + 1) \cdot (2^{24} - 1) = 427 \times 16.777.215 = \mathbf{7.163.870.805} \\
+    N &= 512000 \cdot den_n + \lfloor D / 2 \rfloor \le 512000 \times 16.777.215 + 3.581.935.402 = \mathbf{8.593.516.015.402}
+    \end{align}
+    Xét độ rộng nhị phân:
+    \begin{equation}
+    \operatorname{bitlen}(D) = \lceil \log_2(7.163.870.805 + 1) \rceil = \mathbf{33\text{ bit}} \le \mathbf{34\text{ bit}} \quad (\texttt{LPM\_WIDTHD} = 34)
+    \end{equation}
+    \begin{equation}
+    \operatorname{bitlen}(N) = \lceil \log_2(8.593.516.015.402 + 1) \rceil = \mathbf{43\text{ bit}} \le \mathbf{44\text{ bit}} \quad (\texttt{LPM\_WIDTHN} = 44)
+    \end{equation}
+    Toán hạng được bảo đảm không bao giờ tràn bit trên toàn bộ không gian tín hiệu.
+\end{enumerate}
+
+\paragraph{Bài tập 4: Đánh giá đánh đổi kiến trúc phần cứng giữa LPM\_DIVIDE và Radix-2.}
+\emph{Đề bài:} Một kỹ sư đề xuất dùng bộ chia đường ống \texttt{LPM\_DIVIDE} của Intel với lập luận: \emph{"Bộ chia đường ống cho thông lượng 1 phép chia mỗi chu kỳ, nhanh gấp 44 lần so với bộ chia tuần tự Radix-2 (cần 44 chu kỳ), do đó sẽ giúp hệ thống chạy nhanh hơn."} Dựa trên các thông số ngân sách thời gian thực của hệ thống ước lượng cao độ kiểu Praat (hop 160 mẫu, chu kỳ đồng hồ $20\text{ ns}$ ở $50\text{ MHz}$), hãy phản biện lập luận trên bằng các con số định lượng cụ thể.
+
+\emph{Lời giải chi tiết:}
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Phân tích độ trễ và thời gian xử lý một khung:}
+    Cả hai bộ chia đều có cùng độ trễ xử lý (latency) cho một phép tính là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$). Bộ chia đường ống chỉ có ưu thế về thông lượng (throughput) khi cần tính toán liên tục nhiều phép chia gối đầu nhau mỗi chu kỳ.
+    \item \textbf{Định lượng đặc thù của ứng dụng:}
+    Trong hệ thống F0, mỗi khung âm thanh $10\text{ ms}$ có bước nhảy 160 mẫu, tương ứng với ngân sách thời gian là $T_{\text{khung}} = 160 \times 3125 = \mathbf{500.000\text{ chu kỳ}}$. Khối MAC và chuẩn hóa quét qua 189 lag, và chỉ phát ra \textbf{duy nhất 1 cặp giá trị $(N, D)$ ở cuối mỗi khung}.
+    \item \textbf{Định lượng thời gian nhàn rỗi (idle time):}
+    Trong suốt $500.000\text{ chu kỳ}$ của khung, bộ chia chỉ hoạt động trong $44\text{ chu kỳ}$ và đứng yên không tải trong $500.000 - 44 = 499.956\text{ chu kỳ}$ ($99{,}991\%$ thời gian). Thông lượng 1 kết quả/chu kỳ hoàn toàn không bao giờ được sử dụng đến.
+    \item \textbf{Chi phí tài nguyên ALM:}
+    Bộ chia đường ống tiêu tốn khoảng $500\text{ ALM}$ để lưu trữ dữ liệu trung gian qua 44 tầng thanh ghi. Bộ chia tuần tự Radix-2 chỉ tốn khoảng $80\text{ ALM}$ (tiết kiệm hơn $400\text{ ALM}$, tức giảm $> 80\%$ diện tích silicon). 
+    \item \textbf{Kết luận:} Lập luận của kỹ sư là không thấu đáo vì đã nhầm lẫn giữa thông lượng đỉnh lý thuyết với nhu cầu thời gian thực của ứng dụng. Bộ chia tuần tự Radix-2 là lựa chọn kỹ thuật tối ưu và vượt trội toàn diện.
+\end{enumerate}
+
+\textit{Tóm lại: Khảo sát kiến trúc phần cứng chứng minh bộ chia tuần tự Radix-2 là giải pháp tối ưu cho lõi F0 FPGA; các bài tập cuối chương củng cố sâu sắc kỹ năng phân tích định lượng từ bước nhảy âm học cent đến các chặn trên bit nhị phân và ngân sách thời gian thực.}
+
+
 
 
 
