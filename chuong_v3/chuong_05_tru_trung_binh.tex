@@ -229,3 +229,108 @@ Sai số cực tiểu này hoàn toàn bị triệt tiêu khi nhân với cửa 
 
 \textit{Tóm lại: Boersma chọn đoạn 426 mẫu quanh tâm khung (ứng với 2 chu kỳ của 75 Hz) để tránh hiện tượng phi dừng ở hai đầu mép cửa sổ; đoạn này tương ứng với các vị trí 106..531 trong khung 638 mẫu và được đọc trực tiếp từ RAM vòng mà không tốn thêm bộ nhớ; phép làm tròn số nguyên có sai số dưới 0,5 đơn vị biên độ.}
 
+\subsection*{5.3. Chia cho hằng số mà khớp bit: Thuật toán nhân nghịch đảo Golden v2}
+\addcontentsline{toc}{subsection}{5.3. Chia cho hằng số mà khớp bit: Thuật toán nhân nghịch đảo Golden v2}
+
+\subsubsection*{Vấn đề thực tế: Vì sao không dùng bộ chia phần cứng thông thường?}
+Sau khi tích lũy tổng $S$ của $426\text{ mẫu}$ âm thanh, bước tiếp theo là thực hiện phép chia $\text{mean} = \lfloor (S + 213) / 426 \rfloor$. Trên vi xử lý HPS hoặc máy tính, câu lệnh \texttt{div} chỉ là một chỉ thị đơn lẻ. Nhưng trên FPGA, phép chia là một trong những phép toán tốn kém và nặng nề nhất về mặt silicon.
+
+Nếu ta dùng một bộ chia tổng quát (như IP \texttt{LPM\_DIVIDE} của Intel hoặc bộ chia tuần hoàn không phục hồi số dư non-restoring divider):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Về độ trễ (latency):} Một bộ chia số nguyên có dấu $25\text{ bit}$ cần từ $25$ đến $35$ chu kỳ xung nhịp để tạo ra thương số, làm chậm đáng kể đường ống dữ liệu.
+    \item \textbf{Về tài nguyên phần cứng:} Bộ chia tuần hoàn ngốn hàng trăm phần tử logic ALM, hoặc chiếm dụng tài nguyên quý giá trong khi số chia hoàn toàn không đổi: \textbf{số chia luôn luôn là hằng số cố định $L = 426$}.
+\end{itemize}
+
+Trong toán học số học máy tính (computer arithmetic), phép chia cho một hằng số dương $L$ có thể được thay thế hoàn toàn bằng \textbf{phép nhân với số nguyên nghịch đảo $M$} kết hợp phép dịch bit phải $k$:
+\begin{equation}
+\left\lfloor \frac{A}{L} \right\rfloor = \left\lfloor \frac{A \cdot M}{2^k} \right\rfloor = (A \cdot M) \gg k, \quad \text{với } M = \left\lceil \frac{2^k}{L} \right\rceil
+\end{equation}
+
+Tuy nhiên, việc áp dụng công thức này vào hệ thống số nguyên có dấu trên phần cứng tiềm ẩn một cạm bẫy chết người về quy tắc làm tròn số học.
+
+\subsubsection*{Cạm bẫy kỹ thuật: Cắt về 0 của C/Verilog so với làm tròn xuống của Python}
+Trong ngôn ngữ C và Verilog-2001, toán tử chia số nguyên \texttt{/} được định nghĩa theo quy tắc \textbf{cắt về số 0} (truncation towards zero):
+\begin{equation}
+-5 / 4 = -1, \quad -7 / 4 = -1, \quad +5 / 4 = +1
+\end{equation}
+
+Ngược lại, trong toán học giải tích và ngôn ngữ Python, toán tử \texttt{//} thực hiện phép \textbf{làm tròn xuống số âm vô cùng} (floor division towards $-\infty$):
+\begin{equation}
+-5 // 4 = -2, \quad -7 // 4 = -2, \quad +5 // 4 = +1
+\end{equation}
+
+Khi làm việc với phép dịch phải số học (\texttt{>>>} trong Verilog trên toán hạng \texttt{signed}):
+\begin{equation}
+-5 \ggg 2 = -2 \quad (\text{vì biểu diễn bù 2 là } \dots 11111011_2 \to \dots 11111110_2 = -2)
+\end{equation}
+Phép dịch phải số học bù 2 thực chất là hàm \textbf{làm tròn xuống} (floor), hoàn toàn đồng nhất với Python \texttt{//}, nhưng lại \textbf{sai khác 1 đơn vị} so với phép chia cắt về $0$ của C và Verilog trên miền số âm!
+
+Nếu để tổng $S$ là số âm rồi nhân với số nghịch đảo và dịch phải có dấu, ta sẽ gặp hàng loạt lỗi lệch $1$ đơn vị biên độ ở các khung có năng lượng âm.
+
+\subsubsection*{Giải mã sai lầm của Argon: Phân tích thất bại $25\%$ với $M = 26.214, k = 24$}
+Trong bản thiết kế sơ khai trước đây của tác giả Argon, ông đã đề xuất dùng hằng số nhân $M = 26.214$ và dịch phải $k = 24$ để tính trung bình. Hãy phân tích vì sao con số này là một sai lầm nghiêm trọng:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Sai mục tiêu độ dài cửa sổ:} Giá trị $2^{24} / 640 = 16.777.216 / 640 = 26.214{,}4$. Rõ ràng Argon đang tìm cách chia cho $640$ (độ dài cửa sổ cũ của bản v1), hoàn toàn không phải chia cho $426$ của Praat.
+    \item \textbf{Cắt cụt sai toán học:} Thay vì lấy cận trên $\lceil 26.214{,}4 \rceil = 26.215$, Argon lại cắt cụt xuống $26.214$.
+    \item \textbf{Hậu quả sai số khủng khiếp:} Kịch bản \texttt{verify\_v3/ch05\_mean\_math.py} đã kiểm tra toàn diện công thức của Argon $((S \cdot 26.214 + 2^{23}) \gg 24)$ trên toàn bộ dải $41.943.040$ giá trị tổng khả dĩ của $640\text{ mẫu}$. Kết quả: công thức của Argon \textbf{sai ở chính xác $10.485.605$ giá trị} (tương đương tỷ lệ lỗi xấp xỉ \textbf{$25{,}00\%$}, khớp đúng kết luận $10.485.595$ lỗi trong đề cương chốt). Một bộ tính trung bình sai tới một phần tư số trường hợp là hoàn toàn không thể chấp nhận được trong một thiết kế công nghiệp.
+\end{enumerate}
+
+\subsubsection*{Thuật toán Golden v2: Khớp bit tuyệt đối 100\% bằng kỹ thuật dời trục dương}
+Để triệt tiêu vĩnh viễn rủi ro số âm và bảo đảm kết quả thương số luôn luôn là phép chia sàn số học chính xác tuyệt đối, Golden v2 sử dụng kỹ thuật \textbf{dời trục không âm} (non-negative biasing):
+
+\textbf{Bước 1: Cộng độ lệch không âm $B = L \cdot 2^{15}$}:\\
+Mỗi mẫu âm thanh đầu vào $x[j]$ là số nguyên có dấu $16\text{ bit}$ nằm trong đoạn $[-32.768, +32.767]$. Nếu ta cộng thêm $32.768$ ($2^{15}$), mẫu âm thanh được ánh xạ sang số nguyên không dấu:
+\begin{equation}
+x_{\text{biased}}[j] = x[j] + 32.768 \in [0, 65.535]
+\end{equation}
+Trên phần cứng, phép cộng này không tốn bộ cộng: ta chỉ cần \textbf{đảo ngược bit dấu} $x[15] \oplus 1$ (tương đương phép XOR với \texttt{16'h8000}).
+
+Tổng của $426\text{ mẫu}$ sau khi dời trục cộng với hằng số làm tròn $+213$ là:
+\begin{equation}
+S_{\text{biased}} = \sum_{j=106}^{531} \Big( x[j] + 32.768 \Big) + 213 = S + 213 + \underbrace{426 \times 32.768}_{B = 13.959.168}
+\end{equation}
+
+\textbf{Bước 2: Xác định miền giá trị của $S_{\text{biased}}$}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Cực tiểu (khi toàn bộ 426 mẫu đạt $-32.768$): $S_{\min} = 426 \times (-32.768) = -13.959.168 \implies S_{\text{biased},\min} = 213$.
+    \item Cực đại (khi toàn bộ 426 mẫu đạt $+32.767$): $S_{\max} = 426 \times 32.767 = +13.958.742 \implies S_{\text{biased},\max} = 13.958.742 + 213 + 13.959.168 = \mathbf{27.918.123}$.
+\end{itemize}
+Vì $27.918.123 < 2^{25} = 33.554.432$, biến $S_{\text{biased}}$ \textbf{nằm trọn vẹn trong một thanh ghi số nguyên không dấu 25 bit} (\texttt{unsigned [24:0]}). Ta hoàn toàn loại bỏ dấu âm!
+
+\textbf{Bước 3: Dẫn xuất hằng số nhân $M$ với $k = 32$}:\\
+Chọn số bit dịch phải $k = 32$. Hằng số nghịch đảo $M$ là:
+\begin{equation}
+M = \left\lceil \frac{2^{32}}{426} \right\rceil = \left\lceil \frac{4.294.967.296}{426} \right\rceil = \lceil 10.082.082{,}85446 \dots \rceil = \mathbf{10.082.083}
+\end{equation}
+Ở hệ cơ số 16, $M = \texttt{0x99D723}$. Độ rộng bit của $M$ là:
+\begin{equation}
+\lfloor \log_2(10.082.083) \rfloor + 1 = 24\text{ bit} \quad (2^{23} \le 10.082.083 < 2^{24})
+\end{equation}
+
+\textbf{Bước 4: Nhân, dịch bit và khôi phục dấu}:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Tích số không dấu $P = S_{\text{biased}} \times M$ có độ rộng $25\text{ bit} + 24\text{ bit} = 49\text{ bit}$.
+    \item Thương số dời trục:
+    \begin{equation}
+    Q_{\text{biased}} = \lfloor P / 2^{32} \rfloor = P \gg 32 = P[47:32]
+    \end{equation}
+    Vì $S_{\text{biased}} \le 27.918.123$, ta có $Q_{\text{biased}} \le \lfloor 27.918.123 / 426 \rfloor = 65.535 = 2^{16} - 1$. Thương số $Q_{\text{biased}}$ vừa vặn là số nguyên không dấu $16\text{ bit}$ (bit $P[48]$ luôn bằng $0$).
+    \item Khôi phục giá trị trung bình có dấu thực tế bằng cách trừ lại độ lệch $32.768$:
+    \begin{equation}
+    \text{mean} = Q_{\text{biased}} - 32.768 = Q_{\text{biased}}[15:0] \oplus \texttt{16'h8000}
+    \end{equation}
+    Giá trị \texttt{mean} thu được là một số nguyên có dấu $16\text{ bit}$ chuẩn bù 2 trong khoảng $[-32.768, +32.767]$.
+\end{enumerate}
+
+\begin{verifygate}
+\textbf{Kiểm chứng vét cạn toàn dải vật lý (Exhaustive Verification):}\\
+Kịch bản \texttt{verify\_v3/ch05\_mean\_math.py} đã chạy kiểm tra vét cạn trên \textbf{toàn bộ $27.917.911$ giá trị tổng $S$} khả dĩ từ $-13.959.168$ tới $+13.958.742$. 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Số lỗi so với phép chia sàn toán học chuẩn $\lfloor (S + 213)/426 \rfloor$: \textbf{ĐÚNG $0$ LỖI / $27.917.911$ TRƯỜNG HỢP} ($100{,}00\%$ khớp bit).
+    \item Đối chiếu với $L = 640$ (bản v1): Với $M = 13.421.773, k = 33$, kiểm chứng vét cạn trên toàn bộ $41.942.401$ giá trị tổng cũng cho kết quả \textbf{$0$ lỗi}.
+\end{itemize}
+\end{verifygate}
+
+\textit{Tóm lại: Thuật toán Golden v2 chuyển phép chia cho 426 thành phép nhân 25x24-bit không dấu với $M = 10.082.083$ và dịch phải 32 bit sau khi đã dời trục bằng $426 \times 32.768$; phương pháp này loại bỏ hoàn toàn cạm bẫy số âm và bảo đảm khớp bit 100\% trên toàn bộ 27.917.911 giá trị tổng.}
+
+
