@@ -15,7 +15,7 @@
 
 module tb_ch09_calc;
 
-    localparam integer EXPECTED_CYCLES = 2575;
+    localparam integer EXPECTED_CYCLES = 2593;
 
     // Clock generation (50 MHz, 20 ns period)
     reg clk = 0;

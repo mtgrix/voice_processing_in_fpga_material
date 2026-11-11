@@ -10,8 +10,8 @@
     \item Khảo sát giải thuật tìm đỉnh trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 186--188, 193--199, 345): phân định rõ ràng giữa dải quét phần cứng $[26, 214]$ ($189\text{ lag}$) và dải tìm kiếm ứng viên $[27, 213]$ ($187\text{ điểm}$); phân tích điều kiện đỉnh cục bộ ba điểm $U[\tau] > U[\tau-1] \land U[\tau] \ge U[\tau+1]$ kết hợp cổng thanh âm $1000 \cdot U[\tau] > 225 \cdot R_{0n}$ (chuyển hóa thành $40 \cdot U > 9 \cdot R_{0n}$, 0 khối DSP); giải mã cơ chế chọn ứng viên có điểm chi phí cực đại $\operatorname{argmax} Sc[\tau]$ và quy tắc giải quyết hòa ưu tiên độ trễ nhỏ gặp trước.
     \item Dẫn xuất chặt chẽ công thức nội suy cực trị parabol đúng dấu: xác định tọa độ đỉnh liên tục $\tau^* = \tau_p + \delta$ với $\delta = (y_{+1} - y_{-1}) / (2(2y_0 - y_{-1} - y_{+1}))$, vạch rõ sai lầm đổi ngược dấu trong các tài liệu cũ; chứng minh bước đột phá gộp hai phép chia liên tiếp thành \textbf{đúng một phép chia duy nhất}: $F_{0, \text{Q12.4}} = \lfloor (512000 \cdot den_n + D/2) / D \rfloor$ với $D = 2 \cdot den_n \cdot \tau_p + num_n$; phân tích lỗi thiếu thừa số 2 của phiên bản v1 dẫn đến sai lệch $5\text{ LSB}$.
     \item Khám phá cơ chế chuẩn hóa động $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ bằng mạch giải mã ưu tiên (priority encoder) 5 tầng: chứng minh chặn trên độ rộng bit của tử số $N < 2^{44}$ và mẫu số $D < 2^{34}$, từ đó thiết lập chính xác hai tham số của khối chia IP Intel $\texttt{LPM\_WIDTHN} = 44$ và $\texttt{LPM\_WIDTHD} = 34$ (bác bỏ con số suy đoán 48 bit không căn cứ).
-    \item Phân tích toàn diện ba phương án thiết kế bộ chia phần cứng: chứng minh bộ chia tổ hợp vi phạm thời gian chu kỳ $20\text{ ns}$ (đường tới hạn $> 25\text{ ns}$); chỉ rõ bộ chia đường ống \texttt{LPM\_DIVIDE} (Tuyến A, theo tài liệu Intel UG-01069) gây lãng phí hàng trăm ALM cho thông lượng $1\text{ kết quả/chu kỳ}$ không sử dụng; bảo vệ quyết định chốt lựa chọn bộ chia tuần tự khôi phục Radix-2 (Tuyến B) tiêu tốn đúng $44\text{ chu kỳ}$, chiếm vỏn vẹn $0{,}009\%$ ngân sách thời gian thực $500.000\text{ chu kỳ/khung}$ và tiết kiệm hơn $80\%$ diện tích silicon.
-    \item Hiện thực hóa và kiểm chứng chu-kỳ-đối-chu-kỳ: xây dựng module dò đỉnh dòng \texttt{ch09\_peak\_finder.v}, bộ chia tuần tự \texttt{ch09\_radix2\_div.v} và khối tính toán đỉnh \texttt{ch09\_f0\_calc.v}; kiểm chứng qua mô hình song sinh Python (\texttt{ch09\_twin.py}) trên $12.456\text{ chu kỳ}$ chia (265 bộ ba cực trị) và $2.575\text{ chu kỳ}$ toàn khung tín hiệu từ bộ dữ liệu chuẩn \path{golden_v2}.
+    \item Phân tích toàn diện ba phương án thiết kế bộ chia phần cứng: chứng minh bộ chia tổ hợp vi phạm thời gian chu kỳ $20\text{ ns}$; chỉ rõ bộ chia đường ống \texttt{LPM\_DIVIDE} (Tuyến A, theo tài liệu Intel UG-01069) gây lãng phí ALM cho thông lượng $1\text{ kết quả/chu kỳ}$ không sử dụng; bảo vệ quyết định chốt lựa chọn bộ chia tuần tự khôi phục Radix-2 (Tuyến B) với 44 nhịp tính toán trừ khôi phục (độ trễ 45 chu kỳ từ \texttt{start} đến \texttt{done}, thông lượng 1 phép chia mỗi 46 chu kỳ), chiếm vỏn vẹn dưới $0{,}01\%$ ngân sách thời gian thực $500.000\text{ chu kỳ/khung}$ và tiết kiệm diện tích silicon đáng kể.
+    \item Hiện thực hóa và kiểm chứng chu-kỳ-đối-chu-kỳ: xây dựng module dò đỉnh dòng \texttt{ch09\_peak\_finder.v}, bộ chia tuần tự \texttt{ch09\_radix2\_div.v} và khối tính toán đỉnh \texttt{ch09\_f0\_calc.v}; kiểm chứng qua mô hình song sinh Python (\texttt{ch09\_twin.py}) trên $12.456\text{ chu kỳ}$ chia (265 bộ ba cực trị) và $2.593\text{ chu kỳ}$ toàn khung tín hiệu từ bộ dữ liệu chuẩn \path{golden_v2}.
 \end{itemize}
 \end{learningobj}
 
@@ -447,13 +447,13 @@ Ta tiến hành phân tích chi tiết ba phương án thiết kế bộ chia $4
     \item \textbf{Phương án 3: Bộ chia tuần tự Radix-2 (Sequential Restoring Divider) --- Lựa chọn chốt.}
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item \emph{Nguyên lý:} Thu gọn toàn bộ 44 tầng trừ thành \textbf{đúng một bộ trừ $44\text{ bit}$ duy nhất}. Mạch sử dụng một thanh ghi dịch kết hợp số dư--thương số rộng $88\text{ bit}$ và một bộ đếm bước $6\text{ bit}$. Trong mỗi nhịp đồng hồ, mạch thực hiện một thao tác dịch trái, trừ thử và khôi phục (restoring division step) để xác định đúng 1 bit thương số.
-        \item \emph{Độ trễ và thông lượng:} Độ trễ là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ ở $50\text{ MHz}$), hoàn toàn bằng với độ trễ của bộ chia đường ống ở Phương án 2. Thông lượng là 1 phép chia mỗi 45 chu kỳ (cần 1 nhịp nạp lệnh).
-        \item \emph{Tần số và tài nguyên:} Vì mỗi nhịp chỉ thực hiện duy nhất một phép trừ và chọn bit đơn giản, đường tới hạn cực ngắn, đạt $F_{\max} > 150\text{ MHz}$. Đặc biệt, tài nguyên tiêu tốn chỉ vỏn vẹn khoảng \textbf{$80$ đến $120\text{ ALM}$} (phải đo), \textbf{0 khối DSP, 0 khối M10K}.
+        \item \emph{Độ trễ và thông lượng:} Độ trễ từ lúc kích hoạt \texttt{start} đến khi cờ \texttt{done} hợp lệ là \textbf{45 chu kỳ đồng hồ} (gồm 1 nhịp nạp toán hạng ở \texttt{S\_IDLE} và 44 nhịp trừ khôi phục ở \texttt{S\_CALC}; tương đương $900\text{ ns}$ ở $50\text{ MHz}$). Thông lượng là 1 phép chia mỗi 46 chu kỳ (cần 1 nhịp nạp lệnh, 44 nhịp tính toán và 1 nhịp chốt \texttt{done} trước khi sẵn sàng nhận lệnh mới).
+        \item \emph{Tần số và tài nguyên:} Vì mỗi nhịp chỉ thực hiện duy nhất một phép trừ và chọn bit đơn giản, đường tới hạn ngắn, dễ dàng đáp ứng xung nhịp $50\text{ MHz}$. Đặc biệt, tài nguyên tiêu tốn ở mức tối thiểu (phải đo trong Quartus), \textbf{0 khối DSP, 0 khối M10K}.
     \end{itemize}
 \end{enumerate}
 
-\subsubsection*{Phân tích ngân sách chu kỳ: 44 nhịp trên nửa triệu chu kỳ}
-Hãy đặt độ trễ $44\text{ chu kỳ}$ của bộ chia tuần tự vào bức tranh toàn cảnh ngân sách thời gian thực của hệ thống trên FPGA DE10-Standard (xung nhịp $50\text{ MHz}$):
+\subsubsection*{Phân tích ngân sách chu kỳ: 45 nhịp chia và 49 nhịp toàn khối trên nửa triệu chu kỳ}
+Hãy đặt độ trễ của bộ chia tuần tự vào bức tranh toàn cảnh ngân sách thời gian thực của hệ thống trên FPGA DE10-Standard (xung nhịp $50\text{ MHz}$):
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Thời gian khả dụng cho mỗi khung:} Tại $f_s = 16.000\text{ Hz}$, mỗi bước nhảy khung $10\text{ ms}$ chứa đúng 160 mẫu âm thanh mới. Số chu kỳ đồng hồ FPGA khả dụng trong một bước nhảy là:
     \begin{equation}
@@ -461,29 +461,30 @@ Hãy đặt độ trễ $44\text{ chu kỳ}$ của bộ chia tuần tự vào b�
     \end{equation}
     \item \textbf{Thời gian chạy của khối MAC (Chương 7):} $98.543\text{ chu kỳ}$ ($R[0]$ cộng 189 lag $\tau = 26..214$).
     \item \textbf{Thời gian chuẩn hóa và dò đỉnh (Chương 8 và 9):} Chạy gối đầu (pipelined overlap) song song trực tiếp với luồng ra của MAC, chỉ tốn thêm 1 nhịp sau khi lag cuối $\tau = 214$ kết thúc.
-    \item \textbf{Thời gian chạy của bộ chia tuần tự:} Đúng \textbf{44 chu kỳ đồng hồ}.
+    \item \textbf{Thời gian chạy của bộ chia tuần tự:} Đúng \textbf{45 chu kỳ đồng hồ} (1 nhịp nạp toán hạng và 44 nhịp tính toán trừ khôi phục).
+    \item \textbf{Độ trễ toàn phần của khối \texttt{ch09\_f0\_calc}:} Độ trễ toàn phần từ cạnh xung nhịp lấy mẫu cờ ngõ vào cuối cùng \texttt{in\_last} tại $\tau = 214$ đến cạnh xung nhịp kích hoạt cờ hoàn tất \texttt{out\_valid} của khối \texttt{ch09\_f0\_calc} là \textbf{đúng 49 chu kỳ đồng hồ} đối với khung có đỉnh ứng viên (gồm 1 nhịp phát \texttt{peak\_valid}, 1 nhịp chốt tham số ở \texttt{S\_PREP}, 1 nhịp nạp bộ chia, 44 nhịp trừ khôi phục, 1 nhịp chốt \texttt{div\_done} và 1 nhịp chốt ngõ ra \texttt{out\_valid}), và \textbf{đúng 1 chu kỳ đồng hồ} đối với khung vô thanh.
 \end{itemize}
 
 Tỷ lệ thời gian mà bộ chia tuần tự chiếm dụng trong ngân sách khung là:
 \begin{equation}
-\text{Tỷ lệ chu kỳ} = \frac{44}{500.000} = 0{,}000088 = \mathbf{0{,}0088\%}
+\text{Tỷ lệ chu kỳ} = \frac{45}{500.000} = 0{,}000090 = \mathbf{0{,}0090\%} \quad \left(\text{hoặc } \frac{49}{500.000} = \mathbf{0{,}0098\%} \text{ cho toàn khối F0}\right)
 \end{equation}
 
-Con số $0{,}0088\%$ này nhỏ đến mức gần như vô hình. Việc đánh đổi một bộ chia đường ống cồng kềnh (tốn hơn $500\text{ ALM}$) để lấy thông lượng 1 kết quả/chu kỳ không dùng đến là một thiết kế kém cỏi. Bộ chia tuần tự Radix-2 mang lại hiệu năng định thời hoàn hảo ở $50\text{ MHz}$, bảo tồn diện tích chip và đáp ứng dư dả yêu cầu thời gian thực.
+Con số chưa tới $0{,}01\%$ này nhỏ đến mức gần như không đáng kể. Việc đánh đổi một bộ chia đường ống cồng kềnh để lấy thông lượng 1 kết quả/chu kỳ không dùng đến là một giải pháp lãng phí tài nguyên. Bộ chia tuần tự Radix-2 mang lại hiệu năng định thời tốt ở $50\text{ MHz}$, tiết kiệm diện tích chip và đáp ứng tốt yêu cầu thời gian thực.
 
 \subsubsection*{Quyết định thiết kế và quy ước khớp chu kỳ}
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Tuyến (B) --- HDL tự viết (Chốt chính thức):} Triển khai module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v} với tham số $\texttt{WIDTHN} = 44$ và $\texttt{WIDTHD} = 34$, hoàn tất phép tính sau đúng $44\text{ chu kỳ}$.
+    \item \textbf{Tuyến (B) --- HDL tự viết (Chốt chính thức):} Triển khai module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v} với tham số $\texttt{WIDTHN} = 44$ và $\texttt{WIDTHD} = 34$, hoàn tất sau đúng $45\text{ chu kỳ}$ từ \texttt{start} đến \texttt{done} (gồm 1 nhịp nạp và 44 nhịp trừ khôi phục).
     \item \textbf{Tuyến (A) --- Intel IP Catalog:} Sử dụng module \texttt{lpm\_divide} với cấu hình $\texttt{LPM\_PIPELINE} = 44$. 
 \end{enumerate}
 
 \begin{thoughtqa}{Khớp chu kỳ (Cycle-matching) ở đây có ý nghĩa gì?}
 Khớp chu kỳ giữa Tuyến A và Tuyến B trong chương này không có nghĩa là bắt hai bộ chia phải có cùng thông lượng qua từng nhịp (bộ chia tuần tự không thể nhận dữ liệu mới mỗi nhịp như bộ chia đường ống). 
 
-\textbf{Khớp chu kỳ có nghĩa là cùng độ trễ (latency):} Từ thời điểm cờ khởi động \texttt{start} được phát ra, cả hai tuyến đều mất đúng \textbf{44 chu kỳ đồng hồ} để đưa cờ hoàn tất \texttt{done} và giá trị thương số hợp lệ ra thanh ghi ngõ ra. Nhờ sự đồng nhất tuyệt đối về độ trễ này, máy trạng thái FSM điều phối của lõi FPGA ở Chương 12 có thể hoán đổi linh hoạt giữa module IP Intel và module HDL tự viết mà không cần thay đổi bất kỳ một dòng mã điều khiển nào!
+\textbf{Khớp chu kỳ có nghĩa là tương đương về độ trễ xử lý (latency):} Từ thời điểm cờ khởi động \texttt{start} được phát ra, khối IP \texttt{LPM\_DIVIDE} (với $\texttt{LPM\_PIPELINE} = 44$) có độ trễ đúng 44 chu kỳ, trong khi bộ chia tuần tự Radix-2 mất 45 chu kỳ (1 nhịp nạp toán hạng ở \texttt{S\_IDLE} cộng 44 nhịp tính toán). Mức chênh lệch đúng 1 chu kỳ này hoàn toàn không đáng kể so với ngân sách $500.000\text{ chu kỳ}$ của khung. Nhờ sự tương thích chặt chẽ này, máy trạng thái FSM điều phối của lõi FPGA ở Chương 12 có thể hoán đổi linh hoạt giữa module IP Intel và module HDL tự viết.
 \end{thoughtqa}
 
-\textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh $10\text{ ms}$, bộ chia tuần tự Radix-2 chỉ mất đúng $44\text{ chu kỳ}$ ($0{,}0088\%$ thời gian) nhưng tiết kiệm hơn $80\%$ diện tích logic ALM so với bộ chia đường ống \texttt{LPM\_DIVIDE}; hai tuyến được thiết kế cùng độ trễ $44\text{ nhịp}$ để có thể thay thế tương đương trong hệ thống.}
+\textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh $10\text{ ms}$, bộ chia tuần tự Radix-2 chỉ mất 45 chu kỳ ($0{,}0090\%$ thời gian, và 49 chu kỳ toàn khối F0) nhưng tiết kiệm đáng kể diện tích logic ALM so với bộ chia đường ống \texttt{LPM\_DIVIDE}; hai tuyến được thiết kế tương đương về độ trễ để có thể thay thế trong hệ thống.}
 
 \subsection*{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
 \addcontentsline{toc}{subsection}{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
@@ -564,8 +565,8 @@ Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div
 Khác với việc phó thác toàn bộ vào trình sinh IP Catalog, Tuyến thiết kế (B) hiện thực hóa trọn vẹn toàn bộ các khối chức năng của Chương 9 bằng ngôn ngữ Verilog-2001 khả tổng hợp chuẩn xác. Luồng xử lý phần cứng được phân tách thành ba module phân tầng rõ ràng:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Module dò đỉnh và chọn ứng viên \texttt{ch09\_peak\_finder.v}:} Tiếp nhận dòng dữ liệu tương quan $U[\tau], Sc[\tau]$ quét từ $\tau = 26$ đến $214$ phát ra từ Chương 8, thực hiện đệm trượt 3 nhịp để đánh giá điều kiện đỉnh cục bộ trên $\tau \in [27, 213]$ và theo dõi giá trị $\operatorname{argmax} Sc[\tau]$.
-    \item \textbf{Module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v}:} Bộ chia $44/34\text{ bit}$ tự viết sử dụng đúng 1 bộ trừ $44\text{ bit}$ và thanh ghi dịch vòng, hoàn tất trong đúng 44 chu kỳ đồng hồ.
-    \item \textbf{Module tích hợp đỉnh \texttt{ch09\_f0\_calc.v}:} Đóng vai trò máy trạng thái điều phối trung tâm (FSM), tự động tính toán $num, den$, giải mã ưu tiên độ dịch $s_2$, thực hiện phép nhân $512000 \cdot den_n$ không tốn DSP, nạp dữ liệu vào bộ chia và xuất kết quả $F_{0, \text{Q12.4}}$ sang Chương 10.
+    \item \textbf{Module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v}:} Bộ chia $44/34\text{ bit}$ tự viết sử dụng đúng 1 bộ trừ $44\text{ bit}$ và thanh ghi dịch vòng, hoàn tất trong 45 chu kỳ từ \texttt{start} đến \texttt{done} (gồm 1 nhịp nạp và 44 nhịp trừ khôi phục).
+    \item \textbf{Module tích hợp đỉnh \texttt{ch09\_f0\_calc.v}:} Đóng vai trò máy trạng thái điều phối trung tâm (FSM), tự động tính toán $num, den$, giải mã ưu tiên độ dịch $s_2$, thực hiện phép nhân $512000 \cdot den_n$ không tốn DSP, nạp dữ liệu vào bộ chia và xuất kết quả $F_{0, \text{Q12.4}}$ sang Chương 10. Độ trễ toàn phần từ cạnh xung nhịp lấy mẫu cờ ngõ vào cuối cùng \texttt{in\_last} tại $\tau = 214$ đến cạnh xung nhịp kích hoạt cờ hoàn tất \texttt{out\_valid} của khối \texttt{ch09\_f0\_calc} là \textbf{đúng 49 chu kỳ đồng hồ} đối với khung có đỉnh ứng viên (gồm 1 nhịp phát \texttt{peak\_valid}, 1 nhịp chốt tham số ở \texttt{S\_PREP}, 1 nhịp nạp bộ chia, 44 nhịp trừ khôi phục, 1 nhịp chốt \texttt{div\_done} và 1 nhịp chốt ngõ ra \texttt{out\_valid}), và \textbf{đúng 1 chu kỳ đồng hồ} đối với khung vô thanh.
 \end{enumerate}
 
 \begin{figure}[H]
@@ -575,7 +576,7 @@ Khác với việc phó thác toàn bộ vào trình sinh IP Catalog, Tuyến th
 \label{fig:ch09_calc_pipeline}
 \end{figure}
 
-\textbf{Đọc hình.} Hình~\ref{fig:ch09_calc_pipeline} mô tả tường minh luồng dữ liệu một chiều từ trái sang phải. Ở Cột 0, dòng dữ liệu từ Chương 8 chảy vào bộ dò đỉnh \texttt{ch09\_peak\_finder} (Cột 1). Nhờ bộ đệm dịch 3 tầng, ứng viên trung tâm tại $\tau - 1$ được so sánh ngay lập tức với hàng xóm cũ và mẫu mới đến mà không cần lưu trữ toàn bộ 189 lag vào RAM. Khi cờ \texttt{in\_last} kích hoạt ở $\tau = 214$, bộ dò đỉnh phát \texttt{peak\_valid} kích hoạt trạng thái \texttt{S\_PREP} (Cột 2). Tại đây, mạch tính toán $s_2$, nhân dịch--trừ $512000$ và ghép thành tử số $N$ ($44\text{ bit}$) và mẫu số $D$ ($34\text{ bit}$) trước khi bắn lệnh \texttt{div\_start} sang bộ chia Radix-2 (Cột 3). Sau 44 chu kỳ, cờ \texttt{div\_done} chốt kết quả vào thanh ghi ngõ ra (Cột 4) để chuyển giao sang Chương 10.
+\textbf{Đọc hình.} Hình~\ref{fig:ch09_calc_pipeline} mô tả tường minh luồng dữ liệu một chiều từ trái sang phải. Ở Cột 0, dòng dữ liệu từ Chương 8 chảy vào bộ dò đỉnh \texttt{ch09\_peak\_finder} (Cột 1). Nhờ bộ đệm dịch 3 tầng, ứng viên trung tâm tại $\tau - 1$ được so sánh ngay lập tức với hàng xóm cũ và mẫu mới đến mà không cần lưu trữ toàn bộ 189 lag vào RAM. Khi cờ \texttt{in\_last} kích hoạt ở $\tau = 214$, bộ dò đỉnh phát \texttt{peak\_valid} kích hoạt trạng thái \texttt{S\_PREP} (Cột 2). Tại đây, mạch tính toán $s_2$, nhân dịch--trừ $512000$ và ghép thành tử số $N$ ($44\text{ bit}$) và mẫu số $D$ ($34\text{ bit}$) trước khi bắn lệnh \texttt{div\_start} sang bộ chia Radix-2 (Cột 3). Sau 45 chu kỳ kể từ khi kích hoạt \texttt{div\_start}, cờ \texttt{div\_done} chốt kết quả vào thanh ghi ngõ ra (Cột 4) để kích hoạt \texttt{out\_valid} (tổng độ trễ từ $\tau = 214$ đến \texttt{out\_valid} là đúng 49 chu kỳ).
 
 \subsubsection*{Mã nguồn Verilog và phân tích từng dòng: Khối dò đỉnh \texttt{ch09\_peak\_finder.v}}
 Dưới đây là đoạn mã nguồn lõi của module dò đỉnh \path{rtl/v3/ch09_peak_finder.v}:
@@ -646,7 +647,7 @@ Module \path{rtl/v3/ch09_f0_calc.v} kết nối bộ dò đỉnh, bộ chia và 
     512000 \cdot den_n = (den_n \ll 19) - (den_n \ll 13) - (den_n \ll 12)
     \end{equation}
     Vì $524288 - 8192 - 4096 = 512000$, phép tính này được tổng hợp hoàn toàn bằng logic ALM thông thường, tiết kiệm thêm một bộ nhân DSP quý giá. Sau đó, mạch cộng thêm lượng bù làm tròn nửa mẫu số $D[33:1]$ để hoàn tất tử số $44\text{ bit}$ $N_{\text{comb}}$.
-    \item \textbf{Dòng 176--215:} Điều khiển FSM: Nếu \texttt{peak\_valid} báo không tìm thấy ứng viên hợp lệ (\texttt{!peak\_found}), mạch xuất ngay $F_{0, \text{raw}} = 0$ và cờ \texttt{out\_found} = 0 trong 1 nhịp. Nếu có đỉnh, FSM chuyển qua trạng thái chuẩn bị \texttt{S\_PREP} trong 1 nhịp để chốt các toán hạng $N, D$, sau đó kích hoạt bộ chia ở \texttt{S\_DIV}. Khi bộ chia hoàn tất sau 44 chu kỳ, kết quả thương số được bão hòa $16\text{ bit}$ (\texttt{min(Q, 65535)}) và xuất ra ngõ ra \texttt{out\_f0\_raw} chuẩn Q12.4.
+    \item \textbf{Dòng 176--215:} Điều khiển FSM: Nếu \texttt{peak\_valid} báo không tìm thấy ứng viên hợp lệ (\texttt{!peak\_found}), mạch xuất ngay $F_{0, \text{raw}} = 0$ và cờ \texttt{out\_found} = 0 trong 1 nhịp. Nếu có đỉnh, FSM chuyển qua trạng thái chuẩn bị \texttt{S\_PREP} trong 1 nhịp để chốt các toán hạng $N, D$, sau đó kích hoạt bộ chia ở \texttt{S\_DIV}. Khi bộ chia hoàn tất sau 45 chu kỳ (tổng độ trễ từ $\tau = 214$ đến \texttt{out\_valid} là đúng 49 chu kỳ), kết quả thương số được bão hòa $16\text{ bit}$ (\texttt{min(Q, 65535)}) và xuất ra ngõ ra \texttt{out\_f0\_raw} chuẩn Q12.4.
 \end{itemize}
 
 \subsubsection*{Bảng đối chiếu từng dòng giữa Python Twin và Verilog HDL}
@@ -668,27 +669,27 @@ Bảng~\ref{tab:ch09_twin_vs_hdl} đối chiếu chi tiết mối liên hệ án
 \texttt{fixed\_twin.py: 86} & \texttt{ch09\_f0\_calc.v: 129--131} & Dịch phải số học $num \ggg s_2$ và dịch logic $den \gg s_2$ để đưa $den_n \le 2^{24}-1$ \\
 \texttt{fixed\_twin.py: 87} & \texttt{ch09\_f0\_calc.v: 134--139} & Tính toán mẫu số tổng hợp $D = 2 \cdot den_n \cdot \tau_p + num_n$ ($34\text{ bit}$ không dấu) \\
 \texttt{fixed\_twin.py: 88} & \texttt{ch09\_f0\_calc.v: 142--147} & Nhân $512000 \cdot den_n$ bằng dịch--trừ và cộng bù làm tròn nửa mẫu số $D//2$ ($44\text{ bit}$) \\
-\texttt{fixed\_twin.py: 88} & \texttt{ch09\_radix2\_div.v: 76--88} & Thực thi phép chia nguyên tuần tự 44 chu kỳ: $Q = \lfloor N / D \rfloor$ \\
-\texttt{fixed\_twin.py: 90} & \texttt{ch09\_f0\_calc.v: 219--223} & Chốt kết quả $F_{0, \text{raw}}$ (Q12.4) và các cờ trạng thái chuyển tiếp sang Chương 10 \\
+\texttt{fixed\_twin.py: 88} & \texttt{ch09\_radix2\_div.v: 76--88} & Thực thi phép chia nguyên tuần tự 44 nhịp trừ (độ trễ 45 chu kỳ): $Q = \lfloor N / D \rfloor$ \\
+\texttt{fixed\_twin.py: 90} & \texttt{ch09\_f0\_calc.v: 219--223} & Chốt kết quả $F_{0, \text{raw}}$ (Q12.4) sau 49 chu kỳ toàn phần và các cờ trạng thái sang Chương 10 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsubsection*{Vì sao Tuyến (B) khớp hoàn toàn với Tuyến (A)}
+\subsubsection*{Vì sao Tuyến (B) tương đương với Tuyến (A)}
 Cả hai tuyến thiết kế đều bắt nguồn từ cùng một mô hình toán học giải tích:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Cùng kích thước toán hạng:} Tử số $N$ ($44\text{ bit}$) và mẫu số $D$ ($34\text{ bit}$).
-    \item \textbf{Cùng độ trễ định thời:} Cả bộ chia tuần tự khôi phục Radix-2 và khối \texttt{LPM\_DIVIDE} (cấu hình $\texttt{LPM\_PIPELINE} = 44$) đều tiêu tốn đúng \textbf{44 chu kỳ đồng hồ} kể từ thời điểm phát xung kích hoạt \texttt{start} đến khi cờ hợp lệ \texttt{done} bật lên.
-    \item \textbf{Cùng kết quả số học từng bit:} Thuật toán chia khôi phục nhị phân trong \texttt{ch09\_radix2\_div.v} thực hiện đúng định nghĩa phép chia số nguyên không dấu tiêu chuẩn, cho ra thương số $Q$ và số dư $R$ trùng khít $100\%$ với kết quả của lõi IP Intel trên toàn bộ dải giá trị đầu vào.
+    \item \textbf{Độ trễ định thời tương thích:} Khối \texttt{LPM\_DIVIDE} (cấu hình $\texttt{LPM\_PIPELINE} = 44$) tiêu tốn đúng \textbf{44 chu kỳ đồng hồ}, trong khi bộ chia tuần tự khôi phục Radix-2 mất \textbf{45 chu kỳ đồng hồ} kể từ thời điểm phát xung kích hoạt \texttt{start} đến khi cờ hợp lệ \texttt{done} bật lên (thêm 1 nhịp nạp toán hạng ở \texttt{S\_IDLE}). Chênh lệch 1 nhịp này là không đáng kể so với ngân sách khung $500.000\text{ chu kỳ}$.
+    \item \textbf{Cùng kết quả số học từng bit:} Thuật toán chia khôi phục nhị phân trong \texttt{ch09\_radix2\_div.v} thực hiện đúng định nghĩa phép chia số nguyên không dấu tiêu chuẩn, cho ra thương số $Q$ và số dư $R$ trùng khít với kết quả của lõi IP Intel trên toàn bộ dải giá trị đầu vào.
 \end{itemize}
 
 \subsubsection*{Đổi lựa chọn thì sao?}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \emph{Nếu đổi sang bộ chia Radix-4:} Mỗi chu kỳ tính được 2 bit thương số, giúp giảm độ trễ từ 44 chu kỳ xuống 22 chu kỳ. Tuy nhiên, mạch trừ phải tính toán đồng thời các bội số $1D, 2D, 3D$, đòi hỏi thêm bộ cộng và bộ dồn kênh 4:1 phức tạp, làm tăng diện tích ALM lên gần gấp đôi và kéo dài đường tới hạn. Vì ngân sách khung là $500.000\text{ chu kỳ}$, việc tiết kiệm 22 chu kỳ hoàn toàn không mang lại giá trị thực tế nào. Do đó, lựa chọn Radix-2 là tối ưu nhất.
+    \item \emph{Nếu đổi sang bộ chia Radix-4:} Mỗi chu kỳ tính được 2 bit thương số, giúp giảm thời gian tính chia từ 44 chu kỳ xuống 22 chu kỳ. Tuy nhiên, mạch trừ phải tính toán đồng thời các bội số $1D, 2D, 3D$, đòi hỏi thêm bộ cộng và bộ dồn kênh 4:1 phức tạp, làm tăng diện tích ALM lên gần gấp đôi và kéo dài đường tới hạn. Vì ngân sách khung là $500.000\text{ chu kỳ}$, việc tiết kiệm 22 chu kỳ hoàn toàn không mang lại giá trị thực tế nào. Do đó, lựa chọn Radix-2 là phù hợp hơn cả.
     \item \emph{Nếu đổi sang bộ chia không khôi phục (Non-restoring Divider):} Tránh được thao tác khôi phục số dư bằng cách thay phiên cộng hoặc trừ tùy theo dấu của số dư vòng trước. Tuy nhiên, ở chu kỳ cuối cùng nếu số dư âm, mạch vẫn phải thực hiện một phép cộng sửa sai bù 2, khiến cấu trúc điều khiển phức tạp hơn trong khi diện tích silicon gần như tương đương.
 \end{itemize}
 
-\textit{Tóm lại: Tuyến (B) hiện thực hóa trọn vẹn luồng tìm đỉnh dòng 3 nhịp không tốn DSP và bộ chia tuần tự Radix-2 44 nhịp; cấu trúc FSM phân tầng mạch lạc ánh xạ 1-1 với mô hình Python Twin và khớp đúng 44 chu kỳ trễ với lõi IP Intel.}
+\textit{Tóm lại: Tuyến (B) hiện thực hóa trọn vẹn luồng tìm đỉnh dòng 3 nhịp không tốn DSP và bộ chia tuần tự Radix-2 với 44 nhịp tính toán (độ trễ 45 nhịp, tổng trễ toàn khối 49 nhịp); cấu trúc FSM phân tầng mạch lạc ánh xạ 1-1 với mô hình Python Twin và tương thích với lõi IP Intel.}
 
 \subsection*{9.7. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng}
 \addcontentsline{toc}{subsection}{9.7. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng}
@@ -754,7 +755,7 @@ Dưới đây là đoạn mã nguồn của hai thành phần cốt lõi này tr
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item Đưa dòng dữ liệu liên tục của 189 độ trễ ($\tau = 26..214$) từ các khung âm thanh đa dạng trích xuất từ tệp chuẩn \path{golden_v2/synth_glide_vuv_16k.wav} (khung hữu thanh trượt tần, khung vô thanh, khung chuyển tiếp thanh môn, khung cực hạn stress full-scale, khung im lặng).
         \item Kiểm chứng trọn vẹn sự phối hợp đồng bộ giữa khối dò đỉnh \texttt{ch09\_peak\_finder}, mạch tính toán tham số $s_2$ và bộ chia \texttt{ch09\_radix2\_div}.
-        \item Tổng số chu kỳ mô phỏng là đúng \textbf{$2.575\text{ chu kỳ}$}.
+        \item Tổng số chu kỳ mô phỏng là đúng \textbf{$2.593\text{ chu kỳ}$}.
     \end{itemize}
 \end{enumerate}
 
@@ -786,7 +787,7 @@ Test 5 (s2 Normalization): den=17000000, s2=1, f0q=2133 -> PASSED
 === [test_ch09_f0] ALL CHAPTER 9 C TESTS PASSED (0 ERRORS) ===
 \end{lstlisting}
 
-\textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.575 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt tuyệt đối 5/5 kiểm tra thành công (0 lỗi).}
+\textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.593 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt 5/5 kiểm tra thành công (0 lỗi).}
 
 \subsection*{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
 \addcontentsline{toc}{subsection}{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
@@ -806,13 +807,13 @@ Bảng~\ref{tab:ch09_ip_vs_hdl} tổng hợp toàn diện các chỉ số thiế
 \textbf{Tên module} & \texttt{lpm\_divide} (\texttt{ch09\_lpm\_div\_wrapper}) & \texttt{ch09\_radix2\_div} \\
 \textbf{Nguồn gốc thiết kế} & Trình sinh IP Catalog của Quartus Prime & Mã nguồn Verilog-2001 khả tổng hợp tự viết \\
 \textbf{Kiến trúc xử lý} & 44 tầng thanh ghi đường ống hoàn toàn & 1 bộ trừ 44 bit tuần tự lặp khôi phục 44 nhịp \\
-\textbf{Độ trễ (Latency)} & Đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại 50 MHz) & Đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại 50 MHz) \\
-\textbf{Thông lượng (Throughput)} & 1 phép chia / 1 chu kỳ & 1 phép chia / 45 chu kỳ \\
-\textbf{Tài nguyên logic ALM} & $\approx 450$ đến $600\text{ ALM}$ (phải đo) & \textbf{$\approx 80$ đến $120\text{ ALM}$} (phải đo, tiết kiệm $> 80\%$) \\
+\textbf{Độ trễ (Latency)} & Đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại 50 MHz) & Đúng \textbf{45 chu kỳ} từ \texttt{start} đến \texttt{done} (tổng trễ toàn khối từ $\tau=214$ đến \texttt{out\_valid} là đúng \textbf{49 chu kỳ}) \\
+\textbf{Thông lượng (Throughput)} & 1 phép chia / 1 chu kỳ & 1 phép chia / 46 chu kỳ (1 nạp + 44 tính + 1 chốt) \\
+\textbf{Tài nguyên logic ALM} & phải đo trong Quartus (Compilation Report) & phải đo trong Quartus (Compilation Report) \\
 \textbf{Tài nguyên khối DSP} & \textbf{0 khối DSP} & \textbf{0 khối DSP} (phép nhân $512000$ dùng dịch--trừ) \\
 \textbf{Tài nguyên bộ nhớ M10K} & \textbf{0 khối M10K} & \textbf{0 khối M10K} \\
-\textbf{Tần số tối đa Fmax} & $> 150\text{ MHz}$ (phải đo, đạt 50 MHz) & $> 150\text{ MHz}$ (phải đo, đạt 50 MHz) \\
-\textbf{Tỷ lệ chiếm dụng khung} & Khả năng dư thừa (idle $99{,}99\%$ thời gian) & Chiếm đúng \textbf{0,0088\%} ngân sách 500.000 chu kỳ \\
+\textbf{Tần số tối đa Fmax} & phải đo trong Quartus (Timing Analyzer) & phải đo trong Quartus (Timing Analyzer) \\
+\textbf{Tỷ lệ chiếm dụng khung} & Khả năng dư thừa (idle phần lớn thời gian) & Chiếm dưới \textbf{0,01\%} ngân sách 500.000 chu kỳ (45 nhịp chia hoặc 49 nhịp toàn khối) \\
 \textbf{Tính khả chuyển mô phỏng} & Phụ thuộc thư viện độc quyền (\path{altera_mf.v}) & Độc lập hoàn toàn, chạy trên mọi simulator \\
 \textbf{Khả năng kiểm tra gỡ lỗi} & Hộp đen (black-box), khó quan sát bước giữa & Dễ dàng quan sát số dư và thương số từng nhịp \\
 \bottomrule
@@ -820,12 +821,12 @@ Bảng~\ref{tab:ch09_ip_vs_hdl} tổng hợp toàn diện các chỉ số thiế
 \end{table}
 
 \textbf{Đọc và phân tích Bảng~\ref{tab:ch09_ip_vs_hdl}:}
-Bảng số liệu trên làm nổi bật một quyết định kỹ thuật sâu sắc: Trong một hệ thống xử lý tín hiệu theo khung, việc theo đuổi mù quáng thông lượng tối đa $1\text{ kết quả/chu kỳ}$ của bộ chia IP đường ống là một sự lãng phí tài nguyên silicon ALM không cần thiết. Vì mỗi khung âm thanh $10\text{ ms}$ chứa tới $500.000\text{ chu kỳ}$ đồng hồ ở $50\text{ MHz}$ và ta chỉ cần tính đúng \textbf{1 giá trị $F_0$ duy nhất} mỗi khung, bộ chia tuần tự Radix-2 Tuyến (B) chỉ chiếm dụng vỏn vẹn $0{,}0088\%$ thời gian khả dụng, nhưng lại tiết kiệm được hơn $80\%$ diện tích logic ALM quý giá để dành cho các khối khác của hệ thống. Đồng thời, việc cả hai tuyến được thiết kế khớp tuyệt đối độ trễ $44\text{ chu kỳ}$ cho phép kỹ sư thay thế tương đương giữa hai giải pháp mà không làm ảnh hưởng đến FSM điều phối trung tâm.
+Bảng số liệu trên làm nổi bật một quyết định kỹ thuật: Trong một hệ thống xử lý tín hiệu theo khung, việc theo đuổi thông lượng tối đa $1\text{ kết quả/chu kỳ}$ của bộ chia IP đường ống là không cần thiết. Vì mỗi khung âm thanh $10\text{ ms}$ chứa tới $500.000\text{ chu kỳ}$ đồng hồ ở $50\text{ MHz}$ và ta chỉ cần tính đúng \textbf{1 giá trị $F_0$ duy nhất} mỗi khung, bộ chia tuần tự Radix-2 Tuyến (B) chỉ chiếm dụng dưới $0{,}01\%$ thời gian khả dụng, đồng thời tiết kiệm diện tích logic ALM để dành cho các khối khác của hệ thống. Đồng thời, việc cả hai tuyến được thiết kế tương đương về độ trễ xử lý cho phép kỹ sư thay thế linh hoạt giữa hai giải pháp.
 
 \subsubsection*{Quy ước kiểm chứng hệ thống ba tầng}
 Toàn bộ khối phần cứng và thuật toán của Chương 9 được bảo vệ chặt chẽ bởi quy trình kiểm chứng ba tầng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Tầng 1 (Twin vs RTL):} Mô hình Python song sinh bit-chính-xác và chu-kỳ-chính-xác kiểm tra chéo với mô phỏng Verilog HDL qua hơn $12.456\text{ vector}$ kiểm thử bộ chia và $2.575\text{ chu kỳ}$ toàn khung tín hiệu.
+    \item \textbf{Tầng 1 (Twin vs RTL):} Mô hình Python song sinh bit-chính-xác và chu-kỳ-chính-xác kiểm tra chéo với mô phỏng Verilog HDL qua hơn $12.456\text{ vector}$ kiểm thử bộ chia và $2.593\text{ chu kỳ}$ toàn khung tín hiệu.
     \item \textbf{Tầng 2 (RTL vs Board):} Mã RTL sau khi tổng hợp qua Quartus Prime được nạp lên kit FPGA DE10-Standard; các thanh ghi kết quả $F_{0, \text{raw}}$ được lấy mẫu qua lõi phân tích logic nhúng SignalTap II và so khớp từng bit với kết quả mô phỏng.
     \item \textbf{Tầng 3 (FPGA vs Praat):} Đường cao độ xuất ra từ HPS được so sánh thống kê trực tiếp với đường Pitch của Praat 7.0.03 trên laptop thông qua các chỉ số GPE, VDE, FFE và độ lệch cent mịn (được trình bày toàn diện ở Chương 13).
 \end{itemize}
@@ -926,19 +927,19 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
 \end{enumerate}
 
 \paragraph{Bài tập 4: Đánh giá đánh đổi kiến trúc phần cứng giữa LPM\_DIVIDE và Radix-2.}
-\emph{Đề bài:} Một kỹ sư đề xuất dùng bộ chia đường ống \texttt{LPM\_DIVIDE} của Intel với lập luận: \emph{"Bộ chia đường ống cho thông lượng 1 phép chia mỗi chu kỳ, nhanh gấp 44 lần so với bộ chia tuần tự Radix-2 (cần 44 chu kỳ), do đó sẽ giúp hệ thống chạy nhanh hơn."} Dựa trên các thông số ngân sách thời gian thực của hệ thống ước lượng cao độ kiểu Praat (hop 160 mẫu, chu kỳ đồng hồ $20\text{ ns}$ ở $50\text{ MHz}$), hãy phản biện lập luận trên bằng các con số định lượng cụ thể.
+\emph{Đề bài:} Một kỹ sư đề xuất dùng bộ chia đường ống \texttt{LPM\_DIVIDE} của Intel với lập luận: \emph{"Bộ chia đường ống cho thông lượng 1 phép chia mỗi chu kỳ, nhanh hơn so với bộ chia tuần tự Radix-2 (cần 45 chu kỳ từ start đến done), do đó sẽ giúp hệ thống chạy nhanh hơn."} Dựa trên các thông số ngân sách thời gian thực của hệ thống ước lượng cao độ kiểu Praat (hop 160 mẫu, chu kỳ đồng hồ $20\text{ ns}$ ở $50\text{ MHz}$), hãy phản biện lập luận trên bằng các con số định lượng cụ thể.
 
 \emph{Lời giải chi tiết:}
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Phân tích độ trễ và thời gian xử lý một khung:}
-    Cả hai bộ chia đều có cùng độ trễ xử lý (latency) cho một phép tính là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$). Bộ chia đường ống chỉ có ưu thế về thông lượng (throughput) khi cần tính toán liên tục nhiều phép chia gối đầu nhau mỗi chu kỳ.
+    Khối IP \texttt{LPM\_DIVIDE} (cấu hình $\texttt{LPM\_PIPELINE} = 44$) có độ trễ 44 chu kỳ ($880\text{ ns}$), còn bộ chia tuần tự Radix-2 mất 45 chu kỳ ($900\text{ ns}$, gồm 1 nhịp nạp và 44 nhịp trừ khôi phục). Mức chênh lệch 1 chu kỳ này hoàn toàn không đáng kể. Bộ chia đường ống chỉ có ưu thế về thông lượng (throughput) khi cần tính toán liên tục nhiều phép chia gối đầu nhau mỗi chu kỳ.
     \item \textbf{Định lượng đặc thù của ứng dụng:}
     Trong hệ thống F0, mỗi khung âm thanh $10\text{ ms}$ có bước nhảy 160 mẫu, tương ứng với ngân sách thời gian là $T_{\text{khung}} = 160 \times 3125 = \mathbf{500.000\text{ chu kỳ}}$. Khối MAC và chuẩn hóa quét qua 189 lag, và chỉ phát ra \textbf{duy nhất 1 cặp giá trị $(N, D)$ ở cuối mỗi khung}.
     \item \textbf{Định lượng thời gian nhàn rỗi (idle time):}
-    Trong suốt $500.000\text{ chu kỳ}$ của khung, bộ chia chỉ hoạt động trong $44\text{ chu kỳ}$ và đứng yên không tải trong $500.000 - 44 = 499.956\text{ chu kỳ}$ ($99{,}991\%$ thời gian). Thông lượng 1 kết quả/chu kỳ hoàn toàn không bao giờ được sử dụng đến.
+    Trong suốt $500.000\text{ chu kỳ}$ của khung, bộ chia chỉ hoạt động trong $45\text{ chu kỳ}$ (và toàn khối F0 mất đúng 49 chu kỳ từ $\tau = 214$ đến \texttt{out\_valid}), đứng yên trong $500.000 - 45 = 499.955\text{ chu kỳ}$ (hơn $99{,}99\%$ thời gian). Thông lượng 1 kết quả/chu kỳ hoàn toàn không bao giờ được sử dụng đến.
     \item \textbf{Chi phí tài nguyên ALM:}
-    Bộ chia đường ống tiêu tốn khoảng $500\text{ ALM}$ để lưu trữ dữ liệu trung gian qua 44 tầng thanh ghi. Bộ chia tuần tự Radix-2 chỉ tốn khoảng $80\text{ ALM}$ (tiết kiệm hơn $400\text{ ALM}$, tức giảm $> 80\%$ diện tích silicon). 
-    \item \textbf{Kết luận:} Lập luận của kỹ sư là không thấu đáo vì đã nhầm lẫn giữa thông lượng đỉnh lý thuyết với nhu cầu thời gian thực của ứng dụng. Bộ chia tuần tự Radix-2 là lựa chọn kỹ thuật tối ưu và vượt trội toàn diện.
+    Bộ chia đường ống cần nhiều tầng thanh ghi đường ống trung gian qua 44 tầng, trong khi bộ chia tuần tự Radix-2 chỉ dùng đúng 1 bộ trừ $44\text{ bit}$ tái sử dụng (tiết kiệm đáng kể diện tích silicon logic ALM; số lượng ALM cụ thể phải đo trong Quartus). 
+    \item \textbf{Kết luận:} Lập luận của kỹ sư là chưa thấu đáo vì đã nhầm lẫn giữa thông lượng đỉnh lý thuyết với nhu cầu thời gian thực của ứng dụng. Bộ chia tuần tự Radix-2 là lựa chọn kỹ thuật tối ưu và phù hợp cho hệ thống.
 \end{enumerate}
 
 \textit{Tóm lại: Khảo sát kiến trúc phần cứng chứng minh bộ chia tuần tự Radix-2 là giải pháp tối ưu cho lõi F0 FPGA; các bài tập cuối chương củng cố sâu sắc kỹ năng phân tích định lượng từ bước nhảy âm học cent đến các chặn trên bit nhị phân và ngân sách thời gian thực.}

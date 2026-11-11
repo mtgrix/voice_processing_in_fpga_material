@@ -213,8 +213,11 @@ def generate_div_vectors(stim_path, exp_path):
     with open(exp_path, 'w', newline='\n') as f:
         f.writelines(exp_lines)
 
-    print(f"Wrote {len(stim_lines)} stimulus cycles to {stim_path}")
-    print(f"Wrote {len(exp_lines)} expected cycles to {exp_path}")
+    def fmt_p(p):
+        return p.replace(REPO_DIR, '/workspace/writing_material/uoc_luong_f0_praat_fpga_quartus').replace('\\', '/')
+
+    print(f"Wrote {len(stim_lines)} stimulus cycles to {fmt_p(stim_path)}")
+    print(f"Wrote {len(exp_lines)} expected cycles to {fmt_p(exp_path)}")
 
 # -----------------------------------------------------------------------------
 # 4. Vector Generation for tb_ch09_calc.v (Frame-Level Verification)
@@ -260,11 +263,20 @@ def generate_calc_vectors(stim_path, exp_path):
             stim_lines.append(f"1 1 {t} {u_val} {sc_val} {r0n} {in_last}\n")
             exp_lines.append("0 0 0 0 0 0\n")
 
-        # After lag 214, peak_finder asserts peak_valid on the next cycle
-        # Then S_PREP takes 1 cycle, then S_DIV takes 44 cycles
-        # Total latency = 1 (peak_finder) + 1 (S_PREP) + 44 (div) = 46 cycles after last lag
-        # If expected_found == 0, S_IDLE produces out_valid on cycle 1 after peak_valid!
-        div_cycles = 46 if expected_found == 1 else 1
+        # Total latency from in_last (tau=214) to out_valid:
+        # If a candidate peak is found (expected_found == 1):
+        #   - 1 cycle for peak_finder to assert peak_valid
+        #   - 1 cycle in S_IDLE to sample peak_valid and enter S_PREP (latching num, den)
+        #   - 1 cycle in S_PREP to compute N, D combinatorially and assert div_start
+        #   - 1 cycle in ch09_radix2_div to sample start in S_IDLE and load operands
+        #   - 44 cycles in ch09_radix2_div S_CALC (restoring division steps)
+        #   - 1 cycle in ch09_radix2_div S_DONE where div_done is asserted
+        #   - 1 cycle in ch09_f0_calc S_DIV to sample div_done and register out_valid
+        #   Total latency = 1 + 1 + 1 + 1 + 44 + 1 = 49 cycles from in_last to out_valid.
+        # If no candidate peak found (expected_found == 0):
+        #   - 1 cycle for peak_finder to assert peak_valid
+        #   - 1 cycle in S_IDLE to sample peak_valid and register out_valid (div_cycles = 1)
+        div_cycles = 49 if expected_found == 1 else 1
 
         for c in range(div_cycles):
             stim_lines.append("1 0 0 0 0 0 0\n")
@@ -284,8 +296,11 @@ def generate_calc_vectors(stim_path, exp_path):
     with open(exp_path, 'w', newline='\n') as f:
         f.writelines(exp_lines)
 
-    print(f"Wrote {len(stim_lines)} stimulus cycles to {stim_path}")
-    print(f"Wrote {len(exp_lines)} expected cycles to {exp_path}")
+    def fmt_p(p):
+        return p.replace(REPO_DIR, '/workspace/writing_material/uoc_luong_f0_praat_fpga_quartus').replace('\\', '/')
+
+    print(f"Wrote {len(stim_lines)} stimulus cycles to {fmt_p(stim_path)}")
+    print(f"Wrote {len(exp_lines)} expected cycles to {fmt_p(exp_path)}")
 
 def main():
     print("=== [ch09_twin] Generating Chapter 9 Stimulus and Expected Vectors ===")
