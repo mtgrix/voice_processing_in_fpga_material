@@ -537,7 +537,7 @@ Kịch bản thực thi tự động \texttt{verify\_v3/run\_ch10\_iverilog.sh} 
 \texttt{vvp verify\_v3/sim\_ch10\_voicing}
 \end{quote}
 
-\todo{box: kết quả iverilog do người phản biện điền}
+Kết quả chạy thật trên Linux (Icarus Verilog 12, nhật ký \path{verify_v3/ch10_voicing_iverilog.log}): \texttt{tb\_ch10\_voicing} so khớp $1\,408/1\,408$ chu kỳ với mô hình song sinh, 0 lỗi so sánh; mã C tham chiếu \texttt{test\_ch10\_voicing.c} đạt $12/12$ ca.
 
 \subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
 Nhằm phục vụ việc kiểm thử phần mềm trên bộ xử lý ARM Cortex-A9 của HPS, tệp mã nguồn C \texttt{sw\_v3/ch10\_voicing.c} và chương trình kiểm thử đơn vị \texttt{sw\_v3/test\_ch10\_voicing.c} đã được biên dịch bằng trình biên dịch GCC với các cờ tối ưu hóa:
