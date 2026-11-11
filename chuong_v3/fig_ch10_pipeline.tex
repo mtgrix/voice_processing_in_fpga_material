@@ -1,6 +1,7 @@
 % chuong_v3/fig_ch10_pipeline.tex
 % Sơ đồ vi kiến trúc đường ống 3 tầng của khối quyết định vô thanh / hữu thanh (ch10_voicing)
 % Phân tách rõ ràng giữa các tầng thanh ghi: Tầng 1 (Dịch-cộng), Tầng 2 (Nhân 54-bit), Tầng 3 (So sánh & MUX)
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
     >=Stealth,
     scale=0.84,
@@ -51,60 +52,62 @@
     \draw[wire] (4.76, 4.0) -- (b_mult_lhs.195);
 
     % Đường tín hiệu trap chạy qua Tầng 2 sang reg 2 (khoảng trống giữa hai khối nhân)
-    \draw[wire] (4.76, 3.0) -- node[midway, above, bus_label] {$trap$} (10.04, 3.0);
+    \draw[wire] (4.76, 3.0) -- node[midway, above, bus_label] {$trap$} (10.64, 3.0);
 
     \draw[wire] (4.76, 2.0) -- (b_mult_rhs.165);
     \draw[wire] (4.76, 1.4) -- (b_mult_rhs.195);
 
     % Đường tín hiệu F0,raw chạy qua Tầng 2 sang reg 2 (dưới khối nhân RHS)
-    \draw[wire] (4.76, 0.5) -- node[midway, above, bus_label] {$F_{0,\text{raw}}$} (10.04, 0.5);
+    \draw[wire] (4.76, 0.5) -- node[midway, above, bus_label] {$F_{0,\text{raw}}$} (10.64, 0.5);
 
-    % Thanh ghi Tầng 2 (reg 2)
-    \node[reg_bar] (reg2) at (10.1, 2.65) {};
+    % Thanh ghi Tầng 2 (reg 2) - đặt tại 10.7 để cân bằng khoảng trống trước và sau reg 2
+    \node[reg_bar] (reg2) at (10.7, 2.65) {};
     \node[above=2pt, font=\scriptsize\bfseries, text=black!85] at (reg2.north) {reg 2};
 
-    % Nối từ Khối Tầng 2 vào Thanh ghi 2
-    \draw[wire] (b_mult_lhs.east) -- node[midway, above, bus_label] {$LHS\ [54]$} (10.04, 4.3);
-    \draw[wire] (b_mult_rhs.east) -- node[midway, above, bus_label] {$RHS\ [54]$} (10.04, 1.7);
+    % Nối từ Khối Tầng 2 vào Thanh ghi 2 (đặt nhãn midway trong khoảng trống 1.9 cm, cách hộp >= 4.5 mm, cách reg 2 >= 4 mm)
+    \draw[wire] (b_mult_lhs.east) -- node[midway, above, bus_label] {$LHS\ [54]$} (10.64, 4.3);
+    \draw[wire] (b_mult_rhs.east) -- node[midway, above, bus_label] {$RHS\ [54]$} (10.64, 1.7);
 
     % -------------------------------------------------------------------------
-    % TẦNG 3: SO SÁNH CHẶT & BỘ GHÉP KÊNH (Chu kỳ n+2)
+    % TẦNG 3: SO SÁNH CHẶT & BỘ GHÉP KÊNH (Chu kỳ n+2) - nới sang 13.8 để mở rộng khoảng trống sau reg 2
     % -------------------------------------------------------------------------
-    \node[box_s3] (b_comp) at (12.6, 4.3) {Bộ so sánh 54-bit:\\$LHS > RHS$};
-    \node[box_s3] (b_gate) at (12.6, 2.7) {Cổng chặn im lặng:\\$voiced = (!trap) \ \& \ cmp$};
-    \node[box_s3] (b_mux)  at (12.6, 1.1) {Bộ ghép kênh MUX:\\$voiced\ ?\ F_{0,\text{raw}} : 0$};
+    \node[box_s3] (b_comp) at (13.8, 4.3) {Bộ so sánh 54-bit:\\$LHS > RHS$};
+    \node[box_s3] (b_gate) at (13.8, 2.7) {Cổng chặn im lặng:\\$voiced = (!trap) \land cmp$};
+    \node[box_s3] (b_mux)  at (13.8, 1.1) {Bộ ghép kênh MUX:\\$voiced\ ?\ F_{0,\text{raw}} : 0$};
 
-    % Nối từ Thanh ghi 2 vào Khối Tầng 3
-    \draw[wire] (10.16, 4.5) -- node[midway, above, bus_label] {$LHS$} (b_comp.170);
-    \draw[wire] (10.16, 4.1) -- node[midway, above, bus_label] {$RHS$} (b_comp.190);
+    % Nối từ Thanh ghi 2 vào Khối Tầng 3 (xóa nhãn lặp LHS/RHS sau reg 2 theo góp ý phản biện)
+    \draw[wire] (10.76, 4.5) -- (b_comp.170);
+    \draw[wire] (10.76, 4.1) -- (b_comp.190);
     \draw[wire] (b_comp.south) -- node[midway, right=3pt, bus_label] {$cmp$} (b_gate.north);
 
-    % Tín hiệu trap đi thẳng từ reg 2 vào b_gate
-    \draw[wire] (10.16, 2.7) -- node[midway, above, bus_label] {$trap$} (b_gate.west);
+    % Tín hiệu trap đi thẳng từ reg 2 vào b_gate (đặt midway trong khoảng trống rộng 1.8 cm, cách hai biên >= 5 mm)
+    \draw[wire] (10.76, 2.7) -- node[midway, above, bus_label] {$trap$} (b_gate.west);
 
     % Tín hiệu voiced từ b_gate đi xuống b_mux
     \draw[wire] (b_gate.south) -- node[midway, right=3pt, bus_label] {$voiced$} (b_mux.north);
 
-    % Tín hiệu F0,raw đi từ reg 2 vào b_mux
-    \draw[wire] (10.16, 1.1) -- node[midway, above, bus_label] {$F_{0,\text{raw}}$} (b_mux.west);
+    % Tín hiệu F0,raw đi từ reg 2 vào b_mux (đặt midway trong khoảng trống rộng 1.8 cm, cách hai biên >= 4 mm)
+    \draw[wire] (10.76, 1.1) -- node[midway, above, bus_label] {$F_{0,\text{raw}}$} (b_mux.west);
 
-    % Thanh ghi ngõ ra Tầng 3 (reg 3)
-    \node[reg_bar] (reg3) at (15.3, 2.65) {};
+    % Thanh ghi ngõ ra Tầng 3 (reg 3) - nới sang 16.5
+    \node[reg_bar] (reg3) at (16.5, 2.65) {};
     \node[above=2pt, font=\scriptsize\bfseries, text=black!85] at (reg3.north) {reg 3};
 
-    \draw[wire] (b_gate.east) -- node[midway, above, bus_label] {$out\_voiced$} (15.24, 2.7);
-    \draw[wire] (b_mux.east)  -- node[midway, above, bus_label] {$F_{0,\text{gated}}$} (15.24, 1.1);
-    \draw[wire] (10.16, 5.1)  -- node[midway, above, bus_label] {$valid\_pipe$} (15.24, 5.1);
+    % Đường nối từ Stage 3 vào reg 3 (bỏ nhãn out_voiced và F0,gated dư thừa theo góp ý phản biện)
+    \draw[wire] (b_gate.east) -- (16.44, 2.7);
+    \draw[wire] (b_mux.east)  -- (16.44, 1.1);
+    \draw[wire] (10.76, 5.1)  -- node[midway, above, bus_label] {$valid\_pipe$} (16.44, 5.1);
 
     % Tín hiệu ra khỏi module
-    \draw[wire] (15.36, 1.1) -- (16.7, 1.1) node[right, font=\scriptsize] {\texttt{out\_f0}};
-    \draw[wire] (15.36, 2.7) -- (16.7, 2.7) node[right, font=\scriptsize] {\texttt{out\_voiced}};
-    \draw[wire] (15.36, 5.1) -- (16.7, 5.1) node[right, font=\scriptsize] {\texttt{out\_valid}};
+    \draw[wire] (16.56, 1.1) -- (18.0, 1.1) node[right, font=\scriptsize] {\texttt{out\_f0}};
+    \draw[wire] (16.56, 2.7) -- (18.0, 2.7) node[right, font=\scriptsize] {\texttt{out\_voiced}};
+    \draw[wire] (16.56, 5.1) -- (18.0, 5.1) node[right, font=\scriptsize] {\texttt{out\_valid}};
 
     % Nhãn chỉ dẫn chu kỳ trễ
     \node[above, font=\scriptsize\bfseries, text=blue!80!black]   at (1.5, 6.4) {Chu kỳ $n$: Tầng 1};
     \node[above, font=\scriptsize\bfseries, text=purple!80!black] at (7.4, 6.4) {Chu kỳ $n+1$: Tầng 2};
-    \node[above, font=\scriptsize\bfseries, text=green!60!black]  at (12.6, 6.4) {Chu kỳ $n+2$: Tầng 3};
-    \node[above, font=\scriptsize\bfseries, text=black!80]        at (17.2, 6.4) {Ngõ ra: $n+3$};
+    \node[above, font=\scriptsize\bfseries, text=green!60!black]  at (13.8, 6.4) {Chu kỳ $n+2$: Tầng 3};
+    \node[above, font=\scriptsize\bfseries, text=black!80]        at (18.5, 6.4) {Ngõ ra: $n+3$};
 
-\end{tikzpicture}
+\end{tikzpicture}%
+}
