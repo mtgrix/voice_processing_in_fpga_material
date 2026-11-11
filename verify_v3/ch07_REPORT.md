@@ -147,3 +147,35 @@ Toàn bộ 6 điểm nghẽn (Blockers) do người phản biện chỉ ra trong
 - **Blocker 4 (Unsourced claims & Intel citations):** Đã loại bỏ các nhận định không có nguồn; chuẩn hóa tài liệu Intel Cyclone V.
 - **Blocker 5 (Figures & Overfull):** Cả 3 hình vẽ TikZ đã được hiệu chỉnh khoảng cách rộng rãi, phóng to chữ chú thích, biên dịch sạch không có bất kỳ cảnh báo overfull hbox nào.
 - **Blocker 6 (Tone & Markdown):** Đã thanh lọc toàn bộ từ ngữ cảm thán, chuyển đổi toàn bộ đánh dấu markdown sang lệnh LaTeX tiêu chuẩn.
+
+---
+
+## 7. Tổng kết đợt chỉnh sửa Revision Round 2 (R2 - Blocker-only)
+
+Tất cả 4 điểm nghẽn blocker-only do người phản biện chỉ ra trong `agy_feedback/ch07_r2.txt` đã được khắc phục triệt để, không sửa đổi các phần không liên quan:
+
+1. **Chuẩn hóa định nghĩa chu kỳ tính toán (`cycle_count`):**
+   - Xác lập định nghĩa chuẩn tắc: `cycle_count` đo lường chính xác số chu kỳ xung nhịp từ khi cặp địa chỉ đầu tiên $(n=0, \tau=0)$ bắt đầu phát vào RAM M10K (chu kỳ 1) cho đến chu kỳ xuất hiện kết quả tự tương quan cuối cùng $R[214]$ hợp lệ tại ngõ ra khối MAC ($98.540\text{ cặp phát} + 3\text{ nhịp trễ đường ống} = \mathbf{98.543\text{ chu kỳ}}$).
+   - Hiệu chỉnh `rtl/v3/ch07_mac_engine.v`: tại trạng thái `S_DRAIN` khi `drain_cnt == 2'd2` (chu kỳ xả thứ 3, chu kỳ 98.543), thanh ghi `cycle_count` dừng tăng và giữ nguyên giá trị 98.543; FSM chuyển thẳng về `S_IDLE`, chốt cờ `done <= 1'b1; busy <= 1'b0;` ở cạnh lên xung nhịp tiếp theo (chu kỳ thứ 98.544).
+   - Cập nhật testbench `tb/v3/tb_ch07_mac_engine.v` khớp 100% với `EXPECTED_CYCLES = 98543` trên cả 16 khung (0 lỗi).
+   - Cập nhật kịch bản Python `verify_v3/ch07_mac_twin.py` và `verify_v3/ch07_hdl_audit.py` in chi tiết chu kỳ từng khung (`cycle_count = 98543`) vào nhật ký `verify_v3/ch07_mac_twin.log` và `verify_v3/ch07_hdl_audit.log`.
+   - Bổ sung đoạn thuyết minh định nghĩa `cycle_count` trong `chuong_v3/chuong_07_mac.tex` và cập nhật chỉ số dòng của Bảng 31 và Listing tương ứng.
+
+2. **Cải tiến Hình 15 (`chuong_v3/fig_ch07_direct_mac_vs_fft.tex`):**
+   - Mở rộng khoảng cách nằm ngang giữa các khối lên 24 mm ở tuyến (a) và 15--18 mm ở tuyến (b).
+   - Đặt các nhãn `2 mẫu/nhịp`, `(a_r, b_r)` và `R[0], R[\tau]` phía trên mũi tên với `fill=white, inner sep=2pt`, hoàn toàn không chạm vào đường viền hộp.
+   - Điều chỉnh tỉ lệ co dãn `\resizebox{0.98\linewidth}` giúp kích thước chữ trong hình bảo đảm $\ge \text{\scriptsize}$ trên trang in.
+
+3. **Cải tiến Hình 17 (`chuong_v3/fig_ch07_mac_arch.tex`):**
+   - Tăng khoảng cách giữa khối RAM/pipe1 và khối MAC lên 30 mm.
+   - Định tuyến tín hiệu `sload_r, last_r` thành đường ngang thẳng tắp, bảo đảm khoảng cách cách viền trái khối MAC $\ge 8\text{ mm}$ (vượt xa yêu cầu $\ge 2\text{ mm}$).
+   - Đặt nhãn `$x_w[n+\tau]$ (17 bit)` và `$x_w[n]$ (17 bit)` cách viền trái khối MAC $\ge 5\text{ mm}$ và cách viền phải khối RAM $\ge 3\text{ mm}$.
+   - Tối ưu hóa vị trí FSM và RAM để các nhãn `addr_b (n+\tau)` và `sload, last` không chạm bất kỳ viền hộp nào.
+
+4. **Chuẩn hóa tóm tắt Mục 7.7:**
+   - Thay thế cụm từ `(0 ALM)` tại dòng 770 thành `(tài nguyên ALM phải kiểm trong Quartus)`.
+
+5. **Biên dịch và kiểm tra thị giác:**
+   - Biên dịch `phan_moi_v3.tex` 2 lần bằng `xelatex`: 0 lỗi, 0 overfull hbox, tổng số 191 trang.
+   - Xuất toàn bộ 27 trang Chương 7 (trang 165--191) và các hình vẽ sang định dạng PNG 300 DPI bằng `pdftoppm` và kiểm tra chi tiết: chữ rõ nét, bố cục thông thoáng, không chạm viền.
+   - Giữ nguyên ô giữ chỗ `\todo{box}` không điền trước kết quả mô phỏng.
