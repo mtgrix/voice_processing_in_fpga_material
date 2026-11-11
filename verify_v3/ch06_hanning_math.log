@@ -8,8 +8,8 @@ Sum of 638 Q1.15 samples       : 10469378 (Agenda: 10469378)
 Max raw value before clamp     : 32768 at indices 318, 319
 Number of saturated samples    : 2
 Even symmetry w[n] == w[N-1-n] : True (all 638 samples match)
-Verified bit-exact match with C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\rom\hanning638_q15.hex (638 words)
-Verified existence of C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\rom\hanning638_q15.mif
+Verified bit-exact match with /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.hex (638 words)
+Verified existence of /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.mif
 
 ==============================================================================
 2. SPECTRAL LEAKAGE AND SIDELOBE ATTENUATION (FOURIER ANALYSIS)
