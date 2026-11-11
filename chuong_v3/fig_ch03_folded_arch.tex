@@ -1,0 +1,112 @@
+% chuong_v3/fig_ch03_folded_arch.tex
+% Architecture of the 31-tap folded symmetric FIR filter with 17-bit pre-adder and 1 DSP block
+\begin{tikzpicture}[>=stealth, font=\small, node distance=1.2cm]
+
+    % Style definitions
+    \tikzstyle{block}     = [draw=blue!80!black, fill=blue!6, thick, rounded corners=3pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{regbox}    = [draw=teal!80!black, fill=teal!8, thick, rounded corners=3pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{dspbox}    = [draw=red!80!black, fill=red!6, thick, rounded corners=4pt, 
+                             inner sep=6pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{rombox}    = [draw=purple!80!black, fill=purple!6, thick, rounded corners=3pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{muxbox}    = [draw=orange!80!black, fill=orange!12, thick, 
+                             inner sep=3pt, align=center, font=\tiny\bfseries]
+    \tikzstyle{fsmbox}    = [draw=gray!80!black, fill=gray!8, thick, rounded corners=4pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
+    \tikzstyle{ctrlline}  = [->, thick, dashed, color=purple!80!black]
+    \tikzstyle{portlabel} = [font=\scriptsize\ttfamily]
+
+    % Outer Boundary
+    \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
+        (-4.0, -4.2) rectangle (8.4, 4.0);
+    \node[anchor=north west, font=\footnotesize\bfseries, color=blue!90!black] 
+        at (-3.8, 3.8) {Khối lọc FIR 31 tap gấp thời gian (\texttt{ch03\_fir\_filter.v})};
+
+    % Upstream Avalon-ST Sink (Left)
+    \node[portlabel, anchor=east] (sink_data)  at (-4.2,  1.8) {sink\_data[15:0]};
+    \node[portlabel, anchor=east] (sink_valid) at (-4.2,  0.4) {sink\_valid};
+    \node[portlabel, anchor=east] (sink_ready) at (-4.2, -0.8) {sink\_ready};
+    \node[portlabel, anchor=east] (bypass_in)  at (-4.2, -3.2) {bypass};
+
+    % Downstream Avalon-ST Source (Right)
+    \node[portlabel, anchor=west] (src_data)   at (8.6,  1.8) {source\_data[15:0]};
+    \node[portlabel, anchor=west] (src_valid)  at (8.6,  0.4) {source\_valid};
+    \node[portlabel, anchor=west] (src_ready)  at (8.6, -0.8) {source\_ready};
+
+    % 1. Shift Register Block (31 stages x 16 bit)
+    \node[regbox, minimum width=2.4cm, minimum height=1.2cm] (shift_reg) at (-2.4, 1.8)
+        {Mảng thanh ghi dịch\\31 tầng $\times$ 16 bit\\(\texttt{shift\_reg[0..30]})};
+
+    % 2. Pre-adder (17-bit signed)
+    \node[block, minimum width=2.0cm, minimum height=1.0cm] (preadder) at (0.3, 1.8)
+        {Bộ tiền cộng\\Pre-adder 17 bit\\$x[k] + x[30-k]$};
+
+    % 3. Coefficient ROM (16 x 16 bit)
+    \node[rombox, minimum width=2.0cm, minimum height=1.0cm] (rom) at (0.3, -0.2)
+        {ROM hệ số Q1.15\\16 từ $\times$ 16 bit\\(\texttt{h[0..15]})};
+
+    % 4. Multiplier (17 x 16 -> 33 bit inside DSP)
+    \node[dspbox, minimum width=2.2cm, minimum height=1.2cm] (dsp_mult) at (2.8, 1.8)
+        {Bộ nhân DSP\\17-bit $\times$ 16-bit\\Tích $p$ (33 bit)};
+
+    % 5. Accumulator (40-bit)
+    \node[regbox, minimum width=2.0cm, minimum height=1.0cm] (acc) at (2.8, -0.2)
+        {Bộ tích lũy\\Thanh ghi 40 bit\\(\texttt{acc})};
+
+    % Feedback adder for accumulation
+    \draw[dataline] (dsp_mult.south) -- (acc.north) node[midway, right, font=\tiny] {$p$};
+    \draw[dataline] (acc.west) -- ++(-0.4, 0) -- ++(0, 0.9) -- (dsp_mult.south west)
+        node[midway, left, font=\tiny] {Cộng dồn};
+
+    % 6. Rounding & Saturation
+    \node[block, minimum width=2.0cm, minimum height=1.1cm] (round_sat) at (5.2, 1.8)
+        {Làm tròn \& Bão hòa\\$(acc + 16384) \gg 15$\\Clamp $[-32768, 32767]$};
+
+    % 7. Bypass Multiplexer
+    \node[muxbox, minimum width=0.8cm, minimum height=1.4cm] (bypass_mux) at (7.0, 1.8)
+        {MUX\\2:1};
+
+    % 8. FSM Controller & Step Counter
+    \node[fsmbox, minimum width=3.8cm, minimum height=1.2cm] (fsm) at (2.0, -3.2)
+        {Bộ điều khiển FSM \& Bộ đếm bước 4-bit\\Trạng thái: \texttt{S\_IDLE}, \texttt{S\_CALC}, \texttt{S\_WAIT\_OUT}\\Đếm \texttt{step} = $0..15$ (16 chu kỳ/mẫu)};
+
+    % Connections - Data path
+    \draw[dataline] (-4.0, 1.8) -- (shift_reg.west);
+    \draw[dataline] (shift_reg.east) -- (preadder.west) 
+        node[midway, above, font=\tiny] {Cặp đối xứng};
+    \draw[dataline] (preadder.east) -- (dsp_mult.west) 
+        node[midway, above, font=\tiny] {17 bit};
+    \draw[dataline] (rom.east) -- ++(0.6, 0) -- ++(0, 1.4) -- (dsp_mult.south west)
+        node[midway, right, font=\tiny] {$h[step]$};
+    \draw[dataline] (dsp_mult.east) -- (round_sat.west);
+    \draw[dataline] (round_sat.east) -- (bypass_mux.west) 
+        node[midway, above, font=\tiny] {Lọc (0)};
+    \draw[dataline] (bypass_mux.east) -- (src_data.west);
+
+    % Bypass direct line
+    \draw[dataline, color=orange!80!black] 
+        (-3.0, 2.7) -- ++(0, 0.8) -- (6.6, 3.5) -- (bypass_mux.north)
+        node[midway, above, font=\tiny\bfseries] {Đường Bypass trực tiếp (1)};
+
+    % Control connections
+    \draw[ctrlline] (bypass_in.east) -- ++(1.0, 0) -- ++(0, 0) -- (fsm.west);
+    \draw[ctrlline] (bypass_in.east) -- ++(0.5, 0) -- ++(0, 4.6) -- (bypass_mux.north west)
+        node[pos=0.8, left, font=\tiny] {\texttt{bypass}};
+
+    \draw[ctrlline] (-4.0, 0.4) -- ++(1.2, 0) -- ++(0, -2.8) -- (fsm.north west)
+        node[pos=0.2, above, font=\tiny] {\texttt{sink\_valid}};
+    \draw[ctrlline] (fsm.west) -- ++(-0.6, 0) -- ++(0, 2.4) -- (-4.0, -0.8)
+        node[pos=0.8, above, font=\tiny] {\texttt{sink\_ready}};
+
+    \draw[ctrlline] (src_ready.west) -- ++(-0.8, 0) -- ++(0, -1.8) -- (fsm.north east)
+        node[pos=0.2, above, font=\tiny] {\texttt{source\_ready}};
+    \draw[ctrlline] (fsm.east) -- ++(0.8, 0) -- ++(0, 3.6) -- (8.4, 0.4)
+        node[pos=0.8, above, font=\tiny] {\texttt{source\_valid}};
+
+    \draw[ctrlline] (fsm.north) -- (rom.south)
+        node[midway, right, font=\tiny] {\texttt{step[3:0]}};
+
+\end{tikzpicture}

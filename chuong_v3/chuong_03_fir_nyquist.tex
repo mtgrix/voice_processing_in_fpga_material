@@ -1,0 +1,103 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 3. Bước làm mềm mép Nyquist: khối FIR tùy chọn}
+\addcontentsline{toc}{section}{Chương 3. Bước làm mềm mép Nyquist: khối FIR tùy chọn}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất vật lý và toán học của hiện tượng tràn búp phổ qua tần số Nyquist khi nhân tín hiệu thoại với cửa sổ thời gian hữu hạn, giải mã nguồn gốc dao động đổi dấu luân phiên $(-1)^\tau$ phá hủy đỉnh hàm tự tương quan $r(\tau)$.
+    \item Nắm vững lịch sử thuật toán: đối chiếu giải pháp ``làm mềm phổ mép Nyquist'' (soft upsampling) trong bài báo Boersma (1993) với mã nguồn thực tế của Praat 7.0.03; làm rõ sự thật phũ phàng rằng Praat hiện hành không thực hiện bước lọc này trong đường tự tương quan thô (\texttt{raw autocorrelation}).
+    \item Khảo sát định lượng 4 phương án thiết kế bộ lọc FIR (Bypass, 31 tap, 63 tap, 127 tap) qua thuật toán bình phương tối thiểu \texttt{firls}; vạch trần sai lầm phổ biến khi nhầm lẫn giữa độ phân giải lượng tử hóa hệ số (16 bit $\approx 96\text{ dB}$) và độ suy hao dải chặn bị khống chế bởi công thức Kaiser.
+    \item Phân tích cặn kẽ khái niệm trễ nhóm (group delay) $\tau_g = (N-1)/2$ của bộ lọc FIR đối xứng Type I và quy tắc bắt buộc phải dời lưới khung phân tích 15 mẫu khi kích hoạt bộ lọc.
+    \item Khảo cứu toàn diện các tham số của khối IP Intel FIR Compiler II theo tài liệu chuẩn \emph{Intel FIR Compiler II User Guide} (UG-01072); nhận diện cạm bẫy thiết lập tốc độ mẫu \texttt{Input Sample Rate} trong hệ thống đọc tệp.
+    \item Thiết kế và hiện thực hóa khối FIR 31 tap gấp thời gian (folded FIR) bằng Verilog-2001, tích hợp bộ tiền cộng (pre-adder) 17 bit và 1 bộ nhân DSP duy nhất chạy 16 chu kỳ/mẫu, tích hợp công tắc chuyển mạch \texttt{bypass} thời gian thực.
+    \item Xây dựng mô hình song sinh Python bit-đối-bit và kịch bản kiểm thử chu kỳ với hơn 3.000 chu kỳ kích thích ngẫu nhiên, kiểm chứng đáp ứng xung, sóng sin 7,8 kHz và tín hiệu âm thanh thực tế.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{3.1. Bản chất hiện tượng rò rỉ phổ mép Nyquist và dao động đổi dấu trong tự tương quan}
+\addcontentsline{toc}{subsection}{3.1. Bản chất hiện tượng rò rỉ phổ mép Nyquist và dao động đổi dấu trong tự tương quan}
+
+\subsubsection*{Vấn đề thực tế: Một thành phần gần 8 kHz phá hỏng đỉnh tự tương quan như thế nào?}
+Trong hệ thống xử lý tín hiệu tiếng nói với tần số lấy mẫu $f_s = 16.000\text{ Hz}$, tần số giới hạn Nyquist là $f_{\text{Nyq}} = f_s / 2 = 8.000\text{ Hz}$. Theo định lý lấy mẫu Nyquist--Shannon, mọi dao động có tần số thực sự nhỏ hơn $8\text{ kHz}$ đều được bảo toàn trọn vẹn và không bị hiện tượng chồng phổ (aliasing).
+
+Tuy nhiên, trong bài toán ước lượng cao độ $F_0$, chúng ta không bao giờ xử lý một tín hiệu tuần hoàn vô hạn. Thuật toán bắt buộc phải cắt tín hiệu thành từng khung ngắn có độ dài hữu hạn thông qua một hàm cửa sổ thời gian $w[n]$ (cửa sổ Hanning 638 mẫu, thời lượng $T_w \approx 40\text{ ms}$). Về mặt toán học, phép nhân hai dãy tín hiệu trong miền thời gian tương đương với phép tích chập (convolution) giữa phổ của tín hiệu $X(f)$ và phổ của hàm cửa sổ $W(f)$ trong miền tần số liên tục:
+\begin{equation}
+X_w(f) = X(f) * W(f) = \int_{-f_{\text{Nyq}}}^{f_{\text{Nyq}}} X(\xi) \, W(f - \xi) \, d\xi
+\end{equation}
+
+Cửa sổ Hanning có độ rộng búp phổ chính (main lobe) tỷ lệ nghịch với độ dài cửa sổ: $\Delta f \approx 4 / T_w = 4 / 0{,}04\text{ s} = 100\text{ Hz}$, kèm theo chuỗi các búp sóng phụ (side lobes) suy giảm với tốc độ $18\text{ dB/octave}$. Giả sử trong giọng nói xuất hiện một thành phần năng lượng cao tần nằm sát mép phổ, chẳng hạn ở tần số $7{,}8\text{ kHz}$ (họa âm bậc cao của âm thanh thanh môn, phụ âm ma sát vô thanh $/s/, /\int/$, hoặc nhiễu môi trường). Do độ rộng của búp phổ cửa sổ, năng lượng tại $7{,}8\text{ kHz}$ sau tích chập sẽ bị loang rộng sang hai phía. Búp phổ phía trên sẽ tràn vượt qua ranh giới Nyquist $8{,}0\text{ kHz}$, phản xạ ngược vào dải tần số $[0, 8\text{ kHz}]$ và gây ra hiện tượng rò rỉ phổ (spectral leakage).
+
+\subsubsection*{Dẫn xuất toán học: Nguồn gốc sóng dao động đổi dấu luân phiên $(-1)^\tau$}
+Hậu quả nghiêm trọng nhất của hiện tượng rò rỉ mép Nyquist không nằm ở việc méo dạng biên độ, mà nằm ở tác động phá hủy cấu trúc của hàm tự tương quan $r(\tau)$.
+
+Hãy xét một dao động hình sin đơn tần nằm đúng tại tần số Nyquist: $f = f_{\text{Nyq}} = 8.000\text{ Hz}$. Chu kỳ thời gian của dao động này là $T_0 = 1 / 8000\text{ s} = 125\text{ }\mu\text{s}$, tương ứng với đúng 2 khoảng lấy mẫu rời rạc ($T_0 / T_s = 2\text{ mẫu}$). Khi được lấy mẫu ở các thời điểm rời rạc $n$, giá trị của tín hiệu có dạng:
+\begin{equation}
+x[n] = A \cos\left(2\pi \frac{f_{\text{Nyq}}}{f_s} n + \phi_0\right) = A \cos(\pi n + \phi_0)
+\end{equation}
+Nếu chọn pha ban đầu $\phi_0 = 0$, tín hiệu này trở thành một chuỗi xung luân phiên đổi dấu giữa hai giá trị cực đại:
+\begin{equation}
+x[n] = A \cdot (-1)^n \quad \implies \quad x = [A, -A, A, -A, A, -A, \dots]
+\end{equation}
+
+Khi tính toán hàm tự tương quan thô $R[\tau] = \sum_{n=0}^{N-1-\tau} x[n] x[n+\tau]$ cho độ trễ $\tau$:
+\begin{equation}
+x[n] \cdot x[n+\tau] = \big(A (-1)^n\big) \cdot \big(A (-1)^{n+\tau}\big) = A^2 (-1)^{2n+\tau} = A^2 \big((-1)^2\big)^n (-1)^\tau = A^2 (-1)^\tau
+\end{equation}
+Bởi vì $(-1)^{2n} = 1$ với mọi số nguyên $n$, tích của hai mẫu cách nhau $\tau$ bước hoàn toàn độc lập với vị trí thời gian $n$, và chỉ phụ thuộc duy nhất vào tính chẵn lẻ của độ trễ $\tau$:
+\begin{equation}
+R[\tau] = \sum_{n=0}^{N-1-\tau} A^2 (-1)^\tau = (N - \tau) A^2 \cdot (-1)^\tau = 
+\begin{cases} 
++(N - \tau) A^2 & \text{khi } \tau \text{ là số chẵn} \\
+-(N - \tau) A^2 & \text{khi } \tau \text{ là số lẻ}
+\end{cases}
+\end{equation}
+
+Biểu thức trên chỉ ra một sự thật vật lý cốt lõi: \textbf{Mọi thành phần tần số nằm sát mép Nyquist đều tạo ra một sóng dao động đổi dấu liên tục dạng $(-1)^\tau$ trong miền độ trễ $\tau$}.
+
+\subsubsection*{Tính tay trên một chuỗi cụ thể}
+Để thấy rõ hiện tượng trên bằng mắt, hãy lấy một đoạn tín hiệu ngắn $N = 4$ mẫu đổi dấu tuần hoàn với biên độ $A = 2$: $x = [2, -2, 2, -2]$. Ta tính lần lượt các giá trị tự tương quan $R[\tau]$ từ $\tau = 0$ đến $\tau = 3$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Với $\tau = 0$: $R[0] = 2^2 + (-2)^2 + 2^2 + (-2)^2 = 4 + 4 + 4 + 4 = \textbf{+16}$.
+    \item Với $\tau = 1$: $R[1] = 2(-2) + (-2)(2) + 2(-2) = -4 - 4 - 4 = \textbf{-12}$.
+    \item Với $\tau = 2$: $R[2] = 2(2) + (-2)(-2) = 4 + 4 = \textbf{+8}$.
+    \item Với $\tau = 3$: $R[3] = 2(-2) = \textbf{-4}$.
+\end{itemize}
+Dãy kết quả thu được là $R = [+16, -12, +8, -4]$: biên độ dao động xen kẽ dấu dương--âm với bước nhảy giữa hai lag kế tiếp lên tới 28 đơn vị!
+
+Trong tín hiệu tiếng nói thực tế, tín hiệu dây thanh đới tạo ra một vòm tự tương quan trơn nhẵn với đỉnh cực đại nằm tại chu kỳ cơ bản $\tau_0 \in [27, 213]$ (ví dụ $\tau_0 = 100$ mẫu tương ứng $F_0 = 160\text{ Hz}$). Khi sóng đổi dấu $(-1)^\tau$ của thành phần cao tần chồng lấn lên vòm tự tương quan này, nó tạo thành một dải gai nhọn răng cưa (jagged teeth) biến thiên cực nhanh theo từng bước nhảy $\Delta \tau = 1$. 
+
+Khi thuật toán parabol interpolation ở Chương 9 khớp đường cong bậc hai qua ba điểm lân cận $(R[\tau-1], R[\tau], R[\tau+1])$:
+\begin{equation}
+\delta = \frac{R[\tau-1] - R[\tau+1]}{2(2R[\tau] - R[\tau-1] - R[\tau+1])}
+\end{equation}
+Nếu $R[\tau]$ rơi vào lag chẵn, nó bị đội lên một lượng $+A^2$; trong khi hai điểm bên cạnh $\tau \pm 1$ là lag lẻ nên bị kéo tụt xuống một lượng $-A^2$. Mẫu số parabol bị phóng đại nhân tạo, làm đỉnh bị bóp nhọn bất thường. Ngược lại, nếu đỉnh thật rơi vào một lag lẻ, giá trị $R[\tau]$ bị triệt tiêu âm, biến đỉnh cực đại thành một điểm uốn hoặc một thung lũng cục bộ, khiến thuật toán bỏ sót hoàn toàn ứng viên cao độ!
+
+\subsubsection*{Đề xuất của Boersma (1993) và sự thật phũ phàng trong mã nguồn Praat hiện hành}
+Để khắc phục hiện tượng răng cưa mép Nyquist nói trên, Paul Boersma trong công trình nền tảng năm 1993 (\emph{Accurate short-term analysis of the fundamental frequency and the harmonics-to-noise ratio of a sampled sound}, Proceedings of the Institute of Phonetic Sciences, Amsterdam, Tập 17, Mục 3.1) đã đề xuất quy trình mang tên ``làm mềm phổ'' (soft upsampling / spectral smoothing):
+\begin{quote}
+``Trước khi phân tích tự tương quan, phổ của tín hiệu âm thanh được làm mềm tuyến tính từ mức $1{,}0$ tại $95\%$ tần số Nyquist ($7{,}6\text{ kHz}$) dốc đều về $0$ tại $100\%$ tần số Nyquist ($8{,}0\text{ kHz}$) thông qua biến đổi Fourier nhanh FFT.''
+\end{quote}
+Mục tiêu của hàm dốc $5\%$ dải tần này là triệt tiêu hoàn toàn năng lượng ở sát biên $8\text{ kHz}$ trước khi thực hiện tích chập với cửa sổ Hanning, từ đó ngăn chặn tận gốc hiện tượng tràn phổ và dập tắt sóng đổi dấu $(-1)^\tau$.
+
+\textbf{Sự thật phũ phàng (Sự thật cần nói thẳng):} Khi tiến hành rà soát từng dòng mã nguồn chính thức của Praat các phiên bản 6.4.12 và 7.0.03 (tệp \texttt{fon/Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE), chúng ta phát hiện một sự thật kỹ thuật mang tính quyết định:
+\begin{center}
+\textbf{Praat 7.0.03 hoàn toàn KHÔNG thực hiện bất kỳ bước upsampling, resample hay lọc trước làm mềm phổ nào trong luồng xử lý tự tương quan thô (\texttt{To Pitch (raw autocorrelation)...})!}
+\end{center}
+Boersma đã loại bỏ bước tiền xử lý này trong các bản phát hành chính thức của Praat từ nhiều năm qua. Lý do là vì ở khâu xác định đỉnh tinh xảo, Praat sử dụng thuật toán nội suy \texttt{sinc70} kết hợp tìm kiếm cực trị Brent (\texttt{Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE). Thuật toán nội suy sinc tái tạo lại hàm tương quan liên tục trong miền thời gian thực, vốn đã có khả năng triệt tiêu các sai số rời rạc hóa mà không cần phải can thiệp làm méo dải tần số cao của tín hiệu gốc.
+
+\subsubsection*{Hệ quả đối soát và quyết định thiết kế trên FPGA}
+Sự sai khác giữa bài báo lý thuyết năm 1993 và mã nguồn thực tế dẫn đến một hệ quả kỹ thuật trực tiếp:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu hệ thống FPGA mặc định kích hoạt một khối lọc FIR làm mềm mép Nyquist trong khi phần mềm Praat chuẩn trên máy tính không bật, chúng ta đang \textbf{tự tạo ra một nguồn sai lệch nhân tạo} giữa hai hệ thống. Bộ lọc FIR sẽ làm thay đổi biên độ, làm trôi pha và làm lệch nhẹ các đỉnh tự tương quan của FPGA so với Praat, khiến việc đối soát trở nên bất bình đẳng (khác biệt về thuật toán chứ không phải sai số phần cứng).
+    \item Tuy nhiên, việc trang bị khối lọc FIR làm mềm mép Nyquist lại mang giá trị nghiên cứu kỹ thuật to lớn: nó cho phép kỹ sư đo đạc định lượng xem việc triệt tiêu dải tần sát Nyquist có thực sự cải thiện độ chính xác $F_0$ trên các đoạn âm ma sát hay không, và đánh giá chi phí phần cứng của một khối lọc số tiêu chuẩn công nghiệp trên FPGA.
+\end{itemize}
+
+\textbf{Quyết định thiết kế (Đã chốt):} Hệ thống trên FPGA sẽ hiện thực một khối lọc FIR 31 tap tùy chọn, tích hợp sẵn đường rẽ nhánh \textbf{\texttt{bypass}}. 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khi chạy đối soát chuẩn với Praat 7.0.03: khối FIR được \textbf{mặc định cấu hình bypass} (\texttt{bypass = 1}). Dữ liệu âm thanh từ FIFO đi thẳng vào bộ nhớ RAM chia khung mà không qua lọc, đảm bảo đầu vào của FPGA và Praat giống nhau từng bit.
+    \item Khi cần nghiên cứu thực nghiệm: người dùng bật cờ \texttt{fir\_bypass = 0} thông qua thanh ghi điều khiển \texttt{ctrl} từ HPS. Lúc này khối FIR 31 tap hoạt động, và hệ thống bắt buộc phải dời lưới định vị khung thời gian lùi lại đúng 15 mẫu để bù trừ trễ nhóm.
+\end{itemize}
+
+\textit{Tóm lại: Thành phần gần Nyquist sinh ra sóng đổi dấu $(-1)^\tau$ phá hủy đỉnh tự tương quan; Boersma 1993 đề xuất làm mềm phổ nhưng Praat 7.0.03 đã bỏ bước này; vì vậy khối FIR 31 tap trên FPGA được thiết kế kèm công tắc bypass và mặc định tắt khi đối soát.}

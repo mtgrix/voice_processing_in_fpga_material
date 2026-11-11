@@ -1,0 +1,95 @@
+% chuong_v3/fig_ch03_freq_response.tex
+% Frequency response comparison of FIR filter options (31, 63, 127 taps) and Boersma 1993 soft transition
+\begin{tikzpicture}[>=stealth, font=\small]
+
+    % Styles
+    \tikzstyle{gridline}  = [dashed, color=gray!30, line width=0.5pt]
+    \tikzstyle{axisline}  = [thick, color=black!80]
+    \tikzstyle{curve31}   = [very thick, color=blue!80!black]
+    \tikzstyle{curve63}   = [thick, dashed, color=teal!80!black]
+    \tikzstyle{curve127}  = [thick, dashdotted, color=purple!80!black]
+    \tikzstyle{curvetarget}= [thick, dotted, color=red!80!black, line width=1.0pt]
+
+    % Frame Boundary / Background
+    \draw[draw=gray!40, fill=white, rounded corners=6pt, thin] (-1.5, -0.8) rectangle (12.2, 5.0);
+
+    % Title
+    \node[anchor=north west, font=\footnotesize\bfseries, color=blue!90!black] at (-1.3, 4.8)
+        {Đáp ứng tần số biên độ $|H(f)|$ (dB) của các phương án bộ lọc FIR tại $f_s = 16\text{ kHz}$};
+
+    % Coordinates mapping:
+    % x: 0 kHz -> 0.0, 8 kHz -> 10.8 cm (x = (f/1000) * 1.35)
+    % y: 0 dB -> 3.5 cm, -10 dB -> 2.3 cm, -20 dB -> 1.1 cm, -30 dB -> -0.1 cm (y = 3.5 + dB * 0.12)
+
+    % Horizontal Grid Lines and Y-Ticks
+    \foreach \db/\y/\lbl in {0/3.50/{0}, -5/2.90/{-5}, -10/2.30/{-10}, -15/1.70/{-15}, -20/1.10/{-20}, -25/0.50/{-25}, -30/-0.10/{-30}} {
+        \draw[gridline] (0.0, \y) -- (10.8, \y);
+        \node[anchor=east, font=\scriptsize, color=gray!90!black] at (-0.1, \y) {\lbl};
+    }
+    \node[anchor=east, font=\scriptsize\bfseries, color=black!80] at (-0.7, 3.5) {(dB)};
+
+    % Vertical Grid Lines and X-Ticks
+    \foreach \f/\x/\lbl in {0/0.0/{0}, 1/1.35/{1}, 2/2.70/{2}, 3/4.05/{3}, 4/5.40/{4}, 5/6.75/{5}, 6/8.10/{6}, 7/9.45/{7}, 7.6/10.26/{7{,}6}, 8/10.80/{8}} {
+        \draw[gridline] (\x, -0.1) -- (\x, 3.8);
+        \node[anchor=north, font=\scriptsize, color=gray!90!black] at (\x, -0.15) {\lbl};
+    }
+    \node[anchor=north, font=\scriptsize\bfseries, color=black!80] at (10.8, -0.45) {Tần số (kHz)};
+
+    % Transition band highlight: [7.6 kHz, 8.0 kHz]
+    \fill[orange!10, opacity=0.7] (10.26, -0.1) rectangle (10.80, 3.8);
+    \node[anchor=south, font=\tiny\bfseries, color=orange!80!black] at (10.53, 3.82) {Dải chuyển 400 Hz};
+
+    % 0 dB reference line (solid)
+    \draw[thick, color=gray!60] (0.0, 3.5) -- (10.8, 3.5);
+
+    % Target ideal falloff (Boersma 1993: flat to 7.6 kHz, linear to 0 at 8.0 kHz)
+    % 0 dB up to 7.6 kHz (x=10.26), then linear slope down
+    \draw[curvetarget] (0.0, 3.5) -- (10.26, 3.5) -- (10.80, 0.0);
+
+    % N = 31 curve
+    \draw[curve31] 
+        (0.00,3.52) -- (0.27,3.51) -- (0.54,3.49) -- (0.81,3.49) -- (1.08,3.50) --
+        (1.35,3.52) -- (1.62,3.51) -- (1.89,3.49) -- (2.16,3.48) -- (2.43,3.50) --
+        (2.70,3.52) -- (2.97,3.51) -- (3.24,3.49) -- (3.51,3.48) -- (3.78,3.50) --
+        (4.05,3.52) -- (4.32,3.52) -- (4.59,3.49) -- (4.86,3.48) -- (5.13,3.49) --
+        (5.40,3.52) -- (5.67,3.52) -- (5.94,3.50) -- (6.21,3.48) -- (6.48,3.49) --
+        (6.75,3.52) -- (7.02,3.53) -- (7.29,3.50) -- (7.56,3.47) -- (7.83,3.47) --
+        (8.10,3.52) -- (8.37,3.54) -- (8.64,3.51) -- (8.91,3.45) -- (9.18,3.45) --
+        (9.45,3.53) -- (9.72,3.60) -- (9.99,3.52) -- (10.26,3.23) -- (10.53,2.72) -- (10.80,2.37);
+
+    % N = 63 curve
+    \draw[curve63] 
+        (0.00,3.50) -- (0.54,3.50) -- (1.08,3.50) -- (1.62,3.50) -- (2.16,3.50) --
+        (2.70,3.50) -- (3.24,3.50) -- (3.78,3.50) -- (4.32,3.50) -- (4.86,3.50) --
+        (5.40,3.50) -- (5.94,3.50) -- (6.48,3.50) -- (7.02,3.50) -- (7.56,3.50) --
+        (8.10,3.50) -- (8.64,3.50) -- (9.18,3.49) -- (9.72,3.50) -- (9.99,3.50) --
+        (10.26,3.45) -- (10.53,2.75) -- (10.80,1.16);
+
+    % N = 127 curve
+    \draw[curve127] 
+        (0.00,3.50) -- (1.08,3.50) -- (2.16,3.50) -- (3.24,3.50) -- (4.32,3.50) --
+        (5.40,3.50) -- (6.48,3.50) -- (7.56,3.50) -- (8.64,3.50) -- (9.45,3.50) --
+        (9.99,3.49) -- (10.26,3.47) -- (10.53,2.79) -- (10.80,0.60);
+
+    % Distinct annotations at Nyquist (8.0 kHz)
+    \node[anchor=west, font=\tiny\bfseries, color=blue!80!black]   at (10.85, 2.37) {31 tap: $-9{,}4\text{ dB}$};
+    \node[anchor=west, font=\tiny\bfseries, color=teal!80!black]   at (10.85, 1.16) {63 tap: $-19{,}5\text{ dB}$};
+    \node[anchor=west, font=\tiny\bfseries, color=purple!80!black] at (10.85, 0.60) {127 tap: $-24{,}2\text{ dB}$};
+
+    % Legend Box (placed top-left inside graph)
+    \draw[draw=gray!50, fill=white, rounded corners=3pt, thin] (0.4, 0.2) rectangle (4.6, 2.0);
+    \node[anchor=north west, font=\tiny\bfseries, color=black!85] at (0.5, 1.95) {Chú giải phương án:};
+    \draw[curve31] (0.6, 1.55) -- (1.2, 1.55);
+    \node[anchor=west, font=\tiny] at (1.25, 1.55) {Phương án (b): 31 tap (chọn, trễ 15)};
+    \draw[curve63] (0.6, 1.15) -- (1.2, 1.15);
+    \node[anchor=west, font=\tiny] at (1.25, 1.15) {Phương án (c): 63 tap (trễ 31)};
+    \draw[curve127] (0.6, 0.75) -- (1.2, 0.75);
+    \node[anchor=west, font=\tiny] at (1.25, 0.75) {Phương án (d): 127 tap (trễ 63)};
+    \draw[curvetarget] (0.6, 0.35) -- (1.2, 0.35);
+    \node[anchor=west, font=\tiny] at (1.25, 0.35) {Boersma 1993 (đích lý thuyết)};
+
+    % Axis Frame
+    \draw[axisline] (0.0, -0.1) -- (10.8, -0.1);
+    \draw[axisline] (0.0, -0.1) -- (0.0, 3.8);
+
+\end{tikzpicture}
