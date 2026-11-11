@@ -761,7 +761,7 @@ Người phản biện (reviewer) sẽ thực thi trực tiếp kịch bản nà
 cd verify_v3 && ./run_ch09_iverilog.sh
 \end{lstlisting}
 
-\todo{box: reviewer fills real numbers after running run\_ch09\_iverilog.sh}
+Kết quả chạy thật trên Linux (Icarus Verilog 12, nhật ký \path{verify_v3/ch09_iverilog_run.log}): \texttt{tb\_ch09\_div} so khớp $12\,456/12\,456$ chu kỳ với 0 lỗi; \texttt{tb\_ch09\_calc} so khớp $2\,593/2\,593$ chu kỳ với 0 lỗi, kể cả thời điểm \texttt{out\_valid} của cả 6 khung.
 
 \subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
 Đối với phần mềm điều khiển chạy trên lõi ARM Cortex-A9 thuộc hệ thống con HPS, tệp \path{sw_v3/ch09_f0.c} cung cấp bản hiện thực hóa tham chiếu C chuẩn xác. Tệp kiểm thử đơn vị \path{sw_v3/test_ch09_f0.c} đã được biên dịch và chạy thật thành công bằng trình biên dịch GCC trên máy tính:
