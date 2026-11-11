@@ -130,6 +130,17 @@ Phương án & Số tap ($N$) & Trễ $\tau_g$ & Tại $7{,}4\text{ kHz}$ & Tạ
 \end{tabular}
 \end{table}
 
+\paragraph{Độ lợi một chiều (DC gain) của các hệ số lượng tử hóa.}
+Từ kết quả thiết kế và lượng tử hóa trong nhật ký kiểm thử \texttt{verify\_v3/ch03\_fir\_design.log}, tổng của 31 hệ số sau khi lượng tử hóa sang định dạng số nguyên Q1.15 là:
+\begin{equation}
+\sum_{i=0}^{30} h_{\text{Q1.15}}[i] = 33.257
+\end{equation}
+Với hệ số tỷ lệ cơ sở $2^{15} = 32.768$, độ lợi một chiều (DC gain) thực tế của bộ lọc sau lượng tử hóa là:
+\begin{equation}
+G_{\text{DC}} = \frac{33257}{32768} \approx 1{,}01492 \quad \left(\approx +0{,}128\text{ dB}\right)
+\end{equation}
+Độ lợi này hơi lớn hơn $1{,}0$ một lượng nhỏ ($+1{,}49\%$). Trong thiết kế mạch, chúng tôi \textbf{không thực hiện chuẩn hóa lại} (không chia thêm hệ số tỷ lệ) vì mức gợn $+0{,}13\text{ dB}$ hoàn toàn nằm trong dung sai $\pm 0{,}25\text{ dB}$ cho phép của dải thông tiếng nói, đồng thời việc giữ nguyên các giá trị nguyên giúp kiến trúc phần cứng không phát sinh thêm phép chia hay sai số cắt xén phụ. Tuy nhiên, hệ quả trực tiếp của độ lợi $G_{\text{DC}} = 1{,}0149$ là khi tín hiệu vào đạt giá trị DC cực đại $x[n] = 32767$, giá trị tích lũy làm tròn sẽ đạt $33256 > 32767$. Do đó, khâu bão hòa (clamping/saturation) ở đầu ra là \textbf{bắt buộc} để ghim biên độ về đúng $+32767$, ngăn chặn hoàn toàn hiện tượng lật dấu bit bù hai.
+
 \begin{figure}[htbp]
 \centering
 \input{chuong_v3/fig_ch03_freq_response.tex}
@@ -212,21 +223,23 @@ Tuy nhiên, khối IP là một hộp đen phần cứng: nếu kỹ sư tích c
 
 Dưới đây, chúng tôi giải mã chi tiết từng tham số cấu hình của khối IP FIR Compiler II cho bài toán lọc làm mềm mép Nyquist 31 tap.
 
-\subsubsection*{Giải thích cặn kẽ từng tham số trong Parameter Editor}
+\subsubsection*{Giải thích cặn kẽ từng tham số trong Parameter Editor theo tài liệu UG-01072}
 
-\paragraph{1. Filter Type = Single Rate (Tỷ lệ lấy mẫu đơn).}
-Tham số này xác định mối quan hệ giữa tốc độ lấy mẫu ở đầu vào và đầu ra của bộ lọc (\emph{User Guide}, Mục 3.1). Chúng tôi cấu hình \texttt{Single Rate} vì hệ thống đang thực hiện lọc phẳng dải thông mà không thay đổi tần số lấy mẫu ($f_s = 16\text{ kHz}$ ở cả hai đầu). 
-Nếu chọn \texttt{Interpolation} (nội suy tăng mẫu) hoặc \texttt{Decimation} (hạ mẫu), IP sẽ chèn thêm số 0 hoặc bỏ bớt mẫu, làm thay đổi tỷ lệ thời gian của tín hiệu âm thanh và phá vỡ cấu trúc khung 638 mẫu của Praat.
+Mọi tham số cấu hình, dải giá trị cho phép và quy ước cổng của khối IP Intel FIR Compiler II dưới đây đều được đối chiếu chặt chẽ theo tài liệu kỹ thuật \emph{Intel FIR Compiler II User Guide} (Mã tài liệu: UG-01072, ấn bản 683111):
 
-\paragraph{2. Symmetry = Symmetrical (Cấu trúc hệ số đối xứng chẵn).}
-Hệ số bộ lọc thỏa mãn tính chất đối xứng qua tâm: $h[k] = h[30 - k]$ với $k = 0..14$ và $h[15]$ là hệ số trung tâm. Việc kích hoạt tùy chọn \texttt{Symmetrical} cho phép trình biên dịch IP của Intel tận dụng khối phần cứng \textbf{Pre-adder (Bộ tiền cộng 18-bit)} tích hợp sẵn bên trong các khối DSP chuyên dụng của kiến trúc Cyclone V (\emph{Cyclone V Device Handbook}, Tập 1, Chương 5).
-Thay vì phải thực hiện 31 phép nhân riêng biệt, phần cứng sẽ cộng hai mẫu đối xứng trước: $x[n-k] + x[n-(30-k)]$, sau đó mới nhân với hệ số chung $h[k]$. Nhờ vậy, số lượng phép nhân số học cần thực hiện giảm đúng một nửa: từ 31 phép nhân xuống còn $15 + 1 = 16$ phép nhân, tiết kiệm $50\%$ tài nguyên bộ nhân trên chip.
+\paragraph{1. Filter Type = Single Rate (UG-01072, Mục 3.1 ``Filter Options'').}
+Tham số này xác định quan hệ giữa tốc độ lấy mẫu đầu vào và đầu ra. Dải giá trị cho phép của IP bao gồm: \texttt{Single Rate}, \texttt{Interpolation}, \texttt{Decimation}, và \texttt{Fractional Rate} (UG-01072, Mục 3.1). Chúng tôi chọn \texttt{Single Rate} vì hệ thống thực hiện lọc phẳng dải thông mà không thay đổi tần số lấy mẫu ($f_s = 16\text{ kHz}$ ở cả hai đầu). 
+Nếu chọn \texttt{Interpolation} hoặc \texttt{Decimation}, IP sẽ thay đổi số lượng mẫu, làm sai lệch cấu trúc khung 638 mẫu của thuật toán Praat.
 
-\paragraph{3. Clock Rate = 50.0 MHz.}
-Tần số xung nhịp đồng hồ chủ cấp cho khối IP, lấy trực tiếp từ bộ dao động trên bo mạch DE10-Standard. Ở tần số 50 MHz, mỗi chu kỳ xung nhịp có thời lượng đúng $T_{\text{clk}} = 20\text{ ns}$.
+\paragraph{2. Symmetry = Symmetrical (UG-01072, Mục 3.1 ``Filter Options'').}
+Dải tùy chọn cấu trúc đối xứng hệ số gồm: \texttt{Non-symmetrical}, \texttt{Symmetrical}, và \texttt{Anti-symmetrical} (UG-01072, Mục 3.1). Với 31 tap có $h[k] = h[30 - k]$ ($k = 0..14$), việc chọn \texttt{Symmetrical} cho phép IP tận dụng khối phần cứng \textbf{Pre-adder (Bộ tiền cộng 18-bit)} tích hợp sẵn trong các khối DSP của chip Cyclone V (\emph{Cyclone V Device Handbook}, Tập 1, Chương 5).
+Nhờ cộng trước hai mẫu đối xứng $x[n-k] + x[n-(30-k)]$, số phép nhân số học giảm đúng một nửa: từ 31 xuống còn $15 + 1 = 16$ phép nhân, tiết kiệm $50\%$ tài nguyên bộ nhân DSP trên FPGA.
 
-\paragraph{4. Input Sample Rate = 0.5 MSPS (Cạm bẫy thiết lập tốc độ dòng dữ liệu).}
-Đây là tham số kỹ thuật tiềm ẩn nhiều rủi ro nhất khi cấu hình IP trong hệ thống xử lý tệp.
+\paragraph{3. Clock Frequency = 50.0 MHz (UG-01072, Mục 3.1 ``Filter Options'').}
+Tham số xác định tần số xung nhịp chủ cấp cho khối IP (dải giá trị: số thực dương trong phạm vi Fmax của linh kiện; ở đây chọn 50.0 MHz từ dao động kế bo mạch DE10-Standard, chu kỳ $T_{\text{clk}} = 20\text{ ns}$).
+
+\paragraph{4. Input Sample Rate = 0.5 MSPS (UG-01072, Mục 3.1 ``Filter Options'').}
+Dải giá trị: số thực dương $\le \text{Clock Frequency}$. Đây là tham số kỹ thuật tiềm ẩn nhiều rủi ro nhất khi cấu hình IP trong hệ thống xử lý tệp:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \emph{Cạm bẫy thiết lập $0{,}016\text{ MSPS}$ ($16\text{ kHz}$):} Rất nhiều người lập trình theo quán tính sẽ điền vào ô này giá trị $0{,}016\text{ MSPS}$ vì tín hiệu âm thanh có tần số lấy mẫu là $16\text{ kHz}$. Tuy nhiên, như đã phân tích sâu sắc ở Chương 2, hệ thống ước lượng cao độ của chúng ta đọc dữ liệu từ tệp WAV trong bộ nhớ RAM thông qua bộ đệm FIFO (file-driven processing), hoàn toàn không bị trói buộc bởi nhịp lấy mẫu $16\text{ kHz}$ của micro ngoại vi! Khi bộ nhớ FIFO có sẵn dữ liệu và khối lọc sẵn sàng, các mẫu âm thanh có thể được chuyển giao với tốc độ hàng triệu mẫu/giây. Nếu ta khai báo $0{,}016\text{ MSPS}$, khối IP FIR Compiler II sẽ tính toán tỷ lệ chia sẻ thời gian nội bộ:
     \begin{equation}
@@ -236,32 +249,32 @@ Tần số xung nhịp đồng hồ chủ cấp cho khối IP, lấy trực ti�
     \item \emph{Giải pháp đúng đắn:} Thiết lập \texttt{Input Sample Rate} bằng tốc độ tiếp nhận tối đa thực tế của hệ thống, ví dụ chọn $0{,}5\text{ MSPS}$ (tương ứng với $50\text{ MHz} / 0{,}5\text{ MSPS} = 100\text{ chu kỳ/mẫu}$) hoặc $1{,}0\text{ MSPS}$ ($50\text{ chu kỳ/mẫu}$). Cấu hình này ép buộc IP phải bố trí đủ phần cứng để có thể hoàn tất việc tiếp nhận và xử lý một mẫu mới trong vòng 100 chu kỳ xung nhịp, hoàn toàn đáp ứng thông lượng dòng dữ liệu và tương thích với nhịp độ xử lý của khối MAC phía sau ($\approx 616\text{ chu kỳ/mẫu}$).
 \end{itemize}
 
-\paragraph{5. Coefficient Width = 16 bit, Coefficient Scaling = Auto/Normalized.}
-Độ rộng bit của hệ số lọc được chọn là 16-bit có dấu (signed 2's complement). Tùy chọn \texttt{Auto/Normalized} tự động nhân toàn bộ đáp ứng xung với hệ số tỷ lệ $2^{15} = 32768$ (định dạng Q1.15), đưa hệ số trung tâm $h[15] = 0{,}975000$ lên giá trị nguyên $31949$ (\texttt{0x7CCD}). Việc chuẩn hóa này tận dụng tối đa dải động 16-bit mà không gây tràn số học.
+\paragraph{5. Coefficient Width = 16 bit, Coefficient Scaling = Auto/Normalized (UG-01072, Mục 3.2 ``Coefficient Options'').}
+Độ rộng bit hệ số lọc nhận giá trị từ 1 đến 32 bit có dấu (\emph{signed integer}). Tùy chọn \texttt{Coefficient Scaling} gồm: \texttt{Auto}, \texttt{Normalized}, và \texttt{None} (UG-01072, Mục 3.2). Chọn \texttt{Auto/Normalized} để tự động nhân đáp ứng xung với hệ số tỷ lệ $2^{15} = 32768$ (định dạng Q1.15), đưa hệ số trung tâm $h[15] = 0{,}975000$ lên giá trị nguyên $31949$ (\texttt{0x7CCD}).
 
-\paragraph{6. Input Data Type = Signed Binary, Width = 16 bit, Fractional Bits = 15.}
-Định dạng số học đầu vào khớp chính xác với định dạng mẫu âm thanh PCM 16-bit có dấu đọc từ tệp WAV (khoảng giá trị $[-32768, 32767]$).
+\paragraph{6. Input Data Type = Signed Binary, Width = 16 bit, Fractional Bits = 15 (UG-01072, Mục 3.3 ``Input and Output Options'').}
+Dải tùy chọn kiểu dữ liệu đầu vào gồm: \texttt{Signed Binary} và \texttt{Unsigned Binary}; độ rộng bit từ 1 đến 32 bit; số bit phần thập phân từ 0 đến 32 bit (UG-01072, Mục 3.3). Định dạng này khớp chính xác mẫu âm thanh PCM 16-bit có dấu đọc từ tệp WAV (khoảng $[-32768, 32767]$).
 
-\paragraph{7. Output MSB/LSB Rounding và Output Bit Width.}
-Trong quá trình tính toán tích chập, mỗi phép nhân giữa mẫu 16-bit và hệ số 16-bit sinh ra tích 32-bit (với bộ tiền cộng 17-bit thì tích là 33-bit). Khi cộng dồn 31 tích (tương ứng mở rộng $\lceil \log_2(31) \rceil = 5\text{ bit}$), giá trị tích lũy nội bộ có thể đạt độ rộng tới 38-bit.
+\paragraph{7. Output MSB/LSB Rounding và Output Bit Width (UG-01072, Mục 3.3 ``Input and Output Options'').}
+Trong quá trình tích chập, mỗi phép nhân giữa mẫu 16-bit và hệ số 16-bit sinh tích 32-bit (với bộ tiền cộng 17-bit thì tích là 33-bit). Khi cộng dồn 31 tích (mở rộng $\lceil \log_2(31) \rceil = 5\text{ bit}$), giá trị tích lũy nội bộ đầy đủ có thể đạt tới 38 bit; thông số độ rộng bit đầy đủ này do GUI tự động tính toán và \textbf{phải kiểm trong GUI/IP Generation Report}.
 Để ngõ ra đưa vào bộ nhớ RAM chia khung ở Chương 4 giữ nguyên định dạng mẫu âm thanh 16-bit có dấu:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Ta cấu hình \texttt{Output Bit Width} = 16 bit signed.
-    \item \texttt{Output LSB Rounding} = \textbf{Convergent Rounding (Làm tròn hội tụ về số chẵn gần nhất)} hoặc \textbf{Nearest (Làm tròn về số nguyên gần nhất)}. Tùy chọn này cộng một nửa trọng số LSB ($2^{14} = 16384$) trước khi dịch phải 15 bit, triệt tiêu hoàn toàn sai số trôi DC so với chế độ \texttt{Truncation} (cắt cụt).
-    \item \texttt{Output MSB Rounding} = \textbf{Saturation (Bão hòa)}. Trong trường hợp tín hiệu âm thanh có các đỉnh biên độ cực hạn kết hợp với hiện tượng gợn sóng vượt ngưỡng (overshoot) của bộ lọc khiến giá trị làm tròn vượt quá $32767$, bộ bão hòa sẽ ghim giá trị tại $32767$ (thay vì để tràn bit bù hai biến thành số âm lớn $-32768$, gây méo dạng tiếng nổ cực kỳ nghiêm trọng).
+    \item \texttt{Output Bit Width} ấn định 16 bit signed (dải cho phép: 1 đến 64 bit).
+    \item \texttt{Output LSB Rounding}: Dải tùy chọn gồm \texttt{Truncation}, \texttt{Nearest Rounding}, và \texttt{Convergent Rounding} (UG-01072, Mục 3.3). Ta chọn \texttt{Convergent Rounding} hoặc \texttt{Nearest} để cộng nửa trọng số LSB ($2^{14} = 16384$) trước khi dịch phải 15 bit, triệt tiêu sai số trôi DC so với \texttt{Truncation}.
+    \item \texttt{Output MSB Rounding}: Dải tùy chọn gồm \texttt{Truncation} và \texttt{Saturation} (UG-01072, Mục 3.3). Ta chọn \texttt{Saturation} để khi biên độ vượt quá $+32767$ hoặc nhỏ hơn $-32768$, bộ bão hòa sẽ ghim giá trị tại ranh giới thay vì cuộn tràn bit dấu bù hai.
 \end{itemize}
 
-\paragraph{8. Back-pressure Support = Yes.}
-Kích hoạt giao thức bắt tay hai chiều Avalon-ST thông qua cặp tín hiệu \texttt{ready} và \texttt{valid}. Điều này đảm bảo khi hạ nguồn (khối RAM chia khung hoặc khối tự tương quan) bị bận, tín hiệu phản áp \texttt{ready} hạ xuống 0 sẽ lập tức tạm dừng luồng dữ liệu của bộ lọc FIR một cách an toàn mà không làm mất mẫu.
+\paragraph{8. Back-pressure Support = Yes và quy chuẩn readyLatency (UG-01072, Mục 4.1).}
+Kích hoạt giao thức bắt tay hai chiều Avalon-ST qua cặp tín hiệu \texttt{ready} và \texttt{valid}. Tài liệu \emph{Intel FIR Compiler II User Guide} (UG-01072, Mục 4.1 ``Avalon-ST Interfaces in FIR Compiler II'', bảng ``Avalon-ST Sink and Source Interface Signals'') quy định rõ: giao diện Avalon-ST của FIR Compiler II hoạt động với \textbf{\texttt{readyLatency = 0}} (khi \texttt{ready} và \texttt{valid} đồng thời tích cực mức cao tại cùng một chu kỳ xung nhịp thì dữ liệu được chuyển giao ngay tại chu kỳ đó).
 
-\subsubsection*{Những gì khối IP sinh ra và giao diện ghép nối phần cứng}
-Sau khi hoàn tất quá trình sinh mã trong Platform Designer hoặc IP Catalog, khối IP FIR Compiler II tạo ra một mô-đun phần cứng với các giao tiếp chuẩn sau:
+\subsubsection*{Những gì khối IP sinh ra và giao diện ghép nối phần cứng (UG-01072, Mục 4.1 \& 4.2)}
+Sau khi sinh mã trong Platform Designer hoặc IP Catalog, khối IP FIR Compiler II cung cấp các cổng kết nối chuẩn (UG-01072, Chương 4):
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Cổng điều khiển:} xung nhịp \texttt{clk} (50 MHz) và tín hiệu xóa \texttt{reset\_n}.
-    \item \textbf{Giao diện nhận (Avalon-ST Sink):} bus dữ liệu \texttt{ast\_sink\_data} (16 bit), cờ \texttt{ast\_sink\_valid}, cờ sẵn sàng \texttt{ast\_sink\_ready}, và cờ báo lỗi \texttt{ast\_sink\_error}.
-    \item \textbf{Giao diện phát (Avalon-ST Source):} bus \texttt{ast\_source\_data} (16 bit), cờ \texttt{ast\_source\_valid}, tín hiệu nhận \texttt{ast\_source\_ready}, cờ lỗi \texttt{ast\_source\_error}.
-    \item \textbf{Độ trễ xử lý (Latency):} Báo cáo sinh mã (IP Generation Report) của Intel FIR Compiler II sẽ công bố chính xác số chu kỳ xung nhịp từ khi mẫu đầu tiên được nạp vào đến khi mẫu đầu ra xuất hiện. Thông số độ trễ này phụ thuộc vào mức độ đường ống hóa nội bộ mà IP tự động phân bổ, và \textbf{phải kiểm trong mô phỏng IP hoặc báo cáo sinh mã của Quartus}.
-    \item \textbf{Tài nguyên phần cứng chiếm dụng:} Số lượng khối logic ALM, số khối nhân DSP và bộ nhớ M10K phụ thuộc vào phiên bản Quartus Prime và thuật toán Fitter tối ưu hóa, do đó con số cụ thể là \textbf{(phải đo)}.
+    \item \textbf{Cổng điều khiển (UG-01072, Mục 4.2):} xung nhịp \texttt{clk} (50 MHz) và tín hiệu xóa tích cực thấp \texttt{reset\_n}.
+    \item \textbf{Giao diện nhận Avalon-ST Sink (UG-01072, Mục 4.1):} bus dữ liệu \texttt{ast\_sink\_data[15:0]}, cờ hợp lệ \texttt{ast\_sink\_valid}, cờ sẵn sàng \texttt{ast\_sink\_ready}, và cờ báo lỗi \texttt{ast\_sink\_error[1:0]}. Chuẩn \texttt{readyLatency = 0}.
+    \item \textbf{Giao diện phát Avalon-ST Source (UG-01072, Mục 4.1):} bus \texttt{ast\_source\_data[15:0]}, cờ hợp lệ \texttt{ast\_source\_valid}, tín hiệu nhận \texttt{ast\_source\_ready}, và cờ lỗi \texttt{ast\_source\_error[1:0]}. Chuẩn \texttt{readyLatency = 0}.
+    \item \textbf{Độ trễ xử lý (Latency):} Báo cáo sinh mã (IP Generation Report) của Intel FIR Compiler II sẽ công bố chính xác số chu kỳ xung nhịp từ khi mẫu nạp vào đến khi mẫu xuất hiện. Thông số độ trễ này phụ thuộc vào mức độ đường ống hóa nội bộ mà công cụ tự động phân bổ, và \textbf{phải kiểm trong GUI/IP Generation Report}.
+    \item \textbf{Tài nguyên phần cứng chiếm dụng:} Số lượng ALM, khối nhân DSP và bộ nhớ M10K phụ thuộc vào thuật toán tối ưu hóa của Quartus Prime Fitter, do đó con số cụ thể \textbf{phải kiểm trong GUI/IP Generation Report}.
 \end{itemize}
 
 Dưới đây là đoạn mã Verilog giao diện chuẩn (instantiation template) để tích hợp khối IP FIR Compiler II vào hệ thống:
