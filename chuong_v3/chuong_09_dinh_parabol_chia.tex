@@ -81,3 +81,101 @@ Câu trả lời dứt khoát là \textbf{không}. Hãy tính bước nhảy cen
 Giá trị $10{,}78\text{ cent}$ vẫn gấp hơn \textbf{2 lần} ngưỡng nhận thức $5\text{ cent}$ của đôi tai! Hơn thế nữa, việc tạo nhánh rẽ có điều kiện (nội suy cho $\tau$ nhỏ nhưng bỏ qua cho $\tau$ lớn) chỉ làm phức tạp hóa máy trạng thái FSM và tiêu tốn thêm diện tích logic, trong khi không đem lại bất kỳ lợi ích nào về thông lượng. Do đó, phép nội suy cực trị liên tục được áp dụng đồng nhất cho mọi khung hữu thanh trên toàn dải $\tau \in [27, 213]$.
 
 \textit{Tóm lại: Lưới lấy mẫu thời gian rời rạc tạo ra bước nhảy tần số khổng lồ 16,13 Hz (55 cent) ở vùng chu kỳ ngắn; nội suy cực trị liên tục tau* là bắt buộc để vượt qua giới hạn mẫu nguyên, và định dạng Q12.4 đem lại độ phân giải cực mịn từ 0,22 đến 1,08 cent trên toàn dải cao độ tiếng nói.}
+
+\subsection*{9.2. Thuật toán của Praat 7.0.03: Điều kiện đỉnh cục bộ, dải quét và tinh chỉnh Sinc--Brent}
+\addcontentsline{toc}{subsection}{9.2. Thuật toán của Praat 7.0.03: Điều kiện đỉnh cục bộ, dải quét và tinh chỉnh Sinc--Brent}
+
+\subsubsection*{Vấn đề thực tế: Nhận diện đỉnh chu kỳ giữa muôn vàn gợn sóng nhiễu}
+Khi dãy số tự tương quan chuẩn hóa $r[\tau]$ được tính toán trên toàn bộ miền độ trễ, nó không phải là một đường cong trơn tru lý tưởng chỉ có duy nhất một đỉnh nhọn. Do hiện tượng rò rỉ phổ từ cửa sổ hữu hạn, sự biến thiên ngẫu nhiên của các họa ba bậc cao và nhiễu ồn nền, hàm $r[\tau]$ thường xuất hiện hàng chục điểm nhấp nhô cục bộ. Nếu hệ thống chọn một điểm cực đại tùy tiện không qua sàng lọc, một đỉnh nhiễu nhỏ tại $\tau = 28$ ($571\text{ Hz}$) hoàn toàn có thể đánh lừa thuật toán trong khi chu kỳ dây thanh âm thực sự nằm ở $\tau = 140$ ($114\text{ Hz}$).
+
+Để giải quyết bài toán này, phần mềm Praat 7.0.03 áp dụng một quy trình chọn lọc ứng viên nghiêm ngặt hai cấp: xác lập dải tìm kiếm vật lý, áp dụng điều kiện đỉnh 3 điểm kết hợp ngưỡng thanh âm, và xếp hạng ứng viên theo hàm điểm chi phí quãng tám.
+
+\subsubsection*{Dải quét phần cứng $[26, 214]$ và dải tìm kiếm ứng viên $[27, 213]$}
+Một câu hỏi kinh điển từng gây nhiều tranh cãi trong các tài liệu thiết kế trước đây là: \emph{"Độ trễ cực đại của FPGA là 213 hay 214 mẫu?"}
+
+Câu trả lời nằm trực tiếp tại dòng 344--345 trong tệp mã nguồn \path{fon/Sound_to_Pitch.cpp} của bản phát hành Praat 7.0.03:
+\begin{lstlisting}[language=C++, numbers=none]
+maximumLag = std::min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
+\end{lstlisting}
+
+Với chiều dài cửa sổ chuẩn hóa của Praat là $N = \text{nsamp\_window} = 638\text{ mẫu}$ và số chu kỳ tối thiểu trên mỗi cửa sổ là $\text{periodsPerWindow} = 3$ (ứng với Pitch floor $75\text{ Hz}$ tại $f_s = 16.000\text{ Hz}$):
+\begin{equation}
+\text{maximumLag} = \left\lfloor \frac{638}{3} \right\rfloor + 2 = 212 + 2 = \mathbf{214}
+\end{equation}
+
+Mặt khác, tại dòng 186 của cùng tệp mã nguồn, vòng lặp quét ứng viên của Paul Boersma được viết chính xác như sau:
+\begin{lstlisting}[language=C++, numbers=none]
+for (integer i = 2; i < maximumLag && i < brent_ixmax; i ++) {
+    if (r [i] > 0.5 * our voicingThreshold && r [i] > r [i - 1] && r [i] >= r [i + 1]) {
+\end{lstlisting}
+
+Hãy phân tích hai đầu mút của vòng lặp này:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Ở cận dưới:} Tần số trần là $F_{\text{ceiling}} = 600\text{ Hz}$, tương ứng với độ trễ tối thiểu $\text{minimumLag} = \lfloor 16.000 / 600 \rfloor = 26\text{ mẫu}$. Tại $\tau = 26$, tần số tương ứng là $16.000 / 26 \approx 615{,}38\text{ Hz} > 600\text{ Hz}$, vượt ra ngoài ngưỡng trần nên Praat tự động coi là vô thanh. Điểm $\tau = 26$ bắt buộc phải được tính toán hàm tương quan $U[26]$, nhưng chỉ đóng vai trò là \textbf{hàng xóm bên trái} $r[i-1]$ cho ứng viên đầu tiên tại $\tau = 27$ ($16.000 / 27 \approx 592{,}59\text{ Hz} \le 600\text{ Hz}$).
+    \item \textbf{Ở cận trên:} Vì điều kiện kiểm tra là $i < \text{maximumLag} = 214$, chỉ số ứng viên lớn nhất được xét là đúng $i = \mathbf{213}$. Để kiểm tra điều kiện đỉnh tại $i = 213$, thuật toán bắt buộc phải đọc giá trị hàng xóm bên phải $r[i+1] = r[214]$. Điểm $\tau = 214$ chỉ đóng vai trò là \textbf{hàng xóm bên phải} cho ứng viên cuối cùng.
+\end{itemize}
+
+Như vậy, câu hỏi "213 hay 214" đã được phân định sáng tỏ:
+\begin{equation}
+\text{Dải quét phần cứng (Scan Range): } \tau \in [\mathbf{26}, \mathbf{214}] \quad (189\text{ giá trị } U[\tau])
+\end{equation}
+\begin{equation}
+\text{Dải tìm kiếm ứng viên (Search Range): } \tau \in [\mathbf{27}, \mathbf{213}] \quad (187\text{ điểm cực đại tiềm năng})
+\end{equation}
+
+\subsubsection*{Ba điều kiện của một đỉnh ứng viên cục bộ}
+Để một độ trễ $\tau \in [27, 213]$ được công nhận là một ứng viên cao độ hợp lệ, giá trị hàm tương quan chuẩn hóa tại điểm đó phải thỏa mãn đồng thời ba điều kiện toán học:
+\begin{enumerate}[leftmargin=2em, itemsep=2pt]
+    \item \textbf{Lớn hơn chặt hàng xóm bên trái:} $r[\tau] > r[\tau - 1]$. Điều kiện này loại bỏ các điểm nằm trên sườn dốc đi xuống.
+    \item \textbf{Lớn hơn hoặc bằng hàng xóm bên phải:} $r[\tau] \ge r[\tau + 1]$. Dấu lớn hơn hoặc bằng đảm bảo rằng trong trường hợp đỉnh bị phẳng do làm tròn số nguyên ($r[\tau] = r[\tau+1]$), điểm bên trái (độ trễ nhỏ hơn) vẫn được ghi nhận.
+    \item \textbf{Vượt ngưỡng thanh âm sơ bộ:} $r[\tau] > 0{,}5 \times \text{voicingThreshold}$. Với tham số mặc định của Praat $\text{voicingThreshold} = 0{,}45$, ngưỡng này có giá trị cố định là:
+    \begin{equation}
+    0{,}5 \times 0{,}45 = \mathbf{0{,}225} = \frac{225}{1000} = \frac{9}{40}
+    \end{equation}
+\end{enumerate}
+
+Trong kiến trúc phần cứng số nguyên ở Chương 8, hàm tương quan chuẩn hóa được biểu diễn dưới dạng đại lượng có tỷ lệ $U[\tau] \approx r[\tau] \cdot R_{0n}$, trong đó $R_{0n}$ là năng lượng khung chuẩn hóa ($26\text{ bit}$ không dấu). Điều kiện vượt ngưỡng thanh âm sơ bộ trở thành:
+\begin{equation}
+\frac{U[\tau]}{R_{0n}} > \frac{225}{1000} \iff 1000 \cdot U[\tau] > 225 \cdot R_{0n} \iff \mathbf{40 \cdot U[\tau] > 9 \cdot R_{0n}}
+\end{equation}
+
+\begin{thoughtqa}{Tại sao không nhân 1000 và 225 mà lại dùng 40 và 9?}
+Phép nhân $1000 \cdot U$ đòi hỏi một bộ nhân số nguyên $10\text{ bit} \times 28\text{ bit}$. Trong silicon của FPGA Cyclone V, việc huy động thêm một khối DSP chỉ để so sánh một ngưỡng cố định là một sự lãng phí tài nguyên nghiêm trọng. 
+
+Bằng cách chia cả hai vế cho ước số chung lớn nhất là $25$, ta có $1000 / 25 = 40$ và $225 / 25 = 9$. Hai hằng số này có dạng lũy thừa của 2 cực kỳ đẹp mắt:
+\begin{equation}
+40 \cdot U = (U \ll 5) + (U \ll 3) = 32U + 8U
+\end{equation}
+\begin{equation}
+9 \cdot R_{0n} = (R_{0n} \ll 3) + R_{0n} = 8R_{0n} + R_{0n}
+\end{equation}
+Toàn bộ phép so sánh thanh âm sơ bộ này được tổng hợp thành đúng hai bộ cộng logic ALM và một bộ so sánh, tiêu tốn \textbf{0 khối DSP} và hoàn tất trong thời gian truyền lan dưới $1\text{ ns}$.
+\end{thoughtqa}
+
+\subsubsection*{Cơ chế chọn ứng viên tối ưu và quy tắc giải quyết hòa}
+Trong một khung phân tích, có thể có nhiều độ trễ $\tau$ khác nhau cùng thỏa mãn điều kiện đỉnh cục bộ (ví dụ đỉnh chu kỳ cơ bản $\tau_0$, đỉnh hài bậc hai $2\tau_0$, đỉnh formant). Praat tuyển chọn ứng viên bằng cách so sánh điểm chi phí quãng tám $Sc[\tau]$ đã được tính toán từ Chương 8:
+\begin{equation}
+\tau_p = \operatorname{argmax}_{\tau \in [27, 213]} Sc[\tau]
+\end{equation}
+
+\textbf{Quy tắc phá vỡ thế hòa (Tie-breaking):} Trong trường hợp hiếm gặp khi hai đỉnh ứng viên có giá trị điểm số hoàn toàn bằng nhau ($Sc[\tau_a] = Sc[\tau_b]$ với $\tau_a < \tau_b$), hệ thống luôn ưu tiên chọn ứng viên có độ trễ nhỏ hơn (gặp trước trong luồng dữ liệu quét từ 27 đến 213). Quy tắc này phản ánh trung thực hành vi của thuật toán Praat (\path{fon/Pitch.cpp}), đồng thời tự nhiên củng cố nguyên lý ưu tiên tần số cao của Octave Cost để tránh rơi vào lỗi nhảy quãng tám xuống dưới.
+
+\subsubsection*{Praat làm gì tiếp theo: Sinc70 + Brent và sự đánh đổi của FPGA}
+Sau khi xác định được đỉnh ứng viên sơ bộ, Paul Boersma thực hiện hai bước tinh chỉnh liên tiếp trong mã nguồn \path{fon/Sound_to_Pitch.cpp}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Lượt 1 (dòng 193--199):} Sử dụng phép nội suy parabol cục bộ để ước lượng thô vị trí đỉnh $\tau^*$ và tần số ban đầu $f_{\max} = 1 / (dx \cdot \tau^*)$. Sau đó, dòng 202--204 dùng phép nội suy sinc với độ sâu 30 chu kỳ (sinc30) để tính độ mạnh $\text{strength}$. Nếu $\text{strength} > 1{,}0$, dòng 209--210 phản xạ giá trị thành $1/\text{strength}$.
+    \item \textbf{Lượt 2 (dòng 251--265):} Khác hoàn toàn với khẳng định thiếu căn cứ của một số tài liệu cũ cho rằng Praat chỉ dùng nội suy sinc khi người dùng bật chế độ "Very accurate", mã nguồn Praat 7.0.03 \textbf{luôn luôn} thực thi hàm tinh chỉnh cực trị \texttt{NUMimproveMaximum}:
+\begin{lstlisting}[language=C++, numbers=none]
+integer depth = ( c [0] > 0.3 / my dx ? NUM_PEAK_INTERPOLATE_SINC700 : brent_depth );
+NUMimproveMaximum (rv, imax [ic - 1] - offset, depth, & xmid, & ymid);
+c [0] = 1.0 / my dx / (xmid + offset);
+\end{lstlisting}
+    Với cửa sổ Hanning 3 chu kỳ, tham số \texttt{brent\_depth} luôn được gán bằng \texttt{NUM\_PEAK\_INTERPOLATE\_SINC70} (dòng 299--301). Praat lặp phương pháp Brent từ 10 đến 20 bước, tại mỗi bước tính tích chập với hàm sinc 70 điểm để tìm vị trí cực đại liên tục thực sự với độ chính xác đến $10^{-10}$.
+\end{itemize}
+
+Trên phần cứng FPGA, việc dựng một bộ nhân--cộng chập sinc 70 điểm kết hợp với thuật toán lặp Brent phi tuyến (chia tỉ lệ vàng và nội suy nghịch đảo phân thức) sẽ làm bùng nổ diện tích ALM, tiêu tốn hàng nghìn chu kỳ đồng hồ và phá vỡ cấu trúc đường ống dòng. 
+
+Vì vậy, kiến trúc FPGA của ta \textbf{chốt dừng lại ở phép nội suy parabol một bước}. Phép nội suy parabol khép kín mang lại nghiệm giải tích tức thời chỉ qua một phép chia số nguyên duy nhất. Khoảng cách chênh lệch giữa nghiệm parabol của FPGA và nghiệm tinh chỉnh Sinc70--Brent của Praat là một khác biệt có chủ ý trong thiết kế; toàn bộ sai số phân bố này được đo đạc và định lượng chi tiết trong Chương 13.
+
+\textit{Tóm lại: Dải quét [26, 214] cung cấp đủ hàng xóm biên cho dải tìm kiếm [27, 213]; điều kiện 3 điểm cùng bất đẳng thức 40U > 9R0n lọc sạch các gợn sóng nhiễu mà không tốn DSP, và bộ dò đỉnh chọn ứng viên có Sc cực đại với nguyên tắc gặp trước thắng khi hòa.}
+
