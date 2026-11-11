@@ -433,7 +433,7 @@ Kiến trúc hoạt động của module được chia làm hai pha kế tiếp 
 
 \begin{figure}[H]
 \centering
-\input{chuong_v3/fig_ch05_local_mean_arch.tex}
+\resizebox{\textwidth}{!}{\input{chuong_v3/fig_ch05_local_mean_arch.tex}}
 \caption{Sơ đồ kiến trúc vi mô phần cứng khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v}), minh họa bộ đếm địa chỉ quét 426 mẫu, bộ tích lũy 25-bit dời trục, khối nhân đường ống 2 tầng và bộ trừ 17-bit.}
 \label{fig:ch05_local_mean_arch}
 \end{figure}
@@ -606,7 +606,7 @@ Một cạm bẫy kinh điển khi thiết kế bộ lọc IIR số nguyên là 
 
 \begin{figure}[H]
 \centering
-\input{chuong_v3/fig_ch05_dc_blocker.tex}
+\resizebox{\textwidth}{!}{\input{chuong_v3/fig_ch05_dc_blocker.tex}}
 \caption{Kiến trúc phần cứng bộ lọc DC-Blocker IIR bậc 1 (\texttt{ch05\_dc\_blocker.v}), sử dụng bộ trừ đầu vào, thanh ghi trạng thái 36-bit Q20.16, mạch dịch phải 8-bit và bộ ghép kênh bypass.}
 \label{fig:ch05_dc_blocker}
 \end{figure}
@@ -642,7 +642,7 @@ Một lỗi phổ biến dẫn đến sai lệch pha chu kỳ giả tạo giữa
     \item \textbf{Tín hiệu tổ hợp ngõ ra (Combinational outputs):}\\
     Sau khi kích thích đầu vào thay đổi, testbench chờ một khoảng trễ nhỏ \texttt{\#1} (1 đơn vị thời gian mô phỏng) để toàn bộ mạng cổng logic tổ hợp ổn định, sau đó mới kiểm tra và đối soát (ví dụ cờ \texttt{sink\_ready} trong giao thức Avalon-ST với \texttt{readyLatency = 0}).
     \item \textbf{Tín hiệu tuần tự ngõ ra (Registered outputs):}\\
-    Các tín hiệu đi ra từ thanh ghi gồm \texttt{busy}, \texttt{mean\_valid}, \texttt{mean\_out}, \texttt{rd\_en}, \texttt{rd\_sample\_idx}, \texttt{diff\_valid\_out}, \texttt{diff\_data\_out} (khối trung bình) và \texttt{source\_data}, \texttt{source\_valid} (khối DC-blocker) được kích hoạt bởi sườn dương xung nhịp. Testbench đợi sườn dương và trễ thêm một khoảng nhỏ \texttt{\#1} (\texttt{@(posedge clk); \#1}) rồi mới so sánh với giá trị kỳ vọng từ tệp vector.
+    Các tín hiệu đồng bộ từ thanh ghi gồm nhóm trung bình (\texttt{busy}, \texttt{mean\_valid}, \texttt{mean\_out}, \texttt{rd\_en}, \texttt{rd\_sample\_idx}, \texttt{diff\_valid\_out}, \texttt{diff\_data\_out}) cùng nhóm DC-blocker (\texttt{source\_data}, \texttt{source\_valid}) được chốt ở sườn dương xung nhịp. Testbench đợi sườn dương và trễ thêm khoảng nhỏ \texttt{\#1} (\texttt{@(posedge clk); \#1}) rồi đối soát với giá trị kỳ vọng từ vector.
     \item \textbf{Đếm lỗi tích lũy:} Testbench không hủy ngang mô phỏng sớm khi gặp lỗi đầu tiên, mà ghi nhận chi tiết chu kỳ vi phạm và đếm tích lũy toàn bộ số lỗi so sánh đến chu kỳ cuối cùng.
 \end{itemize}
 

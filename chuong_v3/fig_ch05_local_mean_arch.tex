@@ -1,103 +1,126 @@
 % chuong_v3/fig_ch05_local_mean_arch.tex
 % Microarchitecture of the Local Mean computation module (ch05_local_mean.v)
-\begin{tikzpicture}[>=stealth, font=\small, scale=0.66, every node/.style={transform shape}]
+\begin{tikzpicture}[>=stealth, font=\small, scale=0.82, every node/.style={transform shape}]
 
-    % Style definitions
+    % Style definitions with constrained text width to guarantee ample arrow spacing
     \tikzstyle{block}     = [draw=blue!80!black, fill=blue!6, thick, rounded corners=4pt, 
-                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+                             inner sep=4pt, align=center, font=\small\bfseries]
     \tikzstyle{regbox}    = [draw=teal!80!black, fill=teal!8, thick, rounded corners=4pt, 
-                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+                             inner sep=4pt, align=center, font=\small\bfseries]
     \tikzstyle{dspbox}    = [draw=purple!80!black, fill=purple!8, thick, rounded corners=5pt, 
-                             inner sep=6pt, align=center, font=\scriptsize\bfseries]
+                             inner sep=5pt, align=center, font=\small\bfseries]
     \tikzstyle{calcbox}   = [draw=orange!80!black, fill=orange!8, thick, rounded corners=4pt, 
-                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+                             inner sep=4pt, align=center, font=\small\bfseries]
     \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
     \tikzstyle{addrline}  = [->, thick, color=blue!80!black]
     \tikzstyle{ctrlline}  = [->, thick, dashed, color=red!80!black]
-    \tikzstyle{portlabel} = [font=\scriptsize\ttfamily]
+    \tikzstyle{portlabel} = [font=\footnotesize\ttfamily]
 
     % Frame boundary
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-8.8, -5.2) rectangle (9.8, 5.8);
-    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
-        at (-8.5, 5.55) {Kiến trúc vi mô khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v})};
+        (-8.8, -4.5) rectangle (10.0, 5.8);
+    \node[anchor=north west, font=\small\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
+        at (-8.5, 5.6) {Kiến trúc vi mô khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v})};
 
     % Left Ports (Inputs)
-    \node[portlabel, anchor=east] (p_start)      at (-9.0,  3.6) {\texttt{start}};
-    \node[portlabel, anchor=east] (p_rd_valid)   at (-9.0,  1.8) {\texttt{rd\_valid}};
-    \node[portlabel, anchor=east] (p_rd_data)    at (-9.0,  0.4) {\texttt{rd\_data[15:0]}};
-    \node[portlabel, anchor=east] (p_sub_valid)  at (-9.0, -3.2) {\texttt{sub\_valid\_in}};
-    \node[portlabel, anchor=east] (p_sub_data)   at (-9.0, -4.2) {\texttt{sub\_data\_in[15:0]}};
+    \node[portlabel, anchor=east] (p_start)      at (-8.9,  3.0) {\texttt{start}};
+    \node[portlabel, anchor=east] (p_rd_valid)   at (-8.9,  1.9) {\texttt{rd\_valid}};
+    \node[portlabel, anchor=east] (p_rd_data)    at (-8.9,  0.8) {\texttt{rd\_data[15:0]}};
+    \node[portlabel, anchor=east] (p_sub_valid)  at (-8.9, -2.4) {\texttt{sub\_valid\_in}};
+    \node[portlabel, anchor=east] (p_sub_data)   at (-8.9, -3.3) {\texttt{sub\_data\_in[15:0]}};
 
     % Right Ports (Outputs)
-    \node[portlabel, anchor=west] (p_busy)       at (10.0,  3.6) {\texttt{busy}};
-    \node[portlabel, anchor=west] (p_mean_valid) at (10.0,  2.0) {\texttt{mean\_valid}};
-    \node[portlabel, anchor=west] (p_mean_out)   at (10.0,  0.6) {\texttt{mean\_out[15:0]}};
-    \node[portlabel, anchor=west] (p_rd_en)      at (10.0, -1.0) {\texttt{rd\_en}};
-    \node[portlabel, anchor=west] (p_rd_idx)     at (10.0, -2.2) {\texttt{rd\_sample\_idx[9:0]}};
-    \node[portlabel, anchor=west] (p_diff_valid) at (10.0, -3.4) {\texttt{diff\_valid\_out}};
-    \node[portlabel, anchor=west] (p_diff_data)  at (10.0, -4.4) {\texttt{diff\_data\_out[16:0]}};
+    \node[portlabel, anchor=west] (p_busy)       at (10.1,  4.6) {\texttt{busy}};
+    \node[portlabel, anchor=west] (p_rd_idx)     at (10.1,  3.8) {\texttt{rd\_sample\_idx[9:0]}};
+    \node[portlabel, anchor=west] (p_rd_en)      at (10.1,  3.0) {\texttt{rd\_en}};
+    \node[portlabel, anchor=west] (p_mean_valid) at (10.1,  1.8) {\texttt{mean\_valid}};
+    \node[portlabel, anchor=west] (p_mean_out)   at (10.1,  0.8) {\texttt{mean\_out[15:0]}};
+    \node[portlabel, anchor=west] (p_diff_valid) at (10.1, -2.4) {\texttt{diff\_valid\_out}};
+    \node[portlabel, anchor=west] (p_diff_data)  at (10.1, -3.3) {\texttt{diff\_data\_out[16:0]}};
 
     % 1. Address Generator & Controller (Top Left)
-    \node[block, minimum width=3.0cm, minimum height=1.3cm] (fsm) at (-6.2, 3.6)
-        {FSM \& Bộ đếm địa chỉ\\Quét $106 \dots 531$\\($426$ mẫu trung tâm)};
+    \node[block, text width=2.8cm, minimum height=1.2cm] (fsm) at (-5.8, 3.0)
+        {FSM \& Bộ đếm\\Quét $106 \dots 531$\\($426$ mẫu tâm)};
 
     % 2. Bias Converter (Mid Left)
-    \node[calcbox, minimum width=2.4cm, minimum height=1.1cm] (xor_box) at (-6.2, 0.4)
-        {Đổi dấu sang dương\\$\texttt{rd\_data} \oplus \texttt{16'h8000}$\\(Cộng $+32768$)};
+    \node[calcbox, text width=1.6cm, minimum height=1.1cm] (xor_box) at (-5.8, 0.8)
+        {Đổi dấu\\XOR \texttt{8000h}\\($+32768$)};
 
     % 3. 25-bit Accumulator (Center Left)
-    \node[regbox, minimum width=2.8cm, minimum height=1.4cm] (acc_box) at (-2.4, 0.4)
-        {Bộ tích lũy 25-bit\\$\texttt{acc} \Leftarrow \texttt{acc} + u_{16}$\\(Khởi tạo nạp sẵn $+213$)};
+    \node[regbox, text width=2.0cm, minimum height=1.2cm] (acc_box) at (-2.6, 0.8)
+        {Tích lũy 25-bit\\$\texttt{acc} \Leftarrow \texttt{acc} + u$\\Nạp sẵn $+213$};
 
     % 4. 25x24 Unsigned Multiplier (DSP Block, Center)
-    \node[dspbox, minimum width=4.8cm, minimum height=1.9cm] (mult_box) at (1.9, 1.2)
-        {\textbf{Bộ nhân LPM\_MULT (1 DSP)}\\$25 \times 24$-bit không dấu\\Số bị nhân A: $\texttt{acc}$ (25-bit)\\Hằng số B: $M = 10.082.083$\\Tích số: 49-bit};
+    \node[dspbox, text width=2.8cm, minimum height=1.4cm] (mult_box) at (1.2, 0.8)
+        {\textbf{LPM\_MULT 1 DSP}\\$25 \times 24$ không dấu\\$M = 10.082.083$\\Tích số $49\text{ bit}$};
 
     % 5. Truncation & Sign Restore (Center Right)
-    \node[calcbox, minimum width=2.6cm, minimum height=1.2cm] (restore_box) at (7.2, 1.2)
-        {Trích xuất \& Đổi dấu\\$Q_{\text{biased}} = \texttt{prod}[47:32]$\\$\texttt{mean} = Q_{\text{biased}} - 32768$};
+    \node[calcbox, text width=1.8cm, minimum height=1.2cm] (restore_box) at (4.8, 0.8)
+        {Trích xuất\\$Q = \texttt{prod}[47:32]$\\mean $= Q - 2^{15}$};
 
     % 6. Subtraction Unit (Bottom Center)
-    \node[calcbox, minimum width=3.6cm, minimum height=1.4cm] (sub_box) at (1.9, -4.0)
-        {Bộ trừ 17-bit có dấu\\$d[n] = x[n] - \texttt{mean\_out}$\\Dải giá trị: $[-65535, +65535]$};
+    \node[calcbox, text width=3.4cm, minimum height=1.2cm] (sub_box) at (1.2, -3.3)
+        {Bộ trừ 17-bit có dấu\\$d[n] = x[n] - \texttt{mean\_out}$\\Dải: $[-65535, +65535]$};
 
-    % Interconnections
-    % Control from start to FSM
-    \draw[ctrlline] (p_start) -- (fsm);
-    \draw[ctrlline] (fsm.north) -- ++(0, 0.45) -| (p_busy);
+    % =========================================================================
+    % ROUTING: Orthogonal control lines along top margin (RIGHT of FSM, NO overlap)
+    % Spacing: busy (y=4.6), rd_sample_idx (y=3.8), rd_en (y=3.0) -> 8 mm spacing
+    % =========================================================================
 
-    % Address outputs from FSM to right ports
-    \draw[addrline] (fsm.east) -- (5.0, 3.6) |- (p_rd_en);
-    \draw[addrline] (5.0, 3.6) |- (p_rd_idx);
+    % start to FSM
+    \draw[ctrlline] (p_start) -- (fsm.west);
+
+    % busy line: leaves FSM right at y = 3.6, steps up to y = 4.6, runs rightwards
+    \draw[ctrlline] (-4.3, 3.4) -- (-3.6, 3.4) -- (-3.6, 4.6) -- (9.8, 4.6) -- (p_busy);
+    \node[above=1pt, font=\footnotesize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] at (0.0, 4.6) {\texttt{busy}};
+
+    % rd_sample_idx line: leaves FSM right at y = 3.2, steps up to y = 3.8, runs rightwards
+    \draw[addrline] (-4.3, 3.1) -- (-3.0, 3.1) -- (-3.0, 3.8) -- (9.8, 3.8) -- (p_rd_idx);
+    \node[above=1pt, font=\footnotesize\bfseries, text=blue!80!black, fill=white, inner sep=1.5pt] at (0.0, 3.8) {\texttt{rd\_sample\_idx[9:0]}};
+
+    % rd_en line: leaves FSM right at y = 2.8, steps down to y = 3.0, runs rightwards
+    \draw[addrline] (-4.3, 2.8) -- (-2.4, 2.8) -- (-2.4, 3.0) -- (9.8, 3.0) -- (p_rd_en);
+    \node[above=1pt, font=\footnotesize\bfseries, text=blue!80!black, fill=white, inner sep=1.5pt] at (0.0, 3.0) {\texttt{rd\_en}};
+
+    % =========================================================================
+    % DATAPATH: Middle layer (y = 0.8) with ample arrow spacing
+    % =========================================================================
+
+    % rd_valid from port to FSM and accumulator
+    \draw[ctrlline] (p_rd_valid) -- (-7.4, 1.9) |- (acc_box.150);
+    \draw[ctrlline] (-7.4, 1.9) |- (fsm.south west);
 
     % rd_data through XOR to Accumulator
-    \draw[dataline] (p_rd_data) -- (xor_box);
-    \draw[dataline] (xor_box) -- (acc_box) node[midway, above, font=\tiny\bfseries, fill=white] {uint16};
-    \draw[ctrlline] (p_rd_valid) -- (-7.6, 1.8) |- (acc_box.north west);
+    \draw[dataline] (p_rd_data) -- (xor_box.west);
+    \draw[dataline] (xor_box.east) -- (acc_box.west) 
+        node[midway, above=2pt, font=\footnotesize\bfseries, fill=white, inner sep=1.5pt] {uint16};
 
-    % Accumulator to Multiplier
-    \draw[dataline] (acc_box.east) -- (mult_box.195) 
-        node[midway, above, font=\tiny\bfseries, fill=white] {$S_{\text{biased}}$ (25-bit)};
+    % Accumulator to Multiplier (1.6 cm empty arrow length)
+    \draw[dataline] (acc_box.east) -- (mult_box.west) 
+        node[midway, above=2pt, font=\footnotesize\bfseries, fill=white, inner sep=1.5pt] {$S_{\text{biased}}$ (25b)};
 
-    % Multiplier to Restore box
+    % Multiplier to Restore box (1.5 cm empty arrow length)
     \draw[dataline] (mult_box.east) -- (restore_box.west) 
-        node[midway, above, font=\tiny\bfseries, fill=white] {49-bit};
+        node[midway, above=2pt, font=\footnotesize\bfseries, fill=white, inner sep=1.5pt] {49-bit};
 
     % Restore box to mean_out and mean_valid
-    \draw[dataline] (restore_box.east) -- ++(0.6, 0) |- (p_mean_out);
+    \draw[dataline] (restore_box.east) -- (p_mean_out);
     \draw[ctrlline] (restore_box.north) |- (p_mean_valid);
 
-    % Mean output feeding down to Subtraction Unit
-    \draw[dataline] (8.2, 0.6) |- (5.2, -2.8) -| (sub_box.north east);
-    \node[font=\tiny\bfseries, fill=white, inner sep=1pt] at (5.2, -1.8) {\texttt{mean\_out[15:0]}};
+    % =========================================================================
+    % SUBTRACTION: Feedback from mean_out and bottom datapath
+    % =========================================================================
+
+    % Mean output feedback to Subtraction Unit (routes cleanly through y = -1.6)
+    \draw[dataline] (6.8, 0.8) -- (6.8, -1.6) -| (sub_box.north);
+    \node[above=1pt, font=\footnotesize\bfseries, text=teal!90!black, fill=white, inner sep=1.5pt] at (4.0, -1.6) {\texttt{mean\_out[15:0]}};
 
     % Subtraction Inputs to Sub Unit
     \draw[dataline] (p_sub_data) -- (sub_box.west);
-    \draw[ctrlline] (p_sub_valid) -- (-5.2, -3.2) |- (sub_box.north west);
+    \draw[ctrlline] (p_sub_valid) -- (-4.2, -2.4) |- (sub_box.150);
 
     % Subtraction Outputs
     \draw[dataline] (sub_box.east) -- (p_diff_data);
-    \draw[ctrlline] (4.4, -4.0) |- (p_diff_valid);
+    \draw[ctrlline] (3.8, -3.3) |- (p_diff_valid);
 
 \end{tikzpicture}

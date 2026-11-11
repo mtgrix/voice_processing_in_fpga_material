@@ -1,6 +1,6 @@
 % chuong_v3/fig_ch05_dc_effect.tex
 % Minh hoa tac hai cua muc DC lam lech duong tu tuong quan va pha vo nguong voicing
-\begin{tikzpicture}[>=stealth, font=\small, scale=0.92, every node/.style={transform shape}]
+\begin{tikzpicture}[>=stealth, font=\small, scale=0.92]
 
     % Style definitions
     \tikzstyle{axisline}  = [->, thick, color=black!80]
@@ -12,26 +12,21 @@
 
     % Frame boundary
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-1.2, -3.2) rectangle (11.6, 5.5);
+        (-1.2, -3.4) rectangle (11.8, 5.2);
     \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
-        at (-0.9, 5.3) {Tác hại của thành phần một chiều DC lên tự tương quan chuẩn hóa};
+        at (-0.9, 5.0) {Tác hại của thành phần một chiều DC lên tự tương quan chuẩn hóa};
 
     % Coordinate Axes
     % Origin at (0, 0)
-    \draw[axisline] (0.0, 0.0) -- (10.5, 0.0) node[anchor=north west, font=\scriptsize\bfseries] {Độ trễ $\tau$ (mẫu)};
-    \draw[axisline] (0.0, -2.5) -- (0.0, 4.3);
-    \node[anchor=south west, font=\scriptsize\bfseries] at (0.15, 3.8) {Tự tương quan chuẩn hóa $r(\tau)/r(0)$};
+    \draw[axisline] (0.0, 0.0) -- (10.4, 0.0) node[anchor=north west, font=\scriptsize\bfseries] {Độ trễ $\tau$ (mẫu)};
+    \draw[axisline] (0.0, -2.4) -- (0.0, 4.3);
+    \node[anchor=south west, font=\scriptsize\bfseries] at (0.15, 3.9) {Tự tương quan chuẩn hóa $r(\tau)/r(0)$};
 
     % Ticks on Y-axis
     \draw[thick] (-0.1, 3.6) -- (0.1, 3.6) node[anchor=east, font=\scriptsize] at (-0.15, 3.6) {$+1{,}0$};
     \draw[thick] (-0.1, 1.62) -- (0.1, 1.62) node[anchor=east, font=\scriptsize\bfseries, text=red!80!black] at (-0.15, 1.62) {$0{,}45$};
     \draw[thick] (-0.1, 0.0) -- (0.1, 0.0) node[anchor=east, font=\scriptsize] at (-0.15, 0.0) {$0{,}0$};
     \draw[thick] (-0.1, -1.8) -- (0.1, -1.8) node[anchor=east, font=\scriptsize] at (-0.15, -1.8) {$-0{,}5$};
-
-    % Voicing Threshold Line at y = 1.62 (representing 0.45 * 3.6)
-    \draw[threshline] (0.0, 1.62) -- (9.8, 1.62);
-    \node[anchor=south east, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
-        at (9.8, 1.68) {Ngưỡng hữu thanh Praat (\texttt{VOICING\_THRESHOLD} $= 0{,}45$)};
 
     % Grid lines
     \draw[gridline] (0.0, 3.6) -- (9.8, 3.6);
@@ -44,49 +39,51 @@
     \draw[thick] (9.5, -0.1) -- (9.5, 0.1) node[anchor=north, font=\scriptsize] at (9.5, -0.15) {$214$};
 
     % Shaded Region: Unvoiced region (below threshold 0.45)
-    \fill[green!20, opacity=0.35] (1.5, -2.2) rectangle (9.5, 1.62);
-    \node[anchor=south west, font=\scriptsize\itshape, text=green!50!black, fill=white, inner sep=1.5pt] at (1.6, -1.5) {Miền vô thanh an toàn ($r(\tau) < 0{,}45$)};
+    \fill[green!20, opacity=0.35] (1.5, -2.1) rectangle (9.8, 1.62);
+    \node[anchor=south west, font=\scriptsize\itshape, text=green!50!black, fill=white, draw=green!40, rounded corners=2pt, inner sep=2pt] 
+        at (1.6, -1.5) {Miền vô thanh an toàn ($r(\tau) < 0{,}45$)};
+
+    % Voicing Threshold Line at y = 1.62 (representing 0.45 * 3.6)
+    \draw[threshline] (0.0, 1.62) -- (9.9, 1.62);
+    \node[anchor=west, font=\scriptsize\bfseries, text=red!80!black, fill=white, draw=red!50, rounded corners=2pt, inner sep=2pt] 
+        at (9.95, 1.62) {Ngưỡng $0{,}45$};
 
     % Curve 1: Clean Unvoiced Signal (white noise, mean=0)
-    % Oscillates around 0, max peak around 0.20 (y = 0.72)
+    % Oscillates around 0, max peak around 0.1977 (y = 0.71)
     \draw[cleanline, smooth] plot coordinates {
         (0.0, 3.6) (0.5, 1.2) (1.0, 0.1)
         (1.5, 0.5) (2.0, -0.4) (2.5, 0.65) (3.0, -0.2)
-        (3.5, 0.4) (4.0, -0.55) (4.5, 0.7) (5.0, -0.1)
+        (3.5, 0.4) (4.0, -0.55) (4.5, 0.71) (5.0, -0.1)
         (5.5, 0.3) (6.0, -0.6) (6.5, 0.55) (7.0, -0.3)
         (7.5, 0.6) (8.0, -0.2) (8.5, 0.45) (9.0, -0.4) (9.5, 0.2)
     };
 
     % Curve 2: Unvoiced Signal corrupted by DC offset c (+c^2 shift)
-    % Lifted up uniformly by ~1.45 units (representing +c^2), pushing peaks to ~2.15 > 1.62
+    % Lifted up uniformly by ~1.45 units (representing +c^2), pushing peak to ~2.16 (0.6023 > 0.45)
     \draw[dcline, smooth] plot coordinates {
         (0.0, 3.6) (0.5, 2.65) (1.0, 1.55)
         (1.5, 1.95) (2.0, 1.05) (2.5, 2.10) (3.0, 1.25)
-        (3.5, 1.85) (4.0, 0.90) (4.5, 2.15) (5.0, 1.35)
+        (3.5, 1.85) (4.0, 0.90) (4.5, 2.16) (5.0, 1.35)
         (5.5, 1.75) (6.0, 0.85) (6.5, 2.00) (7.0, 1.15)
         (7.5, 2.05) (8.0, 1.25) (8.5, 1.90) (9.0, 1.05) (9.5, 1.65)
     };
 
-    % Vertical Shift Arrow showing +c^2
-    \draw[shiftarrow] (4.5, 0.7) -- (4.5, 2.15);
-    \node[anchor=west, font=\scriptsize\bfseries, text=purple!90!black, fill=white, inner sep=1pt] 
-        at (4.65, 1.42) {Độ lệch $+c^2$};
+    % Vertical Shift Arrow showing +c^2 placed at tau = 6.0 in clear space between curves
+    \draw[shiftarrow] (6.0, -0.55) -- (6.0, 0.80);
+    \node[font=\scriptsize\bfseries, text=purple!90!black, fill=white, draw=purple!50, rounded corners=2pt, inner sep=2pt] 
+        at (6.0, 0.125) {Độ lệch $+c^2 = 1.000.000$};
 
-    \draw[shiftarrow] (7.5, 0.6) -- (7.5, 2.05);
-    \node[anchor=west, font=\scriptsize\bfseries, text=purple!90!black, fill=white, inner sep=1pt] 
-        at (7.65, 1.32) {$+c^2$};
-
-    % Critical Warning Callout
-    \draw[->, thick, color=red!90!black] (2.5, 2.7) -- (2.5, 2.15);
-    \node[anchor=south, font=\scriptsize\bfseries, text=red!90!black, fill=white, inner sep=1.5pt] 
-        at (2.5, 2.75) {Vượt ngưỡng! Báo động giả Voiced};
+    % Critical Warning Callout placed in clear space above peak at tau = 4.5
+    \draw[->, thick, color=red!90!black] (4.5, 3.1) -- (4.5, 2.25);
+    \node[anchor=south, font=\scriptsize\bfseries, text=red!90!black, fill=white, draw=red!70, rounded corners=3pt, inner sep=2.5pt] 
+        at (4.5, 3.15) {Vượt ngưỡng $0{,}45$! Báo động giả Voiced ($0{,}6023 > 0{,}45$)};
 
     % Legend Box (Bottom)
-    \node[draw=gray!60, fill=white, rounded corners=3pt, inner sep=4pt, anchor=south east] 
-        at (9.6, -1.8) {
-        \begin{tabular}{ll}
-            \tikz\draw[cleanline] (0,0) -- (0.5,0); & \scriptsize Tín hiệu sạch (đã trừ trung bình): vô thanh đúng ($r < 0{,}45$) \\
-            \tikz\draw[dcline] (0,0) -- (0.5,0);    & \scriptsize Tín hiệu có DC $+c$: bị đẩy lên $+c^2$, sai sang hữu thanh
+    \node[draw=gray!60, fill=white, rounded corners=3pt, inner sep=4pt, anchor=north] 
+        at (5.0, -2.35) {
+        \begin{tabular}{lll}
+            \tikz\draw[cleanline] (0,0) -- (0.5,0); & \scriptsize Tín hiệu sạch (đã trừ trung bình): $r(\tau) \le 0{,}1977 < 0{,}45$ (Vô thanh) & \tikz\draw[threshline] (0,0) -- (0.5,0); \scriptsize Ngưỡng Praat ($0{,}45$) \\
+            \tikz\draw[dcline] (0,0) -- (0.5,0);    & \scriptsize Tín hiệu có DC $+c$: bị nâng $+c^2 \to 0{,}6023 > 0{,}45$ (Báo động giả) & \tikz\draw[shiftarrow] (0,0) -- (0.5,0); \scriptsize Độ lệch $+c^2$ \\
         \end{tabular}
     };
 
