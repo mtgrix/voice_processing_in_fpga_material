@@ -1,3 +1,5 @@
+=== [ch07] Compiling tb_ch07_mac with iverilog -g2012 -Wall ===
+=== [ch07] Running simulation vvp sim_ch07_mac ===
 === STARTING CH07 MAC UNIT CYCLE-BY-CYCLE VERIFICATION ===
 -------------------------------------------------------
 Simulation finished. Total cycles tested: 7460
@@ -5,3 +7,46 @@ Total comparison errors: 0
 === ALL 7460 VECTORS MATCHED SUCCESSFULLY ===
 -------------------------------------------------------
 tb/v3/tb_ch07_mac.v:160: $finish called at 149220000 (1ps)
+=== [ch07] tb_ch07_mac PASSED (0 errors) ===
+=== [ch07] Compiling tb_ch07_mac_engine with iverilog -g2012 -Wall ===
+=== [ch07] Running simulation vvp sim_ch07_mac_engine ===
+=== STARTING CH07 MAC ENGINE VERIFICATION (16 FRAMES, 3040 RESULTS) ===
+[FAIL] Frame 0: Expected cycle_count 98543, got 98544!
+Frame  0: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 1: Expected cycle_count 98543, got 98544!
+Frame  1: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 2: Expected cycle_count 98543, got 98544!
+Frame  2: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 3: Expected cycle_count 98543, got 98544!
+Frame  3: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 4: Expected cycle_count 98543, got 98544!
+Frame  4: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 5: Expected cycle_count 98543, got 98544!
+Frame  5: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 6: Expected cycle_count 98543, got 98544!
+Frame  6: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 7: Expected cycle_count 98543, got 98544!
+Frame  7: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 8: Expected cycle_count 98543, got 98544!
+Frame  8: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 9: Expected cycle_count 98543, got 98544!
+Frame  9: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 10: Expected cycle_count 98543, got 98544!
+Frame 10: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 11: Expected cycle_count 98543, got 98544!
+Frame 11: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 12: Expected cycle_count 98543, got 98544!
+Frame 12: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 13: Expected cycle_count 98543, got 98544!
+Frame 13: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 14: Expected cycle_count 98543, got 98544!
+Frame 14: 190 results, cycle_count = 98544 -> FAIL
+[FAIL] Frame 15: Expected cycle_count 98543, got 98544!
+Frame 15: 190 results, cycle_count = 98544 -> FAIL
+-------------------------------------------------------
+Total results checked: 3040
+Total comparison errors: 16
+[FAIL] Verification finished with 16 errors!
+-------------------------------------------------------
+tb/v3/tb_ch07_mac_engine.v:258: $finish called at 31739680000 (1ps)
+=== [ch07] ERROR: Engine simulation detected [FAIL] conditions! ===

@@ -183,7 +183,7 @@ module tb_ch07_mac_engine;
             start = 1'b0;
 
             // 3. Monitor execution and collect all 190 results
-            while (!done) begin
+            while (!done && watchdog <= 120000) begin
                 @(posedge clk);
                 #1;
                 watchdog = watchdog + 1;
@@ -191,7 +191,7 @@ module tb_ch07_mac_engine;
                     $display("[FAIL] Frame %0d: WATCHDOG TIMEOUT waiting for done! (cycle_count=%0d)",
                              f, cycle_count);
                     errors = errors + 1;
-                    break;
+                    // reviewer: iverilog 12 has no break; loop condition exits
                 end
 
                 if (out_valid) begin
