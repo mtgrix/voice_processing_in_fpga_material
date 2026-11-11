@@ -1,0 +1,744 @@
+This is XeTeX, Version 3.141592653-2.6-0.999996 (TeX Live 2025/dev/Debian) (preloaded format=xelatex)
+ restricted \write18 enabled.
+entering extended mode
+(./phan_moi_v3.tex
+LaTeX2e <2024-11-01> patch level 2
+L3 programming layer <2025-01-18>
+(/usr/share/texlive/texmf-dist/tex/latex/base/article.cls
+Document Class: article 2024/06/29 v1.4n Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/size11.clo))
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3packages/xparse/xparse.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3kernel/expl3.sty
+(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-xetex.def)))
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec-xetex.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/fontenc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/fontspec/fontspec.cfg)))
+(/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/ifvtex.sty
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty)))
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsmath.sty
+For additional information on amsmath, use the `?' option.
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amstext.sty
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsgen.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsbsy.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/amsmath/amsopn.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amssymb.sty
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/amsfonts.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/xetex.def)))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/frontendlayer/tikz.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgf.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfrcs.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-common.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfutil-latex.def)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfrcs.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/pgf.revision.tex)))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/basiclayer/pgfcore.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/systemlayer/pgfsys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeyslibraryfiltered
+.code.tex)) (/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgf.cfg)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-xetex.def
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-dvipdfmx.def
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsys-common-pdf.de
+f))))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/systemlayer/pgfsysprotocol.code.
+tex)) (/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/mathcolor.ltx))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcore.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathutil.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathparser.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.basic.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.trigonomet
+ric.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.random.cod
+e.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.comparison
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.base.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.round.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.misc.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfunctions.integerari
+thmetics.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathcalc.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmathfloat.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfint.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepoints.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathconstruct.
+code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathusage.code
+.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorescopes.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoregraphicstate.c
+ode.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransformation
+s.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreobjects.code.t
+ex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepathprocessing
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorearrows.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoreexternal.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorelayers.code.te
+x)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcoretransparency.c
+ode.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorepatterns.code.
+tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/basiclayer/pgfcorerdf.code.tex))
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
+) (/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduleplot.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-0-65
+.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/compatibility/pgfcomp-version-1-18
+.sty)) (/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgffor.sty
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/utilities/pgfkeys.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgfkeys.code.tex))
+(/usr/share/texlive/texmf-dist/tex/latex/pgf/math/pgfmath.sty
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/math/pgfmath.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/utilities/pgffor.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
+
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryplothandlers
+.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmodulematrix.code.tex
+)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarytopaths.code.tex)))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/pgflibraryarrows.meta.
+code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarypositioning.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarycalc.code.tex)
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibraryshapes.geometric.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/shapes/pgflibraryshape
+s.geometric.code.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarydecorations.pathreplacing.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/frontendlayer/tikz/libraries/tik
+zlibrarydecorations.code.tex
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/modules/pgfmoduledecorations.cod
+e.tex))
+(/usr/share/texlive/texmf-dist/tex/generic/pgf/libraries/decorations/pgflibrary
+decorations.pathreplacing.code.tex))
+(/usr/share/texlive/texmf-dist/tex/latex/tcolorbox/tcolorbox.sty
+(/usr/share/texlive/texmf-dist/tex/latex/tools/verbatim.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/environ/environ.sty
+(/usr/share/texlive/texmf-dist/tex/latex/trimspaces/trimspaces.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/etoolbox/etoolbox.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hyperref.sty
+(/usr/share/texlive/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+(/usr/share/texlive/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+(/usr/share/texlive/texmf-dist/tex/generic/infwarerr/infwarerr.sty)))
+(/usr/share/texlive/texmf-dist/tex/latex/hycolor/hycolor.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/nameref.sty
+(/usr/share/texlive/texmf-dist/tex/latex/refcount/refcount.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+(/usr/share/texlive/texmf-dist/tex/latex/kvoptions/kvoptions.sty)))
+(/usr/share/texlive/texmf-dist/tex/generic/stringenc/stringenc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/pd1enc.def)
+(/usr/share/texlive/texmf-dist/tex/generic/intcalc/intcalc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/puenc.def)
+(/usr/share/texlive/texmf-dist/tex/latex/url/url.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/bitset/bitset.sty
+(/usr/share/texlive/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/base/atbegshi-ltx.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/hyperref/hxetex.def
+(/usr/share/texlive/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+(/usr/share/texlive/texmf-dist/tex/latex/base/atveryend-ltx.sty)
+(/usr/share/texlive/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty)))
+(/usr/share/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/caption/caption.sty
+(/usr/share/texlive/texmf-dist/tex/latex/caption/caption3.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/float/float.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/listings.sty
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstpatch.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/listings.cfg))
+(/usr/share/texlive/texmf-dist/tex/latex/multirow/multirow.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/tools/tabularx.sty
+(/usr/share/texlive/texmf-dist/tex/latex/tools/array.sty))
+(/usr/share/texlive/texmf-dist/tex/latex/enumitem/enumitem.sty)
+(./phan_moi_v3.aux)
+*geometry* driver: auto-detecting
+*geometry* detected driver: xetex
+(./phan_moi_v3.out) (./phan_moi_v3.out)
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd)
+(/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd)
+[1] (./phan_moi_v3.toc
+[2])
+[3] (./chuong_v3/chuong_00_bai_toan.tex
+Underfull \hbox (badness 4805) in paragraph at lines 14--15
+[]\TU/LiberationSerif(0)/m/n/10 Hiểu kiến trúc kiểm chứng ba tầng và vai trò củ
+a bộ mô hình tương đương (twin) số nguyên
+
+[4]
+[5]
+[6]
+[7]
+[8]
+[9]
+[10]
+Underfull \hbox (badness 6173) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Sai lệch thời gian
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Lấy trên 426 mẫu
+
+Underfull \hbox (badness 1466) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 426 mẫu, nhân hằng
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Tránh bộ chia số
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 vặn trong bộ nhân
+
+Underfull \hbox (badness 4608) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 bit chính xác (bit-
+
+Underfull \hbox (badness 2626) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 FFT 1024 điểm, số
+
+Underfull \hbox (badness 5954) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 1 khối DSP 18$\OMS/cmsy/m/n/10 ^^B$\TU/Liberat
+ionSerif(0)/m/n/10 18
+
+Underfull \hbox (badness 1571) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 chạy nối tiếp 98.543
+
+Underfull \hbox (badness 2012) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 nhịp, tiết kiệm hàng
+
+Underfull \hbox (badness 4316) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Khớp về mặt toán
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 học; mô hình số
+
+Underfull \hbox (badness 1648) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 nguyên twin vs R2
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 trung bình $\OT1/cmr/m/n/10 0[]21$
+
+Underfull \hbox (badness 1762) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 cent ($\OML/cmm/m/it/10 p[] \OT1/cmr/m/n/10 = 0[]
+48$
+
+Underfull \hbox (badness 5217) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 cent) trên tín hiệu
+
+Underfull \hbox (badness 3407) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 sạch, và $\OT1/cmr/m/n/10 3[]07$ \TU/LiberationSe
+rif(0)/m/n/10 cent
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 tám (\TU/LiberationMono(0)/m/n/10 octave
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Trừ
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\OT1/cmr/m/n/10 0[]01 [][]([]/\OML/cmm/m/it/10 f\OT1/cmr/m/n/10 )$
+
+Underfull \hbox (badness 3623) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 bit, trừ số hạng tra
+
+Underfull \hbox (badness 6001) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Thay thế phép chia
+
+Underfull \hbox (badness 2469) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 và hàm logarit phức
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 công thức Praat,
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Nội suy Parabol 3
+
+Underfull \hbox (badness 4441) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 điểm, gộp hai phép
+
+Underfull \hbox (badness 1715) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 chia thành một phép
+
+Underfull \hbox (badness 2368) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Phép nội suy sinc70
+
+Underfull \hbox (badness 6691) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 lặp Brent quá cồng
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 kềnh cho FPGA;
+
+Underfull \hbox (badness 1082) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 parabol chỉ tốn 1 bộ
+
+Underfull \hbox (badness 4205) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Lệch cực đại $\OT1/cmr/m/n/10 1[]08$
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 cent trên tín hiệu
+
+Underfull \hbox (badness 3000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 sạch; lệch cực đại
+
+Underfull \hbox (badness 3098) in paragraph at lines 311--311
+\OT1/cmr/m/n/10 32[]91$ \TU/LiberationSerif(0)/m/n/10 cent trên tín
+
+Underfull \hbox (badness 2762) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Quét $\OML/cmm/m/it/10 i \OMS/cmsy/m/n/10 2 \O
+T1/cmr/m/n/10 [2\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 213]$
+
+Underfull \hbox (badness 4120) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 thanh), lưu 15 ứng
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Quét trực tiếp dải
+
+Underfull \hbox (badness 5681) in paragraph at lines 311--311
+\OT1/cmr/m/n/10 [27\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 213]$\TU/LiberationSerif(
+0)/m/n/10 , chỉ lưu 1
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Quy hoạch động
+
+Underfull \hbox (badness 7030) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 trữ toàn bộ tệp và
+
+Underfull \hbox (badness 2237) in paragraph at lines 311--311
+[]|\TU/LiberationSerif(0)/m/n/10 Median-3 sửa được
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 nhưng không thay
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--311
+\TU/LiberationSerif(0)/m/n/10 thế được Viterbi;
+
+[11]
+[12] (./chuong_v3/fig_ch00_system.tex)
+[13]
+[14]
+[15]
+[16]
+[17]
+[18]
+[19] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang2.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang3.sty)
+[20]
+[21] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+[22]
+[23]
+[24]
+[25]
+[26]
+[27]
+[28]
+[29]
+[30]
+[31]) (./chuong_v3/chuong_01_wav_hps_cau.tex
+[32]
+[33]
+[34]
+[35]
+[36]
+[37]
+[38]
+[39]
+[40]
+[41]
+[42]
+[43]
+[44]
+[45]
+[46]
+[47]
+[48]
+[49]
+[50]
+[51]
+[52] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty)
+[53]
+[54]
+[55] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+[56]
+[57]
+[58]) (./chuong_v3/chuong_02_avalon_st_fsm.tex
+[59]
+[60] (./chuong_v3/fig_ch02_readylatency.tex)
+[61]
+[62]
+[63]
+[64]
+[65]
+[66]
+[67]
+[68]
+[69]
+[70]
+[71] (./chuong_v3/fig_ch02_skid_buffer.tex)
+[72]
+[73]
+[74]
+[75]
+[76]
+Underfull \hbox (badness 10000) in paragraph at lines 839--839
+[]|\TU/LiberationSerif(0)/m/n/9 Đánh giá điều kiện hoàn tất bắt tay
+
+[77]
+Underfull \hbox (badness 10000) in paragraph at lines 932--932
+[]|\TU/LiberationSerif(0)/m/n/9 Chốt chuyển trạng thái \TU/LiberationMono(0)/m/
+n/9 state_reg <=
+
+[78]
+[79]
+[80]) (./chuong_v3/chuong_03_fir_nyquist.tex
+[81]
+[82]
+[83]
+[84] (./chuong_v3/fig_ch03_freq_response.tex)
+[85]
+[86]
+[87]
+[88]
+[89] (./chuong_v3/fig_ch03_folded_arch.tex)
+[90] (./rtl/v3/ch03_fir_filter.v
+[91]
+[92]
+[93])
+[94]
+Underfull \hbox (badness 10000) in paragraph at lines 417--417
+[]|\TU/LiberationSerif(0)/m/n/10 Logic tổ hợp xác định cờ sẵn
+
+Underfull \hbox (badness 10000) in paragraph at lines 417--417
+\TU/LiberationSerif(0)/m/n/10 sàng \TU/LiberationMono(0)/m/n/10 sink_ready \TU/
+LiberationSerif(0)/m/n/10 theo chuẩn
+
+Underfull \hbox (badness 3108) in paragraph at lines 417--417
+[]|\TU/LiberationSerif(0)/m/n/10 Trạng thái \TU/LiberationMono(0)/m/n/10 S_IDLE
+\TU/LiberationSerif(0)/m/n/10 : chốt mẫu vào
+
+[95] (./verify_v3/ch03_fir_twin.py
+[96])
+[97]
+[98]
+[99]
+[100]
+[101]
+[102]) (./chuong_v3/chuong_04_chia_khung_ram_vong.tex
+[103]
+[104]
+[105]
+[106] (./chuong_v3/fig_ch04_frame_grid.tex)
+[107]
+[108]
+[109]
+[110]
+[111] (./chuong_v3/fig_ch04_ring_buffer.tex) (./rtl/v3/ch04_ring_buffer.v
+[112]
+[113]) (./verify_v3/ch04_ring_buffer_twin.py
+[114])
+[115]
+Underfull \hbox (badness 10000) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/b/n/10.95 Đường (B): HDL tự viết
+
+Underfull \hbox (badness 5050) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/b/n/10.95 Tài nguyên ALM
+
+Underfull \hbox (badness 10000) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/b/n/10.95 Độ trễ đọc (La-
+
+Underfull \hbox (badness 10000) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/m/n/10.95 2 chu kỳ xung nhịp (tham số
+
+Underfull \hbox (badness 10000) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/b/n/10.95 Tích hợp sẵn \TU/LiberationSerif(0)/m/n/10.
+95 (\TU/LiberationMono(0)/m/n/10.95 rd_base\TU/LiberationSerif(0)/m/n/10.95 ,
+
+Underfull \hbox (badness 3386) in paragraph at lines 503--503
+[]|\TU/LiberationSerif(0)/b/n/10.95 Tích hợp sẵn \TU/LiberationSerif(0)/m/n/10.
+95 (ngưỡng 1020 từ, cờ
+
+[116]
+[117]
+[118]) (./chuong_v3/chuong_05_tru_trung_binh.tex
+[119]
+[120]
+[121] (./chuong_v3/fig_ch05_dc_effect.tex)
+[122]
+[123]
+[124]
+[125]
+[126]
+[127]
+[128] (./chuong_v3/fig_ch05_local_mean_arch.tex)
+[129]
+Underfull \hbox (badness 10000) in paragraph at lines 452--452
+[]\TU/LiberationSerif(0)/m/n/10.95 Listing 25: |Máy trạng thái FSM và đường ống
+ tính trung bình cục bộ
+(./rtl/v3/ch05_local_mean.v
+[130])
+[131] (./verify_v3/ch05_mean_twin.py
+[132])
+Underfull \hbox (badness 10000) in paragraph at lines 502--502
+[]|\TU/LiberationSerif(0)/b/n/9 Python Twin
+
+Underfull \hbox (badness 10000) in paragraph at lines 502--502
+[]|\TU/LiberationSerif(0)/b/n/9 Verilog HDL
+
+[133]
+[134] (./chuong_v3/fig_ch05_dc_blocker.tex)
+[135]
+[136]
+Underfull \hbox (badness 2384) in paragraph at lines 670--670
+[]\TU/LiberationSerif(0)/m/n/10 Bảng 25: |So sánh toàn diện giữa đường dẫn sử d
+ụng IP lõi Intel LPM_MULT và giải pháp HDL tự viết
+
+Underfull \hbox (badness 10000) in paragraph at lines 685--685
+[]|\TU/LiberationSerif(0)/b/n/10 Đường (B): HDL tự viết
+
+Underfull \hbox (badness 1314) in paragraph at lines 685--685
+[]|\TU/LiberationSerif(0)/b/n/10 Logic hỗ trợ (FSM,
+
+Underfull \hbox (badness 7613) in paragraph at lines 685--685
+[]|\TU/LiberationSerif(0)/b/n/10 Độ trễ đường ống
+
+Underfull \hbox (badness 10000) in paragraph at lines 685--685
+[]|\TU/LiberationSerif(0)/b/n/10 Thông lượng
+
+Underfull \hbox (badness 10000) in paragraph at lines 685--685
+[]|\TU/LiberationSerif(0)/b/n/10 Giao tiếp bộ nhớ
+
+[137]
+[138]
+[139]
+[140]
+[141]) (./chuong_v3/chuong_06_hanning.tex
+[142]
+Underfull \hbox (badness 5711) in paragraph at lines 14--15
+[]\TU/LiberationSerif(0)/m/n/10 Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ
+ và bit-đối-bit giữa mô hình song sinh Python
+
+[143] (./chuong_v3/fig_ch06_leakage.tex)
+[144] (/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty)
+[145]
+[146]
+[147] (./chuong_v3/fig_ch06_window_shape.tex)
+[148]
+[149]
+[150]
+[151]
+[152]
+[153]
+[154] (./chuong_v3/fig_ch06_window_arch.tex)
+[155] (./rtl/v3/ch06_hanning_window.v
+[156])
+[157] (./verify_v3/ch06_window_twin.py
+[158])
+Underfull \hbox (badness 10000) in paragraph at lines 617--617
+[]|\TU/LiberationSerif(0)/b/n/9 Python Twin
+
+Underfull \hbox (badness 10000) in paragraph at lines 617--617
+[]|\TU/LiberationSerif(0)/b/n/9 Verilog HDL
+
+[159]
+Underfull \hbox (badness 10000) in paragraph at lines 646--646
+[]\TU/LiberationSerif(0)/m/n/10 Bảng 29: |So sánh toàn diện giữa đường dẫn sử d
+ụng IP lõi Intel và giải pháp HDL tự viết
+
+Underfull \hbox (badness 10000) in paragraph at lines 668--668
+[]|\TU/LiberationSerif(0)/b/n/10 Đường (B): HDL tự viết
+
+Underfull \hbox (badness 10000) in paragraph at lines 668--668
+[]|\TU/LiberationSerif(0)/b/n/10 Tài nguyên logic
+
+Underfull \hbox (badness 7613) in paragraph at lines 668--668
+[]|\TU/LiberationSerif(0)/b/n/10 Độ trễ đường ống
+
+Underfull \hbox (badness 10000) in paragraph at lines 668--668
+[]|\TU/LiberationSerif(0)/b/n/10 Thông lượng
+
+[160]
+[161]
+[162]
+[163]
+Underfull \hbox (badness 10000) in paragraph at lines 825--825
+[]|\TU/LiberationSerif(0)/b/n/10 Tài nguyên logic
+
+Underfull \hbox (badness 10000) in paragraph at lines 825--825
+[]|\TU/LiberationSerif(0)/b/n/10 Thông lượng
+
+Underfull \hbox (badness 10000) in paragraph at lines 825--825
+[]|\TU/LiberationSerif(0)/b/n/10 Tần số hoạt động
+
+[164]) (./chuong_v3/chuong_07_mac.tex
+[165]
+[166]
+[167] (./chuong_v3/fig_ch07_direct_mac_vs_fft.tex)
+[168]
+[169]
+[170]
+[171] (./chuong_v3/fig_ch07_pipeline_options.tex)
+[172]
+[173]
+[174]
+[175]
+[176]
+[177]
+[178]
+[179]
+[180]
+[181]
+[182] (./chuong_v3/fig_ch07_mac_arch.tex)
+[183] (./rtl/v3/ch07_mac_unit.v)
+[184] (./rtl/v3/ch07_mac_engine.v
+[185]) (./verify_v3/ch07_mac_twin.py
+[186])
+[187]
+[188]
+Underfull \hbox (badness 10000) in paragraph at lines 969--969
+[]|\TU/LiberationSerif(0)/b/n/10 Tuyến (A): IP AL-
+
+Underfull \hbox (badness 1715) in paragraph at lines 969--969
+[]|\TU/LiberationSerif(0)/b/n/10 Khối Variable Precision
+
+Underfull \hbox (badness 10000) in paragraph at lines 969--969
+[]|\TU/LiberationSerif(0)/m/n/10 2 khối M10K (từ
+
+Underfull \hbox (badness 1430) in paragraph at lines 969--969
+[]|\TU/LiberationSerif(0)/b/n/10 Độ trễ đường ống (La-
+
+Underfull \hbox (badness 10000) in paragraph at lines 969--969
+[]|\TU/LiberationSerif(0)/b/n/10 Tính khả chuyển mô
+
+[189]
+[190]) (./chuong_v3/chuong_08_chuan_hoa_octave.tex
+[191]
+[192]
+[193] (./chuong_v3/fig_ch08_window_effect.tex)
+[194]
+[195] (./chuong_v3/fig_ch08_octave_cost.tex)
+[196]
+[197]
+[198]
+[199]
+[200]
+[201] (./chuong_v3/fig_ch08_norm_arch.tex) (./rtl/v3/ch08_ck_rom.v
+[202]) (./rtl/v3/ch08_norm_score.v
+[203])
+Underfull \hbox (badness 6396) in paragraph at lines 597--597
+[]\TU/LiberationSerif(0)/m/n/10.95 Listing 37: |Đoạn mã Verilog Tầng 3: Làm trò
+n số học, dịch phân số và trừ Octave Cost
+(./rtl/v3/ch08_norm_score.v
+[204])
+Underfull \hbox (badness 3088) in paragraph at lines 643--643
+[]|\TU/LiberationSerif(0)/m/n/10 Dòng 102–104, 126,
+
+Underfull \hbox (badness 1137) in paragraph at lines 643--643
+[]|\TU/LiberationSerif(0)/m/n/10 Dòng 158–159, 169–
+
+Underfull \hbox (badness 1137) in paragraph at lines 643--643
+[]|\TU/LiberationSerif(0)/m/n/10 Dòng 181–187, 189–
+
+[205] (./verify_v3/ch08_twin.py
+[206])
+[207]
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+[]|\TU/LiberationSerif(0)/m/n/10 ROM: 1-PORT
+
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+[]|\TU/LiberationSerif(0)/m/n/10 Mảng Verilog nạp
+
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+\TU/LiberationMono(0)/m/n/10 $readmemh\TU/LiberationSerif(0)/m/n/10 , tự động
+
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+[]|\TU/LiberationSerif(0)/m/n/10 Toán tử \TU/LiberationMono(0)/m/n/10 * \TU/Lib
+erationSerif(0)/m/n/10 có ép kiểu
+
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+\TU/LiberationMono(0)/m/n/10 $signed\TU/LiberationSerif(0)/m/n/10 , suy luận 2
+
+Underfull \hbox (badness 3646) in paragraph at lines 735--735
+\TU/LiberationSerif(0)/m/n/10 bộ tổng hợp logic và vị trí
+
+Underfull \hbox (badness 10000) in paragraph at lines 735--735
+[]|\TU/LiberationSerif(0)/m/n/10 Cần thư viện độc quyền
+
+[208]
+[209]) (./chuong_v3/chuong_09_dinh_parabol_chia.tex
+[210]
+[211]
+[212]
+[213] (./chuong_v3/fig_ch09_parabola_peak.tex)
+[214]
+[215]
+[216] (./chuong_v3/fig_ch09_divider_arch.tex)
+[217]
+[218]
+[219] (./rtl/v3/ch09_lpm_div_wrapper.v)
+[220] (./chuong_v3/fig_ch09_calc_pipeline.tex) (./rtl/v3/ch09_peak_finder.v
+[221]
+[222]) (./rtl/v3/ch09_radix2_div.v
+[223]) (./rtl/v3/ch09_f0_calc.v
+[224]
+[225])
+Underfull \hbox (badness 10000) in paragraph at lines 674--674
+[]|\TU/LiberationSerif(0)/m/n/10 Mạch giải mã ưu tiên 5 tầng
+
+Underfull \hbox (badness 10000) in paragraph at lines 674--674
+\TU/LiberationSerif(0)/m/n/10 xác định độ dịch chuẩn hóa
+
+[226] (./verify_v3/ch09_twin.py
+[227]) (./verify_v3/ch09_twin.py
+[228])
+[229]
+Underfull \hbox (badness 10000) in paragraph at lines 819--819
+[]|\TU/LiberationMono(0)/m/n/10 lpm_divide
+
+Underfull \hbox (badness 1360) in paragraph at lines 819--819
+[]|\TU/LiberationSerif(0)/b/n/10 0 khối DSP \TU/LiberationSerif(0)/m/n/10 (phép
+ nhân $\OT1/cmr/m/n/10 512000$ \TU/LiberationSerif(0)/m/n/10 dùng
+
+[230]
+[231])
+[232] (./phan_moi_v3.aux) )
+(see the transcript file for additional information)
+Output written on phan_moi_v3.pdf (232 pages).
+Transcript written on phan_moi_v3.log.

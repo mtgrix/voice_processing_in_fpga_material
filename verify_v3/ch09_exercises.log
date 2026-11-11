@@ -1,0 +1,40 @@
+=== [ch09_exercises] Chapter 9 Exercises Verification ===
+
+--- Exercise 1: Discrete Lag Step vs JND ---
+fs = 16000.0 Hz
+f(tau=31) = 516.1290 Hz, f(tau=32) = 500.0000 Hz
+Delta f = 16.1290 Hz
+Cent step = 54.9644 cents
+Human JND threshold = ~5.0 - 10.0 cents
+Ratio step / JND = 11.0x threshold
+
+--- Exercise 2: Parabolic Interpolation with Negative Delta ---
+Input triple: y_-1 = 9500, y_0 = 10000, y_+1 = 8500 at tau_p = 80
+num = y_+1 - y_-1 = -1000
+den = 2*y_0 - y_-1 - y_+1 = 2000
+delta = num / (2*den) = -0.250000 (exactly -0.25)
+tau* = tau_p + delta = 79.7500
+F0 exact = 200.6270 Hz
+F0 Q12.4 exact = 3210.0313
+F0 Q12.4 rounded = 3210
+Single-division: N = 1024000000, D = 319000
+N / D = 3210.0313
+Integer division (N + D//2) // D = 3210
+
+--- Exercise 3: s2 Normalization and Bit-Widths ---
+den = 33554432 (bit length = 26)
+s2 = max(0, 26 - 24) = 2
+denn = den >> 2 = 8388608 (bit length = 24)
+Worst-case denn = 16777215 (24 bits)
+Worst-case D = 7163870805 (33 bits, <= 34)
+Worst-case N = 8593516015402 (43 bits, <= 44)
+
+--- Exercise 4: Architectural Trade-off ---
+Clock = 50.0 MHz, period = 20.0 ns
+Hop = 160 samples = 500000 clock cycles (10 ms)
+Sequential Radix-2: latency = 34 cycles (680.0 ns)
+Divider active duty cycle = 0.006800% of frame budget
+Pipelined LPM_DIVIDE: throughput = 1/cycle (wasted: 499,999 cycles idle)
+Resource comparison: Radix-2 ~80-120 ALMs vs LPM_DIVIDE ~400-600 ALMs (phải đo)
+
+=== [ch09_exercises] ALL EXERCISE VERIFICATIONS PASSED ===

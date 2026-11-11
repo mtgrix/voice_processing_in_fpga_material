@@ -1,0 +1,46 @@
+=== STARTING CH09 FULL-CORE FRAME CALC VERIFICATION ===
+[FAIL] Cycle 1003: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 1006: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 1006: out_f0_raw mismatch DUT=1307 EXP=0
+[FAIL] Cycle 1006: out_best_tau mismatch DUT=196 EXP=0
+[FAIL] Cycle 1006: out_sc mismatch DUT=43877918 EXP=0
+[FAIL] Cycle 1006: out_r0n mismatch DUT=46272152 EXP=0
+[FAIL] Cycle 1006: out_found mismatch DUT=1 EXP=0
+[FAIL] Cycle 1240: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 1243: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 1243: out_f0_raw mismatch DUT=1456 EXP=0
+[FAIL] Cycle 1243: out_best_tau mismatch DUT=176 EXP=0
+[FAIL] Cycle 1243: out_sc mismatch DUT=45661021 EXP=0
+[FAIL] Cycle 1243: out_r0n mismatch DUT=47401019 EXP=0
+[FAIL] Cycle 1243: out_found mismatch DUT=1 EXP=0
+[FAIL] Cycle 1477: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 1480: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 1480: out_f0_raw mismatch DUT=2009 EXP=0
+[FAIL] Cycle 1480: out_best_tau mismatch DUT=127 EXP=0
+[FAIL] Cycle 1480: out_sc mismatch DUT=45019090 EXP=0
+[FAIL] Cycle 1480: out_r0n mismatch DUT=46181471 EXP=0
+[FAIL] Cycle 1480: out_found mismatch DUT=1 EXP=0
+[FAIL] Cycle 1714: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 1717: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 1717: out_f0_raw mismatch DUT=3435 EXP=0
+[FAIL] Cycle 1717: out_best_tau mismatch DUT=75 EXP=0
+[FAIL] Cycle 1717: out_sc mismatch DUT=45146150 EXP=0
+[FAIL] Cycle 1717: out_r0n mismatch DUT=46147378 EXP=0
+[FAIL] Cycle 1717: out_found mismatch DUT=1 EXP=0
+[FAIL] Cycle 1951: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 1954: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 1954: out_f0_raw mismatch DUT=5873 EXP=0
+[FAIL] Cycle 1954: out_best_tau mismatch DUT=44 EXP=0
+[FAIL] Cycle 1954: out_sc mismatch DUT=45283578 EXP=0
+[FAIL] Cycle 1954: out_r0n mismatch DUT=46150022 EXP=0
+[FAIL] Cycle 1954: out_found mismatch DUT=1 EXP=0
+[FAIL] Cycle 2380: out_valid mismatch DUT=0 EXP=1
+[FAIL] Cycle 2383: out_valid mismatch DUT=1 EXP=0
+[FAIL] Cycle 2383: out_f0_raw mismatch DUT=2279 EXP=0
+[FAIL] Cycle 2383: out_best_tau mismatch DUT=112 EXP=0
+[FAIL] Cycle 2383: out_sc mismatch DUT=45335096 EXP=0
+[FAIL] Cycle 2383: out_r0n mismatch DUT=46360645 EXP=0
+[FAIL] Cycle 2383: out_found mismatch DUT=1 EXP=0
+=== Total comparison errors: 42 ===
+=== [FAIL] VERIFICATION FAILED WITH 42 ERRORS ===
+tb/v3/tb_ch09_calc.v:187: $finish called at 51520000 (1ps)

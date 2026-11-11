@@ -1,0 +1,60 @@
+================================================================================
+CH09 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
+================================================================================
+[fon/Sound_to_Pitch.cpp:345]
+   Code   :
+maximumLag = std::min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
+   Ý nghĩa:
+Xác định độ trễ tối đa maximumLag = floor(638/3) + 2 = 214 mẫu tại N = 638, tương ứng với Pitch floor 75 Hz.
+
+[fon/Sound_to_Pitch.cpp:186--188]
+   Code   :
+for (integer i = 2; i < maximumLag && i < brent_ixmax; i ++) {
+    if (r [i] > 0.5 * our voicingThreshold && r [i] > r [i - 1] && r [i] >= r [i + 1]) {
+   Ý nghĩa:
+Điều kiện đỉnh cục bộ: r[i] vượt nửa ngưỡng voicing (0.5 * 0.45 = 0.225), đồng thời lớn hơn chặt hàng xóm trái r[i-1] và lớn hơn hoặc bằng hàng xóm phải r[i+1]. Vì i < maximumLag = 214, chỉ số i lớn nhất được xét là 213; điểm 214 chỉ đóng vai trò hàng xóm phải.
+
+[fon/Sound_to_Pitch.cpp:193--199]
+   Code   :
+/* Use parabolic interpolation for first estimate of frequency,
+   and sin(x)/x interpolation to compute the strength of this frequency. */
+double dr = 0.5 * (r [i + 1] - r [i - 1]);
+double d2r = (r [i] - r [i - 1]) + (r [i] - r [i + 1]);
+/* It used to say: 2 * r [i] - r [i-1] - r [i+1], but that led to rounding errors.
+   Bug removed 2025-04-18. */
+double frequencyOfMaximum = 1.0 / my dx / (i + dr / d2r);
+   Ý nghĩa:
+Nội suy parabol ước lượng ban đầu: tính độ dời đỉnh delta = dr / d2r = (r[i+1] - r[i-1]) / (2 * ((r[i] - r[i-1]) + (r[i] - r[i+1]))), từ đó chu kỳ nội suy là tau* = i + delta và tần số cực trị là 1 / (dx * tau*). Lưu ý công thức mẫu số dạng tổng hai hiệu d2r triệt tiêu lỗi làm tròn dấu phẩy động.
+
+[fon/Sound_to_Pitch.cpp:202--204]
+   Code   :
+strength = NUM_interpolate_sinc (rv, 1.0 / my dx / frequencyOfMaximum - offset, 30);
+   Ý nghĩa:
+Ước lượng độ mạnh (strength) của đỉnh tần số bằng hàm nội suy sinc bán kính 30 chu kỳ (sinc30).
+
+[fon/Sound_to_Pitch.cpp:209--210]
+   Code   :
+if (strength > 1.0)
+    strength = 1.0 / strength;
+   Ý nghĩa:
+Phản xạ độ mạnh: nếu giá trị nội suy sinc vượt quá 1.0 (do hiện tượng Gibbs hoặc nhiễu lượng tử), nghịch đảo về 1/strength để đảm bảo strength luôn nằm trong khoảng [0, 1].
+
+[fon/Sound_to_Pitch.cpp:251--265]
+   Code   :
+/* Second pass: refine frequency and strength with Brent's method and sinc interpolation */
+for (integer ic = 2; ic <= my maxn; ic ++) {
+    integer depth = ( c [0] > 0.3 / my dx ? NUM_PEAK_INTERPOLATE_SINC700 : brent_depth );
+    NUMimproveMaximum (rv, imax [ic - 1] - offset, depth, & xmid, & ymid);
+    c [0] = 1.0 / my dx / (xmid + offset);
+}
+   Ý nghĩa:
+Lượt tinh chỉnh thứ hai của Praat: luôn luôn sử dụng phương pháp tối ưu hóa Brent kết hợp nội suy sinc sâu (sinc70 cho Hanning, hoặc sinc700 nếu f > 4800 Hz) để tìm cực trị liên tục chính xác tuyệt đối. FPGA của ta chọn dừng ở parabol; sai số này được định lượng riêng tại Chương 13.
+
+--------------------------------------------------------------------------------
+AUDIT SUMMARY:
+All 6 Praat 7.0.03 citations for Chapter 9 verified against fon/Sound_to_Pitch.cpp.
+Lag scan range: [26, 214] (189 lags).
+Lag search range: [27, 213] (187 candidate points).
+Parabola formula sign: delta = + (y_+1 - y_-1) / (2 * (2*y_0 - y_-1 - y_+1)).
+Single division formula: F0_Q12.4 = round( 512000 * den / (2*den*tau_p + num) ).
+================================================================================

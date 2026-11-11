@@ -1,0 +1,10 @@
+=== [ch09_twin] Generating Chapter 9 Stimulus and Expected Vectors ===
+Generating divider test vectors (tb_ch09_div)...
+Total test triples: 265
+Wrote 12456 stimulus cycles to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch09_div_stim.txt
+Wrote 12456 expected cycles to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch09_div_expected.txt
+
+Generating full-core test vectors (tb_ch09_calc)...
+Wrote 2575 stimulus cycles to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch09_calc_stim.txt
+Wrote 2575 expected cycles to /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch09_calc_expected.txt
+=== [ch09_twin] Vector Generation Complete ===

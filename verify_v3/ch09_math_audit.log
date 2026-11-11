@@ -1,0 +1,44 @@
+=== [ch09_math_audit] Chapter 9 Mathematical and Numerical Audit ===
+
+--- 1. Discrete Lag Discretization Error ---
+fs = 16000.0 Hz
+tau = 31: F0 = 516.1290 Hz
+tau = 32: F0 = 500.0000 Hz
+Delta F0 = 16.1290 Hz (Agenda: 16,13 Hz)
+Cents step = 54.9644 cent (Agenda: 55 cent)
+
+--- 2. Q12.4 Fixed-Point Resolution ---
+Q12.4 LSB = 0.0625 Hz
+At 100 Hz: 1 LSB = 1.0817 cent (Agenda: 1,08 cent)
+At 500 Hz: 1 LSB = 0.2164 cent (Agenda: 0,22 cent)
+
+--- 3. Hand Calculation Example: y=(8000, 10000, 9000), tau_p=100 ---
+y_-1 = 8000, y_0 = 10000, y_+1 = 9000, tau_p = 100
+num = y_+1 - y_-1 = 1000
+den = 2*y_0 - y_-1 - y_+1 = 3000
+delta = num / (2*den) = 0.166667 (+1/6 = 0.166667)
+tau* = tau_p + delta = 100.166667
+F0 exact = fs / tau* = 159.7338 Hz (Agenda: 159,73 Hz)
+F0 Q12.4 exact = 2555.7404
+F0 Q12.4 rounded = 2556 (Agenda: 2556)
+Single-division: 512000*3000 / (2*3000*100 + 1000) = 1536000000/601000 = 2555.7404
+Single-division integer with +D//2 = 2556
+v1 formula: 256000*3000 / (100*3000 + 1000) = 768000000/301000 = 2551.4950 -> 2551 (Agenda: 2551)
+
+--- 4. Bit-Width and Dynamic Range Audit for s2 Normalization ---
+Max denn = 16777215 (bits: 24)
+Max D = 2 * denn * 213 + numn = 7163870805 (bits: 33)
+Max N = 512000 * denn + D//2 = 8593516015402 (bits: 43)
+LPM_WIDTHN requirement: >= 43 bits -> Choose 44 bits
+LPM_WIDTHD requirement: >= 33 bits -> Choose 34 bits
+
+--- 5. Golden Synthetic Files Frame-by-Frame Audit ---
+Auditing synth_glide_vuv_16k.wav: 277 frames...
+Auditing synth_glide_vuv_16k_snr5.wav: 277 frames...
+Total frames audited: 554
+Total voiced frames: 415
+Max den observed: 33378904 (25 bits)
+Max s2 observed: 1
+Max N observed: 8545532930739 (43 bits, fits in 44 bits)
+Max D observed: 2124309888 (31 bits, fits in 34 bits)
+=== [ch09_math_audit] ALL CHAPTER 9 AUDITS PASSED SUCCESSFULLY ===

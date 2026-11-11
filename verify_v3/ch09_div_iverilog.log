@@ -1,0 +1,4 @@
+=== STARTING CH09 RADIX-2 DIVIDER VERIFICATION ===
+=== Total comparison errors: 0 ===
+=== ALL 12456 VECTORS MATCHED SUCCESSFULLY ===
+tb/v3/tb_ch09_div.v:158: $finish called at 249140000 (1ps)
