@@ -2,6 +2,6 @@
 GENERATING VERIFICATION VECTORS FOR CH08 NORMALIZATION & OCTAVE SCORING
 ================================================================================
 Total simulation cycles generated: 1214 cycles (>= 200 required)
-Wrote stimulus to : C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch08_norm_stim.txt
-Wrote expected to : C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch08_norm_expected.txt
+Wrote stimulus to : /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch08_norm_stim.txt
+Wrote expected to : /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch08_norm_expected.txt
 ================================================================================

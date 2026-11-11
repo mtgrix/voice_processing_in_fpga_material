@@ -1,0 +1,11 @@
+=== [ch08] Compiling tb_ch08_norm with iverilog -g2012 -Wall ===
+=== [ch08] Running simulation vvp sim_ch08_norm ===
+=== STARTING CH08 NORMALIZATION & SCORING VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 1214
+Total comparison errors: 0
+=== ALL 1214 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch08_norm.v:205: $finish called at 24300000 (1ps)
+=== [ch08] tb_ch08_norm PASSED (0 errors) ===
+=== [ch08] All Chapter 8 iverilog simulations completed successfully ===
