@@ -5,18 +5,18 @@
     >=latex,
     font=\small,
     box/.style={draw=black!80, rounded corners=3pt, line width=0.8pt, fill=white, align=center, inner sep=4pt},
-    fsmbox/.style={draw=green!60!black, rounded corners=3pt, line width=0.9pt, fill=green!5, align=center, inner sep=5pt},
-    rambox/.style={draw=blue!70!black, rounded corners=3pt, line width=0.9pt, fill=blue!5, align=center, inner sep=5pt},
+    fsmbox/.style={draw=green!60!black, rounded corners=3pt, line width=0.9pt, fill=green!5, align=center, inner sep=4pt},
+    rambox/.style={draw=blue!70!black, rounded corners=3pt, line width=0.9pt, fill=blue!5, align=center, inner sep=4pt},
     dspbox/.style={draw=orange!80!black, rounded corners=3pt, line width=0.9pt, fill=orange!5, align=center, inner sep=5pt},
     regbox/.style={draw=red!70!black, rounded corners=2pt, line width=0.8pt, fill=red!10, align=center, inner sep=4pt},
-    lbl/.style={font=\scriptsize, text=black!85, fill=white, inner sep=2pt},
+    lbl/.style={font=\scriptsize, text=black!85, fill=white, inner sep=1.5pt},
     titlelbl/.style={font=\bfseries\small, text=black!90}
 ]
 
     % =========================================================================
     % 1. Khối FSM và Bộ phát địa chỉ (Bên trái)
     % =========================================================================
-    \node[fsmbox, text width=2.8cm, minimum height=4.4cm] (fsm) at (1.5, 2.3) {
+    \node[fsmbox, text width=2.7cm, minimum height=4.4cm] (fsm) at (1.35, 2.3) {
         \textbf{FSM \& Địa chỉ}\\[3pt]
         \scriptsize Quét $98.540\text{ cặp}$\\
         \scriptsize $\tau = 0 \to n \in [0, 637]$\\
@@ -30,7 +30,7 @@
     % =========================================================================
     % 2. Bộ nhớ True Dual-Port RAM 638x17 (Giữa trên)
     % =========================================================================
-    \node[rambox, text width=2.5cm, minimum height=1.9cm] (ram) at (5.6, 3.4) {
+    \node[rambox, text width=2.5cm, minimum height=1.9cm] (ram) at (5.9, 3.4) {
         \textbf{Bộ đệm $x_w$}\\[2pt]
         \scriptsize \texttt{ch07\_xw\_ram.v}\\
         \scriptsize 638 từ $\times$ 17-bit\\
@@ -41,7 +41,7 @@
     % =========================================================================
     % 3. Tầng đồng bộ cờ điều khiển (Giữa dưới)
     % =========================================================================
-    \node[regbox, text width=2.5cm, minimum height=1.2cm] (pipe1) at (5.6, 0.9) {
+    \node[regbox, text width=2.5cm, minimum height=1.2cm] (pipe1) at (5.9, 0.9) {
         \textbf{Cân bằng nhịp}\\[2pt]
         \scriptsize 1 nhịp trễ RAM\\
         \scriptsize \texttt{sload\_r, last\_r}
@@ -50,7 +50,7 @@
     % =========================================================================
     % 4. Khối MAC DSP cứng (Bên phải)
     % =========================================================================
-    \node[dspbox, text width=3.3cm, minimum height=4.4cm] (mac) at (11.6, 2.3) {
+    \node[dspbox, text width=3.3cm, minimum height=4.4cm] (mac) at (11.8, 2.3) {
         \textbf{Khối MAC DSP}\\[2pt]
         \scriptsize \texttt{ch07\_mac\_unit.v}\\
         \scriptsize (1 Variable Precision DSP)\\[4pt]
@@ -64,25 +64,25 @@
     % =========================================================================
     % Dây nối và tín hiệu
     % =========================================================================
-    % Từ FSM sang RAM (Khoảng cách ~1.3 cm)
+    % Từ FSM sang RAM (Khoảng cách ~2.0 cm)
     \draw[->, line width=0.8pt] ([yshift=1.45cm]fsm.east) -- ([yshift=0.35cm]ram.west)
-        node[midway, above=2pt, lbl] {\texttt{addr\_a} ($n$)};
+        node[pos=0.45, above=2pt, lbl] {\texttt{addr\_a} ($n$)};
     \draw[->, line width=0.8pt] ([yshift=0.75cm]fsm.east) -- ([yshift=-0.35cm]ram.west)
-        node[midway, above=2pt, lbl] {\texttt{addr\_b} ($n+\tau$)};
+        node[pos=0.45, above=2pt, lbl] {\texttt{addr\_b} ($n+\tau$)};
 
     % Từ FSM sang Pipe1
     \draw[->, line width=0.8pt] ([yshift=-1.4cm]fsm.east) -- (pipe1.west)
-        node[midway, above=2pt, lbl] {\texttt{sload, last}};
+        node[pos=0.40, above=2pt, lbl] {\texttt{sload, last}};
 
-    % Từ RAM sang MAC (Khoảng cách rộng ~3.2 cm, nhãn căn pos=0.42 có clearance >= 2mm hai phía)
+    % Từ RAM sang MAC (Khoảng cách rộng ~3.0 cm, nhãn căn pos=0.44 có clearance >= 3mm hai phía)
     \draw[->, line width=0.9pt, blue!70!black] ([yshift=0.35cm]ram.east) -- ([yshift=1.45cm]mac.west)
-        node[pos=0.42, above=2pt, lbl] {$x_w[n]$ (17 bit)};
+        node[pos=0.44, above=2pt, lbl] {$x_w[n]$ (17 bit)};
     \draw[->, line width=0.9pt, blue!70!black] ([yshift=-0.35cm]ram.east) -- ([yshift=0.75cm]mac.west)
-        node[pos=0.42, above=2pt, lbl] {$x_w[n+\tau]$ (17 bit)};
+        node[pos=0.44, above=2pt, lbl] {$x_w[n+\tau]$ (17 bit)};
 
-    % Từ Pipe1 sang MAC (Đường thẳng tắp, nhãn pos=0.42 có clearance >= 3mm hai phía)
+    % Từ Pipe1 sang MAC (Đường thẳng tắp, nhãn pos=0.44 có clearance >= 4mm hai phía)
     \draw[->, line width=0.8pt] (pipe1.east) -- ([yshift=-1.4cm]mac.west)
-        node[pos=0.42, above=2pt, lbl] {\texttt{sload\_r, last\_r}};
+        node[pos=0.44, above=2pt, lbl] {\texttt{sload\_r, last\_r}};
 
     % Tín hiệu ngõ ra từ MAC
     \draw[->, line width=1.0pt, orange!80!black] ([yshift=1.2cm]mac.east) -- ++(1.8, 0)
@@ -93,8 +93,8 @@
         node[midway, above=2pt, lbl] {\texttt{out\_R} (48 bit)};
 
     % Chú thích nhịp thời gian dưới chân
-    \node[draw=black!40, fill=black!2, rounded corners=3pt, inner sep=5pt, anchor=north, align=center, text width=15.6cm] 
-        at (6.7, -0.4) {
+    \node[draw=black!40, fill=black!2, rounded corners=3pt, inner sep=5pt, anchor=north, align=center, text width=15.8cm] 
+        at (6.8, -0.4) {
         \scriptsize\textbf{Tổng độ trễ đường ống:} 1 nhịp (RAM M10K) + 1 nhịp (Thanh ghi vào DSP) + 1 nhịp (Thanh ghi tổng DSP) = \textbf{3 chu kỳ}.\\
         \scriptsize Khung 638 mẫu: $98.540\text{ phát} + 3\text{ trễ} = \mathbf{98.543\text{ chu kỳ}}$ ($\approx 1{,}97\text{ ms}$ tại 50 MHz, $\text{RTF} = 0{,}197$).
     };
