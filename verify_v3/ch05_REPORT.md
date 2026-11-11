@@ -63,7 +63,7 @@
    - Bẫy Argon ($M = 26214, k = 24$): Gây sai số trên $10.485.605 / 41.943.040$ tổng (tỷ lệ lỗi $\approx 25\%$), đã được phân tích và chứng minh nguyên nhân trong `verify_v3/ch05_mean_math.log`.
    - Đáp ứng bộ lọc DC-Blocker: Tần số cắt giải tích chính xác $f_c = 9{,}9278\text{ Hz}$ (công thức xấp xỉ $9{,}9472\text{ Hz}$); tại $75\text{ Hz}$, độ lợi đạt $-0{,}0590\text{ dB}$, pha $+7{,}5691^\circ$. Hằng số thời gian suy giảm $\tau = 255{,}5$ mẫu ($16{,}0\text{ ms}$). Toàn bộ được kiểm chứng trong `verify_v3/ch05_dc_effect.log`.
 4. **Mục "phải đo" (To be measured on hardware / Linux simulation):**
-   - Kết quả chạy thực tế Icarus Verilog: iverilog: to be run by reviewer. Kịch bản `verify_v3/run_ch05_iverilog.sh` (LF, chế độ 100755) và toàn bộ các tệp vector kích thích/kỳ vọng đã được chuẩn bị đầy đủ và đồng bộ. Trong văn bản LaTeX, kết quả được đặt dạng hộp giữ chỗ `\todo{box}` để reviewer điền số đo chính thức sau khi chạy trên Linux.
+   - Kết quả chạy thực tế Icarus Verilog: iverilog (reviewer, box): tb_ch05_local_mean 88970/88970, tb_ch05_dc_blocker 1000/1000, 0 errors (verify_v3/ch05_iverilog.log). Kịch bản `verify_v3/run_ch05_iverilog.sh` (LF, chế độ 100755) và toàn bộ các tệp vector kích thích/kỳ vọng đã được chuẩn bị đầy đủ và đồng bộ. Trong văn bản LaTeX, kết quả được đặt dạng hộp giữ chỗ `\todo{box}` để reviewer điền số đo chính thức sau khi chạy trên Linux.
    - Tài nguyên logic ALM và tần số hoạt động tối đa $F_{\max}$: Phải đo chính xác sau khi tổng hợp Fitter và TimeQuest Timing Analyzer trong phần mềm Quartus Prime với chip 5CSXFC6D6F31C6.
 
 ---

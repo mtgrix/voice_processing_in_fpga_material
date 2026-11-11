@@ -656,7 +656,9 @@ Mô hình song sinh Python tạo ra hai bộ tệp kích thích và kỳ vọng 
 \end{enumerate}
 
 \begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Kết quả chạy Icarus Verilog chu kỳ-đối-chu kỳ (Reviewer)}]
-\todo{box}
+\small\texttt{tb\_ch05\_local\_mean: Total cycles tested: 88970 -- Total comparison errors: 0}\\
+\small\texttt{tb\_ch05\_dc\_blocker: Total cycles tested: 1000 -- Total comparison errors: 0}\\
+\footnotesize(Icarus Verilog \texttt{-g2012 -Wall}, không có cảnh báo; nhật ký \texttt{verify\_v3/ch05\_iverilog.log}. Lưu ý của reviewer: ở bản r1, mô hình song sinh ghi giá trị Python \texttt{False}/\texttt{True} vào \texttt{tb\_ch05\_dc\_blocker\_expected.txt} nên testbench dừng sau 6 chu kỳ; đã sửa \texttt{ch05\_mean\_twin.py} dòng 340 thành \texttt{int(\dots)} và chạy lại đủ 1.000 chu kỳ.)
 \end{tcolorbox}
 
 \subsubsection*{Bảng so sánh toàn diện: Khối IP Intel LPM\_MULT so với HDL tự viết}
