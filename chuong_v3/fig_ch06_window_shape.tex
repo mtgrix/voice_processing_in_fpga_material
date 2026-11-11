@@ -1,0 +1,58 @@
+% chuong_v3/fig_ch06_window_shape.tex
+% Dạng sóng rời rạc của Cửa sổ Hanning N+1 (N = 638) và xử lý bão hòa Q1.15 ở đỉnh
+
+\begin{tikzpicture}[>=Stealth, font=\small, scale=0.95, every node/.style={transform shape}]
+
+    % Trục tọa độ chính
+    \draw[->, thick, color=black!70] (-0.5, 0) -- (11.8, 0) node[right, font=\footnotesize] {Chỉ số mẫu $n$ ($0 \dots 637$)};
+    \draw[->, thick, color=black!70] (0, -0.3) -- (0, 4.5) node[above, font=\footnotesize] {Hệ số lượng tử Q1.15 $w[n]$};
+
+    % Đường biên và các mốc
+    \draw[dashed, color=black!20] (0, 3.8) -- (11.2, 3.8);
+    \node[left, font=\scriptsize, color=black!70] at (0, 3.8) {$32.767$ (\texttt{0x7FFF})};
+    \node[left, font=\scriptsize, color=black!70] at (0, 1.9) {$16.384$ (\texttt{0x4000})};
+    \node[left, font=\scriptsize, color=black!70] at (0, 0) {$0$};
+
+    % Đường cong bao Hanning (Màu xanh dương)
+    \draw[domain=0.5:10.5, samples=100, very thick, blue!75!black] 
+        plot (\x, {3.8 * (0.5 - 0.5 * cos(360 * (\x - 0.5) / 10))});
+
+    % Trục đối xứng ở giữa (n = 318.5)
+    \draw[dashdotted, thick, orange!80!black] (5.5, 0) -- (5.5, 4.2);
+    \node[above, font=\scriptsize, fill=white, inner sep=2pt, color=orange!90!black] at (5.5, 4.2) 
+        {Trục đối xứng ($n = 318{,}5$)};
+
+    % Điểm mốc biên trái (n = 0)
+    \filldraw[red!80!black] (0.5, 0.05) circle (2.5pt);
+    \node[below, font=\scriptsize] at (0.5, 0) {$n = 0$};
+    \draw[<-, thick, red!80!black] (0.5, 0.15) -- (1.5, 1.2) 
+        node[above right, font=\scriptsize, fill=white, inner sep=2.5pt, draw=red!70!black, rounded corners=2pt] 
+        {\parbox{2.4cm}{\centering\textbf{Biên trái:}\\$w[0] = 1 \ne 0$}};
+
+    % Điểm mốc biên phải (n = 637)
+    \filldraw[red!80!black] (10.5, 0.05) circle (2.5pt);
+    \node[below, font=\scriptsize] at (10.5, 0) {$n = 637$};
+    \draw[<-, thick, red!80!black] (10.5, 0.15) -- (9.5, 1.2) 
+        node[above left, font=\scriptsize, fill=white, inner sep=2.5pt, draw=red!70!black, rounded corners=2pt] 
+        {\parbox{2.4cm}{\centering\textbf{Biên phải:}\\$w[637] = 1 \ne 0$}};
+
+    % Hai điểm đỉnh bão hòa (n = 318, n = 319)
+    \filldraw[purple!80!black] (5.35, 3.8) circle (2.5pt);
+    \filldraw[purple!80!black] (5.65, 3.8) circle (2.5pt);
+    \draw[<-] (5.5, 3.85) -- (7.5, 3.2) 
+        node[right, font=\scriptsize, fill=white, inner sep=2pt, draw=purple!80!black, rounded corners=2pt] 
+        {\parbox{4.5cm}{\textbf{Đỉnh bão hòa Q1.15:}\\[1pt]
+        $w[318] = w[319] = 32.767$\\[1pt]
+        \emph{Kẹp $32.768 \to 32.767$ chống tràn}}};
+
+    % Chỉ số mẫu trung tâm
+    \node[below, font=\tiny, color=black!70] at (5.5, 0) {$318 \;\; 319$};
+
+    % Vùng tính LocalPeak LP (n = 212 .. 425)
+    \draw[<->, thick, teal!80!black] (3.82, -0.6) -- (7.18, -0.6);
+    \node[below, font=\scriptsize, color=teal!90!black, fill=white, inner sep=1pt] at (5.5, -0.65) 
+        {\textbf{Vùng dò LocalPeak $LP$ ($n = 212 \dots 425$, 214 mẫu)}};
+    \draw[dashed, color=teal!50] (3.82, 0) -- (3.82, -0.6);
+    \draw[dashed, color=teal!50] (7.18, 0) -- (7.18, -0.6);
+
+\end{tikzpicture}
