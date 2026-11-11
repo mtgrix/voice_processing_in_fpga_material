@@ -1,0 +1,6 @@
+=== GENERATING CH03 FIR VERIFICATION VECTORS ===
+Total audio test samples assembled: 281
+Generated 3390 cycles of verification stimulus.
+Successfully processed 281 samples across both FIR and bypass modes.
+Stimulus written to: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch03_fir_stim.txt
+Expected trace written to: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch03_fir_expected.txt

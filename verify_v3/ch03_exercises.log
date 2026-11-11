@@ -1,0 +1,29 @@
+=== CH03 EXERCISES NUMERICAL VERIFICATION ===
+
+--- Exercise 1: Kaiser Tap Estimation ---
+Target As = 50.0 dB, delta_f = 500.0 Hz, fs = 16000.0 Hz
+Kaiser formula (As - 7.95)/(14.36 * df/fs): 93.70 -> 94 taps
+scipy kaiserord: 95 taps, beta = 4.5335
+
+--- Exercise 2: Group Delay and Grid Alignment ---
+N = 31: Group delay = 15 samples (0.938 ms)
+N = 63: Group delay = 31 samples (1.938 ms)
+Frame 0 start original = 100, with FIR alignment = 85
+Frame 1 start original = 260, with FIR alignment = 245
+
+--- Exercise 3: Throughput and Budget ---
+Clock: 50.0 MHz, Cycles per sample: 17
+Throughput: 2.941 MSPS (Mega-samples/s)
+Processing time per sample: 340.0 ns
+Real-time audio budget at 16 kHz: 3125 cycles
+DSP duty cycle at 16 kHz real-time: 0.544%
+MAC bottleneck cycles/sample: 615.89 cycles
+FIR speedup relative to MAC bottleneck: 36.23x faster
+
+--- Exercise 4: Q1.15 Quantization and Arithmetic ---
+h[15] float = 0.975000, Q1.15 int = 31949 (0x7ccd)
+Reconstructed = 0.975006, Abs error = 6.10e-06, Rel error = 0.0006%
+Sum of 31 coefficients: 33257 (DC gain = 1.014923 or +0.129 dB)
+DC test x = 32767: acc = 1089732119
+Rounded: 33256, Saturated output: 32767
+Overshoot past 32767: 489 LSB (properly saturated to 32767: True)

@@ -1,0 +1,38 @@
+=== CH03 FIR DESIGN & FREQUENCY RESPONSE AUDIT ===
+Sampling frequency: fs = 16000.0 Hz, Nyquist = 8000.0 Hz
+
+--- Kaiser Filter Length Estimation ---
+Target attenuation: 60.0 dB, Transition bandwidth: 400.0 Hz
+scipy.signal.kaiserord taps: 147 (beta = 5.65326)
+Kaiser formula approximation: 144.99 -> ~145 taps
+
+--- FIR Filter Options Frequency Response Table ---
+Option     | Taps   | Group Delay  | 0 kHz (dB) | 7.4 kHz (dB) | 7.6 kHz (dB) | 8.0 kHz (dB)
+----------------------------------------------------------------------------------------
+31 tap     | 31     | 15           |    +0.128 |       +0.19 |       -2.29 |       -9.41
+63 tap     | 63     | 31           |    +0.014 |       +0.03 |       -0.38 |      -19.54
+127 tap    | 127    | 63           |    +0.008 |       -0.08 |       -0.25 |      -24.20
+
+--- 31-Tap Quantization Comparison (Float vs Q1.15) ---
+Float  : 7.4k=+0.19 dB, 7.6k=-2.29 dB, 8.0k=-9.41 dB
+Q1.15  : 7.4k=+0.19 dB, 7.6k=-2.29 dB, 8.0k=-9.41 dB
+Sum of Q1.15 coefficients: 33257 (DC gain = 1.014923)
+Symmetric check (h == h[::-1]): True
+Center tap h[15] = 31949 (0.975006)
+Unique 16 coefficients h[0..15]:
+  h[ 0] =    504 (0x01f8, float: +0.015375)
+  h[ 1] =   -538 (0xfde6, float: -0.016416)
+  h[ 2] =    571 (0x023b, float: +0.017434)
+  h[ 3] =   -604 (0xfda4, float: -0.018421)
+  h[ 4] =    635 (0x027b, float: +0.019367)
+  h[ 5] =   -664 (0xfd68, float: -0.020264)
+  h[ 6] =    692 (0x02b4, float: +0.021104)
+  h[ 7] =   -717 (0xfd33, float: -0.021879)
+  h[ 8] =    740 (0x02e4, float: +0.022581)
+  h[ 9] =   -760 (0xfd08, float: -0.023203)
+  h[10] =    778 (0x030a, float: +0.023741)
+  h[11] =   -793 (0xfce7, float: -0.024188)
+  h[12] =    804 (0x0324, float: +0.024541)
+  h[13] =   -812 (0xfcd4, float: -0.024795)
+  h[14] =    818 (0x0332, float: +0.024949)
+  h[15] =  31949 (0x7ccd, float: +0.975000)
