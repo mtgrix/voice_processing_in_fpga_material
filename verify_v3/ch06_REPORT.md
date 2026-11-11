@@ -97,8 +97,13 @@
 
 ## 5. Lịch sử các Commit Git trên nhánh v3
 
-Tiến trình phát triển Chương 6 được thực hiện qua chuỗi commit nguyên tử có cấu trúc rõ ràng:
+Tiến trình phát triển và hoàn thiện Chương 6 được thực hiện qua chuỗi commit nguyên tử có cấu trúc rõ ràng:
 - Commit `v3: ch06 6.1-6.3`: Bản chất rò rỉ phổ, dẫn xuất công thức Hanning $N+1$ của Praat 7.0.03, phân tích kẹp bão hòa đỉnh Q1.15 $32.768 \to 32.767$, kiểm chứng 17-bit có dấu và Stress Frame A ($|x_w| = 59.379$), Hình 12 và Hình 13 TikZ.
 - Commit `v3: ch06 6.4-6.5`: Tuyến IP Intel `ROM: 1-PORT` + `LPM_MULT`, tuyến HDL tự viết `rtl/v3/ch06_hanning_window.v` và `rtl/v3/ch06_hanning_rom.v`, mô hình song sinh Python `verify_v3/ch06_window_twin.py`, Hình 14 TikZ và Bảng đối chiếu dòng-từng-dòng.
 - Commit `v3: ch06 6.6`: Quy ước lấy mẫu testbench 2 pha, tập 3.250 vector kiểm thử, hộp giữ chỗ iverilog `\todo{box}`, Bảng 29 so sánh toàn diện IP vs HDL, và 4 bài tập cuối chương có lời giải chi tiết.
-- Commit `v3: ch06 done`: Hoàn tất nghiệm thu Chương 6, cập nhật `phan_moi_v3.tex`, biên dịch sạch sẽ `phan_moi_v3.pdf` (165 trang, 0 lỗi, 0 overfull hbox), bổ sung mục `ch06` trong `verify_v3/Makefile`, mã nguồn HPS C và báo cáo `verify_v3/ch06_REPORT.md`.
+- Commit `v3: ch06 done`: Hoàn tất nghiệm thu đợt đầu Chương 6, cập nhật `phan_moi_v3.tex`, biên dịch sạch sẽ `phan_moi_v3.pdf`, bổ sung mục `ch06` trong `verify_v3/Makefile`, mã nguồn HPS C và báo cáo `verify_v3/ch06_REPORT.md`.
+- Commit `v3: ch06 r1 praat citations and blocker 1-2 fixes`: Sửa các trích dẫn Praat 7.0.03 (dòng 39-40, 78, 88-101, 299-301, 303-306, 409, 413-415, 422-424, 429-442), trích dẫn nguyên văn câu bình luận của Boersma, bổ sung đối sánh phổ định lượng giữa Hanning N=638 và Gaussian N=638/1276 trong `ch06_hanning_math.py`, thay thế hộp iverilog bằng `\todo{box}`.
+- Commit `v3: ch06 r1 figures 12 and 13`: Thiết kế lại Hình 12 (đưa trục tần số xuống đáy -50 dB, nhãn tiếng Việt "Tần số chuẩn hóa ($f/f_s$)", đường chỉ rõ ràng có `fill=white`, phông chữ $\ge \text{\scriptsize}$) và Hình 13 (loại bỏ dải màu cam đặc, sửa nhãn trục đối xứng và nhãn trục hoành $n = 318, 319$).
+- Commit `v3: ch06 r1 figure 14 arch`: Tái bố cục sơ đồ kiến trúc vi mô Hình 14 trên lưới tọa độ thoáng, khoảng cách các khối $\ge 6\text{ mm}$, đường tín hiệu và nhãn dây có `fill=white`, phông chữ $\ge \text{\scriptsize}$, không cắt qua tiêu đề.
+- Commit `v3: ch06 r1 tone audit`: Chuẩn hóa văn phong học thuật trung tính, loại bỏ các từ ngữ mang tính cường điệu ("tuyệt đối", "hoàn toàn", "triệt để", "kinh điển", "tối ưu tuyệt đối"), chỉ giữ "100%" và "khớp bit" khi gắn kèm số liệu đối soát N/N cụ thể.
+- Commit `v3: ch06 revision`: Hoàn tất nghiệm thu Đợt sửa đổi 1 (Revision Round 1) Chương 6.
