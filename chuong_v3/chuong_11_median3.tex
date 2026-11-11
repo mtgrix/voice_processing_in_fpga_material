@@ -153,19 +153,22 @@ Mặc dù Viterbi Path Finder đem lại đường pitch cực kỳ trơn tru tr
 
 \begin{enumerate}
     \item \textbf{Bùng nổ tài nguyên bộ nhớ lưu trữ nội chip (On-chip RAM explosion):}
-    Để thực hiện quy hoạch động Viterbi, FPGA bắt buộc phải lưu trữ đồng thời toàn bộ hai ma trận $\delta$ và $\psi$ trong bộ nhớ SRAM. Với một tệp âm thanh chỉ dài $10\text{ giây}$ ($1.000\text{ khung}$), số lượng phần tử cần lưu trữ là:
+    Để thực hiện quy hoạch động Viterbi, FPGA bắt buộc phải lưu trữ đồng thời toàn bộ hai ma trận $\delta$ và $\psi$ trong bộ nhớ SRAM. Với mỗi khung phân tích gồm $15\text{ ứng viên}$, mỗi trạng thái lưu trữ điểm số tích lũy $\delta$ ($32\text{-bit}$) và con trỏ truy vết $\psi$ ($4\text{-bit}$), tương đương $(32 + 4) / 8 = 4{,}5\text{ byte/trạng thái}$, tức $15 \times 4{,}5 = 67{,}5\text{ byte/khung}$ (nhật ký \texttt{verify\_v3/ch11\_viterbi\_audit.log}). Với một tệp âm thanh dài $10\text{ giây}$ ($1.000\text{ khung}$), dung lượng lưu trữ cần thiết là:
     \begin{equation}
-        1.000\text{ khung} \times 15\text{ ứng viên} = 15.000\text{ trạng thái}
+        1.000\text{ khung} \times 67{,}5\text{ byte/khung} = 67.500\text{ byte} = 67{,}5\text{ KB} \quad (0{,}54\text{ Mbit})
     \end{equation}
-    Mỗi trạng thái bao gồm điểm số tích lũy (số thực hoặc số nguyên 32-bit) và con trỏ truy vết (4-bit). Ma trận dữ liệu đòi hỏi hơn $60\text{ KB}$ bộ nhớ. Nếu tệp âm thanh dài vài chục giây đến vài phút (ví dụ một câu chuyện dài 1 phút gồm $6.000\text{ khung}$), dung lượng RAM yêu cầu sẽ vượt quá $360\text{ KB}$ ($2{,}88\text{ Mbit}$).
-    Trong khi đó, chip Cyclone V 5CSXFC6D6F31C6N chỉ có tổng cộng 553 khối M10K (tương đương khoảng $5{,}5\text{ Mbit}$ RAM), vốn phải chia sẻ cho các bộ đệm FIFO, RAM vòng lấy mẫu âm thanh, và các bảng sóng ROM Hanning, C/K. Việc dành trọn tài nguyên RAM nội chip chỉ để lưu ma trận Trellis cho một tệp có độ dài hữu hạn là phương án thiết kế không thực tế.
+    Nếu tệp âm thanh dài 1 phút gồm $6.000\text{ khung}$, dung lượng RAM yêu cầu sẽ lên tới:
+    \begin{equation}
+        6.000\text{ khung} \times 67{,}5\text{ byte/khung} = 405.000\text{ byte} = 405\text{ KB} \quad (3{,}24\text{ Mbit})
+    \end{equation}
+    Trong khi đó, theo tài liệu \emph{Cyclone V Device Overview} (CV-51001, Bảng 1-1), chip Cyclone V SoC 5CSXFC6D6F31C6N trang bị 553 khối M10K (tổng dung lượng $5.530\text{ Kbit}$, việc phân bổ thực tế phải kiểm trong datasheet/Quartus), vốn phải chia sẻ cho các bộ đệm FIFO, RAM vòng lấy mẫu âm thanh, và các bảng sóng ROM Hanning, C/K. Việc dành trọn tài nguyên RAM nội chip chỉ để lưu ma trận Trellis cho một tệp có độ dài hữu hạn là phương án thiết kế không thực tế.
 
     \item \textbf{Phá vỡ hoàn toàn tính nhân quả và thông lượng thời gian thực (Non-causal latency):}
     Bản chất của bước truy vết ngược (\emph{backtracking}) là phải duyệt ngược chiều thời gian: từ khung $N$ lùi dần về khung 1. Điều này đồng nghĩa với việc phần cứng \textbf{không thể xuất ra bất kỳ giá trị $F_0$ nào cho đến khi mẫu âm thanh cuối cùng của tệp được nạp vào}!
     Độ trễ xử lý (latency) bị phụ thuộc vào độ dài của tệp âm thanh. Trong các ứng dụng đàm thoại trực tiếp, truyền âm thanh qua mạng hoặc hỗ trợ phát âm thời gian thực, độ trễ kéo dài hàng giây là hoàn toàn không thể chấp nhận được. Một hệ thống phần cứng chuyên dụng trên FPGA phải hoạt động theo cơ chế dòng (\emph{streaming}): mẫu âm thanh vào đến đâu, cao độ được tính toán và đẩy ra đến đó với độ trễ cố định, có thể dự đoán được ở mức chu kỳ xung nhịp.
 
     \item \textbf{Độ phức tạp điều khiển và quản lý ứng viên:}
-    Việc duy trì 15 ứng viên đòi hỏi mạch phần cứng phải có bộ nhớ sắp xếp danh sách (sorting list), bộ chia và bộ tính logarit để lượng hóa chi phí chuyển tiếp $0{,}35|\log_2(f_1/f_2)|$ cho $15 \times 15 = 225$ cặp chuyển tiếp giữa mỗi cặp khung kề nhau. Lượng logic điều khiển và tài nguyên ALM tiêu hao cho khối Viterbi sẽ lấn át toàn bộ các khối xử lý tín hiệu số (DSP) cốt lõi của hệ thống.
+    Việc duy trì 15 ứng viên đòi hỏi mạch phần cứng phải có bộ nhớ sắp xếp danh sách (sorting list), bộ chia và bộ tính logarit để lượng hóa chi phí chuyển tiếp $0{,}35|\log_2(f_1/f_2)|$ cho $15 \times 15 = 225$ cặp chuyển tiếp giữa mỗi cặp khung kề nhau. Lượng logic điều khiển, bảng tra bộ nhớ và tài nguyên định tuyến cho khối Viterbi làm tăng đáng kể độ phức tạp vi kiến trúc; trong khi đó, thiết kế thay thế ở mục 11.5 chỉ gồm đúng 4 thanh ghi 16-bit, 3 bộ so sánh tổ hợp và 0 khối DSP/M10K (tài nguyên ALM cụ thể phải đo trong Quartus).
 \end{enumerate}
 
 Cũng cần nhấn mạnh một sự thật kỹ thuật khách quan: \emph{trong chế độ xử lý tệp ngoại tuyến (file-based processing), bộ xử lý nhúng ARM Cortex-A9 của hệ thống HPS hoàn toàn có đủ năng lực bộ nhớ SDRAM để chạy giải thuật Path Finder bằng phần mềm nếu người dùng mong muốn}.
@@ -365,7 +368,7 @@ Bằng cách gom nhóm điều kiện:
     \item Nếu $a \le b$: nếu $b \le c$ thì lấy $b$; ngược lại nếu $a \le c$ thì lấy $c$; còn lại lấy $a$.
     \item Nếu $a > b$: nếu $a \le c$ thì lấy $a$; ngược lại nếu $b \le c$ thì lấy $c$; còn lại lấy $b$.
 \end{itemize}
-Mạng so sánh này bao phủ trọn vẹn $3! = 6$ hoán vị không gian cùng toàn bộ các trường hợp bằng nhau ($a = b$, $b = c$, hoặc $a = b = c$). Trễ lan truyền chỉ gồm 1 tầng so sánh trừ 16-bit và 1 tầng MUX tổ hợp, hoàn toàn đáp ứng thời gian xác lập trong chu kỳ xung nhịp $20\text{ ns}$ ($50\text{ MHz}$) của FPGA.
+Mạng so sánh này bao phủ trọn vẹn $3! = 6$ hoán vị không gian cùng toàn bộ các trường hợp bằng nhau ($a = b$, $b = c$, hoặc $a = b = c$). Về mặt cấu trúc RTL, đường trễ tổ hợp chỉ gồm 3 bộ so sánh 16-bit và 1 tầng MUX chọn trung vị; các thông số thời gian xác lập ($t_{\text{su}}$), trễ lan truyền và tần số cực đại $F_{\max}$ phải đo trong Quartus.
 
 \subsubsection*{Kiểm chứng ví dụ tính tay thu nhỏ từ Đề cương}
 Hãy đi qua từng bước tính toán thủ công trên dãy 6 khung F0 mẫu đã được chốt trong đề cương:
@@ -553,7 +556,7 @@ Các thư viện IP của Intel tập trung vào hai nhóm chức năng chính:
 \end{enumerate}
 Bộ lọc trung vị là một giải thuật \textbf{phi tuyến tính dựa trên quan hệ thứ tự sắp xếp} (\emph{non-linear order-statistic filter}). Nếu cố tình xây dựng khối này từ các IP cơ bản của Intel, ta sẽ phải khởi tạo 3 khối so sánh độc quyền \texttt{LPM\_COMPARE}, kết nối qua nhiều tầng logic keo và tạo wrapper phức tạp. Điều này làm tăng độ cồng kềnh của dự án mà không đem lại bất kỳ ưu thế nào về diện tích hay định thời.
 
-Ngược lại, một module Verilog tự viết cho Median-3 chỉ gói gọn trong \textbf{dưới 150 dòng mã nguồn}, hoàn toàn độc lập với các thư viện đóng kín, có thể tổng hợp tối ưu trên mọi dòng chip FPGA và mô phỏng tự do trên các công cụ mã nguồn mở như Icarus Verilog. Vì vậy, tài liệu này quyết định: \emph{Khối Median-3 được hiện thực hóa duy nhất bằng tuyến HDL tự viết}.
+Ngược lại, một module Verilog tự viết cho Median-3 chỉ gói gọn trong \textbf{162 dòng mã nguồn Verilog-2001}, hoàn toàn độc lập với các thư viện đóng kín, có thể tổng hợp tối ưu trên mọi dòng chip FPGA và mô phỏng tự do trên các công cụ mã nguồn mở như Icarus Verilog. Vì vậy, tài liệu này quyết định: \emph{Khối Median-3 được hiện thực hóa duy nhất bằng tuyến HDL tự viết}.
 
 \subsubsection*{Sơ đồ vi kiến trúc phần cứng của module \texttt{ch11\_median3.v}}
 Hình \ref{fig:ch11_median3_arch} mô tả chi tiết sơ đồ khối phần cứng của module \texttt{ch11\_median3.v}.
@@ -587,7 +590,7 @@ Listing \ref{lst:ch11_median3_v} trình bày toàn bộ phần thân tính toán
     \item \textbf{Dòng 143--151 (Nhịp xả \texttt{S\_FLUSH}):} Chốt kết quả mẫu lặp cuối vào $\texttt{f0\_med}$, bật đồng thời $\texttt{out\_valid} = 1$ và $\texttt{out\_last} = 1$, rồi trở về \texttt{S\_IDLE}.
 \end{itemize}
 
-\textit{Tóm lại: Module \texttt{ch11\_median3.v} được thiết kế tinh gọn dưới 150 dòng Verilog thuần túy; kỹ thuật chia sẻ mạng so sánh giữa dòng chảy chính và nhịp xả giúp mạch tiêu hao 0 khối DSP và 0 khối M10K, đáp ứng thông lượng 1 khung/chu kỳ.}
+\textit{Tóm lại: Module \texttt{ch11\_median3.v} được thiết kế tinh gọn với 162 dòng Verilog thuần túy; kỹ thuật chia sẻ mạng so sánh giữa dòng chảy chính và nhịp xả giúp mạch tiêu hao 0 khối DSP và 0 khối M10K, đáp ứng thông lượng 1 khung/chu kỳ.}
 
 % ============================================================================
 % 11.6. MÔ HÌNH SONG SINH PYTHON TWIN VÀ KIỂM CHỨNG
@@ -677,11 +680,11 @@ Bảng \ref{tab:ch11_ip_vs_hdl} tổng hợp so sánh giữa giải pháp dùng 
 \toprule
 \textbf{Tiêu chí kỹ thuật} & \textbf{Tuyến (A): Thư viện Intel IP (Giả định)} & \textbf{Tuyến (B): HDL tự viết (\texttt{ch11\_median3.v})} \\
 \midrule
-Khả năng hỗ trợ sẵn có & Không có IP chuyên dụng cho lọc trung vị; phải ghép 3 khối \texttt{LPM\_COMPARE}. & Thiết kế Verilog-2001 hoàn chỉnh, chuyên biệt, dưới 150 dòng mã. \\
-Tài nguyên M10K RAM & 0 khối M10K. & \textbf{0 khối M10K} (hoàn toàn dùng thanh ghi ALM). \\
+Khả năng hỗ trợ sẵn có & Không có IP chuyên dụng cho lọc trung vị; phải ghép 3 khối \texttt{LPM\_COMPARE}. & Thiết kế Verilog-2001 hoàn chỉnh, chuyên biệt, 162 dòng mã. \\
+Tài nguyên M10K RAM & 0 khối M10K. & \textbf{0 khối M10K} (không khởi tạo RAM; chỉ dùng 4 thanh ghi 16-bit, số ALM/FF cụ thể phải đo trong Quartus). \\
 Tài nguyên DSP Blocks & 0 khối DSP. & \textbf{0 khối DSP} (phép so sánh không dấu). \\
 Tài nguyên Logic ALM & Tốn thêm logic keo wrapper IP (phải đo trong Quartus). & Chỉ gồm 4 thanh ghi 16-bit và 3 bộ so sánh (phải đo trong Quartus). \\
-Tần số cực đại $F_{\max}$ & Phụ thuộc định tuyến giữa các wrapper (phải đo trong Quartus). & Mạch tổ hợp cực ngắn, đáp ứng xung nhịp $50\text{ MHz}$ (phải đo trong Quartus). \\
+Tần số cực đại $F_{\max}$ & Phụ thuộc định tuyến giữa các wrapper (phải đo trong Quartus). & Chỉ gồm 3 bộ so sánh và MUX tổ hợp (phải đo trong Quartus). \\
 Độ trễ xử lý (Latency) & Phụ thuộc cấu hình wrapper IP. & \textbf{Đúng 1 chu kỳ xung nhịp} (sau khi có đủ mẫu). \\
 Độ trễ nhân quả (Causal) & 1 khung thời gian ($10\text{ ms}$). & \textbf{Đúng 1 khung thời gian} (xuất khung $k-1$ tại chu kỳ $k$). \\
 Xử lý nhịp xả (Flush) & Phải tự thiết kế thêm logic ngoại vi. & Tự động sinh nhịp xả bằng FSM nội tại kèm cờ \texttt{out\_last}. \\
@@ -816,11 +819,11 @@ Cho một tệp âm thanh ngắn gồm đúng 4 khung ngõ vào: $x = [100, 200,
 
 \textit{Lời giải chi tiết:}
 \begin{enumerate}[label=(\alph*)]
-    \item Mạng so sánh 3 phần tử trong module \texttt{ch11\_median3.v} thực hiện song song 3 phép so sánh không dấu 16-bit ($a \le b$, $b \le c$, $a \le c$). Mỗi phép so sánh là một chuỗi carry-chain 16-bit trong khối ALM, tạo ra 3 cờ nhị phân điều khiển MUX 3 nhánh. Thời gian lan truyền chỉ mất 1 tầng logic tổ hợp. Ngược lại, thuật toán Bubble Sort đòi hỏi nhiều chu kỳ hoán đổi (tối đa 3 bước hoán đổi) hoặc chuỗi 3 khối so sánh-hoán vị nối tiếp (Compare-and-Swap units), làm tăng độ trễ đường truyền và tốn nhiều thanh ghi trung gian hơn.
+    \item Mạng so sánh 3 phần tử trong module \texttt{ch11\_median3.v} thực hiện song song 3 phép so sánh không dấu 16-bit ($a \le b$, $b \le c$, $a \le c$). Cấu trúc RTL gồm 3 bộ so sánh không dấu 16-bit tạo ra 3 cờ nhị phân điều khiển MUX 3 nhánh; cấu trúc chuỗi nhớ carry-chain và mức tiêu hao ALM cụ thể phải đo trong Quartus Prime. Thời gian lan truyền chỉ mất 1 tầng logic tổ hợp. Ngược lại, thuật toán Bubble Sort đòi hỏi nhiều chu kỳ hoán đổi (tối đa 3 bước hoán đổi) hoặc chuỗi 3 khối so sánh-hoán vị nối tiếp (Compare-and-Swap units), làm tăng độ trễ đường truyền và tốn nhiều thanh ghi trung gian hơn.
     \item Đánh giá tài nguyên trên Cyclone V:
     \begin{itemize}
         \item Khối Median-3: Tiêu tốn \textbf{0 khối DSP}, \textbf{0 khối RAM M10K}, chỉ gồm 4 thanh ghi 16-bit ($\texttt{f0\_z0}, \texttt{f0\_z1}, \texttt{f0\_z2}, \texttt{f0\_med}$) cùng mạng logic so sánh tổ hợp (số lượng ALM cụ thể phải đo trong Quartus Prime). Thông lượng đạt tuyệt đối 1 khung / chu kỳ.
-        \item Giải pháp Viterbi: Cần ít nhất $60\text{ KB}$ đến vài trăm KB SRAM nội chip để lưu ma trận Trellis, tiêu tốn nhiều khối RAM M10K, đồng thời cần logic tính khoảng cách logarit phức tạp và bộ nhớ truy vết ngược phi nhân quả.
+        \item Giải pháp Viterbi: Cần ít nhất $67{,}5\text{ KB}$ (cho 1.000 khung) đến $405\text{ KB}$ (cho 6.000 khung) SRAM nội chip để lưu ma trận Trellis (theo công thức $(32+4)/8 = 4{,}5\text{ byte/trạng thái} \times 15 = 67{,}5\text{ byte/khung}$, xem tài liệu Cyclone V Device Overview CV-51001 và nhật ký \texttt{verify\_v3/ch11\_viterbi\_audit.log}), tiêu tốn nhiều khối RAM M10K, đồng thời cần logic tính khoảng cách logarit phức tạp và bộ nhớ truy vết ngược phi nhân quả.
     \end{itemize}
     Do đó, Median-3 là sự lựa chọn tối ưu tuyệt đối về mặt tài nguyên và đáp ứng xuất sắc yêu cầu thời gian thực trên chip FPGA (nhật ký \texttt{verify\_v3/ch11\_exercises.log}).
 \end{enumerate}

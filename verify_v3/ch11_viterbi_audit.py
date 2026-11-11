@@ -161,6 +161,30 @@ def main():
                 print(f"{idx:<6} {t:<14.6f} {ft:<10.2f} {r1:<10.2f} {r2:<10.2f} {fraw:<10.2f} {fmed:<10.2f} {err_type:<15}")
 
     print("\n" + "=" * 80)
+    print("ƯỚC TÍNH TÀI NGUYÊN BỘ NHỚ MA TRẬN VITERBI (DELTA VÀ PSI):")
+    n_states = 15
+    score_bits = 32
+    psi_bits = 4
+    bytes_per_state = (score_bits + psi_bits) / 8.0  # 4.5 bytes/trạng thái
+    bytes_per_frame = n_states * bytes_per_state     # 67.5 bytes/khung
+
+    f1000_bytes = 1000 * bytes_per_frame
+    f1000_kb = f1000_bytes / 1000.0  # Decimal KB = 67.5 KB
+    f1000_bits = f1000_bytes * 8.0
+    f1000_mbit = f1000_bits / 1e6
+
+    f6000_bytes = 6000 * bytes_per_frame
+    f6000_kb = f6000_bytes / 1000.0  # Decimal KB = 405 KB
+    f6000_bits = f6000_bytes * 8.0
+    f6000_mbit = f6000_bits / 1e6
+
+    print(f" - Công thức: {n_states} trạng thái/khung x (32-bit score + 4-bit psi) = {bytes_per_state} bytes/trạng thái")
+    print(f" - Dung lượng mỗi khung: {n_states} x {bytes_per_state} = {bytes_per_frame} bytes/khung")
+    print(f" - Tệp 1.000 khung (10 s): 1.000 x {bytes_per_frame} = {f1000_bytes:.0f} bytes = {f1000_kb:.1f} KB ({f1000_mbit:.2f} Mbit)")
+    print(f" - Tệp 6.000 khung (60 s): 6.000 x {bytes_per_frame} = {f6000_bytes:.0f} bytes = {f6000_kb:.0f} KB ({f6000_mbit:.2f} Mbit)")
+    print("=" * 80)
+
+    print("\n" + "=" * 80)
     print("TỔNG HỢP CON SỐ CHỐT CHO CHƯƠNG 11 THEO AGENDA:")
     print(" - Tệp sạch (synth_glide_vuv_16k.wav):")
     print("     R1 = R2 trên 100% số khung (0/277 khung khác biệt). GPE vs truth: R1=0, R2=0, Fixed=0, Med3=0.")

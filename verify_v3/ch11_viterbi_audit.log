@@ -66,6 +66,14 @@ Khung  Thời gian (s)  F0 Truth   F0 R1      F0 R2      Fixed Raw  Fixed Med3 K
 267    2.690000       138.70     137.27     139.94     140.31     137.81     Tỉ số 1.01     
 
 ================================================================================
+ƯỚC TÍNH TÀI NGUYÊN BỘ NHỚ MA TRẬN VITERBI (DELTA VÀ PSI):
+ - Công thức: 15 trạng thái/khung x (32-bit score + 4-bit psi) = 4.5 bytes/trạng thái
+ - Dung lượng mỗi khung: 15 x 4.5 = 67.5 bytes/khung
+ - Tệp 1.000 khung (10 s): 1.000 x 67.5 = 67500 bytes = 67.5 KB (0.54 Mbit)
+ - Tệp 6.000 khung (60 s): 6.000 x 67.5 = 405000 bytes = 405 KB (3.24 Mbit)
+================================================================================
+
+================================================================================
 TỔNG HỢP CON SỐ CHỐT CHO CHƯƠNG 11 THEO AGENDA:
  - Tệp sạch (synth_glide_vuv_16k.wav):
      R1 = R2 trên 100% số khung (0/277 khung khác biệt). GPE vs truth: R1=0, R2=0, Fixed=0, Med3=0.
