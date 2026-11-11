@@ -33,7 +33,7 @@
     \node[portlabel, anchor=west] (p_busy)       at (10.1,  4.6) {\texttt{busy}};
     \node[portlabel, anchor=west] (p_rd_idx)     at (10.1,  3.8) {\texttt{rd\_sample\_idx[9:0]}};
     \node[portlabel, anchor=west] (p_rd_en)      at (10.1,  3.0) {\texttt{rd\_en}};
-    \node[portlabel, anchor=west] (p_mean_valid) at (10.1,  1.8) {\texttt{mean\_valid}};
+    \node[portlabel, anchor=west] (p_mean_valid) at (10.1,  2.1) {\texttt{mean\_valid}};
     \node[portlabel, anchor=west] (p_mean_out)   at (10.1,  0.8) {\texttt{mean\_out[15:0]}};
     \node[portlabel, anchor=west] (p_diff_valid) at (10.1, -2.4) {\texttt{diff\_valid\_out}};
     \node[portlabel, anchor=west] (p_diff_data)  at (10.1, -3.3) {\texttt{diff\_data\_out[16:0]}};
@@ -87,8 +87,9 @@
     % =========================================================================
 
     % rd_valid from port to FSM and accumulator
-    \draw[ctrlline] (p_rd_valid) -- (-7.4, 1.9) |- (acc_box.150);
-    \draw[ctrlline] (-7.4, 1.9) |- (fsm.south west);
+    % Routes cleanly at y = 1.9 above xor_box, enters acc_box at top edge without crossing text
+    \draw[ctrlline] (p_rd_valid) -- (-7.4, 1.9) |- (fsm.south west);
+    \draw[ctrlline] (-7.4, 1.9) -- (-2.6, 1.9) -- (acc_box.north);
 
     % rd_data through XOR to Accumulator
     \draw[dataline] (p_rd_data) -- (xor_box.west);
@@ -104,8 +105,9 @@
         node[midway, above=2pt, font=\footnotesize\bfseries, fill=white, inner sep=1.5pt] {49-bit};
 
     % Restore box to mean_out and mean_valid
+    % mean_valid exits cleanly from side edge at restore_box.35, stepping up to p_mean_valid without crossing text
     \draw[dataline] (restore_box.east) -- (p_mean_out);
-    \draw[ctrlline] (restore_box.north) |- (p_mean_valid);
+    \draw[ctrlline] (restore_box.35) -| (6.4, 2.1) -- (p_mean_valid);
 
     % =========================================================================
     % SUBTRACTION: Feedback from mean_out and bottom datapath

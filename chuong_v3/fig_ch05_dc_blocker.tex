@@ -4,126 +4,138 @@
 
     % Style definitions with constrained text width to guarantee ample arrow spacing
     \tikzstyle{block}     = [draw=blue!80!black, fill=blue!6, thick, rounded corners=4pt, 
-                             inner sep=4pt, align=center, font=\small\bfseries]
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{regbox}    = [draw=teal!80!black, fill=teal!8, thick, rounded corners=4pt, 
-                             inner sep=4pt, align=center, font=\small\bfseries]
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{calcbox}   = [draw=orange!80!black, fill=orange!8, thick, rounded corners=4pt, 
-                             inner sep=4pt, align=center, font=\small\bfseries]
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{muxbox}    = [draw=purple!80!black, fill=purple!8, thick, rounded corners=3pt, 
-                             inner sep=4pt, align=center, font=\small\bfseries]
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{logicbox}  = [draw=red!80!black, fill=red!6, thick, rounded corners=3pt, 
-                             inner sep=4pt, align=center, font=\small\bfseries]
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
     \tikzstyle{ctrlline}  = [->, thick, dashed, color=red!80!black]
-    \tikzstyle{portlabel} = [font=\footnotesize\ttfamily]
+    \tikzstyle{portlabel} = [font=\scriptsize\ttfamily]
 
-    % Frame boundary
+    % Frame boundary with ample margin to avoid clipping title and bypass label
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-8.8, -4.6) rectangle (10.0, 5.3);
-    \node[anchor=north west, font=\small\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=2.5pt] 
-        at (-8.5, 5.1) {Kiến trúc bộ lọc triệt tiêu một chiều DC-Blocker (\texttt{ch05\_dc\_blocker.v})};
+        (-9.2, -4.8) rectangle (10.2, 5.0);
+    \node[anchor=north west, font=\scriptsize\bfseries, text=blue!90!black, fill=white, draw=blue!60!black, rounded corners=2pt, inner sep=3pt] 
+        at (-8.8, 4.8) {Kiến trúc bộ lọc triệt tiêu một chiều DC-Blocker (\texttt{ch05\_dc\_blocker.v})};
 
     % Left Ports (Sink Interface)
-    \node[portlabel, anchor=east] (p_s_data)  at (-8.9,  2.2) {\texttt{sink\_data[15:0]}};
-    \node[portlabel, anchor=east] (p_s_valid) at (-8.9,  0.8) {\texttt{sink\_valid}};
-    \node[portlabel, anchor=east] (p_s_ready) at (-8.9, -0.6) {\texttt{sink\_ready}};
-    \node[portlabel, anchor=east] (p_bypass)  at (-8.9, -3.9) {\texttt{bypass}};
+    \node[portlabel, anchor=east] (p_s_data)  at (-9.3,  2.0) {\texttt{sink\_data[15:0]}};
+    \node[portlabel, anchor=east] (p_s_valid) at (-9.3, -2.1) {\texttt{sink\_valid}};
+    \node[portlabel, anchor=east] (p_s_ready) at (-9.3, -3.2) {\texttt{sink\_ready}};
+    \node[portlabel, anchor=east] (p_bypass)  at (-9.3, -4.3) {\texttt{bypass}};
 
     % Right Ports (Source Interface)
-    \node[portlabel, anchor=west] (p_d_data)  at (10.1,  2.2) {\texttt{source\_data[15:0]}};
-    \node[portlabel, anchor=west] (p_d_valid) at (10.1,  0.8) {\texttt{source\_valid}};
-    \node[portlabel, anchor=west] (p_d_ready) at (10.1, -0.6) {\texttt{source\_ready}};
+    \node[portlabel, anchor=west] (p_d_data)  at (10.3,  2.0) {\texttt{source\_data[15:0]}};
+    \node[portlabel, anchor=west] (p_d_valid) at (10.3, -2.1) {\texttt{source\_valid}};
+    \node[portlabel, anchor=west] (p_d_ready) at (10.3, -3.2) {\texttt{source\_ready}};
 
-    % 1. Input Differentiator (Top Left)
-    \node[regbox, text width=1.3cm, minimum height=1.0cm] (z_x) at (-5.6, 1.1)
-        {Trễ $z^{-1}$\\$x[n-1]$};
-    \node[calcbox, text width=1.3cm, minimum height=1.0cm] (sub_x) at (-3.8, 2.2)
-        {Bộ trừ\\$dx[n]$};
+    % =========================================================================
+    % ROW 1: FORWARD DATAPATH (y = 2.0)
+    % =========================================================================
 
-    % 2. Scaling dx to Q20.16 (Mid Left)
-    \node[calcbox, text width=1.5cm, minimum height=1.0cm] (shift_dx) at (-2.0, 2.2)
-        {Dịch trái 16\\$dx \cdot 2^{16}$};
+    % 1. Input Differentiator Register & Subtracter
+    \node[regbox, text width=1.8cm, minimum height=1.2cm] (z_x) at (-6.2, 0.8)
+        {Trễ $z^{-1}$\\$x[n-1]$ (16b)};
+    \node[calcbox, text width=1.8cm, minimum height=1.2cm] (sub_x) at (-4.2, 2.0)
+        {Bộ trừ\\$dx[n]$ (17b)};
 
-    % 3. Main Accumulator Adder (Center)
-    \node[calcbox, text width=1.3cm, minimum height=1.0cm] (adder_w) at (-0.1, 2.2)
-        {Bộ cộng\\$w[n]$};
+    % 2. Scaling dx to Q20.16
+    \node[calcbox, text width=2.2cm, minimum height=1.2cm] (shift_dx) at (-1.7, 2.0)
+        {Dịch trái 16\\$dx \cdot 2^{16}$ (Q20.16)};
 
-    % 4. State Register z^-1 (Center Bottom)
-    \node[regbox, text width=2.0cm, minimum height=1.1cm] (z_w) at (-0.1, -0.7)
-        {Trạng thái $z^{-1}$\\36b Q20.16\\$w[n-1]$};
+    % 3. Main Accumulator Adder
+    \node[calcbox, text width=1.8cm, minimum height=1.2cm] (adder_w) at (0.8, 2.0)
+        {Bộ cộng\\$w[n]$ (36b)};
 
-    % 5. Feedback Arithmetic Shift (Center Left Bottom)
-    \node[calcbox, text width=2.0cm, minimum height=1.0cm] (shift_fb) at (-2.8, -0.7)
-        {Nhân $\alpha = 1 - 2^{-8}$\\$w - (w \ggg 8)$};
+    % 4. Rounding & Saturation
+    \node[calcbox, text width=2.4cm, minimum height=1.2cm] (sat_box) at (4.2, 2.0)
+        {Làm tròn \& Kẹp\\$y[n]$ (int16)};
 
-    % 6. Rounding & Saturation (Right Center)
-    \node[calcbox, text width=1.6cm, minimum height=1.0cm] (sat_box) at (3.6, 2.2)
-        {Làm tròn\\kẹp int16};
-
-    % 7. Bypass Multiplexer (Far Right)
-    \node[muxbox, text width=1.2cm, minimum height=2.4cm] (mux) at (7.4, 2.2)
+    % 5. Bypass Multiplexer
+    \node[muxbox, text width=1.3cm, minimum height=2.6cm] (mux) at (7.6, 2.0)
         {Mux\\$2:1$};
 
-    % 8. Handshake logic OR gate (Bottom Center)
-    \node[logicbox, text width=3.4cm, minimum height=1.0cm] (or_gate) at (0.4, -2.8)
+    % =========================================================================
+    % ROW 2: FEEDBACK LOOP (y = -0.8) - Clearance >= 14 mm from Row 1
+    % =========================================================================
+
+    % Feedback State Register z^-1 (directly below adder_w)
+    \node[regbox, text width=2.6cm, minimum height=1.3cm] (z_w) at (0.8, -0.8)
+        {Trạng thái $z^{-1}$\\36b Q20.16\\$w[n-1]$};
+
+    % Feedback Shift Multiply: alpha = 1 - 2^-8
+    \node[calcbox, text width=2.8cm, minimum height=1.3cm] (shift_fb) at (-2.6, -0.8)
+        {Nhân $\alpha = 1 - 2^{-8}$\\$w - (w \ggg 8)$};
+
+    % =========================================================================
+    % ROW 3: AVALON-ST HANDSHAKE LOGIC (y = -3.2)
+    % =========================================================================
+
+    \node[logicbox, text width=4.0cm, minimum height=1.2cm] (or_gate) at (0.8, -3.2)
         {Bắt tay Avalon-ST (OR gate)\\$\texttt{sink\_ready} = \texttt{source\_ready} \lor \overline{\texttt{valid}}$};
 
     % =========================================================================
-    % SIGNAL INTERCONNECTIONS
+    % SIGNAL INTERCONNECTIONS - FORWARD & FEEDBACK DATAPATH
     % =========================================================================
 
     % Sink data branch to z_x and sub_x
-    \draw[dataline] (p_s_data) -- (-6.6, 2.2) |- (z_x.west);
-    \draw[dataline] (-6.6, 2.2) -- (sub_x.west);
+    \draw[dataline] (p_s_data) -- (-7.4, 2.0);
+    \draw[dataline] (-7.4, 2.0) -- (sub_x.west);
+    \draw[dataline] (-7.4, 2.0) |- (z_x.west);
     \draw[dataline] (z_x.east) -| (sub_x.south);
 
     % sub_x to shift_dx to adder_w
     \draw[dataline] (sub_x.east) -- (shift_dx.west);
     \draw[dataline] (shift_dx.east) -- (adder_w.west);
 
-    % adder_w to sat_box (2.4 cm generous arrow length, label has ample whitespace)
-    \draw[dataline] (adder_w.east) -- (sat_box.west);
-    \node[above=2pt, font=\footnotesize\bfseries, fill=white, inner sep=1.5pt] at (1.75, 2.2) {36b Q20.16};
+    % adder_w to sat_box (with clear label above arrow)
+    \draw[dataline] (adder_w.east) -- (sat_box.west)
+        node[midway, above=2pt, font=\scriptsize\bfseries, fill=white, inner sep=1.5pt] {36b Q20.16};
 
-    % State register feedback loop
+    % sat_box to Mux input 0 (enters horizontally at y=1.4; label beside arrow outside mux)
+    \draw[dataline] (sat_box.east) -- (5.8, 2.0) |- (6.95, 1.4);
+    \node[above=2pt, font=\scriptsize\bfseries, text=purple!90!black, fill=white, inner sep=1.5pt] 
+        at (6.35, 1.4) {$0$ (Lọc IIR)};
+
+    % Bypass path from p_s_data to Mux input 1 (enters horizontally at y=2.6; labels outside mux)
+    \draw[dataline] (-7.4, 2.0) -- (-7.4, 3.6) -- (6.2, 3.6) |- (6.95, 2.6);
+    \node[above=3pt, font=\scriptsize\bfseries, text=purple!90!black, fill=white, inner sep=1.5pt] 
+        at (4.5, 3.6) {Bypass ngõ vào};
+    \node[above=2pt, font=\scriptsize\bfseries, text=purple!90!black, fill=white, inner sep=1.5pt] 
+        at (6.35, 2.6) {$1$ (Bypass)};
+
+    % Feedback loop: adder_w -> z_w -> shift_fb -> adder_w
     \draw[dataline] (adder_w.south) -- (z_w.north);
     \draw[dataline] (z_w.west) -- (shift_fb.east);
-    \draw[dataline] (shift_fb.north) |- (adder_w.south west);
-
-    % sat_box to Mux input 0 (2.2 cm empty arrow, label completely outside Mux)
-    \draw[dataline] (sat_box.east) -- (mux.155);
-    \node[above=2pt, font=\footnotesize\bfseries, text=purple!90!black, fill=white, inner sep=1.5pt] 
-        at (5.4, 2.2) {$0$ (Lọc IIR)};
-
-    % Bypass path from p_s_data to Mux input 1 (unclipped label placed cleanly above)
-    \draw[dataline] (-6.6, 2.2) -- (-6.6, 4.0) -- (6.8, 4.0) |- (mux.25);
-    \node[above=2pt, font=\footnotesize\bfseries, text=purple!90!black, fill=white, inner sep=1.5pt] 
-        at (5.0, 4.0) {$1$ (Bypass ngõ vào)};
-
-    % Bypass control: routes along very bottom at y = -3.9, clear of OR gate
-    \draw[ctrlline] (p_bypass) -- (7.4, -3.9) -- (mux.south);
+    \draw[dataline] (shift_fb.north) -- (-2.6, 0.6) -| (adder_w.215);
 
     % Mux to source_data
     \draw[dataline] (mux.east) -- (p_d_data);
 
     % =========================================================================
-    % HANDSHAKE LOGIC: source_ready, sink_ready and Pipeline Clock Enable
+    % CONTROL & HANDSHAKE ROUTING (along channel and bottom margin, NO crossing)
     % =========================================================================
 
-    % source_valid from mux/reg to source_valid port and OR gate
-    \draw[ctrlline] (p_s_valid) -- (-7.2, 0.8) -- (-7.2, 0.0) -- (8.6, 0.0) -- (8.6, 0.8) -- (p_d_valid);
-    \draw[ctrlline] (8.6, 0.0) |- (or_gate.north east); % Branch into OR gate as source_valid
+    % 1. Valid line: routes along y = -2.1 channel between Row 2 and Row 3
+    \draw[ctrlline] (p_s_valid) -- (p_d_valid);
+    \draw[ctrlline] (2.4, -2.1) -- (2.4, -2.6);
 
-    % source_ready enters from right port into OR gate
-    \draw[ctrlline] (p_d_ready) -- (9.2, -0.6) -- (9.2, -2.8) -- (or_gate.east);
+    % 2. Ready handshake: routes along y = -3.2 straight through or_gate
+    \draw[ctrlline] (p_d_ready) -- (or_gate.east);
+    \draw[ctrlline] (or_gate.west) -- (p_s_ready);
 
-    % OR gate drives sink_ready to left port
-    \draw[ctrlline] (or_gate.west) -- (-7.4, -2.8) -- (-7.4, -0.6) -- (p_s_ready);
+    % 3. Clock Enable gating z_w and z_x: leaves or_gate, routes cleanly in clear space
+    \draw[ctrlline] (or_gate.north) -- (z_w.south);
+    \draw[ctrlline] (-6.2, -3.2) -- (z_x.south);
+    \node[font=\scriptsize\bfseries, text=red!80!black, fill=white, draw=red!60!black, thin, rounded corners=2pt, inner sep=2.5pt] 
+        at (-5.8, -1.4) {Cho phép chốt: \texttt{sink\_ready} (Clock Enable)};
 
-    % OR gate output branches UP to gate pipeline registers (Clock Enable)
-    \draw[ctrlline] (or_gate.north) -- (0.4, -1.6) -| (z_w.south);
-    \draw[ctrlline] (0.4, -1.6) -| (z_x.south);
-    \node[above=1pt, font=\footnotesize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
-        at (-1.8, -1.6) {Cho phép chốt: \texttt{sink\_ready} (Clock Enable)};
+    % 4. Bypass control: routes along very bottom margin at y = -4.3
+    \draw[ctrlline] (p_bypass) -- (7.6, -4.3) -- (mux.south);
 
 \end{tikzpicture}
