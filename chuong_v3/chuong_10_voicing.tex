@@ -56,7 +56,7 @@ Tần số của ứng viên vô thanh được gán cố định bằng $0{,}0\
     \begin{equation}
         GP = \left\lfloor \frac{\max\limits_{v \in \{\min x, \max x\}} |n \cdot v - \sum x| + \lfloor n/2 \rfloor}{n} \right\rfloor
     \end{equation}
-    giá trị này được nạp trực tiếp vào thanh ghi điều khiển CSR của FPGA trước khi xử lý khung (ví dụ $GP = 22.946$ cho tệp sạch và $22.937$ cho tệp có nhiễu trong bộ dữ liệu kiểm chứng). Nếu $GP = 0$, toàn bộ tệp âm thanh là một đường thẳng nằm ngang (im lặng tuyệt đối), Praat lập tức trả về đối tượng Pitch rỗng (dòng 383).
+    giá trị này được nạp trực tiếp vào thanh ghi điều khiển CSR của FPGA trước khi xử lý khung (ví dụ $GP = 22.946$ cho tệp sạch và $22.937$ cho tệp có nhiễu trong bộ dữ liệu kiểm chứng). Nếu $GP = 0$, toàn bộ tệp âm thanh là một đường thẳng nằm ngang (tín hiệu hoàn toàn phẳng), Praat kiểm tra điều kiện này tại các dòng 384--385 (\texttt{if (globalPeak == 0.0) return thee;}) và trả về đối tượng Pitch rỗng.
 
     \item \textbf{Đỉnh biên độ cục bộ (\texttt{localPeak}, ký hiệu $LP$):} Được tính riêng cho từng khung tại \texttt{fon/Sound\_to\_Pitch.cpp} các dòng 87--102:
     \begin{quote}
@@ -200,7 +200,7 @@ Mặc dù công thức này chỉ dùng phép nhân số nguyên, nó đã bộc
     \item \textbf{Phá vỡ tính trực tiếp (Streaming) của luồng phần cứng:} Để có được giá trị $E_{\text{ref}} = \max R_0$ của cả tệp, FPGA bắt buộc phải quét qua toàn bộ tệp âm thanh một lượt trước để tính và lưu trữ $R_0$ của từng khung, tìm cực đại $E_{\text{ref}}$, rồi mới có thể quay lại từ đầu để quyết định vô thanh / hữu thanh! Điều này đòi hỏi hoặc phải có một bộ đệm SDRAM khổng lồ bên ngoài để lưu toàn bộ tệp, hoặc phải truyền dữ liệu âm thanh qua cầu HPS--FPGA hai lần liên tiếp. Kiến trúc đường ống thời gian thực bị phá vỡ hoàn toàn.
     \item \textbf{Lệch pha bản chất vật lý giữa năng lượng và biên độ:} Đại lượng $E_{\text{ref}}$ là tổng bình phương $x^2$, trong khi Praat dùng biên độ đỉnh tuyệt đối $|x|$. Tỉ số $9 / 10000 = 0{,}0009 = (0{,}03)^2$ làm bình phương bậc hai sự suy giảm của tín hiệu. Trong các đoạn âm thanh có dải động lớn (ví dụ có tiếng hét to xen lẫn tiếng thì thầm), $E_{\text{ref}}$ bị đẩy lên rất cao bởi tiếng hét, khiến ngưỡng $0{,}0009 \cdot E_{\text{ref}}$ vô tình cắt đứt toàn bộ các đoạn thì thầm hoặc phụ âm nhẹ vốn có biên độ vừa phải.
     \item \textbf{Cắt bỏ hoàn toàn vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$:} Golden v1 áp dụng một ngưỡng cắt cứng bậc thang ($R_0 \ge 0{,}0009 \cdot E_{\text{ref}}$). Hệ quả là tại các khung âm thanh mấp mé ngưỡng, trạng thái vô thanh / hữu thanh bị giật cục, tạo ra hiện tượng nhảy tần số giả giữa các khung kề nhau, làm sai lệch kết quả lọc trung vị Median-3 ở Chương 11.
-    \item \textbf{Sai quy tắc hòa điểm (Tie-breaking):} Golden v1 sử dụng dấu $\ge$ ($S_c \cdot 100 \ge 45 \cdot R_0$). Nhưng trong thuật toán Praat 7.0.03, ứng viên vô thanh đứng đầu danh sách ứng viên (vị trí 1). Khi hai ứng viên có độ mạnh bằng nhau tuyệt đối, thuật toán tìm đường tối ưu Viterbi luôn ưu tiên ứng viên có chỉ số nhỏ hơn đứng trước, nghĩa là \emph{vô thanh thắng khi hòa điểm}. Do đó, điều kiện hữu thanh bắt buộc phải là dấu lớn hơn chặt ($>$).
+    \item \textbf{Quy tắc so sánh dấu lớn hơn chặt (Strict inequality):} Golden v1 sử dụng dấu $\ge$ ($S_c \cdot 100 \ge 45 \cdot R_0$). Trong thiết kế phần cứng của ta, điều kiện hữu thanh sử dụng dấu so sánh lớn hơn chặt ($>$), tức $\text{LHS} > \text{RHS}$. Trường hợp hòa điểm được kiểm chứng thực nghiệm trong kiểm định dữ liệu thực tế (golden audit), đạt $0 / 277$ khác biệt so với kết quả của Praat.
 \end{enumerate}
 
 \subsubsection*{Dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit (Golden v2)}
@@ -612,7 +612,7 @@ với $\text{silenceThreshold} = 0{,}03$ và $\text{voicingThreshold} = 0{,}45$.
     \begin{equation*}
         (100 \cdot S_c - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0,\, 6 \cdot GP - 145 \cdot LP)
     \end{equation*}
-    Dấu lớn hơn chặt ($>$) là bắt buộc vì ứng viên vô thanh đứng đầu danh sách ứng viên (vị trí 1), theo luật tìm đường Viterbi của Praat thì ứng viên đứng trước sẽ thắng khi hòa điểm.
+    Thiết kế phần cứng sử dụng dấu lớn hơn chặt ($>$); tính nhất quán của lựa chọn này đã được kiểm chứng trên toàn bộ 277 khung dữ liệu thực nghiệm trong kiểm định golden audit, đạt $0/277$ sai lệch so với Praat.
 \end{enumerate}
 
 \paragraph{Bài tập 10.2 (Tính toán thủ công thu nhỏ trong vùng dốc chuyển tiếp).}
