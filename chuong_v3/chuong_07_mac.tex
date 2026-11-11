@@ -767,7 +767,7 @@ altera_mult_add #(
 );
 \end{lstlisting}
 
-\textit{Tóm lại: Khối IP chuẩn trên Cyclone V là \texttt{ALTERA\_MULT\_ADD}; cấu hình toán hạng có dấu $17\text{-bit}$, ngõ ra $48\text{-bit}$, bật thanh ghi vào \texttt{CLOCK0} và cờ nạp đè \texttt{accum\_sload} giúp ánh xạ trọn vẹn thuật toán vào 1 khối DSP Variable Precision cứng (0 ALM) với độ trễ đúng 2 chu kỳ.}
+\textit{Tóm lại: Khối IP chuẩn trên Cyclone V là \texttt{ALTERA\_MULT\_ADD}; cấu hình toán hạng có dấu $17\text{-bit}$, ngõ ra $48\text{-bit}$, bật thanh ghi vào \texttt{CLOCK0} và cờ nạp đè \texttt{accum\_sload} giúp ánh xạ trọn vẹn thuật toán vào 1 khối DSP Variable Precision cứng (tài nguyên ALM phải kiểm trong Quartus) với độ trễ đúng 2 chu kỳ.}
 
 
 \subsection*{7.8. Tuyến (B): Thiết kế Verilog HDL, mô hình song sinh Python và kiểm chứng}
