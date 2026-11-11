@@ -1,0 +1,72 @@
+==============================================================================
+EXERCISE 6.1: WINDOW SPECTRAL LEAKAGE COMPARISON
+==============================================================================
+Cửa sổ: Chữ nhật (Rectangular)
+  Độ rộng búp chính (-3 dB): 22.32 Hz (0.89 * fs / N)
+  Mức suy hao búp bên đầu  : -13.26 dB
+  Tốc độ suy giảm búp bên  : -6.0 dB / octave
+
+Cửa sổ: Hanning N+1 (Praat)
+  Độ rộng búp chính (-3 dB): 36.11 Hz (1.44 * fs / N)
+  Mức suy hao búp bên đầu  : -31.47 dB
+  Tốc độ suy giảm búp bên  : -18.0 dB / octave
+
+Cửa sổ: Hamming
+  Độ rộng búp chính (-3 dB): 32.60 Hz (1.30 * fs / N)
+  Mức suy hao búp bên đầu  : -42.68 dB
+  Tốc độ suy giảm búp bên  : -6.0 dB / octave
+
+Cửa sổ: Blackman
+  Độ rộng búp chính (-3 dB): 42.13 Hz (1.68 * fs / N)
+  Mức suy hao búp bên đầu  : -58.11 dB
+  Tốc độ suy giảm búp bên  : -18.0 dB / octave
+
+==============================================================================
+EXERCISE 6.2: HALF-ROM ADDRESS FOLDING (319 WORDS VS 638 WORDS)
+==============================================================================
+Half-ROM size                  : 319 words x 16 bits = 5104 bits
+Full-ROM size                  : 638 words x 16 bits = 10208 bits
+Cyclone V M10K capacity        : 10,240 bits
+M10K configurations (CV-52003) :
+  - 512 x 20 bits  (max depth 512 for width > 10)
+  - 1024 x 10 bits (max width 10 for depth > 512)
+Resource analysis:
+  - Half-ROM (319x16)          : 319 <= 512, fits into ONE M10K (512x20 configuration) -> 1 M10K
+  - Full-ROM (638x16)          : 638 > 512, requires TWO M10K (1024x10 configuration) -> 2 M10K
+Address folding verification   : 638 / 638 samples match (100% bit-exact)
+Hardware trade-off             : Saves 1 M10K (50% reduction), but adds 9-bit subtractor + MUX in address path
+
+==============================================================================
+EXERCISE 6.3: CORDIC VS M10K ROM TRADE-OFF ANALYSIS
+==============================================================================
+Phương án A: Tra bảng ROM M10K (638 x 16 bit):
+  - Tài nguyên silicon   : 1 M10K (nửa ROM) hoặc 2 M10K (đầy đủ), 0 ALM, 0 DSP
+  - Độ trễ đọc           : 1 chu kỳ xung nhịp (registered output)
+  - Thông lượng          : 1 kết quả / chu kỳ (pipelined throughput = 1)
+  - Tần số hoạt động Fmax: > 350 MHz (theo Cyclone V Device Handbook)
+
+Phương án B: Bộ tính góc CORDIC quay số (Rotation CORDIC):
+  - Số tầng lặp cần thiết: 16 tầng lặp để đạt độ chính xác 16 bit (Q1.15)
+  - Tài nguyên silicon   : ~250--350 ALMs (16 bộ cộng/trừ 18-bit + thanh ghi dịch + ROM hằng số góc)
+  - Độ trễ tính toán     : 16 chu kỳ xung nhịp (pipelined) hoặc 16 chu kỳ tuần tự (iterative)
+  - Tần số hoạt động Fmax: Giảm do chuỗi logic dài và định tuyến ALM
+Kết luận: Cyclone V 5CSXFC6D6 có hơn 550 khối M10K; tiêu tốn 1--2 M10K để tiết kiệm 300 ALMs và giảm trễ từ 16 nhịp xuống 1 nhịp là lựa chọn kiến trúc tối ưu.
+
+==============================================================================
+EXERCISE 6.4: APEX SATURATION 32768 -> 32767 AND QUANTIZATION SNR
+==============================================================================
+Giá trị thực tại đỉnh w[318]       : 0.9999939572
+Nhân với 2^15 = 32768              : 32767.801990
+Làm tròn số nguyên                 : 32768 (Tràn số có dấu 16-bit nếu không bão hòa!)
+Sau bão hòa về 32767 (0x7FFF)      : 32767
+Sai số tại đỉnh                    : 2.44747928e-05
+Sai số quy đổi LSB                 : 0.8020 LSB (< 1 LSB)
+Công suất tín hiệu P_signal        : 0.375588
+Công suất nhiễu P_noise            : 7.45784223e-11
+SNR thực tế đo được                : 97.02 dB
+SNR lý thuyết của 15-bit lượng tử  : 92.06 dB
+Nhận xét: Lượng tử hóa Q1.15 đạt SNR 97 dB, hoàn toàn bảo toàn độ trung thực của âm thanh 16-bit.
+
+==============================================================================
+ALL CH06 EXERCISES COMPUTED ACCURATELY
+==============================================================================

@@ -1,0 +1,9 @@
+=== Compiling and running tb_ch06_hanning ===
+=== STARTING CH06 HANNING WINDOW CYCLE-BY-CYCLE VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 3250
+Total comparison errors: 0
+=== ALL 3250 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch06_hanning.v:178: $finish called at 65020000 (1ps)
+=== All Chapter 6 iverilog testbenches passed successfully! ===

@@ -1,0 +1,35 @@
+==============================================================================
+CH06 STRESS FRAME AUDIT: 17-BIT SIGNED DATAPATH JUSTIFICATION
+==============================================================================
+Theoretical maximum d = x - mean : +65535 (0xFFFF)
+Theoretical minimum d = x - mean : -65535 (-0xFFFF)
+16-bit signed integer range       : [-32768, +32767]
+17-bit signed integer range       : [-65536, +65535]
+Bit-width requirement for d       : 17 bits signed (Q16.0s)
+
+Stress Frame A Evaluation:
+  Mean span indices             : 106 .. 531 (426 samples)
+  Computed local mean           : -26614 (Agenda verified: -26614)
+  Difference range d = x - mean : [-6154, 59381]
+  Windowed xw range             : [-6098, 59379]
+  Max absolute |xw|             : 59379 (Agenda verified: 59379)
+
+Stress Frame B Evaluation:
+  Computed local mean           : -16153
+  Difference range d = x - mean : [-16615, 48920]
+  Max absolute |xw|             : 48884
+
+------------------------------------------------------------------------------
+DETAILED WALKTHROUGH FOR SAMPLE n = 318 IN STRESS FRAME A:
+------------------------------------------------------------------------------
+  Raw audio sample x[318]       : 32767 (0x7FFF)
+  Local mean                   : -26614 (0x980A)
+  Difference d = x - mean      : 59381 (0x0E7F5, 17 bits)
+  16-bit truncated d           : -6155 (FATAL OVERFLOW to NEGATIVE!)
+  Hanning window w[318]        : 32767 (0x7FFF, Q1.15)
+  Full product p = d * w       : 1945737227 (0x073F9980B, 34 bits)
+  Rounded (p + 2^14) >> 15     : 59379 (Agenda verified: 59379)
+  16-bit truncated xw          : -6157 (FATAL OVERFLOW to NEGATIVE!)
+------------------------------------------------------------------------------
+Conclusion: 17-bit signed representation is MATHEMATICALLY MANDATORY.
+==============================================================================

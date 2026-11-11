@@ -1,0 +1,20 @@
+==============================================================================
+GENERATING VERIFICATION VECTORS FOR CH06 HANNING WINDOW
+==============================================================================
+Loaded 5 test frames for stimulus vector generation.
+Processing Clean Frame 100 (638 samples)...
+  -> Verified 638 xw samples and LP = 22343 (100% bit-exact).
+Processing Noisy Frame 100 (SNR 5dB) (638 samples)...
+  -> Verified 638 xw samples and LP = 15023 (100% bit-exact).
+Processing Stress Frame A (Pulse) (638 samples)...
+  -> Verified 638 xw samples and LP = 59379 (100% bit-exact).
+Processing Stress Frame B (Square) (638 samples)...
+  -> Verified 638 xw samples and LP = 48884 (100% bit-exact).
+Processing Silence Frame (Zero) (638 samples)...
+  -> Verified 638 xw samples and LP = 0 (100% bit-exact).
+
+Successfully wrote 3250 clock cycle vectors to:
+  Stimulus : /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch06_hanning_stim.txt
+  Expected : /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch06_hanning_expected.txt
+Total windowed samples verified : 3190
+==============================================================================

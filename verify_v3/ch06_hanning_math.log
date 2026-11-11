@@ -1,0 +1,42 @@
+==============================================================================
+1. CANONICAL AGENDA 6.2 VALUE REPRODUCTION & VERIFICATION
+==============================================================================
+Window length N                : 638
+Boundary values w[0], w[637]   : 1, 1 (Agenda: w[0] = 1, w[637] = 1)
+Apex values w[318], w[319]     : 32767, 32767 (Agenda: w[318] = 32767, w[319] = 32767)
+Sum of 638 Q1.15 samples       : 10469378 (Agenda: 10469378)
+Max raw value before clamp     : 32768 at indices 318, 319
+Number of saturated samples    : 2
+Even symmetry w[n] == w[N-1-n] : True (all 638 samples match)
+Verified bit-exact match with /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.hex (638 words)
+Verified existence of /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.mif
+
+==============================================================================
+2. SPECTRAL LEAKAGE AND SIDELOBE ATTENUATION (FOURIER ANALYSIS)
+==============================================================================
+Rectangular Window length N    : 638
+  Main lobe -3 dB bandwidth    : 22.32 Hz (0.00139 fs)
+  First sidelobe peak level    : -13.26 dB (theoretical: -13.26 dB)
+  Sidelobe roll-off rate       : -6 dB / octave (-20 dB / decade)
+Hanning N+1 Window length N    : 638
+  Main lobe -3 dB bandwidth    : 36.11 Hz (0.00226 fs)
+  First sidelobe peak level    : -31.47 dB (theoretical: -31.47 dB)
+  Sidelobe roll-off rate       : -18 dB / octave (-60 dB / decade)
+Sidelobe suppression advantage : 18.21 dB extra attenuation!
+
+==============================================================================
+3. COMPARISON: PRAAT N+1 FORM VS STANDARD MATALB/SCIPY HANN(N)
+==============================================================================
+Standard SciPy/MATLAB hann(638, sym=True):
+  w[0]   = 0.00000000 (Exactly ZERO - boundary sample discarded!)
+  w[1]   = 0.00002432
+  w[637] = 0.00000000 (Exactly ZERO - boundary sample discarded!)
+Praat 7.0.03 N+1 formulation (Sound_to_Pitch.cpp:422-424):
+  w[0]   = 0.00002417 (Non-zero! Q1.15 = 1)
+  w[1]   = 0.00009668 (Q1.15 = 3)
+  w[637] = 0.00002417 (Non-zero! Q1.15 = 1)
+Key insight: Praat avoids wasting 2 boundary samples in every 638-sample frame!
+
+==============================================================================
+ALL CH06 HANNING MATHEMATICAL AUDITS PASSED SUCCESSFULLY!
+==============================================================================

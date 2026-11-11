@@ -1,0 +1,43 @@
+==============================================================================
+CH06 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
+==============================================================================
+[fon/Sound_to_Pitch.cpp:39--40]
+   Code   : #define AC_HANNING 0 / #define AC_GAUSS 1
+   Ý nghĩa: Định nghĩa định danh cho hai phương pháp cửa sổ hóa
+
+[fon/Sound_to_Pitch.cpp:78]
+   Code   : frame[j] = (z[i] - localMean) * window[j];
+   Ý nghĩa: Trừ trung bình cục bộ rồi nhân trực tiếp với mẫu cửa sổ
+
+[fon/Sound_to_Pitch.cpp:299--301]
+   Code   : brent_depth = NUM_PEAK_INTERPOLATE_SINC70
+   Ý nghĩa: Độ sâu nội suy sinc70 và Brent cho AC_HANNING
+
+[fon/Sound_to_Pitch.cpp:409]
+   Code   : window.resize (nsamp_window);
+   Ý nghĩa: Cấp phát bộ nhớ cho mảng cửa sổ kích thước N = 638
+
+[fon/Sound_to_Pitch.cpp:413--415]
+   Code   : A Gaussian or Hanning window is applied against phase effects...
+   Ý nghĩa: Chú thích Boersma: Hanning tốt hơn Gaussian 2--5 dB khi cửa sổ dài 3 chu kỳ
+
+[fon/Sound_to_Pitch.cpp:422--424]
+   Code   : window[i] = 0.5 - 0.5 * cos(NUM2pi * i / (nsamp_window + 1));
+   Ý nghĩa: Công thức Hanning N+1 (i = 1..N), không có mẫu 0 ở hai biên
+
+[fon/Sound_to_Pitch.cpp:429--442]
+   Code   : windowR = normalized autocorrelation of the window via FFT
+   Ý nghĩa: Tính tự tương quan chuẩn hóa của cửa sổ R_w qua FFT 1024 điểm
+
+==============================================================================
+PRAAT DOUBLE VS FPGA Q1.15 WINDOW COMPARISON (N = 638)
+==============================================================================
+Number of samples N       : 638
+Praat window w[1] (double): 0.0000241710
+FPGA Q1.15 w[0] (integer) : 1 -> float: 0.0000305176
+Praat window apex w[319]  : 0.9999939572
+FPGA Q1.15 apex w[318]    : 32767 (saturated to 32767)
+Max absolute error        : 2.44747928e-05 (0.8020 LSB)
+RMS error                 : 8.63587994e-06
+Quantization SNR          : 97.02 dB
+==============================================================================
