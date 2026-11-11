@@ -155,3 +155,93 @@ Kết quả kiểm nghiệm độc lập trong kịch bản \path{verify_v3/ch07
 Con số này xấp xỉ mức sai số làm tròn máy hữu hạn của kiểu dấu phẩy động 64-bit (\texttt{double}), chứng minh tuyệt đối sự tương đương toán học giữa hai phương pháp.
 
 \textit{Tóm lại: Bản chất của tự tương quan là đếm số cặp mẫu trùng lặp qua độ trễ $\tau$. Dải quét 189 lag cùng $R[0]$ đòi hỏi chính xác $98.540\text{ phép MAC}$; phép đệm 386 số 0 trong FFT 1024 điểm của Praat đảm bảo tự tương quan vòng không bị cuộn chồng và đồng nhất hoàn toàn với tích vô hướng tuyến tính của MAC trực tiếp.}
+
+
+\subsection*{7.2. Vì sao chọn MAC trực tiếp thay vì FFT trên FPGA}
+\addcontentsline{toc}{subsection}{7.2. Vì sao chọn MAC trực tiếp thay vì FFT trên FPGA}
+
+\subsubsection*{Vấn đề thực tế: Ảo tưởng về độ phức tạp thuật toán $O(N \log N)$ trên phần cứng}
+Một phản xạ rất tự nhiên của bất kỳ kỹ sư phần mềm nào khi nhìn vào bài toán tự tương quan là mở sách giáo khoa xử lý tín hiệu và thốt lên: "Tại sao lại dùng $O(N^2)$ phép nhân trong miền thời gian khi ta có thể dùng FFT với độ phức tạp chỉ $O(N \log N)$?". Trên máy tính đa năng (CPU), lập luận này hoàn toàn chính xác: Praat chọn FFT 1024 điểm vì CPU x86 có bộ nhớ đệm L1/L2 khổng lồ, các tập lệnh vector AVX-512 xử lý số thực dấu phẩy động cực mạnh, và việc giảm số phép nhân giúp giảm đáng kể thời gian chiếm dụng CPU.
+
+Tuy nhiên, khi bước chân vào thế giới phần cứng chuyên dụng trên chip FPGA, logic thiết kế bị chi phối bởi những ràng buộc hoàn toàn khác: diện tích silicon, băng thông bộ nhớ nội, độ phức tạp của đường truyền dữ liệu (datapath), và việc quản lý tăng trưởng bit lượng tử. Hãy cùng mổ xẻ chi tiết từng khía cạnh để thấy vì sao cách tiếp cận FFT trên FPGA lại là một sự đánh đổi bất lợi, và vì sao kiến trúc MAC trực tiếp là quyết định tối ưu.
+
+\subsubsection*{Đếm số lượng phép toán: FFT ít hơn trên giấy, nhưng nặng trên silicon}
+Hãy so sánh số lượng phép nhân thực tế giữa hai giải pháp:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Với biến đổi FFT 1024 điểm:}
+    Kích thước $N_{\text{FFT}} = 1024 = 2^{10}$ đòi hỏi $10\text{ tầng bướm}$ (stages). Mỗi tầng gồm $1024 / 2 = 512\text{ bướm Cooley-Tukey}$. Một phép nhân bướm phức chuẩn $(a + jb)(c + jd) = (ac - bd) + j(ad + bc)$ tiêu tốn 4 phép nhân thực và 2 phép cộng thực (hoặc 3 phép nhân và 5 phép cộng theo thuật toán Karatsuba). Bỏ qua các phép nhân suy biến với $\pm 1$ và $\pm j$, phép biến đổi FFT thuận 1024 điểm đòi hỏi xấp xỉ:
+    \begin{equation}
+    10 \text{ tầng} \times 512 \text{ bướm} \times 4 \text{ nhân thực} \approx 20.480\text{ phép nhân thực}
+    \end{equation}
+    Tiếp đó, phép tính phổ công suất $P[k] = \text{Re}^2[k] + \text{Im}^2[k]$ trên 513 điểm tần số độc lập tiêu tốn thêm $2 \times 513 = 1.026\text{ phép nhân thực}$.
+    Cuối cùng, phép biến đổi IFFT nghịch 1024 điểm đòi hỏi thêm một lượng phép tính tương đương: $\approx 20.480\text{ phép nhân thực}$.
+    Tổng cộng cho cả quy trình tự tương quan qua miền tần số là:
+    \begin{equation}
+    N_{\text{mult, FFT}} \approx 20.480 + 1.026 + 20.480 \approx \mathbf{41.986\text{ phép nhân thực}}
+    \end{equation}
+    (Con số này nằm trong khoảng xấp xỉ $4 \times 10.240$ phép nhân thực mà tài liệu phân tích).
+    \item \textbf{Với tự tương quan MAC trực tiếp:}
+    Tổng số phép nhân cần tính toán như đã dẫn xuất ở Mục 7.1 là:
+    \begin{equation}
+    N_{\text{mult, MAC}} = \mathbf{98.540\text{ phép nhân thực}}
+    \end{equation}
+\end{itemize}
+
+Nhìn thuần túy trên giấy tờ, FFT thực hiện khoảng $42.000\text{ phép nhân}$, ít hơn một nửa so với $98.540\text{ phép nhân}$ của MAC trực tiếp. Nhưng cái giá phần cứng phải trả để thực hiện được $42.000\text{ phép nhân}$ của FFT là vô cùng nặng nề:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Độ phức tạp của bộ nhớ trung gian (Scratchpad Memory):}
+    Trong thuật toán FFT, ngõ ra của tầng bướm này là ngõ vào của tầng bướm kế tiếp. Để xử lý dòng, hệ thống buộc phải triển khai cấu trúc đệm bóng bàn (ping-pong buffer) hoặc bộ đệm trễ hồi tiếp (Delay Feedback). Một khối FFT 1024 điểm dấu phẩy tĩnh cần lưu trữ ít nhất $2 \times 1024\text{ từ phức}$ (mỗi từ gồm phần thực và phần ảo $18\text{-bit}$), tiêu tốn dung lượng bộ nhớ:
+    \begin{equation}
+    2 \times 1024 \times (18 + 18)\text{ bit} = 73.728\text{ bit nhớ}
+    \end{equation}
+    Con số này đòi hỏi tiêu tốn ít nhất \textbf{8 khối M10K} nhúng ($10.240\text{ bit/khối}$) chỉ để làm bộ nhớ trung gian lưu các giá trị chuyển tiếp giữa các tầng bướm. Trong khi đó, bộ MAC trực tiếp chỉ cần đúng \textbf{2 khối M10K} để chứa khung mẫu ngõ vào $x_w$, và hoàn toàn \textbf{không cần thêm một bit nhớ trung gian nào}!
+    \item \textbf{Độ phức tạp của bộ quay pha Twiddle Factor và bộ đảo bit:}
+    FFT đòi hỏi một bảng tra ROM chứa các hệ số quay lượng giác $\cos(2\pi k / 1024)$ và $-\sin(2\pi k / 1024)$, cùng với một khối logic phức tạp để sinh địa chỉ đảo bit (bit-reversal address generator) nhằm tái sắp xếp lại chuỗi dữ liệu ngõ ra. Logic điều khiển này tiêu tốn hàng trăm khối logic ALM quý giá của Cyclone V.
+    \item \textbf{Vấn đề tăng trưởng độ rộng bit (Bit Growth) và sai số lượng tử:}
+    Mỗi tầng bướm của FFT có thể làm biên độ tín hiệu tăng lên tối đa một hệ số $\sqrt{2}$ (hoặc tăng 1 bit nhị phân trong trường hợp xấu nhất). Trải qua 10 tầng bướm, độ động của tín hiệu có thể phình to thêm tới 10 bit. Trên phần cứng FPGA dấu phẩy tĩnh, người thiết kế buộc phải chọn một trong ba phương án đầy rủi ro:
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Dịch tỉ lệ cố định (Fixed Scaling):} Dịch phải 1 bit sau mỗi tầng bướm để chống tràn số. Hậu quả là các thành phần tín hiệu nhỏ bị chặt cụt liên tục, làm tích lũy nhiễu lượng tử trầm trọng và làm biến dạng các đỉnh tự tương quan ở các khung âm lượng nhỏ.
+        \item \emph{Dấu phẩy động khối (Block Floating Point -- BFP):} Dò tìm đỉnh biên độ cực đại sau mỗi tầng để quyết định dịch tỉ lệ có điều kiện, đồng thời duy trì một số mũ chung. Giải pháp này đòi hỏi mạch dò biên độ tổ hợp phức tạp và làm nghẽn đường ống xung nhịp.
+        \item \emph{Mở rộng datapath lên 32-bit:} Làm tăng gấp đôi tài nguyên bộ nhân DSP (buộc phải ghép nhiều bộ nhân $18 \times 18$ hoặc dùng DSP $27 \times 27$).
+    \end{itemize}
+    Ngược lại hoàn toàn, bộ MAC trực tiếp hoạt động trên thanh ghi tích lũy $48\text{-bit}$ hoàn toàn không nén, không dịch bit trung gian: mỗi phép nhân $17 \times 17\text{-bit}$ sinh ra tích số $34\text{-bit}$ chính xác tuyệt đối và được cộng dồn trực tiếp vào thanh ghi $48\text{-bit}$. \textbf{Sai số lượng tử trung gian bằng đúng $0$!}
+\end{enumerate}
+
+\subsubsection*{Ngân sách thời gian thực: Khi "nhanh hơn" trở nên vô nghĩa}
+Hãy đặt con số $98.540\text{ phép MAC}$ vào bài toán thời gian thực cụ thể trên kit DE10-Standard. Tần số xung nhịp hệ thống trên FPGA là $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ xung nhịp $T_{\text{clk}} = 20\text{ ns}$). Tần số lấy mẫu âm thanh là $f_s = 16.000\text{ Hz}$. 
+
+Mỗi chu kỳ lấy mẫu âm thanh tương ứng với số chu kỳ xung nhịp FPGA là:
+\begin{equation}
+N_{\text{clk/sample}} = \frac{50.000.000\text{ Hz}}{16.000\text{ Hz}} = \mathbf{3.125\text{ chu kỳ}}
+\end{equation}
+
+Thuật toán Praat quy định khoảng cách bước nhảy giữa hai khung liên tiếp (hop size) là $10\text{ ms}$, tương ứng với đúng $H = 160\text{ mẫu}$ âm thanh (được xác định tại dòng 296: $\text{timeStep} = \text{periodsPerWindow} / \text{pitchFloor} / 4 = 3 / 75 / 4 = 0{,}01\text{ s}$). Ngân sách thời gian thực tối đa mà FPGA có được giữa hai khung âm thanh liên tiếp là:
+\begin{equation}
+N_{\text{budget/hop}} = H \times N_{\text{clk/sample}} = 160 \times 3.125 = \mathbf{500.000\text{ chu kỳ xung nhịp}}
+\end{equation}
+
+Một bộ MAC phần cứng đơn lẻ trên Cyclone V thực thi với thông lượng \textbf{1 phép MAC trên 1 chu kỳ xung nhịp}. Với tổng số $98.540\text{ cặp toán hạng}$ cần tính toán cộng thêm 3 chu kỳ trễ đường ống, toàn bộ quá trình tính toán tự tương quan trên một khung $638\text{ mẫu}$ hoàn thành trong đúng:
+\begin{equation}
+N_{\text{cycles/frame}} = 98.540 + 3 = \mathbf{98.543\text{ chu kỳ xung nhịp}}
+\end{equation}
+
+Thời gian thực tế để tính xong một khung âm thanh là:
+\begin{equation}
+T_{\text{calc}} = 98.543 \times 20\text{ ns} \approx 1{,}97086\text{ ms}
+\end{equation}
+
+Hệ số thời gian thực (Real-Time Factor -- RTF) của riêng khối MAC được xác định bằng:
+\begin{equation}
+\text{RTF}_{\text{MAC}} = \frac{N_{\text{cycles/frame}}}{N_{\text{budget/hop}}} = \frac{98.543}{500.000} \approx \mathbf{0{,}197086 \approx 19{,}7\%}
+\end{equation}
+
+\begin{physicalinsight}
+\textbf{Nhìn thấy vật lý: Sự xa xỉ của ngân sách thời gian thực.}
+Khối MAC trực tiếp chỉ tiêu tốn đúng \textbf{$19{,}7\%$ ngân sách thời gian thực} của một bước nhảy khung $10\text{ ms}$! Sau khi tính xong trong chưa đầy $2\text{ ms}$, phần cứng MAC hoàn toàn rảnh rỗi trong hơn $8\text{ ms}$ còn lại ($401.457\text{ chu kỳ}$ nhàn rỗi) trước khi khung âm thanh tiếp theo xuất hiện.
+\par\noindent Việc cố gắng nhồi nhét một cấu trúc FFT phức tạp để giảm thời gian tính từ $1{,}97\text{ ms}$ xuống $0{,}8\text{ ms}$ là hoàn toàn vô nghĩa trong bối cảnh này: nó không đem lại bất kỳ cải thiện nào cho người dùng cuối (vẫn phải chờ đủ $10\text{ ms}$ để có bước nhảy âm thanh mới), trong khi làm tiêu tốn thêm ít nhất 6 khối M10K và hàng trăm ALM, đồng thời đưa vào hệ thống nguy cơ sai số lượng tử tích lũy.
+\end{physicalinsight}
+
+Vì tất cả các lý do kỹ thuật trên, thiết kế này dứt khoát lựa chọn \textbf{kiến trúc MAC trực tiếp trong miền thời gian}. 
+
+\textit{Tóm lại: FFT có vẻ ít phép nhân hơn trên lý thuyết, nhưng đòi hỏi bộ nhớ đệm M10K gấp $4\times$, logic điều khiển bướm phức tạp và dễ phát sinh méo lượng tử; trong khi đó, 1 bộ MAC trực tiếp chỉ chiếm $19{,}7\%$ ngân sách thời gian thực (RTF $\approx 0{,}197$) ở 50 MHz, bảo đảm độ chính xác số học nguyên bản và tiết kiệm tối đa tài nguyên silicon.}
