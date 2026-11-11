@@ -674,3 +674,97 @@ So sánh hai phương án:
 Vì $\text{RTF} = 0{,}197$ đã là một con số quá nhanh so với thời gian thực (hệ thống rảnh rỗi hơn $80\%$ thời gian), việc tiêu tốn thêm 1 DSP và 2 khối M10K chỉ để đưa RTF từ $0{,}197$ xuống $0{,}10$ là hoàn toàn lãng phí trên kit DE10-Standard. Do đó, tài liệu này \textbf{lựa chọn kiến trúc 1 DSP làm cấu hình mặc định chuẩn tắc}. Phương án 2 DSP được trình bày chi tiết như một "nút vặn mở rộng" (scalable configuration parameter) trong trường hợp người đọc muốn nâng cấp hệ thống để xử lý tín hiệu âm thanh đa kênh.
 
 \textit{Tóm lại: Dùng 2 khối DSP có thể giảm thời gian tính toán xuống một nửa (RTF từ $0{,}197$ xuống $\approx 0{,}10$), nhưng đòi hỏi 3 cổng đọc đồng thời, buộc phải nhân đôi bộ nhớ lên 4 khối M10K; do 1 DSP đã thừa sức đáp ứng thời gian thực, kiến trúc 1 DSP được chọn làm mặc định tối ưu.}
+
+
+\subsection*{7.7. Tuyến (A): Tích hợp khối IP Intel ALTERA\_MULT\_ADD}
+\addcontentsline{toc}{subsection}{7.7. Tuyến (A): Tích hợp khối IP Intel ALTERA\_MULT\_ADD}
+
+\subsubsection*{Tên gọi chuẩn xác và bối cảnh IP trên Cyclone V}
+Khi xây dựng mạch nhân tích lũy trên các dòng FPGA của Intel, nhiều tài liệu cũ và các bản thiết kế kế thừa từ các thế hệ Cyclone II, Cyclone IV thường sử dụng khối IP có tên gọi \texttt{ALTMULT\_ACCUM}. Tuy nhiên, đối với họ vi mạch Cyclone V SoC trên kit DE10-Standard, Intel đã tái cấu trúc toàn diện kiến trúc khối tính toán số học DSP thành khối \textbf{Variable Precision DSP}. Tên gọi chính thức và duy nhất được hỗ trợ đầy đủ trong công cụ thiết kế IP Catalog của Quartus Prime là \textbf{\texttt{ALTERA\_MULT\_ADD}} (Multiply Adder IP Core).
+
+Tài liệu hướng dẫn sử dụng chuẩn tắc của khối IP này là: *Integer Arithmetic IP Cores User Guide* (Intel Document ID: UG-01069, mục "ALTERA\_MULT\_ADD (Multiply-Add) IP Core").
+
+\subsubsection*{Giải thích chi tiết từng tham số trong Parameter Editor}
+Khi khởi tạo khối IP \texttt{ALTERA\_MULT\_ADD} trong giao diện đồ họa Parameter Editor của Quartus Prime, mỗi tham số cấu hình trả lời trực tiếp cho một bài toán thiết kế kiến trúc đã được dẫn xuất ở các mục trước:
+
+\begin{itemize}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{\texttt{NUMBER\_OF\_MULTIPLIERS = 1}:}
+    Quy định số lượng bộ nhân song song bên trong khối IP. Vì thiết kế chuẩn của ta sử dụng kiến trúc 1 DSP xử lý tuần tự từng cặp mẫu mỗi chu kỳ, tham số này được đặt bằng $1$. Nếu đặt bằng $2$ (như phương án mở rộng ở Mục 7.6), IP sẽ sinh ra hai bộ nhân song song ghép vào một bộ cộng cây.
+    
+    \item \textbf{\texttt{WIDTH\_A = 17} và \texttt{WIDTH\_B = 17}:}
+    Quy định độ rộng bit của hai toán hạng ngõ vào $a$ ($x_w[n]$) và $b$ ($x_w[n+\tau]$). Căn cứ theo dẫn xuất dải động ở Mục 7.4, mẫu âm thanh sau khi trừ trung bình và nhân cửa sổ Hanning có thể đạt biên độ tới $\pm 65.535$, bắt buộc phải dùng đủ $17\text{ bit}$.
+    
+    \item \textbf{\texttt{REPRESENTATION = "SIGNED"}:}
+    Xác định định dạng số học của toán hạng là số nguyên có dấu bù hai. Đây là tham số sinh tử: nếu chọn nhầm \texttt{UNSIGNED}, một giá trị âm như $-3$ ($17\text{-bit}$ là \texttt{0x1FFFD}) sẽ bị bộ nhân coi là số dương lớn $+131.069$, làm kết quả tự tương quan sai lệch hàng triệu đơn vị.
+    
+    \item \textbf{\texttt{WIDTH\_RESULT = 48}:}
+    Độ rộng của thanh ghi kết quả tích lũy ngõ ra. Căn cứ Mục 7.4, cận trên toán học cho 638 mẫu cực hạn đòi hỏi tối thiểu $43\text{ bit}$ có dấu. Vì bộ cộng tích lũy vật lý trong khối DSP Cyclone V rộng tới $64\text{ bit}$ (CV-52003 Chương 5), việc cấu hình ngõ ra thành $48\text{ bit}$ hoàn toàn nằm trong silicon cứng và tiêu tốn đúng 0 ALM ngoài.
+    
+    \item \textbf{\texttt{INPUT\_REGISTER\_A0/B0 = "CLOCK0"}:}
+    Kích hoạt tầng thanh ghi đầu vào (Input Register Bank) bên trong khối DSP cho cả hai cổng A và B, được điều khiển bởi xung nhịp \texttt{clk} (\texttt{CLOCK0}). Đây chính là việc hiện thực hóa \textbf{Phương án 2}: chia đôi đường tới hạn từ RAM M10K và tận dụng các flip-flop cứng có sẵn trong silicon DSP (tiêu tốn 0 ALM).
+    
+    \item \textbf{\texttt{MULTIPLIER\_REGISTER0 = "UNREGISTERED"}:}
+    Quy định không chèn thêm thanh ghi đường ống giữa ngõ ra bộ nhân và ngõ vào bộ cộng. Như đã phân tích ở Phương án 3 (Mục 7.3), khối DSP Cyclone V không có thanh ghi vật lý ở vị trí này; việc đặt \texttt{UNREGISTERED} giúp loại bỏ hoàn toàn việc Quartus phải chiếm dụng 32 FF từ các khối ALM ngoài.
+    
+    \item \textbf{\texttt{ACCUMULATOR = "YES"}:}
+    Bật chức năng cộng dồn tích lũy hồi tiếp bên trong khối DSP cứng, biến bộ nhân thành bộ MAC hoàn chỉnh.
+    
+    \item \textbf{\texttt{ACCUM\_SLOAD\_REGISTER}}: đặt là \texttt{"CLOCK0"}.
+    Sinh ra cổng tín hiệu điều khiển \texttt{accum\_sload} (Synchronous Load) và chốt nó qua cùng một tầng thanh ghi ngõ vào với toán hạng (sử dụng cùng xung nhịp \texttt{CLOCK0}). Khi \texttt{accum\_sload = 1}, bộ tích lũy sẽ \emph{nạp đè} tích số mới vào thanh ghi tổng thay vì cộng dồn, tạo nên cơ chế chuyển tiếp lag zero-bubble hoàn hảo.
+    
+    \item \textbf{\texttt{OUTPUT\_REGISTER = "CLOCK0"}:}
+    Kích hoạt thanh ghi tổng ở ngõ ra bộ tích lũy. Đây là tầng chốt kết quả cuối cùng trước khi đưa ra bus dữ liệu.
+\end{itemize}
+
+\subsubsection*{Phân tích độ trễ và tài nguyên của khối IP}
+Theo tài liệu *Integer Arithmetic IP Cores User Guide* (UG-01069), với cấu hình:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thanh ghi vào: \texttt{INPUT\_REGISTER = CLOCK0} (1 chu kỳ trễ).
+    \item Thanh ghi tích: \texttt{MULTIPLIER\_REGISTER = UNREGISTERED} (0 chu kỳ trễ).
+    \item Thanh ghi ra: \texttt{OUTPUT\_REGISTER = CLOCK0} (1 chu kỳ trễ).
+\end{itemize}
+Khối IP \texttt{ALTERA\_MULT\_ADD} báo cáo độ trễ ngõ ra (Output Latency) là đúng \textbf{2 chu kỳ xung nhịp} tính từ các chân ngõ vào \texttt{dataa}, \texttt{datab} và \texttt{accum\_sload}.
+
+Khi ghép nối ngõ vào của IP với bộ nhớ True Dual-Port RAM \texttt{ch07\_xw\_ram} (có độ trễ đọc địa chỉ là 1 chu kỳ), tổng độ trễ toàn tuyến tính từ thời điểm phát địa chỉ $(n, n+\tau)$ trên bus địa chỉ cho tới khi giá trị tổng $R[\tau]$ xuất hiện trên bus ngõ ra là:
+\begin{equation}
+\text{Latency}_{\text{total}} = 1\text{ (RAM M10K)} + 2\text{ (IP ALTERA\_MULT\_ADD)} = \mathbf{3\text{ chu kỳ xung nhịp}}
+\end{equation}
+Con số này khớp tuyệt đối với mô hình toán học và bảng tính tay ở Mục 7.3.
+
+Về tài nguyên phần cứng, khối IP \texttt{ALTERA\_MULT\_ADD} cấu hình $17 \times 17\text{-bit}$ chiếm dụng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khối DSP:} Đúng \textbf{1 khối Variable Precision DSP} (trong tổng số 112 khối DSP trên chip Cyclone V, chiếm chưa tới $0{,}9\%$ tài nguyên toàn chip).
+    \item \textbf{Tài nguyên ALM logic:} \textbf{0 ALM} cho khối nhân và cộng tích lũy thuần túy (toàn bộ phép tính nằm trọn trong silicon cứng).
+    \item \textbf{Tần số cực đại $F_{\max}$ và ALM mạch đệm:} Là các giá trị \textbf{(phải đo)} trên phần mềm Quartus Prime sau khi chạy hoàn chỉnh Fitter và TimeQuest Timing Analyzer.
+\end{itemize}
+
+\subsubsection*{Đoạn mã Verilog khởi tạo IP (Instantiation Snippet)}
+Dưới đây là đoạn mã ghép nối tiêu chuẩn của khối IP \texttt{ALTERA\_MULT\_ADD} trong hệ thống:
+
+\begin{lstlisting}[language=Verilog, caption={Đoạn mã ghép nối khối IP Intel ALTERA\_MULT\_ADD cho bộ tự tương quan MAC.}]
+// Khoi tao IP Intel ALTERA_MULT_ADD trong che do MAC 17x17 signed
+altera_mult_add #(
+    .number_of_multipliers    (1),
+    .width_a                  (17),
+    .width_b                  (17),
+    .width_result             (48),
+    .representation_a         ("SIGNED"),
+    .representation_b         ("SIGNED"),
+    .input_register_a0        ("CLOCK0"),
+    .input_register_b0        ("CLOCK0"),
+    .multiplier_register0     ("UNREGISTERED"),
+    .accumulator              ("YES"),
+    .accum_sload_register     ("CLOCK0"),
+    .output_register          ("CLOCK0"),
+    .port_accum_sload         ("PORT_USED")
+) u_altera_mac (
+    .clock0                   (clk),
+    .ena0                     (1'b1),
+    .dataa                    (ram_qa),        // Mau xw[n] tu cong A cua M10K
+    .datab                    (ram_qb),        // Mau xw[n+tau] tu cong B cua M10K
+    .accum_sload              (ram_sload_r),   // Co nap de tinh theo nhip RAM
+    .result                   (mac_result)     // Ket qua R[tau] 48-bit sau 2 nhip
+);
+\end{lstlisting}
+
+\textit{Tóm lại: Khối IP chuẩn trên Cyclone V là \texttt{ALTERA\_MULT\_ADD}; cấu hình toán hạng có dấu $17\text{-bit}$, ngõ ra $48\text{-bit}$, bật thanh ghi vào \texttt{CLOCK0} và cờ nạp đè \texttt{accum\_sload} giúp ánh xạ trọn vẹn thuật toán vào 1 khối DSP Variable Precision cứng (0 ALM) với độ trễ đúng 2 chu kỳ.}
