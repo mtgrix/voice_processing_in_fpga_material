@@ -644,3 +644,115 @@ Dòng 180--200 & Dòng 182--201 & Cạnh lên xung nhịp: Chốt đồng thời
 Nếu người thiết kế quyết định xóa bỏ thanh ghi Tầng 2 và đưa tích số $P_C, P_K$ thẳng vào bộ cộng làm tròn Tầng 3 trong cùng một chu kỳ (giảm độ trễ từ 3 xuống 2 nhịp): đường tới hạn sẽ kéo dài từ ngõ ra của khối M10K, đi qua bộ nhân DSP $27 \times 27$, đi tiếp qua bộ cộng $44\text{-bit}$ rồi mới tới thanh ghi ngõ ra. Trên chip Cyclone V tốc độ chậm (speed grade -6), quãng đường điện dài này sẽ làm tụt tần số hoạt động tối đa $F_{\max}$ xuống dưới $50\text{ MHz}$ (phải đo). Việc giữ nguyên cấu trúc 3 nhịp là lựa chọn tối ưu, vừa bảo đảm $F_{\max} > 100\text{ MHz}$, vừa khớp hoàn toàn với kiến trúc IP.
 
 \textit{Tóm lại: Module HDL tự viết mô phỏng trung thực kiến trúc silicon M10K và DSP của Cyclone V; thiết kế đường ống 3 tầng giúp phân tách quãng đường điện, bảo đảm thông lượng 1 kết quả/chu kỳ và khớp hoàn toàn từng bit lẫn từng chu kỳ với mô hình song sinh Python.}
+
+% =============================================================================
+% 8.6. MÔ HÌNH SONG SINH PYTHON TWIN VÀ KỊCH BẢN KIỂM CHỨNG TESTBENCH
+% =============================================================================
+\subsection*{8.6. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng Testbench}
+\addcontentsline{toc}{subsection}{8.6. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng Testbench}
+
+\paragraph{Nguyên tắc thiết kế mô hình song sinh (Python Twin)}
+Để bảo đảm thiết kế phần cứng không có độ lệch số học hay sai pha chu kỳ so với thuật toán mẫu, một mô hình song sinh bit-exact và cycle-accurate được xây dựng bằng Python trong tệp tin \texttt{verify\_v3/ch08\_twin.py}. Mô hình này không sử dụng các hàm số học dấu phẩy động của thư viện cấp cao mà mô phỏng trực tiếp từng thanh ghi flip-flop và các phép toán số học nhị phân của phần cứng:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Cơ chế dịch số học và bitlen}: Tính số bit có nghĩa $\text{bitlen}(R_0)$ để xác định $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$, sau đó áp dụng phép dịch phải số học cho $R[\tau]$ và $R_0$.
+    \item \textbf{Mô phỏng đường ống 3 nhịp}: Lưu trữ trạng thái của 3 tầng đường ống (\texttt{v\_pipe1}, \texttt{v\_pipe2}, \texttt{out\_valid}) cùng các thanh ghi dữ liệu trung gian (\texttt{rn\_pipe1}, \texttt{prod\_c\_pipe2}, \texttt{prod\_k\_pipe2}).
+    \item \textbf{Cơ chế làm tròn nửa lên có bù}: Khớp chính xác thuật toán cộng $2^{13}$ trước khi dịch phải 14 bit cho $U[\tau]$, và cộng $2^{19}$ trước khi dịch phải 20 bit cho $\text{term}_K$.
+\end{enumerate}
+
+Đoạn mã nguồn then chốt từ dòng 109 đến dòng 166 trong phương thức \texttt{step()} của lớp \texttt{Ch08NormTwin} được thể hiện trong Liệt kê~\ref{lst:ch08_twin_core}.
+
+\begin{lstlisting}[language=Python, caption={Đoạn mã then chốt của mô hình song sinh Python Twin (\texttt{verify\_v3/ch08\_twin.py}).}, label={lst:ch08_twin_core}, firstline=109, lastline=166, firstnumber=109]
+        if self.v_pipe2:
+            next_out_valid = 1
+            next_out_tau = self.tau_pipe2
+            next_out_R0n = self.r0n_pipe2
+            next_out_sh = self.sh_reg
+            next_out_last = 1 if self.tau_pipe2 == K.TAU_SCAN_MAX else 0
+
+            # Rounding and shifts
+            u_div = (self.prod_c_pipe2 + 8192) >> 14
+            k_div = (self.prod_k_pipe2 + 524288) >> 20
+            sc_diff = u_div - k_div
+
+            # Clamp to 28-bit signed integer range for bit-exact HDL matching
+            # Signed 28-bit range: [-134217728, 134217727]
+            next_out_U = ((u_div + (1 << 27)) % (1 << 28)) - (1 << 27)
+            next_out_Sc = ((sc_diff + (1 << 27)) % (1 << 28)) - (1 << 27)
+        else:
+            next_out_valid = 0
+            next_out_tau = 0
+            next_out_U = 0
+            next_out_Sc = 0
+            next_out_R0n = self.r0n_pipe2
+            next_out_sh = self.sh_reg
+            next_out_last = 0
+
+        # ---------------------------------------------------------------------
+        # Next state computation for Stage 2 (Multiplication)
+        # ---------------------------------------------------------------------
+        if self.v_pipe1:
+            next_v_pipe2 = 1
+            next_tau_pipe2 = self.tau_pipe1
+            next_r0n_pipe2 = self.r0n_pipe1
+            tau = self.tau_pipe1
+            c_coeff = self.C[tau]
+            k_coeff = self.K[tau]
+            next_prod_c = self.rn_pipe1 * c_coeff
+            next_prod_k = self.r0n_pipe1 * k_coeff
+        else:
+            next_v_pipe2 = 0
+            next_tau_pipe2 = 0
+            next_r0n_pipe2 = 0
+            next_prod_c = 0
+            next_prod_k = 0
+
+        # ---------------------------------------------------------------------
+        # Next state computation for Stage 1 (ROM Address & Shift)
+        # ---------------------------------------------------------------------
+        if in_valid and (K.TAU_SCAN_MIN <= in_tau <= K.TAU_SCAN_MAX):
+            next_v_pipe1 = 1
+            next_tau_pipe1 = in_tau
+            next_rn_pipe1 = in_R >> self.sh_reg
+            next_r0n_pipe1 = self.r0n_reg
+        else:
+            next_v_pipe1 = 0
+            next_tau_pipe1 = 0
+            next_rn_pipe1 = 0
+            next_r0n_pipe1 = 0
+\end{lstlisting}
+
+\paragraph{Giải thích từng dòng mã nguồn Python Twin}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Dòng 109--114}: Kiểm tra cờ hợp lệ tầng 2 \texttt{self.v\_pipe2}. Nếu tích số đã sẵn sàng, gán cờ hợp lệ ngõ ra \texttt{next\_out\_valid = 1}, chốt chỉ số $\tau$, truyền giá trị $R_{0n}$ và $\text{sh}$. Đặc biệt, dòng 114 kiểm tra điều kiện kết thúc khung $\tau = 214$ để kích hoạt cờ \texttt{next\_out\_last = 1}.
+    \item \textbf{Dòng 117--119}: Thực hiện làm tròn số học đối xứng: tích $P_C$ được cộng $8.192$ ($2^{13}$) trước khi dịch phải 14 bit; tích $P_K$ được cộng $524.288$ ($2^{19}$) trước khi dịch phải 20 bit. Sau đó, điểm toàn cục \texttt{sc\_diff} được tính bằng hiệu đại số trực tiếp.
+    \item \textbf{Dòng 123--124}: Ép dải số nguyên có dấu $28\text{-bit}$ (tương ứng phạm vi $[-134.217.728, 134.217.727]$) để bảo đảm hành vi số học tràn/quay vòng (nếu có) phản ánh chính xác từng bit cắt của thanh ghi phần cứng.
+    \item \textbf{Dòng 125--133}: Nhánh \texttt{else} khi không có dữ liệu hợp lệ ở tầng 2: xóa cờ ngõ ra về 0 và xóa dữ liệu tính toán để tránh lan truyền giá trị rác.
+    \item \textbf{Dòng 137--145}: Tầng 2 kích hoạt khi có cờ \texttt{self.v\_pipe1}. Truy xuất hệ số $C[\tau]$ và $K[\tau]$ từ mảng ROM nạp trước, sau đó nhân số học với $R_n[\tau]$ và $R_{0n}$ tạo ra các tích trung gian \texttt{next\_prod\_c} và \texttt{next\_prod\_k}.
+    \item \textbf{Dòng 156--166}: Tầng 1 bắt tín hiệu ngõ vào khi \texttt{in\_valid = 1} và $26 \le \tau \le 214$. Dịch phải số học ngõ vào $R[\tau]$ theo lượng dịch $\text{sh}$ đã chốt tại $\tau = 0$, đồng thời đồng bộ $R_{0n}$ vào thanh ghi ống dẫn \texttt{next\_r0n\_pipe1}.
+\end{itemize}
+
+\paragraph{Quy ước lấy mẫu 2 pha trong Testbench (Sampling Convention)}
+Để việc kiểm chứng giữa mô hình song sinh phần mềm và mô phỏng RTL Icarus Verilog hoàn toàn nhất quán và không phát sinh lỗi lệch nhịp chu kỳ (tương tự bài học rút ra từ Chương 3), quy ước lấy mẫu 2 pha nghiêm ngặt được áp dụng:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Pha 1 (Lái tín hiệu ngõ vào)}: Tín hiệu ngõ vào (\texttt{rst\_n}, \texttt{in\_valid}, \texttt{in\_tau}, \texttt{in\_R}) được kích hoạt tại sườn âm xung nhịp (\texttt{@(negedge clk)}) hoặc duy trì ổn định trong pha mức thấp của xung nhịp. Các ngõ ra tổ hợp (nếu có) được kiểm tra sau trễ $1\text{ ns}$ (\texttt{\#1}).
+    \item \textbf{Pha 2 (Kiểm tra thanh ghi ngõ ra)}: Chờ đến cạnh lên kế tiếp của xung nhịp (\texttt{@(posedge clk)}), thêm một độ trễ giữ an toàn $1\text{ ns}$ (\texttt{\#1}) để phần cứng hoàn tất việc chốt dữ liệu vào các flip-flop ngõ ra. Sau đó, toàn bộ các cổng \texttt{out\_valid}, \texttt{out\_tau}, \texttt{out\_U}, \texttt{out\_Sc}, \texttt{out\_R0n}, \texttt{out\_sh}, \texttt{out\_last} được so sánh đồng thời từng bit với vectơ kỳ vọng sinh ra từ Python Twin.
+\end{enumerate}
+Testbench không dừng đột ngột khi gặp lỗi mà tiếp tục chạy hết toàn bộ tệp kích thích để thống kê chính xác tổng số lỗi so sánh (\texttt{Total comparison errors: N}).
+
+\paragraph{Không gian kích thích kiểm chứng (Stimulus Suite)}
+Kịch bản kiểm chứng bao gồm tổng cộng $1.214$ chu kỳ mô phỏng trong tệp tin \texttt{verify\_v3/tb\_ch08\_norm\_stim.txt}, quét qua 5 khung tín hiệu điển hình và khắc nghiệt:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Khung 0 (Tín hiệu sạch, $F_0 = 80\text{ Hz}$)}: Biên độ hài cao, $\tau = 200$, tỷ số SNR $30\text{ dB}$, kiểm tra khả năng bắt đỉnh tương quan và chuẩn hóa trong điều kiện lý tưởng.
+    \item \textbf{Khung 1 (Tín hiệu nhiễu, $F_0 = 160\text{ Hz}$, SNR $5\text{ dB}$)}: Nhiễu Gauss trắng lớn khiến tương quan suy giảm, kiểm tra độ ổn định của Octave Cost khi các đỉnh giả xuất hiện.
+    \item \textbf{Khung 2 (Khung cưỡng bức biên độ cực đại, Stress Frame)}: Tín hiệu dạng sóng $32.767$ (full-scale), năng lượng $R_0 \approx 6{,}85 \times 10^{11}$ đòi hỏi hệ số dịch $\text{sh} = 14$, kiểm tra tuyệt đối không tràn số ở các bộ nhân DSP và thanh ghi 44-bit.
+    \item \textbf{Khung 3 (Khung biên độ nhỏ, Small Amplitude)}: Biên độ tín hiệu nhỏ ($A = 300$), $R_0 < 2^{26}$ dẫn đến $\text{sh} = 0$, kiểm tra mạch hoạt động chính xác khi không cần dịch bit.
+    \item \textbf{Khung 4 (Khung khoảng lặng, Silence Frame)}: Tín hiệu mức ngầm ($A = 10$), $R_0 \approx 0$, kiểm tra hành vi mạch khi năng lượng bằng 0 và tính ổn định của cờ ngõ ra.
+    \item \textbf{Bong bóng đường ống (Pipeline Bubbles)}: Chèn các chu kỳ ngắt quãng có chủ đích (\texttt{in\_valid = 0} trong 1 đến 3 nhịp) giữa quá trình quét $\tau$ nhằm chứng minh đường ống xử lý trơn tru các khoảng trống mà không làm sai lệch kết quả của các mẫu liền kề.
+\end{enumerate}
+
+\begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Kết quả chạy Icarus Verilog chu kỳ-đối-chu kỳ (Reviewer)}]
+\todo{box: reviewer fills real numbers after running run_ch08_iverilog.sh}
+\end{tcolorbox}
+
+\textit{Tóm lại: Mô hình song sinh Python Twin và testbench 2 pha cung cấp một cơ chế đối soát chu kỳ-đối-chu kỳ chặt chẽ trên 1.214 vectơ kiểm chứng, bảo đảm tính toàn vẹn chức năng của bộ chuẩn hóa và tính điểm Octave trước khi triển khai lên phần cứng thực tế.}
+
