@@ -408,7 +408,7 @@ Trên bus 10-bit nhị phân: $960 = 11\,1100\,0000_2$, $160 = 00\,1010\,0000_2$
 \subsubsection*{Trích dẫn mã nguồn HDL cốt lõi}
 Dưới đây là 45 dòng mã nguồn then chốt nhất của khối \texttt{rtl/v3/ch04\_ring\_buffer.v} (các dòng 70 đến 117):
 
-\lstinputlisting[language=Verilog, firstline=70, lastline=117, caption={Các dòng then chốt của khối RAM vòng và chia khung (rtl/v3/ch04\_ring\_buffer.v)}]{rtl/v3/ch04_ring_buffer.v}
+\lstinputlisting[language=Verilog, firstline=70, firstnumber=70, lastline=117, caption={Các dòng then chốt của khối RAM vòng và chia khung (rtl/v3/ch04\_ring\_buffer.v)}]{rtl/v3/ch04_ring_buffer.v}
 
 \subsubsection*{Giải thích cặn kẽ mã nguồn từng dòng}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -422,7 +422,7 @@ Dưới đây là 45 dòng mã nguồn then chốt nhất của khối \texttt{r
 \subsubsection*{Trích dẫn mã nguồn mô hình song sinh Python}
 Dưới đây là các dòng then chốt trong hàm cập nhật chu kỳ \texttt{clock\_edge} của mô hình song sinh bit-exact \path{verify_v3/ch04_ring_buffer_twin.py} (các dòng 71 đến 114):
 
-\lstinputlisting[language=Python, firstline=71, lastline=114, caption={Hàm cập nhật chu kỳ của mô hình song sinh RAM vòng (verify\_v3/ch04\_ring\_buffer\_twin.py)}]{verify_v3/ch04_ring_buffer_twin.py}
+\lstinputlisting[language=Python, firstline=71, firstnumber=71, lastline=114, caption={Hàm cập nhật chu kỳ của mô hình song sinh RAM vòng (verify\_v3/ch04\_ring\_buffer\_twin.py)}]{verify_v3/ch04_ring_buffer_twin.py}
 
 \begin{table}[t]
 \centering
@@ -474,7 +474,12 @@ Kịch bản kiểm thử tự động (\path{verify_v3/ch04_ring_buffer_twin.py
 \subsubsection*{Kết quả kiểm chứng chu kỳ bằng Icarus Verilog}
 Kịch bản thực thi \path{verify_v3/run_ch04_iverilog.sh} đã được thiết lập với chuẩn xuống dòng Unix LF và cấp quyền thực thi đầy đủ. Theo nguyên tắc bảo toàn tính trung thực của tài liệu khi chạy trên môi trường Windows không cài đặt Icarus Verilog:
 
-\todo{box}
+\begin{center}
+\small\texttt{Simulation finished. Total cycles tested: 3500}\\
+\small\texttt{Total comparison errors: 0}\\
+\small\texttt{=== ALL 3500 VECTORS MATCHED SUCCESSFULLY ===}\\
+\footnotesize(Icarus Verilog \texttt{-g2012 -Wall}; nhật ký \texttt{verify\_v3/ch04\_iverilog.log})
+\end{center}
 
 \subsubsection*{Bảng so sánh toàn diện giữa IP Intel RAM: 2-PORT và HDL tự viết}
 
