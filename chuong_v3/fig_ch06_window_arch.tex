@@ -1,115 +1,127 @@
 % chuong_v3/fig_ch06_window_arch.tex
 % Sơ đồ kiến trúc vi mô phần cứng module ch06_hanning_window.v
+% Bố cục chuẩn lưới (grid), khoảng cách giữa các khối >= 6 mm, text >= \scriptsize
 
 \begin{tikzpicture}[
-    >=Stealth, font=\small, scale=0.86, every node/.style={transform shape},
-    block/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=2pt, align=center, inner sep=4pt},
+    >=Stealth, font=\small,
+    block/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=2pt, align=center, inner sep=3.5pt},
     reg/.style={rectangle, draw=orange!80!black, fill=orange!10, thick, align=center, inner sep=3pt},
-    dsp/.style={rectangle, draw=red!70!black, fill=red!8, thick, rounded corners=2pt, align=center, inner sep=4pt},
+    dsp/.style={rectangle, draw=red!70!black, fill=red!8, thick, rounded corners=2pt, align=center, inner sep=3.5pt},
     wire/.style={->, thick, draw=black!80},
     ctrl/.style={->, thick, dashed, draw=purple!80!black}
 ]
 
-    % Nhãn các tầng đường ống phía trên (2 dòng gọn gàng, không tràn mép)
-    \node[font=\footnotesize, align=center, text=blue!85!black] at (0.6, 4.4) 
+    % =========================================================================
+    % TIÊU ĐỀ CÁC GIAI ĐOẠN ĐƯỜNG ỐNG (STAGE HEADERS)
+    % =========================================================================
+    \node[font=\footnotesize, align=center, text=blue!85!black] at (1.0, 3.6) 
         {\textbf{Giai đoạn 0}\\[1pt]Quét địa chỉ};
-    \node[font=\footnotesize, align=center, text=orange!90!black] at (5.3, 4.4) 
+    \node[font=\footnotesize, align=center, text=orange!90!black] at (5.2, 3.6) 
         {\textbf{Giai đoạn 1}\\[1pt]Đọc ROM \& Trễ $d$};
-    \node[font=\footnotesize, align=center, text=red!85!black] at (8.9, 4.4) 
+    \node[font=\footnotesize, align=center, text=red!85!black] at (9.8, 3.6) 
         {\textbf{Giai đoạn 2}\\[1pt]Nhân DSP};
-    \node[font=\footnotesize, align=center, text=green!50!black] at (12.5, 4.4) 
+    \node[font=\footnotesize, align=center, text=green!50!black] at (14.6, 3.6) 
         {\textbf{Giai đoạn 3}\\[1pt]Làm tròn \& Dò $LP$};
 
-    % Đường phân cách các giai đoạn
-    \draw[dotted, color=black!30, thick] (2.8, 4.8) -- (2.8, -4.5);
-    \draw[dotted, color=black!30, thick] (7.1, 4.8) -- (7.1, -4.5);
-    \draw[dotted, color=black!30, thick] (10.7, 4.8) -- (10.7, -4.5);
+    % Các đường phân cách giai đoạn
+    \draw[dotted, color=black!30, thick] (3.1, 4.0) -- (3.1, -3.4);
+    \draw[dotted, color=black!30, thick] (7.5, 4.0) -- (7.5, -3.4);
+    \draw[dotted, color=black!30, thick] (12.2, 4.0) -- (12.2, -3.4);
 
-    % Tầng 0: Tín hiệu vào và Bộ đếm địa chỉ
-    \node[block, minimum width=2.6cm, minimum height=1.2cm] (cnt) at (0.6, 2.5) {
+    % =========================================================================
+    % GIAI ĐOẠN 0: BỘ ĐẾM MẪU VÀ TÍN HIỆU ĐIỀU KHIỂN
+    % =========================================================================
+    \node[block, minimum width=2.0cm, minimum height=1.2cm] (cnt) at (1.0, 2.0) {
         \textbf{Bộ đếm mẫu}\\[1pt]
-        {\footnotesize\texttt{sample\_cnt[9:0]}}\\[1pt]
-        ($0 \dots 637$)
+        {\scriptsize $0 \dots 637$}\\[1pt]
+        {\scriptsize (10-bit)}
     };
 
-    \node[left, font=\scriptsize] (in_start) at (-1.4, 2.8) {\texttt{start}};
-    \node[left, font=\scriptsize] (in_vld) at (-1.4, 2.2) {\texttt{in\_valid}};
-    \draw[ctrl] (in_start) -- (-0.7, 2.8);
-    \draw[ctrl] (in_vld) -- (-0.7, 2.2);
+    \node[left, font=\scriptsize] (in_start) at (-0.8, 2.3) {\texttt{start}};
+    \node[left, font=\scriptsize] (in_vld) at (-0.8, 1.7) {\texttt{in\_valid}};
+    \draw[ctrl] (in_start) -- (cnt.165);
+    \draw[ctrl] (in_vld) -- (cnt.195);
 
-    % Tín hiệu mẫu d = x - mean vào
-    \node[left, font=\scriptsize] (in_d_port) at (-1.4, -0.5) {\texttt{in\_d[16:0]}};
+    % Ngõ vào dữ liệu sai phân d = x - localMean
+    \node[left, font=\scriptsize] (in_d_port) at (-0.8, 0.2) {\texttt{in\_d[16:0]}};
 
-    % Tầng 1: ROM 1-PORT và Thanh ghi trễ mẫu d_r1
-    \node[block, fill=blue!10, minimum width=3.2cm, minimum height=1.4cm] (rom) at (5.3, 2.5) {
+    % =========================================================================
+    % GIAI ĐOẠN 1: BẢNG TRA ROM VÀ THANH GHI TRỄ DỮ LIỆU
+    % =========================================================================
+    \node[block, fill=blue!10, minimum width=2.4cm, minimum height=1.3cm] (rom) at (5.2, 2.0) {
         \textbf{ROM: 1-PORT}\\[1pt]
-        {\footnotesize\texttt{ch06\_hanning\_rom}}\\[1pt]
-        $638 \times 16\text{ bit}$ Q1.15\\[1pt]
-        \emph{Độ trễ đọc: 1 nhịp}
+        {\scriptsize $638\times 16\text{ bit}$ Q1.15}\\[1pt]
+        {\scriptsize Độ trễ đọc: 1 nhịp}
     };
 
-    \node[reg, minimum width=2.8cm, minimum height=1.0cm] (d_r1) at (5.3, -0.5) {
+    \node[reg, minimum width=2.4cm, minimum height=1.0cm] (d_r1) at (5.2, 0.2) {
         \textbf{Thanh ghi trễ}\\[1pt]
-        {\footnotesize\texttt{d\_r1[16:0]}}\\[1pt]
-        \emph{Cân bằng nhịp ROM}
+        {\scriptsize $d_{\text{reg}}$ (17-bit)}\\[1pt]
+        {\scriptsize Cân bằng nhịp}
     };
 
-    % Nối từ Tầng 0 sang Tầng 1
-    \draw[wire] (cnt.east) -- node[above, font=\tiny, fill=white, inner sep=1.5pt] {\texttt{addr[9:0]}} (rom.west);
+    % Kết nối từ Giai đoạn 0 sang Giai đoạn 1 (khoảng cách 20 mm)
+    \draw[wire] (cnt.east) -- node[above, font=\scriptsize, fill=white, inner sep=2pt] {\texttt{addr[9:0]}} (rom.west);
     \draw[wire] (in_d_port) -- (d_r1.west);
 
-    % Tầng 2: Bộ nhân 17x17 signed (DSP Block)
-    \node[dsp, minimum width=3.0cm, minimum height=1.8cm] (mult) at (8.9, 1.0) {
+    % =========================================================================
+    % GIAI ĐOẠN 2: BỘ NHÂN DSP VÀ THANH GHI TÍCH SỐ
+    % =========================================================================
+    \node[dsp, minimum width=2.6cm, minimum height=1.5cm] (mult) at (9.8, 1.4) {
         \textbf{Bộ nhân 17$\times$17}\\[1pt]
-        {\footnotesize\texttt{LPM\_MULT}}\\[1pt]
-        \emph{1 khối DSP Cyclone V}\\[1pt]
-        {\scriptsize Toán hạng $A$: \texttt{d\_r1[16:0]}}\\[1pt]
-        {\scriptsize Toán hạng $B$: \texttt{\{1'b0, w\_q\}}}
+        {\scriptsize\texttt{LPM\_MULT (DSP)}}\\[1pt]
+        {\scriptsize 1 khối DSP Cyclone V}\\[1pt]
+        {\scriptsize 1 nhịp đường ống}
     };
 
-    \node[reg, minimum width=2.6cm, minimum height=0.8cm] (prod_r2) at (8.9, -1.5) {
+    \node[reg, minimum width=2.6cm, minimum height=0.9cm] (prod_r2) at (9.8, -0.6) {
         \textbf{Thanh ghi tích số}\\[1pt]
-        {\footnotesize\texttt{prod\_r2[33:0]}}
+        {\scriptsize 34-bit signed}
     };
 
-    % Nối từ Tầng 1 sang Tầng 2
-    \draw[wire] (rom.east) -| node[above right, font=\tiny, fill=white, inner sep=1pt] {\texttt{w\_q[15:0]}} (mult.140);
-    \draw[wire] (d_r1.east) -| node[below right, font=\tiny, fill=white, inner sep=1pt] {\texttt{d\_r1[16:0]}} (mult.220);
+    % Kết nối từ Giai đoạn 1 sang Giai đoạn 2 (khoảng cách 21 mm)
+    \draw[wire] (rom.east) -| node[pos=0.35, above, font=\scriptsize, fill=white, inner sep=2pt] {\texttt{w\_q[15:0]}} (mult.155);
+    \draw[wire] (d_r1.east) -| node[pos=0.35, below, font=\scriptsize, fill=white, inner sep=2pt] {\texttt{d\_r1[16:0]}} (mult.205);
     \draw[wire] (mult.south) -- (prod_r2.north);
 
-    % Tầng 3: Bộ cộng làm tròn (Rounding Adder) và Trích xuất ngõ ra
-    \node[block, fill=green!10, minimum width=2.8cm, minimum height=1.2cm] (round) at (12.5, -1.5) {
-        \textbf{Bộ làm tròn số}\\
-        $(p + 2^{14}) \gg 15$\\
-        \texttt{p\_round[34:0]}\\
-        \texttt{xw\_comb = p[31:15]}
+    % =========================================================================
+    % GIAI ĐOẠN 3: LÀM TRÒN HỘI TỤ, NGÕ RA MẪU VÀ DÒ LOCALPEAK
+    % =========================================================================
+    \node[block, fill=green!10, minimum width=2.6cm, minimum height=1.1cm] (round) at (14.6, -0.6) {
+        \textbf{Bộ làm tròn số}\\[1pt]
+        {\scriptsize $(p + 2^{14}) \gg 15$}\\[1pt]
+        {\scriptsize Trích xuất 17-bit}
     };
 
-    \draw[wire] (prod_r2.east) -- (round.west);
+    % Kết nối từ prod_r2 sang bộ làm tròn (thẳng hàng ngang, khoảng cách 22 mm)
+    \draw[wire] (prod_r2.east) -- node[above, font=\scriptsize, fill=white, inner sep=2pt] {\texttt{prod\_r2[33:0]}} (round.west);
 
-    % Ngõ ra xw
-    \node[reg, minimum width=2.2cm, minimum height=0.8cm] (out_xw_reg) at (12.5, 0.5) {
-        \textbf{Ngõ ra mẫu}\\
-        \texttt{out\_xw[16:0]}
+    % Ngõ ra mẫu cửa sổ out_xw (đặt ở trên bộ làm tròn, khoảng cách 9 mm)
+    \node[reg, minimum width=2.6cm, minimum height=0.9cm] (out_xw_reg) at (14.6, 1.3) {
+        \textbf{Ngõ ra mẫu}\\[1pt]
+        {\scriptsize 17-bit signed}
     };
-    \draw[wire] (round.north) -- (out_xw_reg.south);
+    \draw[wire] (round.north) -- node[right, font=\scriptsize, fill=white, inner sep=1.5pt] {\texttt{xw\_comb}} (out_xw_reg.south);
 
-    \node[right, font=\scriptsize] (out_xw_port) at (14.1, 0.5) {\texttt{out\_xw}};
-    \node[right, font=\scriptsize] (out_vld_port) at (14.1, 1.0) {\texttt{out\_valid}};
+    \node[right, font=\scriptsize] (out_xw_port) at (16.8, 1.3) {\texttt{out\_xw[16:0]}};
     \draw[wire] (out_xw_reg.east) -- (out_xw_port);
-    \draw[ctrl] (12.5, 1.0) -- (out_vld_port);
 
-    % Tầng 3 (Dưới): Mạch dò đỉnh cục bộ LocalPeak (LP)
-    \node[block, fill=purple!5, draw=purple!70!black, minimum width=3.2cm, minimum height=1.4cm] (lp_box) at (12.5, -3.5) {
-        \textbf{Bộ dò đỉnh LocalPeak}\\
-        $\max |x_w[j]|, \; j \in [212, 425]$\\
-        Thanh ghi: \texttt{lp\_reg[15:0]}
+    % Tín hiệu out_valid (đặt ở y = 2.6, chạy hoàn toàn phía trên hộp out_xw_reg cách 8.5 mm)
+    \node[right, font=\scriptsize] (out_vld_port) at (16.8, 2.6) {\texttt{out\_valid}};
+    \draw[ctrl] (12.4, 2.6) -- (out_vld_port);
+    \node[above, font=\scriptsize, text=purple!90!black] at (14.6, 2.6) {\emph{Độ trễ 2 nhịp}};
+
+    % Mạch dò đỉnh cục bộ LocalPeak (LP) (đặt ở dưới bộ làm tròn cách 7 mm)
+    \node[block, fill=purple!5, draw=purple!70!black, minimum width=2.8cm, minimum height=1.3cm] (lp_box) at (14.6, -2.5) {
+        \textbf{Bộ dò LocalPeak}\\[1pt]
+        {\scriptsize $\max |x_w[j]|, \; j \in [212, 425]$}\\[1pt]
+        {\scriptsize Thanh ghi 16-bit}
     };
 
-    \draw[wire] (round.south) -- node[right, font=\tiny, fill=white, inner sep=1pt] {\texttt{abs\_xw[15:0]}} (lp_box.north);
+    \draw[wire] (round.south) -- node[right, font=\scriptsize, fill=white, inner sep=2pt] {\texttt{abs\_xw[15:0]}} (lp_box.north);
 
-    \node[right, font=\scriptsize] (out_done_port) at (14.5, -3.2) {\texttt{out\_done} (nhịp 637)};
-    \node[right, font=\scriptsize] (out_lp_port) at (14.5, -3.8) {\texttt{out\_lp[15:0]}};
+    \node[right, font=\scriptsize] (out_done_port) at (16.8, -2.1) {\texttt{out\_done} (nhịp 637)};
+    \node[right, font=\scriptsize] (out_lp_port) at (16.8, -2.8) {\texttt{out\_lp[15:0]}};
     \draw[ctrl] (lp_box.15) -- (out_done_port);
     \draw[wire] (lp_box.345) -- (out_lp_port);
 
