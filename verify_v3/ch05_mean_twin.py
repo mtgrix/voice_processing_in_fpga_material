@@ -282,9 +282,9 @@ def generate_local_mean_vectors():
     stim_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_mean_stim.txt')
     exp_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_mean_expected.txt')
 
-    with open(stim_path, 'w') as f:
+    with open(stim_path, 'w', newline='\n') as f:
         f.writelines(stim_lines)
-    with open(exp_path, 'w') as f:
+    with open(exp_path, 'w', newline='\n') as f:
         f.writelines(exp_lines)
 
     print(f"Generated {len(stim_lines)} stimulus cycles for {len(frames)} frames -> {stim_path}")
@@ -342,9 +342,9 @@ def generate_dc_blocker_vectors():
     stim_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_dc_blocker_stim.txt')
     exp_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_dc_blocker_expected.txt')
 
-    with open(stim_path, 'w') as f:
+    with open(stim_path, 'w', newline='\n') as f:
         f.writelines(stim_lines)
-    with open(exp_path, 'w') as f:
+    with open(exp_path, 'w', newline='\n') as f:
         f.writelines(exp_lines)
 
     print(f"Generated {len(stim_lines)} DC-blocker stimulus cycles -> {stim_path}")

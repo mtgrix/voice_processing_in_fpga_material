@@ -103,12 +103,13 @@ def verify_argon():
         err_floor = np.count_nonzero(q_argon_floor != q_ref)
         total_errors_floor += err_floor
 
+    diff_agenda = total_errors_round - 10485595
     print(f"Total values tested: {N_test}")
-    print(f"  Errors of Argon ((S * 26214 + 2^23) >> 24) vs (S // 640): {total_errors_round} / {N_test} ({total_errors_round / N_test * 100:.4f}%)")
-    print(f"  Errors of Argon ((S * 26214) >> 24) vs (S // 640): {total_errors_floor} / {N_test} ({total_errors_floor / N_test * 100:.4f}%)")
-    print(f"  Agenda stated: 'sai ở 10.485.595 trên 41.943.040 giá trị (khoảng 25%)'")
-    print(f"  Verified: Exactly {total_errors_round} matches agenda's claim of 10,485,595 / 41,943,040 (difference is within rounding edge cases of 10 values: {abs(total_errors_round - 10485595)})")
-    print(">>> VERIFICATION: PASS - Confirmed Argon's multiplier fails in ~25% of all cases!")
+    print(f"  Measured errors of Argon ((S * 26214 + 2^23) >> 24) vs (S // 640): {total_errors_round} / {N_test} ({total_errors_round / N_test * 100:.4f}%)")
+    print(f"  Measured errors of Argon ((S * 26214) >> 24) vs (S // 640): {total_errors_floor} / {N_test} ({total_errors_floor / N_test * 100:.4f}%)")
+    print(f"  Agenda stated: 10,485,595 / 41,943,040 (~25%)")
+    print(f"  Audit comparison: Agenda figure 10,485,595 is off by {diff_agenda:+d} from measured count {total_errors_round} ({total_errors_round / N_test * 100:.4f}% measured)")
+    print(f">>> AUDIT RESULT: Measured {total_errors_round} / {N_test} ({total_errors_round / N_test * 100:.4f}% errors). Agenda claim 10,485,595 is off by 10.")
     print("-" * 75)
 
 

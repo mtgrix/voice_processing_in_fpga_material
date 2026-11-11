@@ -103,6 +103,7 @@ module ch05_local_mean #(
                 STATE_IDLE: begin
                     busy       <= 1'b0;
                     rd_en      <= 1'b0;
+                    mean_valid <= 1'b0;
                     if (start) begin
                         busy          <= 1'b1;
                         mean_valid    <= 1'b0;

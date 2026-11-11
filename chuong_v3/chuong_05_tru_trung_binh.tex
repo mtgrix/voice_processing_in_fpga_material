@@ -270,9 +270,9 @@ Nếu để tổng $S$ là số âm rồi nhân với số nghịch đảo và d
 \subsubsection*{Giải mã sai lầm của Argon: Phân tích thất bại $25\%$ với $M = 26.214, k = 24$}
 Trong bản thiết kế sơ khai trước đây của tác giả Argon, ông đã đề xuất dùng hằng số nhân $M = 26.214$ và dịch phải $k = 24$ để tính trung bình. Hãy phân tích vì sao con số này là một sai lầm nghiêm trọng:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Sai mục tiêu độ dài cửa sổ:} Giá trị $2^{24} / 640 = 16.777.216 / 640 = 26.214{,}4$. Rõ ràng Argon đang tìm cách chia cho $640$ (độ dài cửa sổ cũ của bản v1), hoàn toàn không phải chia cho $426$ của Praat.
+    \item \textbf{Sai mục tiêu độ dài cửa sổ:} Giá trị $2^{24} / 640 = 16.777.216 / 640 = 26.214{,}4$. Rõ ràng Argon đang tìm cách chia cho $640$ (độ dài cửa sổ cũ của bản v1), không phải chia cho $426$ của Praat.
     \item \textbf{Cắt cụt sai toán học:} Thay vì lấy cận trên $\lceil 26.214{,}4 \rceil = 26.215$, Argon lại cắt cụt xuống $26.214$.
-    \item \textbf{Hậu quả sai số khủng khiếp:} Kịch bản \texttt{verify\_v3/ch05\_mean\_math.py} đã kiểm tra toàn diện công thức của Argon $((S \cdot 26.214 + 2^{23}) \gg 24)$ trên toàn bộ dải $41.943.040$ giá trị tổng khả dĩ của $640\text{ mẫu}$. Kết quả: công thức của Argon \textbf{sai ở chính xác $10.485.605$ giá trị} (tương đương tỷ lệ lỗi xấp xỉ \textbf{$25{,}00\%$}, khớp đúng kết luận $10.485.595$ lỗi trong đề cương chốt). Một bộ tính trung bình sai tới một phần tư số trường hợp là hoàn toàn không thể chấp nhận được trong một thiết kế công nghiệp.
+    \item \textbf{Hậu quả sai số:} Kịch bản \texttt{verify\_v3/ch05\_mean\_math.py} đã kiểm tra công thức của Argon $((S \cdot 26.214 + 2^{23}) \gg 24)$ trên toàn bộ dải $41.943.040$ giá trị tổng khả dĩ của $640\text{ mẫu}$. Kết quả: công thức của Argon \textbf{sai ở chính xác $10.485.605$ giá trị} (tương đương tỷ lệ lỗi thực nghiệm đo được là \textbf{$24{,}9996\%$}). Con số $10.485.595$ nêu trong đề cương chốt bị lệch $10$ giá trị so với số đo thực nghiệm toàn dải ($10.485.605 - 10.485.595 = +10$). Một bộ tính trung bình sai tới gần một phần tư số trường hợp là không thể chấp nhận được trong một thiết kế số.
 \end{enumerate}
 
 \subsubsection*{Thuật toán Golden v2: Khớp bit tuyệt đối 100\% bằng kỹ thuật dời trục dương}
@@ -446,20 +446,20 @@ Kiến trúc hoạt động của module được chia làm hai pha kế tiếp 
 \lstinputlisting[
     language=Verilog,
     firstline=102,
-    lastline=173,
+    lastline=174,
     firstnumber=102,
-    caption={Máy trạng thái FSM và đường ống tính trung bình cục bộ (\texttt{rtl/v3/ch05\_local\_mean.v:102--173})}
+    caption={Máy trạng thái FSM và đường ống tính trung bình cục bộ (\texttt{rtl/v3/ch05\_local\_mean.v:102--174})}
 ]{rtl/v3/ch05_local_mean.v}
 
-\subsubsection*{Giải thích cặn kẽ mã nguồn Verilog từng dòng}
+\subsubsection*{Giải thích cặn kẽ mã nguồn Verilog từng dòng và giao thức cờ \texttt{mean\_valid}}
 \begin{itemize}[leftmargin=1.5em, itemsep=3pt]
-    \item \textbf{Dòng 103--116 (Trạng thái \texttt{STATE\_IDLE}):} Khi ở trạng thái rỗi, mạch hạ cờ \texttt{busy = 0} và cờ \texttt{rd\_en = 0}. Khi có xung \texttt{start = 1}, mạch lập tức bật \texttt{busy = 1}, xóa cờ \texttt{mean\_valid}, đặt lại hai bộ đếm \texttt{issue\_cnt = 0} và \texttt{collect\_cnt = 0}, nạp sẵn độ lệch làm tròn \texttt{acc = 25'd213}, phát địa chỉ đọc đầu tiên $\texttt{rd\_sample\_idx} = 106$ (\texttt{SPAN\_OFFSET}) và bật \texttt{rd\_en = 1} để chuyển sang \texttt{STATE\_ISSUE}.
-    \item \textbf{Dòng 118--140 (Trạng thái \texttt{STATE\_ISSUE}):} Trong trạng thái này, mạch đồng thời thực hiện hai nhiệm vụ: phát địa chỉ đọc và thu nhận mẫu trả về. Ở dòng 120--126, mỗi chu kỳ bộ đếm \texttt{issue\_cnt} tăng 1 và phát địa chỉ $\texttt{SPAN\_OFFSET} + \texttt{issue\_cnt} + 1$. Khi đã phát đủ 426 địa chỉ (\texttt{issue\_cnt == 425}), cờ \texttt{rd\_en} được hạ về 0. Song song với đó, ở dòng 129--136, mỗi khi cờ \texttt{rd\_valid = 1} từ RAM vòng báo về, mẫu \texttt{rd\_data} được ánh xạ thành số không âm \texttt{(rd\_data \^{} 16'h8000)} rồi cộng dồn vào thanh ghi \texttt{acc}. Khi bộ đếm tích lũy \texttt{collect\_cnt} chạm mốc 425 (đủ 426 mẫu), mạch chuyển thẳng sang trạng thái nhân \texttt{STATE\_MULT1}.
-    \item \textbf{Dòng 141--150 (Trạng thái \texttt{STATE\_WAIT\_RD}):} Nếu việc phát địa chỉ hoàn tất trước khi toàn bộ mẫu kịp trả về (do độ trễ đường truyền), mạch dừng phát (\texttt{rd\_en = 0}) và chuyển sang trạng thái chờ này để thu nốt những mẫu cuối cùng cho tới khi \texttt{collect\_cnt == 425}.
-    \item \textbf{Dòng 152--157 (Trạng thái \texttt{STATE\_MULT1}):} Đây là tầng thanh ghi đầu vào của bộ nhân. Mạch chốt tổng \texttt{acc} vào thanh ghi \texttt{mult\_a\_r} và nạp hằng số $M = 10.082.083$ vào \texttt{mult\_b\_r}, sau đó chuyển sang \texttt{STATE\_MULT2}. Tầng này khớp với \texttt{INPUT\_REGISTER} của khối DSP.
-    \item \textbf{Dòng 159--164 (Trạng thái \texttt{STATE\_MULT2}):} Thực hiện phép nhân $25 \times 24\text{ bit}$ không dấu:
-    \texttt{mult\_prod\_r <= mult\_a\_r * mult\_b\_r}. Tích số $49\text{ bit}$ được chốt vào thanh ghi ngõ ra của bộ nhân, khớp với \texttt{OUTPUT\_REGISTER} của khối DSP.
-    \item \textbf{Dòng 165--173 (Trạng thái \texttt{STATE\_DONE}):} Trích xuất thương số từ các bit $[47:32]$: bit 47 được đảo dấu (\texttt{\~{}mult\_prod\_r[47]}) nhằm trừ đi $32.768$, ghép với các bit \texttt{mult\_prod\_r[46:32]} tạo thành giá trị trung bình có dấu $16\text{ bit}$ hoàn chỉnh \texttt{mean\_out}. Cờ \texttt{mean\_valid} được kéo lên 1, cờ \texttt{busy} hạ xuống 0 và mạch quay trở về trạng thái \texttt{STATE\_IDLE}.
+    \item \textbf{Dòng 103--117 (Trạng thái \texttt{STATE\_IDLE}):} Khi ở trạng thái rỗi, mạch hạ cờ \texttt{busy = 0}, cờ \texttt{rd\_en = 0} và cờ \texttt{mean\_valid = 0}. Việc xóa \texttt{mean\_valid} về $0$ tại đây thực thi giao thức xung $1\text{ chu kỳ}$ (\textit{1-cycle pulse}): cờ chỉ tích cực trong đúng chu kỳ chốt ngõ ra ở \texttt{STATE\_DONE} rồi lập tức hạ xuống, tránh gây kích hoạt lặp ở các khối tiêu thụ hạ lưu. Khi có xung \texttt{start = 1}, mạch bật \texttt{busy = 1}, đặt lại hai bộ đếm \texttt{issue\_cnt = 0} và \texttt{collect\_cnt = 0}, nạp sẵn độ lệch làm tròn \texttt{acc = 25'd213}, phát địa chỉ đọc đầu tiên $\texttt{rd\_sample\_idx} = 106$ (\texttt{SPAN\_OFFSET}) và bật \texttt{rd\_en = 1} để chuyển sang \texttt{STATE\_ISSUE}.
+    \item \textbf{Dòng 119--140 (Trạng thái \texttt{STATE\_ISSUE}):} Trong trạng thái này, mạch đồng thời thực hiện hai nhiệm vụ: phát địa chỉ đọc và thu nhận mẫu trả về. Ở dòng 121--127, mỗi chu kỳ bộ đếm \texttt{issue\_cnt} tăng 1 và phát địa chỉ $\texttt{SPAN\_OFFSET} + \texttt{issue\_cnt} + 1$. Khi đã phát đủ 426 địa chỉ (\texttt{issue\_cnt == 425}), cờ \texttt{rd\_en} được hạ về 0. Song song với đó, ở dòng 130--139, mỗi khi cờ \texttt{rd\_valid = 1} từ RAM vòng báo về, mẫu \texttt{rd\_data} được ánh xạ thành số không âm \texttt{(rd\_data \^{} 16'h8000)} rồi cộng dồn vào thanh ghi \texttt{acc}. Khi bộ đếm tích lũy \texttt{collect\_cnt} chạm mốc 425 (đủ 426 mẫu), mạch chuyển thẳng sang trạng thái nhân \texttt{STATE\_MULT1}.
+    \item \textbf{Dòng 142--151 (Trạng thái \texttt{STATE\_WAIT\_RD}):} Nếu việc phát địa chỉ hoàn tất trước khi toàn bộ mẫu kịp trả về (do độ trễ đọc của RAM vòng), mạch dừng phát (\texttt{rd\_en = 0}) và chuyển sang trạng thái chờ này để thu nốt những mẫu cuối cùng cho tới khi \texttt{collect\_cnt == 425}.
+    \item \textbf{Dòng 153--158 (Trạng thái \texttt{STATE\_MULT1}):} Tầng thanh ghi đầu vào của bộ nhân. Mạch chốt tổng \texttt{acc} vào thanh ghi \texttt{mult\_a\_r} và nạp hằng số $M = 10.082.083$ vào \texttt{mult\_b\_r}, sau đó chuyển sang \texttt{STATE\_MULT2}. Tầng này tương ứng với \texttt{INPUT\_REGISTER} của khối DSP.
+    \item \textbf{Dòng 160--164 (Trạng thái \texttt{STATE\_MULT2}):} Thực hiện phép nhân $25 \times 24\text{ bit}$ không dấu:
+    \texttt{mult\_prod\_r <= mult\_a\_r * mult\_b\_r}. Tích số $49\text{ bit}$ được chốt vào thanh ghi ngõ ra của bộ nhân, tương ứng với \texttt{OUTPUT\_REGISTER} của khối DSP.
+    \item \textbf{Dòng 166--173 (Trạng thái \texttt{STATE\_DONE}):} Trích xuất thương số từ các bit $[47:32]$: bit 47 được đảo dấu (\texttt{\~{}mult\_prod\_r[47]}) nhằm trừ đi $32.768$, ghép với các bit \texttt{mult\_prod\_r[46:32]} tạo thành giá trị trung bình có dấu $16\text{ bit}$ \texttt{mean\_out}. Cờ \texttt{mean\_valid} được phát xung lên 1 trong đúng $1\text{ chu kỳ}$, cờ \texttt{busy} hạ xuống 0 và mạch chuyển về trạng thái \texttt{STATE\_IDLE}. Đồng thời, thanh ghi \texttt{mean\_out} giữ nguyên giá trị ổn định cho toàn bộ các phép trừ trong khung.
 \end{itemize}
 
 \subsubsection*{Trích dẫn mã nguồn mô hình song sinh Python}
@@ -474,7 +474,7 @@ Dưới đây là đoạn mã mô phỏng chu kỳ bit-đối-bit trích từ l�
 ]{verify_v3/ch05_mean_twin.py}
 
 \subsubsection*{Bảng đối chiếu dòng mã giữa Python Twin và Verilog HDL}
-Bảng~\ref{tab:ch05_twin_vs_hdl} đối soát trực tiếp từng dòng mã logic giữa mô hình song sinh Python và hiện thực phần cứng Verilog, chứng minh tính tương đương tuyệt đối về mặt chức năng và thời gian nhịp.
+Bảng~\ref{tab:ch05_twin_vs_hdl} đối soát trực tiếp từng dòng mã logic giữa mô hình song sinh Python và hiện thực phần cứng Verilog, chứng minh tính tương đương về mặt chức năng và thời gian nhịp.
 
 \begin{table}[H]
 \centering
@@ -485,19 +485,19 @@ Bảng~\ref{tab:ch05_twin_vs_hdl} đối soát trực tiếp từng dòng mã lo
 \toprule
 \textbf{Python Twin (Dòng)} & \textbf{Verilog HDL (Dòng)} & \textbf{Ý nghĩa kiến trúc và vai trò phần cứng} \\
 \midrule
-Dòng 69--80 & Dòng 103--115 & Trạng thái \texttt{STATE\_IDLE}: chờ xung \texttt{start}, nạp sẵn hằng số làm tròn $+213$ vào \texttt{acc}, bật \texttt{rd\_en} và khởi tạo địa chỉ đọc đầu tiên $106$. \\
+Dòng 69--80 & Dòng 103--117 & Trạng thái \texttt{STATE\_IDLE}: xóa \texttt{mean\_valid} về $0$ (giao thức xung 1 chu kỳ), chờ xung \texttt{start}, nạp sẵn hằng số làm tròn $+213$ vào \texttt{acc}, bật \texttt{rd\_en} và khởi tạo địa chỉ đọc đầu tiên $106$. \\
 \addlinespace[3pt]
-Dòng 82--88 & Dòng 119--126 & Trạng thái \texttt{STATE\_ISSUE}: tăng bộ đếm \texttt{issue\_cnt}, phát địa chỉ quét từ $106$ tới $531$, tự động hạ \texttt{rd\_en} khi phát đủ 426 địa chỉ. \\
+Dòng 82--88 & Dòng 120--127 & Trạng thái \texttt{STATE\_ISSUE}: tăng bộ đếm \texttt{issue\_cnt}, phát địa chỉ quét từ $106$ tới $531$, tự động hạ \texttt{rd\_en} khi phát đủ 426 địa chỉ. \\
 \addlinespace[3pt]
-Dòng 90--95 & Dòng 129--136 & Đổi dấu mẫu âm thanh sang số dương (\texttt{XOR 0x8000}), tích lũy vào thanh ghi $25\text{ bit}$ \texttt{acc}, chuyển sang nhân khi đủ 426 mẫu. \\
+Dòng 90--97 & Dòng 130--139 & Đổi dấu mẫu âm thanh sang số dương (\texttt{XOR 0x8000}), tích lũy vào thanh ghi $25\text{ bit}$ \texttt{acc}, chuyển sang nhân khi đủ 426 mẫu. \\
 \addlinespace[3pt]
-Dòng 99--106 & Dòng 141--150 & Trạng thái \texttt{STATE\_WAIT\_RD}: chờ thu nhận nốt các mẫu còn lại trên đường truyền từ RAM vòng. \\
+Dòng 99--106 & Dòng 142--151 & Trạng thái \texttt{STATE\_WAIT\_RD}: chờ thu nhận nốt các mẫu còn lại trên đường truyền từ RAM vòng. \\
 \addlinespace[3pt]
-Dòng 108--111 & Dòng 152--156 & Trạng thái \texttt{STATE\_MULT1}: chốt toán hạng $S_{\text{biased}}$ và hằng số $M = 10.082.083$ vào tầng thanh ghi ngõ vào bộ nhân. \\
+Dòng 108--111 & Dòng 153--158 & Trạng thái \texttt{STATE\_MULT1}: chốt toán hạng $S_{\text{biased}}$ và hằng số $M = 10.082.083$ vào tầng thanh ghi ngõ vào bộ nhân. \\
 \addlinespace[3pt]
-Dòng 113--115 & Dòng 159--163 & Trạng thái \texttt{STATE\_MULT2}: tính tích số $49\text{ bit}$ không dấu, chốt vào thanh ghi ngõ ra của khối nhân DSP. \\
+Dòng 113--115 & Dòng 160--164 & Trạng thái \texttt{STATE\_MULT2}: tính tích số $49\text{ bit}$ không dấu, chốt vào thanh ghi ngõ ra của khối nhân DSP. \\
 \addlinespace[3pt]
-Dòng 117--125 & Dòng 165--172 & Trạng thái \texttt{STATE\_DONE}: dịch phải 32 bit, trừ $32.768$ bằng cách đảo bit 15, chốt \texttt{mean\_out} và bật cờ \texttt{mean\_valid}. \\
+Dòng 117--125 & Dòng 166--173 & Trạng thái \texttt{STATE\_DONE}: dịch phải 32 bit, trừ $32.768$ bằng cách đảo bit 15, chốt \texttt{mean\_out} và phát xung $1\text{ chu kỳ}$ \texttt{mean\_valid = 1}. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -640,28 +640,23 @@ Một lỗi phổ biến dẫn đến sai lệch pha chu kỳ giả tạo giữa
     \item \textbf{Tín hiệu kích thích đầu vào (Stimulus driving):}\\
     Được gán tại sườn âm của xung nhịp (\texttt{@(negedge clk)}), bảo đảm thời gian thiết lập (setup time) và giữ (hold time) dồi dào trước khi sườn dương xung nhịp tiếp theo xuất hiện.
     \item \textbf{Tín hiệu tổ hợp ngõ ra (Combinational outputs):}\\
-    Sau khi kích thích đầu vào thay đổi, testbench chờ một khoảng trễ nhỏ \texttt{\#1} (1 đơn vị thời gian mô phỏng) để toàn bộ mạng cổng logic tổ hợp ổn định hoàn toàn, sau đó mới kiểm tra và đối soát (ví dụ cờ \texttt{sink\_ready} trong giao thức Avalon-ST với \texttt{readyLatency = 0}).
+    Sau khi kích thích đầu vào thay đổi, testbench chờ một khoảng trễ nhỏ \texttt{\#1} (1 đơn vị thời gian mô phỏng) để toàn bộ mạng cổng logic tổ hợp ổn định, sau đó mới kiểm tra và đối soát (ví dụ cờ \texttt{sink\_ready} trong giao thức Avalon-ST với \texttt{readyLatency = 0}).
     \item \textbf{Tín hiệu tuần tự ngõ ra (Registered outputs):}\\
-    Các tín hiệu đi ra từ thanh ghi gồm \texttt{mean\_data}, \texttt{mean\_valid}, \texttt{frame\_done} (khối trung bình) và \texttt{source\_data}, \texttt{source\_valid} (khối DC-blocker) được kích hoạt bởi sườn dương xung nhịp. Testbench đợi sườn dương và trễ thêm một khoảng nhỏ \texttt{\#1} (\texttt{@(posedge clk); \#1}) rồi mới so sánh với giá trị kỳ vọng từ tệp vector.
-    \item \textbf{Đếm lỗi tích lũy:} Testbench không bao giờ hủy ngang mô phỏng sớm khi gặp lỗi đầu tiên, mà ghi nhận chi tiết chu kỳ vi phạm và đếm tích lũy toàn bộ số lỗi so sánh đến chu kỳ cuối cùng.
+    Các tín hiệu đi ra từ thanh ghi gồm \texttt{busy}, \texttt{mean\_valid}, \texttt{mean\_out}, \texttt{rd\_en}, \texttt{rd\_sample\_idx}, \texttt{diff\_valid\_out}, \texttt{diff\_data\_out} (khối trung bình) và \texttt{source\_data}, \texttt{source\_valid} (khối DC-blocker) được kích hoạt bởi sườn dương xung nhịp. Testbench đợi sườn dương và trễ thêm một khoảng nhỏ \texttt{\#1} (\texttt{@(posedge clk); \#1}) rồi mới so sánh với giá trị kỳ vọng từ tệp vector.
+    \item \textbf{Đếm lỗi tích lũy:} Testbench không hủy ngang mô phỏng sớm khi gặp lỗi đầu tiên, mà ghi nhận chi tiết chu kỳ vi phạm và đếm tích lũy toàn bộ số lỗi so sánh đến chu kỳ cuối cùng.
 \end{itemize}
 
 \subsubsection*{Tập vector kiểm thử toàn diện}
 Mô hình song sinh Python tạo ra hai bộ tệp kích thích và kỳ vọng độc lập:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Kiểm thử khối tính trung bình cục bộ (\texttt{tb\_ch05\_local\_mean.v}):}\\
-    Kịch bản quét qua toàn bộ 205 khung phân tích của đoạn âm thanh mẫu trích từ tệp \path{golden_v2/synth_glide_vuv_16k.wav}, tạo ra chuỗi mô phỏng liên tục kéo dài \textbf{88.970 chu kỳ xung nhịp 50 MHz}. Hai tệp dữ liệu được tạo ra gồm kích thích \path{verify_v3/tb_ch05_mean_stim.txt} và kỳ vọng \path{verify_v3/tb_ch05_mean_expected.txt}. Từng chu kỳ đọc bộ đệm vòng (\texttt{rd\_addr}, \texttt{rd\_en}), từng bước tích lũy 426 mẫu có bù pre-bias, 2 chu kỳ trễ của bộ nhân đường ống $M$, và thời điểm bật cờ \texttt{frame\_done} đều được đối soát chính xác tuyệt đối.
+    Kịch bản quét qua toàn bộ 205 khung phân tích của đoạn âm thanh mẫu trích từ tệp \path{golden_v2/synth_glide_vuv_16k.wav}, tạo ra chuỗi mô phỏng liên tục kéo dài \textbf{88.970 chu kỳ xung nhịp 50 MHz}. Hai tệp dữ liệu được tạo ra gồm kích thích \path{verify_v3/tb_ch05_mean_stim.txt} và kỳ vọng \path{verify_v3/tb_ch05_mean_expected.txt}. Từng chu kỳ đọc bộ đệm vòng (\texttt{rd\_sample\_idx}, \texttt{rd\_en}), từng bước tích lũy 426 mẫu có bù pre-bias, 2 chu kỳ trễ của bộ nhân đường ống $M$, và thời điểm phát xung \texttt{mean\_valid} đều được đối soát chính xác theo chu kỳ.
     \item \textbf{Kiểm thử khối DC-Blocker (\texttt{tb\_ch05\_dc\_blocker.v}):}\\
-    Tập dữ liệu kiểm thử gồm \textbf{1.000 chu kỳ xung nhịp} ngẫu nhiên có hạt giống cố định (\texttt{seed = 42}), bao quát các tình huống biên phức tạp: bước nhảy DC đột ngột lớn ($+1000, -2000$), kiểm tra tính năng chuyển mạch động \texttt{bypass}, và đặc biệt là kiểm tra cơ chế phản áp dòng Avalon-ST khi tín hiệu \texttt{source\_ready} bị ngắt ngẫu nhiên để xác minh bộ đệm bắt tay không làm rơi rớt hay lặp mẫu dữ liệu.
+    Tập dữ liệu kiểm thử gồm \textbf{1.000 chu kỳ xung nhịp} ngẫu nhiên có hạt giống cố định (\texttt{seed = 42}), bao quát các tình huống biên: bước nhảy DC đột ngột ($+1000, -2000$), kiểm tra tính năng chuyển mạch động \texttt{bypass}, và kiểm tra cơ chế phản áp dòng Avalon-ST khi tín hiệu \texttt{source\_ready} bị ngắt ngẫu nhiên để xác minh bộ đệm bắt tay không làm rơi rớt hay lặp mẫu dữ liệu.
 \end{enumerate}
 
 \begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Kết quả chạy Icarus Verilog chu kỳ-đối-chu kỳ (Reviewer)}]
-\todo{box: Kết quả chạy kịch bản verify\_v3/run\_ch05\_iverilog.sh trên Linux:
-\begin{itemize}[leftmargin=1.5em, itemsep=1pt]
-    \item tb\_ch05\_local\_mean: mô phỏng 88.970 chu kỳ (205 khung âm thanh), so sánh từng chu kỳ với tb\_ch05\_mean\_expected.txt. Tổng số lỗi so sánh: 0 / 88.970.
-    \item tb\_ch05\_dc\_blocker: mô phỏng 1.000 chu kỳ (bao gồm kích thích bước nhảy DC và phản áp ngẫu nhiên), so sánh từng chu kỳ với tb\_ch05\_dc\_blocker\_expected.txt. Tổng số lỗi so sánh: 0 / 1.000.
-\end{itemize}
-Toàn bộ mã nguồn testbench biên dịch với `iverilog -g2012 -Wall` không phát sinh bất kỳ cảnh báo nào.}
+\todo{box}
 \end{tcolorbox}
 
 \subsubsection*{Bảng so sánh toàn diện: Khối IP Intel LPM\_MULT so với HDL tự viết}

@@ -16,7 +16,7 @@
 | **5.4. Tuyến (A): Khởi tạo khối IP Intel LPM_MULT** | Có | Có (Trích dẫn CV-52003 Chương 5, UG-01069) | Có (DSP $27\times 27$ 1 khối, 0 ALM, `LPM_PIPELINE=2`, unsigned) | Có (Listing 23 LPM_MULT wrapper) | Không áp dụng | Không áp dụng | Có |
 | **5.5. Tuyến (B): Hiện thực hóa phần cứng HDL tự viết** | Có | Có (Bảng 24 đối chiếu dòng-từng-dòng twin vs HDL) | Có (FSM 3 pha, đọc trực tiếp RAM vòng, bộ trừ 17-bit $d[n]$) | Không áp dụng | Có (`rtl/v3/ch05_local_mean.v`, 72 dòng trích) | 88.970/88.970 vector Twin | Có |
 | **5.6. Bộ lọc số IIR khử trôi dạt DC (DC-blocker tùy chọn)** | Có | Có (`ch05_dc_effect.py`, $f_c = 9{,}928\text{ Hz}$, $-0{,}059\text{ dB}$) | Có ($\alpha = 1 - 2^{-8}$, không tốn bộ nhân DSP, 36-bit Q20.16 chống limit cycle) | Không áp dụng | Có (`rtl/v3/ch05_dc_blocker.v`, 108 dòng) | 1.000/1.000 vector Twin | Có |
-| **5.7. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL** | Có | Có (Quy ước lấy mẫu tổ hợp/tuần tự, tệp stim/expected) | Có (Bảng 25 so sánh IP vs HDL: 1 DSP, 0 ALM, $F_{\max}$, tích hợp FSM) | Có | Có | 88.970 + 1.000 chu kỳ; Iverilog `\todo{box}` | Có |
+| **5.7. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL** | Có | Có (Quy ước lấy mẫu tổ hợp/tuần tự, tệp stim/expected) | Có (Bảng 25 so sánh IP vs HDL: 1 DSP, 0 ALM, $F_{\max}$, tích hợp FSM) | Có | Có | iverilog: to be run by reviewer | Có |
 | **Bài tập cuối chương (4 bài tập)** | Có | Có (`verify_v3/ch05_exercises.py`) | Có (Phân rã số hạng chéo, dẫn xuất $M$ cho $L=426, 640, 800$, ánh xạ DSP Cyclone V, limit cycle Q20.16) | Không áp dụng | Không áp dụng | Pass (4/4) | Có |
 
 ---
@@ -63,7 +63,7 @@
    - Bẫy Argon ($M = 26214, k = 24$): Gây sai số trên $10.485.605 / 41.943.040$ tổng (tỷ lệ lỗi $\approx 25\%$), đã được phân tích và chứng minh nguyên nhân trong `verify_v3/ch05_mean_math.log`.
    - Đáp ứng bộ lọc DC-Blocker: Tần số cắt giải tích chính xác $f_c = 9{,}9278\text{ Hz}$ (công thức xấp xỉ $9{,}9472\text{ Hz}$); tại $75\text{ Hz}$, độ lợi đạt $-0{,}0590\text{ dB}$, pha $+7{,}5691^\circ$. Hằng số thời gian suy giảm $\tau = 255{,}5$ mẫu ($16{,}0\text{ ms}$). Toàn bộ được kiểm chứng trong `verify_v3/ch05_dc_effect.log`.
 4. **Mục "phải đo" (To be measured on hardware / Linux simulation):**
-   - Kết quả chạy thực tế Icarus Verilog: Đã đóng gói trong script `verify_v3/run_ch05_iverilog.sh` (LF, chế độ 100755). Trong văn bản LaTeX, kết quả được để dạng hộp giữ chỗ `\todo{box}` để reviewer điền số đo chính thức sau khi chạy trên Linux.
+   - Kết quả chạy thực tế Icarus Verilog: iverilog: to be run by reviewer. Kịch bản `verify_v3/run_ch05_iverilog.sh` (LF, chế độ 100755) và toàn bộ các tệp vector kích thích/kỳ vọng đã được chuẩn bị đầy đủ và đồng bộ. Trong văn bản LaTeX, kết quả được đặt dạng hộp giữ chỗ `\todo{box}` để reviewer điền số đo chính thức sau khi chạy trên Linux.
    - Tài nguyên logic ALM và tần số hoạt động tối đa $F_{\max}$: Phải đo chính xác sau khi tổng hợp Fitter và TimeQuest Timing Analyzer trong phần mềm Quartus Prime với chip 5CSXFC6D6F31C6.
 
 ---
