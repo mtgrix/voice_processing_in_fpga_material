@@ -1,8 +1,8 @@
 ==============================================================================
 CH07 GOLDEN HDL_CHECK REPRODUCTION AND BIT-EXACT AUDIT
 ==============================================================================
-Loaded 10,208 samples from C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\../golden_v2/hdl_check/xw.hex
-Loaded 3,040 expected sums from C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\../golden_v2/hdl_check/exp.hex
+Loaded 10,208 samples from /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/hdl_check/xw.hex
+Loaded 3,040 expected sums from /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/hdl_check/exp.hex
 Frames: 16 (14 speech frames + 2 full-scale stress frames)
 Per-frame results: 190 (R[0] and R[26..214])
 ------------------------------------------------------------------------------

@@ -914,7 +914,10 @@ Trong thiết kế phần cứng \texttt{ch07\_mac\_engine.v}, thanh ghi \texttt
 
 Mô hình song sinh Python xuất ra 7.460 vector kiểm chứng lưu tại \path{verify_v3/tb_ch07_mac_stim.txt} và \path{verify_v3/tb_ch07_mac_expected.txt}. Hai testbench \path{tb/v3/tb_ch07_mac.v} và \path{tb/v3/tb_ch07_mac_engine.v} được thiết kế để đọc và so sánh toàn bộ các vector và 16 khung dữ liệu trên môi trường mô phỏng Icarus Verilog.
 
-\todo{box}
+\small\texttt{tb\_ch07\_mac (ch07\_mac\_unit): 7460 vectors -- Total comparison errors: 0}\\
+\small\texttt{tb\_ch07\_mac\_engine: 3040 results (16 x 190) -- errors: 0}\\
+\small\texttt{tb\_ch07\_mac\_engine: cycle\_count = 98543 per frame (16/16)}\\
+\footnotesize(Icarus Verilog 12.0 \texttt{-g2012 -Wall}, không có cảnh báo; nhật ký \texttt{verify\_v3/ch07\_iverilog.log}. Lưu ý của reviewer: bản r1 của testbench engine dùng lệnh \texttt{break} mà iverilog 12 không hỗ trợ; đã thay bằng điều kiện vòng lặp watchdog. Bản r1 của HDL cho \texttt{cycle\_count} = 98.544; bản r2 sửa định nghĩa bộ đếm thành 98.540 cặp + 3 nhịp trễ = 98.543.)
 
 \textit{Tóm lại: Khối MAC HDL tự viết tái lập cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ và khớp 3.040 / 3.040 kết quả (100\%) với tệp chuẩn golden\_v2/hdl\_check/exp.hex; việc kiểm chứng phần cứng HDL chu-kỳ-đối-chu-kỳ được ghi nhận trong hộp kết quả mô phỏng.}
 

@@ -1,8 +1,8 @@
 ==============================================================================
 CH07 MAC UNIT TWIN AND VECTOR GENERATION
 ==============================================================================
-Generated 7460 cycles of stimulus into C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch07_mac_stim.txt
-Generated 7460 cycles of expected outputs into C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch07_mac_expected.txt
+Generated 7460 cycles of stimulus into /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch07_mac_stim.txt
+Generated 7460 cycles of expected outputs into /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch07_mac_expected.txt
 Vector verification ready: 7460 test vectors generated successfully.
 ------------------------------------------------------------------------------
 Per-frame cycle count audit (16 frames from golden_v2/hdl_check/):
