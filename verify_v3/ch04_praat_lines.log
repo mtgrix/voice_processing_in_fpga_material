@@ -1,0 +1,12 @@
+======================================================================
+AUDIT: CH04 PRAAT 7.0.03 CITATIONS AUDIT
+======================================================================
+[OK] File fon/Sound_to_Pitch.cpp:334-339 -> dt_window = periodsPerWindow/pitchFloor; nsamp_window = Melder_ifloor(dt_window/dx); halfnsamp_window = nsamp_window/2 - 1; nsamp_window = halfnsamp_window*2 (640 -> 319 -> 638)
+[OK] File fon/Sound_to_Pitch.cpp:296 -> dt = periodsPerWindow/pitchFloor/4 = 0.01 s = 10 ms (hop 160 samples)
+[OK] File fon/Sound_to_Pitch.cpp:354 -> Sampled_shortTermAnalysis called with dt_window for raw ac
+[OK] File fon/Sound_to_Pitch.cpp:52, 72-73 -> leftSample = Sampled_xToLowIndex(me,t); rightSample = leftSample+1; startSample = rightSample - halfnsamp_window; endSample = leftSample + halfnsamp_window
+[OK] File fon/Sampled.cpp:71-81 -> numberOfFrames = floor((duration - windowDuration)/timeStep) + 1; ourMidTime = x1 - 0.5*dx + 0.5*duration; firstTime = ourMidTime - 0.5*numberOfFrames*timeStep + 0.5*timeStep
+[OK] File fon/Sampled.h:34 -> Sampled_xToLowIndex = Melder_ifloor((x - x1)/dx + 1.0)
+======================================================================
+Audit result: PASS - 6/6 citations verified against reviewer note (j).
+======================================================================

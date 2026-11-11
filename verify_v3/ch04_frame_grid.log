@@ -1,0 +1,58 @@
+===========================================================================
+AUDIT: CH04 PRAAT FRAME GEOMETRY & FRAME GRID VERIFICATION
+===========================================================================
+1. Praat Window Geometry (lines 334-339):
+   dt_window        = 0.0400 s (3 periods of 75 Hz)
+   nsamp_window_raw = 640 samples (floor(0.04 / dx))
+   halfnsamp_window = 319 samples (640 // 2 - 1)
+   nsamp_window     = 638 samples (319 * 2)
+   dt (hop time)    = 0.0100 s (10 ms, line 296)
+   hop_samples      = 160 samples (10 ms * 16 kHz)
+   overlap (actual) = 478 samples (638 - 160, 74.92%)
+   overlap (theor.) = 480 samples (640 - 160 = 480, 75.00%)
+
+2. Standard Test Files:
+   - File: Synthetic Glide Clean / Noisy 2.8 s (golden_v2) (nx = 44800 samples, duration = 2.8000 s):
+     nframes    = 277
+     t1         = 0.020000 s
+     first_win0 = 1 (HPS discards 1 samples)
+     last_win0  = 44161
+     hop range  = [160, 160] -> Regular 160: True
+     starts[0..2] = [1, 161, 321]
+   - File: Illustrative Short File 1.234 s (Ch.1 example) (nx = 19744 samples, duration = 1.2340 s):
+     nframes    = 120
+     t1         = 0.022000 s
+     first_win0 = 33 (HPS discards 33 samples)
+     last_win0  = 19073
+     hop range  = [160, 160] -> Regular 160: True
+     starts[0..2] = [33, 193, 353]
+   - File: 1.0 s Even File (nx = 16000 samples, duration = 1.0000 s):
+     nframes    = 97
+     t1         = 0.020000 s
+     first_win0 = 1 (HPS discards 1 samples)
+     last_win0  = 15361
+     hop range  = [160, 160] -> Regular 160: True
+     starts[0..2] = [1, 161, 321]
+   - File: 1.0000625 s Odd File (nx = 16001 samples, duration = 1.0001 s):
+     nframes    = 97
+     t1         = 0.020031 s
+     first_win0 = 2 (HPS discards 2 samples)
+     last_win0  = 15362
+     hop range  = [160, 160] -> Regular 160: True
+     starts[0..2] = [2, 162, 322]
+   - File: 2.0000625 s Odd File (nx = 32001 samples, duration = 2.0001 s):
+     nframes    = 197
+     t1         = 0.020031 s
+     first_win0 = 1 (HPS discards 1 samples)
+     last_win0  = 31362
+     hop range  = [159, 161] -> Regular 160: False
+     starts[0..2] = [1, 161, 321]
+
+3. Floor Trap Analysis:
+   Total anomalies (hop != 160) across 50,000 file lengths: 12
+     Anomaly at nx=1281, frame=3: hop=161, arg=641.000000000000, floor=641
+     Anomaly at nx=1283, frame=3: hop=161, arg=642.000000000000, floor=642
+     Anomaly at nx=1283, frame=4: hop=159, arg=802.000000000000, floor=801
+     Anomaly at nx=1283, frame=5: hop=161, arg=962.000000000000, floor=962
+     Anomaly at nx=1285, frame=3: hop=161, arg=643.000000000000, floor=643
+===========================================================================

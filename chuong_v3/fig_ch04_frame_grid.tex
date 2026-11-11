@@ -1,0 +1,85 @@
+% chuong_v3/fig_ch04_frame_grid.tex
+% Visualizing Praat's frame grid: analysis window (638 samples), hop (160 samples),
+% and overlap (478 samples, 74.92%).
+\begin{tikzpicture}[>=stealth, font=\small, scale=0.92, every node/.style={transform shape}]
+
+    % Style definitions
+    \tikzstyle{timeaxis}   = [->, thick, color=gray!70!black]
+    \tikzstyle{frameline}  = [thick, rounded corners=5pt]
+    \tikzstyle{centerdot}  = [circle, fill=red!80!black, inner sep=2.2pt]
+    \tikzstyle{dimline}    = [<->, thick, color=blue!80!black]
+    \tikzstyle{hopline}    = [<->, thick, color=teal!80!black]
+    \tikzstyle{ovline}     = [<->, thick, color=purple!80!black]
+    \tikzstyle{lbl}        = [font=\scriptsize\bfseries, fill=white, inner sep=2.5pt, rounded corners=2pt]
+
+    % 1. Time Axis (Top)
+    \draw[timeaxis] (-0.8, 6.2) -- (14.6, 6.2) node[right, font=\footnotesize\bfseries] {Thời gian $t$ (giây)};
+    
+    % 2. Sample Axis (Below Time Axis)
+    \draw[timeaxis] (-0.8, 5.1) -- (14.6, 5.1) node[right, font=\footnotesize\bfseries] {Chỉ số mẫu $n$ ($f_s = 16\text{ kHz}$)};
+
+    % Lead Discarded Samples (HPS)
+    \fill[red!12, draw=red!70!black, dashed, thick] (0.0, 4.8) rectangle (0.25, 5.4);
+    \node[lbl, text=red!80!black, anchor=south] at (0.12, 5.45) {Bỏ 1 mẫu ($first\_win0=1$)};
+
+    % Time ticks & labels
+    \foreach \x/\t/\n in {0.25/{$t_0=0$}/{0}, 3.875/{$t_1=0{,}020\text{ s}$}/{320}, 5.875/{$t_2=0{,}030\text{ s}$}/{480}, 7.875/{$t_3=0{,}040\text{ s}$}/{640}, 9.875/{$t_4=0{,}050\text{ s}$}/{800}} {
+        \draw[thick, gray!70!black] (\x, 6.1) -- (\x, 6.3);
+        \node[font=\scriptsize\bfseries, text=gray!90!black, anchor=south] at (\x, 6.35) {\t};
+        \draw[thick, gray!70!black] (\x, 5.0) -- (\x, 5.2);
+        \node[font=\scriptsize, text=gray!90!black, anchor=north] at (\x, 4.95) {$n=\n$};
+    }
+
+    % Dimension: Window Length N = 638 samples (Above Frame 0)
+    \draw[dimline] (0.25, 4.3) -- (7.50, 4.3);
+    \node[lbl, text=blue!90!black, anchor=center] at (3.875, 4.3) 
+        {Độ dài cửa sổ $N = 638$ mẫu ($40\text{ ms}$, Praat làm tròn từ 640)};
+
+    % Dimension: Hop = 160 samples (Lead of Frame 0 to Frame 1)
+    \draw[hopline] (0.25, 3.5) -- (2.25, 3.5);
+    \node[lbl, text=teal!90!black, anchor=center] at (1.25, 3.5) 
+        {Hop 160 mẫu};
+
+    % Frame 0 Box (y = 2.0 to 3.1)
+    \fill[blue!10, draw=blue!80!black, frameline] (0.25, 2.0) rectangle (7.50, 3.1);
+    \node[anchor=west, font=\scriptsize\bfseries, text=blue!90!black] at (0.45, 2.80) 
+        {Khung 0: $n = 1 \dots 638$};
+    \node[centerdot] at (3.875, 2.30) {};
+    \node[lbl, text=red!80!black, anchor=south] at (3.875, 2.35) {Tâm $t_1$};
+
+    % Overlap Dimension between Frame 0 and Frame 1
+    \fill[purple!15, draw=purple!80!black, thick, dashed] (2.25, 1.50) rectangle (7.50, 1.70);
+    \draw[ovline] (2.25, 1.60) -- (7.50, 1.60);
+    \node[lbl, text=purple!90!black, anchor=center] at (4.875, 1.60) 
+        {Vùng chồng lấp 478 mẫu ($74{,}92\%$, tái sử dụng trực tiếp trong RAM vòng)};
+
+    % Frame 1 Box (y = 0.2 to 1.3)
+    \fill[teal!10, draw=teal!80!black, frameline] (2.25, 0.2) rectangle (9.50, 1.3);
+    \node[anchor=west, font=\scriptsize\bfseries, text=teal!90!black] at (2.45, 1.00) 
+        {Khung 1: $n = 161 \dots 798$};
+    \node[centerdot] at (5.875, 0.50) {};
+    \node[lbl, text=red!80!black, anchor=south] at (5.875, 0.55) {Tâm $t_2$};
+
+    % Frame 2 Box (y = -1.6 to -0.5)
+    \fill[orange!10, draw=orange!80!black, frameline] (4.25, -1.6) rectangle (11.50, -0.5);
+    \node[anchor=west, font=\scriptsize\bfseries, text=orange!90!black] at (4.45, -0.80) 
+        {Khung 2: $n = 321 \dots 958$};
+    \node[centerdot] at (7.875, -1.30) {};
+    \node[lbl, text=red!80!black, anchor=south] at (7.875, -1.25) {Tâm $t_3$};
+
+    % Hop Dimensions between Frame Centers (Staggered vertically)
+    \draw[hopline] (3.875, -2.2) -- (5.875, -2.2);
+    \node[lbl, text=teal!90!black, anchor=center] at (4.875, -2.2) 
+        {$dt = 10\text{ ms}$ (160 mẫu)};
+
+    \draw[hopline] (5.875, -2.9) -- (7.875, -2.9);
+    \node[lbl, text=teal!90!black, anchor=center] at (6.875, -2.9) 
+        {$dt = 10\text{ ms}$ (160 mẫu)};
+
+    % Vertical alignment guide lines
+    \draw[dotted, thick, gray!60!black] (0.25, 2.0) -- (0.25, 5.0);
+    \draw[dotted, thick, gray!60!black] (2.25, 0.2) -- (2.25, 5.0);
+    \draw[dotted, thick, gray!60!black] (7.50, 2.0) -- (7.50, 5.0);
+    \draw[dotted, thick, gray!60!black] (9.50, 0.2) -- (9.50, 5.0);
+
+\end{tikzpicture}
