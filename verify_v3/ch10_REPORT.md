@@ -89,4 +89,11 @@ Mọi số liệu trong Chương 10 đều được phân loại minh bạch the
 - `22c5b1a`: `v3: ch10 r1 fix B4 Praat citation lines and strict inequality wording` (Hiệu chỉnh trích dẫn dòng Praat 384--385 cho cờ rỗng và làm rõ việc dùng dấu so sánh chặt $>$ được kiểm chứng trong golden audit).
 - `593b77f`: `v3: ch10 r1 fix B5 Fig24 labels and voicing curve text` (Bổ sung nhãn A/B/C vào Hình 24, tăng khoảng cách điểm xanh, dịch nhãn điểm C cách xa đường đỏ $> 10\text{ mm}$, chỉnh sửa câu văn đường dốc tuyến tính và đổi tên Vùng im lặng).
 - `b948459`: `v3: ch10 r1 fix tone and neutral wording` (Làm sạch toàn bộ các từ ngữ mang tính chủ quan/cảm thán và chuẩn hóa tỉ lệ 100% kèm N/N).
-- Commit nghiệm thu đợt chỉnh sửa: `v3: ch10 revision`.
+- `3654173`: `v3: ch10 revision` (Nghiệm thu toàn bộ đợt chỉnh sửa Round 1).
+- `93fff61`: `v3: ch10 r1 box review logs (tb_ch10_voicing 1408/1408, C 12/12, Python OK)` (Người phản biện cập nhật kết quả chạy hộp kiểm tra trên máy chủ Linux).
+
+### Đợt chỉnh sửa theo phản biện (Revision Round 2 - Blocker-only Figures)
+- `2ddc244`: `v3: ch10 r2 figures` (Sửa triệt để 2 hình theo `ch10_r2.txt`:
+  - **F1 (Hình 25, `fig_ch10_pipeline.tex`):** Xóa nhãn lặp `LHS`/`RHS` sau `reg 2`; giữ duy nhất `LHS [54]` và `RHS [54]` trước `reg 2` cách hộp nhân $\ge 4{,}5\text{ mm}$ và cách thanh ghi $\ge 4\text{ mm}$; dời Tầng 3 sang $x=13{,}8$ nới rộng khoảng cách sau `reg 2` lên $1{,}8\text{ cm}$; các nhãn `trap`, `F_{0,\text{raw}}` đặt giữa đường cách hai biên $\ge 4\text{ mm}$; loại bỏ nhãn dư `out_voiced` và `F_{0,\text{gated}}` trước `reg 3`; bọc `\resizebox{\linewidth}{!}` vừa khít độ rộng trang văn bản; biên dịch 0 overfull box).
+  - **F2 (Hình 24, `fig_ch10_voicing_curve.tex`):** Đổi chuỗi text `Nhiễu/ù` thành `Nhiễu`; định vị nhãn điểm C xuống dưới điểm C tại $(0{,}2,\, 2{,}65)$ hoàn toàn bên trong phân vùng màu hồng, cách xa đường ngưỡng đỏ $> 15\text{ mm}$, không cắt qua bất kỳ đường nét nào).
+- `v3: ch10 r2`: Nghiệm thu toàn bộ đợt Round 2.
