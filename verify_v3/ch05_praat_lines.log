@@ -22,7 +22,7 @@ Citation Audit Result: PASS (5/5 citations verified against reviewer note (m))
 STATISTICAL COMPARISON: PRAAT DOUBLE MEAN VS GOLDEN V2 INTEGER MEAN
 ===========================================================================
 Dataset: Clean Synthetic Glide (synth_glide_vuv_16k.wav)
-  File: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/synth_glide_vuv_16k.wav (length=44800 samples, 2.800 s, fs=16000 Hz)
+  File: C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\synth_glide_vuv_16k.wav (length=44800 samples, 2.800 s, fs=16000 Hz)
   Total frames analysed: 277 (hop=160, window=638, span=426)
   Local mean range (int): [-2173, 2267]
   Local mean range (double): [-2172.5610, 2266.5070]
@@ -33,7 +33,7 @@ Dataset: Clean Synthetic Glide (synth_glide_vuv_16k.wav)
   Verification: PASS (max error <= 0.5 amplitude units across all 277 frames)
 ---------------------------------------------------------------------------
 Dataset: Noisy Synthetic Glide 5 dB (synth_glide_vuv_16k_snr5.wav)
-  File: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/synth_glide_vuv_16k_snr5.wav (length=44800 samples, 2.800 s, fs=16000 Hz)
+  File: C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\synth_glide_vuv_16k_snr5.wav (length=44800 samples, 2.800 s, fs=16000 Hz)
   Total frames analysed: 277 (hop=160, window=638, span=426)
   Local mean range (int): [-1057, 1118]
   Local mean range (double): [-1057.2324, 1118.0070]

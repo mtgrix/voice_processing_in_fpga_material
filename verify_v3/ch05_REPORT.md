@@ -49,7 +49,7 @@
 ## 3. Danh mục các số liệu "phải đo" và căn cứ trích dẫn phần cứng
 
 1. **Số liệu trích dẫn từ tài liệu phần cứng Intel Cyclone V:**
-   - Cấu trúc Variable Precision DSP Block: *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices", Mục 5-2 và Bảng 5-1: "Operational Modes"). Cung cấp 3 chế độ độc lập: ba bộ nhân $9 \times 9$, hai bộ nhân $18 \times 18$, hoặc một bộ nhân $27 \times 27$. Phép nhân $25 \times 24$-bit không dấu vừa khít hoàn toàn bên trong 1 khối DSP ở chế độ $27 \times 27$, tiêu tốn đúng 1 khối DSP và 0 ALM.
+   - Cấu trúc Variable Precision DSP Block: *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices", Mục 5-2 và Bảng 5-1: "Operational Modes"). Cung cấp 3 chế độ độc lập: ba bộ nhân $9 \times 9$, hai bộ nhân $18 \times 18$, hoặc một bộ nhân $27 \times 27$. Phép nhân $25 \times 24$-bit không dấu vừa vặn bên trong 1 khối DSP ở chế độ $27 \times 27$, tiêu tốn đúng 1 khối DSP và 0 ALM.
    - Hướng dẫn cấu hình IP LPM_MULT: *LPM User Guide* (Intel / Altera, UG-01069 / Document ID 10148, Section "LPM_MULT"). Xác định chính xác các tham số `LPM_WIDTHA = 25`, `LPM_WIDTHB = 24`, `LPM_WIDTHP = 49`, `LPM_REPRESENTATION = "UNSIGNED"`, `LPM_PIPELINE = 2`.
 2. **Số liệu trích dẫn mã nguồn Praat 7.0.03 được kiểm chứng:**
    - `fon/Sound_to_Pitch.cpp:326`: `nsamp_period = Melder_ifloor(1.0/dx/pitchFloor) = 213` tại $f_s = 16\text{ kHz}, F_{\text{floor}} = 75\text{ Hz}$.
@@ -75,11 +75,11 @@
    - Kiểm chứng trên 205 khung tệp âm thanh sạch: độ lệch cực đại là $0{,}5000$, độ lệch trung bình là $0{,}2290$ đơn vị lượng tử (LSB).
    - Kiểm chứng trên tệp có nhiễu: độ lệch cực đại là $0{,}4953$, độ lệch trung bình là $0{,}2493$ LSB.
    - Giới hạn sai số trên lý thuyết chặt chẽ là $212 / 426 \approx 0{,}49765 < 0{,}5\text{ LSB}$.
-   Sai số này nằm gọn trong mức nhiễu lượng tử hóa nửa bit $(\pm 0{,}5\text{ LSB})$ của bộ chuyển đổi tín hiệu 16-bit, hoàn toàn không làm suy giảm độ chính xác ước lượng F0.
+   Sai số này nằm gọn trong mức nhiễu lượng tử hóa nửa bit $(\pm 0{,}5\text{ LSB})$ của bộ chuyển đổi tín hiệu 16-bit, không làm suy giảm độ chính xác ước lượng F0.
 2. **Kích thước cửa sổ 426 mẫu gắn cứng với cấu hình danh định:**
    Cửa sổ tính trung bình 426 mẫu được thiết kế tối ưu cho tần số lấy mẫu $f_s = 16\text{ kHz}$ và tần số sàn $F_{\text{floor}} = 75\text{ Hz}$. Nếu hệ thống được cấu hình lại với $F_{\text{floor}}$ khác (ví dụ 50 Hz hoặc 100 Hz), tham số độ dài quét $L$ và hằng số nhân nghịch đảo $M$ cần được tham số hóa lại ở thời điểm biên dịch phần cứng.
 3. **Độ lệch pha của bộ lọc DC-Blocker:**
-   Bộ lọc IIR DC-Blocker bậc 1 loại bỏ hoàn toàn trôi dạt DC tĩnh và trôi dạt chậm mà không tốn khối DSP nào. Tuy nhiên, nó tạo ra một độ lệch pha nhẹ $+7{,}57^\circ$ tại tần số đáy 75 Hz. Do đó, trong các bài đo kiểm đối soát chuẩn mực từng cent với Praat 7.0.03, khối này bắt buộc phải được đặt ở trạng thái BYPASS mặc định (`bypass = 1`).
+   Bộ lọc IIR DC-Blocker bậc 1 loại bỏ trôi dạt DC tĩnh và trôi dạt chậm mà không tốn khối DSP nào. Tuy nhiên, nó tạo ra một độ lệch pha nhẹ $+7{,}57^\circ$ tại tần số đáy 75 Hz. Do đó, trong các bài đo kiểm đối soát chuẩn mực từng cent với Praat 7.0.03, khối này bắt buộc phải được đặt ở trạng thái BYPASS mặc định (`bypass = 1`).
 
 ---
 
@@ -93,3 +93,6 @@ Toàn bộ tiến trình phát triển và kiểm chứng Chương 5 được l�
 - `0183c81`: `v3: ch05 5.5` (Tuyến HDL tự viết ch05_local_mean.v, FSM 3 pha, Listing 24 và Listing 25, Bảng 24 đối chiếu từng dòng, Hình 10 TikZ).
 - `6fb46e8`: `v3: ch05 5.6` (Bộ lọc số IIR khử trôi dạt DC ch05_dc_blocker.v, dẫn xuất giải tích fc = 9.928 Hz, thanh ghi 36-bit Q20.16 chống limit cycle, Hình 11 TikZ).
 - `6ba17ee`: `v3: ch05 5.7` (Quy ước lấy mẫu testbench tổ hợp/tuần tự, bộ vector 88.970 chu kỳ và 1.000 chu kỳ, Bảng 25 so sánh IP vs HDL, 4 bài tập thực chiến có lời giải chi tiết từ ch05_exercises.py).
+- `6cbe36e`: `v3: ch05 done` (Hoàn thành triển khai đợt 1 Chương 5).
+- `593682f`: `v3: ch05 r1 twin-hdl protocol and math audit` (Revision Round 1: Chuẩn hóa giao thức mean_valid 1 chu kỳ xung nhịp trong rtl/v3/ch05_local_mean.v và twin; tái sinh vector kiểm thử LF; kiểm định chính xác sai số Argon 10.485.605 vs 10.485.595 của agenda; dọn dẹp các phát biểu kết quả mô phỏng chưa đo sang todo{box}).
+- `38e040d`: `v3: ch05 r1 figures 9 10 11 visual fixes` (Revision Round 1: Thiết kế lại và căn chỉnh Hình 9, Hình 10, Hình 11 TikZ; loại bỏ hoàn toàn đè chữ, cắt đường và cảnh báo Overfull hbox).
