@@ -120,9 +120,9 @@ ch07:
 	@echo "=== [ch07] Running chapter exercises verification ==="
 	$(PYTHON) ch07_exercises.py > ch07_exercises.log
 	@echo "=== [ch07] Running HPS C reference autocorrelation test ==="
-	gcc -Wall -Wextra -O2 ../sw_v3/test_ch07_mac.c ../sw_v3/ch07_mac.c -I../sw_v3 -o test_ch07_mac.exe
-	./test_ch07_mac.exe
-	rm -f test_ch07_mac.exe
+	gcc -Wall -Wextra -O2 ../sw_v3/test_ch07_mac.c ../sw_v3/ch07_mac.c -I../sw_v3 -o test_ch07_mac
+	./test_ch07_mac
+	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch07_mac.exe', 'test_ch07_mac') if os.path.exists(f)]"
 	@echo "=== [ch07] All Chapter 7 verifications completed successfully ==="
 
 clean:

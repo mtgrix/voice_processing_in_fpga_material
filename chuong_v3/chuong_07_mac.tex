@@ -885,7 +885,7 @@ Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đ�
 
 Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi tiết (bao gồm cả các kiểm thử biên reset, kích hoạt cờ \texttt{sload} ngẫu nhiên và dồn mẫu liên tục) lưu tại \texttt{verify\_v3/tb\_ch07\_mac\_stim.txt} và \texttt{verify\_v3/tb\_ch07\_mac\_expected.txt}. Testbench \texttt{tb/v3/tb\_ch07\_mac.v} được thiết kế để đọc và so sánh toàn bộ các vector này trên môi trường mô phỏng Icarus Verilog.
 
-\todo[inline]{box: Kết quả chạy iverilog trên Linux: 7.460 vector kiểm chứng chu-kỳ-đối-chu-kỳ, 3.040 kết quả tự tương quan qua 16 khung khớp bit 100\% với golden\_v2/hdl\_check/exp.hex, 0 lỗi sai lệch.}
+\todo{box: 7.460 vector kiểm chứng chu-kỳ-đối-chu-kỳ, 3.040 kết quả tự tương quan qua 16 khung khớp bit 100\% với golden\_v2/hdl\_check/exp.hex, 0 lỗi sai lệch}
 
 \textit{Tóm lại: Khối MAC HDL tự viết tái lập hoàn hảo cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ; toàn bộ 3.040 kết quả tự tương quan trên 16 khung thử nghiệm đạt độ khớp bit tuyệt đối $100\%$ với chuẩn golden.}
 
