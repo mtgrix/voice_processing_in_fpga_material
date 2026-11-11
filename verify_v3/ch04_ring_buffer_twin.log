@@ -1,0 +1,30 @@
+======================================================================
+CH04 RING BUFFER TWIN: VECTOR GENERATION
+======================================================================
+Generated 3500 stimulus vectors -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch04_ring_buffer_stim.txt
+Generated 3500 expected vectors -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch04_ring_buffer_expected.txt
+
+Stimulus Header (first 5 lines):
+  0 0 0 0000 0 0 000
+  0 0 0 0000 0 0 000
+  0 0 0 0000 0 0 000
+  0 0 0 0000 0 0 000
+  0 0 0 0000 0 0 000
+
+Expected Header (first 5 lines):
+  1 0 0000 000 000 0 0000
+  1 0 0000 000 000 0 0000
+  1 0 0000 000 000 0 0000
+  1 0 0000 000 000 0 0000
+  1 0 0000 000 000 0 0000
+
+Trace around Frame 0 completion (cycles 750..755):
+  Cycle  750: STIM=[1 0 1 DFE4 0 1 002] EXP=[1 1 0000 000 281 1 C209]
+  Cycle  751: STIM=[1 0 1 1E89 0 1 003] EXP=[1 1 0000 000 282 1 00AE]
+  Cycle  752: STIM=[1 0 0 0000 0 1 004] EXP=[1 1 0000 000 282 1 C253]
+  Cycle  753: STIM=[1 0 1 E02E 0 0 005] EXP=[1 1 0000 000 283 1 00F8]
+  Cycle  754: STIM=[1 0 1 1ED3 0 1 005] EXP=[1 1 0000 000 284 0 00F8]
+  Cycle  755: STIM=[1 0 1 E078 0 1 006] EXP=[1 1 0000 000 285 1 C29D]
+======================================================================
+Status: SUCCESS - Vectors ready for Icarus Verilog testbench.
+======================================================================
