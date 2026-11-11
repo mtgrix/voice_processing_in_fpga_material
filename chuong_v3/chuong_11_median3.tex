@@ -457,13 +457,14 @@ Giải pháp nhân quả chuẩn tắc trên phần cứng là làm trễ dòng 
 \begin{equation}
     y[k-1] = \text{median}(x[k-2],\, x[k-1],\, x[k])
 \end{equation}
-Tại chu kỳ thời gian $k$, khi khung mới nhất $x[k]$ được đưa vào mạch, phần cứng đang nắm giữ trong các thanh ghi:
+Trong chu kỳ thời gian khi khung mới $x[k]$ đang được đưa vào ngõ vào $\texttt{in\_f0}$:
 \begin{itemize}
-    \item Thanh ghi $\texttt{f0\_z0}$: Chứa mẫu mới nạp ở hiện tại $x[k]$.
-    \item Thanh ghi $\texttt{f0\_z1}$: Chứa mẫu của khung vừa qua $x[k-1]$ (chính là khung trung tâm cần tính trung vị).
-    \item Thanh ghi $\texttt{f0\_z2}$: Chứa mẫu quá khứ $x[k-2]$.
+    \item Tín hiệu ngõ vào $\texttt{in\_f0}$: Mang giá trị mẫu mới nhất của khung hiện tại $x[k]$.
+    \item Thanh ghi $\texttt{f0\_z1}$: Đang lưu giữ mẫu của khung vừa qua $x[k-1]$ (chính là khung trung tâm cần lọc).
+    \item Thanh ghi $\texttt{f0\_z2}$: Đang lưu giữ mẫu quá khứ $x[k-2]$.
 \end{itemize}
-Mạng so sánh tổ hợp tính toán trung vị của bộ ba $\{\texttt{f0\_z2}, \texttt{f0\_z1}, \texttt{f0\_z0}\}$ và chốt vào thanh ghi ngõ ra $\texttt{f0\_med}$. Như vậy, kết quả trung vị của khung $k-1$ được xuất ra tại đúng thời điểm nhận khung $k$, với độ trễ nhân quả chính xác là 1 khung ($10\text{ ms}$).
+Mạng so sánh tổ hợp tính toán trung vị của bộ ba $\{\texttt{f0\_z2}, \texttt{f0\_z1}, \texttt{in\_f0}\}$ và chốt vào thanh ghi ngõ ra $\texttt{f0\_med}$ tại cạnh lên xung nhịp (\texttt{posedge clk}). Đồng thời, các thanh ghi cập nhật để chuẩn bị cho chu kỳ kế tiếp: $\texttt{f0\_z2} \leftarrow \texttt{f0\_z1}$ ($x[k-1]$), $\texttt{f0\_z1} \leftarrow \texttt{in\_f0}$ ($x[k]$), và $\texttt{f0\_z0} \leftarrow \texttt{in\_f0}$ ($x[k]$).
+Do đó, trạng thái thanh ghi quan sát được sau mỗi cạnh lên xung nhịp (sau \texttt{posedge clk}) là: $\texttt{f0\_z0}$ và $\texttt{f0\_z1}$ cùng lưu mẫu mới nạp $x[k]$, $\texttt{f0\_z2}$ lưu mẫu $x[k-1]$, còn $\texttt{f0\_med}$ lưu kết quả trung vị đã lọc của khung $k-1$. Kết quả trung vị của khung $k-1$ được xuất ra tại thời điểm nhận khung $k$, với độ trễ nhân quả chính xác là 1 khung ($10\text{ ms}$).
 
 \subsubsection*{Quy tắc xử lý biên lặp mẫu và nhịp xả tự động (Flush beat)}
 Để kết quả nhân quả của phần cứng trùng khớp từng bit với công thức căn giữa của Praat trên toàn bộ $N$ khung, hai tình huống biên cần được xử lý đặc biệt:
@@ -505,7 +506,7 @@ Nhờ có nhịp xả, một tệp âm thanh có $N$ khung ngõ vào sẽ phát 
     \label{fig:ch11_median_timing}
 \end{figure}
 
-\textbf{Đọc hình.} Hình \ref{fig:ch11_median_timing} trình bày diễn biến tín hiệu theo từng chu kỳ xung nhịp từ T1 đến T7. Tại chu kỳ T1, tín hiệu $\texttt{in\_first}=1$ kích hoạt việc nạp khung đầu tiên ($120$), lặp mẫu vào cả hai thanh ghi $\texttt{f0\_z1}$ và $\texttt{f0\_z2}$; ngõ ra $\texttt{out\_valid}=0$. Từ chu kỳ T2 đến T6, các khung mới liên tục được nạp vào, thanh ghi $\texttt{f0\_med}$ xuất ra kết quả trung vị của khung trước đó ($\texttt{out\_valid}=1$). Tại chu kỳ T4, giá trị đột biến $244$ bị loại bỏ, ngõ ra xuất giá trị $122$ đúng. Tại chu kỳ T6, cờ $\texttt{in\_last}=1$ báo hiệu khung 5 ($0$) đã vào. Tại chu kỳ T7 (nhịp xả Flush beat), không có mẫu vào mới, mạch tự động tính trung vị của $\{0, 0, 0\}$, xuất ra kết quả của khung cuối cùng ($0$) kèm cờ $\texttt{out\_last}=1$.
+\textbf{Đọc hình.} Hình \ref{fig:ch11_median_timing} trình bày diễn biến tín hiệu theo từng chu kỳ xung nhịp từ T1 đến T7. Tại chu kỳ T1, tín hiệu $\texttt{in\_first}=1$ kích hoạt việc nạp khung đầu tiên ($120$), lặp mẫu vào cả ba thanh ghi: sau \texttt{posedge} T1 các thanh ghi $\texttt{f0\_z0}, \texttt{f0\_z1}, \texttt{f0\_z2}$ đều lưu $120$, ngõ ra $\texttt{out\_valid}=0$. Từ chu kỳ T2 đến T6, các khung mới liên tục được nạp vào, thanh ghi $\texttt{f0\_med}$ xuất ra kết quả trung vị của khung trước đó ($\texttt{out\_valid}=1$). Sau \texttt{posedge} T2, $\texttt{f0\_z2}$ giữ $120$, $\texttt{f0\_z1}$ giữ $122$, $\texttt{f0\_med}$ chốt $120$ (xuất khung 0). Sau \texttt{posedge} T3, $\texttt{f0\_z2}$ giữ $122$, $\texttt{f0\_z1}$ giữ $244$, $\texttt{f0\_med}$ chốt $122$ (xuất khung 1). Sau \texttt{posedge} T4, $\texttt{f0\_z2}$ giữ $244$, $\texttt{f0\_z1}$ giữ $121$, $\texttt{f0\_med}$ chốt $122$ (xuất khung 2, xóa gai đột biến $244$). Sau \texttt{posedge} T5, $\texttt{f0\_z2}$ giữ $121$, $\texttt{f0\_z1}$ giữ $0$, $\texttt{f0\_med}$ chốt $121$ (xuất khung 3). Sau \texttt{posedge} T6, cờ $\texttt{in\_last}=1$ báo hiệu khung 5 ($0$) đã vào, $\texttt{f0\_z2}$ và $\texttt{f0\_z1}$ đều chuyển về $0$, $\texttt{f0\_med}$ chốt $0$ (xuất khung 4). Tại chu kỳ T7 (nhịp xả Flush beat), không có mẫu vào mới, mạch tự động tính trung vị của $\{0, 0, 0\}$, xuất ra kết quả của khung cuối cùng ($0$) kèm cờ $\texttt{out\_last}=1$; các thanh ghi duy trì giá trị $0$.
 
 \subsubsection*{Bảng vết thanh ghi từng chu kỳ (Trace Table)}
 Bảng \ref{tab:ch11_trace} ghi nhận chính xác trạng thái của từng thanh ghi và tín hiệu giao tiếp trong suốt 7 chu kỳ xử lý của ví dụ mẫu, trích xuất nguyên văn từ nhật ký kiểm chứng \texttt{verify\_v3/ch11\_median\_math.log}:
@@ -514,19 +515,19 @@ Bảng \ref{tab:ch11_trace} ghi nhận chính xác trạng thái của từng th
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\caption{Bảng vết thanh ghi từng chu kỳ của module \texttt{ch11\_median3.v} trên dãy 6 khung $[120, 122, 244, 121, 0, 0]$.}
+\caption{Bảng vết thanh ghi từng chu kỳ của module \texttt{ch11\_median3.v} trên dãy 6 khung $[120, 122, 244, 121, 0, 0]$ (trạng thái thanh ghi ghi nhận sau cạnh lên xung nhịp \texttt{posedge clk}).}
 \label{tab:ch11_trace}
-\begin{tabular}{cccccccp{5.5cm}}
+\begin{tabular}{cccccccc>{\raggedright\arraybackslash}p{4.8cm}}
 \toprule
-\textbf{Chu kỳ} & \texttt{in\_valid} & \texttt{in\_f0} & \texttt{f0\_z2} & \texttt{f0\_z1} & \texttt{out\_valid} & \texttt{f0\_med} & \textbf{Hành vi vi kiến trúc phần cứng} \\
+\textbf{Chu kỳ} & \texttt{in\_valid} & \texttt{in\_f0} & \texttt{f0\_z2} & \texttt{f0\_z1} & \texttt{f0\_z0} & \texttt{out\_valid} & \texttt{f0\_med} & \textbf{Hành vi vi kiến trúc phần cứng} \\
 \midrule
-T1 & 1 & 120 & 120 & 120 & 0 & 0 & Nạp khung 0, lặp mẫu biên $\texttt{z1}=\texttt{z2}=120$ \\
-T2 & 1 & 122 & 120 & 122 & 1 & \textbf{120} & Xuất khung 0: $\text{med}(120, 120, 122) = 120$ \\
-T3 & 1 & 244 & 120 & 122 & 1 & \textbf{122} & Xuất khung 1: $\text{med}(120, 122, 244) = 122$ \\
-T4 & 1 & 121 & 122 & 244 & 1 & \textbf{122} & Xuất khung 2: $\text{med}(122, 244, 121) = 122$ (xóa 244!) \\
-T5 & 1 & 0   & 244 & 121 & 1 & \textbf{121} & Xuất khung 3: $\text{med}(244, 121, 0) = 121$ \\
-T6 & 1 & 0   & 121 & 0   & 1 & \textbf{0}   & Xuất khung 4: $\text{med}(121, 0, 0) = 0$ (\texttt{in\_last}=1) \\
-T7 & 0 & --- & 0   & 0   & 1 & \textbf{0}   & Nhịp xả Flush: xuất khung 5 ($\texttt{out\_last}=1$) \\
+T1 & 1 & 120 & 120 & 120 & 120 & 0 & 0 & Nạp khung 0, lặp mẫu biên $\texttt{z0}=\texttt{z1}=\texttt{z2}=120$ \\
+T2 & 1 & 122 & 120 & 122 & 122 & 1 & \textbf{120} & Xuất khung 0: $\text{med}(120, 120, 122) = 120$ \\
+T3 & 1 & 244 & 122 & 244 & 244 & 1 & \textbf{122} & Xuất khung 1: $\text{med}(120, 122, 244) = 122$ \\
+T4 & 1 & 121 & 244 & 121 & 121 & 1 & \textbf{122} & Xuất khung 2: $\text{med}(122, 244, 121) = 122$ (xóa gai 244!) \\
+T5 & 1 & 0   & 121 & 0   & 0   & 1 & \textbf{121} & Xuất khung 3: $\text{med}(244, 121, 0) = 121$ \\
+T6 & 1 & 0   & 0   & 0   & 0   & 1 & \textbf{0}   & Xuất khung 4: $\text{med}(121, 0, 0) = 0$ (\texttt{in\_last}=1) \\
+T7 & 0 & --- & 0   & 0   & 0   & 1 & \textbf{0}   & Nhịp xả Flush: xuất khung 5 ($\texttt{out\_last}=1$) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -614,8 +615,8 @@ Bảng \ref{tab:ch11_twin_vs_hdl} đối chiếu chi tiết từng vị trí dò
 \midrule
 Dòng 57--64 & Dòng 91--98 & Khởi tạo và Reset bất đồng bộ (\texttt{!rst\_n}), xóa sạch các thanh ghi và cờ báo về $0$. \\
 Dòng 33--51 & Dòng 60--85 & Mạng logic 3 bộ so sánh nhị phân (\texttt{<=}) và cây ghép kênh MUX chọn phần tử trung vị. \\
-Dòng 82--98 & Dòng 100--116 & \textbf{Trạng thái S\_IDLE:} Nạp khung đầu tiên $x[0]$, lặp mẫu biên vào $\texttt{f0\_z1}$ và $\texttt{f0\_z2}$. \\
-Dòng 100--121 & Dòng 118--141 & \textbf{Trạng thái S\_STREAM:} Xuất kết quả trung vị khung $k-1$, dịch chuyển thanh ghi trễ $\texttt{z2} \leftarrow \texttt{z1} \leftarrow \texttt{z0}$. \\
+Dòng 82--98 & Dòng 100--116 & \textbf{Trạng thái S\_IDLE:} Nạp khung đầu tiên $x[0]$, lặp mẫu biên vào $\texttt{f0\_z0}, \texttt{f0\_z1}$ và $\texttt{f0\_z2}$. \\
+Dòng 100--121 & Dòng 118--141 & \textbf{Trạng thái S\_STREAM:} Xuất kết quả trung vị khung $k-1$, cập nhật thanh ghi: $\texttt{f0\_z2} \leftarrow \texttt{f0\_z1}$, $\texttt{f0\_z1} \leftarrow \texttt{in\_f0}$, $\texttt{f0\_z0} \leftarrow \texttt{in\_f0}$. \\
 Dòng 122--131 & Dòng 143--151 & \textbf{Trạng thái S\_FLUSH:} Nhịp xả tự động, lặp mẫu cuối $\texttt{f0\_z1}$, xuất kết quả khung $N-1$ kèm cờ $\texttt{out\_last}=1$. \\
 Dòng 133--140 & Dòng 126--128, 149 & Cập nhật trạng thái các thanh ghi tại cạnh lên xung nhịp (\texttt{posedge clk}). \\
 \bottomrule

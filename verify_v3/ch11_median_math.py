@@ -18,6 +18,13 @@ Mathematical audit of:
    - Cycle-by-cycle simulation of start edge replication and the flush beat.
 """
 
+import os
+import sys
+
+# Import Median3Twin from ch11_twin
+sys.path.insert(0, os.path.dirname(__file__))
+from ch11_twin import Median3Twin
+
 def median3_func(a, b, c):
     """3-input median using 3 comparisons, matching hardware architecture."""
     cmp_ab = (a <= b)
@@ -127,66 +134,36 @@ def simulate_causal_hardware():
     seq_in = [120, 122, 244, 121, 0, 0]
     N = len(seq_in)
     
-    # Hardware registers
-    f0_z0 = 0
-    f0_z1 = 0
-    f0_z2 = 0
-    f0_med = 0
-    out_valid = 0
-    out_last = 0
-    
+    twin = Median3Twin()
     hw_outputs = []
     
     print(f"{'Chu kỳ':<8} {'in_valid':<10} {'in_f0':<10} {'f0_z2':<10} {'f0_z1':<10} {'f0_z0':<10} {'out_valid':<10} {'f0_med':<10} {'Ghi chú':<30}")
     print("-" * 108)
     
-    # State tracking
-    # Beat 0: Frame 0 arrives (in_first = 1)
-    # Beat 1: Frame 1 arrives -> outputs frame 0 (med(x0, x0, x1))
-    # ...
-    # Beat N-1: Frame N-1 arrives (in_last = 1) -> outputs frame N-2
-    # Beat N (Flush): Flush beat -> outputs frame N-1 (med(xN-2, xN-1, xN-1))
+    notes = [
+        "Nạp khung 0 (120), lặp mẫu biên z0=z1=z2=120",
+        "Xuất khung 0: med(120,120,122) = 120",
+        "Xuất khung 1: med(120,122,244) = 122",
+        "Xuất khung 2: med(122,244,121) = 122",
+        "Xuất khung 3: med(244,121,0) = 121",
+        "Xuất khung 4: med(121,0,0) = 0",
+    ]
     
-    cycle = 0
     for beat in range(N):
-        cycle += 1
         x_in = seq_in[beat]
-        in_first = (beat == 0)
-        in_last = (beat == N - 1)
-        
-        if in_first:
-            # Replicate x[0] into z1 and z2
-            f0_z1 = x_in
-            f0_z2 = x_in
-            f0_z0 = x_in
-            out_valid = 0
-            f0_med = 0
-            note = f"Nạp khung 0 ({x_in}), lặp mẫu biên z1=z2={x_in}"
-        else:
-            # New sample enters z0
-            f0_z0 = x_in
-            med_val = median3_func(f0_z2, f0_z1, f0_z0)
-            f0_med = med_val
-            out_valid = 1
-            hw_outputs.append(f0_med)
-            note = f"Xuất khung {beat - 1}: med({f0_z2},{f0_z1},{f0_z0}) = {f0_med}"
-            # Shift for next beat
-            f0_z2 = f0_z1
-            f0_z1 = f0_z0
-            
-        print(f"{cycle:<8} {1:<10} {x_in:<10} {f0_z2:<10} {f0_z1:<10} {f0_z0:<10} {out_valid:<10} {f0_med:<10} {note:<30}")
+        in_first = 1 if beat == 0 else 0
+        in_last = 1 if beat == N - 1 else 0
+        ov, ol, omed = twin.clock(1, in_first, in_last, x_in)
+        if ov:
+            hw_outputs.append(omed)
+        print(f"{beat+1:<8} {1:<10} {x_in:<10} {twin.f0_z2:<10} {twin.f0_z1:<10} {twin.f0_z0:<10} {twin.out_valid:<10} {twin.f0_med:<10} {notes[beat]:<30}")
     
     # Flush beat
-    cycle += 1
-    # At flush, replicate last sample (stored in z1) into z0
-    f0_z0 = f0_z1
-    med_val = median3_func(f0_z2, f0_z1, f0_z0)
-    f0_med = med_val
-    out_valid = 1
-    out_last = 1
-    hw_outputs.append(f0_med)
-    note = f"Nhịp xả (Flush beat): xuất khung {N - 1}: med({f0_z2},{f0_z1},{f0_z0}) = {f0_med}"
-    print(f"{cycle:<8} {0:<10} {'-':<10} {f0_z2:<10} {f0_z1:<10} {f0_z0:<10} {out_valid:<10} {f0_med:<10} {note:<30}")
+    ov, ol, omed = twin.clock(0, 0, 0, 0)
+    if ov:
+        hw_outputs.append(omed)
+    flush_note = "Nhịp xả (Flush beat): xuất khung 5: med(0,0,0) = 0"
+    print(f"{N+1:<8} {0:<10} {'-':<10} {twin.f0_z2:<10} {twin.f0_z1:<10} {twin.f0_z0:<10} {twin.out_valid:<10} {twin.f0_med:<10} {flush_note:<30}")
     
     print("-" * 108)
     print(f"Tổng số mẫu ngõ vào: {len(seq_in)}")
