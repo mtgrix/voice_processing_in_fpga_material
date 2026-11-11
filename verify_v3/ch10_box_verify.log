@@ -1,0 +1,5 @@
+ch10 box verify 2026-11-12 02:58:50 +0700 on Linux (iverilog 12.0)
+run_ch10_iverilog.sh: tb_ch10_voicing 1408/1408 cycles matched, Total comparison errors: 0 (PASS)
+python: ch10_praat_lines, ch10_math_audit, ch10_golden_audit (VDE 0/277 clean and snr5), ch10_exercises, ch10_twin all exit 0; regenerated logs and vectors identical to the laptop commit
+C: test_ch10_voicing 12/12 PASSED (gcc -Wall -Wextra -O2, with ch10_voicing.c)
+xelatex x2: 249 pages, 0 overfull, Ch.10 = pp.234-249

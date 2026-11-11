@@ -1,0 +1,4 @@
+=== STARTING CH10 VOICING UNIT VERIFICATION ===
+=== Total comparison errors: 0 ===
+[PASS] All 1408 cycles matched bit-for-bit with Python twin!
+tb/v3/tb_ch10_voicing.v:189: $finish called at 28180000 (1ps)
