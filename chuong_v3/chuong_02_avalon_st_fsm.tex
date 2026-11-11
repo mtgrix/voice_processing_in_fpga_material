@@ -137,7 +137,7 @@ Thiết lập ngân sách chu kỳ một cách tường minh từ các tham số
     \begin{equation}
     C_{\text{sample}} = \frac{f_{\text{clk}}}{f_s} = \frac{50.000.000}{16.000} = 3.125\text{ chu kỳ/mẫu}
     \end{equation}
-    \item \textbf{Bước nhảy khung phân tích (Frame Hop):} Thuật toán Praat với cấu hình mặc định (sàn cao độ $\text{pitchFloor} = 75\text{ Hz}$, bước thời gian tự động $\text{timeStep} = 0{,}75 / 75 = 10\text{ ms}$, tham chiếu mã nguồn \texttt{TODO-PRAAT-LINE}) phân tích các khung cách nhau đúng:
+    \item \textbf{Bước nhảy khung phân tích (Frame Hop):} Thuật toán Praat với cấu hình mặc định (sàn cao độ $\text{pitchFloor} = 75\text{ Hz}$, bước thời gian tự động $\text{timeStep} = 0{,}75 / 75 = 10\text{ ms}$, tham chiếu mã nguồn Praat 7.0.03 \path{fon/Sound_to_Pitch.cpp}, dòng 296 (\texttt{dt} = periodsPerWindow / pitchFloor / 4, periodsPerWindow = 3)) phân tích các khung cách nhau đúng:
     \begin{equation}
     H = 10\text{ ms} \times 16.000\text{ mẫu/s} = 160\text{ mẫu}
     \end{equation}
@@ -853,7 +853,9 @@ Kết quả chạy kịch bản Python twin ghi nhận: trong suốt 600 chu k�
 
 Testbench Verilog tương ứng \texttt{tb/v3/tb\_ch02\_skid\_buffer.v} thực hiện đối soát 600 chu kỳ này trên phần cứng RTL:
 \begin{center}
-\todo{box}
+\small\texttt{Simulation completed 600 cycles. Total comparison errors: 0}\\
+\small\texttt{[PASS] CH02 SKID BUFFER MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 600 CYCLES}\\
+\footnotesize(kết quả chạy trên máy kiểm chứng, Icarus Verilog \texttt{-g2012}; nhật ký \texttt{verify\_v3/ch02\_iverilog.log})
 \end{center}
 
 \subsubsection*{Kiểm chứng tương đương logic giữa FSM nhị phân và FSM One-Hot}
@@ -940,7 +942,9 @@ Tại mỗi chu kỳ xung nhịp, testbench thực hiện hai bước đối so�
 
 Kết quả mô phỏng ghi nhận:
 \begin{center}
-\todo{box}
+\small\texttt{Simulation completed 500 cycles. Total comparison errors: 0}\\
+\small\texttt{[PASS] CH02 BINARY AND ONE-HOT FSMS MATCHED PYTHON TWIN AND EACH OTHER ON 500 CYCLES}\\
+\footnotesize(nhật ký \texttt{verify\_v3/ch02\_iverilog.log})
 \end{center}
 
 \subsubsection*{Bảng so sánh tổng hợp: Khối IP Intel so với HDL tự viết}
