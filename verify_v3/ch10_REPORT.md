@@ -75,9 +75,18 @@ Mọi số liệu trong Chương 10 đều được phân loại minh bạch the
 
 ## 5. Lịch sử các Commit Git (BRIEF §12 Item 5)
 
+### Bản thảo ban đầu (Round 0)
 - `4318159`: `v3: ch10 10.1` (Khởi tạo toàn bộ hạ tầng Ch.10: các script kiểm chứng, log, RTL, TB, HPS C, hình vẽ TikZ và mục 10.1).
 - `672cec2`: `v3: ch10 10.2` (Hoàn thành mục 10.2: chuyển đổi số nguyên, bất đẳng thức nhân chéo 54-bit, loại bỏ dạng golden-v1 cũ, bẫy im lặng và Bảng tính tay 10 ca).
 - `185f043`: `v3: ch10 10.3` (Hoàn thành mục 10.3: lý do không dùng Intel IP, vi kiến trúc nhân dịch-cộng, phân tích đường tới hạn và mã Verilog đường ống 3 tầng).
 - `18fe0d2`: `v3: ch10 10.4` (Hoàn thành mục 10.4: mô hình Python Twin, bảng đối chiếu dòng mã nguồn, quy ước lấy mẫu hai pha, 641 bộ vectơ, bảng so sánh tổng hợp IP vs HDL và 4 bài tập cuối chương có lời giải chi tiết).
-- Commit hoàn thiện biên dịch và báo cáo: `v3: ch10 polish and compile`
-- Commit nghiệm thu toàn bộ: `v3: ch10 done`
+- `50f7467`: `v3: ch10 done` (Nghiệm thu toàn bộ bản thảo đợt 1).
+
+### Đợt chỉnh sửa theo phản biện (Revision Round 1)
+- `b10b1c9`: `v3: ch10 r1 fix B1 redraw fig_ch10_pipeline` (Vẽ lại hoàn toàn Hình 25: thanh ghi mỏng `reg 1/2/3`, nhãn ngang phía trên, tách biệt nhãn dây dẫn, khoảng cách $\ge 3\text{ mm}$, không chồng lấn).
+- `6aa002f`: `v3: ch10 r1 fix B2 remove unsourced numbers` (Loại bỏ toàn bộ các số liệu ALM/DSP/định thời không nguồn gốc; chuyển thành quy định đo bằng Quartus Prime).
+- `f714bca`: `v3: ch10 r1 fix B3 remove prewritten box result` (Chuyển placeholder iverilog thành dạng chuẩn để người phản biện điền).
+- `22c5b1a`: `v3: ch10 r1 fix B4 Praat citation lines and strict inequality wording` (Hiệu chỉnh trích dẫn dòng Praat 384--385 cho cờ rỗng và làm rõ việc dùng dấu so sánh chặt $>$ được kiểm chứng trong golden audit).
+- `593b77f`: `v3: ch10 r1 fix B5 Fig24 labels and voicing curve text` (Bổ sung nhãn A/B/C vào Hình 24, tăng khoảng cách điểm xanh, dịch nhãn điểm C cách xa đường đỏ $> 10\text{ mm}$, chỉnh sửa câu văn đường dốc tuyến tính và đổi tên Vùng im lặng).
+- `b948459`: `v3: ch10 r1 fix tone and neutral wording` (Làm sạch toàn bộ các từ ngữ mang tính chủ quan/cảm thán và chuẩn hóa tỉ lệ 100% kèm N/N).
+- Commit nghiệm thu đợt chỉnh sửa: `v3: ch10 revision`.
