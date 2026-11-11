@@ -285,4 +285,144 @@ fir_compiler_ii_wrapper u_fir_ip (
 
 \textit{Tóm lại: Khối IP Intel FIR Compiler II tối ưu hóa tài nguyên nhờ đối xứng Pre-adder; cần đặc biệt cảnh giác đặt Input Sample Rate theo thông lượng thực của tệp (0,5 MSPS) thay vì tốc độ danh định 16 kHz; tài nguyên và độ trễ chính xác của IP phải kiểm trong mô phỏng Quartus.}
 
+\subsection*{3.4. Đường (B): Khối HDL tự viết: Bộ lọc FIR đối xứng gấp thời gian}
+\addcontentsline{toc}{subsection}{3.4. Đường (B): Khối HDL tự viết: Bộ lọc FIR đối xứng gấp thời gian}
+
+\subsubsection*{Bản chất kiến trúc: Gấp thời gian (Folding) và Bộ tiền cộng (Pre-adder)}
+Trong khi khối IP FIR Compiler II đóng vai trò như một giải pháp hộp đen tiện lợi nhưng khó tùy biến sâu, việc tự tay thiết kế bộ lọc FIR bằng ngôn ngữ phần cứng Verilog-2001 đem lại sự minh bạch hoàn toàn về cấu trúc mạch điện, giúp người kỹ sư làm chủ từng bit tính toán và tối ưu hóa diện tích chip tới mức triệt để.
+
+Đối với một bộ lọc FIR thông thường có bậc $N = 31$, công thức tích chập trực tiếp là:
+\begin{equation}
+y[n] = \sum_{i=0}^{30} h[i] \cdot x[n - i]
+\end{equation}
+Nếu hiện thực theo kiến trúc song song trực tiếp (Fully Parallel Direct Form), mạch điện đòi hỏi tới $31$ bộ nhân 16-bit và một cây cộng 31 nhánh. Kiến trúc này có thể xử lý 1 mẫu mỗi chu kỳ (thông lượng 50 MSPS ở 50 MHz), nhưng tiêu tốn tới 16 khối DSP phần cứng trên chip Cyclone V.
+
+Tuy nhiên, trong hệ thống ước lượng cao độ $F_0$, tốc độ dòng âm thanh thực tế chỉ là $16\text{ kHz}$ (tương đương với $3125$ chu kỳ xung nhịp 50 MHz cho mỗi mẫu), và ngay cả ở chế độ xử lý tệp nhanh nhất, khối tự tương quan MAC ở Chương 7 cũng cần tới $\approx 616\text{ chu kỳ}$ để xử lý một mẫu âm thanh. Việc sử dụng tới 16 bộ nhân DSP để tính một bộ lọc chỉ cần chạy 1 lần trong hàng trăm chu kỳ là một sự lãng phí tài nguyên silicon cực kỳ lớn!
+
+Để giải quyết mâu thuẫn này, chúng tôi áp dụng kiến trúc **gấp thời gian (Time-Multiplexed / Folded FIR Architecture)** kết hợp với **bộ tiền cộng đối xứng (Symmetric Pre-adder)**:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Do đáp ứng xung đối xứng chẵn qua tâm $h[i] = h[30 - i]$, ta nhóm các tích có chung hệ số lại với nhau:
+    \begin{equation}
+    y[n] = \sum_{k=0}^{14} h[k] \cdot \big(x[n - k] + x[n - (30 - k)]\big) + h[15] \cdot x[n - 15]
+    \end{equation}
+    Tổng cộng chỉ còn đúng 16 số hạng cần nhân.
+    \item Phép cộng hai mẫu âm thanh $x[n-k] + x[n-(30-k)]$ được thực hiện trước bằng một bộ cộng tổ hợp 17-bit mang tên \textbf{Pre-adder}. Vì mỗi mẫu âm thanh là số có dấu 16-bit (khoảng $[-32768, 32767]$), tổng của hai mẫu cần đúng 17-bit có dấu (khoảng $[-65536, 65534]$) để không bao giờ bị tràn số.
+    \item Thay vì dùng 16 bộ nhân phần cứng riêng biệt, ta sử dụng **đúng 1 bộ nhân DSP duy nhất** và cho nó chạy tuần tự qua 16 bước xung nhịp ($k = 0..15$). Tại mỗi bước xung nhịp, bộ nhân tính một tích 33-bit và cộng dồn kết quả vào một thanh ghi tích lũy 40-bit.
+\end{enumerate}
+
+Sau đúng 16 chu kỳ tính toán, kết quả tích lũy hoàn chỉnh được đưa qua khâu làm tròn bán phần (+16384) và bão hòa 16-bit để xuất ra ngõ ra. Toàn bộ kiến trúc phần cứng này được minh họa chi tiết trên Hình~\ref{fig:ch03_folded_arch}.
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch03_folded_arch.tex}
+\caption{Sơ đồ kiến trúc phần cứng khối lọc FIR 31 tap gấp thời gian với bộ tiền cộng 17-bit và 1 khối DSP (\texttt{rtl/v3/ch03\_fir\_filter.v}).}
+\label{fig:ch03_folded_arch}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch03_folded_arch} mô tả chi tiết dòng chảy dữ liệu bên trong mô-đun phần cứng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Phía bên trái là giao tiếp Avalon-ST Sink: khi tín hiệu bắt tay \texttt{s\_handshake} xuất hiện, mẫu mới \texttt{sink\_data} được nạp vào đầu mảng thanh ghi dịch 31 tầng (tạo thành từ 496 flip-flop trong ALM).
+    \item Bộ tiền cộng Pre-adder 17-bit rút các cặp mẫu đối xứng $x[k]$ và $x[30-k]$ từ thanh ghi dịch theo chỉ số bước \texttt{step} do bộ đếm FSM điều khiển. Tại bước cuối cùng (\texttt{step} = 15), ngõ vào thứ hai được nối đất về 0 để chỉ nhân hệ số trung tâm $h[15] \cdot x[15]$.
+    \item Bảng ROM hệ số 16 từ phát ra giá trị $h[step]$ tương ứng. Bộ nhân DSP thực hiện phép nhân $17\text{ bit} \times 16\text{ bit} \to 33\text{ bit}$, nạp vào bộ cộng tích lũy 40-bit.
+    \item Tại bước 15, giá trị tổng được làm tròn và bão hòa rồi nạp vào bộ dồn kênh MUX 2:1. Tín hiệu điều khiển \texttt{bypass} cho phép dữ liệu từ ngõ vào đi thẳng ra ngõ ra qua 1 tầng chốt đồng bộ khi ở chế độ chuyển tiếp.
+\end{itemize}
+
+\subsubsection*{Cạm bẫy kỹ thuật số học: Độ chính xác trung gian và quy tắc làm tròn}
+Để phần cứng tự viết khớp từng bit với khối IP công nghiệp và mô hình toán học, lập trình viên phải giải quyết hai cạm bẫy số học tinh vi:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Cạm bẫy độ rộng bộ tích lũy (Accumulator Width):} 
+    Tích sau bộ nhân có độ rộng 33 bit có dấu. Khi cộng dồn 16 tích số có độ lớn cực đại (trường hợp tín hiệu xoay chiều biên độ tối đa), giá trị tổng cần thêm $\lceil \log_2(16) \rceil = 4\text{ bit}$ mở rộng dấu, nâng độ rộng tối thiểu lên $33 + 4 = 37\text{ bit}$. Nếu lập trình viên chỉ khai báo thanh ghi 32-bit hoặc 36-bit, bộ tích lũy sẽ bị tràn số bit cao trong các đoạn âm thanh hô lớn hoặc tiếng thở mạnh. Trong thiết kế này, chúng tôi chọn độ rộng bộ tích lũy là **40-bit signed** (\texttt{reg signed [39:0] acc}), đảm bảo một khoảng dự trữ an toàn 3 bit chống tràn trong mọi tình huống cực đoan.
+    \item \textbf{Cạm bẫy làm tròn đối xứng (Symmetric Round-to-Nearest):}
+    Vì các hệ số lọc được định dạng ở chuẩn Q1.15 (nhân với $2^{15} = 32768$), giá trị tích lũy nội bộ bị phóng đại $2^{15}$ lần. Để đưa dữ liệu trở về chuẩn số nguyên 16-bit ban đầu, ta phải thực hiện phép chia cho $2^{15}$ (tức dịch phải số học 15 bit, ký hiệu \texttt{>>> 15}).
+    Nếu thực hiện dịch phải trực tiếp, phép toán tương đương với làm tròn hướng về âm vô cùng (floor), tạo ra sai số thiên lệch âm trung bình $-0{,}5\text{ LSB}$. Để làm tròn về số nguyên gần nhất (Round-to-Nearest), ta bắt buộc phải cộng thêm nửa trọng số của bit LSB bị cắt bỏ, tức cộng thêm hằng số $2^{14} = 16384$:
+    \begin{equation}
+    \text{acc}_{\text{rounded}} = (\text{acc}_{\text{final}} + 16384) \ggg 15
+    \end{equation}
+    \item \textbf{Khâu bão hòa bảo vệ (Clamping):}
+    Mặc dù tổng các hệ số lọc lý thuyết xấp xỉ bằng 1, đáp ứng tần số thực tế có độ gợn nhẹ $+0{,}19\text{ dB}$ ở vùng dải thông cao (tương đương độ lợi biên độ $1{,}022$). Do đó, một tín hiệu vào có biên độ cực đại $32767$ khi đi qua bộ lọc có thể sinh ra giá trị làm tròn lên tới $33256$ (như đã chứng minh trong bài tập ở mục 3.7). Trong định dạng bù hai 16-bit, giá trị $33256$ sẽ bị cuộn tràn thành $-32280$, làm lật ngược dấu của tín hiệu và tạo ra tiếng nổ lách tách phá hủy toàn bộ phép tính $F_0$.
+    Khâu bão hòa được cài đặt chặt chẽ:
+    \begin{equation}
+    y[n] = 
+    \begin{cases}
+    +32767 & \text{khi } \text{acc}_{\text{rounded}} > +32767 \\
+    -32768 & \text{khi } \text{acc}_{\text{rounded}} < -32768 \\
+    \text{acc}_{\text{rounded}}[15:0] & \text{trong các trường hợp còn lại}
+    \end{cases}
+    \end{equation}
+\end{itemize}
+
+\subsubsection*{Mã nguồn Verilog hiện thực hóa hoàn chỉnh}
+Dưới đây là toàn bộ mã nguồn phần cứng của khối lọc FIR 31 tap gấp thời gian (\texttt{rtl/v3/}\\ \texttt{ch03\_fir\_filter.v}):
+
+\lstinputlisting[language=Verilog, firstline=22, lastline=195, caption={Mã nguồn Verilog hoàn chỉnh của khối FIR 31 tap gấp thời gian (rtl/v3/ch03\_fir\_filter.v)}]{rtl/v3/ch03_fir_filter.v}
+
+\subsubsection*{Giải thích mã nguồn dòng-từng-dòng}
+Để bạn đọc nắm bắt tường tận cơ chế vận hành của mạch, chúng tôi thuyết minh chi tiết từng khối mã trong tệp \texttt{rtl/v3/ch03\_fir\_filter.v}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 22--40:} Khai báo module \texttt{ch03\_fir\_filter} với 3 tham số generic: độ rộng dữ liệu âm thanh \texttt{DATA\_WIDTH = 16}, độ rộng hệ số lọc \texttt{COEFF\_WIDTH = 16}, và độ rộng thanh ghi tích lũy \texttt{ACC\_WIDTH = 40}. Các cổng giao tiếp gồm xung nhịp \texttt{clk}, xóa \texttt{rst\_n}, cờ cấu hình chuyển mạch \texttt{bypass}, kèm theo cặp giao tiếp Avalon-ST Sink (ngõ vào) và Source (ngõ ra).
+    \item \textbf{Dòng 43--49:} Định nghĩa 3 trạng thái của FSM: \texttt{S\_IDLE} (chờ mẫu âm thanh mới), \texttt{S\_CALC} (thực hiện 16 bước nhân tích lũy gấp thời gian), và \texttt{S\_WAIT\_OUT} (giữ mẫu đầu ra chờ hạ nguồn tiếp nhận khi có phản áp). Khai báo thanh ghi bước \texttt{step} 4-bit ($0..15$).
+    \item \textbf{Dòng 52:} Khai báo mảng 31 thanh ghi dịch \texttt{shift\_reg[0:30]}, lưu giữ 31 mẫu âm thanh gần nhất.
+    \item \textbf{Dòng 55--60:} Khai báo thanh ghi tích lũy \texttt{acc} 40-bit có dấu, thanh ghi đệm ngõ ra \texttt{out\_data\_reg} 16-bit và cờ báo hợp lệ \texttt{out\_valid\_reg}.
+    \item \textbf{Dòng 62--70:} Định nghĩa hai điều kiện bắt tay \texttt{s\_handshake} và \texttt{m\_handshake}. Biểu thức gán tín hiệu sẵn sàng \texttt{sink\_ready = (!out\_valid\_reg || source\_ready)} khi ở trạng thái \texttt{S\_IDLE} hoặc khi bật \texttt{bypass}, phản ánh chính xác chuẩn giao tiếp \texttt{readyLatency = 0}.
+    \item \textbf{Dòng 74--92:} Khởi tạo bảng ROM chứa 16 hệ số đối xứng Q1.15 độc nhất. Hệ số trung tâm $h[15]$ có giá trị lớn nhất là \texttt{16'sh7ccd} ($31949$), các hệ số còn lại dao động từ $504$ đến $818$ với dấu đổi luân phiên.
+    \item \textbf{Dòng 96--100:} Bộ tiền cộng Pre-adder tổ hợp 17-bit: lấy mẫu \texttt{tap\_a = shift\_reg[step]} cộng với mẫu đối xứng \texttt{tap\_b = shift\_reg[30 - step]}. Khi \texttt{step == 15}, \texttt{tap\_b} được ép về $0$ để bảo toàn giá trị mẫu trung tâm $x[n-15]$.
+    \item \textbf{Dòng 101--106:} Bộ nhân tổ hợp $17\text{ bit} \times 16\text{ bit} \to 33\text{ bit}$ sinh tích \texttt{prod}, sau đó mở rộng dấu 7 bit thành 40-bit (\texttt{prod\_ext}). Đường dây \texttt{acc\_final} tính trước giá trị tích lũy mới trong chu kỳ xung nhịp hiện tại.
+    \item \textbf{Dòng 108--113:} Mạch tổ hợp làm tròn bán phần (\texttt{+ 40'sd16384}) kết hợp dịch phải số học 15 bit và khâu bão hòa chống tràn về khoảng $[-32768, 32767]$.
+    \item \textbf{Dòng 117--126:} Nhánh reset bất đồng bộ tích cực mức thấp: xóa toàn bộ 31 thanh ghi dịch, thanh ghi tích lũy và các cờ điều khiển về trạng thái 0 an toàn.
+    \item \textbf{Dòng 127--144:} Nhánh xử lý chế độ \texttt{bypass}: mạch hoạt động như một tầng đệm đường ống (pipeline stage) 1 chu kỳ. Khi có giao dịch ngõ vào, dữ liệu \texttt{sink\_data} được chốt thẳng sang \texttt{out\_data\_reg} mà không qua tính toán FIR, thông lượng đạt tối đa 1 từ/chu kỳ.
+    \item \textbf{Dòng 145--192:} Máy trạng thái xử lý lọc FIR gấp thời gian:
+    \begin{itemize}
+        \item Tại \texttt{S\_IDLE}: Khi có mẫu mới (\texttt{s\_handshake} = 1), mẫu mới được nạp vào đầu mảng dịch, toàn bộ 30 mẫu cũ dịch sang phải 1 vị trí. FSM nhảy sang \texttt{S\_CALC}, khởi tạo \texttt{step = 0} và xóa \texttt{acc} về 0.
+        \item Tại \texttt{S\_CALC}: Bộ đếm \texttt{step} tăng từ 0 đến 15. Bộ tích lũy \texttt{acc} cộng dồn từng tích số. Đến bước 15, giá trị \texttt{sat\_out} được chốt vào thanh ghi ngõ ra \texttt{out\_data\_reg} và cờ \texttt{out\_valid\_reg} bật lên 1. Nếu hạ nguồn đang sẵn sàng (\texttt{source\_ready} = 1), FSM quay ngay về \texttt{S\_IDLE}; nếu hạ nguồn đang bận, FSM chuyển sang \texttt{S\_WAIT\_OUT}.
+        \item Tại \texttt{S\_WAIT\_OUT}: Mạch đóng băng ngõ vào (\texttt{sink\_ready} = 0) và giữ nguyên mẫu đầu ra cho đến khi hạ nguồn tiếp nhận thành công.
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{Bảng đối chiếu song sinh: Mã Python Twin so với mã phần cứng Verilog}
+Để khẳng định tính tương đương toán học và chu kỳ tuyệt đối giữa mô hình phần mềm và phần cứng, Bảng~\ref{tab:ch03_twin_vs_hdl} đối chiếu chi tiết từng khối lệnh trong tệp mô hình song sinh \texttt{verify\_v3/ch03\_fir\_twin.py} với mã nguồn phần cứng tương ứng:
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Đối chiếu trực tiếp giữa các dòng lệnh của Python Twin và mã nguồn phần cứng Verilog}
+\label{tab:ch03_twin_vs_hdl}
+\begin{tabularx}{\textwidth}{ccX}
+\toprule
+Dòng Twin (\texttt{ch03\_fir\_twin.py}) & Dòng HDL (\texttt{ch03\_fir\_filter.v}) & Ý nghĩa kỹ thuật tương đương \\
+\midrule
+Dòng 30--38 & Dòng 117--126 & Thiết lập trạng thái ban đầu khi reset tích cực (\texttt{rst\_n} = 0) \\
+Dòng 41--47 & Dòng 66--67 & Logic tổ hợp xác định cờ sẵn sàng \texttt{sink\_ready} theo chuẩn \texttt{readyLatency}=0 \\
+Dòng 50--51 & Dòng 62--63 & Đánh giá điều kiện hoàn tất bắt tay \texttt{s\_handshake} và \texttt{m\_handshake} \\
+Dòng 54--66 & Dòng 127--143 & Xử lý chế độ chuyển mạch \texttt{bypass} với độ trễ chốt 1 chu kỳ \\
+Dòng 68--75 & Dòng 147--161 & Trạng thái \texttt{S\_IDLE}: chốt mẫu vào mảng dịch và chuyển sang \texttt{S\_CALC} \\
+Dòng 80--82 & Dòng 96--100 & Rút cặp mẫu đối xứng và thực hiện phép tiền cộng 17-bit \\
+Dòng 83--85 & Dòng 101--106 & Nhân hệ số Q1.15 sinh tích 33-bit và cộng dồn vào bộ tích lũy 40-bit \\
+Dòng 87--95 & Dòng 168--178 & Bước 15: hoàn tất tính toán, làm tròn $+16384$, bão hòa và bật cờ ngõ ra \\
+Dòng 96--98 & Dòng 183--188 & Trạng thái \texttt{S\_WAIT\_OUT}: giữ ngõ ra khi gặp phản áp hạ nguồn \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Vì sao khối HDL khớp hoàn toàn với khối IP của Intel?}
+Khi đặt bản thiết kế HDL tự viết cạnh khối IP FIR Compiler II được cấu hình ở mục 3.3, hai thiết kế khớp nhau hoàn toàn về mặt số học và giao tiếp:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Cơ chế tiền cộng Pre-adder:} Biểu thức \texttt{pre\_add = \$signed(tap\_a) + \$signed(tap\_b)} ở dòng 99 khớp chính xác với phần cứng Pre-adder mà tùy chọn \texttt{Symmetry = Symmetrical} kích hoạt trong khối IP. Cả hai đều triệt tiêu được 15 phép nhân số học.
+    \item \textbf{Cơ chế làm tròn bán phần:} Phép toán \texttt{(acc\_final + 40'sd16384) >>> 15} ở dòng 109 tái hiện chính xác chế độ \texttt{Output LSB Rounding = Nearest/Convergent} của khối IP, bảo toàn tính đối xứng của đáp ứng xung và không tạo ra điện áp trôi DC.
+    \item \textbf{Khâu bão hòa biên độ:} Mạch kiểm tra vượt ngưỡng $[-32768, 32767]$ ở dòng 110--112 khớp hoàn toàn với tùy chọn \texttt{Output MSB Rounding = Saturation} của IP, ngăn chặn tuyệt đối hiện tượng cuộn bit âm khi tín hiệu đạt đỉnh.
+    \item \textbf{Giao thức bắt tay Avalon-ST:} Khối HDL hỗ trợ đầy đủ cơ chế phản áp tổ hợp (tín hiệu \texttt{sink\_ready} sẵn sàng khi ngõ ra rỗng hoặc hạ nguồn bật \texttt{source\_ready = 1}) ở chuẩn \texttt{readyLatency = 0}, tương thích 100\% với giao thức streaming chuẩn của Intel.
+\end{enumerate}
+
+\subsubsection*{Đổi lựa chọn thì sao: Đánh đổi giữa các kiến trúc FIR khác nhau}
+Nếu thay đổi yêu cầu thiết kế sang một bài toán khác, việc điều chỉnh kiến trúc HDL sẽ tác động ra sao đến các chỉ số hiệu năng?
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Chuyển sang kiến trúc song song trực tiếp (Fully Parallel FIR):} Nếu bài toán đòi hỏi xử lý dòng âm thanh tốc độ cao (ví dụ xử lý đa kênh hoặc siêu âm 50 MSPS), ta có thể bố trí 16 bộ nhân DSP và một cây cộng 4 tầng thanh ghi. Khi đó, thông lượng tăng vọt lên 1 mẫu/chu kỳ (tăng 17 lần), độ trễ đường ống cố định khoảng 4 chu kỳ. Đổi lại, tài nguyên DSP tiêu tốn tăng từ 1 khối lên 16 khối DSP (chiếm $14{,}3\%$ tổng số DSP của chip Cyclone V).
+    \item \textbf{Chuyển sang kiến trúc chuyển vị (Transposed Form):} Cấu trúc chuyển vị đặt các thanh ghi trễ nằm xen kẽ giữa các bộ cộng ngõ ra. Ưu điểm của kiến trúc này là không cần cây cộng lớn ở ngõ ra, giúp đẩy tần số cực đại $F_{\max}$ lên rất cao ($> 200\text{ MHz}$). Tuy nhiên, cấu trúc chuyển vị không thể tận dụng được bộ tiền cộng Pre-adder đối xứng, do đó bắt buộc phải sử dụng đủ 31 bộ nhân, làm tăng gấp đôi chi phí phần cứng.
+\end{itemize}
+
+Đối với bài toán ước lượng $F_0$ với tần số lấy mẫu 16 kHz, kiến trúc gấp thời gian 1 DSP với bộ tiền cộng đối xứng mà chúng tôi hiện thực hóa là giải pháp tối ưu nhất xét trên mọi phương diện: diện tích silicon, độ trễ và thông lượng.
+
+\textit{Tóm lại: Khối HDL folded FIR dùng đúng 1 DSP và bộ tiền cộng 17 bit để tính 31 tap trong 16 chu kỳ; bộ tích lũy 40 bit kết hợp làm tròn bán phần (+16384) và bão hòa đảm bảo khớp từng bit với cấu hình IP chuẩn.}
+
+
 
