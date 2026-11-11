@@ -15,15 +15,14 @@
     % =========================================================================
     % PHƯƠNG ÁN 1: BỘ CHIA TỔ HỢP THUẦN (x = 2.3)
     % =========================================================================
-    \node[warnbox, minimum width=4.6cm, minimum height=4.8cm] (opt1) at (2.3, 0) {};
-    \node[above=2pt, font=\scriptsize, text=red!80!black, align=center] at (opt1.north) 
+    \node[warnbox, minimum width=4.6cm, minimum height=5.2cm] (opt1) at (2.3, 0) {};
+    \node[above=3pt, font=\scriptsize, text=red!80!black, align=center] at (opt1.north)
         {\textbf{(a) Bộ chia tổ hợp thuần}\\[1pt]\textbf{(Combinational Array)}};
 
-    \node[box, fill=white, minimum width=4.1cm] at (2.3, 1.4) {
+    \node[box, fill=white, minimum width=4.1cm] at (2.3, 1.7) {
         \textbf{44 tầng trừ nối tiếp}
     };
-    \node[font=\scriptsize, align=center, text width=4.1cm] at (2.3, -0.5) {
-        $N$ tầng mượn bit lan truyền\\[3pt]
+    \node[font=\scriptsize, align=center, text width=4.1cm, anchor=north] at (2.3, 1.2) {
         Latency: \textbf{0 chu kỳ} (thuần tổ hợp)\\[3pt]
         Chuỗi mượn bit lan truyền dài\\[3pt]
         Nguy cơ vi phạm định thời $50\text{ MHz}$\\[3pt]
@@ -35,14 +34,14 @@
     % =========================================================================
     % PHƯƠNG ÁN 2: BỘ CHIA ĐƯỜNG ỐNG LPM_DIVIDE (x = 7.75)
     % =========================================================================
-    \node[box, minimum width=4.6cm, minimum height=4.8cm] (opt2) at (7.75, 0) {};
-    \node[above=2pt, font=\scriptsize, text=blue!80!black, align=center] at (opt2.north) 
+    \node[box, minimum width=4.6cm, minimum height=5.2cm] (opt2) at (7.75, 0) {};
+    \node[above=3pt, font=\scriptsize, text=blue!80!black, align=center] at (opt2.north)
         {\textbf{(b) LPM\_DIVIDE đường ống}\\[1pt]\textbf{(Intel IP Core)}};
 
-    \node[box, fill=white, minimum width=4.1cm] at (7.75, 1.4) {
+    \node[box, fill=white, minimum width=4.1cm] at (7.75, 1.7) {
         \textbf{44 tầng thanh ghi đường ống}
     };
-    \node[font=\scriptsize, align=center, text width=4.1cm] at (7.75, -0.5) {
+    \node[font=\scriptsize, align=center, text width=4.1cm, anchor=north] at (7.75, 1.2) {
         Mỗi nhịp tính 1 bit thương số\\[3pt]
         Latency: \textbf{44 chu kỳ} (UG-01069)\\[3pt]
         Thông lượng: \textbf{1 phép chia / chu kỳ}\\[3pt]
@@ -54,14 +53,14 @@
     % =========================================================================
     % PHƯƠNG ÁN 3: BỘ CHIA TUẦN TỰ RADIX-2 (x = 13.2)
     % =========================================================================
-    \node[optbox, minimum width=4.6cm, minimum height=4.8cm] (opt3) at (13.2, 0) {};
-    \node[above=2pt, font=\scriptsize, text=green!50!black, align=center] at (opt3.north) 
+    \node[optbox, minimum width=4.6cm, minimum height=5.2cm] (opt3) at (13.2, 0) {};
+    \node[above=3pt, font=\scriptsize, text=green!50!black, align=center] at (opt3.north)
         {\textbf{(c) Bộ chia tuần tự Radix-2}\\[1pt]\textbf{(Lựa chọn chốt)}};
 
-    \node[box, fill=white, minimum width=4.1cm] at (13.2, 1.4) {
+    \node[box, fill=white, minimum width=4.1cm] at (13.2, 1.7) {
         \textbf{1 bộ trừ 44 bit + Dịch vòng}
     };
-    \node[font=\scriptsize, align=center, text width=4.1cm] at (13.2, -0.5) {
+    \node[font=\scriptsize, align=center, text width=4.1cm, anchor=north] at (13.2, 1.2) {
         Vòng lặp tuần tự $44\text{ nhịp}$\\[3pt]
         Latency: \textbf{45 chu kỳ} (1 nạp + 44 tính)\\[3pt]
         Thông lượng: 1 chia / 46 chu kỳ\\[3pt]
@@ -71,7 +70,7 @@
     };
 
     % Khung ghi chú phía dưới
-    \node[draw=gray!60, fill=gray!5, rounded corners=2pt, font=\scriptsize, align=center, text width=15.0cm, inner sep=5pt] at (7.75, -3.3) {
+    \node[draw=gray!60, fill=gray!5, rounded corners=2pt, font=\scriptsize, align=center, text width=15.0cm, inner sep=5pt] at (7.75, -3.4) {
         \textbf{Đánh giá thiết kế:} Với tốc độ khung $10\text{ ms}$ (hop 160 mẫu = 500.000 chu kỳ ở 50 MHz), lõi FPGA chỉ thực hiện đúng \textbf{1 phép chia duy nhất} mỗi khung.\\
         Phương án (c) tiết kiệm diện tích logic ALM so với bộ chia đường ống (b) trong khi đáp ứng tốt ngân sách thời gian thực.
     };
