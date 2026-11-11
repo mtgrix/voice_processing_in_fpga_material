@@ -516,3 +516,79 @@ Thiết kế này chọn độ rộng ngõ ra của module MAC là \textbf{48-bi
 \end{enumerate}
 
 \textit{Tóm lại: Toán hạng $17\text{-bit}$ sinh ra tích số $34\text{-bit}$; tổng của tối đa $638\text{ tích}$ đòi hỏi cận trên toán học đúng $43\text{-bit}$ có dấu. Bộ tích lũy cứng trong silicon DSP Cyclone V rộng tới $64\text{ bit}$, do đó việc chọn $48\text{-bit}$ vừa bảo đảm chống tràn tuyệt đối, vừa tiêu tốn 0 ALM và tối ưu cho giao tiếp bus.}
+
+
+\subsection*{7.5. Kiến trúc bộ nhớ RAM đệm khung hai cổng đọc}
+\addcontentsline{toc}{subsection}{7.5. Kiến trúc bộ nhớ RAM đệm khung hai cổng đọc}
+
+\subsubsection*{Vấn đề thực tế: Nút thắt cổ chai băng thông khi chỉ có một cổng đọc}
+Bộ nhân $17 \times 17\text{-bit}$ bên trong khối DSP có khả năng hoàn thành một phép nhân trong đúng một chu kỳ xung nhịp $20\text{ ns}$. Nhưng để duy trì được thông lượng tối đa $1\text{ MAC/chu kỳ}$, bộ nhân đòi hỏi phải được "nuôi dưỡng" liên tục: tại mỗi cạnh xung nhịp, hệ thống phải cung cấp đồng thời cả hai mẫu dữ liệu $x_w[n]$ và $x_w[n+\tau]$.
+
+Điều gì sẽ xảy ra nếu người thiết kế tiết kiệm tài nguyên bằng cách sử dụng bộ nhớ RAM một cổng đọc (Single-Port RAM)?
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại chu kỳ 1: Bộ nhớ chỉ có thể đọc ra mẫu thứ nhất $x_w[n]$. Bộ nhân phải tạm dừng chờ đợi.
+    \item Tại chu kỳ 2: Bộ nhớ mới đọc tiếp được mẫu thứ hai $x_w[n+\tau]$. Lúc này bộ nhân mới có đủ hai toán hạng để thực hiện phép nhân.
+\end{itemize}
+Hậu quả là thông lượng của hệ thống bị cắt giảm một nửa (chỉ còn $0{,}5\text{ MAC/chu kỳ}$). Tổng số chu kỳ để tính toán $98.540\text{ phép MAC}$ sẽ bị nhân đôi lên tới $2 \times 98.540 = 197.080\text{ chu kỳ}$. Khối DSP bị bỏ đói tới $50\%$ thời gian. Để đạt được tốc độ $1\text{ MAC/chu kỳ}$ liên tục không ngắt quãng, cấu trúc bộ nhớ bắt buộc phải có \textbf{hai cổng đọc đồng thời độc lập} (Dual-Port RAM).
+
+\subsubsection*{Phân tích hình học silicon của khối nhớ nhúng M10K}
+Tại sao bộ đệm khung $x_w$ dài $638\text{ mẫu}$, mỗi mẫu $17\text{-bit}$, lại tiêu tốn chính xác \textbf{2 khối M10K}? Hãy cùng kiểm tra bảng thông số vật lý của chip Cyclone V:
+
+Theo tài liệu *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 3: "Embedded Memory Blocks in Cyclone V Devices", Bảng 3-1: "M10K Embedded Memory Block Configurations"), mỗi khối nhớ nhúng M10K có dung lượng danh định cố định là:
+\begin{equation}
+C_{\text{M10K}} = 10.240\text{ bit}
+\end{equation}
+
+Khối M10K hỗ trợ các cấu hình tổ chức từ nhớ (độ sâu $\times$ độ rộng) như sau:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item $512 \times 20\text{ bit}$ (hoặc $512 \times 16\text{ bit}$)
+    \item $1.024 \times 10\text{ bit}$ (hoặc $1.024 \times 8\text{ bit}$)
+    \item $2.048 \times 5\text{ bit}$ (hoặc $2.048 \times 4\text{ bit}$)
+    \item $4.096 \times 2\text{ bit}$
+    \item $8.192 \times 1\text{ bit}$
+\end{itemize}
+
+Tổng dung lượng bit thuần túy của một khung $638\text{ mẫu} \times 17\text{-bit}$ là:
+\begin{equation}
+C_{\text{frame}} = 638 \times 17 = \mathbf{10.846\text{ bit}}
+\end{equation}
+So sánh hai con số:
+\begin{equation}
+C_{\text{frame}} = 10.846\text{ bit} > C_{\text{M10K}} = 10.240\text{ bit}
+\end{equation}
+Dung lượng khung lớn hơn dung lượng của một khối M10K đúng $606\text{ bit}$. Do đó, ngay từ mặt dung lượng thuần túy, \textbf{1 khối M10K đơn lẻ không thể nào chứa nổi khung 638 mẫu}!
+
+Hơn thế nữa, xét về mặt hình học địa chỉ: Chiều dài khung $N = 638\text{ từ}$ vượt quá độ sâu cực đại của cấu hình 20-bit ($512\text{ từ}$):
+\begin{equation}
+N = 638 > 512
+\end{equation}
+Cấu hình có độ sâu nhỏ nhất lớn hơn $638$ trên M10K là cấu hình độ sâu $1.024\text{ từ}$. Nhưng ở độ sâu $1.024$, mỗi khối M10K chỉ cung cấp độ rộng tối đa là \textbf{10 bit} ($1.024 \times 10\text{ bit}$).
+
+Để đạt được độ rộng bắt buộc $17\text{ bit}$, trình biên dịch Quartus Fitter buộc phải ghép song song \textbf{2 khối M10K}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khối M10K thứ nhất:} Cấu hình $1.024 \times 10\text{ bit}$, lưu trữ 10 bit trọng số thấp của mẫu âm thanh ($x_w[9:0]$).
+    \item \textbf{Khối M10K thứ hai:} Cấu hình $1.024 \times 10\text{ bit}$ (hoặc $1.024 \times 7\text{ bit}$ thực tế sử dụng), lưu trữ 7 bit trọng số cao ($x_w[16:10]$).
+\end{itemize}
+Hai khối M10K này dùng chung đường địa chỉ đọc và tạo thành một bộ nhớ hợp nhất có dung lượng $1.024 \times 20\text{ bit}$, sử dụng $638 \times 17\text{ bit}$. Tổng tài nguyên RAM nhúng tiêu tốn là chính xác \textbf{2 khối M10K}.
+
+\subsubsection*{Cấu hình cổng và độ trễ đọc của True Dual-Port RAM}
+Căn cứ theo tài liệu *Embedded Memory (RAM: 1-PORT, RAM: 2-PORT, ROM: 1-PORT, and ROM: 2-PORT) User Guide* (UG-01068), module bộ nhớ \texttt{ch07\_xw\_ram.v} được cấu hình ở chế độ \textbf{True Dual-Port RAM} (RAM hai cổng thực thụ với hai cổng đọc/ghi độc lập A và B):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cổng A (Port A):}
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item Trong pha nạp khung (từ khối Hanning ở Chương 6): Đóng vai trò cổng ghi, nhận tín hiệu ghi \texttt{we\_a = 1}, địa chỉ nạp \texttt{addr\_a} từ $0$ đến $637$ và dữ liệu \texttt{din\_a}.
+        \item Trong pha tính MAC: Đóng vai trò cổng đọc dữ liệu mẫu hiện tại, \texttt{we\_a = 0}, nhận địa chỉ quét $n$ (\texttt{addr\_a}) và xuất ra mẫu $x_w[n]$ (\texttt{dout\_a}).
+    \end{itemize}
+    \item \textbf{Cổng B (Port B):}
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item Đóng vai trò cổng đọc chuyên dụng cho mẫu dịch trễ: \texttt{we\_b = 0}, nhận địa chỉ quét $n+\tau$ (\texttt{addr\_b}) và xuất ra mẫu $x_w[n+\tau]$ (\texttt{dout\_b}).
+    \end{itemize}
+    \item \textbf{Độ trễ đọc (Read Latency):}
+    Bộ nhớ được cấu hình với tham số \texttt{outdata\_reg\_a = "UNREGISTERED"} và \texttt{outdata\_reg\_b = "UNREGISTERED"}. Điều này có nghĩa là cổng địa chỉ được chốt đồng bộ bằng thanh ghi ngõ vào tại cạnh dương xung nhịp \texttt{clk}, trong khi ngõ ra của ô nhớ được đưa thẳng ra dây tổ hợp. Kết quả đọc xuất hiện ở \texttt{dout\_a} và \texttt{dout\_b} sau đúng \textbf{1 chu kỳ xung nhịp}.
+    \item \textbf{Chế độ đọc khi ghi (Read-During-Write):}
+    Được đặt là \texttt{DONT\_CARE} (hoặc \texttt{OLD\_DATA}). Do kiến trúc hệ thống phân tách rạch ròi hai pha: nạp đủ 638 mẫu vào RAM rồi mới bắt đầu kích hoạt cờ \texttt{start} để tính MAC, hoàn toàn không có xung đột đọc-ghi đồng thời trên cùng một địa chỉ ô nhớ.
+\end{itemize}
+
+Nhờ kiến trúc hai cổng đọc độc lập này, bộ phát địa chỉ FSM có thể liên tục đẩy $98.540\text{ cặp địa chỉ}$ $(n, n+\tau)$ vào RAM qua từng nhịp, và RAM trả ra đều đặn 2 mẫu mỗi nhịp sau 1 chu kỳ trễ, nuôi bộ MAC chạy hết công suất $100\%$.
+
+\textit{Tóm lại: Khung $638 \times 17\text{-bit}$ ($10.846\text{ bit}$) vượt quá dung lượng $10.240\text{ bit}$ và độ sâu 512 từ của một M10K, bắt buộc phải ghép 2 khối M10K ở cấu hình $1024 \times 10$; cấu trúc True Dual-Port RAM cung cấp độ trễ đọc đúng 1 chu kỳ, cho phép đọc đồng thời hai mẫu $x_w[n]$ và $x_w[n+\tau]$ liên tục mỗi nhịp.}
