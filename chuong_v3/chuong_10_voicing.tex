@@ -170,3 +170,190 @@ Nhiều kỹ sư khi thiết kế hệ thống phát hiện tiếng nói (VAD --
 Một xung đóng mở dây thanh đột ngột (glottal pulse) ở đầu một âm tiết có thể tạo ra một đỉnh biên độ rất sắc nhọn nhưng thời gian tồn tại cực ngắn (chỉ vài mẫu). Nếu tính tổng bình phương $R[0]$ trên toàn bộ cửa sổ 638 mẫu, năng lượng trung bình sẽ bị san phẳng ra toàn khung, khiến tỉ số năng lượng rơi xuống rất thấp và có nguy cơ bị gạt nhầm vào khoảng lặng. Ngược lại, đại lượng $LP = \max |x_w[j]|$ giữ nguyên được biên độ đỉnh thực tế của luồng áp suất âm thanh, giúp bảo toàn tính hữu thanh của các phụ âm bật ngay tại thời điểm thanh môn vừa mở.
 
 \textit{Tóm lại: Praat quyết định vô thanh bằng cách so sánh ứng viên hữu thanh với một ứng viên vô thanh đối trọng mang độ mạnh $R_{\text{unvoiced}}(I) = 0{,}45 + \max(0, 2 - I \cdot 145/3)$; đường ngưỡng này tự động dâng lên trên $1{,}0$ để biến mọi khung có $I < 0{,}03$ thành vô thanh, triệt tiêu hoàn toàn tiếng ù và tạp âm khoảng lặng.}
+
+% ============================================================================
+% 10.2. HAI DẠNG PHẦN CỨNG
+% ============================================================================
+\subsection*{10.2. Hai dạng phần cứng: Dạng năng lượng bị loại bỏ và bất đẳng thức nhân chéo số nguyên 54-bit}
+\addcontentsline{toc}{subsection}{10.2. Hai dạng phần cứng: Dạng năng lượng bị loại bỏ và bất đẳng thức nhân chéo số nguyên 54-bit}
+
+\subsubsection*{Vấn đề thực tế: Bài toán chia dấu phẩy động trong quyết định ngưỡng}
+Khi nhìn vào công thức ngưỡng của Praat:
+\begin{equation*}
+    \frac{S_c}{R_{0n}} > 0{,}45 + \max\left(0,\, 2 - \frac{LP}{GP} \cdot \frac{145}{3}\right)
+\end{equation*}
+một lập trình viên phần mềm trên máy tính x86 có thể thực hiện nó trong vài nano giây bằng các lệnh FPU thông thường. Nhưng trên chip FPGA Cyclone V, việc hiện thực hóa công thức này theo nguyên bản dấu phẩy động là một thảm họa về chi phí phần cứng.
+Để tính $I = LP / GP$, ta cần một bộ chia dấu phẩy động 32-bit (Single Precision Floating Point Divider). Để tính $\text{strength} = S_c / R_{0n}$, ta cần thêm một bộ chia dấu phẩy động thứ hai. Sau đó là các bộ nhân, bộ trừ và bộ so sánh dấu phẩy động theo chuẩn IEEE-754.
+Hai bộ chia dấu phẩy động pipelined của thư viện Altera FPGA sẽ tiêu tốn hàng nghìn ALM, sinh ra độ trễ từ 15 đến 30 chu kỳ, và biến một phép so sánh ngưỡng đơn giản thành một khối mạch cồng kềnh, tiêu hao tài nguyên logic quý giá vốn cần dành cho bộ tính $F_0$ và bộ nhớ M10K.
+
+Câu hỏi cốt tử của người thiết kế phần cứng là: \emph{Có thể biến toàn bộ biểu thức trên thành các phép toán số nguyên thuần túy, không cần bất kỳ bộ chia nào, mà vẫn bảo đảm chính xác từng bit so với Praat hay không?}
+
+\subsubsection*{Dạng phần cứng thứ nhất (Golden v1) và vì sao bị loại bỏ}
+Trong giai đoạn đầu của dự án (phiên bản golden v1), nhóm nghiên cứu đã cố gắng tránh phép chia bằng cách đưa ra một mô hình ngưỡng năng lượng đơn giản hóa:
+\begin{itemize}
+    \item Điều kiện hữu thanh: $S_c \cdot 100 \ge 45 \cdot R_0$.
+    \item Điều kiện lọc khoảng lặng: $R_0 \cdot 10000 < 9 \cdot E_{\text{ref}}$, với $E_{\text{ref}} = \max_{\text{file}} R_0$ là năng lượng khung cực đại trên toàn bộ tệp âm thanh.
+\end{itemize}
+Mặc dù công thức này chỉ dùng phép nhân số nguyên, nó đã bộc lộ bốn khiếm khuyết chết người khiến nó bị loại bỏ hoàn toàn trong bản đặc tả chuẩn (golden v2):
+\begin{enumerate}
+    \item \textbf{Phá vỡ tính trực tiếp (Streaming) của luồng phần cứng:} Để có được giá trị $E_{\text{ref}} = \max R_0$ của cả tệp, FPGA bắt buộc phải quét qua toàn bộ tệp âm thanh một lượt trước để tính và lưu trữ $R_0$ của từng khung, tìm cực đại $E_{\text{ref}}$, rồi mới có thể quay lại từ đầu để quyết định vô thanh / hữu thanh! Điều này đòi hỏi hoặc phải có một bộ đệm SDRAM khổng lồ bên ngoài để lưu toàn bộ tệp, hoặc phải truyền dữ liệu âm thanh qua cầu HPS--FPGA hai lần liên tiếp. Kiến trúc đường ống thời gian thực bị phá vỡ hoàn toàn.
+    \item \textbf{Lệch pha bản chất vật lý giữa năng lượng và biên độ:} Đại lượng $E_{\text{ref}}$ là tổng bình phương $x^2$, trong khi Praat dùng biên độ đỉnh tuyệt đối $|x|$. Tỉ số $9 / 10000 = 0{,}0009 = (0{,}03)^2$ làm bình phương bậc hai sự suy giảm của tín hiệu. Trong các đoạn âm thanh có dải động lớn (ví dụ có tiếng hét to xen lẫn tiếng thì thầm), $E_{\text{ref}}$ bị đẩy lên rất cao bởi tiếng hét, khiến ngưỡng $0{,}0009 \cdot E_{\text{ref}}$ vô tình cắt đứt toàn bộ các đoạn thì thầm hoặc phụ âm nhẹ vốn có biên độ vừa phải.
+    \item \textbf{Cắt bỏ hoàn toàn vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$:} Golden v1 áp dụng một ngưỡng cắt cứng bậc thang ($R_0 \ge 0{,}0009 \cdot E_{\text{ref}}$). Hệ quả là tại các khung âm thanh mấp mé ngưỡng, trạng thái vô thanh / hữu thanh bị giật cục, tạo ra hiện tượng nhảy tần số giả giữa các khung kề nhau, làm sai lệch kết quả lọc trung vị Median-3 ở Chương 11.
+    \item \textbf{Sai quy tắc hòa điểm (Tie-breaking):} Golden v1 sử dụng dấu $\ge$ ($S_c \cdot 100 \ge 45 \cdot R_0$). Nhưng trong thuật toán Praat 7.0.03, ứng viên vô thanh đứng đầu danh sách ứng viên (vị trí 1). Khi hai ứng viên có độ mạnh bằng nhau tuyệt đối, thuật toán tìm đường tối ưu Viterbi luôn ưu tiên ứng viên có chỉ số nhỏ hơn đứng trước, nghĩa là \emph{vô thanh thắng khi hòa điểm}. Do đó, điều kiện hữu thanh bắt buộc phải là dấu lớn hơn chặt ($>$).
+\end{enumerate}
+
+\subsubsection*{Dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit (Golden v2)}
+Để khắc phục triệt để các nhược điểm trên mà không cần dùng bộ chia dấu phẩy động, giải pháp chốt của ta là thực hiện \textbf{nhân chéo mẫu số quy đồng} toàn bộ biểu thức quyết định của Praat.
+
+Xuất phát từ điều kiện hữu thanh của Praat trong chế độ so sánh đơn khung (tương ứng với cấu hình R2 không chi phí chuyển trạng thái trong Viterbi): độ mạnh của ứng viên hữu thanh tốt nhất phải lớn hơn chặt độ mạnh của ứng viên vô thanh:
+\begin{equation}
+    \frac{S_c}{R_{0n}} > 0{,}45 + \max\left(0,\, 2 - \frac{145 \cdot LP}{3 \cdot GP}\right)
+\end{equation}
+Chuyển hằng số $0{,}45 = 45 / 100$ sang vế trái:
+\begin{equation}
+    \frac{S_c}{R_{0n}} - \frac{45}{100} > \max\left(0,\, 2 - \frac{145 \cdot LP}{3 \cdot GP}\right)
+\end{equation}
+Quy đồng mẫu số ở vế trái với mẫu số chung là $100 \cdot R_{0n}$:
+\begin{equation}
+    \frac{100 \cdot S_c - 45 \cdot R_{0n}}{100 \cdot R_{0n}} > \max\left(0,\, \frac{6 \cdot GP - 145 \cdot LP}{3 \cdot GP}\right)
+\end{equation}
+Lưu ý rằng ở vế phải, số 2 được quy đồng vào phân thức thành $\frac{6 \cdot GP}{3 \cdot GP}$. Do $GP > 0$ và mẫu số $3 \cdot GP > 0$, phép lấy cực đại với 0 có thể đưa trực tiếp tử số vào trong:
+\begin{equation}
+    \max\left(0,\, \frac{6 \cdot GP - 145 \cdot LP}{3 \cdot GP}\right) = \frac{\max(0,\, 6 \cdot GP - 145 \cdot LP)}{3 \cdot GP}
+\end{equation}
+Bất đẳng thức trở thành:
+\begin{equation}
+    \frac{100 \cdot S_c - 45 \cdot R_{0n}}{100 \cdot R_{0n}} > \frac{\max(0,\, 6 \cdot GP - 145 \cdot LP)}{3 \cdot GP}
+\end{equation}
+Nhận thấy mẫu số của vế trái là $100 \cdot R_{0n}$ (luôn dương khi khung có năng lượng $R_{0n} > 0$) và mẫu số của vế phải là $3 \cdot GP$ (luôn dương khi tệp không rỗng $GP > 0$). Mẫu số chung của cả hai vế là một số dương:
+\begin{equation}
+    M_{\text{chung}} = 300 \cdot R_{0n} \cdot GP > 0
+\end{equation}
+Nhân cả hai vế với số dương $M_{\text{chung}}$, chiều bất đẳng thức được bảo toàn nguyên vẹn:
+\begin{equation}
+    \mathbf{(100 \cdot S_c - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0,\, 6 \cdot GP - 145 \cdot LP)}
+    \label{eq:ch10_cross_mult_inequality}
+\end{equation}
+
+Đây chính là \textbf{bất đẳng thức nhân chéo chuẩn tắc} của Chương 10. Toàn bộ các đại lượng tham gia phép tính đều là số nguyên:
+\begin{itemize}
+    \item Vế trái: $\text{LHS} = (100 \cdot S_c - 45 \cdot R_{0n}) \cdot (3 \cdot GP)$.
+    \item Vế phải: $\text{RHS} = (100 \cdot R_{0n}) \cdot \max(0,\, 6 \cdot GP - 145 \cdot LP)$.
+    \item Điều kiện hữu thanh: $\text{LHS} > \text{RHS}$.
+\end{itemize}
+Phép so sánh này hoàn toàn không chứa bất kỳ phép chia nào, không có số thực dấu phẩy động, nhưng cho kết quả quyết định vô thanh / hữu thanh \emph{trùng khớp từng bit 100\%} với thuật toán Praat!
+
+\subsubsection*{Phân tích độ rộng bit và chứng minh không tràn số trên định dạng 54-bit}
+Để thiết kế thanh ghi phần cứng và bộ so sánh trong Verilog, ta phải phân tích dải động cực đại của từng số hạng nhằm chứng minh mạch không bao giờ bị tràn số.
+
+Dựa trên các tham số thiết kế đã chốt từ Chương 6 đến Chương 9:
+\begin{itemize}
+    \item Điểm tương quan chuẩn hóa $S_c$: $S_c < 2^{27}$ (số nguyên có dấu 28-bit).
+    \item Năng lượng chuẩn hóa $R_{0n}$: $0 \le R_{0n} < 2^{27}$ (số nguyên không dấu 27-bit).
+    \item Đỉnh toàn cục $GP$: lấy từ tín hiệu 16-bit nguyên, $0 \le GP \le 32.768$ (số nguyên 16-bit).
+    \item Đỉnh cục bộ $LP$: biên độ cực đại thực tế đo được trên khung stress (Chương 6) là $|x_w| \le 59.379 < 2^{16}$ (số nguyên 16-bit).
+\end{itemize}
+
+Bây giờ ta chặn trên từng vế (kịch bản cực trị tồi nhất):
+\begin{enumerate}
+    \item \textbf{Đánh giá Vế trái (LHS):}
+    \begin{align}
+        \text{term}_1 &= 100 \cdot S_c - 45 \cdot R_{0n} \\
+        \text{term}_{1,\max} &\le 100 \cdot (2^{27} - 1) = 13.421.772.700 < 2^{34} \approx 17{,}18 \times 10^9 \\
+        \text{term}_{1,\min} &\ge -45 \cdot (2^{27} - 1) = -6.039.797.715 > -2^{33} \approx -8{,}59 \times 10^9 \\
+        3 \cdot GP &\le 3 \cdot 32.768 = 98.304 < 2^{17} = 131.072
+    \end{align}
+    Nhân hai thừa số lại với nhau:
+    \begin{align}
+        \text{LHS}_{\max} &\le 13.421.772.700 \times 98.304 = 1.319.413.943.500.800 \approx 1{,}319 \times 10^{15} < 2^{51} \\
+        |\text{LHS}_{\min}| &\le 6.039.797.715 \times 98.304 = 593.736.274.575.360 \approx 5{,}937 \times 10^{14} < 2^{50}
+    \end{align}
+    Vì $2^{51} \approx 2{,}252 \times 10^{15} < 2^{52}$, giá trị của LHS luôn nằm gọn trong phạm vi của số nguyên có dấu 52-bit.
+
+    \item \textbf{Đánh giá Vế phải (RHS):}
+    \begin{align}
+        \text{ramp} &= \max(0,\, 6 \cdot GP - 145 \cdot LP) \\
+        \text{ramp}_{\max} &\le 6 \cdot GP_{\max} = 6 \cdot 32.768 = 196.608 < 2^{18} \\
+        100 \cdot R_{0n} &\le 100 \cdot (2^{27} - 1) = 13.421.772.700 < 2^{34}
+    \end{align}
+    Nhân hai thừa số:
+    \begin{equation}
+        \text{RHS}_{\max} \le 13.421.772.700 \times 196.608 = 2.638.827.887.001.600 \approx 2{,}639 \times 10^{15} < 2^{52}
+    \end{equation}
+    Vì $2^{52} \approx 4{,}504 \times 10^{15} < 2^{53} \approx 9{,}007 \times 10^{15}$, giá trị của RHS luôn bị chặn trên bởi $2^{52}$.
+\end{enumerate}
+
+Khoảng giá trị biểu diễn của số nguyên có dấu 54-bit (\texttt{signed [53:0]}) trong phần cứng là:
+\begin{equation}
+    [-2^{53},\, 2^{53} - 1] = [-9.007.199.254.740.992,\, +9.007.199.254.740.991]
+\end{equation}
+So sánh với các cận cực đại:
+\begin{equation*}
+    |\text{LHS}| < 2^{51} < 2^{53}, \qquad \text{RHS} < 2^{52} < 2^{53}
+\end{equation*}
+Cả hai vế đều có biên độ nhỏ hơn một nửa ngưỡng tràn số của định dạng 54-bit.
+\textbf{Kết luận:} Việc sử dụng định dạng số nguyên có dấu 54-bit (\texttt{signed [53:0]}) bảo đảm an toàn toán học tuyệt đối 100\%, không bao giờ xảy ra tràn số trong bất kỳ kịch bản âm thanh thực tế hay nhân tạo nào.
+
+\subsubsection*{Bẫy im lặng và điều kiện tiên quyết bắt buộc}
+Có một cạm bẫy toán học cực kỳ nguy hiểm trong phép nhân chéo mà mọi kỹ sư FPGA phải lưu tâm: \emph{điều gì xảy ra nếu mẫu số bị triệt tiêu về 0?}
+
+Hãy xét tình huống một khung im lặng hoàn toàn có năng lượng bằng 0 ($R_{0n} = 0$).
+Nếu mạch phần cứng bỏ qua kiểm tra điều kiện này và đưa trực tiếp vào phương trình nhân chéo \eqref{eq:ch10_cross_mult_inequality}:
+\begin{align*}
+    \text{LHS} &= (100 \cdot S_c - 45 \cdot 0) \cdot 3 \cdot GP = 300 \cdot S_c \cdot GP \\
+    \text{RHS} &= 100 \cdot 0 \cdot \text{ramp} = 0
+\end{align*}
+Nếu vì một lý do ngẫu nhiên nào đó (hoặc giá trị rác trong thanh ghi) mà $S_c > 0$, ta sẽ có $\text{LHS} > 0$ trong khi $\text{RHS} = 0$. Khi đó mạch so sánh sẽ phán đoán $\text{LHS} > \text{RHS}$ là \textbf{ĐÚNG}, và kết luận khung im lặng $R_{0n}=0$ là \textbf{HỮU THANH}! Đây là một lỗi sai logic cực kỳ tai hại.
+
+Tương tự, nếu tệp âm thanh có $GP = 0$ (im lặng toàn tệp) hoặc khung có $LP = 0$ (mọi mẫu quanh tâm bằng 0), hoặc bộ tìm đỉnh ở Chương 9 không tìm thấy bất kỳ đỉnh nào thỏa mãn $U[\tau] > 0{,}225 \cdot R_{0n}$ (\texttt{cand\_found = 0}), khung đó phải được kết luận là vô thanh ngay lập tức mà không cần quan tâm đến kết quả so sánh nhân chéo.
+
+Vì vậy, ta thiết lập điều kiện cờ bẫy im lặng (\texttt{silence\_trap}):
+\begin{equation}
+    \text{silence\_trap} = (R_{0n} == 0) \lor (LP == 0) \lor (GP == 0) \lor (\neg \text{cand\_found})
+\end{equation}
+Quyết định hữu thanh cuối cùng của khung là sự kết hợp logic chặt chẽ:
+\begin{equation}
+    \mathbf{voiced = (\neg silence\_trap) \land (LHS > RHS)}
+\end{equation}
+
+\subsubsection*{Tính toán thủ công thu nhỏ trên các ca đại diện}
+Bảng \ref{tab:ch10_hand_calc} liệt kê kết quả tính toán chi tiết của 10 trường hợp thử nghiệm điển hình, được trích xuất trực tiếp từ nhật ký kiểm chứng \texttt{verify\_v3/ch10\_math\_audit.log}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng tính tay đối chiếu giữa công thức dấu phẩy động Praat và bất đẳng thức nhân chéo số nguyên 54-bit.}
+\label{tab:ch10_hand_calc}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+\textbf{Tình huống thử nghiệm} & $S_c$ & $R_{0n}$ & $GP$ & $LP$ & $I$ & $R_{\text{unv}}$ & $\text{LHS} - \text{RHS}$ & \textbf{Kết luận} \\
+\midrule
+1. Tiếng nói hữu thanh & $800.000$ & $1.000.000$ & $20.000$ & $2.000$ & $0{,}100$ & $0{,}450$ & $+2{,}10 \times 10^{12}$ & Hữu thanh \\
+2. Tiếng nói vô thanh & $350.000$ & $1.000.000$ & $20.000$ & $2.000$ & $0{,}100$ & $0{,}450$ & $-6{,}00 \times 10^{11}$ & Vô thanh \\
+3. Im lặng ($I < 0{,}03$) & $700.000$ & $1.000.000$ & $20.000$ & $400$ & $0{,}020$ & $1{,}483$ & $-4{,}70 \times 10^{12}$ & Vô thanh \\
+4. Vùng dốc hữu thanh & $700.000$ & $1.000.000$ & $20.000$ & $760$ & $0{,}038$ & $0{,}613$ & $+5{,}20 \times 10^{11}$ & Hữu thanh \\
+5. Vùng dốc vô thanh & $600.000$ & $1.000.000$ & $20.000$ & $700$ & $0{,}035$ & $0{,}758$ & $-9{,}50 \times 10^{11}$ & Vô thanh \\
+6. Sát ngưỡng $0{,}4499$ & $449.900$ & $1.000.000$ & $20.000$ & $2.000$ & $0{,}100$ & $0{,}450$ & $-6{,}00 \times 10^{8}$ & Vô thanh \\
+7. Sát ngưỡng $0{,}4501$ & $450.100$ & $1.000.000$ & $20.000$ & $2.000$ & $0{,}100$ & $0{,}450$ & $+6{,}00 \times 10^{8}$ & Hữu thanh \\
+8. Bẫy im lặng $LP = 0$ & $800.000$ & $1.000.000$ & $20.000$ & $0$ & $0{,}000$ & $2{,}450$ & Cờ chặn $LP=0$ & Vô thanh \\
+9. Bẫy im lặng $GP = 0$ & $800.000$ & $1.000.000$ & $0$ & $2.000$ & $0{,}000$ & $0{,}000$ & Cờ chặn $GP=0$ & Vô thanh \\
+10. Bẫy im lặng $R_0 = 0$ & $800.000$ & $0$ & $20.000$ & $2.000$ & $0{,}100$ & $0{,}450$ & Cờ chặn $R_0=0$ & Vô thanh \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng \ref{tab:ch10_hand_calc} chứng minh sự trùng khớp tuyệt đối giữa hai cách tính:
+Tại ca 1 (tiếng nói hữu thanh), tỉ số tương quan đạt $S_c / R_{0n} = 0{,}80 > 0{,}45$, hiệu số $\text{LHS} - \text{RHS} = +2{,}10 \times 10^{12} > 0$, cả hai phương pháp đều cho kết quả Hữu thanh.
+Tại ca 3 (khoảng lặng), mặc dù tương quan khá cao ($S_c / R_{0n} = 0{,}70$), nhưng vì $I = 0{,}020 < 0{,}03$, ngưỡng vô thanh dâng lên $R_{\text{unv}} = 1{,}483$, vế phải nhân chéo vọt lên $\text{RHS} = 6{,}20 \times 10^{12} > \text{LHS} = 1{,}50 \times 10^{12}$, dập tắt hoàn toàn tín hiệu thành Vô thanh.
+Tại ca 6 và ca 7, khi tỉ số quét sát ngưỡng $0{,}4499$ và $0{,}4501$, hiệu số $\text{LHS} - \text{RHS}$ đổi dấu chính xác từ $-6 \times 10^8$ sang $+6 \times 10^8$, chứng minh độ nhạy phân giải số nguyên cực kỳ sắc nét.
+Tại các ca 8, 9, 10, cờ bẫy im lặng bảo vệ hệ thống không bị ngộ nhận hữu thanh.
+
+\subsubsection*{Kết quả kiểm định trên tập dữ liệu chuẩn golden\_v2}
+Khi chạy mô hình nhân chéo số nguyên trên toàn bộ 277 khung của hai tệp âm thanh chuẩn trong \texttt{golden\_v2}:
+\begin{itemize}
+    \item Tệp sạch \texttt{synth\_glide\_vuv\_16k.wav} ($GP = 22.946$): số khung hữu thanh là $208 / 277$, số khung vô thanh là $69 / 277$. So sánh với kết quả tham chiếu của phần mềm Praat 7.0.03 chế độ R2, số lỗi quyết định vô thanh là \textbf{$\text{VDE} = 0 / 277$ ($0{,}0000\%$)}.
+    \item Tệp có nhiễu \texttt{synth\_glide\_vuv\_16k\_snr5.wav} ($GP = 22.937$, $\text{SNR} = 5\text{ dB}$): số khung hữu thanh là $207 / 277$, số khung vô thanh là $70 / 277$. Số lỗi quyết định vô thanh cũng là \textbf{$\text{VDE} = 0 / 277$ ($0{,}0000\%$)}.
+\end{itemize}
+Toàn bộ 277 khung trên cả hai tệp đều có quyết định trùng khớp 100\% giữa bất đẳng thức nhân chéo số nguyên và thuật toán gốc của Praat (nhật ký \texttt{verify\_v3/ch10\_golden\_audit.log}).
+
+\textit{Tóm lại: Bằng phép nhân chéo với mẫu số chung dương $300 \cdot R_{0n} \cdot GP$, bài toán so sánh ngưỡng vô thanh được chuyển hóa thành bất đẳng thức số nguyên $(100\cdot S_c - 45\cdot R_{0n})\cdot 3\cdot GP > 100\cdot R_{0n}\cdot \max(0, 6\cdot GP - 145\cdot LP)$; định dạng 54-bit có dấu loại bỏ hoàn toàn bộ chia dấu phẩy động mà vẫn triệt tiêu 100\% lỗi VDE so với Praat.}
