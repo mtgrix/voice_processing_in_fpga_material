@@ -86,4 +86,5 @@ Mọi số liệu trong Chương 11 đều được phân loại minh bạch the
 
 ## 5. Lịch sử các Commit Git (BRIEF §12 Item 5)
 
-*(Commit hashes sẽ được cập nhật chính thức sau khi commit hoàn tất).*
+- `0dc9464`: `v3: ch11 median-3 thay cho path finder` (Hoàn thành toàn bộ Chương 11: cơ sở toán học Viterbi, định lý suy biến R2, bản chất phi tuyến Median-3, giản đồ định thời căn khung nhân quả, RTL `ch11_median3.v`, TB `tb_ch11_median3.v`, runner `run_ch11_iverilog.sh`, HPS C `ch11_median3.c`, Makefile target `ch11`, 3 hình vẽ TikZ, 4 bảng biểu, 2 listings, 4 bài tập cuối chương có lời giải chi tiết, biên dịch xelatex 0 lỗi 0 overfull > 10pt).
+- `ef56425`: `v3: ch11 done` (Nghiệm thu toàn bộ Chương 11 và chốt báo cáo nghiệm thu).
