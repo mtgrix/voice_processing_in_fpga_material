@@ -7,8 +7,8 @@
 \begin{learningobj}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Thấu hiểu bản chất toán học và cơ chế vật lý của hàm tự tương quan thời gian thực $R[\tau] = \sum_{n=0}^{N-1-\tau} x_w[n] \cdot x_w[n+\tau]$; dẫn xuất chính xác phép đếm số lượng phép tính nhân-cộng: $\sum_{\tau=26}^{214} (638 - \tau) = 97.902\text{ MAC}$ cho dải quét và $98.540\text{ MAC}$ khi tính kèm $R[0]$.
-    \item Khảo sát mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 79--80, 144--164, 344--345, 401--403); giải mã định lý đệm số $0$ từ $638$ lên $1024\text{ điểm}$ FFT của Paul Boersma và chứng minh bằng giải tích rằng giới hạn không cuộn vòng (no circular wrap-around) đạt tới $\tau \le 386\text{ mẫu}$, bảo đảm tự tương quan vòng qua FFT đồng nhất tuyệt đối với tự tương quan tuyến tính qua MAC trực tiếp (sai số dấu phẩy động $\sim 10^{-16}$).
-    \item Phân tích toàn diện sự đánh đổi giữa thuật toán FFT và kiến trúc MAC trực tiếp trên FPGA; chứng minh rằng với ngân sách $500.000\text{ chu kỳ/khung}$ ($10\text{ ms}$ tại $50\text{ MHz}$), một bộ MAC đơn lẻ trên 1 khối DSP chỉ chiếm $19{,}7\%$ thời gian thực ($\text{RTF} \approx 0{,}197$), loại bỏ hoàn toàn sự phức tạp của bộ đệm ping-pong, bộ quay pha twiddle ROM và mạch quản lý tăng trưởng bit.
+    \item Khảo sát mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 79--80, 144--164, 344--345, 401--403); giải mã định lý đệm số $0$ từ $638$ lên $1024\text{ điểm}$ FFT của Paul Boersma và chứng minh bằng giải tích rằng giới hạn không cuộn vòng (no circular wrap-around) đạt tới $\tau \le 386\text{ mẫu}$, bảo đảm tự tương quan vòng qua FFT đồng nhất với tự tương quan tuyến tính qua MAC trực tiếp (sai số dấu phẩy động $\sim 10^{-16}$).
+    \item Phân tích toàn diện sự đánh đổi giữa thuật toán FFT và kiến trúc MAC trực tiếp trên FPGA; chứng minh rằng với ngân sách $500.000\text{ chu kỳ/khung}$ ($10\text{ ms}$ tại $50\text{ MHz}$), một bộ MAC đơn lẻ trên 1 khối DSP chỉ chiếm $19{,}7\%$ thời gian thực ($\text{RTF} \approx 0{,}197$), tránh được sự phức tạp của bộ đệm ping-pong, bộ quay pha twiddle ROM và mạch quản lý tăng trưởng bit.
     \item Khảo sát sâu sắc ba phương án chốt thanh ghi đường ống trong khối DSP Cyclone V: phân tích sự thật không thể bỏ thanh ghi tích lũy, so sánh giữa không chốt toán hạng (trễ 2 nhịp) và chốt toán hạng tại cửa khối DSP (trễ 3 nhịp, tận dụng thanh ghi cứng có sẵn 0 ALM); làm rõ sự khác biệt giữa độ trễ (latency) và thông lượng (throughput), chứng minh độ trễ 3 chu kỳ chỉ làm sai khác $0{,}001\%$ thời gian thực trên $98.543\text{ chu kỳ}$.
     \item Dẫn xuất độ rộng từ bit toán hạng $17\text{-bit}$ có dấu và chứng minh bằng toán học cận trên $43\text{-bit}$ của bộ cộng tích lũy, đính chính nhận định "48 bit tự nhiên" của Argon bằng việc chỉ rõ bộ tích lũy phần cứng Cyclone V hỗ trợ tới $64\text{ bit}$ (\emph{Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices}).
     \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng: Tuyến (A) cấu hình khối IP Intel \texttt{ALTERA\_MULT\_ADD} (\emph{Integer Arithmetic IP Cores User Guide}) cùng cờ nạp đè đồng bộ \texttt{accum\_sload} để chuyển tiếp lag zero-bubble; Tuyến (B) module HDL tự viết \texttt{ch07\_mac\_unit.v}, bộ đệm khung True Dual-Port RAM 2 khối M10K \texttt{ch07\_xw\_ram.v} và khối điều khiển phát địa chỉ liên tục \texttt{ch07\_mac\_engine.v}.
@@ -22,7 +22,7 @@
 \subsubsection*{Vấn đề thực tế: Sự lừa dối của miền thời gian và sự cần thiết của hàm tự tương quan}
 Hãy xem xét bài toán cốt lõi mà kỹ sư xử lý tín hiệu phải đối mặt khi ước lượng cao độ giọng nói: ta cần tìm khoảng thời gian lặp lại cơ bản $T_0$ (tính theo số mẫu rời rạc) của dây thanh âm trong một đoạn tín hiệu hữu hạn dài $N = 638\text{ mẫu}$. Giả sử tín hiệu âm thanh thu được là nguyên âm /a/ có tần số cơ bản $F_0 = 150\text{ Hz}$ tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, tương ứng với chu kỳ danh định $\tau_0 = 16.000 / 150 \approx 106{,}67\text{ mẫu}$.
 
-Nếu người thiết kế ngây thơ tìm kiếm chu kỳ bằng cách dò khoảng cách giữa các điểm giao cắt mức không (zero-crossing) hoặc khoảng cách giữa các đỉnh biên độ tức thời, thuật toán sẽ sụp đổ ngay lập tức. Dây thanh âm không phát ra sóng sin thuần khiết; nó phát ra một chuỗi xung tam giác giàu họa ba, kích thích các khoang cộng hưởng của thanh quản và vòm họng (formants). Các họa ba bậc hai ($300\text{ Hz}$), bậc ba ($450\text{ Hz}$) và bậc bốn ($600\text{ Hz}$) giao thoa sóng với nhau, tạo ra vô số đỉnh nhọn cục bộ và các điểm cắt qua số $0$ giả mạo bên trong một chu kỳ đơn lẻ. Tệ hơn nữa, sự dịch pha do bộ lọc âm học làm thay đổi hoàn toàn hình dáng trực quan của sóng âm trong miền thời gian: hai chu kỳ liên tiếp có cùng chu kỳ lặp lại nhưng đỉnh biên độ tức thời có thể lệch nhau hàng chục mẫu.
+Nếu người thiết kế ngây thơ tìm kiếm chu kỳ bằng cách dò khoảng cách giữa các điểm giao cắt mức không (zero-crossing) hoặc khoảng cách giữa các đỉnh biên độ tức thời, thuật toán sẽ không thể xác định chu kỳ một cách tin cậy. Dây thanh âm không phát ra sóng sin thuần khiết; nó phát ra một chuỗi xung tam giác giàu họa ba, kích thích các khoang cộng hưởng của thanh quản và vòm họng (formants). Các họa ba bậc hai ($300\text{ Hz}$), bậc ba ($450\text{ Hz}$) và bậc bốn ($600\text{ Hz}$) giao thoa sóng với nhau, tạo ra nhiều đỉnh nhọn cục bộ và các điểm cắt qua số $0$ phụ bên trong một chu kỳ đơn lẻ. Hơn nữa, sự dịch pha do bộ lọc âm học làm biến đổi hình dáng trực quan của sóng âm trong miền thời gian: hai chu kỳ liên tiếp có cùng chu kỳ lặp lại nhưng đỉnh biên độ tức thời có thể lệch nhau hàng chục mẫu.
 
 Làm thế nào để đo lường chu kỳ lặp lại của một dạng sóng phức tạp mà không bị đánh lừa bởi hình dáng cục bộ? Câu trả lời kinh điển của lý thuyết truyền thông là: \textbf{So sánh dạng sóng với chính bản sao bị dịch thời gian của nó}. Nếu ta dịch tín hiệu đi đúng một khoảng trễ $\tau$, tại $\tau = \tau_0$, toàn bộ cấu trúc họa ba và xung đỉnh của tín hiệu sẽ chồng khít lên bản sao gốc. Tích vô hướng giữa hai dạng sóng sẽ đạt cực đại toàn cục. Phép toán toán học thực hiện sự so khớp toàn diện này chính là \textbf{Hàm tự tương quan} (Autocorrelation Function).
 
@@ -71,7 +71,7 @@ N_{\text{MAC, total}} = S_{\text{scan}} + (638 - 0) = 97.902 + 638 = \mathbf{98.
 \begin{equation}
 \sum_{\tau=26}^{214} (640 - \tau) = \frac{189 \times (614 + 426)}{2} = \frac{189 \times 1.040}{2} = \mathbf{98.280\text{ phép MAC}}
 \end{equation}
-Cộng thêm $R[0]$ gồm $640\text{ phép MAC}$ sẽ cho ra đúng $98.280 + 640 = \mathbf{98.920\text{ phép MAC}}$. Sự chênh lệch giữa v1 và v2 là $98.920 - 98.540 = 380\text{ phép MAC}$, xuất phát từ quyết định sửa đúng độ dài cửa sổ $N = 638\text{ mẫu}$ theo chuẩn Praat 7.0.03 (được quy định tại \path{fon/Sound_to_Pitch.cpp}, dòng 334--339). Tài liệu này sử dụng triệt để con số chuẩn tắc $98.540\text{ phép MAC}$.
+Cộng thêm $R[0]$ gồm $640\text{ phép MAC}$ sẽ cho ra đúng $98.280 + 640 = \mathbf{98.920\text{ phép MAC}}$. Sự chênh lệch giữa v1 và v2 là $98.920 - 98.540 = 380\text{ phép MAC}$, xuất phát từ quyết định sửa đúng độ dài cửa sổ $N = 638\text{ mẫu}$ theo chuẩn Praat 7.0.03 (được quy định tại \path{fon/Sound_to_Pitch.cpp}, dòng 334--339). Tài liệu này sử dụng con số chuẩn tắc $98.540\text{ phép MAC}$.
 \end{thoughtqa}
 
 \subsubsection*{Tương đương toán học giữa MAC trực tiếp và FFT 1024 điểm của Praat}
@@ -124,7 +124,7 @@ for (integer i = 1; i <= brent_ixmax; i ++)
 \label{fig:ch07_direct_mac_vs_fft}
 \end{figure}
 
-\textbf{Đọc hình.} Hình~\ref{fig:ch07_direct_mac_vs_fft} đặt cạnh nhau hai triết lý hiện thực hóa. Tuyến (a) trên FPGA triển khai luồng xử lý thẳng: các cặp mẫu được đọc trực tiếp từ bộ nhớ đệm M10K đưa vào bộ nhân-cộng DSP duy nhất, kết quả $R[\tau]$ được tích lũy tuần tự qua $98.543\text{ chu kỳ}$, hoàn toàn không cần bộ nhớ trung gian hay quản lý phức tạp. Ngược lại, Tuyến (b) của Praat trên máy tính sử dụng FFT 1024 điểm: tín hiệu buộc phải đệm số 0 lên 1024 mẫu, chuyển qua tầng bướm FFT phức, tính phổ công suất rồi IFFT ngược trở lại. Mặc dù hai cách đi khác nhau, chúng quy tụ về cùng một đáp số chính xác.
+\textbf{Đọc hình.} Hình~\ref{fig:ch07_direct_mac_vs_fft} đặt cạnh nhau hai triết lý hiện thực hóa. Tuyến (a) trên FPGA triển khai luồng xử lý thẳng: các cặp mẫu được đọc trực tiếp từ bộ nhớ đệm M10K đưa vào bộ nhân-cộng DSP duy nhất, kết quả $R[\tau]$ được tích lũy tuần tự qua $98.543\text{ chu kỳ}$, không cần bộ nhớ đệm trung gian hay mạch điều khiển bướm phức tạp. Ngược lại, Tuyến (b) của Praat trên máy tính sử dụng FFT 1024 điểm: tín hiệu buộc phải đệm số 0 lên 1024 mẫu, chuyển qua tầng bướm FFT phức, tính phổ công suất rồi IFFT ngược trở lại. Mặc dù hai cách đi khác nhau, chúng quy tụ về cùng một đáp số chính xác.
 
 \begin{equationcard}
 \textbf{Định lý triệt tiêu cuộn vòng thời gian (Zero Time-Domain Wrap-Around).}
@@ -141,8 +141,8 @@ trong đó $z[n]$ là chuỗi $x_w[n]$ được đệm số $0$: $z[n] = x_w[n]$
 \begin{equation}
 637 + \tau < 1024 \quad \Longleftrightarrow \quad \tau \le 1024 - 638 = \mathbf{386\text{ mẫu}}
 \end{equation}
-Vì thuật toán Praat chỉ quét lag tối đa đến $\tau_{\max} = 214\text{ mẫu}$, và $214 \le 386$ (vẫn còn dư biên an toàn $386 - 214 = 172\text{ mẫu}$), \textbf{hoàn toàn không có bất kỳ mẫu nào bị cuộn vòng đè lên nhau!}
-\par\noindent Do đó, tự tương quan vòng của Praat đồng nhất $100\%$ với tự tương quan tuyến tính của bộ MAC trực tiếp:
+Vì thuật toán Praat chỉ quét lag tối đa đến $\tau_{\max} = 214\text{ mẫu}$, và $214 \le 386$ (vẫn còn dư biên an toàn $386 - 214 = 172\text{ mẫu}$), \textbf{không có mẫu nào bị cuộn vòng đè lên nhau.}
+\par\noindent Do đó, tự tương quan vòng của Praat đồng nhất với tự tương quan tuyến tính của bộ MAC trực tiếp:
 \begin{equation}
 ac[\tau+1]_{\text{Praat FFT}} \equiv R[\tau]_{\text{FPGA Direct MAC}}, \quad \forall \tau \in [0, 214]
 \end{equation}
@@ -152,18 +152,18 @@ Kết quả kiểm nghiệm độc lập trong kịch bản \path{verify_v3/ch07
 \begin{equation}
 \frac{\max |ac[\tau+1] - R[\tau]|}{|R[0]|} \le 3{,}23 \times 10^{-16}
 \end{equation}
-Con số này xấp xỉ mức sai số làm tròn máy hữu hạn của kiểu dấu phẩy động 64-bit (\texttt{double}), chứng minh tuyệt đối sự tương đương toán học giữa hai phương pháp.
+Con số này xấp xỉ mức sai số làm tròn máy hữu hạn của kiểu dấu phẩy động 64-bit (\texttt{double}), chứng minh sự tương đương toán học giữa hai phương pháp.
 
-\textit{Tóm lại: Bản chất của tự tương quan là đếm số cặp mẫu trùng lặp qua độ trễ $\tau$. Dải quét 189 lag cùng $R[0]$ đòi hỏi chính xác $98.540\text{ phép MAC}$; phép đệm 386 số 0 trong FFT 1024 điểm của Praat đảm bảo tự tương quan vòng không bị cuộn chồng và đồng nhất hoàn toàn với tích vô hướng tuyến tính của MAC trực tiếp.}
+\textit{Tóm lại: Bản chất của tự tương quan là đếm số cặp mẫu trùng lặp qua độ trễ $\tau$. Dải quét 189 lag cùng $R[0]$ đòi hỏi chính xác $98.540\text{ phép MAC}$; phép đệm 386 số 0 trong FFT 1024 điểm của Praat đảm bảo tự tương quan vòng không bị cuộn chồng và đồng nhất với tích vô hướng tuyến tính của MAC trực tiếp.}
 
 
 \subsection*{7.2. Vì sao chọn MAC trực tiếp thay vì FFT trên FPGA}
 \addcontentsline{toc}{subsection}{7.2. Vì sao chọn MAC trực tiếp thay vì FFT trên FPGA}
 
 \subsubsection*{Vấn đề thực tế: Ảo tưởng về độ phức tạp thuật toán $O(N \log N)$ trên phần cứng}
-Một phản xạ rất tự nhiên của bất kỳ kỹ sư phần mềm nào khi nhìn vào bài toán tự tương quan là mở sách giáo khoa xử lý tín hiệu và thốt lên: "Tại sao lại dùng $O(N^2)$ phép nhân trong miền thời gian khi ta có thể dùng FFT với độ phức tạp chỉ $O(N \log N)$?". Trên máy tính đa năng (CPU), lập luận này hoàn toàn chính xác: Praat chọn FFT 1024 điểm vì CPU x86 có bộ nhớ đệm L1/L2 khổng lồ, các tập lệnh vector AVX-512 xử lý số thực dấu phẩy động cực mạnh, và việc giảm số phép nhân giúp giảm đáng kể thời gian chiếm dụng CPU.
+Một phản xạ rất tự nhiên của bất kỳ kỹ sư phần mềm nào khi nhìn vào bài toán tự tương quan là mở sách giáo khoa xử lý tín hiệu và thốt lên: "Tại sao lại dùng $O(N^2)$ phép nhân trong miền thời gian khi ta có thể dùng FFT với độ phức tạp chỉ $O(N \log N)$?". Trên máy tính đa năng (CPU), lập luận này phù hợp: Praat chọn FFT 1024 điểm vì CPU x86 có bộ nhớ đệm L1/L2 dung lượng lớn, các tập lệnh vector AVX xử lý số thực dấu phẩy động, và việc giảm số phép nhân giúp giảm thời gian chiếm dụng CPU.
 
-Tuy nhiên, khi bước chân vào thế giới phần cứng chuyên dụng trên chip FPGA, logic thiết kế bị chi phối bởi những ràng buộc hoàn toàn khác: diện tích silicon, băng thông bộ nhớ nội, độ phức tạp của đường truyền dữ liệu (datapath), và việc quản lý tăng trưởng bit lượng tử. Hãy cùng mổ xẻ chi tiết từng khía cạnh để thấy vì sao cách tiếp cận FFT trên FPGA lại là một sự đánh đổi bất lợi, và vì sao kiến trúc MAC trực tiếp là quyết định tối ưu.
+Tuy nhiên, trên vi mạch phần cứng FPGA, thiết kế chịu ràng buộc bởi diện tích silicon, băng thông bộ nhớ nội, độ phức tạp của đường truyền dữ liệu (datapath), và việc quản lý tăng trưởng bit lượng tử. Các phân tích định lượng dưới đây giải thích sự đánh đổi giữa hai phương án và cơ sở lựa chọn kiến trúc MAC trực tiếp.
 
 \subsubsection*{Đếm số lượng phép toán: FFT ít hơn trên giấy, nhưng nặng trên silicon}
 Hãy so sánh số lượng phép nhân thực tế giữa hai giải pháp:
@@ -195,7 +195,7 @@ Nhìn thuần túy trên giấy tờ, FFT thực hiện khoảng $42.000\text{ p
     \begin{equation}
     2 \times 1024 \times (18 + 18)\text{ bit} = 73.728\text{ bit nhớ}
     \end{equation}
-    Con số này đòi hỏi tiêu tốn ít nhất \textbf{8 khối M10K} nhúng ($10.240\text{ bit/khối}$) chỉ để làm bộ nhớ trung gian lưu các giá trị chuyển tiếp giữa các tầng bướm. Trong khi đó, bộ MAC trực tiếp chỉ cần đúng \textbf{2 khối M10K} để chứa khung mẫu ngõ vào $x_w$, và hoàn toàn \textbf{không cần thêm một bit nhớ trung gian nào}!
+    Con số này đòi hỏi tiêu tốn nhiều khối nhớ M10K nhúng ($10.240\text{ bit/khối}$) chỉ để làm bộ nhớ trung gian lưu các giá trị chuyển tiếp giữa các tầng bướm. Trong khi đó, bộ MAC trực tiếp chỉ cần đúng \textbf{2 khối M10K} để chứa khung mẫu ngõ vào $x_w$, và không cần thêm bộ nhớ trung gian nào.
     \item \textbf{Độ phức tạp của bộ quay pha Twiddle Factor và bộ đảo bit:}
     FFT đòi hỏi một bảng tra ROM chứa các hệ số quay lượng giác $\cos(2\pi k / 1024)$ và $-\sin(2\pi k / 1024)$, cùng với một khối logic phức tạp để sinh địa chỉ đảo bit (bit-reversal address generator) nhằm tái sắp xếp lại chuỗi dữ liệu ngõ ra. Logic điều khiển này tiêu tốn hàng trăm khối logic ALM quý giá của Cyclone V.
     \item \textbf{Vấn đề tăng trưởng độ rộng bit (Bit Growth) và sai số lượng tử:}
@@ -205,10 +205,10 @@ Nhìn thuần túy trên giấy tờ, FFT thực hiện khoảng $42.000\text{ p
         \item \emph{Dấu phẩy động khối (Block Floating Point -- BFP):} Dò tìm đỉnh biên độ cực đại sau mỗi tầng để quyết định dịch tỉ lệ có điều kiện, đồng thời duy trì một số mũ chung. Giải pháp này đòi hỏi mạch dò biên độ tổ hợp phức tạp và làm nghẽn đường ống xung nhịp.
         \item \emph{Mở rộng datapath lên 32-bit:} Làm tăng gấp đôi tài nguyên bộ nhân DSP (buộc phải ghép nhiều bộ nhân $18 \times 18$ hoặc dùng DSP $27 \times 27$).
     \end{itemize}
-    Ngược lại hoàn toàn, bộ MAC trực tiếp hoạt động trên thanh ghi tích lũy $48\text{-bit}$ hoàn toàn không nén, không dịch bit trung gian: mỗi phép nhân $17 \times 17\text{-bit}$ sinh ra tích số $34\text{-bit}$ chính xác tuyệt đối và được cộng dồn trực tiếp vào thanh ghi $48\text{-bit}$. \textbf{Sai số lượng tử trung gian bằng đúng $0$!}
+    Ngược lại, bộ MAC trực tiếp hoạt động trên thanh ghi tích lũy $48\text{-bit}$ không nén, không dịch bit trung gian: mỗi phép nhân $17 \times 17\text{-bit}$ sinh ra tích số $34\text{-bit}$ và được cộng dồn trực tiếp vào thanh ghi $48\text{-bit}$, không phát sinh sai số lượng tử trung gian.
 \end{enumerate}
 
-\subsubsection*{Ngân sách thời gian thực: Khi "nhanh hơn" trở nên vô nghĩa}
+\subsubsection*{Ngân sách thời gian thực: Đánh giá nhu cầu tính toán trong chu kỳ hop}
 Hãy đặt con số $98.540\text{ phép MAC}$ vào bài toán thời gian thực cụ thể trên kit DE10-Standard. Tần số xung nhịp hệ thống trên FPGA là $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ xung nhịp $T_{\text{clk}} = 20\text{ ns}$). Tần số lấy mẫu âm thanh là $f_s = 16.000\text{ Hz}$. 
 
 Mỗi chu kỳ lấy mẫu âm thanh tương ứng với số chu kỳ xung nhịp FPGA là:
@@ -318,7 +318,7 @@ Xét ba phương án kiến trúc chốt thanh ghi đường ống được minh
 \subsubsection*{Chỗ dễ vướng: Độ trễ (Latency) có làm chậm 98.540 phép tính không?}
 Một câu hỏi kinh điển mà anh Tú hay bất kỳ người học thiết kế vi mạch nào cũng sẽ thắc mắc: \emph{"Tăng độ trễ từ 2 chu kỳ lên 3 chu kỳ có làm chậm quá trình tính toán của 98.540 phép tính hay không?"}
 
-Câu trả lời dứt khoát là: \textbf{Hoàn toàn không, vì độ trễ (Latency) và thông lượng (Throughput) là hai khái niệm hoàn toàn khác nhau!}
+Câu trả lời là: \textbf{Độ trễ (Latency) và thông lượng (Throughput) là hai khái niệm độc lập.}
 
 Hãy hình dung một băng chuyền đóng gói công nghiệp có chiều dài 3 mét:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -335,7 +335,7 @@ Chênh lệch giữa hai phương án là đúng \textbf{1 chu kỳ xung nhịp 
 \begin{equation}
 \frac{1}{98.543} \approx 0{,}001015\% \approx \mathbf{0{,}001\%}
 \end{equation}
-Một phần nghìn của một phần trăm thời gian hoàn toàn không có ý nghĩa gì đối với hiệu năng hệ thống, nhưng đổi lại, hệ thống nhận được một đường tới hạn được cân bằng hoàn hảo và một $F_{\max}$ an toàn vượt bậc!
+Mức chênh lệch một phần nghìn của một phần trăm thời gian không ảnh hưởng đáng kể đến hiệu năng hệ thống, nhưng đổi lại, đường tới hạn được chia đôi cân bằng và biên tần số hoạt động được đảm bảo an toàn.
 
 \subsubsection*{Cơ chế chuyển tiếp Zero-Bubble: Vai trò của cờ \texttt{sload} và \texttt{last}}
 Làm thế nào để bộ tích lũy chuyển đổi giữa hai độ trễ liên tiếp $\tau$ và $\tau+1$ mà không cần chèn các chu kỳ "bong bóng" (bubble cycles) để xóa thanh ghi tổng về $0$?
@@ -343,14 +343,14 @@ Làm thế nào để bộ tích lũy chuyển đổi giữa hai độ trễ li�
 Câu trả lời nằm ở tín hiệu điều khiển \textbf{\texttt{sload}} (Synchronous Load) của khối DSP:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Cờ \texttt{sload} được bộ phát địa chỉ bật lên mức 1 đúng vào chu kỳ phát cặp mẫu đầu tiên ($n = 0$) của một độ trễ mới.
-    \item Khi cờ \texttt{sload} đã đi qua đường ống và tới bộ tích lũy, nó ra lệnh cho bộ cộng: \emph{"Nạp thẳng tích số mới $p$ vào thanh ghi tổng \texttt{acc}, thay vì cộng $p$ với giá trị cũ!"}
+    \item Khi cờ \texttt{sload} đã đi qua đường ống và tới bộ tích lũy, nó ra lệnh cho bộ cộng: \emph{"Nạp thẳng tích số mới $p$ vào thanh ghi tổng \texttt{acc}, thay vì cộng $p$ với giá trị cũ."}
     \begin{equation}
     \text{acc} \le \text{sload\_r} \ ? \ p \ : \ (\text{acc} + p)
     \end{equation}
-    Nhờ cơ chế nạp đè này, thanh ghi \texttt{acc} tự động được khởi tạo lại giá trị cho lag mới ngay tại nhịp tính đầu tiên, mà \textbf{hoàn toàn không tốn một chu kỳ nào để reset về 0}!
+    Nhờ cơ chế nạp đè này, thanh ghi \texttt{acc} tự động được khởi tạo lại giá trị cho lag mới ngay tại nhịp tính đầu tiên, mà \textbf{không tốn thêm chu kỳ nào để reset về 0}.
 \end{itemize}
 
-Cái giá phải trả của cơ chế này là gì? Đó là \textbf{kết quả của lag cũ chỉ tồn tại trên thanh ghi tổng đúng duy nhất một chu kỳ xung nhịp}! Ngay chu kỳ tiếp theo, tích đầu tiên của lag mới sẽ lập tức ghi đè lên thanh ghi \texttt{acc}. Vì vậy, hệ thống phải bắt được kết quả hoàn tất một cách tuyệt đối chính xác:
+Cái giá phải trả của cơ chế này là gì? Đó là \textbf{kết quả của lag cũ chỉ xuất hiện trên thanh ghi tổng đúng một chu kỳ xung nhịp}. Ngay chu kỳ tiếp theo, tích đầu tiên của lag mới sẽ ghi đè lên thanh ghi \texttt{acc}. Vì vậy, hệ thống cần bắt đúng kết quả hoàn tất:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Cờ \textbf{\texttt{last}} được bật lên tại cặp mẫu cuối cùng ($n = N - 1 - \tau$) của mỗi lag.
     \item Cờ \texttt{last} được đưa qua đúng số tầng thanh ghi trễ bằng với dữ liệu (\texttt{last\_r}). Khi \texttt{last\_r} tới tầng tích lũy, nó kích hoạt tín hiệu \textbf{\texttt{out\_valid}} lên mức 1 đúng vào chu kỳ mà \texttt{acc} chứa tổng hoàn chỉnh của độ trễ đó. Mạch tiêu thụ bên ngoài (hoặc bộ đệm kết quả) chỉ việc chốt giá trị \texttt{acc} khi \texttt{out\_valid} = 1.
@@ -407,15 +407,15 @@ Hai lag được phát liên tục, nối tiếp nhau không một nhịp nghỉ
 \subsubsection*{Lựa chọn thiết kế và căn cứ kỹ thuật}
 Thiết kế của tài liệu này dứt khoát lựa chọn \textbf{Phương án 2} vì bốn căn cứ kỹ thuật không thể phủ nhận:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Tận dụng silicon cứng miễn phí:} Tầng thanh ghi vào có sẵn bên trong khối DSP của Cyclone V, kích hoạt lên tiêu tốn đúng 0 khối logic ALM.
+    \item \textbf{Tận dụng silicon cứng:} Tầng thanh ghi vào có sẵn bên trong khối DSP của Cyclone V, kích hoạt lên tận dụng các flip-flop của khối DSP.
     \item \textbf{Độ trễ không làm giảm hiệu năng:} Tăng thêm 1 chu kỳ trễ chỉ làm tăng $0{,}001\%$ tổng thời gian tính toán trên $98.543\text{ chu kỳ}$.
-    \item \textbf{Độc lập với dây nối định tuyến:} Đường tới hạn của bộ nhân và bộ cộng hoàn toàn nằm gọn trong silicon DSP, giúp thiết kế dễ dàng đạt tần số mục tiêu $50\text{ MHz}$ mà không phụ thuộc vào vị trí bố trí linh kiện của Fitter.
-    \item \textbf{Tương thích hoàn hảo với IP Intel:} Cấu hình này khớp chính xác $100\%$ với mô hình sinh mã của khối IP chuẩn Intel \texttt{ALTERA\_MULT\_ADD}.
+    \item \textbf{Độc lập với dây nối định tuyến:} Đường tới hạn của bộ nhân và bộ cộng nằm gọn trong silicon DSP, giúp thiết kế dễ dàng đạt tần số mục tiêu $50\text{ MHz}$ mà không phụ thuộc vào vị trí bố trí linh kiện của Fitter.
+    \item \textbf{Tương thích với IP Intel:} Cấu hình này tương đồng với mô hình của khối IP chuẩn Intel \texttt{ALTERA\_MULT\_ADD}.
 \end{enumerate}
 
 Tần số hoạt động cực đại $F_{\max}$ thực tế và số lượng ALM tiêu tốn cụ thể của cả hai phương án là các đại lượng \textbf{(phải đo)} trên phần mềm Quartus Prime với chip Cyclone V 5CSXFC6D6F31C6N.
 
-\textit{Tóm lại: Phép cộng tích lũy bắt buộc phải có thanh ghi; việc chốt thêm một tầng thanh ghi ở cửa khối DSP tận dụng tài nguyên silicon có sẵn (0 ALM), chia đôi đường tới hạn và chỉ tăng $0{,}001\%$ thời gian thực, đồng thời cơ chế \texttt{sload} giúp chuyển đổi giữa các lag liên tục mà không phát sinh bất kỳ chu kỳ nhàn rỗi nào.}
+\textit{Tóm lại: Phép cộng tích lũy bắt buộc phải có thanh ghi; việc chốt thêm một tầng thanh ghi ở cửa khối DSP tận dụng tài nguyên silicon có sẵn của DSP, chia đôi đường tới hạn và chỉ tăng $0{,}001\%$ thời gian thực, đồng thời cơ chế \texttt{sload} giúp chuyển đổi giữa các lag liên tục mà không phát sinh bất kỳ chu kỳ nhàn rỗi nào.}
 
 
 \subsection*{7.4. Dẫn xuất độ rộng bit toán hạng và bộ tích lũy}
@@ -424,9 +424,9 @@ Tần số hoạt động cực đại $F_{\max}$ thực tế và số lượng 
 \subsubsection*{Vấn đề thực tế: Nguy cơ tràn số âm thầm trong bộ tích lũy năng lượng}
 Hãy xem xét điều gì sẽ xảy ra nếu người thiết kế chủ quan chọn độ rộng của bộ tích lũy tự tương quan là $32\text{-bit}$ (độ rộng chuẩn của kiểu số nguyên \texttt{int32\_t} thông thường). Trong một bài phát biểu bình thường, giọng nói có biên độ nhỏ, giá trị $R[\tau]$ có thể tạm thời nằm trong khoảng $32\text{-bit}$. Nhưng khi người nói phát âm một nguyên âm có cường độ cực đại sát ngưỡng bão hòa (full-scale), hoặc khi xuất hiện tiếng vỗ tay, tiếng nổ đột biến, năng lượng của $638\text{ mẫu}$ tích lũy lại sẽ lập tức vượt ngưỡng $2^{31}-1 = 2.147.483.647$.
 
-Trong số học bù hai, khi một số dương vượt qua ngưỡng $2^{31}-1$, bit dấu số 31 bị bật lên $1$, biến toàn bộ tổng năng lượng khổng lồ thành một số âm lớn! Đỉnh tự tương quan cao nhất của khung âm thanh $R[\tau_0]$ bị lật ngược thành một đáy âm sâu hoắm. Bộ tìm đỉnh ở Chương 9 sẽ không thể tìm thấy bất kỳ ứng viên nào, và bộ phân loại hữu thanh ở Chương 10 sẽ kết luận khung âm thanh có năng lượng âm là vô thanh. Lỗi tràn số này hoàn toàn im lặng, không có cờ báo động phần cứng nào phát ra, nhưng phá hủy toàn bộ kết quả F0 của hệ thống.
+Trong số học bù hai, khi một số dương vượt qua ngưỡng $2^{31}-1$, bit dấu số 31 bị bật lên $1$, biến toàn bộ tổng năng lượng thành một số âm. Đỉnh tự tương quan cao nhất của khung âm thanh $R[\tau_0]$ bị đảo dấu thành đáy âm. Bộ tìm đỉnh ở Chương 9 sẽ không thể tìm thấy ứng viên hợp lệ, và bộ phân loại hữu thanh ở Chương 10 có thể phân loại sai khung âm thanh. Lỗi tràn số này không phát cờ báo động phần cứng mặc định, dẫn tới sai lệch kết quả F0 của hệ thống.
 
-Để ngăn chặn tuyệt đối thảm họa này, độ rộng của toán hạng và bộ tích lũy phải được dẫn xuất chặt chẽ từ nguyên lý toán học và kiểm chứng với trường hợp xấu nhất.
+Để ngăn chặn hiện tượng tràn số này, độ rộng của toán hạng và bộ tích lũy phải được dẫn xuất từ nguyên lý toán học và kiểm chứng với trường hợp xấu nhất.
 
 \subsubsection*{Dẫn xuất từng bước: Từ mẫu ngõ vào tới cận trên của bộ tích lũy}
 Quy trình dẫn xuất độ rộng bit trải qua ba bước liên tiếp:
@@ -448,7 +448,7 @@ Quy trình dẫn xuất độ rộng bit trải qua ba bước liên tiếp:
 \end{itemize}
 Để chứa trọn giá trị cực đại $\pm 65.535$, toán hạng $x_w$ bắt buộc phải có độ rộng \textbf{17-bit có dấu} (gồm 1 bit dấu và 16 bit biên độ, cho dải biểu diễn $[-65.536, +65.535]$). Trong khung kiểm thử khắc nghiệt Stress Frame A (\texttt{golden\_v2/hdl\_check/xw.hex}), mẫu thực nghiệm đạt tới $|x_w| = 59.379$, vượt xa giới hạn 16-bit ($32.767$).
 
-Toán hạng $17\text{-bit}$ có dấu hoàn toàn nằm vừa vặn bên trong một bộ nhân cứng $18 \times 18\text{-bit}$ của khối Variable Precision DSP trên Cyclone V.
+Toán hạng $17\text{-bit}$ có dấu nằm vừa vặn bên trong một bộ nhân cứng $18 \times 18\text{-bit}$ của khối Variable Precision DSP trên Cyclone V.
 
 \paragraph{Bước 2: Độ rộng tích số $p = x_w[n] \cdot x_w[n+\tau]$.}
 Khi nhân hai số $17\text{-bit}$ có dấu:
@@ -497,7 +497,7 @@ Tỷ số an toàn (Safety Headroom) của $43\text{-bit}$ so với trường h�
 \begin{equation}
 \frac{2^{42}}{S_{\max}} = \frac{4.398.046.511.104}{2.740.105.511.550} \approx \mathbf{1{,}6051}
 \end{equation}
-Hệ số an toàn đạt hơn $60\%$! Con số này chứng minh bằng toán học rằng: \textbf{Một bộ tích lũy 43-bit có dấu được bảo đảm tuyệt đối không bao giờ bị tràn số, ngay cả trong điều kiện tín hiệu cực đoan nhất có thể tưởng tượng được!} (Kiểm chứng qua kịch bản \path{verify_v3/ch07_mac_math.py}).
+Hệ số an toàn đạt hơn $60\%$. Kết quả này chứng minh rằng: \textbf{Bộ tích lũy 43-bit có dấu bảo đảm không bị tràn số trong điều kiện tín hiệu cực hạn.} (Kiểm chứng qua kịch bản \path{verify_v3/ch07_mac_math.py}).
 
 \subsubsection*{Thực tế silicon trên Cyclone V và đính chính sai sót của tài liệu cũ}
 Trong các bản thảo trước đây, tác giả Argon từng nhận định rằng: \emph{"Bộ cộng dồn của FPGA có độ rộng 48 bit tự nhiên"}. Đây là một nhận định thiếu chính xác về cấu trúc silicon của Intel Cyclone V.
@@ -512,7 +512,7 @@ Thiết kế này chọn độ rộng ngõ ra của module MAC là \textbf{48-bi
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dư thừa an toàn:} $48\text{ bit}$ bao trọn nhu cầu $43\text{ bit}$, mang lại thêm 5 bit bảo vệ chống tràn ($2^{47} / S_{\max} \approx 51{,}3\times$).
     \item \textbf{Căn chỉnh dữ liệu thuận tiện:} Độ rộng 48 bit là bội số của 16 bit ($3 \times 16\text{-bit}$), rất thuận tiện cho việc ghép nối vào thanh ghi bus Avalon-MM, truyền nhận dữ liệu hoặc đóng gói sang HPS.
-    \item \textbf{Tận dụng silicon DSP:} Vì bộ tích lũy trong silicon DSP vốn đã rộng tới 64 bit, việc chọn ngõ ra 48 bit nằm hoàn toàn bên trong khối DSP cứng (mức tiêu tốn ALM logic thực tế phải kiểm trong Quartus).
+    \item \textbf{Tận dụng silicon DSP:} Vì bộ tích lũy trong silicon DSP vốn đã rộng tới 64 bit, việc chọn ngõ ra 48 bit nằm bên trong khối DSP cứng (mức tiêu tốn ALM logic thực tế phải kiểm trong Quartus).
 \end{enumerate}
 
 \textit{Tóm lại: Toán hạng $17\text{-bit}$ sinh ra tích số $34\text{-bit}$; tổng của tối đa $638\text{ tích}$ đòi hỏi cận trên toán học đúng $43\text{-bit}$ có dấu. Bộ tích lũy cứng trong silicon DSP Cyclone V hỗ trợ tới $64\text{ bit}$, do đó việc chọn $48\text{-bit}$ vừa bảo đảm chống tràn số, vừa phù hợp cho việc ghép nối bus.}
@@ -586,10 +586,10 @@ Căn cứ theo tài liệu *Embedded Memory (RAM: 1-PORT, RAM: 2-PORT, ROM: 1-PO
     \item \textbf{Độ trễ đọc (Read Latency):}
     Bộ nhớ được cấu hình với tham số \texttt{outdata\_reg\_a = "UNREGISTERED"} và \texttt{outdata\_reg\_b = "UNREGISTERED"}. Điều này có nghĩa là cổng địa chỉ được chốt đồng bộ bằng thanh ghi ngõ vào tại cạnh dương xung nhịp \texttt{clk}, trong khi ngõ ra của ô nhớ được đưa thẳng ra dây tổ hợp. Kết quả đọc xuất hiện ở \texttt{dout\_a} và \texttt{dout\_b} sau đúng \textbf{1 chu kỳ xung nhịp}.
     \item \textbf{Chế độ đọc khi ghi (Read-During-Write):}
-    Được đặt là \texttt{DONT\_CARE} (hoặc \texttt{OLD\_DATA}). Do kiến trúc hệ thống phân tách rạch ròi hai pha: nạp đủ 638 mẫu vào RAM rồi mới bắt đầu kích hoạt cờ \texttt{start} để tính MAC, hoàn toàn không có xung đột đọc-ghi đồng thời trên cùng một địa chỉ ô nhớ.
+    Được đặt là \texttt{DONT\_CARE} (hoặc \texttt{OLD\_DATA}). Do kiến trúc hệ thống phân tách rạch ròi hai pha: nạp đủ 638 mẫu vào RAM rồi mới bắt đầu kích hoạt cờ \texttt{start} để tính MAC, không có xung đột đọc-ghi đồng thời trên cùng một địa chỉ ô nhớ.
 \end{itemize}
 
-Nhờ kiến trúc hai cổng đọc độc lập này, bộ phát địa chỉ FSM có thể liên tục đẩy $98.540\text{ cặp địa chỉ}$ $(n, n+\tau)$ vào RAM qua từng nhịp, và RAM trả ra đều đặn 2 mẫu mỗi nhịp sau 1 chu kỳ trễ, nuôi bộ MAC chạy hết công suất $100\%$.
+Nhờ kiến trúc hai cổng đọc độc lập này, bộ phát địa chỉ FSM có thể liên tục đẩy $98.540\text{ cặp địa chỉ}$ $(n, n+\tau)$ vào RAM qua từng nhịp, và RAM trả ra đều đặn 2 mẫu mỗi nhịp sau 1 chu kỳ trễ, nuôi bộ MAC chạy liên tục mỗi nhịp không có chu kỳ bọt.
 
 \textit{Tóm lại: Khung $638 \times 17\text{-bit}$ ($10.846\text{ bit}$) vượt quá dung lượng $10.240\text{ bit}$ và độ sâu 512 từ của một M10K, bắt buộc phải ghép 2 khối M10K ở cấu hình $1024 \times 10$; cấu trúc True Dual-Port RAM cung cấp độ trễ đọc đúng 1 chu kỳ, cho phép đọc đồng thời hai mẫu $x_w[n]$ và $x_w[n+\tau]$ liên tục mỗi nhịp.}
 
@@ -598,7 +598,7 @@ Nhờ kiến trúc hai cổng đọc độc lập này, bộ phát địa chỉ 
 \addcontentsline{toc}{subsection}{7.6. Phương án mở rộng: Tính song song nhiều lag bằng hai khối DSP}
 
 \subsubsection*{Vấn đề thực tế: Khi nào thì một khối DSP trở nên không đủ?}
-Trong hệ thống đơn kênh giọng nói chuẩn $f_s = 16.000\text{ Hz}$ của đề tài, một khối DSP chạy ở tần số $50\text{ MHz}$ chỉ chiếm $19{,}7\%$ thời gian thực, hoàn toàn dư dả. Nhưng hãy đặt hệ thống vào một kịch bản ứng dụng công nghiệp mở rộng:
+Trong hệ thống đơn kênh giọng nói chuẩn $f_s = 16.000\text{ Hz}$ của đề tài, một khối DSP chạy ở tần số $50\text{ MHz}$ chỉ chiếm $19{,}7\%$ thời gian thực, đáp ứng tốt yêu cầu thời gian thực. Nhưng hãy đặt hệ thống vào một kịch bản ứng dụng công nghiệp mở rộng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Hệ thống xử lý âm thanh đa kênh (Multi-Channel Audio): Ví dụ micro mảng (microphone array) gồm 4 hoặc 8 micro đồng thời để định hướng búp sóng (beamforming) và ước lượng cao độ từng kênh độc lập.
     \item Hệ thống xử lý âm thanh độ phân giải cao (High-Definition Audio): Tần số lấy mẫu tăng lên $48\text{ kHz}$ hoặc $96\text{ kHz}$, số mẫu trong một khung $40\text{ ms}$ tăng gấp 3 đến 6 lần ($N = 1.914$ hoặc $3.828\text{ mẫu}$), đẩy số phép tính MAC lên hàng triệu phép tính mỗi khung.
@@ -632,7 +632,7 @@ Hệ số thời gian thực của lõi MAC giảm xuống mức ấn tượng:
 \begin{equation}
 \text{RTF}_{\text{dual}} = \frac{49.592}{500.000} \approx \mathbf{0{,}099184 \approx 0{,}10}
 \end{equation}
-Khối MAC chỉ chiếm đúng $10\%$ thời lượng của một bước nhảy khung $10\text{ ms}$!
+Khối MAC chỉ chiếm khoảng $10\%$ thời lượng của một bước nhảy khung $10\text{ ms}$.
 
 \subsubsection*{Bức tường băng thông bộ nhớ (Memory Wall) và sự đánh đổi tài nguyên M10K}
 Một sự gia tăng tốc độ tính toán gấp đôi không bao giờ đến miễn phí. Nút thắt lớn nhất của kiến trúc 2 DSP không nằm ở bộ nhân, mà nằm ở \textbf{băng thông cổng đọc của bộ nhớ RAM}:
@@ -645,11 +645,11 @@ Một sự gia tăng tốc độ tính toán gấp đôi không bao giờ đến
     \text{DSP}_2 \text{ cần: } x_w[n] \text{ và } x_w[n+\tau_2]
     \end{equation}
     Cả hai bộ nhân đều cần chung mẫu cơ sở $x_w[n]$ tại thời điểm $n$. Mẫu này có thể được phát chung (broadcast) từ một cổng đọc duy nhất.
-    \item Tuy nhiên, với mẫu dịch trễ, $\text{DSP}_1$ đòi hỏi địa chỉ $n+\tau_1$ trong khi $\text{DSP}_2$ đòi hỏi địa chỉ $n+\tau_2$. Vì $\tau_1 \ne \tau_2$, đây là hai địa chỉ ô nhớ hoàn toàn độc lập và khác biệt!
+    \item Tuy nhiên, với mẫu dịch trễ, $\text{DSP}_1$ đòi hỏi địa chỉ $n+\tau_1$ trong khi $\text{DSP}_2$ đòi hỏi địa chỉ $n+\tau_2$. Vì $\tau_1 \ne \tau_2$, đây là hai địa chỉ ô nhớ độc lập và khác biệt.
     \item Do đó, tại mỗi chu kỳ xung nhịp, hệ thống đòi hỏi phải đọc đồng thời đúng \textbf{3 mẫu âm thanh độc lập}: $x_w[n]$, $x_w[n+\tau_1]$ và $x_w[n+\tau_2]$.
 \end{itemize}
 
-Vấn đề nan giải xuất hiện: Khối M10K của Cyclone V là cấu trúc phần cứng True Dual-Port, nghĩa là nó \textbf{chỉ có tối đa 2 cổng đọc vật lý độc lập}. Một bộ nhớ True Dual-Port không thể nào cung cấp 3 cổng đọc trong cùng một chu kỳ xung nhịp!
+Vấn đề nan giải xuất hiện: Khối M10K của Cyclone V là cấu trúc phần cứng True Dual-Port, nghĩa là nó \textbf{chỉ có tối đa 2 cổng đọc vật lý độc lập}. Một bộ nhớ True Dual-Port không thể cung cấp 3 cổng đọc trong cùng một chu kỳ xung nhịp.
 
 Để giải quyết bài toán 3 cổng đọc, người kỹ sư phần cứng có hai hướng đi:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
@@ -671,9 +671,9 @@ So sánh hai phương án:
     \item Kiến trúc 2 DSP: Tốn 2 khối DSP Variable Precision (+1 DSP), 4 khối M10K (+2 M10K), chiếm $10\%$ ngân sách thời gian thực ($\text{RTF} \approx 0{,}10$).
 \end{itemize}
 
-Vì $\text{RTF} = 0{,}197$ đã là một con số quá nhanh so với thời gian thực (hệ thống rảnh rỗi hơn $80\%$ thời gian), việc tiêu tốn thêm 1 DSP và 2 khối M10K chỉ để đưa RTF từ $0{,}197$ xuống $0{,}10$ là hoàn toàn lãng phí trên kit DE10-Standard. Do đó, tài liệu này \textbf{lựa chọn kiến trúc 1 DSP làm cấu hình mặc định chuẩn tắc}. Phương án 2 DSP được trình bày chi tiết như một "nút vặn mở rộng" (scalable configuration parameter) trong trường hợp người đọc muốn nâng cấp hệ thống để xử lý tín hiệu âm thanh đa kênh.
+Vì $\text{RTF} = 0{,}197$ đã đáp ứng tốt yêu cầu thời gian thực (hệ thống nhàn rỗi hơn $80\%$ thời gian), việc sử dụng thêm 1 DSP và 2 khối M10K để đưa RTF từ $0{,}197$ xuống $0{,}10$ là không cần thiết trên kit DE10-Standard. Do đó, tài liệu này \textbf{lựa chọn kiến trúc 1 DSP làm cấu hình mặc định chuẩn tắc}. Phương án 2 DSP được trình bày chi tiết như một "nút vặn mở rộng" (scalable configuration parameter) trong trường hợp người đọc muốn nâng cấp hệ thống để xử lý tín hiệu âm thanh đa kênh.
 
-\textit{Tóm lại: Dùng 2 khối DSP có thể giảm thời gian tính toán xuống một nửa (RTF từ $0{,}197$ xuống $\approx 0{,}10$), nhưng đòi hỏi 3 cổng đọc đồng thời, buộc phải nhân đôi bộ nhớ lên 4 khối M10K; do 1 DSP đã thừa sức đáp ứng thời gian thực, kiến trúc 1 DSP được chọn làm mặc định tối ưu.}
+\textit{Tóm lại: Dùng 2 khối DSP có thể giảm thời gian tính toán xuống một nửa (RTF từ $0{,}197$ xuống $\approx 0{,}10$), nhưng đòi hỏi 3 cổng đọc đồng thời, buộc phải nhân đôi bộ nhớ lên 4 khối M10K; do 1 DSP đã thừa sức đáp ứng thời gian thực, kiến trúc 1 DSP được chọn làm phương án mặc định của thiết kế.}
 
 
 \subsection*{7.7. Tuyến (A): Tích hợp khối IP Intel ALTERA\_MULT\_ADD}
@@ -682,7 +682,7 @@ Vì $\text{RTF} = 0{,}197$ đã là một con số quá nhanh so với thời gi
 \subsubsection*{Tên gọi chuẩn xác và bối cảnh IP trên Cyclone V}
 Khi xây dựng mạch nhân tích lũy trên các dòng FPGA của Intel, nhiều tài liệu cũ và các bản thiết kế kế thừa từ các thế hệ Cyclone II, Cyclone IV thường sử dụng khối IP có tên gọi \texttt{ALTMULT\_ACCUM}. Tuy nhiên, đối với họ vi mạch Cyclone V SoC trên kit DE10-Standard, Intel đã tái cấu trúc toàn diện kiến trúc khối tính toán số học DSP thành khối \textbf{Variable Precision DSP}. Tên gọi chính thức và duy nhất được hỗ trợ đầy đủ trong công cụ thiết kế IP Catalog của Quartus Prime là \textbf{\texttt{ALTERA\_MULT\_ADD}} (Multiply Adder IP Core).
 
-Tài liệu hướng dẫn sử dụng của khối IP này là: \emph{Integer Arithmetic IP Cores User Guide} (mục "ALTERA\_MULT\_ADD (Multiply-Add) IP Core").
+Tài liệu hướng dẫn sử dụng của khối IP này là: \emph{Integer Arithmetic IP Cores User Guide} (mục cấu hình khối \texttt{ALTERA\_MULT\_ADD}).
 
 \subsubsection*{Giải thích chi tiết từng tham số trong Parameter Editor}
 Khi khởi tạo khối IP \texttt{ALTERA\_MULT\_ADD} trong giao diện đồ họa Parameter Editor của Quartus Prime, mỗi tham số cấu hình trả lời trực tiếp cho một bài toán thiết kế kiến trúc đã được dẫn xuất ở các mục trước:
@@ -704,7 +704,7 @@ Khi khởi tạo khối IP \texttt{ALTERA\_MULT\_ADD} trong giao diện đồ h�
     Kích hoạt tầng thanh ghi đầu vào (Input Register Bank) bên trong khối DSP cho cả hai cổng A và B, được điều khiển bởi xung nhịp \texttt{clk} (\texttt{CLOCK0}). Đây chính là việc hiện thực hóa \textbf{Phương án 2}: chia đôi đường tới hạn từ RAM M10K và tận dụng các flip-flop cứng có sẵn trong silicon DSP (mức tiêu tốn ALM logic ngoài nếu có phải kiểm trong Quartus).
     
     \item \textbf{\texttt{MULTIPLIER\_REGISTER0 = "UNREGISTERED"}:}
-    Quy định không chèn thêm thanh ghi đường ống giữa ngõ ra bộ nhân và ngõ vào bộ cộng. Như đã phân tích ở Phương án 3 (Mục 7.3), việc đặt \texttt{UNREGISTERED} tránh suy luận thêm thanh ghi ngoài ALM (phải kiểm trong Parameter Editor/Quartus).
+    Quy định không chèn thanh ghi đường ống giữa bộ nhân và bộ cộng. Cấu hình \texttt{UNREGISTERED} tránh suy luận thêm thanh ghi ngoài ALM (phải kiểm trong Parameter Editor/Quartus).
     
     \item \textbf{\texttt{ACCUMULATOR = "YES"}:}
     Bật chức năng cộng dồn tích lũy hồi tiếp bên trong khối DSP cứng, biến bộ nhân thành bộ MAC hoàn chỉnh.
@@ -774,7 +774,7 @@ altera_mult_add #(
 \addcontentsline{toc}{subsection}{7.8. Tuyến (B): Thiết kế Verilog HDL, mô hình song sinh Python và kiểm chứng}
 
 \subsubsection*{Kiến trúc phân tầng và vai trò của các module phần cứng}
-Hệ thống tự tương quan tuyến (B) được thiết kế theo cấu trúc phân tầng rõ ràng, độc lập hoàn toàn với các thư viện đóng gói độc quyền của nhà sản xuất, giúp mã nguồn có thể mô phỏng và kiểm chứng trên mọi công cụ chuẩn như Icarus Verilog hay Verilator. Hệ thống gồm 3 module chính:
+Hệ thống tự tương quan tuyến (B) được thiết kế theo cấu trúc phân tầng rõ ràng, không phụ thuộc vào các thư viện đóng gói độc quyền của nhà sản xuất, giúp mã nguồn có thể mô phỏng và kiểm chứng trên mọi công cụ chuẩn như Icarus Verilog hay Verilator. Hệ thống gồm 3 module chính:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{\texttt{rtl/v3/ch07\_mac\_engine.v}:}
     Là bộ điều khiển mức đỉnh (Top Engine) của toàn bộ khối tự tương quan. Module chứa máy trạng thái FSM điều khiển quá trình phát địa chỉ đọc $(n, n+\tau)$ từ RAM, phát cờ nạp đè \texttt{in\_sload} ở đầu mỗi lag và cờ \texttt{in\_last} ở cuối mỗi lag. Ngoài ra, module quản lý các tầng trễ đồng bộ để giữ nhịp cho các cờ điều khiển đi song hành cùng dữ liệu đọc từ RAM.
@@ -783,7 +783,7 @@ Hệ thống tự tương quan tuyến (B) được thiết kế theo cấu trú
     Bộ nhớ đệm mẫu tín hiệu cửa sổ True Dual-Port RAM dung lượng 638 từ $\times 17\text{ bit}$. Bộ nhớ này được viết theo chuẩn mã suy diễn (RAM inference template), cho phép Quartus Prime tự động ánh xạ vào 2 khối M10K cứng với cấu hình $512 \times 20$, hỗ trợ 2 cổng đọc độc lập và trả kết quả sau đúng 1 chu kỳ xung nhịp.
     
     \item \textbf{\texttt{rtl/v3/ch07\_mac\_unit.v}:}
-    Lõi tính toán nhân-tích lũy $17 \times 17\text{-bit}$ có dấu. Module hiện thực hóa trọn vẹn Phương án 2 (thanh ghi ngõ vào + thanh ghi tích lũy ngõ ra), đạt độ trễ đúng 2 chu kỳ và tự động suy diễn hoàn hảo vào 1 khối Variable Precision DSP của Cyclone V.
+    Lõi tính toán nhân-tích lũy $17 \times 17\text{-bit}$ có dấu. Module hiện thực hóa trọn vẹn Phương án 2 (thanh ghi ngõ vào + thanh ghi tích lũy ngõ ra), đạt độ trễ đúng 2 chu kỳ và tự động suy diễn phù hợp vào 1 khối Variable Precision DSP của Cyclone V.
 \end{enumerate}
 
 Sơ đồ ghép nối chi tiết và các tầng trễ đường ống được mô tả trên Hình~\ref{fig:ch07_mac_arch}.
@@ -815,7 +815,7 @@ Giải thích chi tiết từng dòng mã nguồn của khối MAC lõi:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dòng 33--35:} Khai báo các thanh ghi thuộc Tầng 1 (Input Register Bank): hai thanh ghi toán hạng có dấu 17-bit \texttt{a\_r}, \texttt{b\_r} và các cờ trạng thái \texttt{v\_r}, \texttt{sload\_r}, \texttt{last\_r}.
     \item \textbf{Dòng 37--44:} Khối \texttt{always} nhạy với cạnh lên xung nhịp và cạnh xuống của tín hiệu reset tích cực mức thấp \texttt{rst\_n}. Khi \texttt{rst\_n = 0}, toàn bộ thanh ghi đầu vào được xóa đồng bộ về 0.
-    \item \textbf{Dòng 45--50:} Ở chế độ hoạt động bình thường, các ngõ vào được chốt trực tiếp vào thanh ghi tại cạnh lên xung nhịp, giúp cách ly hoàn toàn đường trễ từ bus RAM tới bộ nhân silicon.
+    \item \textbf{Dòng 45--50:} Ở chế độ hoạt động bình thường, các ngõ vào được chốt trực tiếp vào thanh ghi tại cạnh lên xung nhịp, giúp phân tách đường trễ từ bus RAM tới bộ nhân silicon.
     \item \textbf{Dòng 54:} Khai báo dây tích số \texttt{p} rộng 34 bit có dấu. Phép nhân \texttt{a\_r * b\_r} là logic tổ hợp thuần túy bên trong khối silicon DSP cứng.
     \item \textbf{Dòng 57--58:} Khai báo hằng số \texttt{EXT\_W = 14} và thực hiện mở rộng dấu tường minh (explicit sign-extension) từ tích số 34 bit sang 48 bit (\texttt{p\_ext}), đảm bảo khi cộng dồn vào bộ tích lũy 48-bit giá trị âm luôn được giữ đúng dấu số học.
     \item \textbf{Dòng 61--65:} Khối \texttt{always} của Tầng 2 quản lý thanh ghi tích lũy \texttt{acc} và cờ hợp lệ ngõ ra \texttt{out\_valid}. Khi reset, các thanh ghi này được đưa về 0.
@@ -831,10 +831,10 @@ Khối \texttt{rtl/v3/ch07\_mac\_engine.v} tích hợp FSM điều khiển, bộ
 Giải thích chi tiết các bước xử lý trong khối phát địa chỉ và điều khiển:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dòng 128--130:} Trạng thái \texttt{S\_CALC} tăng biến đếm chu kỳ \texttt{cycle\_count} ở mỗi nhịp xung nhịp để đo đạc thời gian thực thi của khung dữ liệu.
-    \item \textbf{Dòng 131--140:} Kiểm tra điều kiện hoàn tất lag cuối cùng (\texttt{is\_last\_n \&\& is_last\_lag}, tương ứng với $\tau = 214$ và $n = 423$). Khi cặp địa chỉ cuối cùng của khung được phát xong, bộ phát hạ cờ \texttt{gen\_valid}, \texttt{gen\_sload}, \texttt{gen\_last} về 0 và chuyển sang trạng thái \texttt{S\_DRAIN} để đợi xả đường ống.
-    \item \textbf{Dòng 141--156 (Chuyển tiếp Zero-Bubble):} Khi mẫu cuối cùng của một lag kết thúc (\texttt{is\_last\_n = 1}), ngay trong chu kỳ kế tiếp, FSM tăng chỉ số lag \texttt{lag\_idx <= lag\_idx + 1}, đặt lại bộ đếm mẫu \texttt{n\_cnt <= 0}, phát cờ \texttt{gen\_sload <= 1} (yêu cầu nạp đè tích số mới vào bộ tích lũy), và phát ngay địa chỉ đầu tiên của lag mới (\texttt{gen\_addr\_a <= 0}, \texttt{gen\_addr\_b <= next\_t}). Quá trình này không chèn bất kỳ chu kỳ trống nào.
-    \item \textbf{Dòng 157--166:} Tăng tiến mẫu nội bộ trong từng lag (\texttt{!is\_last\_n}): \texttt{n\_cnt} tăng 1, \texttt{gen\_sload} hạ về 0, \texttt{gen\_last} tích cực mức cao tại mẫu cuối cùng của lag (\texttt{n\_cnt + 1 == current\_max\_n}), hai địa chỉ phát ra là \texttt{gen\_addr\_a = n\_cnt + 1} và \texttt{gen\_addr\_b = n\_cnt + 1 + current\_tau}.
-    \item \textbf{Các dòng 215--249 (Cân bằng trễ đường ống):} Khối logic chốt trễ 1 chu kỳ (\texttt{ram\_vld\_r, ram\_sload\_r, ram\_last\_r, ram\_tau\_r}) để đồng bộ các cờ điều khiển với dữ liệu đọc ra từ RAM M10K (vốn có trễ đọc 1 chu kỳ). Nhãn lag \texttt{tau} tiếp tục được chốt trễ thêm 2 chu kỳ (\texttt{mac\_tau\_d1, mac\_tau\_d2}) để xuất hiện tại ngõ ra \texttt{out\_tau} đồng thời với cờ kết quả \texttt{out\_valid} từ khối MAC.
+    \item \textbf{Dòng 131--140:} Kiểm tra điều kiện hoàn tất lag cuối cùng (\texttt{is\_last\_n} và \texttt{is\_last\_lag}, tương ứng với $\tau = 214$ và $n = 423$). Khi cặp địa chỉ cuối cùng của khung được phát xong, bộ phát hạ các cờ \texttt{gen\_valid}, \texttt{gen\_sload}, \texttt{gen\_last} về 0 và chuyển sang trạng thái \texttt{S\_DRAIN} để đợi xả đường ống.
+    \item \textbf{Dòng 141--156 (Chuyển tiếp Zero-Bubble):} Khi mẫu cuối cùng của một lag kết thúc (\texttt{is\_last\_n} = 1), ngay trong chu kỳ kế tiếp, FSM tăng chỉ số lag \texttt{lag\_idx}, đặt lại bộ đếm mẫu \texttt{n\_cnt} về 0, phát cờ \texttt{gen\_sload} lên 1 (yêu cầu nạp đè tích số mới vào bộ tích lũy), và phát ngay địa chỉ đầu tiên của lag mới (\texttt{gen\_addr\_a} = 0, \texttt{gen\_addr\_b} = \texttt{next\_t}). Quá trình này không chèn bất kỳ chu kỳ trống nào.
+    \item \textbf{Dòng 157--166:} Tăng tiến mẫu nội bộ trong từng lag: \texttt{n\_cnt} tăng 1, \texttt{gen\_sload} hạ về 0, \texttt{gen\_last} tích cực mức cao tại mẫu cuối cùng của lag (\texttt{current\_max\_n}), hai địa chỉ phát ra là \texttt{gen\_addr\_a} và \texttt{gen\_addr\_b}.
+    \item \textbf{Các dòng 215--249 (Cân bằng trễ đường ống):} Khối logic chốt trễ 1 chu kỳ (\texttt{ram\_vld\_r}, \texttt{ram\_sload\_r}, \texttt{ram\_last\_r}, \texttt{ram\_tau\_r}) để đồng bộ các cờ điều khiển với dữ liệu đọc ra từ RAM M10K (vốn có trễ đọc 1 chu kỳ). Nhãn lag $\tau$ tiếp tục được chốt trễ thêm 2 chu kỳ (\texttt{mac\_tau\_d1}, \texttt{mac\_tau\_d2}) để xuất hiện tại ngõ ra \texttt{out\_tau} đồng thời với cờ kết quả \texttt{out\_valid} từ khối MAC.
 \end{itemize}
 
 \subsubsection*{Mô hình song sinh Python chu-kỳ-đối-chu-kỳ (Cycle-Accurate Twin)}
@@ -853,7 +853,7 @@ Giải thích chi tiết các bước thực thi trong hàm \texttt{step()}:
 \end{itemize}
 
 \subsubsection*{Bảng đối chiếu dòng mã nguồn giữa Python Twin và Verilog HDL}
-Bảng~\ref{tab:ch07_twin_vs_hdl} đối chiếu chi tiết giữa từng khối lệnh trong mô hình song sinh Python và khối mã Verilog HDL tương ứng, minh chứng tính tương đương cấu trúc tuyệt đối giữa phần mềm mô phỏng và phần cứng.
+Bảng~\ref{tab:ch07_twin_vs_hdl} đối chiếu chi tiết giữa từng khối lệnh trong mô hình song sinh Python và khối mã Verilog HDL tương ứng, thể hiện tính tương đương cấu trúc giữa mô hình mô phỏng và phần cứng.
 
 \begin{table}[htbp]
 \centering
@@ -884,7 +884,7 @@ Dòng 167--173 & Dòng 128--167 & Bộ phát địa chỉ quét $98.540$ cặp $
 \addlinespace[3pt]
 Dòng 108 & Dòng 215--233 & Tầng trễ 1 chu kỳ cân bằng nhịp đọc RAM M10K cho các cờ điều khiển (\texttt{ram\_sload\_r, ram\_last\_r}). \\
 \addlinespace[3pt]
-Dòng 108--112 & Dòng 235--250 & Tầng trễ 2 chu kỳ chốt nhãn lag (\texttt{mac\_tau\_d1, mac\_tau\_d2}) đồng bộ hoàn toàn với độ trễ tính toán của khối MAC. \\
+Dòng 108--112 & Dòng 235--250 & Tầng trễ 2 chu kỳ chốt nhãn lag (\texttt{mac\_tau\_d1, mac\_tau\_d2}) đồng bộ với độ trễ tính toán của khối MAC. \\
 \addlinespace[3pt]
 Dòng 174--176 & Dòng 169--180 & Trạng thái \texttt{S\_DRAIN} đợi 3 chu kỳ xả đường ống để hoàn tất mẫu cuối cùng trước khi báo cờ \texttt{done}. \\
 \bottomrule
@@ -909,7 +909,7 @@ Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đ�
     \item Số chu kỳ thực thi cho mỗi khung: đúng \textbf{98.543 chu kỳ xung nhịp} ($98.540$ chu kỳ phát địa chỉ $+ 3$ chu kỳ trễ đường ống).
 \end{itemize}
 
-Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi tiết lưu tại \texttt{verify\_v3/tb\_ch07\_mac\_stim.txt} và \texttt{verify\_v3/tb\_ch07\_mac\_expected.txt}. Hai testbench \texttt{tb/v3/tb\_ch07\_mac.v} và \texttt{tb/v3/tb\_ch07\_mac\_engine.v} được thiết kế để đọc và so sánh toàn bộ các vector và 16 khung dữ liệu trên môi trường mô phỏng Icarus Verilog.
+Mô hình song sinh Python xuất ra 7.460 vector kiểm chứng lưu tại \path{verify_v3/tb_ch07_mac_stim.txt} và \path{verify_v3/tb_ch07_mac_expected.txt}. Hai testbench \path{tb/v3/tb_ch07_mac.v} và \path{tb/v3/tb_ch07_mac_engine.v} được thiết kế để đọc và so sánh toàn bộ các vector và 16 khung dữ liệu trên môi trường mô phỏng Icarus Verilog.
 
 \todo{box}
 
@@ -924,7 +924,7 @@ Trong các hệ thống số xử lý tín hiệu tốc độ cao, việc đồn
 
 \begin{itemize}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{Pha 1 (Kích thích ở cạnh xuống xung nhịp):}
-    Tại cạnh xuống của xung nhịp (\texttt{@(negedge clk)}), testbench gán các giá trị kích thích ngõ vào bao gồm tín hiệu điều khiển (\texttt{rst\_n}, \texttt{in\_valid}, \texttt{in\_sload}, \texttt{in\_last}) và các toán hạng âm thanh (\texttt{a}, \texttt{b}). Việc đổi giá trị ở cạnh xuống tạo ra nửa chu kỳ xung nhịp hoàn toàn ổn định (setup time rộng rãi) trước khi cạnh lên kế tiếp xuất hiện, giúp triệt tiêu hoàn toàn nguy cơ vi phạm thời gian thiết lập. Sau đó, testbench đợi một độ trễ mô phỏng nhỏ \texttt{\#1} để kiểm tra các tín hiệu tổ hợp nội bộ (nếu cần).
+    Tại cạnh xuống của xung nhịp (\texttt{@(negedge clk)}), testbench gán các giá trị kích thích ngõ vào bao gồm tín hiệu điều khiển (\texttt{rst\_n}, \texttt{in\_valid}, \texttt{in\_sload}, \texttt{in\_last}) và các toán hạng âm thanh (\texttt{a}, \texttt{b}). Việc đổi giá trị ở cạnh xuống tạo ra nửa chu kỳ xung nhịp ổn định trước khi cạnh lên kế tiếp xuất hiện, giảm thiểu nguy cơ vi phạm thời gian thiết lập. Sau đó, testbench đợi một độ trễ mô phỏng nhỏ \texttt{\#1} để kiểm tra các tín hiệu tổ hợp nội bộ (nếu cần).
     
     \item \textbf{Pha 2 (Kiểm tra ngõ ra thanh ghi ở cạnh lên xung nhịp):}
     Tại cạnh lên của xung nhịp (\texttt{@(posedge clk)}), các flip-flop vật lý bên trong khối DSP và RAM chốt trạng thái mới. Testbench đợi một độ trễ mô phỏng \texttt{\#1} để các cổng ngõ ra thanh ghi cập nhật ổn định, sau đó tiến hành đối chiếu giá trị \texttt{out\_valid} và thanh ghi tích lũy \texttt{acc} với dữ liệu kỳ vọng từ tệp vector của Python twin.
@@ -956,9 +956,9 @@ Bảng~\ref{tab:ch07_ip_vs_hdl} tổng hợp so sánh đa chiều giữa phươn
 \addlinespace[3pt]
 \textbf{Độ trễ đường ống (Latency)} & Đúng 2 chu kỳ tính từ cổng DSP & Đúng 2 chu kỳ tính từ cổng DSP \\
 \addlinespace[3pt]
-\textbf{Tính khả chuyển mô phỏng} & Phụ thuộc thư viện mô phỏng của Intel (\texttt{altera\_mf}) & Khả chuyển $100\%$ trên Icarus Verilog, Verilator, ModelSim \\
+\textbf{Tính khả chuyển mô phỏng} & Phụ thuộc thư viện mô phỏng của Intel (\texttt{altera\_mf}) & Khả chuyển trên Icarus Verilog, Verilator, ModelSim \\
 \addlinespace[3pt]
-\textbf{Khả năng gỡ lỗi nội bộ} & Cấu trúc hộp đen (Black-box), khó thâm nhập tín hiệu ngầm & Mã nguồn mở hoàn toàn, dễ dàng gán cờ probe hoặc trích xuất bus \\
+\textbf{Khả năng gỡ lỗi nội bộ} & Cấu trúc hộp đen (Black-box), khó thâm nhập tín hiệu ngầm & Mã nguồn RTL mở, dễ dàng gán cờ probe hoặc trích xuất bus \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -987,7 +987,7 @@ Bảng~\ref{tab:ch07_ip_vs_hdl} tổng hợp so sánh đa chiều giữa phươn
     \begin{equation}
     \Delta_{\text{margin}} = N_{\text{FFT}} - N_{\text{min}} = 1024 - 852 = \mathbf{172\text{ mẫu}}
     \end{equation}
-    Khoảng đệm 172 mẫu này chứng minh rằng tại mọi độ trễ $\tau \le 214$, kết quả tự tương quan do Praat tính toán qua thuật toán FFT 1024 điểm hoàn toàn trùng khớp với kết quả tự tương quan tuyến tính trực tiếp (Direct MAC) mà không hề có bất kỳ thành phần chồng lấn vòng nào.
+    Khoảng đệm 172 mẫu này chứng minh rằng tại mọi độ trễ $\tau \le 214$, kết quả tự tương quan do Praat tính toán qua thuật toán FFT 1024 điểm trùng khớp với kết quả tự tương quan tuyến tính trực tiếp (Direct MAC) mà không có thành phần chồng lấn vòng.
 \end{enumerate}
 
 \paragraph{Bài tập 7.2 (Chi phí chu kỳ chuyển lag nếu không có cờ nạp đè \texttt{sload}).}
@@ -1009,14 +1009,14 @@ Bảng~\ref{tab:ch07_ip_vs_hdl} tổng hợp so sánh đa chiều giữa phươn
     \begin{equation}
     \Delta_{\text{overhead}} = \frac{190}{98.543} \times 100\% \approx \mathbf{0{,}1928\%}
     \end{equation}
-    Mặc dù mức chi phí thời gian này rất nhỏ (chưa tới $0{,}2\%$), việc tận dụng cờ \texttt{sload} có sẵn trong silicon DSP cứng đem lại lợi ích kiến trúc to lớn: máy trạng thái FSM phát địa chỉ liên tục không ngắt quãng, loại bỏ hoàn toàn các thanh ghi đếm trạng thái chờ và đơn giản hóa việc căn nhịp dữ liệu ngõ ra.
+    Mặc dù mức chi phí thời gian này rất nhỏ (chưa tới $0{,}2\%$), việc tận dụng cờ \texttt{sload} có sẵn trong silicon DSP cứng đem lại lợi ích kiến trúc to lớn: máy trạng thái FSM phát địa chỉ liên tục không ngắt quãng, loại bỏ các thanh ghi đếm trạng thái chờ và đơn giản hóa việc căn nhịp dữ liệu ngõ ra.
 \end{enumerate}
 
-\paragraph{Bài tập 7.3 (Chứng minh toán học bộ tích lũy 48-bit chống tràn số tuyệt đối).}
+\paragraph{Bài tập 7.3 (Chứng minh toán học khả năng chống tràn số của bộ tích lũy 48-bit).}
 \textit{Đề bài:} Mẫu âm thanh sau cửa sổ Hanning $x_w[n]$ có biên độ cực đại $|x_w| \le 65.535$ ($17\text{ bit}$ có dấu) và chiều dài khung $N = 638$.
 \begin{enumerate}[label=(\alph*), itemsep=2pt]
     \item Dẫn xuất cận trên số học lý thuyết của giá trị tự tương quan $R[\tau]$.
-    \item Chứng minh rằng thanh ghi tích lũy $48\text{ bit}$ hoàn toàn miễn nhiễm với hiện tượng tràn số và tính độ dự phòng (Headroom) theo đơn vị bit.
+    \item Chứng minh rằng thanh ghi tích lũy $48\text{ bit}$ không bị tràn số trong dải động thiết kế và tính độ dự phòng (Headroom) theo đơn vị bit.
 \end{enumerate}
 
 \textit{Lời giải:}
@@ -1042,7 +1042,7 @@ Bảng~\ref{tab:ch07_ip_vs_hdl} tổng hợp so sánh đa chiều giữa phươn
     \begin{equation}
     \text{Headroom} = 48 - 43 = \mathbf{5\text{ bit}}
     \end{equation}
-    Dự phòng $5\text{ bit}$ đồng nghĩa với việc bộ tích lũy có thể dung nạp một giá trị tổng lớn gấp $2^5 = 32$ lần giá trị cực hạn lý thuyết $S_{\max}$ trước khi xảy ra hiện tượng tràn bit số học (overflow). Do đó, thiết kế được bảo đảm an toàn toán học tuyệt đối.
+    Dự phòng $5\text{ bit}$ đồng nghĩa với việc bộ tích lũy có thể dung nạp một giá trị tổng lớn gấp $2^5 = 32$ lần giá trị cực hạn lý thuyết $S_{\max}$ trước khi xảy ra hiện tượng tràn bit số học (overflow). Do đó, thiết kế bảo đảm an toàn toán học chống tràn bit.
 \end{enumerate}
 
 \paragraph{Bài tập 7.4 (Hiện tượng nghẽn cổ chai bộ nhớ khi mở rộng lên 2 khối DSP).}
@@ -1067,6 +1067,6 @@ Tuy nhiên, khối bộ nhớ nhúng cứng M10K trên FPGA Cyclone V ở cấu 
     \item Bản sao RAM 1 (2 M10K): Cung cấp $x_w[n]$ qua Port A và $x_w[n+\tau_1]$ qua Port B cho DSP 1.
     \item Bản sao RAM 2 (2 M10K): Cung cấp $x_w[n]$ qua Port A và $x_w[n+\tau_2]$ qua Port B cho DSP 2.
 \end{itemize}
-Sự đánh đổi này khẳng định tính đúng đắn của quyết định lựa chọn kiến trúc 1 DSP mặc định ở Mục 7.2: tiết kiệm được 2 khối M10K và 1 khối DSP trong khi vẫn hoàn toàn đáp ứng thời gian thực với $\text{RTF} = 0{,}197$.
+Sự đánh đổi này khẳng định tính đúng đắn của quyết định lựa chọn kiến trúc 1 DSP mặc định ở Mục 7.2: tiết kiệm được 2 khối M10K và 1 khối DSP trong khi vẫn đáp ứng thời gian thực với $\text{RTF} = 0{,}197$.
 
-\textit{Tóm lại: Quy ước kiểm chứng mẫu 2 pha bảo đảm loại bỏ hoàn toàn race condition trong mô phỏng; bảng so sánh minh chứng HDL tự viết đạt hiệu năng và độ trễ tương đương $100\%$ với IP lõi Intel nhưng vượt trội về tính khả chuyển; bốn bài tập định lượng đã chứng minh tính chặt chẽ về toán học và sự tối ưu phần cứng của thiết kế.}
+\textit{Tóm lại: Quy ước kiểm chứng mẫu 2 pha bảo đảm loại bỏ race condition trong mô phỏng; bảng so sánh minh chứng HDL tự viết đạt hiệu năng và độ trễ tương đương với IP lõi Intel nhưng thuận lợi hơn về tính khả chuyển; bốn bài tập định lượng củng cố tính chặt chẽ về toán học và cấu trúc phần cứng của thiết kế.}
