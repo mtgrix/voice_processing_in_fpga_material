@@ -40,15 +40,14 @@ module ch07_mac_engine #(
     output wire                     out_valid,
     output wire [7:0]               out_tau,      // Current lag index: 0, then 26..214
     output wire signed [ACC_W-1:0]  out_R,        // 48-bit signed unnormalized autocorrelation
-    output reg  [31:0]              cycle_count   // Measured execution cycles from start to done
+    output reg  [31:0]              cycle_count   // Chu ky tinh tu cap dia chi dau den ket qua cuoi (98540 + 3 = 98543)
 );
 
     // FSM States
     localparam [1:0]
         S_IDLE  = 2'd0,
         S_CALC  = 2'd1,
-        S_DRAIN = 2'd2,
-        S_DONE  = 2'd3;
+        S_DRAIN = 2'd2;
 
     reg [1:0] state;
 
@@ -167,22 +166,20 @@ module ch07_mac_engine #(
                 end
 
                 S_DRAIN: begin
-                    cycle_count <= cycle_count + 32'd1;
-                    gen_valid   <= 1'b0;
-                    gen_sload   <= 1'b0;
-                    gen_last    <= 1'b0;
+                    gen_valid <= 1'b0;
+                    gen_sload <= 1'b0;
+                    gen_last  <= 1'b0;
 
                     if (drain_cnt == 2'd2) begin
-                        state <= S_DONE;
+                        // 3rd drain cycle: last result R[214] is valid in mac_unit (cycle 98543)
+                        // Hold cycle_count at 98543; assert done on next clock edge
+                        state <= S_IDLE;
+                        done  <= 1'b1;
+                        busy  <= 1'b0;
                     end else begin
-                        drain_cnt <= drain_cnt + 2'd1;
+                        drain_cnt   <= drain_cnt + 2'd1;
+                        cycle_count <= cycle_count + 32'd1;
                     end
-                end
-
-                S_DONE: begin
-                    done  <= 1'b1;
-                    busy  <= 1'b0;
-                    state <= S_IDLE;
                 end
             endcase
         end

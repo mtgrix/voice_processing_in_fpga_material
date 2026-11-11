@@ -826,7 +826,7 @@ Giải thích chi tiết từng dòng mã nguồn của khối MAC lõi:
 \subsubsection*{Phân tích đoạn mã Verilog khối điều khiển và phát địa chỉ ch07\_mac\_engine.v}
 Khối \texttt{rtl/v3/ch07\_mac\_engine.v} tích hợp FSM điều khiển, bộ phát địa chỉ zero-bubble và các tầng thanh ghi cân bằng trễ đường ống. Dưới đây là 40 dòng mã nguồn cốt lõi trong trạng thái tính toán \texttt{S\_CALC} (các dòng từ 128 đến 167):
 
-\lstinputlisting[language=Verilog, firstline=128, lastline=167, firstnumber=128, caption={Đoạn mã Verilog bộ phát địa chỉ và máy trạng thái Zero-Bubble (rtl/v3/ch07\_mac\_engine.v).}]{\detokenize{rtl/v3/ch07_mac_engine.v}}
+\lstinputlisting[language=Verilog, firstline=127, lastline=166, firstnumber=127, caption={Đoạn mã Verilog bộ phát địa chỉ và máy trạng thái Zero-Bubble (rtl/v3/ch07\_mac\_engine.v).}]{\detokenize{rtl/v3/ch07_mac_engine.v}}
 
 Giải thích chi tiết các bước xử lý trong khối phát địa chỉ và điều khiển:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
@@ -880,13 +880,13 @@ Dòng 78--90 & Dòng 45--50 & Chốt các toán hạng và cờ điều khiển 
 \midrule
 \multicolumn{3}{l}{\textit{\textbf{Khối điều khiển và phát địa chỉ (rtl/v3/ch07\_mac\_engine.v)}}} \\
 \addlinespace[2pt]
-Dòng 167--173 & Dòng 128--167 & Bộ phát địa chỉ quét $98.540$ cặp $(n, n+\tau)$ liền mạch; sinh cờ \texttt{sload} ở mẫu đầu và cờ \texttt{last} ở mẫu cuối từng lag. \\
+Dòng 167--173 & Dòng 127--166 & Bộ phát địa chỉ quét $98.540$ cặp $(n, n+\tau)$ liền mạch; sinh cờ \texttt{sload} ở mẫu đầu và cờ \texttt{last} ở mẫu cuối từng lag. \\
 \addlinespace[3pt]
-Dòng 108 & Dòng 215--233 & Tầng trễ 1 chu kỳ cân bằng nhịp đọc RAM M10K cho các cờ điều khiển (\texttt{ram\_sload\_r, ram\_last\_r}). \\
+Dòng 108 & Dòng 212--230 & Tầng trễ 1 chu kỳ cân bằng nhịp đọc RAM M10K cho các cờ điều khiển (\texttt{ram\_sload\_r, ram\_last\_r}). \\
 \addlinespace[3pt]
-Dòng 108--112 & Dòng 235--250 & Tầng trễ 2 chu kỳ chốt nhãn lag (\texttt{mac\_tau\_d1, mac\_tau\_d2}) đồng bộ với độ trễ tính toán của khối MAC. \\
+Dòng 108--112 & Dòng 232--246 & Tầng trễ 2 chu kỳ chốt nhãn lag (\texttt{mac\_tau\_d1, mac\_tau\_d2}) đồng bộ với độ trễ tính toán của khối MAC. \\
 \addlinespace[3pt]
-Dòng 174--176 & Dòng 169--180 & Trạng thái \texttt{S\_DRAIN} đợi 3 chu kỳ xả đường ống để hoàn tất mẫu cuối cùng trước khi báo cờ \texttt{done}. \\
+Dòng 174--176 & Dòng 168--182 & Trạng thái \texttt{S\_DRAIN} đợi 3 chu kỳ xả đường ống để hoàn tất mẫu cuối cùng trước khi báo cờ \texttt{done}. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -908,6 +908,9 @@ Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đ�
     \item Tỷ lệ khớp bit: \textbf{3.040 / 3.040 kết quả} ($100\%$, 0 sai lệch so với mẫu chuẩn).
     \item Số chu kỳ thực thi cho mỗi khung: đúng \textbf{98.543 chu kỳ xung nhịp} ($98.540$ chu kỳ phát địa chỉ $+ 3$ chu kỳ trễ đường ống).
 \end{itemize}
+
+\paragraph{Quy ước định nghĩa chu kỳ tính toán (\texttt{cycle\_count}):}
+Trong thiết kế phần cứng \texttt{ch07\_mac\_engine.v}, thanh ghi \texttt{cycle\_count} đo lường chính xác số chu kỳ xung nhịp từ khi cặp địa chỉ đầu tiên $(n=0, \tau=0)$ bắt đầu được phát vào RAM M10K (chu kỳ 1) cho đến chu kỳ mà kết quả tự tương quan cuối cùng $R[214]$ xuất hiện hợp lệ tại đầu ra khối MAC (\texttt{out\_valid} $= 1$, chu kỳ thứ $98.543$). Tổng số chu kỳ tính toán này bằng đúng $98.540\text{ cặp địa chỉ} + 3\text{ nhịp trễ đường ống (1 RAM + 2 DSP)} = \mathbf{98.543\text{ chu kỳ}}$, hoàn toàn khớp với công thức ở Mục 7.2 và chỉ tiêu Agenda 7.8/4.3. Ngay tại cạnh lên xung nhịp kế tiếp (chu kỳ thứ $98.544$ tính từ thời điểm kích hoạt \texttt{start}), cờ \texttt{done} được chốt lên mức 1 trong đúng 1 chu kỳ để thông báo hoàn thành tính toán khung, và \texttt{cycle\_count} giữ nguyên giá trị $98.543$ phục vụ kiểm tra và thống kê hiệu năng.
 
 Mô hình song sinh Python xuất ra 7.460 vector kiểm chứng lưu tại \path{verify_v3/tb_ch07_mac_stim.txt} và \path{verify_v3/tb_ch07_mac_expected.txt}. Hai testbench \path{tb/v3/tb_ch07_mac.v} và \path{tb/v3/tb_ch07_mac_engine.v} được thiết kế để đọc và so sánh toàn bộ các vector và 16 khung dữ liệu trên môi trường mô phỏng Icarus Verilog.
 

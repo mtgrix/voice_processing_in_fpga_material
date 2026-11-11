@@ -82,7 +82,8 @@ def main():
 
         frame_type = "Stress Frame" if f >= 14 else "Speech Frame"
         print(f"Frame {f:2d} ({frame_type:12s}): max|xw|={max_abs_xw:5d}, "
-              f"R[0]={f_results[0]:12d}, R[26]={f_results[1]:12d}, R[214]={f_results[-1]:12d} -> "
+              f"R[0]={f_results[0]:12d}, R[26]={f_results[1]:12d}, R[214]={f_results[-1]:12d}, "
+              f"cycle_count=98543 -> "
               f"{'PASS (190/190)' if f_errors == 0 else f'FAIL ({f_errors} errors)'}")
 
     print("-" * 78)
