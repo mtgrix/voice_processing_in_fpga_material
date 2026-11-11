@@ -357,3 +357,218 @@ Khi chạy mô hình nhân chéo số nguyên trên toàn bộ 277 khung của h
 Toàn bộ 277 khung trên cả hai tệp đều có quyết định trùng khớp 100\% giữa bất đẳng thức nhân chéo số nguyên và thuật toán gốc của Praat (nhật ký \texttt{verify\_v3/ch10\_golden\_audit.log}).
 
 \textit{Tóm lại: Bằng phép nhân chéo với mẫu số chung dương $300 \cdot R_{0n} \cdot GP$, bài toán so sánh ngưỡng vô thanh được chuyển hóa thành bất đẳng thức số nguyên $(100\cdot S_c - 45\cdot R_{0n})\cdot 3\cdot GP > 100\cdot R_{0n}\cdot \max(0, 6\cdot GP - 145\cdot LP)$; định dạng 54-bit có dấu loại bỏ hoàn toàn bộ chia dấu phẩy động mà vẫn triệt tiêu 100\% lỗi VDE so với Praat.}
+
+% ============================================================================
+% 10.3. TUYẾN THIẾT KẾ HDL TỰ VIẾT
+% ============================================================================
+\subsection*{10.3. Tuyến thiết kế HDL tự viết: Vì sao không dùng Intel IP, vi kiến trúc nhân dịch-cộng và đường tới hạn}
+\addcontentsline{toc}{subsection}{10.3. Tuyến thiết kế HDL tự viết: Vì sao không dùng Intel IP, vi kiến trúc nhân dịch-cộng và đường tới hạn}
+
+\subsubsection*{Vấn đề thực tế: Vì sao không ghép các khối Intel Megafunction IP?}
+Trong các chương trước, ta luôn song hành hai tuyến: Tuyến (A) sử dụng thư viện IP chuẩn của Intel (như \texttt{FIFO}, \texttt{FIR II}, \texttt{LPM\_MULT}, \texttt{ROM: 1-PORT}, \texttt{LPM\_DIVIDE}) và Tuyến (B) tự viết bằng HDL tương đương. Tuy nhiên, tại khối quyết định vô thanh / hữu thanh của Chương 10, câu hỏi đặt ra là: \emph{Liệu có nên sử dụng các khối IP của Intel để thực hiện bất đẳng thức nhân chéo hay không?}
+
+Hãy thử hình dung sơ đồ kết nối nếu ta cố tình xây dựng khối này bằng các IP chuẩn của Intel:
+\begin{itemize}
+    \item Bất đẳng thức chứa năm hằng số cố định: $100$, $45$, $3$, $6$, và $145$. Nếu khởi tạo mỗi hằng số bằng một khối IP nhân \texttt{LPM\_MULT}, ta sẽ cần tới 5 khối IP nhân hằng số riêng biệt. Dù Quartus có thể tối ưu một phần, việc tạo wrapper cho 5 khối IP nhân là một sự lãng phí tài nguyên và làm rối loạn sơ đồ thiết kế.
+    \item Tiếp theo, ta cần thêm 2 khối IP nhân đa năng (\texttt{LPM\_MULT}) cho hai tích biến số: một bộ nhân $35 \times 18\text{ bit}$ có dấu cho vế trái LHS, và một bộ nhân $34 \times 18\text{ bit}$ không dấu cho vế phải RHS.
+    \item Tiếp đó là một khối IP trừ (\texttt{LPM\_ADD\_SUB}), các khối logic bão hòa cực đại, logic phát hiện bẫy im lặng, và cuối cùng là một khối IP so sánh 54-bit (\texttt{LPM\_COMPARE}).
+\end{itemize}
+Việc ghép nối gần 10 module IP Megafunction đóng kín với các giao diện tín hiệu, độ trễ pipeline và cờ báo khác nhau đòi hỏi một lượng logic keo (glue logic) khổng lồ, khiến đường định thời trở nên phức tạp và việc mô phỏng kiểm chứng độc lập trên các công cụ mã nguồn mở (như Icarus Verilog) gần như bất khả thi do vướng thư viện mô phỏng độc quyền.
+
+Đặc biệt, bản chất toán học của các hệ số $100$, $45$, $3$, $6$, $145$ là các hằng số nguyên nhỏ cố định. Trong thiết kế mạch số chuyên nghiệp, các phép nhân với hằng số cố định \textbf{không bao giờ dùng bộ nhân phần cứng}, mà được thay thế hoàn toàn bằng \textbf{mạng dịch bit và bộ cộng (Shift-and-Add network)}. Vì vậy, tài liệu này quyết định: \emph{Khối quyết định vô thanh chỉ triển khai duy nhất bằng tuyến HDL tự viết}, kiểm soát chính xác từng tầng thanh ghi và tối ưu hóa diện tích silicon tối đa.
+
+\subsubsection*{Kỹ thuật nhân hằng số bằng mạng dịch-cộng (Shift-and-Add)}
+Dịch bit sang trái $k$ vị trí trong Verilog (\texttt{x << k}) tương đương với phép nhân với $2^k$. Phép toán này trên FPGA hoàn toàn không tiêu tốn bất kỳ bóng bán dẫn (transistor) hay phần tử logic (LE/ALM) nào; nó chỉ đơn thuần là việc đấu nối dây dẫn (hardwired routing) dịch chuyển vị trí các bit bus. Do đó, một phép nhân với hằng số nguyên bất kỳ có thể phân rã thành tổng của một vài phép dịch bit:
+\begin{enumerate}
+    \item \textbf{Hằng số 100:} Phân tích $100 = 64 + 32 + 4 = 2^6 + 2^5 + 2^2$.
+    \begin{equation}
+        100 \cdot x = (x \ll 6) + (x \ll 5) + (x \ll 2)
+    \end{equation}
+    Chỉ cần 2 bộ cộng ALM là hoàn thành phép nhân $100 \cdot x$, hoàn toàn không tốn khối nhân DSP nào.
+    \item \textbf{Hằng số 45:} Phân tích $45 = 32 + 8 + 4 + 1 = 2^5 + 2^3 + 2^2 + 2^0$.
+    \begin{equation}
+        45 \cdot x = (x \ll 5) + (x \ll 3) + (x \ll 2) + x
+    \end{equation}
+    Phép tính cần 3 bộ cộng số nguyên.
+    \item \textbf{Hằng số 3:} Phân tích $3 = 2 + 1 = 2^1 + 2^0$.
+    \begin{equation}
+        3 \cdot GP = (GP \ll 1) + GP
+    \end{equation}
+    Chỉ cần đúng 1 bộ cộng 16-bit duy nhất!
+    \item \textbf{Hằng số 6:} Phân tích $6 = 4 + 2 = 2^2 + 2^1$.
+    \begin{equation}
+        6 \cdot GP = (GP \ll 2) + (GP \ll 1)
+    \end{equation}
+    Chỉ cần đúng 1 bộ cộng 17-bit duy nhất!
+    \item \textbf{Hằng số 145:} Phân tích $145 = 128 + 16 + 1 = 2^7 + 2^4 + 2^0$.
+    \begin{equation}
+        145 \cdot LP = (LP \ll 7) + (LP \ll 4) + LP
+    \end{equation}
+    Chỉ cần 2 bộ cộng 24-bit.
+\end{enumerate}
+Toàn bộ các phép nhân hằng số trong bất đẳng thức được tính toán đồng thời song song trong mạng logic tổ hợp với thời gian trễ lan truyền nhỏ hơn $3\text{ ns}$ trên công nghệ bán dẫn $28\text{ nm}$ của Cyclone V.
+
+\subsubsection*{Vi kiến trúc đường ống 3 tầng của module ch10\_voicing.v}
+Để bảo đảm tần số hoạt động cực đại $F_{\max}$ vượt xa mức $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$) của hệ thống lõi, khối tính toán được cấu trúc thành một đường ống xử lý 3 tầng thanh ghi độc lập (3-stage pipeline), như được minh họa chi tiết trên Hình \ref{fig:ch10_pipeline}.
+
+\begin{figure}[htbp]
+    \centering
+    \input{chuong_v3/fig_ch10_pipeline.tex}
+    \caption{Sơ đồ vi kiến trúc đường ống 3 tầng của module quyết định vô thanh / hữu thanh \texttt{ch10\_voicing.v}. Tầng 1 thực hiện dịch-cộng và phát hiện bẫy im lặng; Tầng 2 thực hiện hai phép nhân 54-bit; Tầng 3 thực hiện so sánh chặt $LHS > RHS$ và ghép kênh ngõ ra $F_{0,\text{Q12.4}}$.}
+    \label{fig:ch10_pipeline}
+\end{figure}
+
+\textbf{Đọc hình.} Hình \ref{fig:ch10_pipeline} thể hiện trực quan luồng tín hiệu từ ngõ vào đến ngõ ra:
+\begin{itemize}
+    \item \textbf{Tầng 1 (Chu kỳ $n$):} Nhận các tín hiệu $S_c$, $R_{0n}$, $GP$, $LP$ và cờ \texttt{in\_cand\_found}. Mạng logic tổ hợp tính toán đồng thời:
+    \begin{itemize}
+        \item Số hạng $\text{term}_1 = 100 \cdot S_c - 45 \cdot R_{0n}$ (35-bit có dấu).
+        \item Thừa số $3 \cdot GP$ (18-bit không dấu) và $100 \cdot R_{0n}$ (34-bit không dấu).
+        \item Hiệu số dốc chuyển tiếp $\text{ramp\_diff} = 6 \cdot GP - 145 \cdot LP$ và lấy bão hòa $\text{ramp\_pos} = \max(0, \text{ramp\_diff})$ (18-bit không dấu).
+        \item Cờ bẫy im lặng $\text{silence\_trap} = (R_{0n} == 0) \lor (LP == 0) \lor (GP == 0) \lor (\neg \text{cand\_found})$.
+    \end{itemize}
+    Các kết quả được chốt vào Thanh ghi Tầng 1 (\texttt{reg1}) tại cạnh lên xung nhịp kế tiếp.
+    \item \textbf{Tầng 2 (Chu kỳ $n+1$):} Đọc dữ liệu đã chốt từ Thanh ghi 1. Thực hiện hai phép nhân song song:
+    \begin{align}
+        LHS &= \text{s1\_term1} \times \$signed(\{1'b0, \text{s1\_mult3\_gp}\}) \quad (35 \times 18\text{ bit có dấu} \to 54\text{ bit}) \\
+        RHS &= \$signed(\{1'b0, \text{s1\_100\_r0n}\}) \times \$signed(\{1'b0, \text{s1\_ramp\_pos}\}) \quad (34 \times 18\text{ bit} \to 54\text{ bit})
+    \end{align}
+    Hai tích số 54-bit cùng cờ bẫy im lặng và tần số thô $F_{0,\text{raw}}$ được chốt vào Thanh ghi Tầng 2 (\texttt{reg2}).
+    \item \textbf{Tầng 3 (Chu kỳ $n+2$):} Đọc dữ liệu từ Thanh ghi 2. Bộ so sánh số nguyên có dấu 54-bit kiểm tra điều kiện lớn hơn chặt $LHS > RHS$. Cổng AND kết hợp với cờ đảo của bẫy im lặng để tạo ra tín hiệu quyết định:
+    \begin{equation*}
+        \text{comb\_is\_voiced} = (\neg \text{s2\_silence\_trap}) \land (\text{s2\_lhs} > \text{s2\_rhs})
+    \end{equation*}
+    Bộ ghép kênh MUX 16-bit xuất giá trị tần số cuối cùng: nếu hữu thanh xuất $F_{0,\text{raw}}$, nếu vô thanh xuất $16'd0$. Toàn bộ kết quả được chốt vào thanh ghi ngõ ra tại cạnh lên chu kỳ $n+3$, đồng thời bật cờ \texttt{out\_valid} trong đúng 1 chu kỳ xung nhịp.
+\end{itemize}
+
+Tổng độ trễ từ khi tín hiệu \texttt{in\_valid} kích hoạt ở chu kỳ $n$ đến khi ngõ ra \texttt{out\_valid} bật lên ở chu kỳ $n+3$ là \textbf{đúng 3 chu kỳ xung nhịp}. Với thông lượng xử lý đạt \textbf{1 khung / chu kỳ} (hoàn toàn pipelined), độ trễ 3 chu kỳ (tương đương $60\text{ ns}$ tại $50\text{ MHz}$) là một phần vô cùng nhỏ so với ngân sách $500.000\text{ chu kỳ}$ của bước nhảy khung $10\text{ ms}$ ($0{,}0006\%$).
+
+\subsubsection*{Mã nguồn Verilog hiện thực hóa khối ch10\_voicing.v}
+Dưới đây là toàn bộ phần thân tính toán của module \texttt{ch10\_voicing.v} (Listing \ref{lst:ch10_voicing_v}), từ dòng 42 đến dòng 146:
+
+\begin{lstlisting}[language=Verilog, firstline=42, lastline=146, firstnumber=42, caption={Mã nguồn Verilog hiện thực hóa vi kiến trúc đường ống 3 tầng của module quyết định vô thanh \texttt{ch10\_voicing.v}.}]
+    // ------------------------------------------------------------------------
+    // Stage 1: Linear Combinations via Shift-and-Add & Silence Detection
+    // ------------------------------------------------------------------------
+    // Constant multiplier implementations using shift-add:
+    // 100 = 64 + 32 + 4 = (x << 6) + (x << 5) + (x << 2)
+    // 45  = 32 + 8 + 4 + 1 = (x << 5) + (x << 3) + (x << 2) + x
+    // 3   = 2 + 1 = (x << 1) + x
+    // 6   = 4 + 2 = (x << 2) + (x << 1)
+    // 145 = 128 + 16 + 1 = (x << 7) + (x << 4) + x
+
+    wire signed [34:0] sc_ext = {{7{in_sc[27]}}, in_sc};
+    wire signed [34:0] term_100_sc = (sc_ext <<< 6) + (sc_ext <<< 5) + (sc_ext <<< 2);
+
+    wire signed [34:0] r0n_ext = {8'd0, in_r0n};
+    wire signed [34:0] term_45_r0n = (r0n_ext <<< 5) + (r0n_ext <<< 3) + (r0n_ext <<< 2) + r0n_ext;
+
+    wire signed [34:0] comb_term1 = term_100_sc - term_45_r0n;
+
+    wire [17:0] comb_mult3_gp = {in_gp, 1'b0} + {2'b00, in_gp};
+    wire [33:0] comb_100_r0n  = ({in_r0n, 6'd0}) + ({in_r0n, 5'd0}) + ({in_r0n, 2'd0});
+
+    wire [18:0] comb_mult6_gp   = ({1'b0, in_gp, 2'b00}) + ({2'b00, in_gp, 1'b0});
+    wire [23:0] comb_mult145_lp = ({in_lp, 7'd0}) + ({3'd0, in_lp, 4'd0}) + ({8'd0, in_lp});
+
+    wire signed [24:0] comb_ramp_diff = $signed({6'd0, comb_mult6_gp}) - $signed({1'b0, comb_mult145_lp});
+    wire [17:0] comb_ramp_pos = (comb_ramp_diff > 25'sd0) ? comb_ramp_diff[17:0] : 18'd0;
+
+    wire comb_silence_trap = (in_r0n == 27'd0) || (in_lp == 16'd0) || (in_gp == 16'd0) || (!in_cand_found);
+
+    reg signed [34:0] s1_term1;
+    reg        [17:0] s1_mult3_gp;
+    reg        [33:0] s1_100_r0n;
+    reg        [17:0] s1_ramp_pos;
+    reg        [15:0] s1_f0_raw;
+    reg               s1_silence_trap;
+    reg               s1_valid;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            s1_term1        <= 35'sd0;
+            s1_mult3_gp     <= 18'd0;
+            s1_100_r0n      <= 34'd0;
+            s1_ramp_pos     <= 18'd0;
+            s1_f0_raw       <= 16'd0;
+            s1_silence_trap <= 1'b1;
+            s1_valid        <= 1'b0;
+        end else begin
+            s1_term1        <= comb_term1;
+            s1_mult3_gp     <= comb_mult3_gp;
+            s1_100_r0n      <= comb_100_r0n;
+            s1_ramp_pos     <= comb_ramp_pos;
+            s1_f0_raw       <= in_f0_raw;
+            s1_silence_trap <= comb_silence_trap;
+            s1_valid        <= in_valid;
+        end
+    end
+
+    // ------------------------------------------------------------------------
+    // Stage 2: 54-bit Products Generation (LHS and RHS)
+    // ------------------------------------------------------------------------
+    wire signed [53:0] comb_lhs = s1_term1 * $signed({1'b0, s1_mult3_gp});
+    wire signed [53:0] comb_rhs = $signed({1'b0, s1_100_r0n}) * $signed({1'b0, s1_ramp_pos});
+
+    reg signed [53:0] s2_lhs;
+    reg signed [53:0] s2_rhs;
+    reg        [15:0] s2_f0_raw;
+    reg               s2_silence_trap;
+    reg               s2_valid;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            s2_lhs          <= 54'sd0;
+            s2_rhs          <= 54'sd0;
+            s2_f0_raw       <= 16'd0;
+            s2_silence_trap <= 1'b1;
+            s2_valid        <= 1'b0;
+        end else begin
+            s2_lhs          <= comb_lhs;
+            s2_rhs          <= comb_rhs;
+            s2_f0_raw       <= s1_f0_raw;
+            s2_silence_trap <= s1_silence_trap;
+            s2_valid        <= s1_valid;
+        end
+    end
+
+    // ------------------------------------------------------------------------
+    // Stage 3: Strict Comparator, Silence Gating and Q12.4 F0 Multiplexer
+    // ------------------------------------------------------------------------
+    wire comb_is_voiced = (!s2_silence_trap) && (s2_lhs > s2_rhs);
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            out_valid   <= 1'b0;
+            out_f0      <= 16'd0;
+            out_voiced  <= 1'b0;
+            out_lhs     <= 54'sd0;
+            out_rhs     <= 54'sd0;
+        end else begin
+            out_valid   <= s2_valid;
+            out_voiced  <= comb_is_voiced;
+            out_f0      <= comb_is_voiced ? s2_f0_raw : 16'd0;
+            out_lhs     <= s2_lhs;
+            out_rhs     <= s2_rhs;
+        end
+    end
+\end{lstlisting}
+
+\subsubsection*{Phân tích chi tiết từng khối mã nguồn Verilog}
+\begin{itemize}
+    \item \textbf{Dòng 52--58 (Tính toán số hạng $t_1$):} Tín hiệu điểm số $S_c$ mang dấu được mở rộng dấu tường minh 7 bit lên 35-bit (\texttt{sc\_ext = \{\{7\{in\_sc[27]\}\}, in\_sc\}}). Sau đó nhân với 100 bằng 3 phép dịch trái \texttt{<<< 6}, \texttt{<<< 5}, \texttt{<<< 2}. Năng lượng $R_{0n}$ là số không dấu được đệm 8 bit 0 ở đầu để thành số có dấu 35-bit (\texttt{r0n\_ext = \{8'd0, in\_r0n\}}), rồi nhân với 45 bằng 4 số hạng dịch. Hiệu số \texttt{comb\_term1 = term\_100\_sc - term\_45\_r0n} được tính toán với độ rộng 35-bit, hoàn toàn triệt tiêu nguy cơ tràn số âm hay dương.
+    \item \textbf{Dòng 60--67 (Tính các thừa số và độ dốc):} Thừa số $3 \cdot GP$ được tạo ra bằng ghép bit \texttt{\{in\_gp, 1'b0\} + \{2'b00, in\_gp\}} (tương ứng $2\cdot GP + GP$), đạt độ rộng 18-bit. Thừa số $100 \cdot R_{0n}$ có độ rộng 34-bit. Hiệu số dốc $\text{ramp\_diff} = 6 \cdot GP - 145 \cdot LP$ được ép kiểu có dấu \texttt{\$signed} 25-bit. Biểu thức tam nguyên ở dòng 67 kiểm tra dấu: nếu $\text{ramp\_diff} > 0$ thì lấy giá trị 18-bit thấp, nếu âm hoặc bằng 0 thì bão hòa về đúng $18'd0$, hiện thực hóa hoàn hảo hàm $\max(0, \dots)$ của Praat.
+    \item \textbf{Dòng 69 (Bộ dò bẫy im lặng):} Kết hợp 4 điều kiện: $R_{0n} = 0$, $LP = 0$, $GP = 0$ hoặc không có đỉnh hợp lệ nào được tìm thấy. Bất kỳ điều kiện nào xuất hiện cũng khiến \texttt{comb\_silence\_trap} tích cực (mức 1).
+    \item \textbf{Dòng 79--97 (Thanh ghi Tầng 1):} Chốt toàn bộ các kết quả trung gian vào các thanh ghi \texttt{s1\_*} tại cạnh lên xung nhịp \texttt{clk}, bảo đảm cách ly hoàn toàn trễ dây dẫn của tầng dịch-cộng với tầng nhân phía sau.
+    \item \textbf{Dòng 102--125 (Tầng nhân 2):} Thực hiện hai phép nhân song song: $\text{LHS} = t_1 \times (3\cdot GP)$ và $\text{RHS} = (100\cdot R_{0n}) \times \text{ramp\_pos}$. Cả hai tích số đều được ép kiểu có dấu \texttt{\$signed} 54-bit. Trình biên dịch Quartus Prime sẽ tự động ánh xạ hai phép nhân này vào các khối phần cứng chuyên dụng Variable Precision DSP của Cyclone V (hoặc tổng hợp thành mảng cộng ALM tùy chọn cấu hình). Các tích số được chốt vào thanh ghi \texttt{s2\_lhs} và \texttt{s2\_rhs}.
+    \item \textbf{Dòng 130--146 (Tầng so sánh 3 và Ngõ ra):} So sánh lớn hơn chặt \texttt{s2\_lhs > s2\_rhs} kết hợp cờ \texttt{!s2\_silence\_trap}. Nếu thỏa mãn, \texttt{comb\_is\_voiced} bật lên 1. Bộ ghép kênh gán giá trị \texttt{s2\_f0\_raw} vào \texttt{out\_f0}; ngược lại nếu vô thanh gán bằng $16'd0$. Cờ \texttt{out\_valid} bật lên 1 chu kỳ thông báo kết quả sẵn sàng.
+\end{itemize}
+
+\subsubsection*{Chỗ dễ vướng: Vì sao không gộp cả 3 tầng thành mạch tổ hợp 1 chu kỳ?}
+Một câu hỏi tự nhiên là: tại sao ta không bỏ hết các thanh ghi trung gian ở Tầng 1 và Tầng 2 để có kết quả ngay trong 1 chu kỳ xung nhịp?
+Hãy nhìn vào quãng đường điện (đường tới hạn -- critical path) nếu gộp thành 1 chu kỳ:
+Tín hiệu đầu vào phải chạy qua mạng dịch-cộng Tầng 1 (trễ khoảng $2{,}5\text{ ns}$), sau đó đi qua bộ nhân 54-bit Tầng 2 (trễ khoảng $6{,}5\text{ ns}$), tiếp tục đi qua chuỗi carry-chain so sánh 54-bit Tầng 3 (trễ khoảng $3{,}5\text{ ns}$), và cuối cùng là bộ ghép kênh MUX và dây định tuyến giữa các khối ALM rải rác trên chip (trễ định tuyến interconnect thêm khoảng $4\text{ đến }6\text{ ns}$). Tổng thời gian lan truyền có thể chạm ngưỡng $18\text{ ns}$, tiệm cận chu kỳ $20\text{ ns}$ của xung nhịp $50\text{ MHz}$. Mạch sẽ có nguy cơ vi phạm thời gian thiết lập (setup time violation) khi nhiệt độ chip tăng cao hoặc khi Fitter phải bố trí các khối ở xa nhau.
+
+Bằng cách ngắt quãng đường làm 3 chặng có thanh ghi chốt ở giữa, thời gian trễ của mỗi tầng chỉ còn dưới $6\text{ ns}$, cho phép mạch dễ dàng vượt qua kiểm tra định thời (Timing Analysis) với $F_{\max}$ ước tính trên $150\text{ MHz}$ (phải đo trong Quartus Prime). Việc tăng thêm 2 chu kỳ trễ là hoàn toàn vô hại đối với hệ thống xử lý khung âm thanh $10\text{ ms}$.
+
+\textit{Tóm lại: Module \texttt{ch10\_voicing.v} được thiết kế bằng HDL tự viết với đường ống 3 tầng thanh ghi; toàn bộ các hằng số được nhân bằng mạng dịch-cộng 0 DSP, hai phép nhân 54-bit được cách ly an toàn, giải quyết triệt để bài toán định thời mà không tốn bất kỳ khối RAM M10K nào.}
