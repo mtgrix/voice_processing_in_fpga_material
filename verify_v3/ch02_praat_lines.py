@@ -12,7 +12,9 @@ import os
 import re
 
 def check_praat_citations():
-    tex_path = "chuong_v3/chuong_02_avalon_st_fsm.tex"
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(base_dir)
+    tex_path = os.path.join(repo_root, "chuong_v3", "chuong_02_avalon_st_fsm.tex")
     if not os.path.exists(tex_path):
         print(f"File {tex_path} not found yet (will check after writing).")
         return
