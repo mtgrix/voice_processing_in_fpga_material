@@ -101,3 +101,99 @@ Sự sai khác giữa bài báo lý thuyết năm 1993 và mã nguồn thực t�
 \end{itemize}
 
 \textit{Tóm lại: Thành phần gần Nyquist sinh ra sóng đổi dấu $(-1)^\tau$ phá hủy đỉnh tự tương quan; Boersma 1993 đề xuất làm mềm phổ nhưng Praat 7.0.03 đã bỏ bước này; vì vậy khối FIR 31 tap trên FPGA được thiết kế kèm công tắc bypass và mặc định tắt khi đối soát.}
+
+\subsection*{3.2. Các phương án, đánh đổi, ta chọn gì, vì sao (có số liệu kiểm chứng)}
+\addcontentsline{toc}{subsection}{3.2. Các phương án, đánh đổi, ta chọn gì, vì sao (có số liệu kiểm chứng)}
+
+\subsubsection*{Vấn đề thực tế: Bài toán đánh đổi giữa độ suy hao, độ trễ và tài nguyên phần cứng}
+Khi bắt tay vào hiện thực hóa một bộ lọc số FIR (Finite Impulse Response) trên vi mạch FPGA, câu hỏi đầu tiên đặt ra cho người kỹ sư là: \emph{Cần bao nhiêu tap lọc là đủ, và cái giá phải trả về độ trễ xử lý cũng như tài nguyên phần cứng là gì?}
+
+Một bộ lọc lý tưởng theo đề xuất của Boersma (1993) đòi hỏi đáp ứng biên độ hoàn toàn phẳng ($0\text{ dB}$) từ tần số $0\text{ Hz}$ tới $7{,}6\text{ kHz}$ (tức $95\%$ Nyquist), sau đó đổ dốc thẳng đứng về $0$ tại đúng $8{,}0\text{ kHz}$ (mép Nyquist). Tuy nhiên, nguyên lý bất định trong xử lý tín hiệu số chỉ rõ: một đáp ứng dốc đứng trong miền tần số đòi hỏi một đáp ứng xung dài vô hạn trong miền thời gian ($N \to \infty$). Khi cắt ngắn đáp ứng xung thành $N$ điểm hữu hạn, hiện tượng gợn sóng Gibbs và độ rộng dải chuyển tiếp hữu hạn $\Delta f = 8000 - 7600 = 400\text{ Hz}$ sẽ quyết định trực tiếp chất lượng của bộ lọc.
+
+Để có cơ sở định lượng chính xác, chúng tôi sử dụng thuật toán thiết kế bộ lọc bình phương tối thiểu \texttt{scipy.signal.firls} với mục tiêu đáp ứng biên độ bằng $1{,}0$ trên dải $[0, 7{,}6\text{ kHz}]$ và dốc tuyến tính về $0$ tại $8{,}0\text{ kHz}$. Toàn bộ các thông số kỹ thuật được tính toán và kiểm chứng độc lập thông qua kịch bản kiểm thử \texttt{verify\_v3/ch03\_fir\_design.py}:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{So sánh định lượng các phương án bộ lọc FIR làm mềm mép Nyquist tại $f_s = 16\text{ kHz}$}
+\label{tab:ch03_fir_options}
+\begin{tabular}{lcccccc}
+\toprule
+Phương án & Số tap ($N$) & Trễ $\tau_g$ & Tại $7{,}4\text{ kHz}$ & Tại $7{,}6\text{ kHz}$ & Tại $8{,}0\text{ kHz}$ & Nhận xét kỹ thuật \\
+\midrule
+(a) Bypass & 0 & 0 mẫu & $0{,}00\text{ dB}$ & $0{,}00\text{ dB}$ & $0{,}00\text{ dB}$ & Khớp Praat hiện hành; 0 tài nguyên \\
+(b) 31 tap & 31 & 15 mẫu & $+0{,}19\text{ dB}$ & $-2{,}29\text{ dB}$ & $-9{,}41\text{ dB}$ & Dải thông phẳng $\pm 0{,}25\text{ dB}$ tới $7{,}4\text{ kHz}$ \\
+(c) 63 tap & 63 & 31 mẫu & $+0{,}03\text{ dB}$ & $-0{,}38\text{ dB}$ & $-19{,}54\text{ dB}$ & Suy hao dải biên tăng thêm $\approx 10\text{ dB}$ \\
+(d) 127 tap & 127 & 63 mẫu & $-0{,}08\text{ dB}$ & $-0{,}25\text{ dB}$ & $-24{,}20\text{ dB}$ & Độ trễ tăng gấp 4 lần; tốn tài nguyên \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch03_freq_response.tex}
+\caption{Đáp ứng tần số biên độ $|H(f)|$ (dB) của các phương án bộ lọc FIR so với đường cong mục tiêu Boersma (1993) trên dải chuyển tiếp $400\text{ Hz}$ (trích xuất từ \texttt{verify\_v3/ch03\_fir\_design.py}).}
+\label{fig:ch03_freq_response}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch03_freq_response} trực quan hóa sự đánh đổi giữa bậc lọc $N$ và độ suy hao tại tần số Nyquist. Đường màu xanh đậm biểu diễn phương án (b) 31 tap: trong toàn bộ dải thoại hữu ích từ $0$ đến $7{,}4\text{ kHz}$, độ gợn biên độ được khống chế chặt chẽ trong khoảng $[-0{,}25\text{ dB}, +0{,}25\text{ dB}]$ (tại $0\text{ kHz}$ gợn $+0{,}13\text{ dB}$, tại $7{,}4\text{ kHz}$ gợn $+0{,}19\text{ dB}$), hầu như không làm biến dạng năng lượng của các formant giọng nói. Khi bước vào dải chuyển tiếp $[7{,}6\text{ kHz}, 8{,}0\text{ kHz}]$ (vùng tô màu cam rộng $400\text{ Hz}$), đáp ứng bắt đầu rơi dốc: đạt $-2{,}29\text{ dB}$ tại $7{,}6\text{ kHz}$ và cán mốc suy hao $-9{,}41\text{ dB}$ tại đúng tần số Nyquist $8{,}0\text{ kHz}$. Đường nét đứt màu xanh ngọc (63 tap) và nét chấm gạch màu tím (127 tap) giúp tăng độ suy hao biên lên lần lượt $-19{,}5\text{ dB}$ và $-24{,}2\text{ dB}$, nhưng đòi hỏi chiều dài thanh ghi dịch và độ trễ tăng vọt.
+
+\subsubsection*{Vạch trần cạm bẫy kỹ thuật: Sai lầm ``31 tap, hệ số 16 bit, suy hao > 60 dB''}
+Trong một số tài liệu thiết kế trước đây (điển hình là bản thảo của Argon), người ta thường bắt gặp khẳng định:
+\begin{quote}
+\emph{``Thiết kế bộ lọc FIR 31 tap với hệ số lượng tử 16 bit cho phép đạt độ suy hao dải chặn lớn hơn 60 dB.''}
+\end{quote}
+Đây là một khẳng định hoàn toàn sai lầm về mặt lý thuyết xử lý tín hiệu số, xuất phát từ sự nhầm lẫn tai hại giữa hai khái niệm hoàn toàn độc lập:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Độ rộng bit lượng tử hóa hệ số ($B = 16\text{ bit}$):} Tham số này chỉ quyết định \emph{sàn nhiễu lượng tử hóa (quantization noise floor)} do sai số làm tròn số học gây ra. Theo quy tắc xấp xỉ $6{,}02\text{ dB/bit}$, lượng tử hóa 16 bit có dấu cho tỷ số tín hiệu trên nhiễu lượng tử (SQNR) lý thuyết là:
+    \begin{equation}
+    \text{SQNR} \approx 6{,}02 \times 16 + 1{,}76 \approx 98{,}08\text{ dB}
+    \end{equation}
+    Độ rộng hệ số 16 bit đảm bảo rằng khi chuyển từ số thực dấu phẩy động sang số nguyên Q1.15, đáp ứng tần số thực tế của bộ lọc bám sát đáp ứng lý thuyết với sai số cực đại nhỏ hơn $0{,}001\text{ dB}$ (đã kiểm chứng trong \texttt{verify\_v3/ch03\_fir\_design.log}). Tuy nhiên, độ rộng bit hệ số \textbf{không tự động tạo ra độ suy hao dải chặn}!
+    \item \textbf{Độ suy hao dải chặn ($A_s$) và bề rộng dải chuyển tiếp ($\Delta f$):} Độ suy hao dải chặn hoàn toàn bị chi phối bởi số lượng tap $N$ và tỷ lệ dải chuyển tiếp $\Delta f / f_s$. Mối quan hệ toán học kinh điển này được chuẩn hóa qua công thức ước lượng Kaiser:
+    \begin{equation}
+    N \approx \frac{A_s - 7{,}95}{14{,}36 \cdot \left(\frac{\Delta f}{f_s}\right)}
+    \end{equation}
+\end{enumerate}
+
+Hãy áp dụng công thức Kaiser vào bài toán làm mềm mép Nyquist với dải chuyển tiếp chỉ rộng $\Delta f = 8000 - 7600 = 400\text{ Hz}$ ở tần số lấy mẫu $f_s = 16.000\text{ Hz}$ ($\Delta f / f_s = 400 / 16000 = 0{,}025$):
+Để đạt được độ suy hao dải chặn mục tiêu $A_s = 60\text{ dB}$, số bậc lọc tối thiểu phải là:
+\begin{equation}
+N \approx \frac{60 - 7{,}95}{14{,}36 \times 0{,}025} = \frac{52{,}05}{0{,}359} \approx \textbf{144{,}99 tap} \quad \implies \quad N \approx 147\text{ tap}
+\end{equation}
+(Hàm tối ưu hóa \texttt{scipy.signal.kaiserord(60, 400/8000)} trả về chính xác $N = 147\text{ tap}$ với hệ số cửa sổ $\beta = 5{,}653$).
+
+Như vậy, muốn đạt độ suy hao $60\text{ dB}$ trong khoảng chuyển tiếp hẹp $400\text{ Hz}$, ta cần ít nhất 147 tap! Với chiều dài vỏn vẹn $N = 31\text{ tap}$, việc đòi hỏi độ suy hao $60\text{ dB}$ trong dải chuyển tiếp $400\text{ Hz}$ là điều bất khả thi về mặt vật lý. Bộ lọc 31 tap chỉ có thể tạo ra độ suy hao $-9{,}41\text{ dB}$ tại tần số $8\text{ kHz}$.
+
+\subsubsection*{Trễ nhóm (Group Delay) và quy tắc dịch chuyển lưới khung phân tích}
+Một đặc tính cốt lõi của bộ lọc FIR đối xứng Type I ($N = 31$ là số lẻ, $h[n] = h[N - 1 - n]$) là có pha tuyến tính hoàn hảo. Độ trễ nhóm (group delay) là đạo hàm của góc pha theo tần số:
+\begin{equation}
+\tau_g = -\frac{d\theta(\omega)}{d\omega} = \frac{N - 1}{2}\text{ mẫu}
+\end{equation}
+Với bộ lọc $N = 31$ tap, độ trễ nhóm là một hằng số tuyệt đối trên mọi tần số:
+\begin{equation}
+\tau_g = \frac{31 - 1}{2} = \textbf{15 mẫu} \quad \left(= 15 \times \frac{1}{16000}\text{ s} = 0{,}9375\text{ ms}\right)
+\end{equation}
+
+\textbf{Cạm bẫy dời lưới khung:} Giả sử khung phân tích thứ $k$ của thuật toán bắt đầu từ mẫu âm thanh $s_{\text{start}}[k]$. Nếu tín hiệu đi qua bộ lọc FIR 31 tap, mỗi mẫu âm thanh đi ra khỏi bộ lọc đã bị trễ thời gian đúng 15 chu kỳ lấy mẫu.
+Nếu hệ thống FPGA giữ nguyên chỉ số mẫu bắt đầu $s_{\text{start}}[k]$ mà nạp vào bộ nhớ RAM chia khung, toàn bộ 638 mẫu trong cửa sổ phân tích thực chất là các mẫu của đoạn âm thanh xảy ra trước đó 15 mẫu ($0{,}9375\text{ ms}$) trong tín hiệu gốc!
+Sự lệch pha thời gian này sẽ làm dịch chuyển vị trí các đỉnh tự tương quan, làm sai lệch giá trị $F_0$ nội suy và gây ra hiện tượng không khớp ứng viên với kết quả Praat chạy trên tệp WAV gốc.
+
+\textbf{Quy tắc bù trễ bắt buộc:} Khi bật bộ lọc FIR 31 tap (\texttt{bypass = 0}), bộ điều khiển phân khung trên HPS hoặc FPGA bắt buộc phải \textbf{dời lưới khung lùi lại đúng 15 mẫu}:
+\begin{equation}
+s_{\text{start, FIR}}[k] = s_{\text{start}}[k] - 15
+\end{equation}
+Nhờ việc định vị khung sớm hơn 15 mẫu, cửa sổ 638 mẫu sau khi đi qua trễ nhóm của bộ lọc FIR sẽ rơi vào đúng vị trí thời gian của khung chưa lọc, bảo toàn tính tương đồng tuyệt đối về mặt vật lý.
+
+\subsubsection*{Lựa chọn thiết kế và các lý do quyết định}
+Dựa trên phân tích định lượng ở Bảng~\ref{tab:ch03_fir_options}, chúng tôi lựa chọn hiện thực hóa \textbf{Phương án (b) 31 tap kèm mạch rẽ nhánh bypass} với các lý do kỹ thuật sau:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Độ suy hao vừa đủ và dải thông bảo toàn:} Độ suy hao $-9{,}41\text{ dB}$ tại mép $8\text{ kHz}$ giúp giảm biên độ năng lượng cao tần xuống còn $\approx 33{,}8\%$ (tương đương giảm công suất dao động đổi dấu $(-1)^\tau$ xuống còn $11{,}5\%$), đủ để làm dịu hiện tượng răng cưa mép Nyquist mà vẫn giữ dải thông thoại $[0, 7{,}4\text{ kHz}]$ phẳng trong phạm vi $\pm 0{,}25\text{ dB}$.
+    \item \textbf{Độ trễ nhóm nhỏ và dễ bù trừ:} Trễ nhóm 15 mẫu chỉ chiếm $9{,}375\%$ của bước nhảy khung (hop 160 mẫu), hoàn toàn nằm gọn trong dung lượng đệm của bộ nhớ RAM vòng 1024 từ ở Chương 4 mà không đòi hỏi thêm tài nguyên FIFO phụ. Trong khi đó, phương án 127 tap có trễ nhóm lên tới 63 mẫu ($\approx 40\%$ bước nhảy hop), làm tăng đáng kể thời gian đáp ứng thời gian thực.
+    \item \textbf{Tối ưu hóa tài nguyên phần cứng:} Nhờ tính đối xứng chẵn, 31 tap lọc được gộp thành 15 cặp cộng trước và 1 hệ số trung tâm. Trong mục 3.4, chúng tôi sẽ chứng minh cấu trúc này chỉ tiêu tốn đúng **1 khối DSP** và **0 khối RAM M10K** trên chip Cyclone V khi áp dụng kỹ thuật gấp thời gian 16 chu kỳ/mẫu.
+    \item \textbf{Tương thích kép nhờ mạch bypass:} Việc tích hợp công tắc bypass cho phép đáp ứng cả hai mục tiêu: mặc định bypass để đối soát chuẩn mực từng bit với Praat 7.0.03, và bật lọc khi cần đánh giá ảnh hưởng của hiện tượng mép Nyquist trên thực nghiệm.
+\end{enumerate}
+
+\textit{Tóm lại: Bộ lọc 31 tap tạo suy hao $-9{,}4\text{ dB}$ tại Nyquist với trễ nhóm 15 mẫu; muốn suy hao $60\text{ dB}$ trong dải chuyển $400\text{ Hz}$ cần tới 147 tap theo công thức Kaiser; khi bật lọc bắt buộc phải dời lưới khung 15 mẫu.}
+
