@@ -60,20 +60,26 @@
 2. **Số liệu trích dẫn mã nguồn Praat 7.0.03 được kiểm chứng:**
    - `fon/Sound_to_Pitch.cpp:39-40`: `#define AC_HANNING 0`, `#define AC_GAUSS 1`.
    - `fon/Sound_to_Pitch.cpp:78`: `frame [j] = (my z [i] - localMean) * window [j]`.
-   - `fon/Sound_to_Pitch.cpp:299-301`: `AC_HANNING` cấu hình `brent_depth = NUM_PEAK_INTERPOLATE_SINC70`, `interpolation_depth = 0.5`.
+   - `fon/Sound_to_Pitch.cpp:88-101`: Dò đỉnh cục bộ `LocalPeak` trong dải $212 \dots 425$ (`halfnsamp_window = 319`, `halfnsamp_period = 107`).
+   - `fon/Sound_to_Pitch.cpp:299-301`: `AC_HANNING` cấu hình độ dài 3 chu kỳ và `brent_depth = NUM_PEAK_INTERPOLATE_SINC70`.
+   - `fon/Sound_to_Pitch.cpp:303-306`: `AC_GAUSS` nhân đôi độ dài cửa sổ (`periodsPerWindow *= 2`, 6 chu kỳ) và `brent_depth = SINC700`.
    - `fon/Sound_to_Pitch.cpp:409`: `window.resize (nsamp_window)` ($N = 638$).
-   - `fon/Sound_to_Pitch.cpp:413-415`: Đoạn chú thích vật lý của Boersma ("A Gaussian or Hanning window is applied against phase effects. The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window.").
+   - `fon/Sound_to_Pitch.cpp:413-415`: Đoạn chú thích của Boersma ("A Gaussian or Hanning window is applied against phase effects. The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window." - mốc tham chiếu không nêu trong nguồn).
    - `fon/Sound_to_Pitch.cpp:422-424`: Công thức Hanning $N+1$: `window [i] = 0.5 - 0.5 * cos (NUM2pi * i / (nsamp_window + 1))`.
    - `fon/Sound_to_Pitch.cpp:429-442`: Tính tự tương quan chuẩn hóa của cửa sổ `windowR` qua FFT, với `windowR[1] = 1`.
-   - Toàn bộ 7 trích dẫn được kiểm chứng đạt 7/7 PASS qua `verify_v3/ch06_praat_lines.py`.
+   - Toàn bộ trích dẫn được kiểm chứng qua `verify_v3/ch06_praat_lines.py`.
 3. **Số liệu số học và lượng tử hóa kiểm chứng chính xác:**
    - Cửa sổ Q1.15: $w[0] = w[637] = 1$ (`0x0001`), $w[318] = w[319] = 32.767$ (`0x7FFF`).
-   - Tổng số học 638 hệ số ROM: $\sum_{n=0}^{637} w[n] = \mathbf{10.469.378}$ (khớp bit tuyệt đối với `golden_v2/rom/hanning638_q15.hex`).
+   - Tổng số học 638 hệ số ROM: $\sum_{n=0}^{637} w[n] = \mathbf{10.469.378}$ (khớp với `golden_v2/rom/hanning638_q15.hex`).
    - Sai số tại đỉnh bão hòa: $\epsilon_{\text{apex}} = 2{,}4475 \times 10^{-5} \approx 0{,}8020\text{ LSB} < 1\text{ LSB}$.
    - Tỷ số tín hiệu trên nhiễu lượng tử đo đạc: $P_{\text{signal}} = 0{,}375588$, $P_{\text{noise}} = 7{,}45784 \times 10^{-11}$, $\text{SQNR} = \mathbf{97{,}02\text{ dB}}$ (vượt trội so với lý thuyết 15-bit $92{,}06\text{ dB}$).
+   - So sánh phổ Hanning vs Gaussian (`verify_v3/ch06_hanning_math.py`):
+     - Hanning $N=638$ (3 chu kỳ): BW $-3\text{ dB} = 36{,}13\text{ Hz}$, búp bên $-31{,}47\text{ dB}$.
+     - Praat Gaussian $N=1276$ (6 chu kỳ): BW $-3\text{ dB} = 32{,}71\text{ Hz}$, búp bên $-124{,}90\text{ dB}$.
+     - Gaussian $N=638$ (3 chu kỳ): BW $-3\text{ dB} = 64{,}94\text{ Hz}$ (nở rộng $79{,}7\%$).
    - Dải động 17-bit có dấu: $d_{\max} = +65.535$, $d_{\min} = -65.535$. Khung kiểm thử khắc nghiệt (Stress Frame A) có $\text{mean} = -26.614$, $d[318] = +59.381$, $x_w[318] = \mathbf{59.379}$ (nếu ép về 16-bit sẽ bị tràn thành $-6.157$). Đã kiểm chứng qua `verify_v3/ch06_stress_audit.py`.
 4. **Mục "phải đo" (To be measured on hardware / Linux simulation):**
-   - Kết quả chạy thực tế Icarus Verilog: Kịch bản `verify_v3/run_ch06_iverilog.sh` (LF, chế độ 100755), testbench `tb/v3/tb_ch06_hanning.v` và 3.250 vector chu kỳ (`verify_v3/tb_ch06_hanning_stim.txt`, `_expected.txt`) đã chuẩn bị đầy đủ và sẵn sàng. Trong văn bản LaTeX, kết quả được đặt dạng hộp giữ chỗ `\todo{box}` với nhãn `[TODO-IVERILOG-RUN: Reviewer chạy kịch bản verify_v3/run_ch06_iverilog.sh trên Linux và điền kết quả mô phỏng tại đây]` (kỳ vọng: 3250 cycles, 0 comparison errors).
+   - iverilog: to be run by reviewer
    - Tài nguyên logic ALM và tần số cực đại $F_{\max}$: Phải đo chính xác sau khi tổng hợp Fitter và TimeQuest Timing Analyzer trong phần mềm Quartus Prime với chip Cyclone V 5CSXFC6D6F31C6.
 
 ---

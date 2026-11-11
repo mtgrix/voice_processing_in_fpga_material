@@ -7,7 +7,7 @@
 \begin{learningobj}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Thấu hiểu bản chất vật lý của hiện tượng rò rỉ phổ (spectral leakage) khi cắt khung tín hiệu hữu hạn; chứng minh bằng toán học giải tích cơ chế triệt tiêu búp bên của cửa sổ Hanning, mang lại độ suy giảm $-31{,}47\text{ dB}$ và tốc độ suy giảm dốc $-18\text{ dB/octave}$ (vượt trội $18{,}21\text{ dB}$ so với cửa sổ chữ nhật).
-    \item Khám phá mã nguồn Praat 7.0.03 (\texttt{fon/Sound\_to\_Pitch.cpp}, dòng 413--424); lý giải chú thích của Paul Boersma vì sao cửa sổ Hanning tốt hơn cửa sổ Gaussian từ $2$ đến $5\text{ dB}$ ở độ dài 3 chu kỳ tiếng nói; phân tích công thức Hanning $N+1$ đặc thù để bảo toàn trọn vẹn hai mẫu âm thanh ở rìa khung mà không bị triệt tiêu về $0$.
+    \item Khảo sát mã nguồn Praat 7.0.03 (\texttt{fon/Sound\_to\_Pitch.cpp}, dòng 39--40, 299--306, 413--424); phân tích đoạn chú thích của Paul Boersma về đặc tính của cửa sổ Hanning (cho khung 3 chu kỳ) và Gaussian (cho khung 6 chu kỳ); đối chiếu đáp ứng phổ và phân tích công thức Hanning $N+1$ đặc thù nhằm bảo toàn hai mẫu âm thanh ở rìa khung mà không bị triệt tiêu về $0$.
     \item Nắm vững kỹ thuật biểu diễn số thực trong định dạng dấu phẩy tĩnh Q1.15; giải mã hiện tượng bão hòa tại đỉnh khi giá trị lý thuyết đạt $32.768$ (tràn số nguyên có dấu 16-bit), dẫn xuất phép kẹp biên $32.768 \to 32.767$ của Golden v2 và chứng minh sai số lượng tử cực đại chỉ đạt $0{,}802\text{ LSB}$, giữ nguyên SNR ở mức $97{,}02\text{ dB}$.
     \item Phân tích toàn diện không gian thiết kế phần cứng: so sánh giữa cấu trúc ROM đầy đủ 638 từ (2 khối M10K) và cấu trúc nửa ROM 319 từ kết hợp mạch gấp địa chỉ (1 khối M10K); dẫn xuất định dạng toán hạng 17-bit có dấu bắt buộc để chống tràn số trong khung stress thực nghiệm ($|x_w| = 59.379$).
     \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng trên FPGA Cyclone V: Đường (A) tích hợp khối IP Intel \texttt{ROM: 1-PORT} (UG-01068) và \texttt{LPM\_MULT} (UG-01069) trong 1 khối DSP Variable Precision cứng; Đường (B) hiện thực hóa module HDL tự viết (\texttt{ch06\_hanning\_window.v}) với độ trễ 2 chu kỳ và mạch dò đỉnh cục bộ LocalPeak ($LP$) cho ngưỡng hữu thanh.
@@ -80,14 +80,14 @@ Hãy quan sát hệ số $0{,}5$ ở trung tâm và hai hệ số $-0{,}25$ ở 
 
 \textbf{Đọc hình.} Hình~\ref{fig:ch06_leakage} minh họa trực quan sự đánh đổi kinh điển trong miền tần số giữa hai loại cửa sổ. Đường màu đỏ nét đứt thể hiện đáp ứng của cửa sổ chữ nhật: búp chính có độ rộng $-3\text{ dB}$ rất hẹp ($22{,}32\text{ Hz}$), nhưng búp bên đầu tiên nhô lên rất cao ở mức $-13{,}26\text{ dB}$ và suy giảm thoai thoải với độ dốc $-6\text{ dB/octave}$. Ngược lại, đường màu xanh đậm thể hiện cửa sổ Hanning $N+1$ của Praat: búp chính mở rộng hơn một chút ($36{,}11\text{ Hz}$), đổi lại búp bên đầu tiên bị dập tắt sâu xuống $-31{,}47\text{ dB}$ (suy giảm thêm $18{,}21\text{ dB}$ so với chữ nhật), và các búp bên phía sau đổ dốc cực kỳ nhanh chóng theo tỷ lệ $-18\text{ dB/octave}$. Toàn bộ năng lượng rò rỉ ngoài dải bị triệt tiêu triệt để, bảo vệ an toàn cho các đỉnh tự tương quan.
 
-\subsubsection*{Vì sao Boersma chọn Hanning thay vì Gaussian: Đọc từ mã nguồn Praat 7.0.03}
+\subsubsection*{Lựa chọn cửa sổ Hanning và Gaussian trong mã nguồn Praat 7.0.03}
 Trong mã nguồn Praat 7.0.03 tại tệp \path{fon/Sound_to_Pitch.cpp}, Paul Boersma hỗ trợ hai phương pháp cửa sổ hóa được định nghĩa ở dòng 39--40:
 \begin{lstlisting}[language=C++, numbers=none]
 #define AC_HANNING 0
 #define AC_GAUSS 1
 \end{lstlisting}
 
-Ở dòng 413--415, tác giả để lại một đoạn chú thích rất quan trọng giải thích căn nguyên lựa chọn cửa sổ:
+Ở dòng 413--415, tác giả để lại một đoạn chú thích về hai loại cửa sổ này:
 \begin{lstlisting}[language=C++, numbers=none]
 /*
  * A Gaussian or Hanning window is applied against phase effects.
@@ -96,13 +96,21 @@ Trong mã nguồn Praat 7.0.03 tại tệp \path{fon/Sound_to_Pitch.cpp}, Paul B
  */
 \end{lstlisting}
 
-Tại sao với cửa sổ dài 3 chu kỳ ($40\text{ ms}$ cho tần số đáy $75\text{ Hz}$), cửa sổ Hanning lại vượt trội hơn Gaussian từ $2$ đến $5\text{ dB}$? 
+Đoạn chú thích trên trích dẫn trực tiếp từ mã nguồn Praat; tuy nhiên, mốc tham chiếu so sánh của các giá trị dB này ($2\text{--}5\text{ dB}$, $25\text{--}29\text{ dB}$) không được nêu rõ trong phần bình luận hay mã lệnh của tác giả.
+
+Trong cấu trúc thực thi của Praat, hai phương pháp này được phân nhánh như sau:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Cửa sổ Gaussian có dạng chuông $e^{-\frac{1}{2}(t/\sigma)^2}$. Để đạt mức suy giảm búp bên tốt, hàm Gaussian phải ép hai bên cánh suy giảm rất mạnh. Với độ dài ngắn chỉ có $3$ chu kỳ, việc ép cánh quá dốc làm búp chính của Gaussian nở rộng quá mức và làm suy hao nghiêm trọng phần lớn năng lượng hữu ích của tín hiệu ở hai đầu khung, khiến tỷ số tín hiệu trên nhiễu hiệu dụng bị suy giảm.
-    \item Ngược lại, cửa sổ Hanning phân bổ trọng số hài hòa hơn trên khoảng thời gian 3 chu kỳ, duy trì búp chính đủ nhọn để phân giải các họa ba gần nhau mà vẫn triệt tiêu búp bên tới $-31{,}5\text{ dB}$.
-    \item Chỉ khi chuyển sang chế độ phân tích siêu chính xác (\texttt{Very accurate = on}, dòng 299--301), Praat mới nâng chiều dài cửa sổ lên gấp đôi ($6$ chu kỳ, $80\text{ ms}$) và chuyển sang dùng cửa sổ Gaussian (\texttt{AC\_GAUSS}). Khi đó, cửa sổ đủ dài để Gaussian phát huy ưu thế suy hao búp bên vượt trội $25\text{ dB}$ đến $29\text{ dB}$.
+    \item \textbf{Cấu hình \texttt{AC\_HANNING} (dòng 299--301):} Sử dụng cửa sổ Hanning với độ dài danh định 3 chu kỳ ($N = 638\text{ mẫu}$ tại $f_s = 16\text{ kHz}, F_{\text{floor}} = 75\text{ Hz}$) kết hợp nội suy \texttt{brent\_depth = NUM\_PEAK\_INTERPOLATE\_SINC70}.
+    \item \textbf{Cấu hình \texttt{AC\_GAUSS} (dòng 303--306):} Tác giả nhân đôi chiều dài cửa sổ qua câu lệnh \texttt{periodsPerWindow *= 2} (tương ứng 6 chu kỳ hay $N = 1.276\text{ mẫu}$) và nâng độ sâu nội suy lên \texttt{SINC700}.
 \end{itemize}
-Vì hệ thống phần cứng FPGA của ta nhắm tới cấu hình tiêu chuẩn thời gian thực với độ dài 3 chu kỳ ($N = 638\text{ mẫu}$), lựa chọn cửa sổ Hanning là phương án tối ưu tuyệt đối về mặt vật lý.
+
+Khảo sát đáp ứng phổ số trị (được tính toán độc lập trong kịch bản \path{verify_v3/ch06_hanning_math.py}):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Với cửa sổ Hanning $N+1$ ($N = 638\text{ mẫu}$, 3 chu kỳ), độ rộng búp chính $-3\text{ dB}$ là $36{,}13\text{ Hz}$ và mức suy hao búp bên cao nhất đạt $-31{,}47\text{ dB}$.
+    \item Với cửa sổ Gaussian của Praat dài $N = 1.276\text{ mẫu}$ (6 chu kỳ, công thức dòng 408--411), độ rộng búp chính $-3\text{ dB}$ đạt $32{,}71\text{ Hz}$ và búp bên suy giảm xuống $-124{,}90\text{ dB}$.
+    \item Nếu áp dụng hàm Gaussian trên khung ngắn 3 chu kỳ ($N = 638\text{ mẫu}$), độ rộng búp chính $-3\text{ dB}$ nở rộng lên $64{,}94\text{ Hz}$ (rộng hơn $79{,}7\%$ so với Hanning), làm suy giảm độ phân giải tần số giữa các thành phần phổ lân cận.
+\end{itemize}
+Mặc dù cấu hình Gaussian 6 chu kỳ triệt tiêu búp bên sâu hơn, việc nhân đôi kích thước khung làm tăng gấp đôi dung lượng bộ đệm RAM và số chu kỳ nhân tích lũy. Vì hệ thống phần cứng FPGA hướng đến xử lý dòng thời gian thực với khung tiêu chuẩn 3 chu kỳ ($N = 638\text{ mẫu}$), phương án cửa sổ Hanning $N+1$ được lựa chọn để tối ưu tài nguyên khối nhớ và bộ nhân.
 
 \subsubsection*{Công thức Hanning $N+1$ của Praat: Giải mã sự khác biệt với công thức sách giáo khoa}
 Khi mở mã nguồn \path{fon/Sound_to_Pitch.cpp} tại dòng 422--424, ta bắt gặp công thức khởi tạo cửa sổ Hanning của Praat:
@@ -682,9 +690,7 @@ Tập vector kiểm thử được mô hình song sinh Python (\path{verify_v3/c
 \end{enumerate}
 
 \begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Mục chờ kiểm chứng Icarus Verilog trên Linux (Reviewer)}]
-\small\texttt{[TODO-IVERILOG-RUN: Reviewer chạy kịch bản \path{verify_v3/run_ch06_iverilog.sh} trên Linux và điền kết quả mô phỏng tại đây]}\\
-\small\texttt{tb\_ch06\_hanning: Total cycles tested: 3250 -- Total comparison errors: 0 (dự kiến)}\\
-\footnotesize(Công cụ Icarus Verilog \texttt{-g2012 -Wall}; tập vector kiểm thử trích từ \path{verify_v3/tb_ch06_hanning_stim.txt} và \path{verify_v3/tb_ch06_hanning_expected.txt}; kết quả kiểm chứng sẽ được ghi vào nhật ký \path{verify_v3/ch06_iverilog.log}.)
+\todo{box}
 \end{tcolorbox}
 
 \subsection*{Bài tập cuối chương}

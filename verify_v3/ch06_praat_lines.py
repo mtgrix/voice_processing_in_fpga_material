@@ -23,10 +23,12 @@ import numpy as np
 # Citations table
 CITATIONS = [
     ("fon/Sound_to_Pitch.cpp", "39--40", "#define AC_HANNING 0 / #define AC_GAUSS 1", "Định nghĩa định danh cho hai phương pháp cửa sổ hóa"),
-    ("fon/Sound_to_Pitch.cpp", "78", "frame[j] = (z[i] - localMean) * window[j];", "Trừ trung bình cục bộ rồi nhân trực tiếp với mẫu cửa sổ"),
-    ("fon/Sound_to_Pitch.cpp", "299--301", "brent_depth = NUM_PEAK_INTERPOLATE_SINC70", "Độ sâu nội suy sinc70 và Brent cho AC_HANNING"),
+    ("fon/Sound_to_Pitch.cpp", "78", "frame[j] = (my z[i] - localMean) * window[j];", "Trừ trung bình cục bộ rồi nhân trực tiếp với mẫu cửa sổ"),
+    ("fon/Sound_to_Pitch.cpp", "88--101", "LocalPeak: j from halfnsamp_window - halfnsamp_period + 1 to + halfnsamp_period", "Phạm vi dò đỉnh cục bộ LP (212..425, 0-based)"),
+    ("fon/Sound_to_Pitch.cpp", "299--301", "case AC_HANNING: brent_depth = NUM_PEAK_INTERPOLATE_SINC70", "Cấu hình 3 chu kỳ và nội suy SINC70 cho AC_HANNING"),
+    ("fon/Sound_to_Pitch.cpp", "303--306", "case AC_GAUSS: periodsPerWindow *= 2; brent_depth = SINC700", "Nhân đôi độ dài cửa sổ (6 chu kỳ) cho AC_GAUSS"),
     ("fon/Sound_to_Pitch.cpp", "409", "window.resize (nsamp_window);", "Cấp phát bộ nhớ cho mảng cửa sổ kích thước N = 638"),
-    ("fon/Sound_to_Pitch.cpp", "413--415", "A Gaussian or Hanning window is applied against phase effects...", "Chú thích Boersma: Hanning tốt hơn Gaussian 2--5 dB khi cửa sổ dài 3 chu kỳ"),
+    ("fon/Sound_to_Pitch.cpp", "413--415", "The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window.", "Chú thích Boersma: Hanning 2-5 dB cho 3 chu kỳ, Gaussian 25-29 dB cho 6 chu kỳ (nguồn không nêu mốc so sánh)"),
     ("fon/Sound_to_Pitch.cpp", "422--424", "window[i] = 0.5 - 0.5 * cos(NUM2pi * i / (nsamp_window + 1));", "Công thức Hanning N+1 (i = 1..N), không có mẫu 0 ở hai biên"),
     ("fon/Sound_to_Pitch.cpp", "429--442", "windowR = normalized autocorrelation of the window via FFT", "Tính tự tương quan chuẩn hóa của cửa sổ R_w qua FFT 1024 điểm")
 ]

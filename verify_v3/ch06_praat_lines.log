@@ -6,20 +6,28 @@ CH06 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
    Ý nghĩa: Định nghĩa định danh cho hai phương pháp cửa sổ hóa
 
 [fon/Sound_to_Pitch.cpp:78]
-   Code   : frame[j] = (z[i] - localMean) * window[j];
+   Code   : frame[j] = (my z[i] - localMean) * window[j];
    Ý nghĩa: Trừ trung bình cục bộ rồi nhân trực tiếp với mẫu cửa sổ
 
+[fon/Sound_to_Pitch.cpp:88--101]
+   Code   : LocalPeak: j from halfnsamp_window - halfnsamp_period + 1 to + halfnsamp_period
+   Ý nghĩa: Phạm vi dò đỉnh cục bộ LP (212..425, 0-based)
+
 [fon/Sound_to_Pitch.cpp:299--301]
-   Code   : brent_depth = NUM_PEAK_INTERPOLATE_SINC70
-   Ý nghĩa: Độ sâu nội suy sinc70 và Brent cho AC_HANNING
+   Code   : case AC_HANNING: brent_depth = NUM_PEAK_INTERPOLATE_SINC70
+   Ý nghĩa: Cấu hình 3 chu kỳ và nội suy SINC70 cho AC_HANNING
+
+[fon/Sound_to_Pitch.cpp:303--306]
+   Code   : case AC_GAUSS: periodsPerWindow *= 2; brent_depth = SINC700
+   Ý nghĩa: Nhân đôi độ dài cửa sổ (6 chu kỳ) cho AC_GAUSS
 
 [fon/Sound_to_Pitch.cpp:409]
    Code   : window.resize (nsamp_window);
    Ý nghĩa: Cấp phát bộ nhớ cho mảng cửa sổ kích thước N = 638
 
 [fon/Sound_to_Pitch.cpp:413--415]
-   Code   : A Gaussian or Hanning window is applied against phase effects...
-   Ý nghĩa: Chú thích Boersma: Hanning tốt hơn Gaussian 2--5 dB khi cửa sổ dài 3 chu kỳ
+   Code   : The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window.
+   Ý nghĩa: Chú thích Boersma: Hanning 2-5 dB cho 3 chu kỳ, Gaussian 25-29 dB cho 6 chu kỳ (nguồn không nêu mốc so sánh)
 
 [fon/Sound_to_Pitch.cpp:422--424]
    Code   : window[i] = 0.5 - 0.5 * cos(NUM2pi * i / (nsamp_window + 1));

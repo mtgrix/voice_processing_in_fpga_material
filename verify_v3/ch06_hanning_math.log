@@ -8,8 +8,8 @@ Sum of 638 Q1.15 samples       : 10469378 (Agenda: 10469378)
 Max raw value before clamp     : 32768 at indices 318, 319
 Number of saturated samples    : 2
 Even symmetry w[n] == w[N-1-n] : True (all 638 samples match)
-Verified bit-exact match with /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.hex (638 words)
-Verified existence of /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/rom/hanning638_q15.mif
+Verified bit-exact match with C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\rom\hanning638_q15.hex (638 words)
+Verified existence of C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\..\golden_v2\rom\hanning638_q15.mif
 
 ==============================================================================
 2. SPECTRAL LEAKAGE AND SIDELOBE ATTENUATION (FOURIER ANALYSIS)
@@ -36,6 +36,18 @@ Praat 7.0.03 N+1 formulation (Sound_to_Pitch.cpp:422-424):
   w[1]   = 0.00009668 (Q1.15 = 3)
   w[637] = 0.00002417 (Non-zero! Q1.15 = 1)
 Key insight: Praat avoids wasting 2 boundary samples in every 638-sample frame!
+
+==============================================================================
+4. COMPARISON: PRAAT HANNING (N=638) VS PRAAT GAUSSIAN (N=638, N=1276)
+==============================================================================
+Hanning N+1 (N = 638, 3 periods)    : 3-dB BW = 36.13 Hz, Highest Sidelobe = -31.47 dB
+Praat Gaussian (N = 638, 3 periods) : 3-dB BW = 64.94 Hz, Highest Sidelobe = -124.89 dB
+Praat Gaussian (N = 1276, 6 periods): 3-dB BW = 32.71 Hz, Highest Sidelobe = -124.90 dB
+
+Observation:
+  - At 3 periods (N = 638), Gaussian 3-dB bandwidth is wide (64.94 Hz vs 36.13 Hz).
+  - At 6 periods (N = 1276), Gaussian achieves 32.71 Hz BW with sidelobes suppressed to -124.90 dB.
+  - AC_GAUSS requires 2x memory (1276 samples) compared to AC_HANNING (638 samples).
 
 ==============================================================================
 ALL CH06 HANNING MATHEMATICAL AUDITS PASSED SUCCESSFULLY!
