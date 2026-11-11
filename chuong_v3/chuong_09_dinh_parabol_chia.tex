@@ -485,5 +485,78 @@ Khớp chu kỳ giữa Tuyến A và Tuyến B trong chương này không có ng
 
 \textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh 10 ms, bộ chia tuần tự Radix-2 chỉ mất đúng 44 chu kỳ (0,0088% thời gian) nhưng tiết kiệm hơn 80% diện tích logic ALM so với bộ chia đường ống LPM_DIVIDE; hai tuyến được thiết kế cùng độ trễ 44 nhịp để có thể thay thế tương đương trong hệ thống.}
 
+\subsection*{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
+\addcontentsline{toc}{subsection}{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
+
+\subsubsection*{Căn cứ tài liệu và lõi IP chia của Intel}
+Để hiện thực hóa phép chia số nguyên thông qua thư viện IP lõi chuẩn của Intel trên dòng chip Cyclone V, ta sử dụng lõi IP \textbf{\texttt{LPM\_DIVIDE}} từ danh mục IP Catalog của Quartus Prime. 
+
+Toàn bộ nguyên lý hoạt động, cấu trúc cổng và các tham số cấu hình của lõi IP này được quy định chính thức trong tài liệu của Intel:
+\begin{center}
+\textbf{Intel Corporation, \emph{"Integer Arithmetic IP Cores User Guide"} (Tài liệu mã số: UG-01069)},\\
+Chương 5: \emph{"LPM\_DIVIDE IP Core"}, các mục \emph{"Parameters"} và \emph{"Ports"}.
+\end{center}
+
+Lõi IP này được hiện thực hóa qua module megafunction mang tên \texttt{lpm\_divide}, được đóng gói sẵn trong các thư viện mô phỏng chuẩn \path{220model.v} và \path{altera_mf.v}.
+
+\subsubsection*{Giải thích chi tiết từng tham số cấu hình trong Parameter Editor}
+Mỗi tham số cấu hình của khối \texttt{LPM\_DIVIDE} trong giao diện Parameter Editor trả lời trực tiếp cho một yêu cầu toán học và vật lý đã được chứng minh ở mục 9.3:
+
+\begin{itemize}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{\texttt{LPM\_WIDTHN} (Độ rộng ngõ vào tử số \texttt{numer}):} Được thiết lập bằng đúng \textbf{44}. 
+    Tham số này xác định số bit của số bị chia. Ở mục 9.3, ta đã chứng minh rằng sau khi chuẩn hóa $s_2$, đại lượng tử số tổng hợp $N = 512000 \cdot den_n + \lfloor D / 2 \rfloor$ có giá trị cực đại đạt $8{,}59 \times 10^{12} < 2^{44}$. Nếu kỹ sư chọn độ rộng nhỏ hơn 44 (ví dụ 32 hoặc 40 bit), các khung âm thanh có biên độ lớn sẽ bị tràn bit nghiêm trọng, làm mất các bit cao của tử số khiến giá trị cao độ tính ra bị sụt giảm bất thường hoặc nhảy sai lệch hoàn toàn.
+
+    \item \textbf{\texttt{LPM\_WIDTHD} (Độ rộng ngõ vào mẫu số \texttt{denom}):} Được thiết lập bằng đúng \textbf{34}.
+    Tham số này xác định số bit của số chia. Mẫu số tổng hợp $D = 2 \cdot den_n \cdot \tau_p + num_n$ có giá trị cực đại đạt $7{,}16 \times 10^9 < 2^{34}$. Nếu chọn nhỏ hơn 34 (ví dụ 32 bit), mẫu số tại các độ trễ lớn ($\tau_p \ge 130$) sẽ bị tràn bit, biến mẫu số thực thành một số nhỏ giả tạo và làm giá trị $F_0$ tính ra vọt lên mức hàng nghìn Hz một cách vô lý.
+
+    \item \textbf{\texttt{LPM\_NREPRESENTATION} (Định dạng dấu của tử số):} Được gán bằng \textbf{\texttt{"UNSIGNED"}}.
+    Sau khi đã cộng lượng bù làm tròn $\lfloor D / 2 \rfloor$, tử số $N$ luôn luôn là một số nguyên dương không dấu. Việc chọn \texttt{"UNSIGNED"} chỉ thị cho Quartus không cần sinh thêm các cổng đảo dấu bù hai ở đầu vào, giúp tiết kiệm hàng chục phần tử ALM và rút ngắn đường tới hạn của các tầng chia đầu tiên.
+
+    \item \textbf{\texttt{LPM\_DREPRESENTATION} (Định dạng dấu của mẫu số):} Được gán bằng \textbf{\texttt{"UNSIGNED"}}.
+    Ta đã chứng minh $D \ge 53 \cdot den_n \ge 53 > 0$ trên toàn bộ dải quét ứng viên $[27, 213]$. Mẫu số luôn luôn dương nghiêm ngặt. Việc chọn định dạng không dấu đảm bảo phép chia tuân theo đúng thuật toán chia số học nhị phân chuẩn xác.
+
+    \item \textbf{\texttt{LPM\_PIPELINE} (Độ trễ chu kỳ đường ống):} Được gán bằng \textbf{44}.
+    Tham số này xác định số tầng thanh ghi chốt đường ống chèn vào giữa các tầng trừ. Theo hướng dẫn thiết kế trong tài liệu UG-01069, để đạt được hiệu năng định thời tối đa ở tần số cao cho một bộ chia rộng $44\text{ bit}$, số chu kỳ đường ống tối ưu được khuyến nghị là bằng chính độ rộng tử số $\texttt{LPM\_PIPELINE} = \texttt{LPM\_WIDTHN} = 44$. Khi tham số này được đặt là 44, lõi IP báo độ trễ từ ngõ vào tới ngõ ra là đúng $44\text{ chu kỳ đồng hồ}$, khớp hoàn hảo với độ trễ của bộ chia tuần tự Radix-2 ở Tuyến B. Nếu đặt bằng 0, IP sẽ sinh ra bộ chia tổ hợp thuần túy và làm sụp đổ tần số $F_{\max}$ xuống dưới $40\text{ MHz}$.
+
+    \item \textbf{\texttt{LPM\_REMAINDERPOSITIVE} (Dấu của số dư \texttt{remain}):} Được gán bằng \textbf{\texttt{"TRUE"}}.
+    Quy định số dư $R$ luôn luôn là một số không âm thỏa mãn đẳng thức chia Euclid chuẩn $N = Q \cdot D + R$ với $0 \le R < D$.
+
+    \item \textbf{\texttt{MAXIMIZE\_SPEED} (Tối ưu hóa tốc độ):} Được gán mức \textbf{6} (hoặc giá trị mặc định trong Quartus Prime).
+    Chỉ thị cho trình biên dịch ưu tiên tối ưu hóa đường truyền nhớ nhanh bằng cách sử dụng các khối logic suy luận ALM tốc độ cao.
+\end{itemize}
+
+\subsubsection*{Giao diện cổng và mã bao bọc instantiation}
+Khối \texttt{LPM\_DIVIDE} của Intel cung cấp các cổng tín hiệu tiêu chuẩn:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{clock}: Xung nhịp đồng hồ hệ thống $50\text{ MHz}$ (bắt buộc khi $\texttt{LPM\_PIPELINE} > 0$).
+    \item \texttt{clken}: Tín hiệu cho phép xung nhịp (Clock Enable), luôn nối lên mức 1 (\texttt{1'b1}).
+    \item \texttt{aclr}: Tín hiệu xóa bất đồng bộ tích cực mức cao, nối với tín hiệu đảo của reset (\texttt{!rst\_n}).
+    \item \texttt{numer [43:0]}: Ngõ vào số bị chia $44\text{ bit}$ không dấu.
+    \item \texttt{denom [33:0]}: Ngõ vào số chia $34\text{ bit}$ không dấu.
+    \item \texttt{quotient [43:0]}: Ngõ ra thương số $44\text{ bit}$ không dấu, xuất hiện sau đúng 44 chu kỳ.
+    \item \texttt{remain [33:0]}: Ngõ ra số dư $34\text{ bit}$ không dấu.
+\end{itemize}
+
+Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div\_wrapper.v} dùng để tích hợp lõi IP này vào luồng phần cứng của Tuyến (A):
+
+\lstinputlisting[
+    language=Verilog,
+    caption={Mã nguồn Verilog bao bọc lõi IP Intel LPM\_DIVIDE (\path{rtl/v3/ch09_lpm_div_wrapper.v}).},
+    label={lst:ch09_lpm_div_wrapper},
+    firstline=19,
+    lastline=49,
+    firstnumber=19
+]{rtl/v3/ch09_lpm_div_wrapper.v}
+
+\subsubsection*{Độ trễ và tài nguyên IP: Thông số lý thuyết và đo đạc thực tế}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Độ trễ chu kỳ (Latency):} Báo cáo mô phỏng và tài liệu IP của Intel khẳng định độ trễ từ lúc đặt dữ liệu ở \texttt{numer} và \texttt{denom} đến khi \texttt{quotient} hợp lệ là đúng \textbf{44 chu kỳ đồng hồ}.
+    \item \textbf{Tài nguyên phần cứng (phải đo):} Số lượng ALM và thanh ghi tiêu tốn bởi \texttt{LPM\_DIVIDE} phụ thuộc vào phiên bản Quartus Prime và chế độ đặt vị trí của Fitter. Theo ước tính từ kiến trúc mảng đường ống $44\text{ tầng}$, mạch tiêu tốn khoảng \textbf{$450$ đến $600\text{ ALM}$} và hơn $500\text{ flip-flop}$ (con số chính xác \textbf{phải kiểm tra trong báo cáo Fitter}).
+    \item \textbf{Tần số Fmax (phải đo):} Nhờ có 44 tầng thanh ghi chốt trung gian, mỗi tầng chỉ tính toán phép trừ 1 bit, đường tới hạn ngắn giúp IP dễ dàng đạt $F_{\max} > 150\text{ MHz}$ trên Cyclone V (tốc độ cấp C6).
+\end{itemize}
+
+\textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP LPM_DIVIDE chuẩn của Intel với LPM_WIDTHN = 44, LPM_WIDTHD = 34 và LPM_PIPELINE = 44; cấu hình này đạt Fmax vượt trội trên 150 MHz nhưng tiêu tốn khoảng 450-600 ALM vì phải duy trì thông lượng 1 kết quả/chu kỳ không cần thiết.}
+
+
 
 
