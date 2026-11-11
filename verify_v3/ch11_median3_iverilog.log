@@ -1,0 +1,5 @@
+=== STARTING CH11 MEDIAN-3 UNIT VERIFICATION ===
+=== SUMMARY: Simulated 1065 cycles, 609 valid outputs verified ===
+=== Total comparison errors: 0 ===
+[PASS] All 1065 cycles matched bit-for-bit with Python twin!
+tb/v3/tb_ch11_median3.v:172: $finish called at 21340000 (1ps)
