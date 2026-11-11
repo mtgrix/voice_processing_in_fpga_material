@@ -138,3 +138,125 @@ r[3] = \frac{R_{xw}[3]}{R_{xw}[0]} \times C_{\text{ideal}}[3] = 0{,}476132 \time
 \textbf{Đọc hình.} Hình~\ref{fig:ch08_window_effect} minh họa trực quan ba đường cong tương quan trên dải trễ $\tau \in [0, 220]$. Đường cong màu đỏ liền nét biểu diễn tỉ số suy giảm hình học của cửa sổ Hanning $R_w[\tau]/R_w[0]$: đường cong dốc xuống liên tục từ $1{,}0$ tại $\tau = 0$ về mức $0{,}468$ tại $\tau = 214$. Đường cong nét đứt màu xám là hàm tự tương quan chưa chuẩn hóa $R_{xw}[\tau]/R_{xw}[0]$ của một nguyên âm có chu kỳ $\tau_0 = 100\text{ mẫu}$: đỉnh tại chu kỳ cơ bản $\tau_0 = 100$ bị dìm xuống còn $0{,}851$, và đỉnh tại chu kỳ bội $2\tau_0 = 200$ bị dìm nặng nề xuống mức $0{,}514$. Đường màu xanh lam đậm biểu thị kết quả sau khi chuẩn hóa cửa sổ: đỉnh tại $\tau_0 = 100$ được nhân bù $\times 1{,}175$ và phục hồi về đúng $1{,}0$; đỉnh tại $2\tau_0 = 200$ được nhân bù $\times 1{,}946$ và cũng phục hồi về mức $1{,}0$. Dải quét phần cứng $\tau \in [26, 214]$ được đóng khung nền xanh nhạt, bao trọn toàn bộ miền tần số giọng nói $75\text{ Hz}$ đến $600\text{ Hz}$.
 
 \textit{Tóm lại: Cắt khung bằng cửa sổ Hanning làm suy giảm hình học hàm tự tương quan khi độ trễ tăng; nếu không chia bù cho $R_w[\tau]$, các đỉnh ở chu kỳ dài bị dìm sâu và gây lỗi nhảy quãng tám lên trên; việc nhân với nghịch đảo $C[\tau] = R_w[0]/R_w[\tau]$ khôi phục trung thực độ mạnh của các đỉnh chu kỳ cơ bản.}
+
+
+\subsection*{8.2. Bản chất của Octave Cost: Cơ chế ưu tiên tần số cao và công thức toán học của Praat}
+\addcontentsline{toc}{subsection}{8.2. Bản chất của Octave Cost: Cơ chế ưu tiên tần số cao và công thức toán học của Praat}
+
+\subsubsection*{Vấn đề thực tế: Tình huống hòa điểm nguy hiểm giữa chu kỳ gốc và chu kỳ bội}
+Sau khi đã chuẩn hóa cửa sổ theo Mục 8.1, mọi độ trễ $\tau$ đều được đặt trên một mặt bằng so sánh công bằng về mặt năng lượng. Tuy nhiên, một cạm bẫy vật lý nghiêm trọng khác lại lập tức xuất hiện: \textbf{Bản chất tuần hoàn của chính các bội số chu kỳ}.
+
+Hãy xét một tín hiệu phát âm lý tưởng có chu kỳ cơ bản $T_0 = 5\text{ ms}$ ($F_0 = 200\text{ Hz}$), tương ứng với độ trễ $\tau_0 = 80\text{ mẫu}$ tại $f_s = 16\text{ kHz}$. Nếu tín hiệu lặp lại sau mỗi $80\text{ mẫu}$, thì theo định nghĩa toán học thuần túy, nó cũng bắt buộc phải lặp lại sau mỗi $2\tau_0 = 160\text{ mẫu}$ ($100\text{ Hz}$), sau mỗi $3\tau_0 = 240\text{ mẫu}$ ($66{,}7\text{ Hz}$), và cứ thế tiếp diễn. Trên hàm tự tương quan đã chuẩn hóa $r[\tau]$, các đỉnh tại $\tau_0 = 80$ và tại $2\tau_0 = 160$ về mặt lý thuyết sẽ có độ cao ngang ngửa nhau, xấp xỉ bằng $1{,}0$.
+
+Trong thực tế thu âm, giọng nói của con người không bao giờ là một hàm toán học tuần hoàn tuyệt đối:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Sự dao động biên độ chu kỳ (jitter và shimmer) cùng chuyển động của luồng khí dây thanh quản làm cho hai chu kỳ liên tiếp có thể hơi khác nhau về năng lượng tức thời.
+    \item Tạp âm môi trường tần số thấp (tiếng ù nguồn điện $50/60\text{ Hz}$, tiếng gió micrô, tiếng rung cơ học) tạo ra một thành phần trôi chậm, vô tình cộng thêm một lượng giá trị dương vào các độ trễ lớn $\tau \approx 160..200$.
+\end{itemize}
+
+Hệ quả là tại khung phân tích, đỉnh tương quan tại chu kỳ bội $2\tau_0 = 160$ có thể đạt $r[160] = 0{,}925$, trong khi đỉnh tại chu kỳ thật $\tau_0 = 80$ chỉ đạt $r[80] = 0{,}920$. Nếu bộ ước lượng cao độ chỉ đơn giản lấy chỉ số có tương quan lớn nhất ($\text{argmax}$), nó sẽ lập tức chọn $\tau = 160\text{ mẫu}$ và kết luận cao độ là $100\text{ Hz}$ thay vì $200\text{ Hz}$! Lỗi này trong âm học gọi là \textbf{lỗi chia đôi quãng tám} (octave halving, hay pitch drop).
+
+\subsubsection*{Nguyên lý của Paul Boersma: Ưu tiên tần số cao}
+Tại sao hiện tượng này lại là một lỗi phân tích? Bởi vì theo định nghĩa vật lý về cao độ giọng nói, chu kỳ cơ bản $T_0$ là \textbf{khoảng thời gian ngắn nhất} mà sau đó dạng sóng lặp lại cấu trúc của nó. Nói cách khác, giữa hai ứng viên tuần hoàn có độ mạnh tương đương nhau, ứng viên có chu kỳ ngắn hơn (tần số cao hơn) luôn luôn là chu kỳ cơ bản thật sự, còn ứng viên có chu kỳ dài hơn chỉ là hệ quả kéo theo của tính tuần hoàn bội.
+
+Để giải quyết triệt để vấn đề này, Paul Boersma đã đề xuất một cơ chế toán học thanh lịch: \textbf{Chi phí quãng tám} (Octave Cost). Trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 225--240), tác giả đã ghi chú rõ ràng nguyên lý chỉ đạo này:
+\begin{lstlisting}[language=C++, numbers=none]
+/* High frequencies are to be favoured if we want to analyze
+   a perfectly periodic signal correctly. */
+\end{lstlisting}
+
+Ý tưởng cốt lõi là: ta chủ động trừ đi một lượng phạt nhỏ tỷ lệ thuận với logarit của chu kỳ (hoặc tỷ lệ nghịch với logarit của tần số) vào điểm đánh giá của mỗi ứng viên. Các ứng viên có chu kỳ dài (tần số thấp) sẽ bị trừ nhiều hơn các ứng viên có chu kỳ ngắn (tần số cao). Khoản phạt này rất nhẹ (chỉ khoảng $1\%$ mỗi quãng tám), đủ để phá vỡ thế hòa điểm mong manh giữa $\tau_0$ và $2\tau_0$ mà không làm méo mó các đỉnh tương quan thật sự.
+
+\subsubsection*{So sánh hai công thức tính Octave Cost trong mã nguồn Praat 7.0.03}
+Khi khảo sát sâu vào mã nguồn Praat 7.0.03, ta bắt gặp hai công thức tính chi phí quãng tám ở hai giai đoạn xử lý khác nhau:
+
+\paragraph{1. Giai đoạn tuyển chọn ứng viên ban đầu (\path{fon/Sound_to_Pitch.cpp}, dòng 214--217):}
+Khi duyệt qua các đỉnh cục bộ $r[\tau]$ để chọn ra tối đa 15 ứng viên cao độ đưa vào danh sách ứng viên của khung, Praat so sánh độ mạnh đã điều chỉnh của ứng viên mới với các ứng viên hiện có:
+\begin{equation}
+\text{score}_{\text{cand}} = \text{strength} - \text{octaveCost} \cdot \log_2\left(\frac{F_{\text{floor}}}{f}\right)
+\label{eq:ch08_cost_floor}
+\end{equation}
+với tham số mặc định $\text{octaveCost} = 0{,}01$ và tần số sàn $F_{\text{floor}} = 75\text{ Hz}$. 
+
+Vì mọi ứng viên hợp lệ đều có tần số $f \ge F_{\text{floor}} = 75\text{ Hz}$, tỉ số $F_{\text{floor}} / f \le 1$, dẫn đến đại lượng $\log_2(F_{\text{floor}} / f) \le 0$. Do đó, số hạng $-\text{octaveCost} \cdot \log_2(F_{\text{floor}} / f)$ thực chất là một \textbf{lượng cộng thưởng dương} cho các ứng viên có tần số cao hơn $75\text{ Hz}$.
+
+\paragraph{2. Giai đoạn quy hoạch động Viterbi / Path Finder (\path{fon/Pitch.cpp}, dòng 560):}
+Khi thuật toán tìm đường đi tối ưu Viterbi tính toán hàm chi phí cục bộ (local cost) cho mỗi ứng viên hữu thanh trong khung, công thức được định nghĩa là:
+\begin{equation}
+\text{score}_{\text{local}} = \text{strength} - \text{octaveCost} \cdot \log_2\left(\frac{F_{\text{ceiling}}}{f}\right)
+\label{eq:ch08_cost_ceiling}
+\end{equation}
+với tham số tần số trần $F_{\text{ceiling}} = 600\text{ Hz}$.
+
+Vì mọi ứng viên đều nằm dưới tần số trần $f \le F_{\text{ceiling}} = 600\text{ Hz}$, tỉ số $F_{\text{ceiling}} / f \ge 1$, nên đại lượng $\log_2(F_{\text{ceiling}} / f) \ge 0$. Do đó, số hạng $-\text{octaveCost} \cdot \log_2(F_{\text{ceiling}} / f)$ là một \textbf{lượng phạt trừ đi} khỏi độ mạnh của ứng viên.
+
+\begin{thoughtqa}
+\textbf{Câu hỏi bản chất:} Hai công thức~(\ref{eq:ch08_cost_floor}) và~(\ref{eq:ch08_cost_ceiling}) sử dụng hai mốc tần số khác nhau ($F_{\text{floor}} = 75\text{ Hz}$ và $F_{\text{ceiling}} = 600\text{ Hz}$). Liệu chúng có dẫn đến kết quả xếp hạng ứng viên mâu thuẫn nhau trong cùng một khung không?
+\par\noindent\textbf{Chứng minh giải tích:} Hãy xét hiệu số giữa hai công thức đánh giá:
+\begin{align}
+\text{score}_{\text{cand}} - \text{score}_{\text{local}} &= -\text{octaveCost} \cdot \log_2\left(\frac{F_{\text{floor}}}{f}\right) - \left[ -\text{octaveCost} \cdot \log_2\left(\frac{F_{\text{ceiling}}}{f}\right) \right] \nonumber \\
+&= \text{octaveCost} \cdot \left[ \log_2\left(\frac{F_{\text{ceiling}}}{f}\right) - \log_2\left(\frac{F_{\text{floor}}}{f}\right) \right] \nonumber \\
+&= \text{octaveCost} \cdot \log_2\left(\frac{F_{\text{ceiling}}}{F_{\text{floor}}}\right)
+\label{eq:ch08_cost_diff_proof}
+\end{align}
+Thay các giá trị tham số danh định $F_{\text{floor}} = 75\text{ Hz}$, $F_{\text{ceiling}} = 600\text{ Hz}$ và $\text{octaveCost} = 0{,}01$:
+\begin{equation}
+\Delta_{\text{offset}} = 0{,}01 \times \log_2\left(\frac{600}{75}\right) = 0{,}01 \times \log_2(8) = 0{,}01 \times 3 = \mathbf{0{,}030000}
+\end{equation}
+Hiệu số giữa hai công thức là một \textbf{hằng số tuyệt đối cố định bằng đúng $0{,}030000$}, hoàn toàn độc lập với tần số $f$ của ứng viên (đã được kiểm chứng số học trong \path{verify_v3/ch08_praat_lines.log})! 
+
+Vì việc cộng hoặc trừ một hằng số cố định lên toàn bộ các ứng viên trong cùng một khung không làm thay đổi thứ tự tương quan lớn bé giữa chúng, hai công thức này hoàn toàn tương đương nhau về mặt thứ bậc xếp hạng ứng viên (ranking equivalence). 
+
+Thiết kế phần cứng của chúng ta chọn cài đặt công thức~(\ref{eq:ch08_cost_ceiling}) với mốc $F_{\text{ceiling}} = 600\text{ Hz}$ vì nó gắn liền trực tiếp với hàm chi phí cục bộ của Path Finder, bảo đảm tính nhất quán toán học khi đối chiếu với Praat R2.
+\end{thoughtqa}
+
+\subsubsection*{Dẫn xuất định dạng số nguyên của bảng chi phí $K[\tau]$}
+Tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, tần số ứng viên liên hệ với độ trễ $\tau$ theo công thức $f = f_s / \tau = 16.000 / \tau$. Thay biểu thức này vào số hạng chi phí quãng tám trong phương trình~(\ref{eq:ch08_cost_ceiling}):
+\begin{equation}
+\text{Cost}[\tau] = \text{octaveCost} \cdot \log_2\left(\frac{600}{16000 / \tau}\right) = 0{,}01 \cdot \log_2\left(\frac{600 \cdot \tau}{16000}\right)
+\label{eq:ch08_cost_tau}
+\end{equation}
+
+Để hiện thực hóa đại lượng phi tuyến này trên phần cứng FPGA mà không cần khối tính toán logarit thực thi động, toàn bộ giá trị của $\text{Cost}[\tau]$ trên dải quét $\tau \in [26, 214]$ được lượng tử hóa và lưu sẵn trong bộ nhớ ROM dưới dạng bảng số nguyên $K[\tau]$:
+\begin{equation}
+K[\tau] = \text{round}\left( 2^{20} \cdot 0{,}01 \cdot \log_2\left(\frac{600 \cdot \tau}{16000}\right) \right)
+\label{eq:ch08_ktau_def}
+\end{equation}
+
+Tại sao lại chọn thừa số tỉ lệ $2^{20}$?
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại cận trên $\tau = 214$, giá trị lớn nhất của chi phí quãng tám là:
+    \begin{equation}
+    \text{Cost}[214] = 0{,}01 \cdot \log_2\left(\frac{600 \times 214}{16000}\right) = 0{,}01 \cdot \log_2(8{,}025) \approx 0{,}030045
+    \end{equation}
+    Nhân với $2^{20} = 1.048.576$:
+    \begin{equation}
+    K[214] = \text{round}(1.048.576 \times 0{,}030045) = \mathbf{31.504}
+    \end{equation}
+    Con số $31.504$ nhỏ hơn $2^{15} = 32.768$, nên nó nằm vừa vặn hoàn hảo bên trong một từ $16\text{-bit}$ có dấu (\texttt{signed [15:0]}).
+    \item Thừa số $2^{20}$ cho độ phân giải lượng tử cực mịn: $2^{-20} \approx 9{,}54 \times 10^{-7}$. Sai số làm tròn của $K[\tau]$ so với hàm giải tích double của Praat nhỏ hơn $5 \times 10^{-7}$, hoàn toàn miễn nhiễm với nhiễu lượng tử số nguyên.
+\end{itemize}
+
+Khảo sát dấu của $K[\tau]$ trên dải quét $\tau \in [26, 214]$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại $\tau = 26$: Tần số danh định là $f = 16000 / 26 \approx 615{,}38\text{ Hz} > 600\text{ Hz}$. Tỉ số $600 \times 26 / 16000 = 15600 / 16000 = 0{,}975 < 1$. Do đó:
+    \begin{equation}
+    K[26] = \text{round}(2^{20} \times 0{,}01 \times \log_2(0{,}975)) = \mathbf{-383} < 0
+    \end{equation}
+    Đây là giá trị duy nhất trong bảng có dấu âm. Tuy nhiên, vì $\tau = 26$ nằm ngoài dải tìm kiếm ứng viên $\tau \in [27, 213]$ (nó chỉ đóng vai trò hàng xóm trái để tính đạo hàm parabol tại $\tau = 27$), giá trị âm này không bao giờ trở thành điểm số của một ứng viên thật sự.
+    \item Tại $\tau = 27$: $f = 16000 / 27 \approx 592{,}59\text{ Hz} < 600\text{ Hz}$, $K[27] = \mathbf{+188} > 0$.
+    \item Tại $\tau = 100$: $f = 160\text{ Hz}$, $K[100] = \mathbf{+19.995}$.
+    \item Tại $\tau = 213$: $f \approx 75{,}12\text{ Hz}$, $K[213] = \mathbf{+31.434}$.
+\end{itemize}
+(Tất cả các con số chuẩn này đã được xác thực hoàn toàn trong \path{verify_v3/ch08_norm_math.log}).
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.95\textwidth}{!}{\input{chuong_v3/fig_ch08_octave_cost.tex}}
+\caption{Cơ chế chi phí quãng tám (Octave Cost) của Praat: trừ một lượng phạt tỷ lệ logarit chu kỳ giúp phá vỡ thế hòa điểm và ưu tiên chọn đúng tần số cơ bản $\tau_0 = 80\text{ mẫu}$ thay vì nhận nhầm nửa tần số tại $\tau = 160\text{ mẫu}$ (số liệu từ \texttt{verify_v3/ch08_norm_math.log}).}
+\label{fig:ch08_octave_cost}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch08_octave_cost} minh họa tác động quyết định của chi phí quãng tám lên việc phân định ứng viên cao độ. Đường màu xanh lam liền nét biểu diễn hàm tự tương quan chuẩn hóa $U[\tau]$: đỉnh tại chu kỳ cơ bản thật sự $\tau_0 = 80$ ($200\text{ Hz}$) đạt $0{,}920$, nhưng do nhiễu trầm, đỉnh tại chu kỳ bội $2\tau_0 = 160$ ($100\text{ Hz}$) lại nhỉnh hơn ở mức $0{,}925$. Nếu chọn cực đại trực tiếp từ $U[\tau]$, thuật toán sẽ rơi vào lỗi chia đôi quãng tám. Đường màu đỏ nét đứt biểu diễn điểm chi phí toàn cục $S_c[\tau] = U[\tau] - \text{term}_K$: ứng viên $\tau = 80$ chỉ bị phạt một lượng nhỏ $0{,}0158$ (điểm tụt xuống $0{,}904$), trong khi ứng viên $\tau = 160$ bị phạt nặng hơn ở mức $0{,}0259$ (điểm tụt xuống $0{,}899$). Nhờ khoản chênh lệch phạt $0{,}0101$ này, trật tự được đảo ngược: $S_c[80] = 0{,}904 > S_c[160] = 0{,}899$, bảo đảm thuật toán luôn chọn chuẩn xác tần số cơ bản của giọng nói.
+
+\textit{Tóm lại: Các tín hiệu tuần hoàn luôn có đỉnh tự tương quan tại các bội số chu kỳ, dễ gây lỗi chia đôi quãng tám khi có nhiễu trầm; Praat sử dụng Octave Cost để phạt nhẹ các chu kỳ dài theo quy luật logarit; bảng tra số nguyên $K[\tau]$ định dạng 16-bit có dấu mã hóa chính xác lượng phạt này, giúp thuật toán ưu tiên chuẩn xác chu kỳ cơ bản ngắn nhất.}

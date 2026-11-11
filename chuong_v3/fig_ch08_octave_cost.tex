@@ -1,0 +1,64 @@
+% chuong_v3/fig_ch08_octave_cost.tex
+% Minh họa cơ chế chi phí quãng tám (Octave Cost) của Praat:
+% Ưu tiên tần số cao, phạt nhẹ chu kỳ dài để phá thế cân bằng giữa tau0 và 2tau0
+\begin{tikzpicture}[x=0.06cm, y=5.0cm, >=Stealth]
+    % Lưới nền mờ
+    \draw[very thin, gray!20, step=1] (20,0.6) grid[xstep=30, ystep=0.1] (220,1.05);
+
+    % Trục tọa độ
+    \draw[->, thick, black!70] (20,0.6) -- (230,0.6) node[right, font=\footnotesize] {Độ trễ $\tau$ (mẫu)};
+    \draw[->, thick, black!70] (20,0.6) -- (20,1.08) node[above, font=\footnotesize] {Điểm tương quan / Độ mạnh};
+
+    % Vạch chia trục hoành
+    \foreach \x in {26, 50, 80, 110, 140, 160, 190, 214} {
+        \draw[thick, black!60] (\x,0.61) -- (\x,0.59) node[below, font=\scriptsize] {\x};
+    }
+    % Vạch chia trục tung
+    \foreach \y in {0.6, 0.7, 0.8, 0.9, 1.0} {
+        \draw[thick, black!60] (22,\y) -- (18,\y) node[left, font=\scriptsize] {\y};
+    }
+
+    % Đường cong U[tau]: Đỉnh tương quan chuẩn hóa (chưa trừ chi phí quãng tám)
+    % Giả sử tín hiệu tuần hoàn có tau0 = 80 (f0 = 200 Hz), đỉnh tại tau0=80 (0.920) và 2tau0=160 (0.925 do nhiễu trầm)
+    \draw[thick, blue!80!black, smooth] plot coordinates {
+        (30,0.62) (50,0.65) (70,0.80) (78,0.915) (80,0.920) (82,0.915) (90,0.75) 
+        (110,0.63) (130,0.66) (150,0.81) (158,0.920) (160,0.925) (162,0.920) (170,0.76) 
+        (190,0.64) (214,0.62)
+    };
+    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (75,0.98) 
+        {Đỉnh gốc $U[80] = 0{,}920$};
+    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (165,0.98) 
+        {Đỉnh bội $U[160] = 0{,}925$};
+
+    % Đường phạt chi phí quãng tám K_norm[tau] = 0.01 * log2(600 * tau / 16000)
+    % Tại tau=26: K = -0.00036
+    % Tại tau=80: K = 0.01 * log2(48000/16000) = 0.01 * log2(3) = 0.01585
+    % Tại tau=160: K = 0.01 * log2(96000/16000) = 0.01 * log2(6) = 0.02585
+    % Tại tau=214: K = 0.01 * log2(128400/16000) = 0.01 * log2(8.025) = 0.03004
+    % Vẽ trên hệ tọa độ dịch: Sc[tau] = U[tau] - K[tau]
+    \draw[very thick, red!85!black, dashed, smooth] plot coordinates {
+        (30,0.618) (50,0.640) (70,0.786) (78,0.900) (80,0.904) (82,0.899) (90,0.732) 
+        (110,0.609) (130,0.637) (150,0.785) (158,0.894) (160,0.899) (162,0.894) (170,0.733) 
+        (190,0.611) (214,0.590)
+    };
+    \node[red!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (80,0.86) 
+        {$S_c[80] = 0{,}904$};
+    \node[red!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (160,0.86) 
+        {$S_c[160] = 0{,}899$};
+
+    % Mũi tên phạt
+    \draw[->, thick, purple!75!black] (80,0.920) -- (80,0.905);
+    \node[right, purple!80!black, font=\tiny, fill=white, inner sep=1pt] at (81,0.912) 
+        {Trừ $0{,}0158$};
+
+    \draw[->, thick, purple!75!black] (160,0.925) -- (160,0.900);
+    \node[right, purple!80!black, font=\tiny, fill=white, inner sep=1pt] at (161,0.912) 
+        {Trừ $0{,}0259$};
+
+    % Chú thích kết luận
+    \node[draw=green!60!black, fill=green!5, rounded corners=2pt, font=\scriptsize, align=left] at (130,0.72) {
+        \textbf{Phân định người chiến thắng:}\\
+        $\bullet$ Trước Octave Cost: $U[160] = 0{,}925 > U[80] = 0{,}920 \implies$ Nhầm sang nửa tần số!\\
+        $\bullet$ Sau Octave Cost: $S_c[80] = 0{,}904 > S_c[160] = 0{,}899 \implies$ \textbf{Chọn đúng $\tau_0 = 80$ ($200\text{ Hz}$)}!
+    };
+\end{tikzpicture}
