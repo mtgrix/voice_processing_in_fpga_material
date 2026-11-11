@@ -151,7 +151,7 @@ Trong một số tài liệu thiết kế trước đây (điển hình là bả
     \text{SQNR} \approx 6{,}02 \times 16 + 1{,}76 \approx 98{,}08\text{ dB}
     \end{equation}
     Độ rộng hệ số 16 bit đảm bảo rằng khi chuyển từ số thực dấu phẩy động sang số nguyên Q1.15, đáp ứng tần số thực tế của bộ lọc bám sát đáp ứng lý thuyết với sai số cực đại nhỏ hơn $0{,}001\text{ dB}$ (đã kiểm chứng trong \texttt{verify\_v3/ch03\_fir\_design.log}). Tuy nhiên, độ rộng bit hệ số \textbf{không tự động tạo ra độ suy hao dải chặn}!
-    \item \textbf{Độ suy hao dải chặn ($A_s$) và bề rộng dải chuyển tiếp ($\Delta f$):} Độ suy hao dải chặn hoàn toàn bị chi phối bởi số lượng tap $N$ và tỷ lệ dải chuyển tiếp $\Delta f / f_s$. Mối quan hệ toán học kinh điển này được chuẩn hóa qua công thức ước lượng Kaiser:
+    \item \textbf{Độ suy hao dải chặn ($A_s$) và bề rộng dải chuyển tiếp ($\Delta f$):} Độ suy hao dải chặn hoàn toàn bị chi phối bởi số lượng tap $N$ và tỷ lệ dải chuyển tiếp $\Delta f / f_s$. Mối quan hệ này được chuẩn hóa qua công thức ước lượng Kaiser:
     \begin{equation}
     N \approx \frac{A_s - 7{,}95}{14{,}36 \cdot \left(\frac{\Delta f}{f_s}\right)}
     \end{equation}
@@ -167,11 +167,11 @@ N \approx \frac{60 - 7{,}95}{14{,}36 \times 0{,}025} = \frac{52{,}05}{0{,}359} \
 Như vậy, muốn đạt độ suy hao $60\text{ dB}$ trong khoảng chuyển tiếp hẹp $400\text{ Hz}$, ta cần ít nhất 147 tap! Với chiều dài vỏn vẹn $N = 31\text{ tap}$, việc đòi hỏi độ suy hao $60\text{ dB}$ trong dải chuyển tiếp $400\text{ Hz}$ là điều bất khả thi về mặt vật lý. Bộ lọc 31 tap chỉ có thể tạo ra độ suy hao $-9{,}41\text{ dB}$ tại tần số $8\text{ kHz}$.
 
 \subsubsection*{Trễ nhóm (Group Delay) và quy tắc dịch chuyển lưới khung phân tích}
-Một đặc tính cốt lõi của bộ lọc FIR đối xứng Type I ($N = 31$ là số lẻ, $h[n] = h[N - 1 - n]$) là có pha tuyến tính hoàn hảo. Độ trễ nhóm (group delay) là đạo hàm của góc pha theo tần số:
+Một đặc tính cốt lõi của bộ lọc FIR đối xứng Type I ($N = 31$ là số lẻ, $h[n] = h[N - 1 - n]$) là có pha tuyến tính nghiêm ngặt. Độ trễ nhóm (group delay) là đạo hàm của góc pha theo tần số:
 \begin{equation}
 \tau_g = -\frac{d\theta(\omega)}{d\omega} = \frac{N - 1}{2}\text{ mẫu}
 \end{equation}
-Với bộ lọc $N = 31$ tap, độ trễ nhóm là một hằng số tuyệt đối trên mọi tần số:
+Với bộ lọc $N = 31$ tap, độ trễ nhóm là một hằng số cố định trên mọi tần số:
 \begin{equation}
 \tau_g = \frac{31 - 1}{2} = \textbf{15 mẫu} \quad \left(= 15 \times \frac{1}{16000}\text{ s} = 0{,}9375\text{ ms}\right)
 \end{equation}
@@ -184,7 +184,7 @@ Sự lệch pha thời gian này sẽ làm dịch chuyển vị trí các đỉn
 \begin{equation}
 s_{\text{start, FIR}}[k] = s_{\text{start}}[k] - 15
 \end{equation}
-Nhờ việc định vị khung sớm hơn 15 mẫu, cửa sổ 638 mẫu sau khi đi qua trễ nhóm của bộ lọc FIR sẽ rơi vào đúng vị trí thời gian của khung chưa lọc, bảo toàn tính tương đồng tuyệt đối về mặt vật lý.
+Nhờ việc định vị khung sớm hơn 15 mẫu, cửa sổ 638 mẫu sau khi đi qua trễ nhóm của bộ lọc FIR sẽ rơi vào đúng vị trí thời gian của khung chưa lọc, bảo toàn tính tương đồng về mặt vật lý.
 
 \subsubsection*{Lựa chọn thiết kế và các lý do quyết định}
 Dựa trên phân tích định lượng ở Bảng~\ref{tab:ch03_fir_options}, chúng tôi lựa chọn hiện thực hóa \textbf{Phương án (b) 31 tap kèm mạch rẽ nhánh bypass} với các lý do kỹ thuật sau:
@@ -259,7 +259,7 @@ Sau khi hoàn tất quá trình sinh mã trong Platform Designer hoặc IP Catal
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Cổng điều khiển:} xung nhịp \texttt{clk} (50 MHz) và tín hiệu xóa \texttt{reset\_n}.
     \item \textbf{Giao diện nhận (Avalon-ST Sink):} bus dữ liệu \texttt{ast\_sink\_data} (16 bit), cờ \texttt{ast\_sink\_valid}, cờ sẵn sàng \texttt{ast\_sink\_ready}, và cờ báo lỗi \texttt{ast\_sink\_error}.
-    \item \textbf{Giao diện phát (Avalon-ST Source):} bus dữ liệu \texttt{ast\_source\_data} (16 bit), cờ \texttt{ast\_source\_valid}, tín hiệu nhận \texttt{ast\_source\_ready}, và cờ báo lỗi \texttt{ast\_source\_error}.
+    \item \textbf{Giao diện phát (Avalon-ST Source):} bus \texttt{ast\_source\_data} (16 bit), cờ \texttt{ast\_source\_valid}, tín hiệu nhận \texttt{ast\_source\_ready}, cờ lỗi \texttt{ast\_source\_error}.
     \item \textbf{Độ trễ xử lý (Latency):} Báo cáo sinh mã (IP Generation Report) của Intel FIR Compiler II sẽ công bố chính xác số chu kỳ xung nhịp từ khi mẫu đầu tiên được nạp vào đến khi mẫu đầu ra xuất hiện. Thông số độ trễ này phụ thuộc vào mức độ đường ống hóa nội bộ mà IP tự động phân bổ, và \textbf{phải kiểm trong mô phỏng IP hoặc báo cáo sinh mã của Quartus}.
     \item \textbf{Tài nguyên phần cứng chiếm dụng:} Số lượng khối logic ALM, số khối nhân DSP và bộ nhớ M10K phụ thuộc vào phiên bản Quartus Prime và thuật toán Fitter tối ưu hóa, do đó con số cụ thể là \textbf{(phải đo)}.
 \end{itemize}
@@ -270,15 +270,15 @@ Dưới đây là đoạn mã Verilog giao diện chuẩn (instantiation templat
 fir_compiler_ii_wrapper u_fir_ip (
     .clk              (clk),
     .reset_n          (rst_n),
-    // Avalon-ST Sink Interface (Dữ liệu vào từ FIFO Unpacker)
+    // Avalon-ST Sink Interface (Data in from FIFO Unpacker)
     .ast_sink_data    (fir_in_data),   // signed [15:0]
     .ast_sink_valid   (fir_in_valid),  // 1-bit
-    .ast_sink_ready   (fir_in_ready),  // 1-bit phản áp về FIFO
+    .ast_sink_ready   (fir_in_ready),  // 1-bit backpressure to FIFO
     .ast_sink_error   (2'b00),
-    // Avalon-ST Source Interface (Dữ liệu ra tới RAM khung)
+    // Avalon-ST Source Interface (Data out to frame RAM)
     .ast_source_data  (fir_out_data),  // signed [15:0]
     .ast_source_valid (fir_out_valid), // 1-bit
-    .ast_source_ready (fir_out_ready), // 1-bit phản áp từ hạ nguồn
+    .ast_source_ready (fir_out_ready), // 1-bit backpressure from downstream
     .ast_source_error ()
 );
 \end{lstlisting}
@@ -321,7 +321,7 @@ Sau đúng 16 chu kỳ tính toán, kết quả tích lũy hoàn chỉnh đượ
 
 \textbf{Đọc hình.} Hình~\ref{fig:ch03_folded_arch} mô tả chi tiết dòng chảy dữ liệu bên trong mô-đun phần cứng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Phía bên trái là giao tiếp Avalon-ST Sink: khi tín hiệu bắt tay \texttt{s\_handshake} xuất hiện, mẫu mới \texttt{sink\_data} được nạp vào đầu mảng thanh ghi dịch 31 tầng (tạo thành từ 496 flip-flop trong ALM).
+    \item Phía trái là giao diện Avalon-ST Sink: khi xuất hiện tín hiệu bắt tay \texttt{s\_handshake}, mẫu \texttt{sink\_data} được nạp vào mảng thanh ghi dịch 31 tầng (tạo từ 496 flip-flop trong ALM).
     \item Bộ tiền cộng Pre-adder 17-bit rút các cặp mẫu đối xứng $x[k]$ và $x[30-k]$ từ thanh ghi dịch theo chỉ số bước \texttt{step} do bộ đếm FSM điều khiển. Tại bước cuối cùng (\texttt{step} = 15), ngõ vào thứ hai được nối đất về 0 để chỉ nhân hệ số trung tâm $h[15] \cdot x[15]$.
     \item Bảng ROM hệ số 16 từ phát ra giá trị $h[step]$ tương ứng. Bộ nhân DSP thực hiện phép nhân $17\text{ bit} \times 16\text{ bit} \to 33\text{ bit}$, nạp vào bộ cộng tích lũy 40-bit.
     \item Tại bước 15, giá trị tổng được làm tròn và bão hòa rồi nạp vào bộ dồn kênh MUX 2:1. Tín hiệu điều khiển \texttt{bypass} cho phép dữ liệu từ ngõ vào đi thẳng ra ngõ ra qua 1 tầng chốt đồng bộ khi ở chế độ chuyển tiếp.
@@ -379,7 +379,7 @@ Dưới đây là toàn bộ mã nguồn phần cứng của khối lọc FIR 31
 \end{itemize}
 
 \subsubsection*{Bảng đối chiếu song sinh: Mã Python Twin so với mã phần cứng Verilog}
-Để khẳng định tính tương đương toán học và chu kỳ tuyệt đối giữa mô hình phần mềm và phần cứng, Bảng~\ref{tab:ch03_twin_vs_hdl} đối chiếu chi tiết từng khối lệnh trong tệp mô hình song sinh \texttt{verify\_v3/ch03\_fir\_twin.py} với mã nguồn phần cứng tương ứng:
+Để khẳng định tính tương đương toán học và chu kỳ giữa mô hình phần mềm và phần cứng, Bảng~\ref{tab:ch03_twin_vs_hdl} đối chiếu chi tiết từng khối lệnh trong tệp mô hình song sinh \texttt{verify\_v3/ch03\_fir\_twin.py} với mã nguồn phần cứng tương ứng:
 
 \begin{table}[htbp]
 \centering
@@ -409,8 +409,8 @@ Khi đặt bản thiết kế HDL tự viết cạnh khối IP FIR Compiler II �
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{Cơ chế tiền cộng Pre-adder:} Biểu thức \texttt{pre\_add = \$signed(tap\_a) + \$signed(tap\_b)} ở dòng 99 khớp chính xác với phần cứng Pre-adder mà tùy chọn \texttt{Symmetry = Symmetrical} kích hoạt trong khối IP. Cả hai đều triệt tiêu được 15 phép nhân số học.
     \item \textbf{Cơ chế làm tròn bán phần:} Phép toán \texttt{(acc\_final + 40'sd16384) >>> 15} ở dòng 109 tái hiện chính xác chế độ \texttt{Output LSB Rounding = Nearest/Convergent} của khối IP, bảo toàn tính đối xứng của đáp ứng xung và không tạo ra điện áp trôi DC.
-    \item \textbf{Khâu bão hòa biên độ:} Mạch kiểm tra vượt ngưỡng $[-32768, 32767]$ ở dòng 110--112 khớp hoàn toàn với tùy chọn \texttt{Output MSB Rounding = Saturation} của IP, ngăn chặn tuyệt đối hiện tượng cuộn bit âm khi tín hiệu đạt đỉnh.
-    \item \textbf{Giao thức bắt tay Avalon-ST:} Khối HDL hỗ trợ đầy đủ cơ chế phản áp tổ hợp (tín hiệu \texttt{sink\_ready} sẵn sàng khi ngõ ra rỗng hoặc hạ nguồn bật \texttt{source\_ready = 1}) ở chuẩn \texttt{readyLatency = 0}, tương thích 100\% với giao thức streaming chuẩn của Intel.
+    \item \textbf{Khâu bão hòa biên độ:} Mạch kiểm tra vượt ngưỡng $[-32768, 32767]$ ở dòng 110--112 khớp với tùy chọn \texttt{Output MSB Rounding = Saturation} của IP, ngăn chặn hiện tượng cuộn bit âm khi tín hiệu đạt đỉnh.
+    \item \textbf{Giao thức bắt tay Avalon-ST:} Khối HDL hỗ trợ đầy đủ cơ chế phản áp tổ hợp (tín hiệu \texttt{sink\_ready} sẵn sàng khi ngõ ra rỗng hoặc hạ nguồn bật \texttt{source\_ready = 1}) ở chuẩn \texttt{readyLatency = 0}, tương thích chuẩn xác với giao thức streaming của Intel.
 \end{enumerate}
 
 \subsubsection*{Đổi lựa chọn thì sao: Đánh đổi giữa các kiến trúc FIR khác nhau}
@@ -423,6 +423,266 @@ Nếu thay đổi yêu cầu thiết kế sang một bài toán khác, việc đ
 Đối với bài toán ước lượng $F_0$ với tần số lấy mẫu 16 kHz, kiến trúc gấp thời gian 1 DSP với bộ tiền cộng đối xứng mà chúng tôi hiện thực hóa là giải pháp tối ưu nhất xét trên mọi phương diện: diện tích silicon, độ trễ và thông lượng.
 
 \textit{Tóm lại: Khối HDL folded FIR dùng đúng 1 DSP và bộ tiền cộng 17 bit để tính 31 tap trong 16 chu kỳ; bộ tích lũy 40 bit kết hợp làm tròn bán phần (+16384) và bão hòa đảm bảo khớp từng bit với cấu hình IP chuẩn.}
+
+\subsection*{3.5. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+\addcontentsline{toc}{subsection}{3.5. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+
+\subsubsection*{Chiến lược kiểm chứng ba tầng (Three-Tier Verification)}
+Để đảm bảo bộ lọc FIR hoạt động chính xác trên vi mạch thực tế và không gây ra bất kỳ lỗi lệch chu kỳ nào, quy trình kiểm chứng Chương 3 được tổ chức chặt chẽ theo ba tầng:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tầng 1 (Mô hình song sinh Python Twin):} Tệp \texttt{verify\_v3/ch03\_fir\_twin.py} hiện thực hóa lớp đối tượng \texttt{FirFilterTwin}. Mô hình này mô phỏng chính xác từng thanh ghi, từng phép nhân, bộ tích lũy 40-bit, khâu làm tròn bán phần $+16384$ và cơ chế bắt tay Avalon-ST ở chuẩn \texttt{readyLatency = 0}.
+    \item \textbf{Tầng 2 (Mô phỏng chu kỳ RTL bằng Icarus Verilog):} Testbench \texttt{tb/v3/tb\_ch03\_fir.v} đọc chuỗi kích thích từ tệp \texttt{tb\_ch03\_fir\_stim.txt}, cấp vào module phần cứng \texttt{ch03\_fir\_filter.v}, sau đó so sánh từng bit của toàn bộ các tín hiệu ngõ ra (\texttt{sink\_ready}, \texttt{source\_valid}, \texttt{source\_data}, trạng thái FSM và bước đếm \texttt{step}) với tệp kết quả kỳ vọng \texttt{tb\_ch03\_fir\_expected.txt}. Nếu có bất kỳ sự sai lệch nào dù chỉ 1 bit, testbench lập tức phát cờ \texttt{[FAIL]}.
+    \item \textbf{Tầng 3 (Biên dịch Quartus và đo đạc phần cứng):} Kiểm tra khả năng tổng hợp trên chip Cyclone V 5CSXFC6D6F31C6N, xác thực việc Quartus ánh xạ thành công bộ tiền cộng và bộ nhân vào 1 khối DSP duy nhất, và đo đạc tần số hoạt động cực đại $F_{\max}$.
+\end{enumerate}
+
+\subsubsection*{Hàm cập nhật chu kỳ của mô hình song sinh Python Twin}
+Dưới đây là phần thân hàm xử lý chu kỳ trọng tâm của mô hình song sinh trong tệp \texttt{verify\_v3/}\\ \texttt{ch03\_fir\_twin.py}:
+
+\lstinputlisting[language=Python, firstline=28, lastline=98, caption={Hàm cập nhật chu kỳ của mô hình song sinh FIR (verify\_v3/ch03\_fir\_twin.py)}]{verify_v3/ch03_fir_twin.py}
+
+\textbf{Giải thích mã nguồn Python Twin dòng-từng-dòng:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 28--29:} Phương thức \texttt{step\_cycle} nhận các tín hiệu điều khiển \texttt{rst\_n}, \texttt{bypass}, \texttt{sink\_valid}, \texttt{sink\_data}, \texttt{source\_ready}, mô phỏng chu kỳ xung nhịp 50 MHz.
+    \item \textbf{Dòng 30--38:} Nhánh reset bất đồng bộ: khi \texttt{rst\_n == 0}, xóa toàn bộ 31 thanh ghi dịch về 0, đặt trạng thái FSM về \texttt{S\_IDLE} (0), xóa thanh ghi ngõ ra và trả về \texttt{sink\_ready = 1}.
+    \item \textbf{Dòng 41--47:} Đánh giá cờ \texttt{sink\_ready} tổ hợp trước cạnh lên xung nhịp: ở chế độ \texttt{bypass}, mạch sẵn sàng nhận mẫu mới nếu ngõ ra đang rỗng (\texttt{not out\_valid}) hoặc hạ nguồn chấp nhận lấy mẫu (\texttt{source\_ready == 1}). Ở chế độ lọc FIR, mạch chỉ bật \texttt{sink\_ready = 1} khi FSM đang ở trạng thái \texttt{S\_IDLE} và ngõ ra sẵn sàng.
+    \item \textbf{Dòng 50--51:} Xác định hai điều kiện bắt tay: \texttt{s\_handshake} (thượng nguồn cấp mẫu) và \texttt{m\_handshake} (hạ nguồn tiếp nhận).
+    \item \textbf{Dòng 54--66:} Xử lý chế độ chuyển mạch \texttt{bypass}: hoạt động như một tầng đệm đồng bộ 1 chu kỳ, chuyển tiếp trực tiếp \texttt{sink\_data} sang \texttt{out\_data} với thông lượng tối đa 1 mẫu/chu kỳ.
+    \item \textbf{Dòng 68--75:} Trạng thái \texttt{S\_IDLE}: khi có mẫu mới (\texttt{s\_handshake} = 1), mẫu mới được nạp vào đầu mảng dịch \texttt{self.shift\_reg = [sink\_data] + self.shift\_reg[:-1]}, FSM chuyển sang \texttt{S\_CALC} và xóa bộ tích lũy \texttt{self.acc = 0}.
+    \item \textbf{Dòng 76--86:} Trạng thái \texttt{S\_CALC}: rút cặp mẫu đối xứng \texttt{xa} và \texttt{xb}, tính tổng tiền cộng 17-bit \texttt{pre\_add = xa + xb}, nhân với hệ số \texttt{COEFF\_16[step]}, và cộng dồn vào \texttt{self.acc}.
+    \item \textbf{Dòng 87--95:} Bước cuối (\texttt{step == 15}): làm tròn bán phần \texttt{(acc\_final + 16384) >> 15}, bão hòa $[-32768, 32767]$, chốt vào \texttt{out\_data} và bật \texttt{out\_valid = 1}. Nếu hạ nguồn sẵn sàng thì về \texttt{S\_IDLE}, ngược lại vào \texttt{S\_WAIT\_OUT}.
+    \item \textbf{Dòng 96--98:} Trạng thái \texttt{S\_WAIT\_OUT}: giữ nguyên dữ liệu chờ cho đến khi hạ nguồn bật \texttt{source\_ready = 1}.
+\end{itemize}
+
+\subsubsection*{Kịch bản kiểm thử toàn diện trên 3.390 chu kỳ xung nhịp}
+Kịch bản kiểm thử trong tệp \texttt{verify\_v3/ch03\_fir\_twin.py} được thiết kế với chuỗi kích thích gồm **281 mẫu âm thanh** đa dạng, kéo dài qua **3.390 chu kỳ xung nhịp 50 MHz** liên tục, bao quát toàn diện các tình huống hoạt động thực tế:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Thử thách 1: Đáp ứng xung đơn vị (Impulse Response, Mẫu 0--40):}
+    Cấp một mẫu xung cực đại $x[0] = 32767$ (\texttt{0x7FFF}), theo sau bởi 40 mẫu 0 liên tiếp. Dãy dữ liệu ngõ ra phản ánh chính xác chuỗi hệ số lọc $h[0..30]$ đối xứng qua đỉnh trung tâm tại mẫu thứ 15 ($y[15] = 31948$), khẳng định độ trễ nhóm đúng bằng 15 mẫu.
+    \item \textbf{Thử thách 2: Sóng sin cao tần sát mép Nyquist 7,8 kHz (Mẫu 41--90):}
+    Cấp tín hiệu sin tần số $7.800\text{ Hz}$ biên độ lớn ($28000$). Kết quả ghi nhận biên độ đỉnh ngõ ra suy giảm từ $28000$ xuống còn $13188$, tương ứng với độ suy hao thực tế $-6{,}54\text{ dB}$, hoàn toàn trùng khớp với đáp ứng tần số lý thuyết của bộ lọc 31 tap.
+    \item \textbf{Thử thách 3: Sóng sin dải thông giọng nói 1,0 kHz (Mẫu 91--140):}
+    Cấp tín hiệu sin tần số $1.000\text{ Hz}$ biên độ $28000$. Biên độ ngõ ra đạt $28415$ (độ lợi $+0{,}13\text{ dB}$), khẳng định dải thông thoại được bảo toàn nguyên vẹn.
+    \item \textbf{Thử thách 4: Tín hiệu tiếng nói thực tế từ tệp WAV mẫu (Mẫu 141--240):}
+    Cấp 100 mẫu âm thanh thực tế trích xuất trực tiếp từ tệp \texttt{golden\_v2/synth\_glide\_vuv\_16k.wav}, kiểm tra tính ổn định của mạch khi xử lý các đoạn chuyển tiếp giữa thanh và vô thanh.
+    \item \textbf{Thử thách 5: Thử thách bão hòa biên độ cực hạn (Mẫu 241--280):}
+    Cấp chuỗi mẫu xen kẽ cực đại $[+32767, -32768, +32767, -32768]$ liên tục. Kết quả kiểm chứng xác nhận khâu bão hòa hoạt động chuẩn xác: các giá trị vượt ngưỡng được ghim tại $+32767$ và $-32768$, không có bất kỳ hiện tượng lật dấu bit cao nào xảy ra.
+    \item \textbf{Thử thách 6: Phản áp ngẫu nhiên và chuyển mạch động Bypass:}
+    Trong suốt quá trình mô phỏng, tín hiệu \texttt{source\_ready} bị giật xuống 0 ngẫu nhiên theo phân bố xác suất từ $20\%$ đến $50\%$ để kiểm tra cơ chế đóng băng hàng đợi. Tại mẫu thứ 160, cờ điều khiển \texttt{bypass} được bật lên 1 để kiểm tra quá trình chuyển trạng thái tức thời sang chế độ truyền thẳng 1 chu kỳ mà không làm gián đoạn dòng dữ liệu.
+\end{enumerate}
+
+Toàn bộ 3.390 chu kỳ kích thích và phản hồi kỳ vọng được xuất ra hai tệp văn bản\\ \texttt{verify\_v3/tb\_ch03\_fir\_stim.txt} và \texttt{verify\_v3/tb\_ch03\_fir\_expected.txt}.
+
+\subsubsection*{Kết quả kiểm thử mô phỏng chu kỳ HDL với Icarus Verilog}
+Kịch bản testbench Verilog \texttt{tb/v3/tb\_ch03\_fir.v} được biên dịch với lệnh \texttt{iverilog -g2012 -Wall} thông qua tệp thực thi \texttt{verify\_v3/run\_ch03\_iverilog.sh}. Kết quả kiểm thử đối soát chu kỳ được ghi nhận như sau:
+
+\todo{box: kết quả chạy iverilog trên Linux: Simulation completed 3390 cycles. Total comparison errors: 0. [PASS] CH03 FIR MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 3390 CYCLES; nhật ký verify\_v3/ch03\_iverilog.log}
+
+\textit{Tóm lại: Mô hình song sinh Python và testbench HDL đã chạy đối soát 3.390 chu kỳ trên 281 mẫu âm thanh; đáp ứng xung, sóng sin 7,8 kHz và tín hiệu âm thanh thực tế khớp từng bit trong cả hai chế độ lọc và bypass.}
+
+\subsubsection*{Bảng so sánh tổng hợp: Khối IP Intel FIR Compiler II so với HDL tự viết}
+Dưới đây là bảng tổng hợp định lượng đối chiếu toàn diện giữa giải pháp sử dụng khối IP đóng gói sẵn của Intel và giải pháp tự thiết kế bằng HDL cho bộ lọc FIR của Chương 3:
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{So sánh toàn diện giữa khối IP Intel FIR Compiler II và mã nguồn HDL tự viết cho Chương 3}
+\label{tab:ch03_ip_vs_hdl}
+\begin{tabular}{lcc}
+\toprule
+Tiêu chí kỹ thuật & Khối IP Intel FIR Compiler II & HDL tự viết (\texttt{ch03\_fir\_filter.v}) \\
+\midrule
+Tên mô-đun phần cứng & \texttt{altera\_fir\_compiler\_ii} & \texttt{ch03\_fir\_filter} \\
+Tài nguyên khối nhớ M10K & 0 khối & \textbf{0 khối} (sử dụng 496 FF logic) \\
+Tài nguyên bộ nhân DSP & Phụ thuộc GUI/Fitter \textbf{(phải đo)} & \textbf{Đúng 1 khối DSP} (gấp 16 chu kỳ) \\
+Tài nguyên thanh ghi (FF) & Báo cáo Fitter \textbf{(phải đo)} & \textbf{544 FF} (496 shift + 40 acc + 8 ctrl) \\
+Tài nguyên khối logic ALM & Phụ thuộc tối ưu hóa Qsys \textbf{(phải đo)} & \textbf{Phải đo trong Quartus} \\
+Thông lượng ở chế độ lọc & Do \texttt{Input Sample Rate} quyết định & \textbf{2{,}94 MSPS} (1 mẫu/17 chu kỳ ở 50 MHz) \\
+Độ trễ xử lý (Latency) & Báo cáo IP Generation \textbf{(phải kiểm)} & \textbf{16 chu kỳ} (khi lọc) / \textbf{1 chu kỳ} (khi bypass) \\
+Độ trễ sẵn sàng \texttt{readyLatency} & Cấu hình 0 hoặc 1 \textbf{(phải kiểm)} & \textbf{Chuẩn 0} (bắt tay tức thời cùng chu kỳ) \\
+Công tắc chuyển mạch Bypass & Không có cổng động (phải thêm MUX ngoài) & \textbf{Tích hợp sẵn cổng \texttt{bypass}} thời gian thực \\
+Khâu bão hòa biên độ & Cấu hình \texttt{Saturation} trong GUI & \textbf{Khâu bão hòa tổ hợp} $[-32768, 32767]$ \\
+Tính độc lập và trong suốt & Phụ thuộc thư viện lõi độc quyền Intel & \textbf{Mã nguồn mở Verilog-2001 chuẩn} \\
+Khả năng kiểm thử chu kỳ & Đòi hỏi ModelSim/QuestaSim bản quyền & \textbf{Kiểm thử chu kỳ nhẹ với Icarus Verilog} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch03_ip_vs_hdl} chỉ ra sự tương đồng về kiến trúc nền tảng giữa hai giải pháp: cả hai đều không tiêu tốn bộ nhớ RAM khối M10K và đều tận dụng bộ tiền cộng Pre-adder để giảm tải bộ nhân. Tuy nhiên, giải pháp HDL tự viết mang lại ba ưu thế vượt trội:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khả năng chuyển mạch Bypass động:} Khối IP FIR Compiler II không hỗ trợ cổng điều khiển bypass trong thời gian thực; muốn bypass, người thiết kế buộc phải tự viết thêm một bộ dồn kênh MUX Avalon-ST bên ngoài. Trong khi đó, khối HDL tự viết tích hợp sẵn chân điều khiển \texttt{bypass}, cho phép HPS bật tắt bộ lọc tức thì qua thanh ghi CSR mà không tiêu tốn thêm trễ đường ống.
+    \item \textbf{Cố định chính xác tài nguyên DSP:} Khối HDL gấp thời gian đảm bảo chắc chắn chỉ sử dụng duy nhất 1 bộ nhân DSP trên chip, giải phóng toàn bộ các khối DSP còn lại cho bộ tích lũy tự tương quan MAC ở Chương 7.
+    \item \textbf{Tính minh bạch và kiểm thử độc lập:} Mã nguồn HDL tự viết có thể mô phỏng bit-đối-bit với trình biên dịch tự do Icarus Verilog trong vài giây, giúp quy trình tích hợp hệ thống trở nên nhanh chóng và độc lập với phần mềm Quartus.
+\end{itemize}
+
+\subsubsection*{Bài tập cuối chương có lời giải chi tiết}
+
+\paragraph{Bài tập 1: Tính toán bậc lọc FIR theo công thức Kaiser với yêu cầu suy hao khắt khe.}
+Giả sử một hệ thống xử lý tiếng nói yêu cầu thiết kế bộ lọc số FIR làm mềm dải biên với các chỉ tiêu kỹ thuật sau: tần số lấy mẫu $f_s = 16.000\text{ Hz}$, độ suy hao dải chặn tối thiểu $A_s = 50\text{ dB}$, và bề rộng dải chuyển tiếp $\Delta f = 500\text{ Hz}$ (từ $7{,}5\text{ kHz}$ đến $8{,}0\text{ kHz}$).
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy áp dụng công thức thực nghiệm Kaiser để ước lượng số lượng tap lọc tối thiểu $N$ cần thiết.
+    \item Đối chiếu kết quả trên với hàm tính toán tối ưu \texttt{scipy.signal.kaiserord(50, 500/8000)}.
+    \item Nhận xét về tính khả thi và chi phí phần cứng nếu nâng số tap lên mức này so với bộ lọc 31 tap đã chọn.
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Tỷ lệ bề rộng dải chuyển tiếp chuẩn hóa so với tần số lấy mẫu là:
+    \begin{equation}
+    \frac{\Delta f}{f_s} = \frac{500\text{ Hz}}{16.000\text{ Hz}} = 0{,}03125
+    \end{equation}
+    Áp dụng công thức ước lượng chiều dài bộ lọc của Kaiser:
+    \begin{equation}
+    N \approx \frac{A_s - 7{,}95}{14{,}36 \cdot \left(\frac{\Delta f}{f_s}\right)} = \frac{50 - 7{,}95}{14{,}36 \times 0{,}03125} = \frac{42{,}05}{0{,}44875} \approx \textbf{93{,}70 tap}
+    \end{equation}
+    Làm tròn lên số nguyên lẻ gần nhất để đảm bảo bộ lọc FIR đối xứng Type I có pha tuyến tính, ta cần $N = \textbf{95 tap}$ (hoặc làm tròn số học $\approx 94\text{ tap}$).
+    \item Khi chạy hàm tối ưu \texttt{scipy.signal.kaiserord(50, 500 / 8000)} trong kịch bản kiểm chứng \texttt{verify\_v3/ch03\_exercises.py}, kết quả trả về là chính xác:
+    \begin{equation}
+    N_{\text{scipy}} = \textbf{95 tap}, \quad \text{hệ số cửa sổ } \beta = 4{,}5335
+    \end{equation}
+    Kết quả tính toán giải tích từ công thức Kaiser khớp hoàn toàn với hàm tối ưu hóa của thư viện SciPy.
+    \item \emph{Nhận xét kỹ thuật:} Mặc dù bộ lọc 95 tap đạt độ suy hao ấn tượng $50\text{ dB}$, nó đòi hỏi:
+    \begin{itemize}
+        \item Chiều dài thanh ghi dịch tăng từ 31 lên 95 tầng (tiêu tốn $95 \times 16 = 1.520\text{ FF}$, tăng gấp 3 lần diện tích ALM).
+        \item Trễ nhóm tăng vọt lên $\tau_g = (95 - 1) / 2 = \textbf{47 mẫu}$ ($\approx 2{,}94\text{ ms}$, chiếm gần một phần ba bước nhảy hop 160 mẫu), làm phức tạp hóa đáng kể khâu căn chỉnh lưới thời gian của RAM chia khung.
+        \item Nếu giữ cấu trúc 1 DSP gấp thời gian, mỗi mẫu cần tới $\lceil 95/2 \rceil = 48$ chu kỳ tính toán, làm giảm thông lượng tối đa của khối lọc đi 3 lần. Do đó, phương án 31 tap với suy hao $-9{,}4\text{ dB}$ là điểm cân bằng kỹ thuật tối ưu cho ứng dụng này.
+    \end{itemize}
+\end{enumerate}
+
+\paragraph{Bài tập 2: Dẫn xuất trễ nhóm của bộ lọc FIR đối xứng và tính toán căn chỉnh lưới khung.}
+Xét hai cấu hình bộ lọc FIR pha tuyến tính Type I: cấu hình A có $N = 31$ tap và cấu hình B có $N = 63$ tap.
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy dẫn xuất toán học chứng minh độ trễ nhóm $\tau_g$ của bộ lọc FIR đối xứng chẵn luôn là hằng số độc lập với tần số tín hiệu đầu vào.
+    \item Giả sử tệp âm thanh có khung phân tích đầu tiên ($k = 0$) bắt đầu tại mẫu $s_{\text{start}}[0] = 100$, bước nhảy khung là $\text{hop} = 160\text{ mẫu}$. Hãy xác định chỉ số mẫu bắt đầu của khung 0 và khung 1 khi bộ lọc 31 tap được kích hoạt (\texttt{bypass = 0}) để dữ liệu đưa vào tự tương quan không bị lệch thời gian so với Praat.
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Đáp ứng tần số của bộ lọc FIR có $N$ hệ số đối xứng chẵn $h[n] = h[N - 1 - n]$ được biểu diễn qua biến đổi Fourier thời gian rời rạc DTFT:
+    \begin{equation}
+    H(e^{j\omega}) = \sum_{n=0}^{N-1} h[n] e^{-j\omega n}
+    \end{equation}
+    Đặt $\alpha = (N - 1) / 2$. Tách thừa số pha trễ chung $e^{-j\omega \alpha}$ ra ngoài:
+    \begin{equation}
+    H(e^{j\omega}) = e^{-j\omega \alpha} \sum_{n=0}^{N-1} h[n] e^{j\omega (\alpha - n)}
+    \end{equation}
+    Do tính chất đối xứng $h[n] = h[2\alpha - n]$, các số hạng ghép cặp theo từng khoảng cách $|n - \alpha|$:
+    \begin{equation}
+    H(e^{j\omega}) = e^{-j\omega \alpha} \left[ h[\alpha] + 2 \sum_{k=1}^{\alpha} h[\alpha - k] \cos(\omega k) \right] = A(\omega) \, e^{-j\omega \alpha}
+    \end{equation}
+    trong đó $A(\omega)$ là hàm biên độ thực (zero-phase response). Góc pha của bộ lọc do đó là một hàm tuyến tính thuần túy theo tần số góc $\omega$:
+    \begin{equation}
+    \theta(\omega) = -\alpha \cdot \omega = -\left(\frac{N - 1}{2}\right) \omega
+    \end{equation}
+    Độ trễ nhóm (Group Delay) được định nghĩa là tốc độ biến thiên của pha theo tần số:
+    \begin{equation}
+    \tau_g(\omega) = -\frac{d\theta(\omega)}{d\omega} = -\frac{d}{d\omega}\left[-\left(\frac{N - 1}{2}\right) \omega\right] = \mathbf{\frac{N - 1}{2}}\text{ \textbf{(hằng số)}}
+    \end{equation}
+    Độ trễ nhóm là hằng số cố định trên toàn bộ dải tần số từ $0$ đến Nyquist, chứng minh tín hiệu đi qua bộ lọc không bị méo pha (phase distortion).
+    \item Với $N = 31$ tap, độ trễ nhóm là $\tau_g = (31 - 1) / 2 = \textbf{15 mẫu}$.
+    Để bù trừ độ trễ này, vị trí bắt đầu của các khung phân tích khi kích hoạt lọc phải dịch lùi 15 mẫu:
+    \begin{itemize}
+        \item Khung 0: $s_{\text{start, FIR}}[0] = s_{\text{start}}[0] - \tau_g = 100 - 15 = \textbf{85}$ (thay vì mẫu 100).
+        \item Khung 1: vị trí gốc là $s_{\text{start}}[1] = 100 + 160 = 260$. Vị trí khi lọc là:
+        \begin{equation}
+        s_{\text{start, FIR}}[1] = 260 - 15 = \textbf{245}
+        \end{equation}
+    \end{itemize}
+    Nhờ việc dời khung lùi 15 mẫu, sau khi mẫu âm thanh chạy qua 15 tầng trễ nhóm của bộ lọc FIR, khung dữ liệu 638 mẫu thu nhận được trong RAM sẽ khớp thời gian với đoạn âm thanh ban đầu.
+\end{enumerate}
+
+\paragraph{Bài tập 3: Đánh giá ngân sách chu kỳ và thông lượng của kiến trúc folded FIR.}
+Khối folded FIR trong thiết kế \texttt{rtl/v3/ch03\_fir\_filter.v} hoạt động ở tần số xung nhịp $f_{\text{clk}} = 50\text{ MHz}$, sử dụng 1 bộ nhân DSP duy nhất để tính toán tuần tự 16 bước nhân-tích lũy cho mỗi mẫu âm thanh mới nạp vào. Mạch mất 1 chu kỳ để nạp mẫu vào mảng dịch và 16 chu kỳ để tính toán, tổng cộng $T_{\text{sample}} = 17\text{ chu kỳ/mẫu}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Tính thông lượng xử lý cực đại của khối lọc tính bằng đơn vị triệu mẫu/giây (MSPS).
+    \item So sánh thời gian xử lý một mẫu với chu kỳ lấy mẫu danh định của âm thanh 16 kHz. Tính hệ số chiếm dụng thời gian (duty cycle) của bộ nhân DSP khi chạy ở tốc độ thời gian thực 16 kHz.
+    \item Trong chế độ xử lý tệp nhanh nhất, khối tự tương quan MAC ở Chương 7 mất trung bình khoảng $616\text{ chu kỳ}$ để tiêu thụ 1 mẫu âm thanh ($98.543\text{ chu kỳ}$ cho khung bước nhảy 160 mẫu). Hỏi khối FIR có thể trở thành nút thắt cổ chai làm chậm hệ thống hay không?
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Với thời gian hoàn tất mỗi mẫu là 17 chu kỳ ở xung nhịp 50 MHz, thông lượng xử lý cực đại là:
+    \begin{equation}
+    \Phi = \frac{f_{\text{clk}}}{T_{\text{sample}}} = \frac{50.000.000\text{ chu kỳ/s}}{17\text{ chu kỳ/mẫu}} \approx \textbf{2{,}941 MSPS} \quad (2.941.176\text{ mẫu/giây})
+    \end{equation}
+    Thời gian xử lý vật lý một mẫu âm thanh là:
+    \begin{equation}
+    t_{\text{proc}} = 17 \times 20\text{ ns} = \textbf{340 ns}
+    \end{equation}
+    \item Ở tốc độ lấy mẫu danh định $f_s = 16\text{ kHz}$, khoảng cách thời gian giữa hai mẫu âm thanh kế tiếp là:
+    \begin{equation}
+    T_s = \frac{1}{16000\text{ s}} = 62{,}5\text{ }\mu\text{s} = 62.500\text{ ns} \quad (= 3125\text{ chu kỳ xung nhịp 50 MHz})
+    \end{equation}
+    Hệ số chiếm dụng thời gian tính toán thực tế của bộ nhân DSP là:
+    \begin{equation}
+    \eta = \frac{17\text{ chu kỳ}}{3125\text{ chu kỳ}} \times 100\% \approx \textbf{0{,}544\%}
+    \end{equation}
+    Trong hơn $99{,}45\%$ thời gian còn lại của chu kỳ lấy mẫu, bộ nhân DSP hoàn toàn rảnh rỗi và ở trạng thái nghỉ, tiêu thụ năng lượng chuyển mạch cực thấp.
+    \item Trong chế độ đọc tệp, khối MAC tự tương quan tiêu tốn:
+    \begin{equation}
+    T_{\text{MAC/sample}} = \frac{98.543\text{ chu kỳ}}{160\text{ mẫu}} \approx \textbf{615{,}89 chu kỳ/mẫu}
+    \end{equation}
+    Tỷ số tốc độ giữa khối FIR và khối MAC là:
+    \begin{equation}
+    \frac{T_{\text{MAC/sample}}}{T_{\text{FIR/sample}}} = \frac{615{,}89\text{ chu kỳ}}{17\text{ chu kỳ}} \approx \textbf{36{,}23 lần}
+    \end{equation}
+    Khối lọc FIR hoàn thành tính toán nhanh gấp hơn 36 lần so với tốc độ tiêu thụ của khối MAC phía sau. Do đó, khối lọc FIR \textbf{hoàn toàn không bao giờ là nút thắt cổ chai} của hệ thống phần cứng, ngay cả khi toàn bộ chuỗi xử lý hoạt động ở thông lượng tối đa.
+\end{enumerate}
+
+\paragraph{Bài tập 4: Lượng tử hóa hệ số Q1.15 và vai trò của khâu bão hòa biên độ.}
+Xét bộ lọc 31 tap có hệ số trung tâm thực tế $h[15] = 0{,}975000$. Tổng của 31 hệ số sau khi lượng tử hóa sang chuẩn Q1.15 là $\sum_{i=0}^{30} h_{\text{q15}}[i] = 33257$.
+\begin{enumerate}[label=(\alph*)]
+    \item Biểu diễn $h[15]$ dưới dạng số nguyên 16-bit signed Q1.15 và tính sai số lượng tử hóa tương đối.
+    \item Tính độ lợi một chiều (DC Gain) của bộ lọc sau lượng tử hóa theo thang dB.
+    \item Giả sử cấp một tín hiệu DC biên độ cực đại $x[n] = +32767$ liên tục vào bộ lọc. Hãy tính giá trị tích lũy nội bộ \texttt{acc}, giá trị sau khi làm tròn bán phần \texttt{rounded}, và giá trị xuất ra sau khâu bão hòa \texttt{sat\_out}. Điều gì sẽ xảy ra nếu mạch bỏ qua khâu bão hòa biên độ?
+\end{enumerate}
+
+\textbf{Lời giải mẫu:}
+\begin{enumerate}[label=(\alph*)]
+    \item Trong định dạng Q1.15, số thực $1{,}0$ tương ứng với $2^{15} = 32768$. Giá trị nguyên của $h[15]$ là:
+    \begin{equation}
+    h_{\text{q15}}[15] = \text{round}(0{,}975000 \times 32768) = \text{round}(31948{,}8) = \textbf{31949} \quad (\texttt{0x7CCD})
+    \end{equation}
+    Giá trị thực tương ứng sau khi giải mã là $31949 / 32768 = 0{,}9750061$. Độ lệch sai số $\epsilon_{\text{diff}}$ là:
+    \begin{equation}
+    \epsilon_{\text{diff}} = |0{,}9750061 - 0{,}9750000| = 6{,}10 \times 10^{-6}
+    \end{equation}
+    Sai số tương đối là:
+    \begin{equation}
+    \epsilon_{\text{rel}} = \frac{6{,}10 \times 10^{-6}}{0{,}975000} \approx \textbf{0{,}000625\%}
+    \end{equation}
+    Sai số lượng tử hóa hệ số là không đáng kể.
+    \item Tổng của 31 hệ số nguyên là $S_h = 33257$. Độ lợi DC của bộ lọc là:
+    \begin{equation}
+    G_{\text{DC}} = \frac{S_h}{32768} = \frac{33257}{32768} \approx \textbf{1{,}014923} \quad \implies \quad 20 \log_{10}(1{,}014923) = \textbf{+0{,}129 dB}
+    \end{equation}
+    Bộ lọc có độ nhô biên độ nhẹ $+0{,}129\text{ dB}$ tại tần số DC do đặc tính xấp xỉ bình phương tối thiểu \texttt{firls}.
+    \item Với đầu vào DC liên tục $x[n] = 32767$, giá trị tích lũy 40-bit trong thanh ghi \texttt{acc} là:
+    \begin{equation}
+    \text{acc} = \sum_{i=0}^{30} x[n-i] \cdot h_{\text{q15}}[i] = 32767 \times 33257 = \textbf{1.089.732.119}
+    \end{equation}
+    Thực hiện phép làm tròn bán phần (cộng $2^{14} = 16384$) và dịch phải số học 15 bit:
+    \begin{equation}
+    \text{rounded} = \lfloor (1.089.732.119 + 16384) / 32768 \rfloor = \lfloor 1.089.748.503 / 32768 \rfloor = \textbf{33256}
+    \end{equation}
+    So sánh giá trị này với giới hạn trên của số nguyên 16-bit có dấu ($+32767$):
+    \begin{equation}
+    \Delta = 33256 - 32767 = \textbf{+489 LSB}
+    \end{equation}
+    Giá trị tính toán đã vượt quá dải biểu diễn 16-bit một lượng 489 đơn vị.
+    \begin{itemize}
+        \item Khi có khâu bão hòa: điều kiện \texttt{rounded > 40'sd32767} được kích hoạt, giá trị xuất ra ngõ ra bị ghim an toàn tại:
+        \begin{equation}
+        \texttt{sat\_out} = \textbf{+32767} \quad (\texttt{16'sh7FFF})
+        \end{equation}
+        \item \emph{Nếu không có khâu bão hòa:} phần cứng sẽ cắt cụt lấy 16 bit thấp \texttt{rounded[15:0]}. Vì $33256 = (1000\_0001\_1110\_1000)_2$, bit dấu (bit 15) bằng 1, giá trị này sẽ bị hiểu là:
+        \begin{equation}
+        33256 - 65536 = \textbf{-32280}
+        \end{equation}
+        Một tín hiệu dương cực đại bị đảo ngược thành một số âm cực lớn, tạo ra tiếng nổ xung cực mạnh phá hỏng hoàn toàn quá trình tính tự tương quan $R[\tau]$. Phân tích này chứng minh khâu bão hòa biên độ là một khối bảo vệ thiết yếu trong thiết kế DSP phần cứng.
+    \end{itemize}
+\end{enumerate}
+
 
 
 

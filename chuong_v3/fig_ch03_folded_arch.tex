@@ -1,6 +1,6 @@
 % chuong_v3/fig_ch03_folded_arch.tex
 % Architecture of the 31-tap folded symmetric FIR filter with 17-bit pre-adder and 1 DSP block
-\begin{tikzpicture}[scale=0.92, transform shape, >=stealth, font=\small, node distance=1.2cm]
+\begin{tikzpicture}[scale=0.82, transform shape, >=stealth, font=\small]
 
     % Style definitions
     \tikzstyle{block}     = [draw=blue!80!black, fill=blue!6, thick, rounded corners=3pt, 
@@ -12,7 +12,7 @@
     \tikzstyle{rombox}    = [draw=purple!80!black, fill=purple!6, thick, rounded corners=3pt, 
                              inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{muxbox}    = [draw=orange!80!black, fill=orange!12, thick, 
-                             inner sep=3pt, align=center, font=\tiny\bfseries]
+                             inner sep=3pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{fsmbox}    = [draw=gray!80!black, fill=gray!8, thick, rounded corners=4pt, 
                              inner sep=5pt, align=center, font=\scriptsize\bfseries]
     \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
@@ -21,92 +21,132 @@
 
     % Outer Boundary
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-4.0, -4.2) rectangle (8.4, 4.0);
+        (-4.8, -4.7) rectangle (9.2, 4.0);
     \node[anchor=north west, font=\footnotesize\bfseries, color=blue!90!black] 
-        at (-3.8, 3.8) {Khối lọc FIR 31 tap gấp thời gian (\texttt{ch03\_fir\_filter.v})};
+        at (-4.6, 3.85) {Khối lọc FIR 31 tap gấp thời gian (\texttt{ch03\_fir\_filter.v})};
 
-    % Upstream Avalon-ST Sink (Left)
-    \node[portlabel, anchor=east] (sink_data)  at (-4.2,  1.8) {sink\_data[15:0]};
-    \node[portlabel, anchor=east] (sink_valid) at (-4.2,  0.4) {sink\_valid};
-    \node[portlabel, anchor=east] (sink_ready) at (-4.2, -0.8) {sink\_ready};
-    \node[portlabel, anchor=east] (bypass_in)  at (-4.2, -3.2) {bypass};
+    % Upstream Avalon-ST Sink Ports (Left)
+    \node[portlabel, anchor=east] (sink_data)  at (-5.0,  1.6) {sink\_data[15:0]};
+    \node[portlabel, anchor=east] (sink_valid) at (-5.0, -1.6) {sink\_valid};
+    \node[portlabel, anchor=east] (sink_ready) at (-5.0, -2.4) {sink\_ready};
+    \node[portlabel, anchor=east] (bypass_in)  at (-5.0, -3.3) {bypass};
 
-    % Downstream Avalon-ST Source (Right)
-    \node[portlabel, anchor=west] (src_data)   at (8.6,  1.8) {source\_data[15:0]};
-    \node[portlabel, anchor=west] (src_valid)  at (8.6,  0.4) {source\_valid};
-    \node[portlabel, anchor=west] (src_ready)  at (8.6, -0.8) {source\_ready};
+    % Downstream Avalon-ST Source Ports (Right)
+    \node[portlabel, anchor=west] (src_data)   at (9.4,  1.6) {source\_data[15:0]};
+    \node[portlabel, anchor=west] (src_valid)  at (9.4, -1.6) {source\_valid};
+    \node[portlabel, anchor=west] (src_ready)  at (9.4, -2.4) {source\_ready};
 
     % 1. Shift Register Block (31 stages x 16 bit)
-    \node[regbox, minimum width=2.4cm, minimum height=1.2cm] (shift_reg) at (-2.4, 1.8)
+    \node[regbox, minimum width=2.2cm, minimum height=1.3cm] (shift_reg) at (-3.1, 1.6)
         {Mảng thanh ghi dịch\\31 tầng $\times$ 16 bit\\(\texttt{shift\_reg[0..30]})};
 
     % 2. Pre-adder (17-bit signed)
-    \node[block, minimum width=2.0cm, minimum height=1.0cm] (preadder) at (0.3, 1.8)
+    \node[block, minimum width=1.8cm, minimum height=1.3cm] (preadder) at (-0.3, 1.6)
         {Bộ tiền cộng\\Pre-adder 17 bit\\$x[k] + x[30-k]$};
 
     % 3. Coefficient ROM (16 x 16 bit)
-    \node[rombox, minimum width=2.0cm, minimum height=1.0cm] (rom) at (0.3, -0.2)
+    \node[rombox, minimum width=1.8cm, minimum height=1.1cm] (rom) at (-0.3, -0.6)
         {ROM hệ số Q1.15\\16 từ $\times$ 16 bit\\(\texttt{h[0..15]})};
 
     % 4. Multiplier (17 x 16 -> 33 bit inside DSP)
-    \node[dspbox, minimum width=2.2cm, minimum height=1.2cm] (dsp_mult) at (2.8, 1.8)
+    \node[dspbox, minimum width=2.2cm, minimum height=1.3cm] (dsp_mult) at (2.3, 1.6)
         {Bộ nhân DSP\\17-bit $\times$ 16-bit\\Tích $p$ (33 bit)};
 
     % 5. Accumulator (40-bit)
-    \node[regbox, minimum width=2.0cm, minimum height=1.0cm] (acc) at (2.8, -0.2)
+    \node[regbox, minimum width=2.0cm, minimum height=1.1cm] (acc) at (2.3, -0.6)
         {Bộ tích lũy\\Thanh ghi 40 bit\\(\texttt{acc})};
 
-    % Feedback adder for accumulation
-    \draw[dataline] (dsp_mult.south) -- (acc.north) node[midway, right, font=\tiny] {$p$};
-    \draw[dataline] (acc.west) -- ++(-0.4, 0) -- ++(0, 0.9) -- (dsp_mult.south west)
-        node[midway, left, font=\tiny] {Cộng dồn};
-
     % 6. Rounding & Saturation
-    \node[block, minimum width=2.0cm, minimum height=1.1cm] (round_sat) at (5.2, 1.8)
-        {Làm tròn \& Bão hòa\\$(acc + 16384) \gg 15$\\Clamp $[-32768, 32767]$};
+    \node[block, minimum width=2.2cm, minimum height=1.3cm] (round_sat) at (5.8, 1.6)
+        {Làm tròn \& Bão hòa\\$(acc + 16384) \gg 15$\\Ghim $[-32768, 32767]$};
 
     % 7. Bypass Multiplexer
-    \node[muxbox, minimum width=0.8cm, minimum height=1.4cm] (bypass_mux) at (7.0, 1.8)
+    \node[muxbox, minimum width=0.8cm, minimum height=1.5cm] (bypass_mux) at (7.8, 1.6)
         {MUX\\2:1};
 
     % 8. FSM Controller & Step Counter
-    \node[fsmbox, minimum width=3.8cm, minimum height=1.2cm] (fsm) at (2.0, -3.2)
+    \node[fsmbox, minimum width=6.2cm, minimum height=1.1cm] (fsm) at (1.8, -3.2)
         {Bộ điều khiển FSM \& Bộ đếm bước 4-bit\\Trạng thái: \texttt{S\_IDLE}, \texttt{S\_CALC}, \texttt{S\_WAIT\_OUT}\\Đếm \texttt{step} = $0..15$ (16 chu kỳ/mẫu)};
 
-    % Connections - Data path
-    \draw[dataline] (-4.0, 1.8) -- (shift_reg.west);
-    \draw[dataline] (shift_reg.east) -- (preadder.west) 
-        node[midway, above, font=\tiny] {Cặp đối xứng};
-    \draw[dataline] (preadder.east) -- (dsp_mult.west) 
-        node[midway, above, font=\tiny] {17 bit};
-    \draw[dataline] (rom.east) -- ++(0.6, 0) -- ++(0, 1.4) -- (dsp_mult.south west)
-        node[midway, right, font=\tiny] {$h[step]$};
-    \draw[dataline] (dsp_mult.east) -- (round_sat.west);
-    \draw[dataline] (round_sat.east) -- (bypass_mux.west) 
-        node[midway, above, font=\tiny] {Lọc (0)};
-    \draw[dataline] (bypass_mux.east) -- (src_data.west);
+    % -------------------------------------------------------------
+    % Data Connections
+    % -------------------------------------------------------------
+    % Input data to Shift Register
+    \draw[dataline] (-4.8, 1.6) -- (shift_reg.west);
 
-    % Bypass direct line
-    \draw[dataline, color=orange!80!black] 
-        (-3.0, 2.7) -- ++(0, 0.8) -- (6.6, 3.5) -- (bypass_mux.north)
-        node[midway, above, font=\tiny\bfseries] {Đường Bypass trực tiếp (1)};
+    % Bypass direct line (taps at x = -4.3, routes above all blocks)
+    \fill (-4.3, 1.6) circle (2pt);
+    \draw[dataline, color=orange!85!black] 
+        (-4.3, 1.6) -- (-4.3, 3.2) -- (7.8, 3.2) -- (bypass_mux.north);
+    \node[below, font=\scriptsize\bfseries, color=orange!90!black] 
+        at (5.4, 3.1) {Đường Bypass trực tiếp (bypass = 1)};
+    \node[font=\scriptsize\bfseries, color=orange!90!black, anchor=south east] 
+        at (7.7, 2.4) {1};
 
-    % Control connections
-    \draw[ctrlline] (bypass_in.east) -- ++(1.0, 0) -- ++(0, 0) -- (fsm.west);
-    \draw[ctrlline] (bypass_in.east) -- ++(0.5, 0) -- ++(0, 4.6) -- (bypass_mux.north west)
-        node[pos=0.8, left, font=\tiny] {\texttt{bypass}};
+    % Shift Register to Pre-adder
+    \draw[dataline] (shift_reg.east) -- (preadder.west);
+    \node[above=4pt, font=\scriptsize] at (-1.5, 1.6) {Cặp mẫu};
 
-    \draw[ctrlline] (-4.0, 0.4) -- ++(1.2, 0) -- ++(0, -2.8) -- (fsm.north west)
-        node[pos=0.2, above, font=\tiny] {\texttt{sink\_valid}};
-    \draw[ctrlline] (fsm.west) -- ++(-0.6, 0) -- ++(0, 2.4) -- (-4.0, -0.8)
-        node[pos=0.8, above, font=\tiny] {\texttt{sink\_ready}};
+    % Pre-adder to DSP Multiplier (input A)
+    \draw[dataline] (preadder.east) -- ([yshift=0.2cm]dsp_mult.west);
+    \node[above=4pt, font=\scriptsize] at (0.9, 1.8) {17 bit};
 
-    \draw[ctrlline] (src_ready.west) -- ++(-0.8, 0) -- ++(0, -1.8) -- (fsm.north east)
-        node[pos=0.2, above, font=\tiny] {\texttt{source\_ready}};
-    \draw[ctrlline] (fsm.east) -- ++(0.8, 0) -- ++(0, 3.6) -- (8.4, 0.4)
-        node[pos=0.8, above, font=\tiny] {\texttt{source\_valid}};
+    % ROM to DSP Multiplier (input B)
+    \draw[dataline] (rom.east) -- ++(0.3, 0) -- ++(0, 1.9) -- ([yshift=-0.2cm]dsp_mult.west);
+    \node[anchor=west, font=\scriptsize] at (1.0, 0.4) {$h[step]$ (16b)};
 
-    \draw[ctrlline] (fsm.north) -- (rom.south)
-        node[midway, right, font=\tiny] {\texttt{step[3:0]}};
+    % DSP Multiplier to Accumulator (p input)
+    \draw[dataline] ([xshift=-0.4cm]dsp_mult.south) -- ([xshift=-0.4cm]acc.north);
+    \node[left, font=\scriptsize] at (1.9, 0.5) {Tích $p$};
+
+    % Accumulator feedback to Multiplier/Adder
+    \draw[dataline] ([xshift=0.4cm]acc.north) -- ([xshift=0.4cm]dsp_mult.south);
+    \node[right, font=\scriptsize] at (2.7, 0.5) {Cộng dồn};
+
+    % Accumulator to Rounding & Saturation
+    \draw[dataline] (acc.east) -- (4.0, -0.6) -- (4.0, 1.6) -- (round_sat.west);
+    \node[right, font=\scriptsize] at (4.05, 0.5) {acc (40b)};
+
+    % Rounding & Saturation to Bypass MUX (input 0)
+    \draw[dataline] (round_sat.east) -- (bypass_mux.west);
+    \node[above=4pt, font=\scriptsize] at (7.3, 1.6) {Lọc (0)};
+
+    % MUX output to source_data port
+    \draw[dataline] (bypass_mux.east) -- (9.2, 1.6);
+
+    % -------------------------------------------------------------
+    % Control Connections (Dashed purple)
+    % -------------------------------------------------------------
+    % sink_valid input to FSM
+    \draw[ctrlline] (-4.8, -1.6) -- (-1.8, -1.6) -- (-1.8, -2.65);
+    \node[above, font=\scriptsize] at (-3.2, -1.6) {\texttt{sink\_valid}};
+
+    % sink_ready output from FSM
+    \draw[ctrlline] (-1.3, -2.65) -- (-1.3, -2.4) -- (-4.8, -2.4);
+    \node[above, font=\scriptsize] at (-3.2, -2.4) {\texttt{sink\_ready}};
+
+    % bypass input to FSM and MUX
+    \draw[ctrlline] (-4.8, -3.3) -- (fsm.west);
+    \fill (-3.6, -3.3) circle (1.8pt);
+    \draw[ctrlline, color=orange!80!black] 
+        (-3.6, -3.3) -- (-3.6, -4.4) -- (7.8, -4.4) -- (bypass_mux.south);
+    \node[above=2pt, font=\scriptsize, color=orange!90!black] 
+        at (2.0, -4.4) {\texttt{bypass} (chọn kênh MUX 2:1)};
+
+    % source_ready input to FSM
+    \draw[ctrlline] (9.2, -2.4) -- (4.5, -2.4) -- (4.5, -2.65);
+    \node[above, font=\scriptsize] at (6.8, -2.4) {\texttt{source\_ready}};
+
+    % source_valid output from FSM
+    \draw[ctrlline] (5.1, -2.65) -- (5.1, -1.6) -- (9.2, -1.6);
+    \node[above, font=\scriptsize] at (6.8, -1.6) {\texttt{source\_valid}};
+
+    % step[3:0] counter to ROM
+    \draw[ctrlline] (-0.3, -2.65) -- (rom.south);
+    \node[right, font=\scriptsize] at (-0.3, -1.6) {\texttt{step[3:0]}};
+
+    % latch_out control from FSM to Round_Sat
+    \draw[ctrlline] (3.6, -2.65) -- (3.6, -1.4) -- (5.8, -1.4) -- (round_sat.south);
+    \node[above, font=\scriptsize] at (4.7, -1.4) {\texttt{latch\_out}};
 
 \end{tikzpicture}
