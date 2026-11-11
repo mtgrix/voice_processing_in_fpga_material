@@ -1,0 +1,67 @@
+================================================================================
+AUDIT: BẢN CHẤT TOÁN HỌC CỦA BỘ LỌC TRUNG VỊ MEDIAN-3 VÀ VI KIẾN TRÚC PHẦN CỨNG
+================================================================================
+
+--- 1. Kiểm tra mạng so sánh 3 phần tử trên mọi hoán vị và trường hợp bằng nhau ---
+[PASS] (10, 20, 30) -> med = 20
+[PASS] (10, 30, 20) -> med = 20
+[PASS] (20, 10, 30) -> med = 20
+[PASS] (20, 30, 10) -> med = 20
+[PASS] (30, 10, 20) -> med = 20
+[PASS] (30, 20, 10) -> med = 20
+[PASS] (20, 20, 10) -> med = 20
+[PASS] (20, 20, 30) -> med = 20
+[PASS] (10, 20, 20) -> med = 20
+[PASS] (30, 20, 20) -> med = 20
+[PASS] (20, 10, 20) -> med = 20
+[PASS] (20, 30, 20) -> med = 20
+[PASS] (25, 25, 25) -> med = 25
+=> Kết luận: Mạng so sánh 3 phần tử (3 bộ so sánh) hoàn toàn chính xác.
+
+--- 2. Kiểm chứng ví dụ tính tay trong Đề cương Chương 11 ---
+Dãy ngõ vào   : [120, 122, 244, 121, 0, 0]
+Dãy sau đệm biên: [120, 120, 122, 244, 121, 0, 0, 0]
+  Khung k = 0: Cửa sổ 3 mẫu = [120, 120, 122] -> Trung vị = 120
+  Khung k = 1: Cửa sổ 3 mẫu = [120, 122, 244] -> Trung vị = 122
+  Khung k = 2: Cửa sổ 3 mẫu = [122, 244, 121] -> Trung vị = 122
+  Khung k = 3: Cửa sổ 3 mẫu = [244, 121, 0] -> Trung vị = 121
+  Khung k = 4: Cửa sổ 3 mẫu = [121, 0, 0] -> Trung vị = 0
+  Khung k = 5: Cửa sổ 3 mẫu = [0, 0, 0] -> Trung vị = 0
+Dãy ngõ ra    : [120, 122, 122, 121, 0, 0]
+Kỳ vọng       : [120, 122, 122, 121, 0, 0]
+=> Kết luận: Ví dụ tính tay [120, 122, 244, 121, 0, 0] -> [120, 122, 122, 121, 0, 0] khớp 100%.
+
+--- 3. Khả năng sửa gai đơn (Single spike) vs Gai kép (Double spike) ---
+Gai đơn 1 khung: Vào [150, 150, 300, 150, 150] -> Ra [150, 150, 150, 150, 150]
+  => Gai đơn 300 Hz (lỗi nhân đôi quãng tám 1 khung) được triệt tiêu hoàn toàn thành 150 Hz.
+Gai kép 2 khung: Vào [150, 150, 300, 300, 150, 150] -> Ra [150, 150, 300, 300, 150, 150]
+  => Gai kép 300 Hz kéo dài 2 khung KHÔNG THỂ BỊ XÓA vì 2/3 phần tử trong cửa sổ mang giá trị 300 Hz.
+
+--- 4. Tác động của Median-3 lên quyết định vô thanh (VDE) qua giá trị 0 ---
+Đốm sáng giả trong im lặng (Glitch): Vào [0, 0, 150, 0, 0] -> Ra [0, 0, 0, 0, 0]
+  => Đốm sáng giả 150 Hz đơn lẻ bị triệt tiêu về 0, làm thay đổi quyết định hữu thanh sang vô thanh.
+Mất tiếng đơn khung (Dropout): Vào [150, 150, 0, 150, 150] -> Ra [150, 150, 150, 150, 150]
+  => Khung mất tiếng 0 đơn lẻ được hàn gắn thành 150 Hz, làm mượt đường pitch và giảm VDE.
+Biên chuyển tiếp âm: Vào [0, 0, 150, 152, 154] -> Ra [0, 0, 150, 152, 154]
+  => Median-3 làm trễ ranh giới vô thanh/hữu thanh 1 khung do số 0 chiếm đa số tại mép bắt đầu.
+
+--- 5. Mô phỏng vi kiến trúc nhân quả phần cứng và vết thanh ghi từng chu kỳ ---
+Thanh ghi: f0_z0 (mẫu mới đến), f0_z1 (mẫu trung tâm), f0_z2 (mẫu quá khứ), f0_med (ngõ ra)
+Chu kỳ   in_valid   in_f0      f0_z2      f0_z1      f0_z0      out_valid  f0_med     Ghi chú                       
+------------------------------------------------------------------------------------------------------------
+1        1          120        120        120        120        0          0          Nạp khung 0 (120), lặp mẫu biên z1=z2=120
+2        1          122        120        122        122        1          120        Xuất khung 0: med(120,120,122) = 120
+3        1          244        122        244        244        1          122        Xuất khung 1: med(120,122,244) = 122
+4        1          121        244        121        121        1          122        Xuất khung 2: med(122,244,121) = 122
+5        1          0          121        0          0          1          121        Xuất khung 3: med(244,121,0) = 121
+6        1          0          0          0          0          1          0          Xuất khung 4: med(121,0,0) = 0
+7        0          -          0          0          0          1          0          Nhịp xả (Flush beat): xuất khung 5: med(0,0,0) = 0
+------------------------------------------------------------------------------------------------------------
+Tổng số mẫu ngõ vào: 6
+Dãy ngõ ra phần cứng: [120, 122, 122, 121, 0, 0]
+Dãy kỳ vọng chuẩn   : [120, 122, 122, 121, 0, 0]
+=> Kết luận: Mạch nhân quả phần cứng xuất khung k-1 tại thời điểm k, kết hợp lặp mẫu biên và 1 nhịp xả tái lập 100% kết quả trung vị căn giữa!
+
+================================================================================
+TẤT CẢ KIỂM CHỨNG TOÁN HỌC VÀ VI KIẾN TRÚC ĐỀU VƯỢT QUA 100%.
+================================================================================

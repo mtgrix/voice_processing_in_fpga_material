@@ -1,0 +1,68 @@
+% chuong_v3/fig_ch11_median3_arch.tex
+% Sơ đồ vi kiến trúc phần cứng của module ch11_median3.v
+% Bao gồm: Chuỗi thanh ghi trễ f0_z0/z1/z2, mạng 3 bộ so sánh và MUX trung vị, khối FSM điều khiển nhịp xả
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    scale=0.86,
+    block/.style={rectangle, draw=blue!80!black, fill=blue!5, rounded corners=2pt, minimum width=2.2cm, minimum height=1.0cm, align=center, font=\scriptsize},
+    reg_box/.style={rectangle, draw=black!85, fill=gray!25, rounded corners=2pt, minimum width=1.4cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    fsm_box/.style={rectangle, draw=purple!80!black, fill=purple!5, rounded corners=2pt, minimum width=2.8cm, minimum height=1.4cm, align=center, font=\scriptsize},
+    wire/.style={draw=black!80, thick, ->},
+    ctrl_wire/.style={draw=purple!80!black, thick, dashed, ->},
+    bus_lbl/.style={font=\scriptsize, fill=white, inner sep=1.2pt}
+]
+
+    % -------------------------------------------------------------------------
+    % KHỐI ĐIỀU KHIỂN FSM
+    % -------------------------------------------------------------------------
+    \node[fsm_box] (fsm) at (2.0, 4.2) {Khối FSM điều khiển\\(IDLE / STREAM / FLUSH)};
+    \draw[wire] (-1.2, 4.6) -- node[above=2pt, bus_lbl] {\texttt{in\_valid}, \texttt{in\_first}} (fsm.170);
+    \draw[wire] (-1.2, 3.8) -- node[below=2pt, bus_lbl] {\texttt{in\_last}} (fsm.190);
+
+    % -------------------------------------------------------------------------
+    % ĐƯỜNG DỮ LIỆU: CHUỖI THANH GHI TRỄ
+    % -------------------------------------------------------------------------
+    \node[reg_box] (rz0) at (2.0, 1.8) {Thanh ghi\\$\texttt{f0\_z0}$\\(16-bit)};
+    \node[reg_box] (rz1) at (5.2, 1.8) {Thanh ghi\\$\texttt{f0\_z1}$\\(16-bit)};
+    \node[reg_box] (rz2) at (8.2, 1.8) {Thanh ghi\\$\texttt{f0\_z2}$\\(16-bit)};
+
+    % Đường nạp ngõ vào in_f0
+    \draw[wire] (-1.2, 1.8) -- node[above=2pt, bus_lbl] {\texttt{in\_f0} [16]} (rz0.west);
+    \draw[wire] (rz0.east) -- node[above=2pt, font=\tiny\bfseries] {shift} (rz1.west);
+    \draw[wire] (rz1.east) -- node[above=2pt, font=\tiny\bfseries] {shift} (rz2.west);
+
+    % Tín hiệu điều khiển lặp mẫu biên và nhịp xả từ FSM
+    \draw[ctrl_wire] (fsm.south) -- node[right=2pt, font=\tiny, text=purple!80!black] {en, lặp biên} (rz0.north);
+
+    % -------------------------------------------------------------------------
+    % MẠNG 3 BỘ SO SÁNH VÀ GHÉP KÊNH TRUNG VỊ
+    % -------------------------------------------------------------------------
+    \node[block] (cmp_net) at (11.2, 1.8) {Mạng 3 bộ so sánh:\\$a \le b,\ b \le c,\ a \le c$\\($a=z_2, b=z_1, c=z_0$)};
+    \node[block] (mux_med) at (15.8, 1.8) {Bộ ghép kênh MUX\\chọn Trung vị 16-bit};
+
+    % Đường nối từ thanh ghi vào mạng so sánh
+    \draw[wire] (rz2.east) -- (cmp_net.west);
+    \draw[wire] (rz1.south) -- ++(0, -0.6) -- ++(5.0, 0) -- (cmp_net.210);
+    \draw[wire] (rz0.south) -- ++(0, -1.0) -- ++(8.2, 0) -- (cmp_net.190);
+
+    \draw[wire] (cmp_net.east) -- node[above=2pt, font=\tiny, fill=white, inner sep=1pt] {3 cờ so sánh} (mux_med.west);
+
+    % -------------------------------------------------------------------------
+    % THANH GHI CHỐT NGÕ RA f0_med
+    % -------------------------------------------------------------------------
+    \node[reg_box] (rmed) at (19.4, 1.8) {Thanh ghi\\$\texttt{f0\_med}$\\(16-bit)};
+    \draw[wire] (mux_med.east) -- (rmed.west);
+    \draw[wire] (rmed.east) -- node[above=2pt, bus_lbl] {\texttt{out\_f0} [16]} (22.2, 1.8);
+
+    % Tín hiệu out_valid và out_last từ FSM
+    \draw[ctrl_wire] (fsm.east) -- ++(14.2, 0) -- node[above=2pt, bus_lbl] {\texttt{out\_valid}, \texttt{out\_last}} (22.2, 4.2);
+
+    % -------------------------------------------------------------------------
+    % KHUNG BAO VÀ CHÚ THÍCH
+    % -------------------------------------------------------------------------
+    \draw[draw=black!40, dashed, rounded corners=3pt] (3.8, 0.4) rectangle (20.6, 3.2);
+    \node[above=2pt, font=\scriptsize\bfseries, text=black!60] at (12.2, 3.2) {Đường truyền dữ liệu Median-3 (1 chu kỳ xung nhịp)};
+
+\end{tikzpicture}%
+}

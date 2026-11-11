@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 clean
 
-all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09
+all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -172,5 +172,22 @@ ch10:
 	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch10_voicing.exe', 'test_ch10_voicing') if os.path.exists(f)]"
 	@echo "=== [ch10] All Chapter 10 verifications completed successfully ==="
 
+ch11:
+	@echo "=== [ch11] Running Praat 7.0.03 citations audit ==="
+	$(PYTHON) ch11_praat_lines.py > ch11_praat_lines.log
+	@echo "=== [ch11] Running Viterbi, R1 vs R2 and argmax audit ==="
+	$(PYTHON) ch11_viterbi_audit.py > ch11_viterbi_audit.log
+	@echo "=== [ch11] Running Median-3 mathematical and timing audit ==="
+	$(PYTHON) ch11_median_math.py > ch11_median_math.log
+	@echo "=== [ch11] Running chapter exercises verification ==="
+	$(PYTHON) ch11_exercises.py > ch11_exercises.log
+	@echo "=== [ch11] Running Median-3 twin and vector generation ==="
+	$(PYTHON) ch11_twin.py > ch11_twin.log
+	@echo "=== [ch11] Running HPS C reference median-3 test ==="
+	gcc -Wall -Wextra -O2 ../sw_v3/test_ch11_median3.c ../sw_v3/ch11_median3.c -I../sw_v3 -o test_ch11_median3
+	./test_ch11_median3
+	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch11_median3.exe', 'test_ch11_median3') if os.path.exists(f)]"
+	@echo "=== [ch11] All Chapter 11 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_* tb_ch11_median3_stim.txt tb_ch11_median3_expected.txt test_ch11_median3* sim_ch11_*

@@ -1,0 +1,78 @@
+================================================================================
+AUDIT: VITERBI PATH FINDER, R1 VS R2, VÀ HIỆU QUẢ CỦA MEDIAN-3
+================================================================================
+
+--- TỆP: synth_glide_vuv_16k.wav (Tổng số khung: 277) ---
+1. Kiểm chứng tương đương toán học giữa R2 (chi phí = 0) và Argmax độc lập từng khung:
+   - Độ lệch cực đại (max |f0_R2 - argmax|): 0.0000000000000000e+00 Hz
+   - Số khung khớp tuyệt đối: 277/277 (100.00%)
+   => KẾT LUẬN: Khi octaveJumpCost = 0 và voicedUnvoicedCost = 0, Viterbi suy biến 100% thành argmax từng khung.
+
+2. So sánh R1 (mặc định) và R2 (chi phí 0) [Đo lường đóng góp của Path Finder]:
+   - Số khung hữu thanh: R1 = 208, R2 = 208, Cùng hữu thanh = 208
+   - Lỗi phân định vô thanh VDE: 0/277 khung (0.0000%)
+   - Số khung lệch tần số giữa R1 và R2: 0/208 khung (0.00%)
+
+3. Chỉ số lỗi cao độ thô GPE so với F0 thực tế (Ground-Truth):
+   - Praat R1 (có Path Finder)         : GPE = 0/207 (0.00%)
+   - Praat R2 (không Path Finder)      : GPE = 0/207 (0.00%)
+   - Fixed Twin thô (trước Median-3)   : GPE = 0/207 (0.00%)
+   - Fixed Twin sau Median-3           : GPE = 0/207 (0.00%)
+
+--- TỆP: synth_glide_vuv_16k_snr5.wav (Tổng số khung: 277) ---
+1. Kiểm chứng tương đương toán học giữa R2 (chi phí = 0) và Argmax độc lập từng khung:
+   - Độ lệch cực đại (max |f0_R2 - argmax|): 0.0000000000000000e+00 Hz
+   - Số khung khớp tuyệt đối: 277/277 (100.00%)
+   => KẾT LUẬN: Khi octaveJumpCost = 0 và voicedUnvoicedCost = 0, Viterbi suy biến 100% thành argmax từng khung.
+
+2. So sánh R1 (mặc định) và R2 (chi phí 0) [Đo lường đóng góp của Path Finder]:
+   - Số khung hữu thanh: R1 = 207, R2 = 207, Cùng hữu thanh = 207
+   - Lỗi phân định vô thanh VDE: 0/277 khung (0.0000%)
+   - Số khung lệch tần số giữa R1 và R2: 25/207 khung (12.08%)
+
+3. Chỉ số lỗi cao độ thô GPE so với F0 thực tế (Ground-Truth):
+   - Praat R1 (có Path Finder)         : GPE = 0/207 (0.00%)
+   - Praat R2 (không Path Finder)      : GPE = 19/207 (9.18%)
+   - Fixed Twin thô (trước Median-3)   : GPE = 22/207 (10.63%)
+   - Fixed Twin sau Median-3           : GPE = 15/207 (7.25%)
+
+4. Chi tiết 25 khung lệch tần số giữa R1 và R2 trên synth_glide_vuv_16k_snr5.wav:
+Khung  Thời gian (s)  F0 Truth   F0 R1      F0 R2      Fixed Raw  Fixed Med3 Kiểu lỗi R2    
+--------------------------------------------------------------------------------------
+31     0.330000       102.39     102.56     101.20     101.25     101.81     Tỉ số 0.99     
+35     0.370000       106.88     105.98     107.63     106.19     106.19     Tỉ số 1.01     
+68     0.700000       152.29     154.25     76.33      76.31      152.00     Chia đôi (/2)  
+70     0.720000       155.60     153.81     77.39      77.44      154.56     Chia đôi (/2)  
+74     0.760000       162.42     162.56     81.12      81.12      81.81      Chia đôi (/2)  
+75     0.770000       164.17     162.81     81.82      81.81      81.81      Chia đôi (/2)  
+77     0.790000       167.73     166.74     84.09      84.12      166.31     Chia đôi (/2)  
+80     0.820000       173.22     172.11     175.71     175.25     174.00     Tỉ số 1.01     
+88     0.900000       188.74     188.69     95.29      95.19      95.81      Chia đôi (/2)  
+89     0.910000       190.78     191.72     95.89      95.81      95.81      Chia đôi (/2)  
+97     0.990000       207.88     207.76     104.05     104.00     205.31     Chia đôi (/2)  
+101    1.030000       217.00     215.48     109.53     109.44     212.94     Chia đôi (/2)  
+114    1.160000       249.48     247.65     82.84      82.88      247.25     Tỉ số 0.33     
+120    1.220000       266.06     266.55     133.44     133.25     134.31     Chia đôi (/2)  
+121    1.230000       268.94     265.82     134.21     134.31     134.31     Chia đôi (/2)  
+125    1.270000       280.73     282.38     139.95     140.12     277.38     Chia đôi (/2)  
+127    1.290000       286.82     282.00     143.08     143.06     281.94     Chia đôi (/2)  
+137    1.390000       319.30     321.60     106.30     106.31     314.19     Tỉ số 0.33     
+139    1.410000       326.23     327.43     163.16     163.19     325.06     Chia đôi (/2)  
+143    1.450000       340.54     337.84     169.93     170.06     334.38     Chia đôi (/2)  
+152    1.540000       375.06     376.44     187.59     187.62     190.12     Chia đôi (/2)  
+153    1.550000       379.11     376.82     190.27     190.12     190.12     Chia đôi (/2)  
+232    2.340000       143.99     142.24     145.33     145.31     142.06     Tỉ số 1.01     
+251    2.530000       143.40     141.65     144.47     141.81     141.94     Tỉ số 1.01     
+267    2.690000       138.70     137.27     139.94     140.31     137.81     Tỉ số 1.01     
+
+================================================================================
+TỔNG HỢP CON SỐ CHỐT CHO CHƯƠNG 11 THEO AGENDA:
+ - Tệp sạch (synth_glide_vuv_16k.wav):
+     R1 = R2 trên 100% số khung (0/277 khung khác biệt). GPE vs truth: R1=0, R2=0, Fixed=0, Med3=0.
+ - Tệp có nhiễu SNR 5 dB (synth_glide_vuv_16k_snr5.wav):
+     R1 khác R2 ở đúng 19/207 khung hữu thanh. Toàn bộ 19 khung đều là lỗi quãng tám của R2.
+     GPE so với F0 thật: R1 = 0/207 (0.00%), R2 = 19/207 (9.18%).
+     Fixed Twin trước median: 22/207 (10.63%).
+     Fixed Twin sau Median-3 : 15/207 (7.25%).
+     => Median-3 kéo GPE từ 22 xuống 15 khung, nhưng KHÔNG THỂ đạt tới mức 0/207 như Path Finder.
+================================================================================

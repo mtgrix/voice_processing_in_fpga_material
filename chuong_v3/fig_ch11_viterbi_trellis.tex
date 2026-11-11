@@ -1,0 +1,108 @@
+% chuong_v3/fig_ch11_viterbi_trellis.tex
+% Sơ đồ đồ hình Trellis của giải thuật Viterbi trong Praat Path Finder
+% Đối chiếu giữa quy hoạch động toàn cục (Praat) và bộ lọc cục bộ Median-3 (FPGA)
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    scale=0.88,
+    frame_box/.style={rectangle, draw=blue!70!black, fill=blue!3, rounded corners=3pt, minimum width=2.4cm, minimum height=5.2cm, inner sep=2pt},
+    cand_uv/.style={circle, draw=red!80!black, fill=red!10, thick, minimum size=0.68cm, inner sep=0pt, font=\scriptsize\bfseries},
+    cand_v/.style={circle, draw=blue!80!black, fill=blue!10, thick, minimum size=0.68cm, inner sep=0pt, font=\scriptsize\bfseries},
+    cand_best/.style={circle, draw=orange!90!black, fill=orange!25, very thick, minimum size=0.72cm, inner sep=0pt, font=\scriptsize\bfseries},
+    wire_trans/.style={draw=black!30, thin, ->},
+    wire_viterbi/.style={draw=red!85!black, very thick, ->},
+    lbl_tag/.style={font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt}
+]
+
+    % -------------------------------------------------------------------------
+    % CÁC KHUNG THỜI GIAN TRONG ĐỒ HÌNH TRELLIS
+    % -------------------------------------------------------------------------
+    % Khung t-1
+    \node[frame_box] (f_prev) at (2.0, 2.5) {};
+    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_prev.south) {Khung $t-1$};
+
+    % Khung t
+    \node[frame_box] (f_cur) at (6.0, 2.5) {};
+    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_cur.south) {Khung $t$};
+
+    % Khung t+1
+    \node[frame_box] (f_next) at (10.0, 2.5) {};
+    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_next.south) {Khung $t+1$};
+
+    % Khung N (Khung cuối cùng)
+    \node[frame_box] (f_end) at (14.0, 2.5) {};
+    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_end.south) {Khung cuối $N$};
+
+    % Dấu chấm lửng giữa t+1 và N
+    \node[font=\large\bfseries, text=black!60] at (12.0, 2.5) {$\cdots$};
+
+    % -------------------------------------------------------------------------
+    % CÁC ỨNG VIÊN TRONG TỪNG KHUNG (15 ứng viên mỗi khung)
+    % -------------------------------------------------------------------------
+    % Khung t-1
+    \node[cand_uv] (c_p_uv) at (2.0, 4.4) {$c_1$};
+    \node[cand_best] (c_p_v1) at (2.0, 3.1) {$c_2$};
+    \node[cand_v] (c_p_v2) at (2.0, 1.8) {$c_3$};
+    \node[font=\scriptsize, text=black!60] at (2.0, 0.7) {$\vdots$};
+    \node[cand_v] (c_p_vm) at (2.0, 0.1) {$c_{15}$};
+
+    % Khung t
+    \node[cand_uv] (c_c_uv) at (6.0, 4.4) {$c_1$};
+    \node[cand_best] (c_c_v1) at (6.0, 3.1) {$c_2$};
+    \node[cand_v] (c_c_v2) at (6.0, 1.8) {$c_3$};
+    \node[font=\scriptsize, text=black!60] at (6.0, 0.7) {$\vdots$};
+    \node[cand_v] (c_c_vm) at (6.0, 0.1) {$c_{15}$};
+
+    % Khung t+1
+    \node[cand_uv] (c_n_uv) at (10.0, 4.4) {$c_1$};
+    \node[cand_best] (c_n_v1) at (10.0, 3.1) {$c_2$};
+    \node[cand_v] (c_n_v2) at (10.0, 1.8) {$c_3$};
+    \node[font=\scriptsize, text=black!60] at (10.0, 0.7) {$\vdots$};
+    \node[cand_v] (c_n_vm) at (10.0, 0.1) {$c_{15}$};
+
+    % Khung N
+    \node[cand_best] (c_e_uv) at (14.0, 4.4) {$c_1$};
+    \node[cand_v] (c_e_v1) at (14.0, 3.1) {$c_2$};
+    \node[cand_v] (c_e_v2) at (14.0, 1.8) {$c_3$};
+    \node[font=\scriptsize, text=black!60] at (14.0, 0.7) {$\vdots$};
+    \node[cand_v] (c_e_vm) at (14.0, 0.1) {$c_{15}$};
+
+    % -------------------------------------------------------------------------
+    % CÁC ĐƯỜNG CHUYỂN TRẠNG THÁI VÀ CHI PHÍ (TRANSITION COSTS)
+    % -------------------------------------------------------------------------
+    % Chuyển tiếp mờ giữa các ứng viên
+    \draw[wire_trans] (c_p_uv.east) -- (c_c_uv.west);
+    \draw[wire_trans] (c_p_uv.east) -- (c_c_v1.west);
+    \draw[wire_trans] (c_p_v1.east) -- (c_c_uv.west);
+    \draw[wire_trans] (c_p_v1.east) -- (c_c_v2.west);
+    \draw[wire_trans] (c_p_v2.east) -- (c_c_v1.west);
+    \draw[wire_trans] (c_p_v2.east) -- (c_c_v2.west);
+
+    \draw[wire_trans] (c_c_uv.east) -- (c_n_uv.west);
+    \draw[wire_trans] (c_c_v1.east) -- (c_n_v2.west);
+    \draw[wire_trans] (c_c_v2.east) -- (c_n_v1.west);
+
+    % Đường đi tối ưu Viterbi toàn cục (màu đỏ đậm có con trỏ)
+    \draw[wire_viterbi] (c_p_v1.east) -- (c_c_v1.west);
+    \draw[wire_viterbi] (c_c_v1.east) -- (c_n_v1.west);
+
+    % Nhãn chi phí chuyển trạng thái
+    \node[lbl_tag, draw=blue!40, text=blue!80!black] at (4.0, 3.7) {\scriptsize Nhảy $F_0$: $0{,}35|\log_2\frac{f_1}{f_2}|$};
+    \node[lbl_tag, draw=purple!40, text=purple!80!black] at (4.0, 2.3) {\scriptsize Đổi V/UV: $0{,}14$};
+    \node[lbl_tag, draw=green!60!black, text=green!50!black] at (4.0, 4.7) {\scriptsize UV--UV: $0$};
+
+    % -------------------------------------------------------------------------
+    % ĐƯỜNG TRUY VẾT NGƯỢC (BACKTRACKING)
+    % -------------------------------------------------------------------------
+    \draw[draw=orange!90!black, ultra thick, dashed, <-] (14.0, 5.6) -- node[above=2pt, font=\scriptsize\bfseries, text=orange!90!black] {Truy vết ngược toàn bộ file ($N \to 1$)} (2.0, 5.6);
+
+    % -------------------------------------------------------------------------
+    % CHÚ THÍCH PHÂN TÁCH VITERBI VS MEDIAN-3
+    % -------------------------------------------------------------------------
+    \node[draw=red!70!black, fill=red!3, rounded corners=2pt, font=\scriptsize, align=left, inner sep=4pt] at (8.0, -1.2) {
+        \textbf{Praat Path Finder (R1):} Lưu trữ toàn bộ ma trận $\delta, \psi$ kích thước $N \times 15$; bước tính xuôi cộng dồn chi phí chuyển tiếp,\\
+        sau đó truy vết ngược từ khung cuối $N$ về khung 1 $\implies$ Bùng nổ RAM và độ trễ toàn file trên FPGA.
+    };
+
+\end{tikzpicture}%
+}

@@ -1,0 +1,38 @@
+================================================================================
+BÀI TẬP VÀ LỜI GIẢI CHI TIẾT CHƯƠNG 11: MEDIAN-3 THAY CHO PATH FINDER
+================================================================================
+
+--- Bài tập 11.1: Dẫn xuất quy hoạch động Viterbi và chứng minh suy biến thành Argmax ---
+Lựa chọn Argmax độc lập từng khung: [np.int64(1), np.int64(1), np.int64(2)] (Khung 0: ứng viên 1, Khung 1: ứng viên 1, Khung 2: ứng viên 2)
+Đường đi Viterbi với chi phí 0       : [1, 1, np.int64(2)]
+=> Kết luận 11.1: Chứng minh toán học và mô phỏng số xác nhận Viterbi chi phí 0 suy biến 100% thành argmax độc lập từng khung.
+
+--- Bài tập 11.2: Tính toán thủ công trên dãy 10 khung thử nghiệm ---
+Dãy ngõ vào   : [0, 150, 300, 150, 155, 310, 310, 155, 0, 160]
+Dãy đệm biên  : [0, 0, 150, 300, 150, 155, 310, 310, 155, 0, 160, 160]
+Dãy ngõ ra    : [0, 150, 150, 155, 155, 310, 310, 155, 155, 160]
+ - Khung 2 (gai đơn 300 Hz giữa hai khung 150 Hz): med(150, 300, 150) = 150 Hz => SỬA THÀNH CÔNG.
+ - Khung 5 và 6 (gai kép 310 Hz kéo dài 2 khung): med(155, 310, 310) = 310 Hz, med(310, 310, 155) = 310 Hz => KHÔNG THỂ SỬA.
+ - Khung 8 (mất tiếng 0 Hz giữa 155 Hz và 160 Hz): med(155, 0, 160) = 155 Hz => HÀN GẮN THÀNH CÔNG (làm thay đổi VDE).
+
+--- Bài tập 11.3: Phân tích định thời nhân quả phần cứng và nhịp xả Flush Beat ---
+Dãy 4 khung ngõ vào: [100, 200, 300, 400]
+Chu kỳ T1: Nhận khung 0 (100) -> Khởi tạo lặp biên z1=z2=100. Chưa xuất dữ liệu (out_valid=0).
+Chu kỳ T2: Nhận khung 1 (200) -> Xuất khung 0 = med(100, 100, 200) = 100 (out_valid=1, trễ 1 khung).
+Chu kỳ T3: Nhận khung 2 (300) -> Xuất khung 1 = med(100, 200, 300) = 200.
+Chu kỳ T4: Nhận khung 3 (400, in_last=1) -> Xuất khung 2 = med(200, 300, 400) = 300.
+Chu kỳ T5: Nhịp xả Flush -> Xuất khung 3 = med(300, 400, 400) = 400 (out_valid=1, out_last=1).
+=> Kết luận 11.3: Cần chính xác N + 1 chu kỳ để xử lý và xả trọn vẹn N khung âm thanh.
+
+--- Bài tập 11.4: Phân tích độ phức tạp mạng so sánh và tài nguyên FPGA ---
+1. Số bộ so sánh: 3 bộ so sánh 16-bit (cmp_ab, cmp_bc, cmp_ac).
+2. Logic ghép kênh: 1 bộ MUX 3-to-1 16-bit điều khiển bởi 3 cờ so sánh.
+3. Tài nguyên silicon: 0 khối DSP, 0 khối RAM M10K. Toàn bộ thực hiện bằng ALM.
+4. So sánh với bộ sắp xếp nổi bọt (Bubble Sort) hoặc Viterbi:
+   - Viterbi: Cần ma trận nx x 15 x 64-bit = hàng trăm KB bộ nhớ, bộ nhớ đệm toàn tệp, logic truy vết phức tạp.
+   - Median-3: Chỉ cần 4 thanh ghi 16-bit (f0_z0, f0_z1, f0_z2, f0_med), 3 bộ so sánh, thông lượng 1 khung/chu kỳ.
+=> Kết luận 11.4: Median-3 tiết kiệm tài nguyên tuyệt đối, phù hợp với kiến trúc xử lý thời gian thực trên FPGA.
+
+================================================================================
+TẤT CẢ 4 BÀI TẬP ĐÃ ĐƯỢC KIỂM TRA CHÍNH XÁC VÀ ĐỒNG NHẤT.
+================================================================================

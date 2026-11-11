@@ -1,0 +1,91 @@
+================================================================================
+AUDIT: TRÍCH DẪN MÃ NGUỒN PRAAT 7.0.03 CHO CHƯƠNG 11 (PATH FINDER & MEDIAN-3)
+================================================================================
+Mọi trích dẫn đã được kiểm chứng đối chiếu với tag v7.0.03 (fon/Sound_to_Pitch.cpp & fon/Pitch.cpp).
+
+[1] Tệp: fon/Sound_to_Pitch.cpp, Dòng: 489--491
+    Mã nguồn Praat 7.0.03:
+        Pitch_pathFinder (thee, silenceThreshold, voicingThreshold,
+            octaveCost, octaveJumpCost, voicedUnvoicedCost, ceiling);
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Sound_to_Pitch luôn luôn gọi hàm Pitch_pathFinder để thực hiện thuật toán Viterbi tìm đường đi tối ưu toàn cục qua toàn bộ các khung của tệp âm thanh.
+
+[2] Tệp: fon/Pitch.cpp, Dòng: 524--525
+    Mã nguồn Praat 7.0.03:
+        void Pitch_pathFinder (Pitch me, double silenceThreshold, double voicingThreshold,
+            double octaveCost, double octaveJumpCost, double voicedUnvoicedCost, double ceiling)
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Định nghĩa hàm Pitch_pathFinder trong fon/Pitch.cpp nhận 6 tham số chi phí để xây dựng đồ hình quy hoạch động Viterbi.
+
+[3] Tệp: fon/Pitch.cpp, Dòng: 543--545
+    Mã nguồn Praat 7.0.03:
+        double timeStepCorrection = 0.01 / my dx;
+        double currentOctaveJumpCost = octaveJumpCost * timeStepCorrection;
+        double currentVoicedUnvoicedCost = voicedUnvoicedCost * timeStepCorrection;
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Chuẩn hóa chi phí nhảy quãng tám và chi phí đổi trạng thái vô thanh/hữu thanh theo bước nhảy khung dt (dx). Với dt = 10 ms = 0.01 s, hệ số timeStepCorrection = 1.0, giữ nguyên chi phí 0.35 và 0.14.
+
+[4] Tệp: fon/Pitch.cpp, Dòng: 548--549
+    Mã nguồn Praat 7.0.03:
+        autoMAT delta = zero_MAT (my nx, maxnCandidates);
+        autoINTMAT psi = zero_INTMAT (my nx, maxnCandidates);
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Khởi tạo ma trận tích lũy chi phí delta và ma trận con trỏ truy vết psi có kích thước nx khung x maxnCandidates ứng viên. Toàn bộ tệp âm thanh bắt buộc phải được lưu đồng thời trong RAM, gây bùng nổ bộ nhớ trên FPGA.
+
+[5] Tệp: fon/Pitch.cpp, Dòng: 553--561
+    Mã nguồn Praat 7.0.03:
+        /* Candidate 1 (unvoiced) */
+        delta [iframe] [1] = unvoicedStrength;
+        /* Candidates 2..n (voiced) */
+        for (integer icand = 2; icand <= nCandidates; icand ++) {
+            delta [iframe] [icand] = candidate -> strength -
+                octaveCost * NUMlog2 (ceiling / candidate -> frequency);
+        }
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Thiết lập chi phí cục bộ (local cost): ứng viên 1 vô thanh nhận unvoicedStrength, các ứng viên hữu thanh 2..n nhận strength trừ octaveCost * log2(ceiling / f).
+
+[6] Tệp: fon/Pitch.cpp, Dòng: 564--628
+    Mã nguồn Praat 7.0.03:
+        /* Forward pass of Viterbi dynamic programming */
+        // Line 586: transitionCost = 0.0 (voiceless -> voiceless)
+        // Line 586, 590: transitionCost = currentVoicedUnvoicedCost (voiced <-> voiceless)
+        // Line 606: transitionCost = currentOctaveJumpCost * fabs (NUMlog2 (f1 / f2)) (voiced -> voiced)
+        // Line 609: value = prevDelta [icand1] - transitionCost + curDelta [icand2];
+        // Line 613-623: if (value > maximum) { maximum = value; place = icand1; }
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Bước tính xuôi của quy hoạch động Viterbi: duyệt qua mọi cặp ứng viên (icand1, icand2) giữa hai khung kề nhau, tính chi phí chuyển tiếp và chọn giá trị cực đại. Phép so sánh lớn hơn chặt 'value > maximum' bảo đảm khi hòa điểm thì ứng viên gặp trước (chỉ số nhỏ hơn) được giữ lại.
+
+[7] Tệp: fon/Pitch.cpp, Dòng: 591--604
+    Mã nguồn Praat 7.0.03:
+        if (Melder_debug == 30) {
+            /* Debug code for transition cost experimenting */
+        }
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Nhánh mã kiểm tra gỡ lỗi đặc biệt (chỉ kích hoạt khi biến cờ toàn cục Melder_debug == 30); ở chế độ thông thường cờ này mặc định tắt (off by default).
+
+[8] Tệp: fon/Pitch.cpp, Dòng: 630--639
+    Mã nguồn Praat 7.0.03:
+        integer place = 1;
+        double maximum = delta [my nx] [1];
+        for (integer icand = 2; icand <= nCandidates; icand ++) {
+            if (delta [my nx] [icand] > maximum) {
+                place = icand;
+                maximum = delta [my nx] [icand];
+            }
+        }
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Kết thúc bước xuôi tại khung cuối cùng nx: tìm ứng viên có điểm số tích lũy lớn nhất. Do khởi tạo place = 1 và so sánh lớn hơn chặt '>', ứng viên 1 (vô thanh) sẽ chiến thắng nếu xảy ra hòa điểm tuyệt đối.
+
+[9] Tệp: fon/Pitch.cpp, Dòng: 641--652
+    Mã nguồn Praat 7.0.03:
+        /* Backtracking: follow pointers from last frame to first frame */
+        for (integer iframe = my nx; iframe >= 2; iframe --) {
+            place = psi [iframe] [place];
+            // swap chosen candidate into position 1
+        }
+    Ý nghĩa thuật toán & Ánh xạ phần cứng:
+        Bước truy vết ngược (backtracking): lần ngược từ khung cuối nx về khung 1 qua ma trận psi, hoán vị ứng viên được chọn vào vị trí số 1 của từng khung. Bước này tạo ra độ trễ không xác định và đòi hỏi phải duyệt ngược chiều thời gian, hoàn toàn phi nhân quả đối với luồng xử lý phần cứng trực tiếp.
+
+================================================================================
+TỔNG KẾT: Đã kiểm chứng 9/ 9 trích dẫn mã nguồn Praat 7.0.03.
+================================================================================
