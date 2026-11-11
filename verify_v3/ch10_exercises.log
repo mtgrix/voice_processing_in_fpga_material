@@ -1,0 +1,79 @@
+======================================================================
+BÀI TẬP 10.1: DẪN XUẤT TOÁN HỌC VÙNG DỐC VÀ BẤT ĐẲNG THỨC NHÂN CHÉO
+======================================================================
+(a) Hệ số dốc: (1 + 0.45) / 0.03 = 1.45 / 0.03 = 145 / 3 = 48.333333
+    Điểm kết thúc vùng dốc: I_end = 6 / 145 = 0.04137931 (xấp xỉ 0.0414)
+    Sai số làm tròn so với số 0.0414 trong giáo trình: 0.00002069
+(b) Tại ngưỡng im lặng I = 0.03: R_unvoiced = 0.45 + (2 - 0.03 * 145/3) = 0.45 + 0.5500 = 1.0000
+    Với I < 0.03, R_unvoiced > 1.00. Do hệ số tự tương quan chuẩn hóa r(tau) <= 1.0 và octave cost > 0,
+    độ mạnh cực đại của ứng viên hữu thanh Sc/R0n luôn < 1.0, do đó khung chắc chắn vô thanh.
+(c) Nhân chéo hai vế với 300 * R0n * GP > 0:
+    Sc / R0n - 45/100 > max(0, 2 - (145*LP)/(3*GP))
+    <=> (100*Sc - 45*R0n)/(100*R0n) > max(0, (6*GP - 145*LP)/(3*GP))
+    <=> (100*Sc - 45*R0n) * 3 * GP > 100 * R0n * max(0, 6*GP - 145*LP)
+    Dấu > chặt là bắt buộc vì ứng viên 1 (vô thanh) đứng đầu danh sách, khi hòa điểm vô thanh thắng.
+[+] Bài tập 10.1 xác minh thành công.
+
+======================================================================
+BÀI TẬP 10.2: TÍNH TOÁN THỦ CÔNG THU NHỎ TRONG VÙNG DỐC
+======================================================================
+(a) Cường độ tương đối: I = LP / GP = 760 / 20000 = 0.0380
+    Kiểm tra vùng: 0.03 <= 0.0380 <= 0.0414 => Khung nằm trong vùng DỐC CHUYỂN TIẾP: True
+(b) Công thức Praat dấu phẩy động:
+    R_unvoiced = 0.45 + (2.0 - 0.0380 * 145 / 3) = 0.45 + 0.163333 = 0.613333
+    Strength hữu thanh = Sc / R0n = 700000 / 1000000 = 0.700000
+    So sánh: 0.700000 > 0.613333 => Hữu thanh (Voiced) = True
+(c) Công thức nhân chéo số nguyên:
+    term1 = 100 * 700000 - 45 * 1000000 = 70000000 - 45000000 = 25000000
+    3 * GP = 3 * 20000 = 60000
+    LHS = 25000000 * 60000 = 1500000000000
+    6 * GP - 145 * LP = 6 * 20000 - 145 * 760 = 120000 - 110200 = 9800
+    ramp_pos = max(0, 9800) = 9800
+    100 * R0n = 100 * 1000000 = 100000000
+    RHS = 100000000 * 9800 = 980000000000
+    LHS > RHS: 1500000000000 > 980000000000 => True => Hữu thanh (Voiced) = True
+    Độ chênh lệch: LHS - RHS = 520000000000
+[+] Bài tập 10.2 xác minh thành công.
+
+======================================================================
+BÀI TẬP 10.3: PHÂN TÍCH ĐỘ RỘNG BIT VÀ TRÀN SỐ PHẦN CỨNG
+======================================================================
+(a) Giá trị biên cực trị:
+    Max term1 = 100 * (2^27 - 1) = 13421772700 (< 2^34)
+    Min term1 = -45 * (2^27 - 1) = -6039797715 (> -2^33)
+    Max 3*GP = 3 * 32768 = 98304 (< 2^17)
+    LHS max = 1319413943500800 < 2^51 (2^51 = 2251799813685248)
+    LHS min = -593736274575360 > -2^50 (-2^50 = -1125899906842624)
+    RHS max = 100 * (2^27 - 1) * 196608 = 2638827887001600 < 2^52 (2^52 = 4503599627370496)
+(b) Giới hạn của số nguyên có dấu 54 bit: [-2^53, 2^53 - 1]
+    2^53 = 9007199254740992
+    LHS max < 2^53: True
+    LHS min >= -2^53: True
+    RHS max < 2^53: True
+    Kết luận: Định dạng 54-bit có dấu hoàn toàn không bao giờ tràn số.
+(c) So sánh phần cứng: Bộ so sánh 54-bit chỉ tốn khoảng 54 LE/ALM (chuỗi carry chain cứng),
+    hoạt động trong 1 chu kỳ tại 50 MHz. Ngược lại, bộ chia dấu phẩy động chuẩn IEEE-754 tốn
+    hàng trăm ALM và độ trễ 10-20 chu kỳ.
+[+] Bài tập 10.3 xác minh thành công.
+
+======================================================================
+BÀI TẬP 10.4: CÁC CA BIÊN, BẪY IM LẶNG VÀ ĐỘ NHẠY SÁT NGƯỠNG
+======================================================================
+(a) Trường hợp bẫy im lặng R0n = 0, Sc = 500000, GP = 20000, LP = 1000:
+    Nếu KHÔNG có cờ kiểm tra R0n == 0:
+        LHS = (100 * 500000 - 0) * 3 * 20000 = 3000000000000
+        RHS = 100 * 0 * max(...) = 0
+        LHS > RHS: True => Mạch sẽ phán đoán SAI LẦM là HỮU THANH!
+    Do đó, điều kiện tiên quyết 'if (R0 == 0 || LP == 0 || GP == 0) voiced = 0' là bắt buộc tuyệt đối!
+
+(b) Khảo sát sát ngưỡng trong vùng phẳng (I = 0.10 >= 0.0414):
+    RHS = 0
+    - Với Sc = 449900 (tương ứng ratio = 0.4499 < 0.45):
+        term1 = 100 * 449900 - 45 * 1000000 = -10000
+        LHS = -600000000 => LHS > 0: False => Vô thanh (Voiceless)
+    - Với Sc = 450100 (tương ứng ratio = 0.4501 > 0.45):
+        term1 = 100 * 450100 - 45 * 1000000 = 10000
+        LHS = 600000000 => LHS > 0: True => Hữu thanh (Voiced)
+    Độ phân giải số nguyên cực kỳ nhạy: bước chênh lệch 100 đơn vị Sc làm đảo chiều dấu của LHS rõ ràng.
+[+] Bài tập 10.4 xác minh thành công.
+

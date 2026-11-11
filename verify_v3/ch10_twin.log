@@ -1,0 +1,9 @@
+======================================================================
+GENERATING CYCLE-ACCURATE VECTORS FOR CH10 VOICING UNIT
+======================================================================
+Total test frame cases collected: 641
+Total cycles simulated: 1408
+Total test vectors issued: 641
+Wrote stimulus to: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch10_voicing_stim.txt (36442 bytes)
+Wrote expected to: /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch10_voicing_expected.txt (24915 bytes)
+[+] Vector generation completed successfully.

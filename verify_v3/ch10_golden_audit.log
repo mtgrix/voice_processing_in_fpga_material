@@ -1,0 +1,47 @@
+===========================================================================
+GOLDEN V2 VOICING AUDIT (CHAPTER 10)
+===========================================================================
+===========================================================================
+AUDITING FILE: synth_glide_vuv_16k.wav
+===========================================================================
+Samples: 44800, Duration: 2.8000 s, FS: 16000 Hz
+GlobalPeak: integer GP = 22946, float GP = 22945.9154
+Total frames: 277, First window start: 1, Hop: 160
+
+Voicing Decision Summary:
+    Total frames: 277
+    Voiced frames (Fixed): 208
+    Voiced frames (Praat R2): 208
+    VDE count: 0 / 277
+    VDE rate: 0.0000 %
+
+Formula Equivalence Verification:
+    Frames in strict silence (I < 0.03): 65
+    Frames in ramp region (0.03 <= I < 0.0414): 0
+    Frames in active region (I >= 0.0414): 212
+    LP range: min=2, max=24345
+    Cross-multiplication vs Float mismatches: 0 / 277
+[+] VDE == 0 and integer inequality equivalence verified successfully!
+
+===========================================================================
+AUDITING FILE: synth_glide_vuv_16k_snr5.wav
+===========================================================================
+Samples: 44800, Duration: 2.8000 s, FS: 16000 Hz
+GlobalPeak: integer GP = 22937, float GP = 22936.7469
+Total frames: 277, First window start: 1, Hop: 160
+
+Voicing Decision Summary:
+    Total frames: 277
+    Voiced frames (Fixed): 207
+    Voiced frames (Praat R2): 207
+    VDE count: 0 / 277
+    VDE rate: 0.0000 %
+
+Formula Equivalence Verification:
+    Frames in strict silence (I < 0.03): 67
+    Frames in ramp region (0.03 <= I < 0.0414): 0
+    Frames in active region (I >= 0.0414): 210
+    LP range: min=7625, max=22238
+    Cross-multiplication vs Float mismatches: 0 / 277
+[+] VDE == 0 and integer inequality equivalence verified successfully!
+

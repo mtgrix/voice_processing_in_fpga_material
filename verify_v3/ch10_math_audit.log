@@ -1,0 +1,104 @@
+======================================================================
+CH10 MATHEMATICAL AUDIT: VOICING DECISION & CROSS-MULTIPLICATION
+======================================================================
+
+[1] Praat constants:
+    silenceThreshold = 0.03
+    voicingThreshold = 0.45
+    (1 + voicingThreshold) / silenceThreshold = 48.33333333 = 1.45 / 0.03 = 145 / 3 = 48.33333333
+
+[2] Transition boundaries:
+    Strict silence threshold (I_silence) = 0.03
+    R_unvoiced at I = 0.03: 1.000000
+    Ramp end threshold: 2 / (145/3) = 6/145 = 0.04137931
+    Agenda value: 0.0414, Difference: 0.00002069
+    R_unvoiced at I = 6/145: 0.450000
+    R_unvoiced at I >= 6/145: 0.450000 (constant flat)
+
+[3] LocalPeak geometry (Sound_to_Pitch.cpp lines 87-102):
+    halfnsamp_window = 319
+    nsamp_period = 213
+    halfnsamp_period = 107
+    startSample (1-based) = 213, endSample (1-based) = 426
+    0-based index range: j = 212 .. 425
+    Total samples in local peak scan = 214
+
+[4] Bit-width & Dynamic Range Bounds:
+    term1 (100*Sc - 45*R0n): min = -6039797715 (33 bits signed), max = 13421772700 (34 bits)
+    3*GP: max = 98304 (17 bits unsigned)
+    LHS max = 1319413943500800 (approx 1.319e+15, bit_length = 51)
+    LHS min = -593736274575360 (approx -5.937e+14, bit_length = 50)
+    max(0, 6*GP - 145*LP): max = 196608 (18 bits unsigned)
+    100*R0n: max = 13421772700 (34 bits unsigned)
+    RHS max = 2638827887001600 (approx 2.639e+15, bit_length = 52)
+    Bound 2^51 = 2251799813685248
+    Bound 2^52 = 4503599627370496
+    Bound 2^53 = 9007199254740992
+    LHS < 2^52: True
+    RHS < 2^53: True
+    54-bit signed range: [-9007199254740992, 9007199254740991]
+    Conclusion: 54-bit signed representation is completely safe against overflow.
+
+[5] Hand-calculation trace examples:
+
+  --- Ex1: Voiced Speech (I=0.10, Sc/R0n=0.80) ---
+      Sc=800000, R0n=1000000, GP=20000, LP=2000
+      Float: I=0.1000, Strength=0.8000, R_unv=0.4500 => Voiced=True
+      Fixed: LHS=2100000000000, RHS=0, LHS > RHS=True => Voiced=True
+      Bit-exact equivalence: True
+
+  --- Ex2: Flat Voiceless (I=0.10, Sc/R0n=0.35) ---
+      Sc=350000, R0n=1000000, GP=20000, LP=2000
+      Float: I=0.1000, Strength=0.3500, R_unv=0.4500 => Voiced=False
+      Fixed: LHS=-600000000000, RHS=0, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex3: Strict Silence (I=0.02 < 0.03) ---
+      Sc=700000, R0n=1000000, GP=20000, LP=400
+      Float: I=0.0200, Strength=0.7000, R_unv=1.4833 => Voiced=False
+      Fixed: LHS=1500000000000, RHS=6200000000000, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex4: Ramp Zone Voiced (I=0.038, Sc/R0n=0.70) ---
+      Sc=700000, R0n=1000000, GP=20000, LP=760
+      Float: I=0.0380, Strength=0.7000, R_unv=0.6133 => Voiced=True
+      Fixed: LHS=1500000000000, RHS=980000000000, LHS > RHS=True => Voiced=True
+      Bit-exact equivalence: True
+
+  --- Ex5: Ramp Zone Voiceless (I=0.035, Sc/R0n=0.60) ---
+      Sc=600000, R0n=1000000, GP=20000, LP=700
+      Float: I=0.0350, Strength=0.6000, R_unv=0.7583 => Voiced=False
+      Fixed: LHS=900000000000, RHS=1850000000000, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex6: Near-threshold 0.4499 ---
+      Sc=449900, R0n=1000000, GP=20000, LP=2000
+      Float: I=0.1000, Strength=0.4499, R_unv=0.4500 => Voiced=False
+      Fixed: LHS=-600000000, RHS=0, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex7: Near-threshold 0.4501 ---
+      Sc=450100, R0n=1000000, GP=20000, LP=2000
+      Float: I=0.1000, Strength=0.4501, R_unv=0.4500 => Voiced=True
+      Fixed: LHS=600000000, RHS=0, LHS > RHS=True => Voiced=True
+      Bit-exact equivalence: True
+
+  --- Ex8: Silence shortcut LP=0 ---
+      Sc=800000, R0n=1000000, GP=20000, LP=0
+      Float: I=0.0000, Strength=0.8000, R_unv=2.4500 => Voiced=False
+      Fixed: LHS=2100000000000, RHS=12000000000000, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex9: Silence shortcut GP=0 ---
+      Sc=800000, R0n=1000000, GP=0, LP=2000
+      Float: I=0.0000, Strength=0.8000, R_unv=0.0000 => Voiced=False
+      Fixed: LHS=0, RHS=0, LHS > RHS=False => Voiced=False
+      Bit-exact equivalence: True
+
+  --- Ex10: Silence shortcut R0=0 ---
+      Sc=800000, R0n=0, GP=20000, LP=2000
+      Float: I=0.1000, Strength=0.0000, R_unv=0.4500 => Voiced=False
+      Fixed: LHS=4800000000000, RHS=0, LHS > RHS=True => Voiced=False
+      Bit-exact equivalence: True
+
+[+] All mathematical checks PASSED successfully.
