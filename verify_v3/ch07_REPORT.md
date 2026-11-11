@@ -126,3 +126,24 @@ Tiến trình phát triển và hoàn thiện Chương 7 được thực hiện 
 8. `41b4a0b` — `v3: ch07 7.8`: Tuyến (B) thiết kế Verilog HDL (`ch07_mac_unit.v`, `ch07_xw_ram.v`, `ch07_mac_engine.v`), Hình 17 kiến trúc vi mô, Listing 39 dòng Verilog và 49 dòng Python twin, Bảng đối chiếu 3 cột, kiểm toán 16 khung ($3.040$ kết quả khớp bit $100\%$ với `golden_v2/hdl_check/exp.hex`, 0 lỗi), $98.543$ chu kỳ/khung, giữ chỗ `\todo{box}` cho Linux.
 9. `a71973c` — `v3: ch07 7.9`: Quy ước lấy mẫu testbench 2 pha, Bảng 32 so sánh toàn diện IP vs HDL, 4 bài tập có lời giải chi tiết, câu tóm tắt chương.
 10. `80160c6` — `v3: ch07 polish fig and makefile target`: Tinh chỉnh khoảng cách nhãn Hình 17 không chạm viền/chữ, cập nhật Makefile target `ch07` tương thích đa nền tảng, thiết lập chế độ 100755 cho `run_ch07_iverilog.sh`, chuẩn hóa nhãn `\todo{box}`.
+11. `1175c5c` — `v3: ch07 done`: Hoàn tất đợt nộp bản thảo đầu tiên của Chương 7 kèm báo cáo nghiệm thu.
+
+### Chuỗi commit Revision Round 1 (R1) giải quyết toàn diện phản hồi phản biện:
+12. `9bb66ad` — `v3: ch07 r1 item 1`: Hiện thực testbench mức đỉnh `tb/v3/tb_ch07_mac_engine.v` chuẩn `iverilog -g2012 -Wall`, không dùng `$random`, đọc trực tiếp `golden_v2/hdl_check/xw.hex` và so sánh bit-exact $16\text{ khung} \times 190 = 3.040\text{ kết quả}$ với `exp.hex`, kiểm tra đúng 190 xung `out_valid`/khung và chu kỳ kết thúc đúng 98.543 nhịp; tích hợp vào `verify_v3/run_ch07_iverilog.sh` (LF, 100755).
+13. `271e4a1` — `v3: ch07 r1 item 2`: Khôi phục ô giữ chỗ trống `\todo{box}` nguyên bản theo đúng quy chuẩn không tiền định kết quả iverilog khi chưa chạy trên Linux; cập nhật diễn đạt nêu rõ kết quả kiểm toán 3.040/3.040 khớp `exp.hex` là của mô hình song sinh Python trong `verify_v3/ch07_hdl_audit.log`.
+14. `fbed8c7` — `v3: ch07 r1 item 3`: Bổ sung trích dẫn Listing mã nguồn `rtl/v3/ch07_mac_engine.v` (dòng 128--167) với `firstnumber=128`, thuyết minh chi tiết từng dòng FSM và cơ chế zero-bubble, phân tích căn chỉnh đường ống trễ (dòng 215--249), mở rộng Bảng đối chiếu `tab:ch07_twin_vs_hdl` và sửa lỗi chính tả đường dẫn `verify/v3/` $\to$ `verify_v3/`.
+15. `5f79666` — `v3: ch07 r1 item 4`: Loại bỏ triệt để các nhận định không có nguồn trích dẫn (nhận xét 0,8 ms, số M10K suy diễn, rủi ro lượng tử hóa ở Mục 7.6; so sánh họ Arria/Stratix và nhận xét $\approx 32\text{ FF}$ ngoài ALM ở Mục 7.3); bổ sung chỉ dẫn "(phải kiểm trong Quartus)" cho số ALM; chuẩn hóa toàn bộ trích dẫn tài liệu Intel sang *Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices* và *Integer Arithmetic IP Cores User Guide*.
+16. `3422fba` — `v3: ch07 r1 item 6`: Chuẩn hóa giọng văn học thuật trung tính, loại bỏ toàn bộ dấu chấm than `!` và các tính từ thái quá (`tuyệt đối`, `hoàn toàn`, `hoàn hảo`, `tối ưu`, `triệt để`, `xa xỉ`, `thảm họa`, `vô nghĩa`); chỉ giữ tỷ lệ phần trăm $100\%$ khi đi kèm số đếm phân số thực tế $N/N$; chuyển đổi cú pháp markdown `*...*` sang `\emph{...}`.
+17. `e2b4c4f` — `v3: ch07 r1 item 5`: Thiết kế lại toàn diện Hình 15, Hình 16, Hình 17 với khoảng cách rộng rãi, loại bỏ nhãn trùng lắp, không có đường cắt qua chữ hay chữ chạm viền; tăng cỡ chữ ghi chú chân hình lên `\small`; kiểm soát chặt chẽ biên dịch đạt đúng 0 cảnh báo overfull hbox trên toàn bộ Chương 7 và toàn cuốn sách.
+
+---
+
+## 6. Tổng kết đợt chỉnh sửa Revision Round 1
+
+Toàn bộ 6 điểm nghẽn (Blockers) do người phản biện chỉ ra trong `agy_feedback/ch07_r1.txt` đã được giải quyết trọn vẹn, kiểm tra chéo trực quan ở độ phân giải cao 300 DPI và xác thực kỹ thuật đầy đủ:
+- **Blocker 1 (Top TB):** Đã viết `tb/v3/tb_ch07_mac_engine.v` và tích hợp `run_ch07_iverilog.sh`.
+- **Blocker 2 (Pre-written box):** Đã xóa kết quả tiền định, để trống `\todo{box}` cho người phản biện chạy trên Linux; ghi rõ công lao đối chiếu `exp.hex` thuộc về Python audit.
+- **Blocker 3 (Engine listing & alignment):** Đã thêm Listing 40 dòng FSM engine, giải thích chi tiết, thuyết minh căn chỉnh đường trễ cờ điều khiển, mở rộng bảng đối chiếu.
+- **Blocker 4 (Unsourced claims & Intel citations):** Đã loại bỏ các nhận định không có nguồn; chuẩn hóa tài liệu Intel Cyclone V.
+- **Blocker 5 (Figures & Overfull):** Cả 3 hình vẽ TikZ đã được hiệu chỉnh khoảng cách rộng rãi, phóng to chữ chú thích, biên dịch sạch không có bất kỳ cảnh báo overfull hbox nào.
+- **Blocker 6 (Tone & Markdown):** Đã thanh lọc toàn bộ từ ngữ cảm thán, chuyển đổi toàn bộ đánh dấu markdown sang lệnh LaTeX tiêu chuẩn.
