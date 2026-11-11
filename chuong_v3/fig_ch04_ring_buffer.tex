@@ -15,50 +15,49 @@
     \tikzstyle{ctrlline}  = [->, thick, dashed, color=red!80!black]
     \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
     \tikzstyle{addrline}  = [->, thick, color=blue!80!black]
-    \tikzstyle{lbl}       = [font=\scriptsize\bfseries, fill=white, inner sep=2.5pt, rounded corners=2pt]
     \tikzstyle{portlabel} = [font=\scriptsize\ttfamily]
 
-    % Boundary Frame
+    % Boundary Frame (height extended slightly at top to 5.7 to give plenty of headroom)
     \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
-        (-8.8, -5.6) rectangle (9.8, 5.4);
+        (-9.0, -5.6) rectangle (10.0, 5.7);
     \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=blue!1, inner sep=2pt] 
-        at (-8.5, 5.25) {Khối RAM vòng 1024 từ và quản lý chia khung (\texttt{ch04\_ring\_buffer.v})};
+        at (-8.7, 5.55) {Khối RAM vòng 1024 từ và quản lý chia khung (\texttt{ch04\_ring\_buffer.v})};
 
     % Left: External Avalon-ST Sink Ports
-    \node[portlabel, anchor=east] (sink_data)  at (-9.0,  3.2) {\texttt{sink\_data[15:0]}};
-    \node[portlabel, anchor=east] (sink_valid) at (-9.0,  1.8) {\texttt{sink\_valid}};
-    \node[portlabel, anchor=east] (sink_ready) at (-9.0,  0.4) {\texttt{sink\_ready}};
-    \node[portlabel, anchor=east] (clk_in)     at (-9.0, -4.0) {\texttt{clk}};
-    \node[portlabel, anchor=east] (rst_in)     at (-9.0, -4.6) {\texttt{rst\_n, clr}};
+    \node[portlabel, anchor=east] (sink_data)  at (-9.2,  3.2) {\texttt{sink\_data[15:0]}};
+    \node[portlabel, anchor=east] (sink_valid) at (-9.2,  1.8) {\texttt{sink\_valid}};
+    \node[portlabel, anchor=east] (sink_ready) at (-9.2,  0.4) {\texttt{sink\_ready}};
+    \node[portlabel, anchor=east] (clk_in)     at (-9.2, -3.9) {\texttt{clk}};
+    \node[portlabel, anchor=east] (rst_in)     at (-9.2, -4.5) {\texttt{rst\_n, clr}};
 
     % Right: External Frame Reader & Control Ports
-    \node[portlabel, anchor=west] (frame_ready) at (10.0,  3.8) {\texttt{frame\_ready}};
-    \node[portlabel, anchor=west] (frame_idx)   at (10.0,  2.6) {\texttt{frame\_idx[15:0]}};
-    \node[portlabel, anchor=west] (rd_data)     at (10.0,  1.2) {\texttt{rd\_data[15:0]}};
-    \node[portlabel, anchor=west] (rd_valid)    at (10.0,  0.0) {\texttt{rd\_valid}};
-    \node[portlabel, anchor=west] (rd_en)       at (10.0, -1.8) {\texttt{rd\_en}};
-    \node[portlabel, anchor=west] (rd_idx)      at (10.0, -2.8) {\texttt{rd\_sample\_idx[9:0]}};
-    \node[portlabel, anchor=west] (frame_step)  at (10.0, -4.2) {\texttt{frame\_step}};
+    \node[portlabel, anchor=west] (frame_ready) at (10.2,  3.8) {\texttt{frame\_ready}};
+    \node[portlabel, anchor=west] (frame_idx)   at (10.2,  2.6) {\texttt{frame\_idx[15:0]}};
+    \node[portlabel, anchor=west] (rd_data)     at (10.2,  1.2) {\texttt{rd\_data[15:0]}};
+    \node[portlabel, anchor=west] (rd_valid)    at (10.2,  0.0) {\texttt{rd\_valid}};
+    \node[portlabel, anchor=west] (rd_en)       at (10.2, -1.8) {\texttt{rd\_en}};
+    \node[portlabel, anchor=west] (rd_idx)      at (10.2, -2.8) {\texttt{rd\_sample\_idx[9:0]}};
+    \node[portlabel, anchor=west] (frame_step)  at (10.2, -4.2) {\texttt{frame\_step}};
 
     % 1. Write Pointer Logic (Top Left)
-    \node[regbox, minimum width=2.6cm, minimum height=1.3cm] (wr_logic) at (-6.0, 2.2)
+    \node[regbox, minimum width=2.6cm, minimum height=1.3cm] (wr_logic) at (-5.8, 2.2)
         {Con trỏ ghi\\10-bit \texttt{wr\_ptr}\\$0 \dots 1023$};
 
     % 2. Sample Occupancy Counter (Mid Left)
-    \node[calcbox, minimum width=2.6cm, minimum height=1.3cm] (counter) at (-6.0, -0.6)
+    \node[calcbox, minimum width=2.6cm, minimum height=1.3cm] (counter) at (-5.8, -0.6)
         {Bộ đếm mẫu tồn\\11-bit \texttt{sample\_count}\\Ghi $+1$, Step $-160$};
 
     % 3. Dual-Port M10K RAM (Center)
-    \node[rambox, minimum width=4.4cm, minimum height=3.6cm] (ram) at (0.0, 1.0)
-        {\textbf{Bộ nhớ RAM 2-cổng đồng bộ}\\(Ghép từ 2 khối Intel M10K)\\Dung lượng $1024 \times 16$-bit\\[10pt]
+    \node[rambox, minimum width=4.4cm, minimum height=3.4cm] (ram) at (0.0, 1.0)
+        {\textbf{Bộ nhớ RAM 2-cổng đồng bộ}\\(Ghép từ 2 khối Intel M10K)\\Dung lượng $1024 \times 16$-bit\\[8pt]
          \scriptsize Cổng A: Ghi (\texttt{data\_a}, \texttt{addr\_a})\\Cổng B: Đọc (\texttt{addr\_b}, \texttt{q\_b})};
 
     % 4. Output Register Pipeline (Right Center)
-    \node[regbox, minimum width=2.4cm, minimum height=1.3cm] (out_reg) at (6.4, 1.0)
+    \node[regbox, minimum width=2.4cm, minimum height=1.3cm] (out_reg) at (6.2, 1.0)
         {Thanh ghi ngõ ra\\M10K \texttt{rd\_data\_r}\\Latency = 2};
 
     % 5. Status Logic (Top Right)
-    \node[block, minimum width=3.2cm, minimum height=1.3cm] (status_logic) at (6.4, 3.6)
+    \node[block, minimum width=3.2cm, minimum height=1.3cm] (status_logic) at (6.2, 3.6)
         {Bộ so sánh trạng thái\\$\texttt{frame\_ready} = (\ge 638)$\\$\texttt{sink\_ready} = (< 1020)$};
 
     % 6. Read Base Register (Bottom Left)
@@ -69,58 +68,74 @@
     \node[block, minimum width=3.6cm, minimum height=1.4cm] (adder) at (2.8, -3.2)
         {Bộ cộng địa chỉ 10-bit\\$\texttt{rd\_phys\_addr} =$\\$(\texttt{rd\_base} + \texttt{rd\_sample\_idx})$};
 
-    % Interconnections
-    % Sink Data Path into RAM Port A
-    \draw[dataline] (sink_data) -- (-2.4, 3.2) -- (-2.4, 2.2);
-    \node[lbl, text=teal!90!black] at (-4.2, 3.2) {\texttt{data\_a[15:0]}};
+    % INTERCONNECTIONS - strictly orthogonal, >= 6mm between parallels, labels BESIDE lines
 
-    % Write address into RAM Port A
-    \draw[addrline] (wr_logic.east) -- (-2.2, 2.2) -- (-2.2, 1.3);
-    \node[lbl, text=blue!90!black] at (-3.8, 1.8) {\texttt{addr\_a[9:0]}};
+    % Line 1: Sink Data Path into RAM Port A data_a
+    \draw[dataline] (sink_data) -- (-3.4, 3.2) |- (-2.2, 2.0);
+    \node[above=2pt, font=\scriptsize\bfseries, text=teal!90!black, fill=white, inner sep=1.5pt] 
+        at (-5.8, 3.2) {\texttt{data\_a[15:0]}};
 
-    % Write fire to counter
+    % Line 2: Write address into RAM Port A addr_a
+    \draw[addrline] (wr_logic.east) -- (-3.0, 2.2) |- (-2.2, 1.2);
+    \node[above=2pt, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1.5pt] 
+        at (-3.6, 2.2) {\texttt{addr\_a[9:0]}};
+
+    % Line 3: Handshake write_fire to wr_logic and counter
     \draw[ctrlline] (sink_valid) -- (wr_logic.west);
-    \draw[ctrlline] (-4.6, 2.2) |- (-4.6, 0.4) -- (-6.0, 0.4) -- (counter.north);
-    \node[lbl, text=red!80!black] at (-4.6, 0.9) {\texttt{write\_fire}};
+    \draw[ctrlline] (-7.6, 1.8) -- (-7.6, 0.3) -- (-5.8, 0.3) -- (counter.north);
+    % Label placed to the RIGHT in open space between x = -7.6 and wr_logic (no crossing with sink_ready at x = -8.3)
+    \node[right=3pt, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
+        at (-7.6, 0.9) {\texttt{write\_fire}};
 
-    % Backpressure ready from status to sink_ready
-    \draw[ctrlline] (status_logic.west) -| (-7.5, 0.4) -- (sink_ready);
-    \node[lbl, text=red!80!black] at (-6.8, 0.7) {\texttt{sink\_ready}};
+    % Line 4: sample_count[10:0] routed around top to status_logic (at y = 4.3)
+    \draw[dataline] (counter.east) -- (-4.0, -0.6) -- (-4.0, 4.3) -- (6.2, 4.3) -- (status_logic.north);
+    \node[below=2pt, font=\scriptsize\bfseries, text=teal!90!black, fill=white, inner sep=1.5pt] 
+        at (0.0, 4.3) {\texttt{sample\_count[10:0]}};
 
-    % Counter to status logic (routes around top)
-    \draw[dataline] (counter.east) -| (-4.2, 4.6) -- (6.4, 4.6) -- (status_logic.north);
-    \node[lbl, text=teal!90!black] at (0.0, 4.6) {\texttt{sample\_count[10:0]}};
+    % Line 5: sink_ready feedback routed orthogonally around top perimeter (at y = 4.9, 6mm above y = 4.3)
+    % Completely clears RAM box (RAM top is at y = 2.7). Vertical run at x = -8.3 (7mm left of write_fire)
+    \draw[ctrlline] (5.0, 4.25) -- (5.0, 4.9) -- (-8.3, 4.9) -- (-8.3, 0.4) -- (sink_ready);
+    % Label placed to the right of center at x = 3.2, completely clear of title string
+    \node[above=2pt, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
+        at (3.2, 4.9) {\texttt{sink\_ready}};
 
-    % Frame step path (bottom route)
-    \draw[ctrlline] (frame_step) -- (-3.2, -4.3) -- (rd_base_reg.south);
-    \node[lbl, text=red!80!black] at (7.0, -4.3) {\texttt{frame\_step}};
+    % Line 6: rd_en into RAM Port B and pipeline
+    \draw[ctrlline] (rd_en) -- (4.6, -1.8) |- (2.2, 0.2);
+    \node[above=2pt, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
+        at (7.4, -1.8) {\texttt{rd\_en}};
 
-    % rd_base to adder
+    % Line 7: frame_step along bottom perimeter (at y = -4.8, > 6mm below adder at y = -3.9)
+    \draw[ctrlline] (frame_step) -- (8.6, -4.2) |- (8.6, -4.8) -- (-3.2, -4.8) -- (rd_base_reg.south);
+    \draw[ctrlline] (-3.2, -4.8) -| (-5.2, -1.3) -- (counter.south);
+    \node[above=2pt, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] 
+        at (6.2, -4.8) {\texttt{frame\_step}};
+
+    % Line 8: rd_base to adder
     \draw[addrline] (rd_base_reg.east) -- (adder.west);
-    \node[lbl, text=blue!90!black] at (-0.2, -3.2) {\texttt{rd\_base[9:0]}};
+    \node[above=2pt, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1.5pt] 
+        at (-0.45, -3.2) {\texttt{rd\_base[9:0]}};
 
-    % rd_idx to adder (enters at top right of adder box)
-    \draw[addrline] (rd_idx) -| (4.2, -2.2) -- (4.2, -2.5);
-    \node[lbl, text=blue!90!black] at (7.0, -2.8) {\texttt{rd\_sample\_idx[9:0]}};
+    % Line 9: rd_idx to adder
+    \draw[addrline] (rd_idx) -- (4.2, -2.8) |- (3.8, -2.5);
+    \node[above=2pt, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1.5pt] 
+        at (7.0, -2.8) {\texttt{rd\_sample\_idx[9:0]}};
 
-    % Adder output to RAM Port B address (leaves top left of adder box)
-    \draw[addrline] (1.4, -2.5) |- (0.0, -1.2) -- (0.0, -0.8);
-    \node[lbl, text=blue!90!black] at (1.1, -1.5) {\texttt{addr\_b[9:0]}};
+    % Line 10: Adder output to RAM Port B address
+    \draw[addrline] (1.8, -2.5) |- (0.0, -1.5) -- (0.0, -0.7);
+    \node[left=3pt, font=\scriptsize\bfseries, text=blue!90!black, fill=white, inner sep=1.5pt] 
+        at (0.0, -1.1) {\texttt{addr\_b[9:0]}};
 
-    % Read enable into RAM
-    \draw[ctrlline] (rd_en) -| (2.3, 0.0);
-    \node[lbl, text=red!80!black] at (7.0, -1.8) {\texttt{rd\_en}};
-
-    % RAM read data to Output Register
+    % Line 11: RAM read data to Output Register
     \draw[dataline] (2.2, 1.0) -- (out_reg.west);
-    \node[lbl, text=teal!90!black] at (3.8, 1.35) {\texttt{ram\_q[15:0]}};
+    \node[above=2pt, font=\scriptsize\bfseries, text=teal!90!black, fill=white, inner sep=1.5pt] 
+        at (3.6, 1.0) {\texttt{ram\_q[15:0]}};
 
-    % Output Register to external ports
-    \draw[dataline] (out_reg.east) -- (rd_data);
-    \draw[ctrlline] (out_reg.east) |- (rd_valid);
+    % Line 12: Output Register to external ports
+    \draw[dataline] (7.4, 1.2) -- (rd_data);
+    \draw[ctrlline] (7.4, 0.8) |- (8.4, 0.0) -- (rd_valid);
 
-    % Status to external ports
-    \draw[ctrlline] (status_logic.east) -- (frame_ready);
-    \draw[dataline] (status_logic.east) |- (frame_idx);
+    % Line 13: Status to external ports
+    \draw[ctrlline] (7.8, 3.8) -- (frame_ready);
+    \draw[dataline] (7.8, 3.4) |- (8.4, 2.6) -- (frame_idx);
 
 \end{tikzpicture}
