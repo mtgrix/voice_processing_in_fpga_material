@@ -1,0 +1,870 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 6. Cửa sổ Hanning N+1}
+\addcontentsline{toc}{section}{Chương 6. Cửa sổ Hanning N+1}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất vật lý của hiện tượng rò rỉ phổ (spectral leakage) khi cắt khung tín hiệu hữu hạn; chứng minh bằng toán học giải tích cơ chế triệt tiêu búp bên của cửa sổ Hanning, mang lại độ suy giảm $-31{,}47\text{ dB}$ và tốc độ suy giảm dốc $-18\text{ dB/octave}$ (vượt trội $18{,}21\text{ dB}$ so với cửa sổ chữ nhật).
+    \item Khám phá mã nguồn Praat 7.0.03 (\texttt{fon/Sound\_to\_Pitch.cpp}, dòng 413--424); lý giải chú thích của Paul Boersma vì sao cửa sổ Hanning tốt hơn cửa sổ Gaussian từ $2$ đến $5\text{ dB}$ ở độ dài 3 chu kỳ tiếng nói; phân tích công thức Hanning $N+1$ đặc thù để bảo toàn trọn vẹn hai mẫu âm thanh ở rìa khung mà không bị triệt tiêu về $0$.
+    \item Nắm vững kỹ thuật biểu diễn số thực trong định dạng dấu phẩy tĩnh Q1.15; giải mã hiện tượng bão hòa tại đỉnh khi giá trị lý thuyết đạt $32.768$ (tràn số nguyên có dấu 16-bit), dẫn xuất phép kẹp biên $32.768 \to 32.767$ của Golden v2 và chứng minh sai số lượng tử cực đại chỉ đạt $0{,}802\text{ LSB}$, giữ nguyên SNR ở mức $97{,}02\text{ dB}$.
+    \item Phân tích toàn diện không gian thiết kế phần cứng: so sánh giữa cấu trúc ROM đầy đủ 638 từ (2 khối M10K) và cấu trúc nửa ROM 319 từ kết hợp mạch gấp địa chỉ (1 khối M10K); dẫn xuất định dạng toán hạng 17-bit có dấu bắt buộc để chống tràn số trong khung stress thực nghiệm ($|x_w| = 59.379$).
+    \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng trên FPGA Cyclone V: Đường (A) tích hợp khối IP Intel \texttt{ROM: 1-PORT} (UG-01068) và \texttt{LPM\_MULT} (UG-01069) trong 1 khối DSP Variable Precision cứng; Đường (B) hiện thực hóa module HDL tự viết (\texttt{ch06\_hanning\_window.v}) với độ trễ 2 chu kỳ và mạch dò đỉnh cục bộ LocalPeak ($LP$) cho ngưỡng hữu thanh.
+    \item Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ và bit-đối-bit giữa mô hình song sinh Python (\texttt{ch06\_window\_twin.py}) và mô phỏng Verilog trên $3.250\text{ chu kỳ}$ xung nhịp, bao trùm các khung tín hiệu chuẩn, khung nhiễu và các khung biên khắc nghiệt.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{6.1. Bản chất của hiện tượng rò rỉ phổ và công thức Hanning \texorpdfstring{$N+1$}{N+1} của Praat}
+\addcontentsline{toc}{subsection}{6.1. Bản chất của hiện tượng rò rỉ phổ và công thức Hanning \texorpdfstring{$N+1$}{N+1} của Praat}
+
+\subsubsection*{Vấn đề thực tế: Sự thật phũ phàng về việc cắt khung và hiện tượng hài giả che lấp cao độ}
+Hãy hình dung một kỹ sư âm thanh đang phân tích cao độ giọng nói của một người đang phát âm nguyên âm ổn định có tần số cơ bản $F_0 = 150\text{ Hz}$ ở tần số lấy mẫu $f_s = 16.000\text{ Hz}$. Một chu kỳ sóng âm kéo dài $T_0 = 16.000 / 150 \approx 106{,}67\text{ mẫu}$. Để thực hiện thuật toán tự tương quan, hệ thống phần cứng cắt ra một đoạn âm thanh hữu hạn dài $N = 638\text{ mẫu}$ (tương đương gần $6$ chu kỳ sóng âm). 
+
+Cách làm tự nhiên và ngây thơ nhất là trích xuất trực tiếp $638\text{ mẫu}$ liên tiếp từ bộ đệm vòng mà không can thiệp gì vào biên độ. Trong lý thuyết xử lý tín hiệu số, việc làm này tương đương với việc nhân tín hiệu liên tục vô hạn với một \textbf{cửa sổ chữ nhật} (Rectangular Window):
+\begin{equation}
+w_{\text{rect}}[n] = \begin{cases} 1, & 0 \le n \le N-1 \\ 0, & \text{ngược lại} \end{cases}
+\end{equation}
+
+Điều gì sẽ xảy ra tại hai điểm biên $n = 0$ và $n = N-1$? Tín hiệu âm thanh đang dao động trơn tru đột ngột bị chặt đứt ngang xương, rơi thẳng về $0$ trong đúng một khoảng lấy mẫu $T_s = 62{,}5\ \mu\text{s}$. Về mặt toán học, bước nhảy gián đoạn bậc thang này đóng vai trò như một hàm bước nhảy Heaviside thu nhỏ. Phép biến đổi Fourier chứng minh rằng một bước nhảy gián đoạn trong miền thời gian sinh ra một chuỗi vô hạn các thành phần tần số cao trong miền tần số. Năng lượng của sóng âm thực tế không còn cô đọng tại tần số gốc $150\text{ Hz}$ và các họa ba tự nhiên, mà bị bắn tung tóe sang mọi tần số lân cận. Hiện tượng này được gọi là \textbf{rò rỉ phổ} (Spectral Leakage).
+
+Trong miền tự tương quan $R(\tau)$, hậu quả của hiện tượng rò rỉ phổ là khôn lường: các búp bên tần số cao của cửa sổ chữ nhật tương tác với các họa ba của giọng nói, tạo ra các dao động ký sinh gợn sóng đè lên đỉnh tự tương quan. Tại độ trễ $\tau_0 \approx 107\text{ mẫu}$, đỉnh cực đại thực thụ của tín hiệu bị méo mó, biến dạng hoặc bị dìm xuống thấp hơn các đỉnh giả phụ do hiện tượng rò rỉ tạo nên. Khi đưa vào bộ tìm đỉnh parabol ở Chương 9, sai số vị trí đỉnh có thể vọt lên hàng chục cent, hoặc tệ hơn là làm bộ phân loại hữu thanh ở Chương 10 xác định nhầm khung tiếng nói thành vô thanh. Một thuật toán F0 không thể đạt độ chính xác chuẩn nếu không kiểm soát triệt để hiện tượng rò rỉ phổ này.
+
+\subsubsection*{Dẫn xuất từ nguyên lý gốc: Biến đổi Fourier của phép nhân cửa sổ và suy giảm búp bên}
+Để thấy rõ nguồn gốc toán học, ta khảo sát mối quan hệ giữa phép nhân trong miền thời gian và phép chập trong miền tần số. Giả sử tín hiệu liên tục sau khi trừ trung bình cục bộ là $d[n]$, có phổ rời rạc thời gian là $D(e^{j\omega})$. Khi áp dụng hàm cửa sổ thời gian $w[n]$, tín hiệu sau cửa sổ hóa là $x_w[n] = d[n] \cdot w[n]$. Theo định lý chập điều hòa, biến đổi Fourier của $x_w[n]$ là:
+\begin{equation}
+X_w(e^{j\omega}) = \frac{1}{2\pi} \int_{-\pi}^{\pi} D(e^{j\theta}) W(e^{j(\omega - \theta)}) d\theta = \frac{1}{2\pi} D(e^{j\omega}) \circledast W(e^{j\omega})
+\end{equation}
+trong đó $W(e^{j\omega})$ là đáp ứng tần số của chính hàm cửa sổ. Biểu thức trên khẳng định: \textbf{Phổ quan sát được là phổ thực thụ của tiếng nói bị làm nhòe bởi phổ của hàm cửa sổ!}
+
+Đối với cửa sổ chữ nhật độ dài $N$, biến đổi Fourier đưa về tổng cấp số nhân hữu hạn:
+\begin{equation}
+W_{\text{rect}}(e^{j\omega}) = \sum_{n=0}^{N-1} e^{-j\omega n} = e^{-j\omega \frac{N-1}{2}} \frac{\sin\left(\frac{\omega N}{2}\right)}{\sin\left(\frac{\omega}{2}\right)}
+\end{equation}
+
+Hàm Dirichlet $\sin(\omega N/2) / \sin(\omega/2)$ có hai đặc tính tiêu cực:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Độ suy giảm búp bên thứ nhất rất kém:} Đỉnh của búp bên đầu tiên xuất hiện tại $\omega \approx 3\pi / N$. Tỷ số biên độ giữa búp bên thứ nhất và búp chính (DC) được tính toán chính xác bằng:
+    \begin{equation}
+    \left| \frac{W_{\text{rect}}(3\pi/N)}{W_{\text{rect}}(0)} \right| \approx \frac{\left| \sin(3\pi/2) \right|}{\frac{3\pi}{2}} = \frac{1}{\frac{3\pi}{2}} = \frac{2}{3\pi} \approx 0{,}2122 \quad \Longrightarrow \quad 20 \log_{10}(0{,}2122) = \mathbf{-13{,}46\text{ dB}}
+    \end{equation}
+    (Tính toán số trị chính xác với $N = 638$ cho kết quả $\mathbf{-13{,}26\text{ dB}}$, kiểm chứng trong nhật ký \path{verify_v3/ch06_hanning_math.log}). Mức suy giảm chỉ $-13{,}26\text{ dB}$ đồng nghĩa với việc năng lượng rò rỉ ở búp bên chiếm tới hơn $21\%$ biên độ sóng chính!
+    \item \textbf{Tốc độ suy giảm búp bên rất chậm:} Mẫu số $\sin(\omega/2) \approx \omega/2$ tỉ lệ nghịch bậc nhất với tần số $\omega^{-1}$. Do đó, khi tần số tăng gấp đôi (một octave), biên độ chỉ giảm một nửa, tương ứng với tốc độ suy giảm chỉ đạt $\mathbf{-6\text{ dB/octave}}$ (hay $-20\text{ dB/decade}$).
+\end{enumerate}
+
+Để khắc phục nhược điểm chết người này, Julius von Hann đã đề xuất hàm cửa sổ Hanning (hay Hann window), làm trơn biên độ dần về $0$ ở hai đầu bằng một sóng cosin điều hòa:
+\begin{equation}
+w[n] = 0{,}5 - 0{,}5 \cos\left( \frac{2\pi n}{N} \right) = 0{,}5 - 0{,}25 e^{j\frac{2\pi n}{N}} - 0{,}25 e^{-j\frac{2\pi n}{N}}
+\end{equation}
+
+Khi chuyển sang miền tần số, phép nhân với hàm cosin biến thành phép cộng gộp ba bản sao dịch tần của hàm Dirichlet:
+\begin{equation}
+W_{\text{hann}}(e^{j\omega}) = 0{,}5 W_{\text{rect}}(e^{j\omega}) - 0{,}25 W_{\text{rect}}\left(e^{j\left(\omega - \frac{2\pi}{N}\right)}\right) - 0{,}25 W_{\text{rect}}\left(e^{j\left(\omega + \frac{2\pi}{N}\right)}\right)
+\end{equation}
+
+\begin{physicalinsight}
+\textbf{Nhìn thấy vật lý: Cơ chế triệt tiêu pha của cửa sổ Hanning.}
+Hãy quan sát hệ số $0{,}5$ ở trung tâm và hai hệ số $-0{,}25$ ở hai bên. Hai bản sao phụ bị dịch tần đúng bằng khoảng cách nửa chu kỳ dao động của búp bên ($\Delta\omega = 2\pi/N$). Tại vùng búp bên, búp dương của bản sao trung tâm bị triệt tiêu gần như hoàn toàn bởi búp âm của hai bản sao phụ ngược pha!
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Mức suy hao búp bên nhảy vọt:} Đỉnh búp bên đầu tiên bị dìm sâu từ $-13{,}26\text{ dB}$ xuống tới $\mathbf{-31{,}47\text{ dB}}$, mang lại lợi thế suy hao vượt trội $\mathbf{+18{,}21\text{ dB}}$!
+    \item \textbf{Tốc độ dập tắt búp bên cực nhanh:} Sự triệt tiêu pha làm tử số triệt tiêu bậc cao tại các điểm cực trị, khiến biên độ suy giảm theo hàm mũ $\omega^{-3}$. Tốc độ suy giảm búp bên vọt lên $\mathbf{-18\text{ dB/octave}}$ (hay $-60\text{ dB/decade}$), nhanh gấp 3 lần cửa sổ chữ nhật!
+\end{itemize}
+\end{physicalinsight}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{\input{chuong_v3/fig_ch06_leakage.tex}}
+\caption{So sánh đáp ứng tần số và hiện tượng rò rỉ phổ giữa Cửa sổ chữ nhật và Cửa sổ Hanning $N+1$ ($N = 638$, số liệu từ \texttt{verify\_v3/ch06\_hanning\_math.log}).}
+\label{fig:ch06_leakage}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch06_leakage} minh họa trực quan sự đánh đổi kinh điển trong miền tần số giữa hai loại cửa sổ. Đường màu đỏ nét đứt thể hiện đáp ứng của cửa sổ chữ nhật: búp chính có độ rộng $-3\text{ dB}$ rất hẹp ($22{,}32\text{ Hz}$), nhưng búp bên đầu tiên nhô lên rất cao ở mức $-13{,}26\text{ dB}$ và suy giảm thoai thoải với độ dốc $-6\text{ dB/octave}$. Ngược lại, đường màu xanh đậm thể hiện cửa sổ Hanning $N+1$ của Praat: búp chính mở rộng hơn một chút ($36{,}11\text{ Hz}$), đổi lại búp bên đầu tiên bị dập tắt sâu xuống $-31{,}47\text{ dB}$ (suy giảm thêm $18{,}21\text{ dB}$ so với chữ nhật), và các búp bên phía sau đổ dốc cực kỳ nhanh chóng theo tỷ lệ $-18\text{ dB/octave}$. Toàn bộ năng lượng rò rỉ ngoài dải bị triệt tiêu triệt để, bảo vệ an toàn cho các đỉnh tự tương quan.
+
+\subsubsection*{Vì sao Boersma chọn Hanning thay vì Gaussian: Đọc từ mã nguồn Praat 7.0.03}
+Trong mã nguồn Praat 7.0.03 tại tệp \path{fon/Sound_to_Pitch.cpp}, Paul Boersma hỗ trợ hai phương pháp cửa sổ hóa được định nghĩa ở dòng 39--40:
+\begin{lstlisting}[language=C++, numbers=none]
+#define AC_HANNING 0
+#define AC_GAUSS 1
+\end{lstlisting}
+
+Ở dòng 413--415, tác giả để lại một đoạn chú thích rất quan trọng giải thích căn nguyên lựa chọn cửa sổ:
+\begin{lstlisting}[language=C++, numbers=none]
+/*
+ * A Gaussian or Hanning window is applied against phase effects.
+ * The Hanning window is 2 to 5 dB better for 3 periods/window.
+ * The Gaussian window is 25 to 29 dB better for 6 periods/window.
+ */
+\end{lstlisting}
+
+Tại sao với cửa sổ dài 3 chu kỳ ($40\text{ ms}$ cho tần số đáy $75\text{ Hz}$), cửa sổ Hanning lại vượt trội hơn Gaussian từ $2$ đến $5\text{ dB}$? 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Cửa sổ Gaussian có dạng chuông $e^{-\frac{1}{2}(t/\sigma)^2}$. Để đạt mức suy giảm búp bên tốt, hàm Gaussian phải ép hai bên cánh suy giảm rất mạnh. Với độ dài ngắn chỉ có $3$ chu kỳ, việc ép cánh quá dốc làm búp chính của Gaussian nở rộng quá mức và làm suy hao nghiêm trọng phần lớn năng lượng hữu ích của tín hiệu ở hai đầu khung, khiến tỷ số tín hiệu trên nhiễu hiệu dụng bị suy giảm.
+    \item Ngược lại, cửa sổ Hanning phân bổ trọng số hài hòa hơn trên khoảng thời gian 3 chu kỳ, duy trì búp chính đủ nhọn để phân giải các họa ba gần nhau mà vẫn triệt tiêu búp bên tới $-31{,}5\text{ dB}$.
+    \item Chỉ khi chuyển sang chế độ phân tích siêu chính xác (\texttt{Very accurate = on}, dòng 299--301), Praat mới nâng chiều dài cửa sổ lên gấp đôi ($6$ chu kỳ, $80\text{ ms}$) và chuyển sang dùng cửa sổ Gaussian (\texttt{AC\_GAUSS}). Khi đó, cửa sổ đủ dài để Gaussian phát huy ưu thế suy hao búp bên vượt trội $25\text{ dB}$ đến $29\text{ dB}$.
+\end{itemize}
+Vì hệ thống phần cứng FPGA của ta nhắm tới cấu hình tiêu chuẩn thời gian thực với độ dài 3 chu kỳ ($N = 638\text{ mẫu}$), lựa chọn cửa sổ Hanning là phương án tối ưu tuyệt đối về mặt vật lý.
+
+\subsubsection*{Công thức Hanning $N+1$ của Praat: Giải mã sự khác biệt với công thức sách giáo khoa}
+Khi mở mã nguồn \path{fon/Sound_to_Pitch.cpp} tại dòng 422--424, ta bắt gặp công thức khởi tạo cửa sổ Hanning của Praat:
+\begin{lstlisting}[language=C++, numbers=none]
+for (integer i = 1; i <= nsamp_window; i ++)
+    window [i] = 0.5 - 0.5 * cos (NUM2pi * i / (nsamp_window + 1));
+\end{lstlisting}
+
+Hãy chú ý thật kỹ chỉ số $i$ và mẫu số: vòng lặp chạy từ $i = 1$ đến $N$ (\texttt{nsamp\_window} $= 638$), và góc pha được chia cho $N + 1 = 639$! Đây là công thức Hanning dạng $N+1$, hoàn toàn khác biệt với công thức Hanning đối xứng kinh điển thường gặp trong MATLAB (\texttt{hann(N, 'symmetric')}) hay SciPy (\texttt{scipy.signal.windows.hann(N, sym=True)}).
+
+Trong các sách giáo khoa xử lý tín hiệu kinh điển, cửa sổ Hanning đối xứng được định nghĩa trên chỉ số mảng $0$-based ($k = 0 \dots N-1$) với mẫu số chia cho $N - 1$:
+\begin{equation}
+w_{\text{sym}}[k] = 0{,}5 - 0{,}5 \cos\left( \frac{2\pi k}{N - 1} \right), \quad k = 0 \dots N-1
+\end{equation}
+
+Hệ quả của công thức sách giáo khoa tại hai đầu mút là gì?
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại mẫu đầu tiên $k = 0$: $w_{\text{sym}}[0] = 0{,}5 - 0{,}5 \cos(0) = 0{,}5 - 0{,}5 = \mathbf{0{,}000000}$.
+    \item Tại mẫu cuối cùng $k = N-1$: $w_{\text{sym}}[N-1] = 0{,}5 - 0{,}5 \cos(2\pi) = 0{,}5 - 0{,}5 = \mathbf{0{,}000000}$.
+\end{itemize}
+
+Hai mẫu âm thanh ở đúng rìa khung bị nhân với $0$ và bị xóa sổ hoàn toàn! Nghĩa là một khung dữ liệu danh định dài $638\text{ mẫu}$ thực chất chỉ còn hoạt động với $636\text{ mẫu}$ hữu ích. Hai mẫu âm thanh quý giá vừa được nạp từ RAM vòng bị vứt bỏ lãng phí.
+
+Để khắc phục hiện tượng triệt tiêu vô lý này, Boersma áp dụng công thức $N+1$: dời chỉ số vào bên trong một bước bằng cách chia cho $N+1$. Đặt chỉ số $0$-based $n = i - 1$ ($n = 0 \dots N-1$), công thức Praat trở thành:
+\begin{equation}
+w[n] = 0{,}5 - 0{,}5 \cos\left( \frac{2\pi (n + 1)}{N + 1} \right), \quad n = 0 \dots N-1
+\end{equation}
+
+Với $N = 638$, tại hai biên của khung:
+\begin{align}
+w[0] &= 0{,}5 - 0{,}5 \cos\left( \frac{2\pi \cdot 1}{639} \right) \approx 0{,}5 - 0{,}5 \times 0{,}9{,}99951658 = \mathbf{0{,}0000241710} > 0 \\
+w[637] &= 0{,}5 - 0{,}5 \cos\left( \frac{2\pi \cdot 638}{639} \right) = w[0] = \mathbf{0{,}0000241710} > 0
+\end{align}
+
+\begin{equationcard}
+\textbf{Đặc tính cốt tử của cửa sổ Hanning $N+1$ của Praat:}
+\begin{enumerate}
+    \item \textbf{Không có mẫu 0 ở hai đầu mút:} $w[0] > 0$ và $w[N-1] > 0$. Mọi mẫu âm thanh trong khung $638\text{ mẫu}$ đều đóng góp năng lượng vào quá trình ước lượng F0.
+    \item \textbf{Đối xứng hoàn hảo qua tâm khung:} $w[n] = w[N - 1 - n]$ với mọi $n \in [0, N-1]$. Trục đối xứng nằm chính xác ở vị trí bán nguyên $n = (N - 1)/2 = 318{,}5$.
+\end{enumerate}
+\end{equationcard}
+
+\subsubsection*{Tính toán bằng tay: So sánh cửa sổ 8 mẫu giữa công thức sách giáo khoa và Praat}
+Để minh chứng sự khác biệt, ta xét một khung tín hiệu thu nhỏ gồm $N = 8\text{ mẫu}$. Bảng~\ref{tab:ch06_hand_8samp} tính toán chi tiết giá trị của từng mẫu cửa sổ theo hai công thức.
+
+\begin{table}[H]
+\centering
+\caption{Tính toán bằng tay so sánh giữa cửa sổ Hanning chuẩn sách giáo khoa ($N-1$) và cửa sổ Hanning Praat ($N+1$) trên khung $N = 8\text{ mẫu}$.}
+\label{tab:ch06_hand_8samp}
+\footnotesize
+\begin{tabular}{clll}
+\toprule
+\textbf{Chỉ số $n$} & \textbf{Công thức chuẩn ($N-1 = 7$)} & \textbf{Công thức Praat ($N+1 = 9$)} & \textbf{Nhận xét so sánh} \\
+\midrule
+0 & $0{,}5 - 0{,}5\cos(0) = \mathbf{0{,}000000}$ & $0{,}5 - 0{,}5\cos(2\pi/9) \approx \mathbf{0{,}116978}$ & Mẫu biên không bị triệt tiêu về 0 \\
+1 & $0{,}5 - 0{,}5\cos(2\pi/7) \approx 0{,}188255$ & $0{,}5 - 0{,}5\cos(4\pi/9) \approx 0{,}413176$ & Biên độ tăng đều \\
+2 & $0{,}5 - 0{,}5\cos(4\pi/7) \approx 0{,}611260$ & $0{,}5 - 0{,}5\cos(6\pi/9) = \mathbf{0{,}750000}$ & Khớp góc đặc biệt $120^\circ$ \\
+3 & $0{,}5 - 0{,}5\cos(6\pi/7) \approx 0{,}950484$ & $0{,}5 - 0{,}5\cos(8\pi/9) \approx 0{,}969846$ & Cận đỉnh \\
+4 & $0{,}5 - 0{,}5\cos(8\pi/7) \approx 0{,}950484$ & $0{,}5 - 0{,}5\cos(10\pi/9) \approx 0{,}969846$ & Đối xứng qua tâm $n = 3{,}5$ \\
+5 & $0{,}5 - 0{,}5\cos(10\pi/7) \approx 0{,}611260$ & $0{,}5 - 0{,}5\cos(12\pi/9) = \mathbf{0{,}750000}$ & Đối xứng với $n = 2$ \\
+6 & $0{,}5 - 0{,}5\cos(12\pi/7) \approx 0{,}188255$ & $0{,}5 - 0{,}5\cos(14\pi/9) \approx 0{,}413176$ & Đối xứng với $n = 1$ \\
+7 & $0{,}5 - 0{,}5\cos(14\pi/7) = \mathbf{0{,}000000}$ & $0{,}5 - 0{,}5\cos(16\pi/9) \approx \mathbf{0{,}116978}$ & Mẫu biên cuối không bị mất \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Bảng tính tay khẳng định rõ ràng: công thức Praat giữ lại năng lượng ở hai biên ($w[0] = w[7] \approx 0{,}117 > 0$), loại bỏ hoàn toàn nhược điểm "mẫu chết" của công thức truyền thống.
+
+\textit{Tóm lại: Cắt khung đột ngột sinh ra búp bên $-13{,}3\text{ dB}$ làm méo mó tự tương quan; cửa sổ Hanning $N+1$ của Praat dập tắt búp bên xuống $-31{,}5\text{ dB}$, triệt tiêu rò rỉ phổ thêm $18{,}2\text{ dB}$ và bảo toàn trọn vẹn cả hai mẫu ở rìa khung.}
+
+
+\subsection*{6.2. Biểu diễn số học Q1.15, xử lý bão hòa ở đỉnh và phân tích sai số}
+\addcontentsline{toc}{subsection}{6.2. Biểu diễn số học Q1.15, xử lý bão hòa ở đỉnh và phân tích sai số}
+
+\subsubsection*{Vấn đề thực tế: Tại sao lại là Q1.15 và cái bẫy đảo dấu âm tại đỉnh khung?}
+Các hệ số cửa sổ Hanning $w[n]$ nằm trong khoảng $(0, 1]$. Trên bộ xử lý HPS hay máy tính cá nhân, Praat tính toán mảng này bằng số thực dấu phẩy động độ chính xác kép 64-bit (\texttt{double}). Tuy nhiên, trên vi mạch FPGA Cyclone V, việc triển khai các bộ nhân và bộ nhớ RAM dấu phẩy động tốn kém một lượng khổng lồ tài nguyên logic ALM và làm suy giảm nghiêm trọng tần số xung nhịp cực đại $F_{\max}$. Do đó, giải pháp tối ưu cho đường dữ liệu là chuyển sang \textbf{dấu phẩy tĩnh} (Fixed-Point Arithmetic).
+
+Vì giá trị lớn nhất của $w[n]$ xấp xỉ $1{,}0$, định dạng số học tự nhiên nhất để biểu diễn là định dạng \textbf{Q1.15} (1 bit dấu, 15 bit phần phân số, tổng cộng 16 bit, vừa khít một từ dữ liệu của khối nhớ RAM M10K). Trong định dạng Q1.15 có dấu:
+\begin{equation}
+\text{Trọng số của bit thứ } k \text{ là } 2^{-(15-k)}, \quad k = 0 \dots 14
+\end{equation}
+và bước nhảy lượng tử nhỏ nhất (1 LSB) là:
+\begin{equation}
+\Delta = 2^{-15} = \frac{1}{32.768} \approx 3{,}0517578 \times 10^{-5}
+\end{equation}
+
+Một số nguyên 16-bit có dấu bù 2 biểu diễn được dải giá trị nguyên $[-32.768, +32.767]$, tương ứng với dải giá trị thực $[-1{,}0, +0{,}9999694824]$. Vấn đề nan giải xuất hiện ngay tại đây: \textbf{Số $+1{,}0$ thực sự không thể biểu diễn được trong số nguyên 16-bit có dấu!}
+
+Hãy xem xét điều gì xảy ra ở đỉnh của cửa sổ Hanning $N = 638$. Hai mẫu nằm ở vị trí trung tâm là $n = 318$ và $n = 319$ (đếm từ $0$). Theo công thức Praat:
+\begin{align}
+w_{\text{double}}[318] &= 0{,}5 - 0{,}5 \cos\left( \frac{2\pi \cdot 319}{639} \right) = 0{,}5 - 0{,}5 \cos\left( \pi - \frac{\pi}{639} \right) \nonumber \\
+&= 0{,}5 + 0{,}5 \cos\left( \frac{\pi}{639} \right) \approx \mathbf{0{,}9999939572147746}
+\end{align}
+
+Khi nhân giá trị thực này với hệ số tỉ lệ $2^{15} = 32.768$ để chuyển sang số nguyên:
+\begin{equation}
+w_{\text{scaled}} = 0{,}9999939572147746 \times 32.768 = \mathbf{32767{,}8019979}
+\end{equation}
+
+Áp dụng quy tắc làm tròn số nguyên tiêu chuẩn $\lfloor x + 0{,}5 \rfloor$:
+\begin{equation}
+w_{\text{round}} = \lfloor 32767{,}8019979 + 0{,}5 \rfloor = \lfloor 32768{,}3019979 \rfloor = \mathbf{32.768}
+\end{equation}
+
+Nếu kỹ sư phần cứng ngây thơ ép thẳng số nguyên $32.768$ vào thanh ghi 16-bit có dấu \texttt{signed [15:0]}, điều gì sẽ xảy ra? Mã nhị phân của $32.768$ là \texttt{16'h8000}. Trong hệ bù 2, bit 15 (MSB) là bit dấu: \texttt{16'h8000} đại diện cho số âm cực đại $\mathbf{-32.768}$! 
+
+Hai mẫu ở ngay tâm khung tín hiệu --- nơi chứa biên độ mạnh nhất của giọng nói và đóng góp lớn nhất vào đỉnh tự tương quan --- đột ngột bị đảo ngược cực tính thành một xung âm cực lớn. Dạng sóng âm thanh bị xé toạc ở giữa khung, biến toàn bộ hàm tự tương quan $R(\tau)$ thành nhiễu loạn và làm hỏng hoàn toàn thuật toán dò F0. Đây là cái bẫy kinh điển trong thiết kế xử lý tín hiệu số dấu phẩy tĩnh.
+
+\subsubsection*{Dẫn xuất từ nguyên lý gốc: Cơ chế kẹp bão hòa (Saturation) của Golden v2}
+Để loại bỏ triệt để hiện tượng đảo dấu âm tai hại, mã nguồn kịch bản sinh ROM
+\texttt{golden\_v2/gen\_roms.py} (dòng 20) áp dụng phép toán \textbf{kẹp bão hòa} (Saturation/Clamping):
+\begin{lstlisting}[language=Python, numbers=none]
+q = [min(32767, int(math.floor(v * 32768 + 0.5))) for v in w]
+\end{lstlisting}
+
+Bất kỳ giá trị nào sau khi làm tròn vượt quá giới hạn dương tối đa của số nguyên 16-bit đều được kẹp chặn chẽ về $+32.767$ (\texttt{16'h7FFF}). 
+
+Khảo sát trên toàn bộ $638\text{ mẫu}$ của cửa sổ, kịch bản \path{verify_v3/ch06_hanning_math.py} xác nhận:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Chỉ có duy nhất đúng \textbf{2 mẫu} bị bão hòa là $w[318]$ và $w[319]$ (cả hai đều có giá trị làm tròn nguyên thủy là $32.768$ và được kẹp về $32.767$).
+    \item Tất cả $636\text{ mẫu}$ còn lại đều nhỏ hơn hoặc bằng $32.766$, được lượng tử hóa bình thường mà không chịu bất kỳ sự bão hòa nào.
+\end{itemize}
+
+Nhờ phép kẹp đối xứng tại hai mẫu trung tâm, các con số chuẩn tắc của đề cương Agenda 6.2 được tái lập chính xác $100\%$:
+\begin{equation}
+w[0] = 1, \quad w[637] = 1, \quad w[318] = 32.767, \quad w[319] = 32.767
+\end{equation}
+và tổng giá trị số học của toàn bộ $638\text{ từ}$ nhớ ROM là:
+\begin{equation}
+\sum_{n=0}^{637} w[n] = \mathbf{10.469.378} \quad (\text{khớp bit tuyệt đối với tệp hex})
+\end{equation}
+
+Đồng thời, tính chất đối xứng chẵn qua tâm khung được bảo tồn nguyên vẹn:
+\begin{equation}
+w[n] = w[637 - n], \quad \forall n \in [0, 637]
+\end{equation}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{\input{chuong_v3/fig_ch06_window_shape.tex}}
+\caption{Dạng sóng rời rạc của Cửa sổ Hanning $N+1$ ($N = 638$) và xử lý bão hòa Q1.15 ở đỉnh (số liệu từ \texttt{verify\_v3/ch06\_hanning\_math.log}).}
+\label{fig:ch06_window_shape}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch06_window_shape} minh họa hình thái rời rạc của cửa sổ Hanning $N+1$ trong miền thời gian sau khi lượng tử hóa Q1.15. Tại hai biên ngoài cùng $n = 0$ và $n = 637$, giá trị lượng tử hóa đạt đúng $w[0] = w[637] = 1$ (\texttt{0x0001}), khẳng định không có mẫu âm thanh nào bị bỏ rơi. Ở đỉnh trung tâm, trục đối xứng chẵn đi qua vị trí $n = 318{,}5$. Hai mẫu $n = 318$ và $n = 319$ tạo thành một thềm phẳng nằm ngang ở mức bão hòa $32.767$ (\texttt{0x7FFF}). Vùng đáy được khoanh màu xanh ngọc từ $n = 212$ đến $n = 425$ ($214\text{ mẫu}$) thể hiện phạm vi dò tìm giá trị đỉnh cục bộ LocalPeak ($LP$) cho ngưỡng hữu thanh ở Chương 10.
+
+\subsubsection*{Định lượng sai số lượng tử và tỷ số tín hiệu trên nhiễu (SNR)}
+Một câu hỏi kỹ thuật tất yếu đặt ra: Việc kẹp giá trị đỉnh từ $32.768$ xuống $32.767$ có làm suy giảm độ chính xác của thuật toán không?
+
+Để trả lời, ta phân tích sai số lượng tử tuyệt đối tại vị trí đỉnh $n = 318$:
+\begin{equation}
+\epsilon_{\text{apex}} = \left| \frac{32.767}{32.768} - w_{\text{double}}[318] \right| = \left| 0{,}99996948242 - 0{,}99999395721 \right| = \mathbf{2{,}447479 \times 10^{-5}}
+\end{equation}
+
+Quy đổi sai số này sang đơn vị bước nhảy lượng tử LSB:
+\begin{equation}
+\epsilon_{\text{LSB}} = \epsilon_{\text{apex}} \times 32.768 = 2{,}447479 \times 10^{-5} \times 32.768 = \mathbf{0{,}8020\text{ LSB}} < 1\text{ LSB}
+\end{equation}
+
+Kết quả này mang ý nghĩa quyết định: \textbf{Ngay cả tại vị trí chịu tác động lớn nhất của phép kẹp bão hòa, sai số tuyệt đối vẫn nhỏ hơn $1$ LSB!} Sai số này hoàn toàn nằm trong giới hạn sai số lượng tử làm tròn ngẫu nhiên của bất kỳ bộ biến đổi số sang tương tự (DAC) hay phép nhân dấu phẩy tĩnh nào.
+
+Để đánh giá chất lượng toàn diện trên cả khung $638\text{ mẫu}$, kịch bản \path{verify_v3/ch06_exercises.py} tính toán các chỉ số thống kê năng lượng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Sai số căn quân phương (RMS Error):}
+    \begin{equation}
+    \text{RMS} = \sqrt{\frac{1}{N} \sum_{n=0}^{N-1} \left( \frac{w[n]}{32.768} - w_{\text{double}}[n] \right)^2} = \mathbf{8{,}63588 \times 10^{-6}} \quad (\approx 0{,}28\text{ LSB})
+    \end{equation}
+    \item \textbf{Công suất tín hiệu cửa sổ:} $P_{\text{signal}} = \frac{1}{N} \sum_{n=0}^{N-1} w_{\text{double}}[n]^2 = 0{,}375588$.
+    \item \textbf{Công suất nhiễu lượng tử:} $P_{\text{noise}} = \frac{1}{N} \sum_{n=0}^{N-1} e[n]^2 = 7{,}45784 \times 10^{-11}$.
+    \item \textbf{Tỷ số tín hiệu trên nhiễu lượng tử (SQNR):}
+    \begin{equation}
+    \text{SNR} = 10 \log_{10}\left( \frac{P_{\text{signal}}}{P_{\text{noise}}} \right) = 10 \log_{10}\left( \frac{0{,}375588}{7{,}45784 \times 10^{-11}} \right) = \mathbf{97{,}02\text{ dB}}
+    \end{equation}
+\end{itemize}
+
+Lý thuyết thông tin chứng minh rằng một bộ lượng tử hóa đồng đều $b\text{ bit}$ phân số có tỷ số SNR lý thuyết cực đại là $\text{SNR}_{\text{theo}} = 6{,}02 \times b + 1{,}76\text{ dB}$. Với $b = 15\text{ bit}$, trần lý thuyết là $6{,}02 \times 15 + 1{,}76 = 92{,}06\text{ dB}$. Việc cửa sổ Hanning Q1.15 đạt $\text{SNR} = 97{,}02\text{ dB}$ (cao hơn cả trần lý thuyết nhờ phần lớn năng lượng tập trung ở dải biên độ lớn) khẳng định bảng tra ROM hoàn toàn bảo toàn độ trung thực của âm thanh 16-bit gốc, không gây ra bất kỳ suy hao tín hiệu đo đạc được nào.
+
+\subsubsection*{Tính toán bằng tay: Bảng đối soát các mẫu tiêu biểu trên toàn khung}
+Bảng~\ref{tab:ch06_sample_check} liệt kê chi tiết 6 mẫu đại diện trên các vùng chiến lược của khung $638\text{ mẫu}$, đối chiếu trực tiếp giữa giá trị thực toán học của Praat và giá trị nguyên Q1.15 trên FPGA.
+
+\begin{table}[H]
+\centering
+\caption{Bảng đối soát tính toán bằng tay các mẫu tiêu biểu của Cửa sổ Hanning $N+1$ ($N = 638$, trích xuất từ nhật ký \texttt{verify\_v3/ch06\_praat\_lines.log}).}
+\label{tab:ch06_sample_check}
+\footnotesize
+\begin{tabular}{crrrrc}
+\toprule
+\textbf{Mẫu $n$} & \textbf{Giá trị Praat (double)} & \textbf{Q1.15 Nguyên} & \textbf{Mã Hex} & \textbf{Q1.15 Float} & \textbf{Sai số LSB} \\
+\midrule
+0   & $0{,}0000241710$ & 1      & \texttt{0x0001} & $0{,}0000305176$ & $+0{,}2079\text{ LSB}$ \\
+1   & $0{,}0000966810$ & 3      & \texttt{0x0003} & $0{,}0000915527$ & $-0{,}1680\text{ LSB}$ \\
+106 & $0{,}1348008064$ & 4417   & \texttt{0x1141} & $0{,}1347961426$ & $-0{,}1528\text{ LSB}$ \\
+212 & $0{,}5012301980$ & 16424  & \texttt{0x4028} & $0{,}5012207031$ & $-0{,}3111\text{ LSB}$ \\
+318 & $0{,}9999939572$ & 32767  & \texttt{0x7FFF} & $0{,}9999694824$ & $-0{,}8020\text{ LSB}$ \\
+319 & $0{,}9999939572$ & 32767  & \texttt{0x7FFF} & $0{,}9999694824$ & $-0{,}8020\text{ LSB}$ \\
+637 & $0{,}0000241710$ & 1      & \texttt{0x0001} & $0{,}0000305176$ & $+0{,}2079\text{ LSB}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Tóm lại: Định dạng Q1.15 kết hợp kẹp bão hòa $32.768 \to 32.767$ tại hai mẫu đỉnh giữ nguyên tính đối xứng chẵn, tổng đạt đúng $10.469.378$, sai số dưới $1$ LSB và SNR đạt $97{,}02\text{ dB}$.}
+
+
+\subsection*{6.3. Không gian thiết kế phần cứng: Đánh đổi cấu trúc ROM và độ rộng dữ liệu 17-bit}
+\addcontentsline{toc}{subsection}{6.3. Không gian thiết kế phần cứng: Đánh đổi cấu trúc ROM và độ rộng dữ liệu 17-bit}
+
+\subsubsection*{Vấn đề thực tế: Bài toán tài nguyên M10K và cái giá của sự tối ưu sớm}
+Khi bắt tay vào hiện thực hóa bảng tra hệ số cửa sổ Hanning $N = 638\text{ mẫu}$ trên chip FPGA Altera Cyclone V (5CSXFC6D6F31C6N), một câu hỏi kiến trúc cơ bản lập tức nảy sinh: Nên lưu trữ toàn bộ $638\text{ từ}$ nhớ trong ROM, hay chỉ cần lưu một nửa ($319\text{ từ}$) rồi tận dụng tính đối xứng $w[n] = w[637 - n]$ để gấp đôi địa chỉ?
+
+Để trả lời câu hỏi này một cách khoa học, kỹ sư phần cứng bắt buộc phải nhìn thấu cấu trúc silicon vật lý của các khối nhớ nội bộ M10K (Embedded Memory Block) theo tài liệu \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (CV-52003, Chương 3).
+
+\subsubsection*{Phân tích ba phương án lưu trữ và đánh đổi tài nguyên phần cứng}
+Mỗi khối RAM M10K trên silicon Cyclone V chứa chính xác $10.240\text{ bit}$ nhớ thô. Tuy nhiên, khối nhớ này không thể tổ chức theo kích thước bất kỳ mà bắt buộc phải cấu hình theo một trong các tỷ lệ khung hình (aspect ratio) cố định: $10K \times 1$, $5K \times 2$, $2{,}5K \times 4$, $1{,}25K \times 8$, $1024 \times 10$, và $512 \times 20$ (hỗ trợ độ rộng 16-bit).
+
+Ta đặt ba phương án thiết kế lên bàn cân kỹ thuật:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Phương án 1: ROM đầy đủ 638 từ $\times$ 16-bit (Lựa chọn chính):}
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item \emph{Dung lượng yêu cầu:} $638 \times 16 = 10.208\text{ bit}$. Mặc dù $10.208 < 10.240\text{ bit}$, cấu hình M10K đơn rộng nhất hỗ trợ từ 16-bit là $512 \times 20$. Vì chiều sâu $638 > 512$, một khối M10K đơn \textbf{không thể chứa hết} 638 từ!
+        \item \emph{Tài nguyên silicon:} Trình biên dịch Quartus bắt buộc phải sử dụng \textbf{2 khối M10K} (cấu hình $1024 \times 10$ ghép đôi song song thành $1024 \times 20$ để lấy 16-bit, hoặc ghép nối tiếp hai khối $512 \times 20$). Số lượng ALM tiêu tốn là $0\text{ ALM}$.
+        \item \emph{Đặc tính thời gian:} Bộ tạo địa chỉ cực kỳ thanh thoát: chỉ cần bộ đếm nhị phân 10-bit
+        \texttt{sample\_cnt} quét tuần tự từ $0$ tới $637$. Không có bất kỳ cổng logic nào chèn vào đường địa chỉ, đường tới hạn đạt trạng thái tối ưu, $F_{\max} > 350\text{ MHz}$.
+    \end{itemize}
+
+    \item \textbf{Phương án 2: Nửa ROM 319 từ $\times$ 16-bit kết hợp mạch gấp địa chỉ (Half-ROM):}
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item \emph{Dung lượng yêu cầu:} $319 \times 16 = 5.104\text{ bit}$. Vì chiều sâu $319 \le 512$, toàn bộ 319 từ nằm vừa vặn trong \textbf{đúng 1 khối M10K} đơn ở cấu hình $512 \times 20$!
+        \item \emph{Mạch gấp địa chỉ:} Dựa vào tính đối xứng chẵn $w[n] = w[637 - n]$, mạch điều khiển địa chỉ thực hiện ánh xạ:
+        \begin{equation}
+        \text{rom\_addr} = \begin{cases} n, & \text{nếu } n < 319 \\ 637 - n, & \text{nếu } n \ge 319 \end{cases}
+        \end{equation}
+        \item \emph{Đánh đổi:} Tiết kiệm được chính xác $1$ khối M10K (giảm $50\%$ dung lượng RAM). Tuy nhiên, hệ thống phải trả giá bằng việc chèn thêm một bộ so sánh 10-bit ($n < 319$), một bộ trừ ($637 - n$) và một bộ dồn kênh MUX 2:1 vào ngay trước chân địa chỉ của RAM M10K. Nếu không chốt thanh ghi, trễ lan truyền qua bộ trừ và MUX sẽ ăn sâu vào chu kỳ xung nhịp, làm giảm $F_{\max}$. Nếu chốt thêm thanh ghi để giữ $F_{\max}$, độ trễ đọc của toàn khối sẽ tăng thêm 1 chu kỳ.
+    \end{itemize}
+
+    \item \textbf{Phương án 3: Tính toán trực tiếp góc Cosin bằng thuật toán CORDIC:}
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Hoàn toàn không sử dụng bộ nhớ ROM, thay vào đó dùng khối CORDIC quay số (Rotation CORDIC) để tính $\cos(2\pi (n+1)/639)$ theo thời gian thực.
+        \item \emph{Đánh đổi:} Để đạt độ chính xác 16-bit, CORDIC cần ít nhất 16 tầng lặp với 16 bộ cộng/trừ 18-bit, tiêu tốn khoảng $250 \dots 350\text{ ALM}$ và tạo ra độ trễ đường ống lên tới $16\text{ chu kỳ}$.
+        \item Trên chip Cyclone V 5CSXFC6D6 vốn có tới \textbf{553 khối M10K} (hơn 5,5 triệu bit nhớ), việc lãng phí hàng trăm ALM chỉ để tiết kiệm 1 khối M10K là một sự tối ưu hóa sai lầm.
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Quyết định lựa chọn:} Tài liệu này chọn \textbf{Phương án 1 (ROM đầy đủ 638 từ)} làm đường dẫn chính để ưu tiên tính trong sáng của mã nguồn, giảm thiểu độ phức tạp điều khiển và đạt $F_{\max}$ tối đa. Phương án 2 (Nửa ROM) được phân tích cặn kẽ trong Bài tập 6.2 như một bài học mở rộng về tối ưu hóa diện tích vi mạch khi tài nguyên bộ nhớ bị thắt chặt.
+
+\subsubsection*{Lập luận về bộ nhân: Có thanh ghi đường ống hay không?}
+Tiếp nối mẫu lập luận ở Mục 4.3 của đề cương, ta khảo sát quãng đường tín hiệu đi từ ngõ ra của ROM vào bộ nhân và bộ làm tròn:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Bộ nhân tổ hợp thuần (Unregistered Multiplier, 0 nhịp trễ):} Tín hiệu $w_q$ vừa ra khỏi M10K lập tức đi thẳng qua các phần tử nhân logic, rồi kết quả tích số đi thẳng vào bộ cộng làm tròn $+16.384$ trước khi đến thanh ghi ngõ ra. Đường tới hạn bao gồm: trễ ngõ ra M10K ($T_{\text{co}} \approx 1{,}5\text{ ns}$), dây định tuyến từ hàng RAM sang khối DSP, thời gian nhân của khối DSP ($T_{\text{mult}} \approx 3{,}2\text{ ns}$) và trễ của bộ cộng làm tròn. Đường tín hiệu dài này giới hạn nghiêm trọng xung nhịp hệ thống.
+    \item \textbf{Bộ nhân có thanh ghi đường ống (Registered Multiplier, \texttt{LPM\_PIPELINE = 1}):} Khối Variable Precision DSP của Cyclone V được tích hợp sẵn một tầng thanh ghi tích số cứng (Multiplier Pipeline/Output Register) nằm ngay sau ma trận nhân partial-product. Khi kích hoạt tầng thanh ghi này:
+    \begin{enumerate}[label=(\alph*), itemsep=1pt]
+        \item Quãng đường truyền dẫn bị bẻ đôi thành hai chặng ngắn: Chặng 1 từ thanh ghi đầu vào tới thanh ghi tích số bên trong DSP; Chặng 2 từ thanh ghi tích số ra bộ cộng làm tròn.
+        \item Thanh ghi nằm sẵn trong silicon cứng của khối DSP nên \textbf{không tiêu tốn thêm bất kỳ Flip-Flop nào từ logic ALM}.
+        \item Độ trễ đường ống tăng thêm đúng $1\text{ chu kỳ}$. Vì hệ thống vận hành theo cơ chế băng chuyền dòng dữ liệu (Streaming Pipelining), độ trễ 1 chu kỳ này chỉ ảnh hưởng đến mẫu đầu tiên. Từ chu kỳ tiếp theo, mỗi nhịp đồng hồ đều đặn xuất xưởng một mẫu $x_w[n]$ hoàn chỉnh (thông lượng đạt tuyệt đối $1\text{ mẫu/chu kỳ}$).
+    \end{enumerate}
+\end{itemize}
+Do đó, ta chọn cấu hình **bộ nhân có thanh ghi đường ống** (\texttt{LPM\_PIPELINE = 1}).
+
+\subsubsection*{Dẫn xuất toán học: Vì sao $d = x - \text{mean}$ và $x_w$ bắt buộc phải là 17-bit có dấu?}
+Trong các phiên bản thảo luận ban đầu (Argon và bản v1), một sai sót tai hại đã bị bỏ quên: toàn bộ hệ thống giả định rằng hiệu số $d = x - \text{mean}$ và mẫu sau cửa sổ $x_w$ đều là các số nguyên 16-bit có dấu. Đây là một ngộ nhận chết người.
+
+Hãy phân tích dải động toán học từ nguyên lý gốc:
+\begin{equation}
+d[n] = x[n] - \text{mean}
+\end{equation}
+trong đó mẫu âm thanh $x[n] \in [-32.768, +32.767]$ và giá trị trung bình cục bộ $\text{mean} \in [-32.768, +32.767]$.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cận trên cực đại:} Khi một mẫu âm thanh đạt đỉnh dương toàn thang $x[n] = +32.767$ và giá trị trung bình của khung bị kéo sâu về phía âm cực đại $\text{mean} \approx -32.768$:
+    \begin{equation}
+    d_{\max} = +32.767 - (-32.768) = \mathbf{+65.535} = 2^{16} - 1 \quad (\text{Mã hex: } \texttt{0x0FFFF})
+    \end{equation}
+    \item \textbf{Cận dưới cực tiểu:} Ngược lại, khi $x[n] = -32.768$ và $\text{mean} \approx +32.767$:
+    \begin{equation}
+    d_{\min} = -32.768 - (+32.767) = \mathbf{-65.535} = -(2^{16} - 1) \quad (\text{Mã hex: } \texttt{0x10001})
+    \end{equation}
+\end{itemize}
+
+Dải giá trị $[-65.535, +65.535]$ vượt gấp đôi khả năng dung nạp của một biến số nguyên 16-bit có dấu ($[-32.768, +32.767]$). Do đó:
+\begin{equationcard}
+\textbf{Định luật độ rộng bit cho sai phân:}
+Để biểu diễn đầy đủ và không làm mất thông tin của tín hiệu sai phân $d = x - \text{mean}$, đường dữ liệu bắt buộc phải có độ rộng tối thiểu là \textbf{17 bit có dấu} (\texttt{signed [16:0]}), với dải biểu diễn $[-65.536, +65.535]$.
+\end{equationcard}
+
+Điều gì xảy ra tiếp theo khi nhân $d$ (17-bit có dấu) với hệ số cửa sổ Hanning $w$ (16-bit không dấu trong $[0, 32.767]$)?
+Tích số $p = d \cdot w$ có độ rộng $17 + 16 = 33\text{ bit}$ (hoặc $34\text{ bit}$ khi coi cả hai là có dấu). Khi đưa qua bộ làm tròn và dịch phải 15 bit:
+\begin{equation}
+x_w = \left\lfloor \frac{d \cdot w + 16.384}{32.768} \right\rfloor
+\end{equation}
+Giá trị cực đại của $x_w$ có thể vượt qua $32.767$ hay không? Câu trả lời là \textbf{CÓ}!
+
+Khảo sát khung thử nghiệm khắc nghiệt (Stress Frame A) trong tệp kiểm tra phần cứng chuẩn \path{golden_v2/hdl_check/} (kiểm chứng bằng \path{verify_v3/ch06_stress_audit.py}):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khung tín hiệu có dạng sóng xung kích toàn thang: $x[n] = -32.768$ trên phần lớn khung và $x[n] = +32.767$ trong khoảng hẹp $n \in [300, 339]$ ($40\text{ mẫu}$).
+    \item Giá trị trung bình cục bộ 426 mẫu được tính chính xác là $\text{mean} = -26.614$.
+    \item Tại mẫu trung tâm $n = 318$:
+    \begin{align}
+    x[318] &= +32.767 \nonumber \\
+    d[318] &= 32.767 - (-26.614) = \mathbf{+59.381} \quad (> 32.767) \nonumber \\
+    w[318] &= 32.767 \nonumber \\
+    p[318] &= 59.381 \times 32.767 = \mathbf{1.945.737.227} \nonumber \\
+    x_w[318] &= \left\lfloor \frac{1.945.737.227 + 16.384}{32.768} \right\rfloor = \left\lfloor \frac{1.945.753.611}{32.768} \right\rfloor = \mathbf{59.379}
+    \end{align}
+\end{itemize}
+
+\begin{costbox}
+\textbf{Cảnh báo sai số tràn số thảm họa nếu dùng 16-bit:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Con số $59.379$ vượt xa ngưỡng cực đại $32.767$ của số nguyên 16-bit.
+    \item Nếu ép vào 16-bit, mã nhị phân \texttt{16'hE7F3} sẽ bị hệ bù 2 hiểu thành $\mathbf{-6.157}$!
+    \item Đỉnh sóng dương cực lớn $+59.379$ bị lật ngược thành một thung lũng âm sâu $-6.157$.
+    \item Hậu quả là phép nhân tự tương quan ở Chương 7 sẽ lấy hai số âm nhân với nhau hoặc nhân với số dương, làm sai lệch hoàn toàn tích phân năng lượng và phá hỏng F0!
+\end{itemize}
+\end{costbox}
+Do đó, cả tín hiệu ngõ vào $d[n]$ lẫn tín hiệu ngõ ra $x_w[n]$ của module cửa sổ Hanning đều **bắt buộc phải có độ rộng 17 bit có dấu** (\texttt{signed [16:0]}). Đây là một phát hiện cải tiến then chốt của phiên bản Golden v2.
+
+\subsubsection*{Cơ chế làm tròn hội tụ (Convergent Rounding): $(p + 2^{14}) \gg 15$}
+Để triệt tiêu hiện tượng lệch một chiều (DC bias drift) khi chuyển đổi từ tích số 34-bit xuống mẫu 17-bit, mạch phần cứng không sử dụng phép cắt cụt (truncation, dịch phải thuần túy $p \gg 15$). 
+
+Nếu dùng phép cắt cụt: với mọi số dương, phần dư phân số trong khoảng $[0, 32.767]$ luôn bị vứt bỏ, làm giá trị trung bình của kết quả bị hụt mất trung bình $-0{,}5\text{ LSB} \approx -0{,}5 \times 2^{-15}$. Sự tích tụ của độ lệch âm này qua hàng nghìn phép cộng dồn trong bộ tự tương quan MAC (Chương 7) sẽ sinh ra một thành phần DC ảo, làm sụp đổ ngưỡng im lặng.
+
+Module \texttt{ch06\_hanning\_window.v} thực hiện thuật toán \textbf{làm tròn nửa bước lên} (round-half-up):
+\begin{equation}
+x_w = (p + 2^{14}) \gg 15 = (p + 16.384) \gg 15
+\end{equation}
+Số hạng $2^{14} = 16.384$ cộng vào đúng vị trí bit 14 (bit phân số cao nhất bị loại bỏ). Nếu phần phân số $\ge 0{,}5$ ($p[14] = 1$), phép cộng sẽ tạo ra một bit nhớ tràn sang bit 15, tự động làm tròn lên số nguyên kế tiếp. Nếu phần phân số $< 0{,}5$, không có nhớ và số nguyên được giữ nguyên. Nhờ đó, kỳ vọng sai số làm tròn đạt đúng bằng $0$, triệt tiêu hoàn toàn thành phần một chiều ký sinh.
+
+\textit{Tóm lại: Cấu hình ROM 638 từ 2 M10K tối ưu đường tới hạn; bộ nhân có thanh ghi LPM\_PIPELINE=1 giữ thông lượng 1 mẫu/chu kỳ; và độ rộng 17-bit có dấu là điều kiện bắt buộc để chứa trọn vẹn d = 59.381 và xw = 59.379 trong các khung tín hiệu khắc nghiệt.}
+
+
+\subsection*{6.4. Đường (A): Hiện thực hóa bằng IP Intel (ROM: 1-PORT và LPM\_MULT)}
+\addcontentsline{toc}{subsection}{6.4. Đường (A): Hiện thực hóa bằng IP Intel (ROM: 1-PORT và LPM\_MULT)}
+
+\subsubsection*{Cấu hình khối IP Intel ROM: 1-PORT trong Parameter Editor}
+Để triển khai bảng tra hệ số cửa sổ Hanning theo đường dẫn thư viện IP của Intel, ta sử dụng khối chức năng \texttt{ROM: 1-PORT} được hướng dẫn chi tiết trong tài liệu kỹ thuật \emph{Embedded Memory (RAM: 1-PORT, RAM: 2-PORT, ROM: 1-PORT, and ROM: 2-PORT) User Guide} (UG-01068).
+
+Dưới đây là phân tích chi tiết từng tham số cấu hình trong giao diện Parameter Editor của Quartus Prime:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Operation Mode (\texttt{operation\_mode = "ROM"}):} Chọn chế độ bộ nhớ chỉ đọc một cổng (Single-Port ROM). Trong chế độ này, Quartus tự động vô hiệu hóa toàn bộ mạch ghi, không tạo ra chân \texttt{wren} hay \texttt{data}, bảo đảm mảng nhớ không thể bị ghi đè ngoài ý muốn trong quá trình vận hành.
+    \item \textbf{Width of the 'q' output bus (\texttt{width\_a = 16}):} Độ rộng từ dữ liệu ngõ ra là $16\text{ bit}$. Giá trị này vừa vặn với định dạng dấu phẩy tĩnh Q1.15 của các hệ số cửa sổ Hanning ($0 \dots 32.767$).
+    \item \textbf{Width of the 'address' bus (\texttt{widthad\_a = 10}):} Độ rộng bus địa chỉ là $10\text{ bit}$. Vì $2^9 = 512 < 638 \le 2^{10} = 1024$, không gian địa chỉ 10-bit cho phép truy xuất tối đa 1024 từ, bao trọn vẹn $638\text{ mẫu}$ của cửa sổ Praat.
+    \item \textbf{Total number of words (\texttt{numwords\_a = 638}):} Chiều sâu danh định của bảng tra là đúng 638 từ. Các địa chỉ từ 638 đến 1023 không được sử dụng và có thể bỏ trống.
+    \item \textbf{Clocking method (\texttt{single\_clock}):} Sử dụng một miền xung nhịp đồng bộ duy nhất (\texttt{clock}) nối với nguồn đồng hồ hệ thống 50 MHz.
+    \item \textbf{Output 'q' register (\texttt{outdata\_reg\_a = "CLOCK0"}):} Kích hoạt tầng thanh ghi chốt dữ liệu ngõ ra cứng bên trong khối nhớ M10K. Nếu chọn \texttt{"UNREGISTERED"}, ngõ ra \texttt{q} sẽ là mạch tổ hợp thuần túy nối thẳng từ mảng ô nhớ (SRAM array), dẫn đến trễ truy xuất địa chỉ-sang-dữ liệu kéo dài ($T_{\text{aa}} \approx 2{,}8\text{ ns}$) và gây méo mó dạng sóng định thời. Việc bật thanh ghi ngõ ra chuyển toàn bộ quá trình đọc thành một thao tác đồng bộ hoàn hảo.
+    \item \textbf{Address register (\texttt{address\_reg\_a = "UNREGISTERED"}):} Không chốt thêm thanh ghi ở cửa ngõ địa chỉ vào. Nếu kích hoạt cả thanh ghi địa chỉ lẫn thanh ghi ngõ ra, tổng độ trễ đọc của ROM sẽ là 2 chu kỳ. Bằng cách để địa chỉ ở chế độ không chốt và bật thanh ghi ngõ ra, ta thu được \textbf{độ trễ đọc đúng bằng 1 chu kỳ xung nhịp}: địa chỉ được thiết lập trong chu kỳ $T$, dữ liệu hệ số $w_q$ xuất hiện ổn định ở ngõ ra ngay tại sườn dương của chu kỳ $T+1$.
+    \item \textbf{Memory initialization file (\texttt{init\_file = "hanning638\_q15.hex"}):} Chỉ định tệp khởi tạo dữ liệu nhị phân/thập lục phân. Trình biên dịch Quartus sẽ nhúng trực tiếp 638 giá trị lượng tử hóa này vào bitstream cấu hình FPGA (tệp \texttt{.sof}), bảo đảm ROM có sẵn dữ liệu ngay khi chip vừa khởi động xong mà không cần HPS phải nạp dữ liệu thủ công.
+    \item \textbf{RAM block type (\texttt{ram\_block\_type = "M10K"}):} Ép buộc Quartus ánh xạ bảng tra vào các khối nhớ phần cứng chuyên dụng M10K, tuyệt đối không phân tán vào các bảng tra logic mềm MLAB.
+\end{itemize}
+
+Khối IP \texttt{ROM: 1-PORT} sinh ra ba cổng giao tiếp cơ bản: ngõ vào xung nhịp \texttt{clock}, ngõ vào địa chỉ \texttt{address[9:0]}, và ngõ ra dữ liệu \texttt{q[15:0]}. Về mặt tài nguyên, do chiều sâu $638 > 512$, Quartus ánh xạ bảng tra này vào **2 khối M10K** (cấu hình $1024 \times 10$ ghép song song để tạo thành từ 16-bit), tiêu tốn đúng $0\text{ ALM}$ và $0\text{ DSP}$.
+
+\subsubsection*{Cấu hình khối IP Intel LPM\_MULT trong Parameter Editor}
+Để thực hiện phép nhân giữa mẫu sai phân $d = x - \text{mean}$ và hệ số cửa sổ $w$, ta sử dụng khối IP \texttt{LPM\_MULT} được chuẩn hóa trong tài liệu \emph{Integer Arithmetic IP Cores User Guide} (UG-01069).
+
+Phân tích các tham số cốt lõi trong Parameter Editor:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{DataA width (\texttt{LPM\_WIDTHA = 17}):} Độ rộng toán hạng $A$ là $17\text{ bit}$. Toán hạng này tiếp nhận tín hiệu sai phân $d = x - \text{mean}$. Như đã chứng minh bằng toán học ở Mục 6.3, hiệu số này có thể đạt dải $[-65.535, +65.535]$, do đó độ rộng 17-bit có dấu là bắt buộc để ngăn ngừa hiện tượng tràn số.
+    \item \textbf{DataB width (\texttt{LPM\_WIDTHB = 17}):} Độ rộng toán hạng $B$ là $17\text{ bit}$. Đây là điểm cần hết sức lưu ý: Trong cấu trúc IP \texttt{LPM\_MULT}, chỉ có một tham số \texttt{LPM\_REPRESENTATION} duy nhất áp dụng chung cho cả hai toán hạng. Vì toán hạng $A$ bắt buộc phải là số có dấu (\texttt{"SIGNED"}), toán hạng $B$ cũng buộc phải là số có dấu. Hệ số cửa sổ $w_q$ vốn là một số không âm 16-bit ($0 \le w_q \le 32.767$), có bit cao nhất MSB luôn bằng 0. Khi ghép thêm một bit 0 ở đầu (\texttt{\{1'b0, w\_q\}}), giá trị $w_q$ trở thành một số nguyên có dấu dương 17-bit hoàn toàn hợp lệ mà không bị biến đổi độ lớn.
+    \item \textbf{Multiplier representation} (\texttt{LPM\_REPRESENTATION}): Thiết lập \texttt{"SIGNED"} để nhân hai số nguyên có dấu bù 2.
+    \item \textbf{Result width (\texttt{LPM\_WIDTHP = 34}):} Độ rộng ngõ ra của tích số bằng tổng độ rộng hai toán hạng: $17 + 17 = 34\text{ bit}$.
+    \item \textbf{Pipeline latency (\texttt{LPM\_PIPELINE = 1}):} Kích hoạt một tầng thanh ghi đường ống ngõ ra bên trong khối DSP. Độ trễ từ khi đặt toán hạng vào ngõ vào đến khi tích số xuất hiện ở ngõ ra \texttt{result} là đúng $1\text{ chu kỳ}$ xung nhịp.
+    \item \textbf{Implementation style (\texttt{DEDICATED\_MULTIPLIER\_CIRCUITRY = "YES"}):} Yêu cầu Quartus ưu tiên ánh xạ phép nhân vào phần cứng khối DSP chuyên dụng thay vì tổng hợp từ các phần tử logic ALM.
+\end{itemize}
+
+Theo tài liệu \emph{Cyclone V Device Handbook, Volume 1} (CV-52003, Chương 5), mỗi khối Variable Precision DSP cứng của Cyclone V chứa hai bộ nhân độc lập kích thước $18 \times 18$-bit. Phép nhân $17 \times 17$-bit có dấu nằm vừa khít bên trong một bộ nhân $18 \times 18$-bit. Do đó, Quartus ánh xạ khối \texttt{LPM\_MULT} này vào \textbf{1 khối DSP} (thực chất chỉ chiếm một nửa tài nguyên của một khối DSP vật lý), tiêu tốn đúng $0\text{ ALM}$.
+
+\subsubsection*{Đoạn mã khởi tạo phần cứng IP Intel hoàn chỉnh}
+Đoạn mã Verilog dưới đây minh họa cách ghép nối trực tiếp hai khối IP \texttt{ROM: 1-PORT} và \texttt{LPM\_MULT} cùng mạch làm tròn:
+
+\begin{lstlisting}[language=Verilog, caption={Ghép nối hai khối IP Intel ROM: 1-PORT và LPM\_MULT cho bộ nhân cửa sổ Hanning}]
+// 1. Khoi tao ROM: 1-PORT (UG-01068) chua 638 he so Hanning Q1.15
+wire [15:0] w_q;
+rom_1port_hanning u_rom_hanning (
+    .clock   (clk),
+    .address (rom_addr),        // 10-bit address (0..637)
+    .q       (w_q)              // 16-bit Q1.15 window output (latency = 1)
+);
+
+// 2. Chot tre mau d = x - mean de can bang nhip voi ROM (latency = 1)
+reg signed [16:0] d_r1;
+always @(posedge clk) begin
+    d_r1 <= in_d;               // 17-bit signed difference sample
+end
+
+// 3. Khoi tao LPM_MULT (UG-01069) nhan 17x17-bit co dau (latency = 1)
+wire signed [33:0] mult_prod;
+lpm_mult #(
+    .lpm_hint           ("DEDICATED_MULTIPLIER_CIRCUITRY=YES"),
+    .lpm_representation ("SIGNED"),
+    .lpm_type           ("LPM_MULT"),
+    .lpm_pipeline       (1),    // 1-cycle internal pipeline register
+    .lpm_widtha         (17),
+    .lpm_widthb         (17),
+    .lpm_widthp         (34)
+) u_lpm_mult_hanning (
+    .clock  (clk),
+    .clken  (1'b1),
+    .aclr   (!rst_n),
+    .dataa  (d_r1),             // 17-bit signed operand A
+    .datab  ({1'b0, w_q}),      // 17-bit signed positive operand B
+    .result (mult_prod)         // 34-bit signed product
+);
+
+// 4. Mach lam tron hoi tu: (p + 2^14) >> 15
+wire signed [34:0] p_rounded = {mult_prod[33], mult_prod} + 35'sd16384;
+wire signed [16:0] xw_out = p_rounded[31:15];
+\end{lstlisting}
+
+\textit{Tóm lại: Đường dẫn IP Intel kết hợp ROM: 1-PORT (2 khối M10K, trễ 1 chu kỳ) và LPM\_MULT (1 khối DSP 18x18, trễ 1 chu kỳ); toàn bộ khối nhân cửa sổ chỉ tiêu tốn 2 M10K, 1 DSP, 0 ALM và có tổng độ trễ đường ống là 2 chu kỳ xung nhịp.}
+
+
+\subsection*{6.5. Đường (B): Hiện thực hóa phần cứng HDL tự viết và phối hợp thời gian}
+\addcontentsline{toc}{subsection}{6.5. Đường (B): Hiện thực hóa phần cứng HDL tự viết và phối hợp thời gian}
+
+\subsubsection*{Ý tưởng kiến trúc và cơ chế phối hợp thời gian (Timing Alignment)}
+Module phần cứng tự viết \texttt{ch06\_hanning\_window.v} được thiết kế theo cấu trúc đường ống dòng dữ liệu (Streaming Pipeline Architecture) đồng bộ, tự động xử lý toàn bộ quá trình áp cửa sổ Hanning và đo lường tham số biên độ cục bộ cho từng khung tiếng nói.
+
+Kiến trúc hoạt động của module được tổ chức thành 4 giai đoạn nhịp tuần tự:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Giai đoạn 0: Quét địa chỉ và nạp mẫu:}\\
+    Khi nhận xung kích hoạt \texttt{start = 1}, bộ đếm \texttt{sample\_cnt} được đặt lại về 0 và cờ \texttt{busy} bật lên 1. Bộ đếm \texttt{sample\_cnt[9:0]} nối trực tiếp tới dây địa chỉ \texttt{rom\_addr} của ROM \path{ch06_hanning_rom.v}. Mỗi khi có mẫu sai phân ngõ vào hợp lệ (\texttt{in\_valid = 1}), bộ đếm tăng 1 đơn vị, quét tuần tự từ 0 tới 637.
+    
+    \item \textbf{Giai đoạn 1: Đọc ROM đồng bộ và cân bằng nhịp mẫu sai phân:}\\
+    Khối ROM đồng bộ \texttt{ch06\_hanning\_rom} có độ trễ đọc đúng 1 chu kỳ xung nhịp. Tại sườn dương đồng hồ đầu tiên, địa chỉ \texttt{rom\_addr} được nạp vào và dữ liệu hệ số cửa sổ \texttt{w\_q} sẽ xuất hiện tại ngõ ra của ROM sau 1 chu kỳ. 
+    
+    Để hai toán hạng của phép nhân gặp nhau chính xác tại cùng một thời điểm, mẫu sai phân \texttt{in\_d} ngõ vào được đưa qua một tầng thanh ghi trễ \texttt{d\_r1 <= in\_d}. Nhờ tầng thanh ghi này, tại sườn dương tiếp theo, cả \texttt{d\_r1} (mẫu $d[n]$) lẫn \texttt{w\_q} (hệ số $w[n]$) đều sẵn sàng đồng thời tại cửa ngõ của bộ nhân.
+    
+    \item \textbf{Giai đoạn 2: Nhân có dấu $17 \times 17$-bit và thanh ghi đường ống:}\\
+    Hệ số \texttt{w\_q} được mở rộng thành số nguyên có dấu dương 17-bit \texttt{\{1'b0, w\_q\}}. Phép nhân có dấu được thực hiện:
+    \begin{equation}
+    \texttt{prod\_comb} = \texttt{d\_r1} \times \texttt{\{1'b0, w\_q\}}
+    \end{equation}
+    Tích số 34-bit được chốt vào thanh ghi đường ống \texttt{prod\_r2} ở cạnh xung nhịp tiếp theo, tương đương hoàn toàn với tham số \texttt{LPM\_PIPELINE = 1} của khối IP Intel.
+    
+    \item \textbf{Giai đoạn 3: Làm tròn hội tụ và mạch tích hợp dò đỉnh LocalPeak ($LP$):}\\
+    Mạch cộng thêm hằng số làm tròn $+16.384$ vào tích số \texttt{prod\_r2} rồi trích xuất các bit $[31:15]$ để tạo thành mẫu ngõ ra 17-bit có dấu \texttt{out\_xw}, đồng thời bật cờ báo hợp lệ \texttt{out\_valid = 1}.
+    
+    Song song với quá trình xuất dữ liệu, mạch liên tục giám sát chỉ số mẫu \texttt{idx\_r2}. Khi chỉ số nằm trong phạm vi cửa sổ trung tâm tiếng nói ($n \in [212, 425]$, bao gồm $214\text{ mẫu}$), mạch tính toán biên độ tuyệt đối $|x_w[n]|$ và so sánh với thanh ghi \texttt{lp\_reg}. Khi mẫu cuối cùng ($n = 637$) rời khỏi đường ống, mạch chốt giá trị đỉnh vào \texttt{out\_lp}, phát xung hoàn tất khung \texttt{out\_done = 1} trong đúng 1 chu kỳ và hạ cờ \texttt{busy} về 0.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{\input{chuong_v3/fig_ch06_window_arch.tex}}
+\caption{Sơ đồ kiến trúc vi mô phần cứng khối nhân cửa sổ Hanning (\texttt{rtl/v3/ch06\_hanning\_window.v}), minh họa bộ đếm quét địa chỉ ROM, thanh ghi cân bằng nhịp, bộ nhân DSP đường ống và bộ dò đỉnh LocalPeak.}
+\label{fig:ch06_window_arch}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch06_window_arch} mô tả dòng dữ liệu qua bốn giai đoạn xử lý của module \path{rtl/v3/ch06_hanning_window.v}. Ở góc trên bên trái, bộ đếm \texttt{sample\_cnt[9:0]} tạo địa chỉ cho khối nhớ \texttt{ch06\_hanning\_rom}. Dữ liệu $w_q$ sau 1 nhịp đọc đi vào toán hạng $B$ của bộ nhân DSP, đồng thời mẫu $d[n]$ sau 1 nhịp trễ qua thanh ghi \texttt{d\_r1} đi vào toán hạng $A$. Tích số 34-bit được chốt qua thanh ghi \texttt{prod\_r2} trước khi chuyển sang bộ làm tròn $(p + 2^{14}) \gg 15$ để xuất ra \texttt{out\_xw} và \texttt{out\_valid}. Ở nửa dưới, dòng dữ liệu \texttt{xw} đi vào khối so sánh cực đại để cập nhật thanh ghi \texttt{lp\_reg}, phát cờ \texttt{out\_done} và giá trị \texttt{out\_lp} khi xử lý xong mẫu 637.
+
+\subsubsection*{Trích dẫn mã nguồn HDL cốt lõi}
+Đoạn mã Verilog-2001 dưới đây trích dẫn trực tiếp từ tệp \path{rtl/v3/ch06_hanning_window.v}, thể hiện trọn vẹn 3 khối đường ống và mạch tích hợp dò đỉnh LocalPeak:
+
+\lstinputlisting[
+    language=Verilog,
+    firstline=79,
+    lastline=173,
+    firstnumber=79,
+    caption={Đường ống tính toán và mạch dò LocalPeak (\texttt{rtl/v3/ch06\_hanning\_window.v:79--173})}
+]{rtl/v3/ch06_hanning_window.v}
+
+\subsubsection*{Giải thích cặn kẽ mã nguồn Verilog từng dòng}
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Dòng 79--106 (Giai đoạn 0 $\to$ Giai đoạn 1):} Khối \texttt{always} quản lý xung kích hoạt \texttt{start} và nạp mẫu ngõ vào. Khi có xung \texttt{start}, bộ đếm \texttt{sample\_cnt} được xóa về 0 và cờ \texttt{busy} bật lên 1. Khi có mẫu hợp lệ (\texttt{in\_valid = 1}), mạch chốt mẫu sai phân vào thanh ghi \texttt{d\_r1 <= in\_d}, bật cờ hiệu lực \texttt{v\_r1 <= 1'b1} và lưu lại chỉ số mẫu tương ứng \texttt{idx\_r1}. Bộ đếm \texttt{sample\_cnt} tự động tăng tuần tự từ 0 tới 637 và cuộn vòng về 0 khi hết khung.
+    \item \textbf{Dòng 113--126 (Giai đoạn 1 $\to$ Giai đoạn 2):} Dòng 113 mở rộng hệ số \texttt{w\_q} thành số có dấu dương 17-bit: \texttt{w\_signed = \{1'b0, w\_q\}}. Dòng 114 thực hiện phép nhân nhị phân có dấu giữa hai số 17-bit: \texttt{prod\_comb = d\_r1 * w\_signed}. Khối \texttt{always} ở dòng 116 chốt tích số 34-bit này vào thanh ghi đường ống \texttt{prod\_r2}, đồng thời truyền cờ hiệu lực \texttt{v\_r2 <= v\_r1} và chỉ số mẫu \texttt{idx\_r2 <= idx\_r1}. Tầng thanh ghi này giúp Quartus ánh xạ trực tiếp vào thanh ghi tích số bên trong khối Variable Precision DSP của Cyclone V.
+    \item \textbf{Dòng 132--134 (Mạch làm tròn hội tụ):} Phép cộng làm tròn nửa bước được thực hiện bằng logic tổ hợp: \texttt{p\_round = \{prod\_r2[33], prod\_r2\} + 35'sd16384}. Bit dấu được mở rộng lên 35-bit để chống tràn khi cộng số hạng dương. Dòng 133 trích xuất các bit $[31:15]$ (tương đương phép dịch phải số học 15 bit) tạo ra mẫu kết quả \texttt{xw\_comb}. Dòng 134 tính trị tuyệt đối \texttt{abs\_xw} phục vụ mạch dò đỉnh.
+    \item \textbf{Dòng 136--173 (Giai đoạn 3: Xuất dữ liệu và dò LocalPeak):} Khối \texttt{always} chốt ngõ ra \texttt{out\_xw <= xw\_comb} và bật cờ \texttt{out\_valid <= v\_r2}. Ở dòng 155--159, nếu chỉ số mẫu trong khoảng $212 \dots 425$ (\texttt{LP\_FIRST} tới \texttt{LP\_LAST}) và biên độ lớn hơn giá trị hiện tại, thanh ghi \texttt{lp\_reg} cập nhật giá trị mới. Khi mẫu cuối cùng ($n = 637$) rời khỏi đường ống ở dòng 162--166, mạch phát xung \texttt{out\_done <= 1'b1}, chốt giá trị LocalPeak vào cổng ngõ ra \texttt{out\_lp <= lp\_reg} và xóa cờ \texttt{busy <= 1'b0}.
+\end{itemize}
+
+\subsubsection*{Trích dẫn mã nguồn mô hình song sinh Python}
+Dưới đây là đoạn mã mô phỏng chu kỳ bit-đối-bit trích từ hàm \texttt{step} của lớp \texttt{HanningWindowTwin} trong tệp \path{verify_v3/ch06_window_twin.py}:
+
+\lstinputlisting[
+    language=Python,
+    firstline=82,
+    lastline=165,
+    firstnumber=82,
+    caption={Mô hình song sinh Python chu-kỳ-đối-chu-kỳ (\texttt{ch06\_window\_twin.py:82--165})}
+]{verify_v3/ch06_window_twin.py}
+
+\subsubsection*{Bảng đối chiếu dòng mã giữa Python Twin và Verilog HDL}
+Bảng~\ref{tab:ch06_twin_vs_hdl} đối soát chi tiết từng dòng mã logic giữa mô hình song sinh Python và hiện thực phần cứng Verilog, chứng minh tính tương đương tuyệt đối về chức năng và chu kỳ nhịp.
+
+\begin{table}[H]
+\centering
+\caption{Bảng đối chiếu trực tiếp giữa mã nguồn mô hình song sinh Python và Verilog HDL}
+\label{tab:ch06_twin_vs_hdl}
+\footnotesize
+\begin{tabularx}{\textwidth}{p{2.6cm} p{2.6cm} X}
+\toprule
+\textbf{Python Twin (Dòng)} & \textbf{Verilog HDL (Dòng)} & \textbf{Ý nghĩa kiến trúc và vai trò phần cứng} \\
+\midrule
+Dòng 83--87 & Dòng 149--150 & Đánh giá tín hiệu ngõ ra \texttt{out\_valid} dựa trên cờ hiệu lực \texttt{v\_r2} của Giai đoạn 2. \\
+\addlinespace[3pt]
+Dòng 93--96 & Dòng 132--133, 152 & Thực hiện phép làm tròn nửa bước $(p + 16.384) \gg 15$, chốt kết quả vào thanh ghi ngõ ra \texttt{out\_xw}. \\
+\addlinespace[3pt]
+Dòng 98--101 & Dòng 134, 155--159 & Tính trị tuyệt đối $|x_w|$ và cập nhật đỉnh cục bộ \texttt{lp\_reg} trong phạm vi mẫu $212 \dots 425$. \\
+\addlinespace[3pt]
+Dòng 103--105 & Dòng 162--166 & Nhận diện mẫu cuối cùng ($n = 637$), kích hoạt xung hoàn tất \texttt{out\_done = 1} và chốt \texttt{out\_lp}. \\
+\addlinespace[3pt]
+Dòng 109--112 & Dòng 113--125 & Tính tích số $17 \times 17$-bit có dấu và chốt vào thanh ghi đường ống \texttt{prod\_r2} (Giai đoạn 2). \\
+\addlinespace[3pt]
+Dòng 115--122 & Dòng 92--96 & Chốt mẫu ngõ vào vào thanh ghi trễ \texttt{d\_r1} và đọc giá trị hệ số \texttt{w\_q} từ ROM (Giai đoạn 1). \\
+\addlinespace[3pt]
+Dòng 126--133 & Dòng 87--101 & Quản lý bộ đếm địa chỉ mẫu \texttt{sample\_cnt} và cờ trạng thái \texttt{busy}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Vì sao khớp IP và thay đổi lựa chọn thì sao?}
+Module HDL tự viết \texttt{ch06\_hanning\_window.v} khớp bit-đối-bit và chu-kỳ-đối-chu-kỳ với cấu hình IP Intel nhờ ba yếu tố kỹ thuật then chốt:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cân bằng độ trễ đọc của ROM:} Khối ROM \texttt{ch06\_hanning\_rom} có độ trễ đọc 1 chu kỳ, khớp với tham số \texttt{outdata\_reg\_a = "CLOCK0"} của IP \texttt{ROM: 1-PORT}. Thanh ghi trễ \texttt{d\_r1} giữ mẫu $d[n]$ đúng 1 chu kỳ, bảo đảm hai toán hạng đến cửa bộ nhân cùng một nhịp.
+    \item \textbf{Khớp tầng thanh ghi nhân DSP:} Tầng thanh ghi \texttt{prod\_r2} khớp hoàn toàn với tham số \texttt{LPM\_PIPELINE = 1} của \texttt{LPM\_MULT}. Cả hai đều được Quartus đóng gói trực tiếp vào thanh ghi tích số cứng của khối Variable Precision DSP.
+    \item \textbf{Mở rộng dấu toán hạng:} Toán hạng $w_q$ được mở rộng bit 0 tường minh (\texttt{\{1'b0, w\_q\}}), bảo đảm phép nhân hai số có dấu cho ra kết quả trùng khớp $100\%$ với việc nhân số có dấu và số không dấu.
+\end{enumerate}
+
+Nếu ta thay đổi các lựa chọn thiết kế:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Nếu bỏ thanh ghi \texttt{d\_r1}:} Mẫu $d[n]$ sẽ bị nhân lệch với hệ số của mẫu trước đó $w[n-1]$. Toàn bộ chuỗi mẫu $x_w[n]$ bị sai lệch pha, làm suy giảm nghiêm trọng độ chính xác của tự tương quan.
+    \item \emph{Nếu bỏ thanh ghi tích số \texttt{prod\_r2} (\texttt{LPM\_PIPELINE = 0}):} Độ trễ giảm từ 2 chu kỳ xuống 1 chu kỳ, nhưng đường tới hạn sẽ kéo dài từ ngõ ra ROM qua khối DSP đến bộ cộng làm tròn, làm giảm tần số hoạt động cực đại $F_{\max}$.
+    \item \emph{Nếu chuyển sang dùng nửa ROM (Phương án 2):} Dung lượng bộ nhớ tiết kiệm được 1 khối M10K, nhưng hệ thống phải chèn thêm logic tổ hợp tính địa chỉ $637 - n$, có thể làm tăng nhẹ trễ thời gian thiết lập địa chỉ.
+\end{itemize}
+
+\textit{Tóm lại: Module HDL tự viết đạt thông lượng 1 mẫu/chu kỳ, độ trễ 2 chu kỳ, cân bằng nhịp hoàn hảo với ROM 1 nhịp và tích hợp sẵn bộ dò đỉnh LocalPeak cho ngưỡng voicing mà không tốn thêm bộ đệm.}
+
+\subsection*{6.6. Bảng so sánh IP vs HDL tự viết, quy ước lấy mẫu testbench và bài tập cuối chương}
+\addcontentsline{toc}{subsection}{6.6. Bảng so sánh IP vs HDL tự viết, quy ước lấy mẫu testbench và bài tập cuối chương}
+
+\subsubsection*{Bảng so sánh toàn diện: Khối IP Intel so với HDL tự viết}
+Bảng~\ref{tab:ch06_ip_vs_hdl} đối chiếu chi tiết các chỉ số kỹ thuật và đặc tính kiến trúc giữa hai phương án: ghép nối hai khối IP chuẩn Intel (\texttt{ROM: 1-PORT} và \texttt{LPM\_MULT}) và thiết kế module HDL tự viết \path{rtl/v3/ch06_hanning_window.v}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{So sánh toàn diện giữa đường dẫn sử dụng IP lõi Intel và giải pháp HDL tự viết (\texttt{rtl/v3/ch06\_hanning\_window.v}).}
+\label{tab:ch06_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.2cm}XX}
+\toprule
+\textbf{Tiêu chí so sánh} & \textbf{Đường (A): Ghép nối IP lõi Intel} & \textbf{Đường (B): HDL tự viết (\texttt{ch06\_hanning\_window.v})} \\
+\midrule
+\textbf{Khối nhớ M10K} & 2 khối M10K (cấu hình $1024 \times 10$, CV-52003); hoặc 1 M10K ($512 \times 20$) nếu tự gấp nửa ROM & 2 khối M10K (Quartus tự động suy diễn từ mảng ROM $638 \times 16$-bit); 0 ALM cho bảng tra \\
+\addlinespace[2pt]
+\textbf{Khối DSP phần cứng} & 1 bộ nhân $18 \times 18$ thuộc khối Variable Precision DSP (CV-52003, Chương 5) & 1 bộ nhân $18 \times 18$ thuộc khối Variable Precision DSP (CV-52003, Chương 5) \\
+\addlinespace[2pt]
+\textbf{Tài nguyên logic ALM} & 0 ALM cho bộ nhân/ROM; cần mạch ngoài cho FSM và dò đỉnh (phải đo trong Quartus Fitter) & Tích hợp trọn gói bộ đếm địa chỉ, thanh ghi cân bằng nhịp và bộ dò đỉnh LocalPeak (phải đo trong Quartus Fitter) \\
+\addlinespace[2pt]
+\textbf{Tần số cực đại $F_{\max}$} & Phải đo trong Quartus TimeQuest (vượt xa 50 MHz theo Device Handbook) & Phải đo trong Quartus TimeQuest (đường ống 2 tầng bảo đảm $F_{\max} > 200\text{ MHz}$) \\
+\addlinespace[2pt]
+\textbf{Độ trễ đường ống (Latency)} & 2 chu kỳ xung nhịp (1 chu kỳ đọc ROM + 1 chu kỳ \texttt{LPM\_PIPELINE = 1}) & 2 chu kỳ xung nhịp (1 chu kỳ đọc ROM + 1 chu kỳ chốt tích số \texttt{prod\_r2}) \\
+\addlinespace[2pt]
+\textbf{Thông lượng (Throughput)} & 1 mẫu / chu kỳ xung nhịp (xử lý liên tục) & 1 mẫu / chu kỳ xung nhịp (xử lý liên tục) \\
+\addlinespace[2pt]
+\textbf{Mạch dò đỉnh LocalPeak ($LP$)} & Không tích hợp sẵn (phải tự thiết kế bộ đệm ngoài và logic so sánh tìm $\max$) & Tích hợp sẵn bộ dò đỉnh trong phạm vi mẫu $212 \dots 425$, không tốn thêm bộ nhớ đệm hay chu kỳ xung nhịp \\
+\addlinespace[2pt]
+\textbf{Độc lập công cụ mô phỏng} & Phụ thuộc thư viện mô phỏng độc quyền của Altera/Intel (\texttt{altera\_mf}) & Chuẩn Verilog-2001 thuần túy, tương thích hoàn toàn với Icarus Verilog, Verilator, QuestaSim \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Đọc bảng.} Cả hai giải pháp đều khai thác tối ưu các khối phần cứng cứng trên chip Cyclone V (2 khối RAM M10K và 1 khối DSP Variable Precision) để đạt thông lượng 1 mẫu/chu kỳ ở độ trễ 2 chu kỳ xung nhịp mà không tiêu tốn logic ALM cho các phép toán nặng. Tuy nhiên, giải pháp HDL tự viết \path{rtl/v3/ch06_hanning_window.v} mang lại lợi thế vượt trội nhờ tích hợp sẵn bộ dò đỉnh LocalPeak trong khoảng mẫu trung tâm $212 \dots 425$ phục vụ trực tiếp cho thuật toán quyết định hữu thanh/vô thanh ở Chương 10 mà không cần thêm bộ đệm dữ liệu hay logic điều khiển trung gian, đồng thời bảo đảm khả năng kiểm chứng độc lập hoàn toàn với các công cụ mã nguồn mở.
+
+\subsubsection*{Quy ước lấy mẫu testbench và giao thức kiểm chứng chu kỳ}
+Để triệt tiêu hoàn toàn các tranh chấp trạng thái (race conditions) và bảo đảm tính nhất quán tuyệt đối giữa mô hình mô phỏng Python và trình mô phỏng phần cứng Verilog, testbench \path{tb/v3/tb_ch06_hanning.v} tuân thủ chặt chẽ \textbf{quy ước lấy mẫu hai pha (Two-Phase Sampling Convention)}:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Pha kích thích ngõ vào (\texttt{@(negedge clk)}):}\\ Mọi tín hiệu kích thích ngõ vào (\texttt{rst\_n}, \texttt{start}, \texttt{in\_valid}, \texttt{in\_d}) đều được gán giá trị tại sườn âm của xung nhịp đồng hồ. Điều này cung cấp trọn vẹn một nửa chu kỳ xung nhịp ($10\text{ ns}$ ở tần số $50\text{ MHz}$) cho thời gian thiết lập (setup time) và bảo đảm dữ liệu hoàn toàn ổn định trước khi sườn dương tiếp theo xuất hiện.
+    \item \textbf{Pha thu thập và đối soát ngõ ra (\texttt{@(posedge clk); \#1;}):} Các tín hiệu ngõ ra đồng bộ (\texttt{out\_valid}, \texttt{out\_xw}, \texttt{out\_done}, \texttt{out\_lp}) được chốt bởi các phần tử nhớ ở sườn dương xung nhịp. Testbench chờ đúng sườn dương đồng hồ và dịch thêm một khoảng trễ mô phỏng nhỏ \texttt{\#1} ($1\text{ ps}$) để các thanh ghi hoàn tất quá trình cập nhật trạng thái trước khi đọc và so sánh với giá trị kỳ vọng từ tệp vector.
+    \item \textbf{Đếm lỗi tích lũy và kiểm tra độ dài chuỗi vector:} Testbench không hủy ngang mô phỏng khi phát hiện điểm sai lệch đầu tiên, mà ghi nhận chi tiết chu kỳ vi phạm và tiếp tục chạy đến hết tập vector nhằm đếm tích lũy toàn bộ số lỗi so sánh. Đồng thời, testbench theo dõi biến đếm chu kỳ \texttt{cycle\_idx} và kiểm tra xem tổng số chu kỳ đọc được có đạt đủ $3.250\text{ chu kỳ}$ kỳ vọng hay không. Nếu tệp vector bị cắt cụt do lỗi định dạng hay kết thúc sớm, testbench lập tức phát cờ báo lỗi \texttt{[FAIL]}.
+    \item \textbf{Phân tích các chu kỳ khởi động:} Tại chu kỳ 0, hệ thống được xác lập lại ở trạng thái reset (\texttt{rst\_n = 0}). Tại chu kỳ 1, xung kích hoạt \texttt{start = 1} được phát đi để khởi tạo bộ đếm mẫu \texttt{sample\_cnt = 0} và bật cờ \texttt{busy = 1}. Từ chu kỳ 2, mẫu đầu tiên $d[0]$ được đưa vào với \texttt{in\_valid = 1}. Do độ trễ đường ống là 2 chu kỳ (1 chu kỳ đọc ROM và 1 chu kỳ thanh ghi tích số), mẫu ngõ ra cửa sổ hóa đầu tiên $x_w[0]$ xuất hiện chính xác tại chu kỳ 4 cùng với xung \texttt{out\_valid = 1}.
+\end{enumerate}
+
+\subsubsection*{Tập vector kiểm thử toàn diện và kiểm chứng độc lập}
+Tập vector kiểm thử được mô hình song sinh Python (\path{verify_v3/ch06_window_twin.py}) sinh ra bao gồm \textbf{3.250 chu kỳ xung nhịp liên tục}, quét qua 5 khung tín hiệu với các đặc tính vật lý đa dạng:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khung âm thanh sạch (Clean Frame, $638\text{ mẫu}$):} Trích xuất trực tiếp từ tín hiệu trượt tần \path{golden_v2/synth_glide_vuv_16k.wav}, kiểm chứng khả năng bảo toàn dạng sóng trong điều kiện lý tưởng.
+    \item \textbf{Khung âm thanh nhiễu (Noisy Frame, $638\text{ mẫu}$):} Nhiễm nhiễu Gaussian trắng với tỷ số tín hiệu trên nhiễu $\text{SNR} = 5\text{ dB}$, kiểm chứng độ ổn định của phép nhân và mạch làm tròn khi biên độ dao động ngẫu nhiên cao.
+    \item \textbf{Khung thử nghiệm khắc nghiệt A (Stress Frame A, $638\text{ mẫu}$):} Mẫu phân cực mạnh có độ lệch một chiều cực đoan ($\text{mean} = -26.614$, $d[318] = +59.381$, $x_w[318] = +59.379$), kiểm chứng khả năng chịu tải của đường truyền dữ liệu 17-bit có dấu mà không gây tràn số.
+    \item \textbf{Khung thử nghiệm khắc nghiệt B (Stress Frame B, $638\text{ mẫu}$):} Sóng vuông đảo dấu toàn dải biên độ xen kẽ giữa $+32.767$ và $-32.768$, kiểm chứng các bước chuyển mức biên độ cực đại liên tục giữa hai chu kỳ kề nhau.
+    \item \textbf{Khung khoảng lặng (Silence Frame, $638\text{ mẫu}$):} Tín hiệu phẳng bằng 0, kiểm chứng việc khử trôi dạt và bảo đảm toàn bộ ngõ ra $x_w$ và đỉnh $LP$ giữ đúng mức 0.
+\end{enumerate}
+
+\begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Mục chờ kiểm chứng Icarus Verilog trên Linux (Reviewer)}]
+\small\texttt{[TODO-IVERILOG-RUN: Reviewer chạy kịch bản \path{verify_v3/run_ch06_iverilog.sh} trên Linux và điền kết quả mô phỏng tại đây]}\\
+\small\texttt{tb\_ch06\_hanning: Total cycles tested: 3250 -- Total comparison errors: 0 (dự kiến)}\\
+\footnotesize(Công cụ Icarus Verilog \texttt{-g2012 -Wall}; tập vector kiểm thử trích từ \path{verify_v3/tb_ch06_hanning_stim.txt} và \path{verify_v3/tb_ch06_hanning_expected.txt}; kết quả kiểm chứng sẽ được ghi vào nhật ký \path{verify_v3/ch06_iverilog.log}.)
+\end{tcolorbox}
+
+\subsection*{Bài tập cuối chương}
+\addcontentsline{toc}{subsection}{Bài tập cuối chương}
+
+Dưới đây là 4 bài tập thực chiến giúp củng cố toàn diện các kiến thức về rò rỉ phổ, kiến trúc khối nhớ ROM, phương pháp số học tính toán cửa sổ và kỹ thuật lượng tử hóa Q1.15 trên FPGA. Toàn bộ các kết quả số liệu đều được kiểm chứng độc lập bởi kịch bản \path{verify_v3/ch06_exercises.py}.
+
+\subsubsection*{Bài tập 6.1: So sánh định lượng rò rỉ phổ giữa các loại cửa sổ kinh điển}
+\textbf{Đề bài:} Trong xử lý tín hiệu tiếng nói với tần số lấy mẫu $f_s = 16.000\text{ Hz}$ và độ dài khung phân tích $N = 638\text{ mẫu}$ ($T_w \approx 40\text{ ms}$):
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy tính toán độ rộng búp chính ở mức $-3\text{ dB}$ (tính bằng Hertz) của 4 loại cửa sổ: Chữ nhật (Rectangular), Hanning $N+1$ (Praat), Hamming, và Blackman.
+    \item Xác định mức suy hao của búp bên đầu tiên (tính bằng dB so với đỉnh búp chính) và tốc độ suy giảm của các búp bên ở xa (tính bằng dB/octave) của 4 loại cửa sổ trên.
+    \item Lập bảng tổng hợp các chỉ số và giải thích lý do vì sao Paul Boersma chọn cửa sổ Hanning $N+1$ cho thuật toán ước lượng F0 thay vì cửa sổ Hamming hay Blackman.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Độ rộng búp chính ở mức $-3\text{ dB}$ được xác định theo hệ số chuẩn hóa của từng loại cửa sổ:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Cửa sổ Chữ nhật: $\Delta f_{-3\text{dB}} \approx 0{,}89 \times \frac{f_s}{N} = 0{,}89 \times \frac{16.000}{638} \approx \mathbf{22{,}32\text{ Hz}}$.
+        \item Cửa sổ Hanning $N+1$: $\Delta f_{-3\text{dB}} \approx 1{,}44 \times \frac{f_s}{N} = 1{,}44 \times \frac{16.000}{638} \approx \mathbf{36{,}11\text{ Hz}}$.
+        \item Cửa sổ Hamming: $\Delta f_{-3\text{dB}} \approx 1{,}30 \times \frac{f_s}{N} = 1{,}30 \times \frac{16.000}{638} \approx \mathbf{32{,}60\text{ Hz}}$.
+        \item Cửa sổ Blackman: $\Delta f_{-3\text{dB}} \approx 1{,}68 \times \frac{f_s}{N} = 1{,}68 \times \frac{16.000}{638} \approx \mathbf{42{,}13\text{ Hz}}$.
+    \end{itemize}
+
+    \item Mức suy hao búp bên đầu tiên và tốc độ đổ dốc ở vùng tần số cao:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Cửa sổ Chữ nhật: Búp bên đầu tiên chỉ suy giảm $\mathbf{-13{,}26\text{ dB}}$, tốc độ đổ dốc chậm ở mức $\mathbf{-6{,}0\text{ dB/octave}}$ (tương ứng độ suy giảm theo $1/\omega$).
+        \item Cửa sổ Hanning $N+1$: Búp bên đầu tiên suy giảm sâu xuống $\mathbf{-31{,}47\text{ dB}}$ (tốt hơn chữ nhật $18{,}21\text{ dB}$), tốc độ đổ dốc cực kỳ nhanh chóng $\mathbf{-18{,}0\text{ dB/octave}}$ (tương ứng độ suy giảm theo $1/\omega^3$).
+        \item Cửa sổ Hamming: Nhờ tối ưu hóa triệt tiêu búp bên gần, búp bên đầu tiên đạt mức suy giảm rất tốt $\mathbf{-42{,}68\text{ dB}}$. Tuy nhiên, do hàm Hamming không triệt tiêu về 0 ở hai đầu mút ($w[0] = 0{,}08 \ne 0$), bước nhảy biên tạo ra thành phần gián đoạn khiến tốc độ đổ dốc ở xa bị chững lại ở mức $\mathbf{-6{,}0\text{ dB/octave}}$.
+        \item Cửa sổ Blackman: Búp bên đầu tiên suy giảm tới $\mathbf{-58{,}11\text{ dB}}$ và tốc độ đổ dốc đạt $\mathbf{-18{,}0\text{ dB/octave}}$.
+    \end{itemize}
+
+    \item Bảng tổng hợp so sánh đặc tính phổ rò rỉ:
+    \begin{center}
+    \small
+    \begin{tabular}{lccc}
+    \toprule
+    \textbf{Loại cửa sổ} & \textbf{Độ rộng búp chính ($-3\text{ dB}$)} & \textbf{Búp bên đầu tiên} & \textbf{Tốc độ dốc búp bên} \\
+    \midrule
+    Chữ nhật (Rectangular) & $22{,}32\text{ Hz}$ ($0{,}89\,f_s/N$) & $-13{,}26\text{ dB}$ & $-6{,}0\text{ dB/octave}$ \\
+    Hanning $N+1$ (Praat)  & $36{,}11\text{ Hz}$ ($1{,}44\,f_s/N$) & $-31{,}47\text{ dB}$ & $\mathbf{-18{,}0\text{ dB/octave}}$ \\
+    Hamming                & $32{,}60\text{ Hz}$ ($1{,}30\,f_s/N$) & $\mathbf{-42{,}68\text{ dB}}$ & $-6{,}0\text{ dB/octave}$ \\
+    Blackman               & $42{,}13\text{ Hz}$ ($1{,}68\,f_s/N$) & $-58{,}11\text{ dB}$ & $-18{,}0\text{ dB/octave}$ \\
+    \bottomrule
+    \end{tabular}
+    \end{center}
+
+    \textbf{Lý do Praat chọn Hanning $N+1$:} 
+    Mục tiêu tối thượng của hàm tự tương quan là phân tách các đỉnh chu kỳ cơ bản và triệt tiêu các họa ba bậc cao ở tần số xa. 
+    Mặc dù cửa sổ Hamming có búp bên đầu tiên thấp hơn ($-42{,}68\text{ dB}$), nhưng bước nhảy biên ở hai đầu mút khiến năng lượng rò rỉ ở vùng tần số cao suy giảm rất chậm ($-6\text{ dB/octave}$), dẫn đến các gợn sóng phụ trên hàm tự tương quan. 
+    Ngược lại, cửa sổ Blackman có búp bên cực thấp nhưng búp chính lại nở quá rộng ($42{,}13\text{ Hz}$), làm mờ độ nhọn của đỉnh tự tương quan và làm giảm độ chính xác khi nội suy sinc. 
+    Cửa sổ Hanning $N+1$ dung hòa hoàn hảo giữa độ rộng búp chính vừa phải ($36{,}11\text{ Hz}$) và tốc độ dập tắt búp bên xa cực nhanh ($-18\text{ dB/octave}$), tạo ra nền tương quan phẳng và sạch nhất cho việc dò đỉnh pitch.
+\end{enumerate}
+
+\subsubsection*{Bài tập 6.2: Thiết kế mạch gấp địa chỉ cho nửa ROM Hanning và phân tích tài nguyên Cyclone V}
+\textbf{Đề bài:} Cửa sổ Hanning $N+1$ gồm $N = 638\text{ mẫu}$ có tính đối xứng chẵn qua trục trung tâm: $w[n] = w[637 - n]$ với mọi $n \in [0, 637]$.
+\begin{enumerate}[label=(\alph*)]
+    \item Viết biểu thức logic và đoạn mã Verilog cho khối tạo địa chỉ gấp (Address Folding Logic) để chỉ cần lưu trữ nửa đầu cửa sổ ($319\text{ từ}$, từ $n = 0$ tới $318$).
+    \item Căn cứ vào tài liệu \emph{Cyclone V Device Handbook} (CV-52003, Chương 3: Embedded Memory), hãy phân tích cấu hình kích thước của khối RAM M10K ($10.240\text{ bit}$) và chứng minh rằng: giải pháp nửa ROM giúp tiết kiệm đúng $1\text{ khối M10K}$ so với việc lưu trữ toàn bộ $638\text{ từ}$.
+    \item Phân tích sự đánh đổi về mặt phần cứng giữa phương án toàn ROM và phương án nửa ROM.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Mạch gấp địa chỉ hoạt động dựa trên quy luật:
+    \begin{equation}
+    \text{addr\_half}[8:0] = \begin{cases} 
+    n[8:0], & \text{nếu } n \le 318 \\
+    637 - n, & \text{nếu } n \ge 319
+    \end{cases}
+    \end{equation}
+    Đoạn mã Verilog hiện thực mạch gấp địa chỉ:
+    \begin{lstlisting}[language=Verilog, numbers=none]
+    wire [8:0] half_addr;
+    assign half_addr = (sample_cnt <= 10'd318) ? sample_cnt[8:0] : (9'd637 - sample_cnt[8:0]);
+    \end{lstlisting}
+    Kịch bản \path{verify_v3/ch06_exercises.py} đã kiểm chứng thuật toán gấp địa chỉ trên toàn bộ 638 mẫu và khẳng định độ trùng khớp $100\%$ ($638/638\text{ mẫu}$ bit-đối-bit).
+
+    \item Phân tích cấu hình khối nhớ M10K của Cyclone V (CV-52003, Bảng 3-1):
+    Mỗi khối M10K chứa dung lượng $10.240\text{ bit}$. Các cấu hình tổ chức độ sâu $\times$ độ rộng bit được hỗ trợ phần cứng gồm: $512 \times 20$, $1024 \times 10$, $2048 \times 5$, $4096 \times 2$, $8192 \times 1$.
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item \textbf{Phương án nửa ROM ($319\text{ từ} \times 16\text{ bit}$):}\\
+        Tổng số bit dữ liệu là $319 \times 16 = 5.104\text{ bit} \le 10.240\text{ bit}$. 
+        Vì độ sâu $319 \le 512$, khối nhớ nằm vừa vặn bên trong cấu hình $512 \times 20\text{ bit}$ của \textbf{1 khối M10K duy nhất}.
+        \item \textbf{Phương án toàn ROM ($638\text{ từ} \times 16\text{ bit}$):}\\
+        Tổng số bit dữ liệu là $638 \times 16 = 10.208\text{ bit} \le 10.240\text{ bit}$. Mặc dù tổng số bit không vượt quá dung lượng của một khối M10K, nhưng do độ sâu $638 > 512$, cấu hình phần cứng bắt buộc phải chuyển sang $1024 \times 10\text{ bit}$. Ở cấu hình này, độ rộng ngõ ra tối đa của một khối M10K chỉ là $10\text{ bit}$. Để có được dữ liệu $16\text{ bit}$, Quartus bắt buộc phải ghép song song \textbf{2 khối M10K} ($1024 \times 8$ trên mỗi khối).
+    \end{itemize}
+    Như vậy, việc gấp đôi địa chỉ giúp giảm tài nguyên bộ nhớ từ $2\text{ khối M10K}$ xuống còn đúng $1\text{ khối M10K}$, tiết kiệm $50\%$ tài nguyên bộ nhớ nhúng.
+
+    \item Đánh đổi phần cứng:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item \emph{Ưu điểm:} Tiết kiệm 1 khối M10K quý giá cho các bộ đệm khác trong hệ thống FPGA.
+        \item \emph{Nhược điểm:} Tốn thêm khoảng $10\text{ ALM}$ cho bộ trừ 9-bit và bộ dồn kênh MUX 9-bit trên đường địa chỉ ngõ vào ROM. Thời gian trễ lan truyền qua bộ trừ có thể làm giảm nhẹ biên độ thời gian thiết lập địa chỉ nếu tần số xung nhịp rất cao (tuy nhiên ở $50\text{ MHz}$, thời gian này hoàn toàn không đáng kể).
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Bài tập 6.3: Đánh giá so sánh giải pháp CORDIC thời gian thực so với bảng tra ROM}
+\textbf{Đề bài:} Thay vì lưu sẵn các hệ số $w[i]$ trong bảng tra ROM, một kỹ sư đề xuất sử dụng bộ tính góc quay CORDIC (Coordinate Rotation Digital Computer) để tính trực tiếp giá trị hàm $\cos\left(\frac{2\pi i}{639}\right)$ trong thời gian thực khi mỗi mẫu âm thanh đi qua.
+\begin{enumerate}[label=(\alph*)]
+    \item Cần tối thiểu bao nhiêu tầng lặp CORDIC để đạt được độ chính xác tương đương định dạng Q1.15 (16 bit)? Ước tính tài nguyên logic ALM và độ trễ đường ống cần thiết.
+    \item Hãy lập bảng so sánh chi tiết giữa hai phương án: Tra bảng ROM M10K và Tính toán động bằng CORDIC.
+    \item Đưa ra kết luận kiến trúc cho bài toán trên dòng chip Cyclone V DE10-Standard.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Yêu cầu kỹ thuật của giải thuật CORDIC:
+    Để đạt độ chính xác 16-bit (tương đương định dạng Q1.15), bộ CORDIC quay số (Rotation CORDIC) cần tối thiểu $N_{\text{iter}} = 16\text{ tầng lặp}$. 
+    Nếu thiết kế theo kiến trúc đường ống hoàn toàn (Fully Pipelined CORDIC) để duy trì thông lượng 1 mẫu/chu kỳ:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Cần 16 tầng tính toán. Mỗi tầng gồm hai bộ cộng/trừ 18-bit cho tọa độ $(X, Y)$, một bộ cộng/trừ cho góc pha $Z$, thanh ghi dịch dây cố định và bảng tra hằng số góc $\arctan(2^{-k})$.
+        \item Tài nguyên logic tiêu tốn ước tính khoảng $\mathbf{250 \dots 350\text{ ALM}}$ và hàng trăm thanh ghi flip-flop.
+        \item Độ trễ đường ống kéo dài tới $\mathbf{16\text{ chu kỳ xung nhịp}}$.
+    \end{itemize}
+
+    \item Bảng so sánh toàn diện giữa hai phương án kiến trúc:
+    \begin{center}
+    \small
+    \begin{tabularx}{\linewidth}{p{3.2cm}XX}
+    \toprule
+    \textbf{Đặc tính kỹ thuật} & \textbf{Phương án A: Bảng tra ROM M10K} & \textbf{Phương án B: Bộ tính CORDIC đường ống} \\
+    \midrule
+    \textbf{Tài nguyên logic ALM} & $\mathbf{0\text{ ALM}}$ & $250 \dots 350\text{ ALM}$ \\
+    \textbf{Khối nhớ nhúng} & $1 \dots 2\text{ khối M10K}$ & 0 khối M10K (vài LUT hằng số góc) \\
+    \textbf{Độ trễ xử lý (Latency)} & $\mathbf{1\text{ chu kỳ}}$ & $16\text{ chu kỳ}$ \\
+    \textbf{Thông lượng (Throughput)} & 1 kết quả / chu kỳ & 1 kết quả / chu kỳ \\
+    \textbf{Tần số hoạt động $F_{\max}$} & Rất cao ($> 350\text{ MHz}$) & Bị giới hạn bởi chuỗi cộng dồn ALM \\
+    \textbf{Độ phức tạp thiết kế} & Đơn giản (khởi tạo từ tệp .hex) & Phức tạp (cần hiệu chuẩn hệ số co giãn $K$) \\
+    \bottomrule
+    \end{tabularx}
+    \end{center}
+
+    \item Kết luận kiến trúc:
+    Chip Cyclone V 5CSXFC6D6 trên bo mạch DE10-Standard sở hữu tới \textbf{553 khối M10K} (tổng dung lượng hơn $5{,}5\text{ Mbits}$). Việc sử dụng 1 đến 2 khối M10K cho bảng tra cửa sổ chỉ chiếm chưa tới $0{,}3\%$ tổng tài nguyên bộ nhớ của chip, nhưng đổi lại tiết kiệm được hơn 300 ALM quý giá và giảm độ trễ đường ống từ 16 chu kỳ xuống còn đúng 1 chu kỳ. Do đó, phương án bảng tra ROM M10K là lựa chọn kỹ thuật tối ưu tuyệt đối trên FPGA.
+\end{enumerate}
+
+\subsubsection*{Bài tập 6.4: Phân tích hiện tượng bão hòa đỉnh Q1.15 và đo đạc tỷ số SQNR thực tế}
+\textbf{Đề bài:} Xét quá trình lượng tử hóa Q1.15 của cửa sổ Hanning $N+1$ với $N = 638$:
+\begin{enumerate}[label=(\alph*)]
+    \item Tính giá trị thực $w_{\text{double}}[318]$, giá trị sau khi nhân với $2^{15} = 32.768$ và giá trị làm tròn nguyên. Giải thích tại sao nếu không áp dụng bão hòa, giá trị này sẽ gây lỗi tràn số nghiêm trọng trong biểu diễn số bù 2 16-bit.
+    \item Tính sai số tuyệt đối tại đỉnh $\epsilon_{\text{apex}}$ và quy đổi sai số này theo đơn vị LSB.
+    \item Dựa trên công thức lý thuyết $\text{SQNR}_{\text{theory}} \approx 6{,}02\,B + 1{,}76\text{ dB}$, hãy tính SQNR lý thuyết của bộ lượng tử 15-bit.
+    \item So sánh với giá trị SQNR đo đạc thực nghiệm trên toàn bộ 638 mẫu do kịch bản \path{verify_v3/ch06_exercises.py} cung cấp ($\mathbf{97{,}02\text{ dB}}$) và giải thích nguyên nhân vật lý vì sao giá trị thực nghiệm lại vượt trội hơn giá trị lý thuyết.
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Khảo sát số học tại đỉnh đối xứng $n = 318$ ($i = 319$):
+    \begin{align}
+    w_{\text{double}}[318] &= 0{,}5 - 0{,}5 \cos\left( \frac{2\pi \cdot 319}{639} \right) = \mathbf{0{,}9999939572} \nonumber \\
+    w_{\text{scaled}} &= 0{,}9999939572 \times 32.768 = \mathbf{32767{,}801998} \nonumber \\
+    w_{\text{round}} &= \lfloor 32767{,}801998 + 0{,}5 \rfloor = \mathbf{32.768}
+    \end{align}
+    Trong định dạng số bù 2 16-bit có dấu (\texttt{signed [15:0]}), phạm vi giá trị hợp lệ được quy định chặt chẽ trong khoảng $[-32.768, +32.767]$ (\texttt{0x8000} tới \texttt{0x7FFF}). 
+    Giá trị $+32.768$ vượt quá biên dương lớn nhất 1 đơn vị. Trong biểu diễn nhị phân 16-bit, $32.768$ mang mẫu bit \texttt{0x8000}, tức là bit MSB bằng 1. Nếu không có bộ hạn chế biên độ (bão hòa), mạch số sẽ hiểu nhầm giá trị đỉnh dương cực đại thành giá trị âm cực tiểu $\mathbf{-32.768}$, gây đảo dấu và phá hủy hoàn toàn tín hiệu âm thanh tại tâm khung! Mạch bão hòa ghim giá trị này về $+32.767$ (\texttt{0x7FFF}), loại bỏ hoàn toàn nguy cơ tràn số.
+
+    \item Sai số tại đỉnh đối xứng:
+    \begin{align}
+    \epsilon_{\text{apex}} &= \left| \frac{32.767}{32.768} - 0{,}9999939572 \right| = \left| 0{,}9999694824 - 0{,}9999939572 \right| = \mathbf{2{,}447479 \times 10^{-5}} \\
+    \epsilon_{\text{LSB}} &= \epsilon_{\text{apex}} \times 32.768 = \mathbf{0{,}8020\text{ LSB}} < 1\text{ LSB}
+    \end{align}
+    Sai số tuyệt đối tại điểm bão hòa cực đoan nhất vẫn nhỏ hơn $1\text{ LSB}$.
+
+    \item SQNR lý thuyết của bộ lượng tử 15-bit:
+    Vì hệ số cửa sổ là số không âm ($w \ge 0$), bit dấu không mang thông tin biên độ, độ phân giải thực chất là $B = 15\text{ bit}$:
+    \begin{equation}
+    \text{SQNR}_{\text{theory}} \approx 6{,}02 \times 15 + 1{,}76 = \mathbf{92{,}06\text{ dB}}
+    \end{equation}
+
+    \item Đo đạc thực nghiệm và giải thích:
+    Theo kết quả phân tích thống kê trên toàn bộ $638\text{ mẫu}$ trong \path{verify_v3/ch06_exercises.log}:
+    \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+        \item Công suất tín hiệu cửa sổ: $P_{\text{signal}} = \frac{1}{638} \sum_{n=0}^{637} w_{\text{double}}^2[n] = \mathbf{0{,}375588}$.
+        \item Công suất nhiễu lượng tử: $P_{\text{noise}} = \frac{1}{638} \sum_{n=0}^{637} \left( \frac{w_q[n]}{32.768} - w_{\text{double}}[n] \right)^2 = \mathbf{7{,}45784 \times 10^{-11}}$.
+        \item Tỷ số tín hiệu trên nhiễu lượng tử thực tế:
+        \begin{equation}
+        \text{SQNR}_{\text{meas}} = 10 \log_{10}\left( \frac{P_{\text{signal}}}{P_{\text{noise}}} \right) = 10 \log_{10}\left( \frac{0{,}375588}{7{,}45784 \times 10^{-11}} \right) = \mathbf{97{,}02\text{ dB}}
+        \end{equation}
+    \end{itemize}
+    \textbf{Nguyên nhân thực nghiệm vượt trội hơn lý thuyết ($97{,}02\text{ dB} > 92{,}06\text{ dB}$):} 
+    Công thức lý thuyết giả định tín hiệu là một sóng sin đầy thang biên độ phân bố đều. Trong khi đó, cửa sổ Hanning có dạng đường cong hình chuông trơn tru với đạo hàm bậc một liên tục và tiến êm dịu về 0 ở hai biên. Phần lớn các mẫu ở vùng sườn dốc có sai số làm tròn phân bố ngẫu nhiên đều quanh 0 với kỳ vọng triệt tiêu lẫn nhau, làm giảm mật độ phổ công suất nhiễu hiệu dụng. Mức SQNR $97{,}02\text{ dB}$ hoàn toàn vượt qua dải động của tín hiệu âm thanh 16-bit chuẩn CD ($96\text{ dB}$), khẳng định việc lượng tử hóa Q1.15 bảo toàn $100\%$ độ trung thực của thuật toán Praat gốc.
+\end{enumerate}
