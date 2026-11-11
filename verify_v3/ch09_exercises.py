@@ -14,22 +14,22 @@ def main():
     print("=== [ch09_exercises] Chapter 9 Exercises Verification ===")
 
     # -------------------------------------------------------------------------
-    # Exercise 1: Discrete lag step vs human pitch discrimination (JND)
+    # Exercise 1: Discrete lag step vs musical semitone scale
     # -------------------------------------------------------------------------
-    print("\n--- Exercise 1: Discrete Lag Step vs JND ---")
+    print("\n--- Exercise 1: Discrete Lag Step vs Semitone Scale ---")
     fs = 16000.0
     f31 = fs / 31.0
     f32 = fs / 32.0
     diff_hz = f31 - f32
     step_cents = 1200.0 * math.log2(f31 / f32)
-    jnd_cents = 5.0 # JND is ~5-10 cents for normal listeners
+    half_semitone_cents = 50.0
 
     print(f"fs = {fs} Hz")
     print(f"f(tau=31) = {f31:.4f} Hz, f(tau=32) = {f32:.4f} Hz")
     print(f"Delta f = {diff_hz:.4f} Hz")
     print(f"Cent step = {step_cents:.4f} cents")
-    print(f"Human JND threshold = ~{jnd_cents:.1f} - 10.0 cents")
-    print(f"Ratio step / JND = {step_cents / jnd_cents:.1f}x threshold")
+    print(f"Musical half-semitone = {half_semitone_cents:.1f} cents")
+    print(f"Ratio step / half-semitone = {step_cents / half_semitone_cents:.2f}x")
 
     # -------------------------------------------------------------------------
     # Exercise 2: Parabolic interpolation with negative delta
@@ -102,7 +102,7 @@ def main():
     hop_samples = 160
     cycles_per_hop = 500000
 
-    div_cycles_radix2 = 34
+    div_cycles_radix2 = 45 # 1 load cycle + 44 restoring division steps
     div_time_radix2_ns = div_cycles_radix2 * t_clk_ns
     duty_cycle_radix2 = div_cycles_radix2 / cycles_per_hop
 
@@ -110,8 +110,8 @@ def main():
     print(f"Hop = {hop_samples} samples = {cycles_per_hop} clock cycles (10 ms)")
     print(f"Sequential Radix-2: latency = {div_cycles_radix2} cycles ({div_time_radix2_ns:.1f} ns)")
     print(f"Divider active duty cycle = {duty_cycle_radix2 * 100.0:.6f}% of frame budget")
-    print(f"Pipelined LPM_DIVIDE: throughput = 1/cycle (wasted: 499,999 cycles idle)")
-    print("Resource comparison: Radix-2 ~80-120 ALMs vs LPM_DIVIDE ~400-600 ALMs (phải đo)")
+    print(f"Pipelined LPM_DIVIDE: throughput = 1/cycle (idle {cycles_per_hop - 44} cycles)")
+    print("Resource comparison: Radix-2 sequential vs LPM_DIVIDE 44-stage pipeline (ALM count phải đo trong Quartus)")
 
     print("\n=== [ch09_exercises] ALL EXERCISE VERIFICATIONS PASSED ===")
 

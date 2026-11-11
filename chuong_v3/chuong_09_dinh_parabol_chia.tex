@@ -6,9 +6,9 @@
 
 \begin{learningobj}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của giới hạn lấy mẫu rời rạc: chứng minh bước nhảy chu kỳ 1 mẫu giữa $\tau = 31$ và $\tau = 32$ tạo ra khoảng cách tần số lên tới $16{,}13\text{ Hz}$ (tương đương $54{,}96\text{ cent} \approx 55\text{ cent}$, vượt xa ngưỡng phân biệt cao độ $5\text{ cent}$ của tai người); phân tích cơ sở lựa chọn định dạng số nguyên Q12.4 với độ phân giải $1/16\text{ Hz}$, mang lại sai số lượng tử hóa chỉ từ $0{,}22\text{ cent}$ (tại $500\text{ Hz}$) đến $1{,}08\text{ cent}$ (tại $100\text{ Hz}$).
-    \item Khảo sát giải thuật tìm đỉnh trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 186--188, 193--199, 345): phân định rõ ràng giữa dải quét phần cứng $[26, 214]$ ($189\text{ lag}$) và dải tìm kiếm ứng viên $[27, 213]$ ($187\text{ điểm}$); phân tích điều kiện đỉnh cục bộ ba điểm $U[\tau] > U[\tau-1] \land U[\tau] \ge U[\tau+1]$ kết hợp cổng thanh âm $1000 \cdot U[\tau] > 225 \cdot R_{0n}$ (chuyển hóa thành $40 \cdot U > 9 \cdot R_{0n}$, 0 khối DSP); giải mã cơ chế chọn ứng viên có điểm chi phí cực đại $\operatorname{argmax} Sc[\tau]$ và quy tắc giải quyết hòa ưu tiên độ trễ nhỏ gặp trước.
-    \item Dẫn xuất chặt chẽ công thức nội suy cực trị parabol đúng dấu: xác định tọa độ đỉnh liên tục $\tau^* = \tau_p + \delta$ với $\delta = (y_{+1} - y_{-1}) / (2(2y_0 - y_{-1} - y_{+1}))$, vạch rõ sai lầm đổi ngược dấu trong các tài liệu cũ; chứng minh bước đột phá gộp hai phép chia liên tiếp thành \textbf{đúng một phép chia duy nhất}: $F_{0, \text{Q12.4}} = \lfloor (512000 \cdot den_n + D/2) / D \rfloor$ với $D = 2 \cdot den_n \cdot \tau_p + num_n$; phân tích lỗi thiếu thừa số 2 của phiên bản v1 dẫn đến sai lệch $5\text{ LSB}$.
+    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của giới hạn lấy mẫu rời rạc: chứng minh bước nhảy chu kỳ 1 mẫu giữa $\tau = 31$ và $\tau = 32$ tạo ra khoảng cách tần số lên tới $16{,}13\text{ Hz}$ (tương đương $54{,}96\text{ cent} \approx 55\text{ cent}$, vượt quá nửa cung âm nhạc $50\text{ cent}$); phân tích cơ sở lựa chọn định dạng số nguyên Q12.4 với độ phân giải $1/16\text{ Hz}$, mang lại sai số lượng tử hóa chỉ từ $0{,}22\text{ cent}$ (tại $500\text{ Hz}$) đến $1{,}08\text{ cent}$ (tại $100\text{ Hz}$).
+    \item Khảo sát giải thuật tìm đỉnh trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}): phân tích tham số trễ cực đại \texttt{maximumLag} tại dòng 345; phân định rõ ràng giữa dải quét phần cứng $[26, 214]$ ($189\text{ lag}$) và dải tìm kiếm ứng viên $[27, 213]$ ($187\text{ điểm}$); phân tích điều kiện đỉnh cục bộ ba điểm $U[\tau] > U[\tau-1] \land U[\tau] \ge U[\tau+1]$ (dòng 186--188) kết hợp cổng thanh âm $1000 \cdot U[\tau] > 225 \cdot R_{0n}$ (chuyển hóa thành $40 \cdot U > 9 \cdot R_{0n}$, 0 khối DSP); giải mã cơ chế chọn ứng viên có điểm chi phí cực đại $\operatorname{argmax} Sc[\tau]$ và quy tắc giải quyết hòa ưu tiên độ trễ nhỏ gặp trước.
+    \item Dẫn xuất chặt chẽ công thức nội suy cực trị parabol đúng dấu: xác định tọa độ đỉnh liên tục $\tau^* = \tau_p + \delta$ với $\delta = (y_{+1} - y_{-1}) / (2(2y_0 - y_{-1} - y_{+1}))$, phân tích chú thích của Praat về việc tính mẫu số dạng hai hiệu để tránh lỗi làm tròn số thực (dòng 193--199); chứng minh bước gộp hai phép chia liên tiếp thành \textbf{đúng một phép chia duy nhất}: $F_{0, \text{Q12.4}} = \lfloor (512000 \cdot den_n + D/2) / D \rfloor$ với $D = 2 \cdot den_n \cdot \tau_p + num_n$; phân tích lỗi thiếu thừa số 2 của phiên bản v1 dẫn đến sai lệch $5\text{ LSB}$.
     \item Khám phá cơ chế chuẩn hóa động $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ bằng mạch giải mã ưu tiên (priority encoder) 5 tầng: chứng minh chặn trên độ rộng bit của tử số $N < 2^{44}$ và mẫu số $D < 2^{34}$, từ đó thiết lập chính xác hai tham số của khối chia IP Intel $\texttt{LPM\_WIDTHN} = 44$ và $\texttt{LPM\_WIDTHD} = 34$ (bác bỏ con số suy đoán 48 bit không căn cứ).
     \item Phân tích toàn diện ba phương án thiết kế bộ chia phần cứng: chứng minh bộ chia tổ hợp vi phạm thời gian chu kỳ $20\text{ ns}$; chỉ rõ bộ chia đường ống \texttt{LPM\_DIVIDE} (Tuyến A, theo tài liệu Intel UG-01069) gây lãng phí ALM cho thông lượng $1\text{ kết quả/chu kỳ}$ không sử dụng; bảo vệ quyết định chốt lựa chọn bộ chia tuần tự khôi phục Radix-2 (Tuyến B) với 44 nhịp tính toán trừ khôi phục (độ trễ 45 chu kỳ từ \texttt{start} đến \texttt{done}, thông lượng 1 phép chia mỗi 46 chu kỳ), chiếm vỏn vẹn dưới $0{,}01\%$ ngân sách thời gian thực $500.000\text{ chu kỳ/khung}$ và tiết kiệm diện tích silicon đáng kể.
     \item Hiện thực hóa và kiểm chứng chu-kỳ-đối-chu-kỳ: xây dựng module dò đỉnh dòng \texttt{ch09\_peak\_finder.v}, bộ chia tuần tự \texttt{ch09\_radix2\_div.v} và khối tính toán đỉnh \texttt{ch09\_f0\_calc.v}; kiểm chứng qua mô hình song sinh Python (\texttt{ch09\_twin.py}) trên $12.456\text{ chu kỳ}$ chia (265 bộ ba cực trị) và $2.593\text{ chu kỳ}$ toàn khung tín hiệu từ bộ dữ liệu chuẩn \path{golden_v2}.
@@ -44,9 +44,9 @@ Khoảng chênh lệch tần số giữa hai mẫu trễ liền kề là:
 (kết quả đã được xác minh độc lập qua nhật ký tính toán \texttt{verify\_v3/ch09\_math\_audit.log}).
 
 \begin{physicalinsight}
-Ngưỡng phân biệt cao độ tối thiểu của tai người bình thường (Just Noticeable Difference -- JND) đối với các thanh âm thuần và tiếng nói dao động trong khoảng từ $5\text{ cent}$ đến $10\text{ cent}$ (tương đương độ lệch tần số chỉ từ $0{,}3\%$ đến $0{,}6\%$). 
+Trong âm học và xử lý tín hiệu tiếng nói, bước nhảy $55\text{ cent}$ giữa hai mẫu trễ liền kề $\tau = 31$ và $\tau = 32$ là một khoảng cách lớn, vượt quá nửa cung âm nhạc ($50\text{ cent}$). 
 
-Bước nhảy rời rạc $55\text{ cent}$ giữa $\tau = 31$ và $\tau = 32$ lớn gấp \textbf{11 lần} ngưỡng nhận biết của tai người ($55 / 5 = 11{,}0$). Nó vượt quá một nửa cung âm nhạc ($50\text{ cent}$). Nếu không có phép nội suy đỉnh, đường biểu diễn $F_0$ theo thời gian sẽ bị biến thành những bậc thang thô thiển, tạo ra hiện tượng méo cao độ nghiêm trọng và phá hủy hoàn toàn đặc trưng ngữ điệu tự nhiên của giọng nói.
+Nếu không có phép nội suy cực trị liên tục, đường biểu diễn $F_0$ theo thời gian sẽ bị biến thành những bậc thang rời rạc thô, tạo ra hiện tượng méo cao độ và làm suy giảm độ mịn tự nhiên của đường nét ngữ điệu giọng nói.
 \end{physicalinsight}
 
 \subsubsection*{Độ phân giải của định dạng số cố định Q12.4}
@@ -69,16 +69,16 @@ Hãy định lượng sai số lượng tử hóa mà bước nhảy $1/16\text{
     \end{equation}
 \end{itemize}
 
-Cả hai mức sai số lượng tử hóa $1{,}08\text{ cent}$ và $0{,}22\text{ cent}$ đều nhỏ hơn rất nhiều so với ngưỡng thính giác con người ($5\text{ cent}$). Điều này đưa đến một kết luận then chốt: \textbf{định dạng Q12.4 hoàn toàn bảo toàn độ mịn âm học của cao độ}, với điều kiện tiên quyết là vị trí cực trị dưới mẫu $\tau^*$ phải được tính toán chính xác qua phép nội suy liên tục trước khi chuyển sang miền số nguyên.
+Cả hai mức sai số lượng tử hóa $1{,}08\text{ cent}$ và $0{,}22\text{ cent}$ đều rất nhỏ khi so sánh với một nửa cung âm nhạc ($50\text{ cent}$). Điều này đưa đến kết luận: \textbf{định dạng Q12.4 bảo toàn tốt độ mịn của cao độ}, với điều kiện tiên quyết là vị trí cực trị dưới mẫu $\tau^*$ phải được tính toán chính xác qua phép nội suy liên tục trước khi chuyển sang miền số nguyên.
 
 \subsubsection*{Chỗ dễ vướng: Ở độ trễ lớn có cần nội suy không?}
 Người mới bắt đầu thường tự hỏi: \emph{"Ở vùng tần số thấp $\tau \approx 160$ ($100\text{ Hz}$), khoảng cách giữa hai mẫu trễ $\tau = 160$ và $\tau = 161$ chỉ chênh lệch $16000/160 - 16000/161 = 100 - 99{,}3789 \approx 0{,}621\text{ Hz}$, nhỏ hơn nhiều so với $16{,}13\text{ Hz}$ ở $\tau = 31$. Vậy liệu ta có thể bỏ nội suy ở vùng $\tau$ lớn không?"}
 
-Câu trả lời dứt khoát là \textbf{không}. Hãy tính bước nhảy cent tại $\tau = 160$:
+Câu trả lời là \textbf{không}. Hãy tính bước nhảy cent tại $\tau = 160$:
 \begin{equation}
 \Delta \text{cents}_{160} = 1200 \times \log_2\left( \frac{161}{160} \right) \approx 10{,}78\text{ cent}
 \end{equation}
-Giá trị $10{,}78\text{ cent}$ vẫn gấp hơn \textbf{2 lần} ngưỡng nhận thức $5\text{ cent}$ của đôi tai! Hơn thế nữa, việc tạo nhánh rẽ có điều kiện (nội suy cho $\tau$ nhỏ nhưng bỏ qua cho $\tau$ lớn) chỉ làm phức tạp hóa máy trạng thái FSM và tiêu tốn thêm diện tích logic, trong khi không đem lại bất kỳ lợi ích nào về thông lượng. Do đó, phép nội suy cực trị liên tục được áp dụng đồng nhất cho mọi khung hữu thanh trên toàn dải $\tau \in [27, 213]$.
+Giá trị $10{,}78\text{ cent}$ vẫn là một độ lệch cao độ đáng kể (khoảng hơn một phần mười của một nửa cung). Hơn thế nữa, việc tạo nhánh rẽ có điều kiện (nội suy cho $\tau$ nhỏ nhưng bỏ qua cho $\tau$ lớn) chỉ làm phức tạp hóa máy trạng thái FSM và tiêu tốn thêm diện tích logic, trong khi không đem lại bất kỳ lợi ích nào về thông lượng. Do đó, phép nội suy cực trị liên tục được áp dụng đồng nhất cho mọi khung hữu thanh trên toàn dải $\tau \in [27, 213]$.
 
 \textit{Tóm lại: Lưới lấy mẫu thời gian rời rạc tạo ra bước nhảy tần số khổng lồ 16,13 Hz (55 cent) ở vùng chu kỳ ngắn; nội suy cực trị liên tục tau* là bắt buộc để vượt qua giới hạn mẫu nguyên, và định dạng Q12.4 đem lại độ phân giải cực mịn từ 0,22 đến 1,08 cent trên toàn dải cao độ tiếng nói.}
 
@@ -93,7 +93,7 @@ Khi dãy số tự tương quan chuẩn hóa $r[\tau]$ được tính toán trê
 \subsubsection*{Dải quét phần cứng $[26, 214]$ và dải tìm kiếm ứng viên $[27, 213]$}
 Một câu hỏi kinh điển từng gây nhiều tranh cãi trong các tài liệu thiết kế trước đây là: \emph{"Độ trễ cực đại của FPGA là 213 hay 214 mẫu?"}
 
-Câu trả lời nằm trực tiếp tại dòng 344--345 trong tệp mã nguồn \path{fon/Sound_to_Pitch.cpp} của bản phát hành Praat 7.0.03:
+Câu trả lời nằm trực tiếp tại dòng 345 trong tệp mã nguồn \path{fon/Sound_to_Pitch.cpp} của bản phát hành Praat 7.0.03:
 \begin{lstlisting}[language=C++, numbers=none]
 maximumLag = std::min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
 \end{lstlisting}
@@ -163,17 +163,11 @@ Trong một khung phân tích, có thể có nhiều độ trễ $\tau$ khác nh
 \subsubsection*{Praat làm gì tiếp theo: Sinc70 + Brent và sự đánh đổi của FPGA}
 Sau khi xác định được đỉnh ứng viên sơ bộ, Paul Boersma thực hiện hai bước tinh chỉnh liên tiếp trong mã nguồn \path{fon/Sound_to_Pitch.cpp}:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Lượt 1 (dòng 193--199):} Sử dụng phép nội suy parabol cục bộ để ước lượng thô vị trí đỉnh $\tau^*$ và tần số ban đầu $f_{\max} = 1 / (dx \cdot \tau^*)$. Sau đó, dòng 202--204 dùng phép nội suy sinc với độ sâu 30 chu kỳ (sinc30) để tính độ mạnh $\text{strength}$. Nếu $\text{strength} > 1{,}0$, dòng 209--210 phản xạ giá trị thành $1/\text{strength}$.
-    \item \textbf{Lượt 2 (dòng 251--265):} Khác hoàn toàn với khẳng định thiếu căn cứ của một số tài liệu cũ cho rằng Praat chỉ dùng nội suy sinc khi người dùng bật chế độ "Very accurate", mã nguồn Praat 7.0.03 \textbf{luôn luôn} thực thi hàm tinh chỉnh cực trị \texttt{NUMimproveMaximum}:
-\begin{lstlisting}[language=C++, numbers=none]
-integer depth = ( c [0] > 0.3 / my dx ? NUM_PEAK_INTERPOLATE_SINC700 : brent_depth );
-NUMimproveMaximum (rv, imax [ic - 1] - offset, depth, & xmid, & ymid);
-c [0] = 1.0 / my dx / (xmid + offset);
-\end{lstlisting}
-    Với cửa sổ Hanning 3 chu kỳ, tham số \texttt{brent\_depth} luôn được gán bằng \texttt{NUM\_PEAK\_INTERPOLATE\_SINC70} (dòng 299--301). Praat lặp phương pháp Brent từ 10 đến 20 bước, tại mỗi bước tính tích chập với hàm sinc 70 điểm để tìm vị trí cực đại liên tục thực sự với độ chính xác đến $10^{-10}$.
+    \item \textbf{Lượt 1 (dòng 193--199):} Sử dụng phép nội suy parabol cục bộ để ước lượng thô vị trí đỉnh $\tau^*$ và tần số ban đầu. Tại dòng 195--197, hàm tính $dr = 0{,}5 \cdot (r[i+1] - r[i-1])$ và $d2r = (r[i] - r[i-1]) + (r[i] - r[i+1])$; trong đó chú thích mã nguồn Praat nêu rõ việc viết $d2r$ dưới dạng tổng của hai hiệu nhằm triệt tiêu lỗi làm tròn dấu phẩy động (ghi chú ghi rõ lỗi này được loại bỏ ngày 2025-04-18). Tần số ước lượng ban đầu là $\text{frequencyOfMaximum} = 1.0 / dx / (i + dr/d2r)$. Sau đó, dòng 202--204 dùng phép nội suy sinc với độ sâu 30 chu kỳ (\texttt{NUM\_interpolate\_sinc} depth 30) để tính độ mạnh $\text{strength}$. Nếu $\text{strength} > 1{,}0$, dòng 209--210 phản xạ giá trị thành $1/\text{strength}$.
+    \item \textbf{Lượt 2 (dòng 251--265):} Khác với khẳng định thiếu căn cứ của một số tài liệu cũ cho rằng Praat chỉ dùng nội suy sinc khi người dùng bật chế độ "Very accurate", mã nguồn Praat 7.0.03 \textbf{luôn luôn} thực thi hàm tinh chỉnh cực trị \texttt{NUMimproveMaximum} cho mọi ứng viên. Cụ thể, nếu tần số ban đầu vượt quá $0{,}3/dx$ thì Praat chọn độ sâu $\texttt{NUM\_PEAK\_INTERPOLATE\_SINC700}$, ngược lại chọn tham số \texttt{brent\_depth} (với cửa sổ Hanning, \texttt{brent\_depth} được gán cố định bằng $\texttt{NUM\_PEAK\_INTERPOLATE\_SINC70}$ theo dòng 299--301). Hàm \texttt{NUMimproveMaximum} kết hợp thuật toán tìm kiếm Brent và nội suy sinc 70 điểm để tinh chỉnh tọa độ cực đại thực sự $x_{\text{mid}}$, từ đó cập nhật lại tần số $\text{frequency} = 1.0 / dx / x_{\text{mid}}$.
 \end{itemize}
 
-Trên phần cứng FPGA, việc dựng một bộ nhân--cộng chập sinc 70 điểm kết hợp với thuật toán lặp Brent phi tuyến (chia tỉ lệ vàng và nội suy nghịch đảo phân thức) sẽ làm bùng nổ diện tích ALM, tiêu tốn hàng nghìn chu kỳ đồng hồ và phá vỡ cấu trúc đường ống dòng. 
+Trên phần cứng FPGA, việc dựng một bộ nhân--cộng chập sinc 70 điểm kết hợp với thuật toán lặp Brent phi tuyến sẽ làm tăng đáng kể diện tích ALM, tiêu tốn nhiều chu kỳ đồng hồ và phá vỡ cấu trúc đường ống dòng. 
 
 Vì vậy, kiến trúc FPGA của ta \textbf{chốt dừng lại ở phép nội suy parabol một bước}. Phép nội suy parabol khép kín mang lại nghiệm giải tích tức thời chỉ qua một phép chia số nguyên duy nhất. Khoảng cách chênh lệch giữa nghiệm parabol của FPGA và nghiệm tinh chỉnh Sinc70--Brent của Praat là một khác biệt có chủ ý trong thiết kế; toàn bộ sai số phân bố này được đo đạc và định lượng chi tiết trong Chương 13.
 
@@ -422,7 +416,7 @@ Một chuỗi phép chia $44\text{ bit}$ đòi hỏi 44 phép trừ và dịch b
 \label{fig:ch09_divider_arch}
 \end{figure}
 
-\textbf{Đọc hình.} Hình~\ref{fig:ch09_divider_arch} đặt ba kiến trúc bộ chia cạnh nhau để so sánh trực diện. Phương án (a) mắc nối tiếp 44 tầng trừ tổ hợp thuần túy, tạo ra đường tới hạn kéo dài hơn $25\text{ ns}$, không thể chạy ở xung nhịp $50\text{ MHz}$. Phương án (b) sử dụng lõi IP \texttt{LPM\_DIVIDE} của Intel chèn thanh ghi vào cả 44 tầng, đạt thông lượng tối đa $1\text{ kết quả/chu kỳ}$ nhưng tiêu tốn tới $500\text{ ALM}$ và bị lãng phí tới $99{,}99\%$ chu kỳ chạy rỗng. Phương án (c) là bộ chia tuần tự Radix-2 được tài liệu này lựa chọn: chỉ dùng đúng 1 bộ trừ tái sử dụng trong 44 nhịp, tiêu tốn chưa tới $100\text{ ALM}$ và chiếm vỏn vẹn $0{,}009\%$ ngân sách thời gian của khung.
+\textbf{Đọc hình.} Hình~\ref{fig:ch09_divider_arch} đặt ba kiến trúc bộ chia cạnh nhau để so sánh trực diện. Phương án (a) mắc nối tiếp 44 tầng trừ tổ hợp thuần túy, tạo ra đường tới hạn dài qua chuỗi mượn bit liên tục, có nguy cơ vi phạm thời gian định thời ở xung nhịp $50\text{ MHz}$ ($20\text{ ns}$). Phương án (b) sử dụng lõi IP \texttt{LPM\_DIVIDE} của Intel chèn thanh ghi vào cả 44 tầng, đạt thông lượng $1\text{ kết quả/chu kỳ}$ nhưng tiêu tốn nhiều tài nguyên logic ALM và thanh ghi (phải đo trong Quartus) trong khi hầu hết thời gian của khung là nhàn rỗi. Phương án (c) là bộ chia tuần tự Radix-2 được tài liệu này lựa chọn: chỉ dùng đúng 1 bộ trừ tái sử dụng qua 44 nhịp tính toán, tiết kiệm diện tích logic (phải đo trong Quartus) và chiếm chưa tới $0{,}01\%$ ngân sách thời gian của khung.
 
 \subsubsection*{Ba phương án kiến trúc phần cứng}
 Ta tiến hành phân tích chi tiết ba phương án thiết kế bộ chia $44/34\text{ bit}$ trên nền tảng Cyclone V:
@@ -432,15 +426,15 @@ Ta tiến hành phân tích chi tiết ba phương án thiết kế bộ chia $4
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item \emph{Nguyên lý:} Kết nối liên hoàn 44 tầng ô trừ mượn bit (subtractor-multiplexer cell) hoàn toàn bằng các cổng logic tổ hợp mà không đặt bất kỳ thanh ghi chốt nào ở giữa.
         \item \emph{Độ trễ và thông lượng:} Độ trễ bằng 0 chu kỳ đồng hồ (kết quả xuất hiện ngay trong cùng chu kỳ nạp toán hạng). Thông lượng đạt 1 phép chia/chu kỳ.
-        \item \emph{Đường tới hạn (Critical Path):} Tín hiệu phải truyền qua 44 bộ cộng trừ có nhớ lan truyền (carry ripple) liên tiếp. Trên công nghệ bán dẫn $28\text{ nm}$ của Cyclone V, thời gian trễ lan truyền của chuỗi logic này vượt quá \textbf{$25\text{ ns}$} (thậm chí lên tới $30\text{ ns}$ tùy thuộc vào việc đặt vị trí của Fitter).
-        \item \emph{Hậu quả:} Tần số hoạt động tối đa $F_{\max} < 40\text{ MHz}$ (phải đo). Ở xung nhịp chuẩn hệ thống $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$), đường truyền này \textbf{vi phạm thời gian định thời thiết lập (setup timing violation)} nghiêm trọng, gây lỗi sai số cao độ ngẫu nhiên.
+        \item \emph{Đường tới hạn (Critical Path):} Tín hiệu phải truyền qua 44 bộ cộng trừ có nhớ/mượn bit lan truyền liên tiếp mà không có tầng chốt thanh ghi. Thời gian trễ truyền lan của chuỗi logic tổ hợp dài này dễ dẫn đến vi phạm định thời thiết lập (setup timing violation) ở chu kỳ $20\text{ ns}$ của xung nhịp hệ thống $50\text{ MHz}$ (thời gian trễ cụ thể và tần số $F_{\max}$ phải đo trong Quartus Timing Analyzer).
+        \item \emph{Hậu quả:} Mạch không bảo đảm thỏa mãn định thời ở $50\text{ MHz}$ nếu không chèn thanh ghi đường ống.
     \end{itemize}
 
     \item \textbf{Phương án 2: Bộ chia đường ống hoàn toàn LPM\_DIVIDE (Intel IP Core).}
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item \emph{Nguyên lý:} Sử dụng lõi IP \texttt{LPM\_DIVIDE} của Intel được cấu hình với độ sâu đường ống tối đa $\texttt{LPM\_PIPELINE} = 44$. Mỗi tầng logic trừ được chốt lại bởi một hàng thanh ghi flip-flop.
-        \item \emph{Độ trễ và thông lượng:} Độ trễ (latency) là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại $50\text{ MHz}$). Thông lượng (throughput) đạt đỉnh cao: \textbf{1 kết quả mỗi chu kỳ đồng hồ}.
-        \item \emph{Tần số và tài nguyên:} Tần số hoạt động đạt $F_{\max} > 150\text{ MHz}$ (dư dả ở $50\text{ MHz}$). Tuy nhiên, để duy trì đường ống dẫn 44 tầng cho các toán hạng rộng 44 bit và 34 bit, Quartus phải tiêu tốn khoảng \textbf{$450$ đến $600\text{ ALM}$} và hàng trăm thanh ghi flip-flop (phải đo).
+        \item \emph{Độ trễ và thông lượng:} Độ trễ (latency) là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại $50\text{ MHz}$, theo tài liệu Intel UG-01069). Thông lượng (throughput) đạt: \textbf{1 kết quả mỗi chu kỳ đồng hồ}.
+        \item \emph{Tần số và tài nguyên:} Nhờ chèn thanh ghi tại các tầng trừ, đường tới hạn ngắn giúp mạch đáp ứng tốt xung nhịp $50\text{ MHz}$. Tuy nhiên, việc duy trì đường ống dẫn 44 tầng cho các toán hạng rộng 44 bit và 34 bit tiêu tốn đáng kể tài nguyên ALM và flip-flop (phải đo trong Quartus Compilation Report).
         \item \emph{Nghịch lý lãng phí thông lượng:} Ở hệ thống xử lý âm thanh thời gian thực với bước nhảy khung $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$), mỗi khung tương ứng với $500.000\text{ chu kỳ}$ ở $50\text{ MHz}$. Trong suốt $500.000\text{ chu kỳ}$ đó, khối F0 chỉ cần thực hiện \textbf{đúng một phép chia duy nhất} sau khi bộ dò đỉnh tìm ra $\tau_p$. Bộ chia đường ống có khả năng tính 500.000 phép chia mỗi khung, nhưng ta chỉ dùng đúng 1 phép chia và để mạch đứng chơi (idle) trong $499.956\text{ chu kỳ}$ còn lại ($99{,}991\%$ thời gian)!
     \end{itemize}
 
@@ -517,7 +511,7 @@ Mỗi tham số cấu hình của khối \texttt{LPM\_DIVIDE} trong giao diện 
     Ta đã chứng minh $D \ge 53 \cdot den_n \ge 53 > 0$ trên toàn bộ dải quét ứng viên $[27, 213]$. Mẫu số luôn luôn dương nghiêm ngặt. Việc chọn định dạng không dấu đảm bảo phép chia tuân theo đúng thuật toán chia số học nhị phân chuẩn xác.
 
     \item \textbf{\texttt{LPM\_PIPELINE} (Độ trễ chu kỳ đường ống):} Được gán bằng \textbf{44}.
-    Tham số này xác định số tầng thanh ghi chốt đường ống chèn vào giữa các tầng trừ. Theo hướng dẫn thiết kế trong tài liệu UG-01069, để đạt được hiệu năng định thời tối đa ở tần số cao cho một bộ chia rộng $44\text{ bit}$, số chu kỳ đường ống tối ưu được khuyến nghị là bằng chính độ rộng tử số $\texttt{LPM\_PIPELINE} = \texttt{LPM\_WIDTHN} = 44$. Khi tham số này được đặt là 44, lõi IP báo độ trễ từ ngõ vào tới ngõ ra là đúng $44\text{ chu kỳ đồng hồ}$, khớp hoàn hảo với độ trễ của bộ chia tuần tự Radix-2 ở Tuyến B. Nếu đặt bằng 0, IP sẽ sinh ra bộ chia tổ hợp thuần túy và làm sụp đổ tần số $F_{\max}$ xuống dưới $40\text{ MHz}$.
+    Tham số này xác định số tầng thanh ghi chốt đường ống chèn vào giữa các tầng trừ. Theo hướng dẫn thiết kế trong tài liệu UG-01069, để đạt được hiệu năng định thời tốt ở tần số cao cho một bộ chia rộng $44\text{ bit}$, số chu kỳ đường ống tối ưu được khuyến nghị là bằng chính độ rộng tử số $\texttt{LPM\_PIPELINE} = \texttt{LPM\_WIDTHN} = 44$. Khi tham số này được đặt là 44, theo tài liệu Intel UG-01069, lõi IP có độ trễ từ ngõ vào tới ngõ ra là đúng $44\text{ chu kỳ đồng hồ}$. Nếu đặt bằng 0, IP sẽ sinh ra bộ chia tổ hợp thuần túy và có nguy cơ vi phạm định thời ở xung nhịp $50\text{ MHz}$ (tần số $F_{\max}$ phải kiểm tra trong Quartus Timing Analyzer).
 
     \item \textbf{\texttt{LPM\_REMAINDERPOSITIVE} (Dấu của số dư \texttt{remain}):} Được gán bằng \textbf{\texttt{"TRUE"}}.
     Quy định số dư $R$ luôn luôn là một số không âm thỏa mãn đẳng thức chia Euclid chuẩn $N = Q \cdot D + R$ với $0 \le R < D$.
@@ -551,12 +545,12 @@ Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div
 
 \subsubsection*{Độ trễ và tài nguyên IP: Thông số lý thuyết và đo đạc thực tế}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Độ trễ chu kỳ (Latency):} Báo cáo mô phỏng và tài liệu IP của Intel khẳng định độ trễ từ lúc đặt dữ liệu ở \texttt{numer} và \texttt{denom} đến khi \texttt{quotient} hợp lệ là đúng \textbf{44 chu kỳ đồng hồ}.
-    \item \textbf{Tài nguyên phần cứng (phải đo):} Số lượng ALM và thanh ghi tiêu tốn bởi \texttt{LPM\_DIVIDE} phụ thuộc vào phiên bản Quartus Prime và chế độ đặt vị trí của Fitter. Theo ước tính từ kiến trúc mảng đường ống $44\text{ tầng}$, mạch tiêu tốn khoảng \textbf{$450$ đến $600\text{ ALM}$} và hơn $500\text{ flip-flop}$ (con số chính xác \textbf{phải kiểm tra trong báo cáo Fitter}).
-    \item \textbf{Tần số Fmax (phải đo):} Nhờ có 44 tầng thanh ghi chốt trung gian, mỗi tầng chỉ tính toán phép trừ 1 bit, đường tới hạn ngắn giúp IP dễ dàng đạt $F_{\max} > 150\text{ MHz}$ trên Cyclone V (tốc độ cấp C6).
+    \item \textbf{Độ trễ chu kỳ (Latency):} Theo tài liệu Intel UG-01069, độ trễ từ lúc đặt dữ liệu ở \texttt{numer} và \texttt{denom} đến khi \texttt{quotient} hợp lệ bằng đúng giá trị $\texttt{LPM\_PIPELINE} = 44\text{ chu kỳ đồng hồ}$.
+    \item \textbf{Tài nguyên phần cứng (phải đo):} Số lượng ALM và thanh ghi tiêu tốn bởi \texttt{LPM\_DIVIDE} phụ thuộc vào phiên bản Quartus Prime và cấu hình đường ống; con số chính xác \textbf{phải đo trong Quartus (Compilation Report)}. Do phải duy trì 44 tầng thanh ghi cho các toán hạng rộng, tài nguyên tiêu tốn sẽ cao hơn nhiều so với bộ chia tuần tự.
+    \item \textbf{Tần số Fmax (phải đo):} Nhờ có 44 tầng thanh ghi chốt trung gian, mỗi tầng chỉ tính toán phép trừ 1 bit, đường tới hạn ngắn giúp IP đáp ứng tốt xung nhịp $50\text{ MHz}$ (tần số $F_{\max}$ chính xác \textbf{phải đo trong Quartus Timing Analyzer}).
 \end{itemize}
 
-\textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP \texttt{LPM\_DIVIDE} chuẩn của Intel với $\texttt{LPM\_WIDTHN} = 44$, $\texttt{LPM\_WIDTHD} = 34$ và $\texttt{LPM\_PIPELINE} = 44$; cấu hình này đạt $F_{\max}$ vượt trội trên $150\text{ MHz}$ nhưng tiêu tốn khoảng $450$--$600\text{ ALM}$ vì phải duy trì thông lượng $1\text{ kết quả/chu kỳ}$ không cần thiết.}
+\textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP \texttt{LPM\_DIVIDE} chuẩn của Intel với $\texttt{LPM\_WIDTHN} = 44$, $\texttt{LPM\_WIDTHD} = 34$ và $\texttt{LPM\_PIPELINE} = 44$ (độ trễ bằng đúng 44 chu kỳ đồng hồ theo tài liệu Intel UG-01069); cấu hình này đáp ứng tốt xung nhịp $50\text{ MHz}$ nhưng tiêu tốn nhiều tài nguyên logic (phải đo trong Quartus) vì duy trì thông lượng $1\text{ kết quả/chu kỳ}$ không cần thiết cho ứng dụng xử lý theo khung.}
 
 \subsection*{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
 \addcontentsline{toc}{subsection}{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
@@ -695,7 +689,7 @@ Cả hai tuyến thiết kế đều bắt nguồn từ cùng một mô hình to
 \addcontentsline{toc}{subsection}{9.7. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng}
 
 \subsubsection*{Cấu trúc mô hình song sinh phần mềm (Python Twin)}
-Để thiết lập đặc tả kỹ thuật số học chính xác tuyệt đối (Golden Reference) cho việc kiểm tra chéo với mã Verilog HDL, tệp script \path{verify_v3/ch09_twin.py} cung cấp hai tầng mô hình song sinh:
+Để thiết lập đặc tả kỹ thuật số học chuẩn tham chiếu (Golden Reference) cho việc kiểm tra chéo với mã Verilog HDL, tệp script \path{verify_v3/ch09_twin.py} cung cấp hai tầng mô hình song sinh:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Tầng giải tích hàm số (\texttt{calc\_parabola\_div}):} Hiện thực hóa thuật toán tính toán parabol, chuẩn hóa $s_2$ và phép chia đơn gộp thành dạng số nguyên thuần túy, bám sát từng dòng mã của \path{golden_v2/fixed_twin.py}.
     \item \textbf{Tầng chu kỳ chính xác (\texttt{Radix2DivTwin}):} Mô phỏng máy trạng thái FSM và từng bước dịch--trừ của bộ chia khôi phục nhị phân \texttt{ch09\_radix2\_div.v} trên từng sườn xung nhịp đồng hồ.
@@ -732,7 +726,7 @@ Dưới đây là đoạn mã nguồn của hai thành phần cốt lõi này tr
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Pha 1 --- Lái tín hiệu tại cạnh xuống (\texttt{@(negedge clk)}):} Mọi tín hiệu đầu vào kích thích (stimulus) gồm \texttt{rst\_n}, \texttt{start}, \texttt{numer}, \texttt{denom}, \texttt{in\_valid}, \texttt{in\_tau}, \texttt{in\_U}, \texttt{in\_Sc}, \texttt{in\_R0n}, \texttt{in\_last} đều được testbench thay đổi tại sườn âm của xung nhịp đồng hồ. Điều này đảm bảo rằng khi sườn dương tiếp theo xuất hiện, toàn bộ các đường dây đầu vào đã đạt trạng thái ổn định từ lâu, thỏa mãn dư dả thời gian thiết lập (setup time).
     \item \textbf{Pha 2 --- Lấy mẫu và so sánh tại cạnh lên cộng trễ nhỏ (\texttt{@(posedge clk); \#1}):} Sau khi đón cạnh xung nhịp dương, testbench đợi thêm một độ trễ mô phỏng nhỏ \texttt{\#1} ($1\text{ ps}$ hoặc $1\text{ ns}$) để mọi phép gán không chặn (\texttt{<=}) bên trong các khối \texttt{always} của phần cứng cập nhật hoàn tất vào thanh ghi. Sau đó, testbench mới tiến hành đọc ngõ ra của DUT và so sánh từng bit với giá trị kỳ vọng đọc từ tệp văn bản.
-    \item \textbf{Thu thập toàn bộ lỗi:} Testbench không sử dụng lệnh \texttt{\$finish} sớm khi gặp lỗi đầu tiên, mà duy trì vòng lặp để đếm chính xác tổng số lỗi so sánh, đồng thời kiểm tra số chu kỳ đọc được phải trùng khớp tuyệt đối với số dòng dự kiến của tệp vector.
+    \item \textbf{Thu thập toàn bộ lỗi:} Testbench không sử dụng lệnh \texttt{\$finish} sớm khi gặp lỗi đầu tiên, mà duy trì vòng lặp để đếm chính xác tổng số lỗi so sánh, đồng thời kiểm tra số chu kỳ đọc được phải trùng khớp với số dòng dự kiến của tệp vector.
 \end{enumerate}
 
 \subsubsection*{Hai kịch bản kiểm chứng mô phỏng tự động}
@@ -833,8 +827,8 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
 
 \subsubsection*{Bài tập cuối chương có lời giải chi tiết}
 
-\paragraph{Bài tập 1: Bước nhảy chu kỳ rời rạc và ngưỡng thính giác JND.}
-\emph{Đề bài:} Một tín hiệu âm thanh có cao độ nằm ở vùng tần số cao quanh $500\text{ Hz}$. Tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, hãy tính tần số tương ứng tại hai mẫu trễ rời rạc $\tau = 31$ và $\tau = 32$. Tính khoảng chênh lệch tần số $\Delta F_0$ (Hz) và khoảng cách theo thang đo logarit $\Delta \text{cents}$ (cent). So sánh kết quả thu được với ngưỡng phân biệt cao độ tối thiểu của tai người bình thường ($\text{JND} \approx 5\text{ cent}$) và giải thích tại sao phép nội suy đỉnh liên tục là một đòi hỏi âm học bắt buộc.
+\paragraph{Bài tập 1: Bước nhảy chu kỳ rời rạc và thang đo âm học cent.}
+\emph{Đề bài:} Một tín hiệu âm thanh có cao độ nằm ở vùng tần số cao quanh $500\text{ Hz}$. Tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, hãy tính tần số tương ứng tại hai mẫu trễ rời rạc $\tau = 31$ và $\tau = 32$. Tính khoảng chênh lệch tần số $\Delta F_0$ (Hz) và khoảng cách theo thang đo logarit $\Delta \text{cents}$ (cent). So sánh kết quả thu được với khoảng cách nửa cung âm nhạc ($50\text{ cent}$) và giải thích tại sao phép nội suy đỉnh liên tục là một đòi hỏi bắt buộc.
 
 \emph{Lời giải chi tiết:}
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
@@ -851,7 +845,7 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
     \begin{equation}
     \Delta \text{cents} = 1200 \times \log_2\left( \frac{516{,}1290}{500{,}0000} \right) = 1200 \times \log_2\left( \frac{32}{31} \right) \approx \mathbf{54{,}9644\text{ cent}} \approx 55\text{ cent}
     \end{equation}
-    \item So sánh với ngưỡng phân biệt thính giác: Tai người bình thường có ngưỡng JND từ $5\text{ cent}$ đến $10\text{ cent}$. Bước nhảy rời rạc $55\text{ cent}$ lớn gấp \textbf{11 lần} ngưỡng tối thiểu của tai người ($55 / 5 = 11{,}0$) và vượt quá một nửa cung âm nhạc ($50\text{ cent}$). Nếu không có phép nội suy đỉnh dưới mẫu, hệ thống sẽ gây ra hiện tượng nhảy bậc thang giả tạo làm hỏng ngữ điệu giọng nói. Do đó, nội suy cực trị liên tục là bắt buộc.
+    \item So sánh với thang đo âm học: Bước nhảy rời rạc $55\text{ cent}$ lớn hơn cả một nửa cung âm nhạc ($50\text{ cent}$). Nếu không có phép nội suy đỉnh, hệ thống sẽ gây ra hiện tượng nhảy bậc thang giả tạo làm hỏng ngữ điệu giọng nói. Do đó, nội suy cực trị liên tục là bắt buộc.
 \end{enumerate}
 
 \paragraph{Bài tập 2: Nội suy Parabol với độ dời âm (đỉnh lệch trái).}
@@ -889,7 +883,7 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
     F_{0, \text{Q12.4}} &= \left\lfloor \frac{N + \lfloor D / 2 \rfloor}{D} \right\rfloor = \left\lfloor \frac{1.024.000.000 + 159500}{319000} \right\rfloor \\
     &= \left\lfloor \frac{1.024.159.500}{319000} \right\rfloor = \mathbf{3210}
     \end{align}
-    Phép chia số nguyên duy nhất cho ra kết quả chính xác tuyệt đối là $3210$, khớp hoàn toàn với kết quả mô phỏng song sinh trong tệp \path{verify_v3/ch09_exercises.log}.
+    Phép chia số nguyên duy nhất cho ra kết quả chính xác là $3210$, khớp hoàn toàn với kết quả mô phỏng song sinh trong tệp \path{verify_v3/ch09_exercises.log}.
 \end{enumerate}
 
 \paragraph{Bài tập 3: Dải biến thiên của chuẩn hóa động $s_2$ và độ rộng bit bộ chia.}
@@ -942,7 +936,7 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
     \item \textbf{Kết luận:} Lập luận của kỹ sư là chưa thấu đáo vì đã nhầm lẫn giữa thông lượng đỉnh lý thuyết với nhu cầu thời gian thực của ứng dụng. Bộ chia tuần tự Radix-2 là lựa chọn kỹ thuật tối ưu và phù hợp cho hệ thống.
 \end{enumerate}
 
-\textit{Tóm lại: Khảo sát kiến trúc phần cứng chứng minh bộ chia tuần tự Radix-2 là giải pháp tối ưu cho lõi F0 FPGA; các bài tập cuối chương củng cố sâu sắc kỹ năng phân tích định lượng từ bước nhảy âm học cent đến các chặn trên bit nhị phân và ngân sách thời gian thực.}
+\textit{Tóm lại: Khảo sát kiến trúc phần cứng chứng minh bộ chia tuần tự Radix-2 là giải pháp tối ưu cho lõi F0 FPGA; các bài tập cuối chương củng cố kỹ năng phân tích định lượng từ bước nhảy âm học cent đến các chặn trên bit nhị phân và ngân sách thời gian thực.}
 
 
 
