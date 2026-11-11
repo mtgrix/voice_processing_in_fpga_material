@@ -6,7 +6,7 @@
 
 \begin{learningobj}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của hiện tượng suy giảm hình học trong hàm tự tương quan ngắn hạn: khi độ trễ $\tau$ tăng, diện tích chồng lấn của cửa sổ co lại khiến năng lượng tự tương quan của cửa sổ $R_w[\tau]$ giảm dần từ $1{,}0$ về $0{,}468$ tại $\tau = 214$; phân tích sự thật phũ rằng nếu không chia bù cho $R_w[\tau]$, các đỉnh ở độ trễ lớn bị dìm xuống khiến thuật toán thiên vị chọn độ trễ nhỏ (tần số cao), dẫn đến lỗi nhảy quãng tám lên trên (octave doubling).
+    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của hiện tượng suy giảm hình học trong hàm tự tương quan ngắn hạn: khi độ trễ $\tau$ tăng, diện tích chồng lấn của cửa sổ co lại khiến năng lượng tự tương quan của cửa sổ $R_w[\tau]$ giảm dần từ $1{,}0$ về $0{,}468$ tại $\tau = 214$; phân tích nguyên nhân khi không chia bù cho $R_w[\tau]$, các đỉnh ở độ trễ lớn bị dìm xuống khiến thuật toán thiên vị chọn độ trễ nhỏ (tần số cao), dẫn đến lỗi nhảy quãng tám lên trên (octave doubling).
     \item Khảo sát nguyên lý chi phí quãng tám (Octave Cost) trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 158--164, 225--240 và \path{fon/Pitch.cpp}, dòng 554--560); giải mã lý do Paul Boersma trừ một lượng phạt tỷ lệ với logarit chu kỳ nhằm ưu tiên tần số cao và phá vỡ thế cân bằng nguy hiểm giữa chu kỳ cơ bản $\tau_0$ và chu kỳ bội $2\tau_0$ (octave halving); chứng minh bằng giải tích sự tương đương giữa công thức phân loại ứng viên theo $F_{\text{floor}}$ và hàm chi phí cục bộ theo $F_{\text{ceiling}}$ (lệch nhau đúng một hằng số cộng $0{,}030000$).
     \item Phân tích toàn diện ba phương án thiết kế phần cứng: chứng minh giải pháp chia trực tiếp $R[\tau] / R_w[\tau]$ tiêu tốn tài nguyên quá mức; vạch rõ sai số của giải pháp gộp chi phí vào ROM nhân (phiên bản v1) làm nghiêng đỉnh parabol và dịch tần số từ $0{,}07$ đến $0{,}23\text{ cent}$, đồng thời chỉ rõ công thức của Argon không thể tạo ra hệ số $17070$; bảo vệ quyết định chốt kiến trúc trừ đúng như Praat qua bộ bảng tra ROM tích hợp $256 \times 32$ trong đúng 1 khối M10K (\path{golden_v2/rom/ck_rom.{hex,mif}}).
     \item Dẫn xuất bước chuẩn hóa động $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$ đưa toán hạng $R_n[\tau]$ về $27\text{ bit}$ có dấu, chứng minh sai số tương đối của phép dịch số học này không vượt quá $2^{-26} \approx 1{,}49 \times 10^{-8} \le 1{,}5 \times 10^{-8}$; giải thích cơ chế silicon giúp hai phép nhân $R_n \times C$ ($27 \times 17$) và $R_{0n} \times K$ ($27 \times 16$) nằm vừa khít trong đúng 2 khối Variable Precision DSP $27 \times 27$ của Cyclone V.
@@ -21,9 +21,9 @@
 \subsubsection*{Vấn đề thực tế: Sự suy giảm hình học nhân tạo và nguy cơ nhảy quãng tám}
 Hãy tưởng tượng một tình huống cụ thể trong xử lý tiếng nói: người nói phát âm một nguyên âm trầm ở tần số cơ bản $F_0 = 100\text{ Hz}$. Tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, chu kỳ dao động cơ bản của dây thanh âm là $\tau_0 = 16.000 / 100 = 160\text{ mẫu}$. Khi tín hiệu âm thanh này được nhân với cửa sổ Hanning chiều dài hữu hạn $N = 638\text{ mẫu}$ rồi đưa vào khối MAC ở Chương 7 để tính hàm tự tương quan $R[\tau]$, điều gì sẽ xảy ra tại các độ trễ $\tau$?
 
-Theo trực giác thuần túy, vì dạng sóng lặp lại tuần hoàn sau mỗi $160\text{ mẫu}$, ta kỳ vọng tích vô hướng giữa dạng sóng với bản sao trễ $160\text{ mẫu}$ phải có giá trị tương đương với năng lượng gốc tại $\tau = 0$. Nhưng thực tế phần cứng lại đưa ra một kết quả gây bối rối: giá trị $R[160]$ thu được chỉ đạt khoảng $65{,}4\%$ so với $R[0]$! Thậm chí, nếu tín hiệu có họa ba bậc hai mạnh ở $200\text{ Hz}$ (ứng với độ trễ $\tau_1 = 80\text{ mẫu}$), giá trị $R[80]$ lại đạt tới $79{,}1\%$ giá trị đỉnh. 
+Theo trực giác thuần túy, vì dạng sóng lặp lại tuần hoàn sau mỗi $160\text{ mẫu}$, ta kỳ vọng tích vô hướng giữa dạng sóng với bản sao trễ $160\text{ mẫu}$ phải có giá trị tương đương với năng lượng gốc tại $\tau = 0$. Nhưng thực tế phần cứng lại đưa ra một kết quả gây bối rối: giá trị $R[160]$ thu được chỉ đạt khoảng $65{,}4\%$ so với $R[0]$. Thậm chí, nếu tín hiệu có họa ba bậc hai mạnh ở $200\text{ Hz}$ (ứng với độ trễ $\tau_1 = 80\text{ mẫu}$), giá trị $R[80]$ lại đạt tới $79{,}1\%$ giá trị đỉnh. 
 
-Nếu thuật toán chọn đỉnh cực đại trực tiếp từ dãy số $R[\tau]$ chưa chuẩn hóa này, đỉnh tại $\tau = 80\text{ mẫu}$ sẽ chiến thắng đỉnh tại $\tau = 160\text{ mẫu}$. Kết quả là hệ thống sẽ báo cao độ là $200\text{ Hz}$ thay vì $100\text{ Hz}$! Hiện tượng nhận diện sai chu kỳ cơ bản thành một nửa chu kỳ thật (tức tần số bị nhân đôi) được gọi là \textbf{lỗi nhảy quãng tám lên trên} (octave doubling).
+Nếu thuật toán chọn đỉnh cực đại trực tiếp từ dãy số $R[\tau]$ chưa chuẩn hóa này, đỉnh tại $\tau = 80\text{ mẫu}$ sẽ chiến thắng đỉnh tại $\tau = 160\text{ mẫu}$. Kết quả là hệ thống sẽ báo cao độ là $200\text{ Hz}$ thay vì $100\text{ Hz}$. Hiện tượng nhận diện sai chu kỳ cơ bản thành một nửa chu kỳ thật (tức tần số bị nhân đôi) được gọi là \textbf{lỗi nhảy quãng tám lên trên} (octave doubling).
 
 Nguyên nhân của sự sai lệch này không nằm ở bản chất giọng nói, mà nằm ở \textbf{hình học của việc cắt khung hữu hạn}. Hàm tự tương quan của tín hiệu đã nhân cửa sổ $x_w[n] = x[n] \cdot w[n]$ được xác định bởi:
 \begin{equation}
@@ -53,7 +53,7 @@ Tại cận trên của dải quét phần cứng $\tau = 214$, giá trị $R_w[
 \begin{equation}
 \frac{R_w[214]}{R_w[0]} = \frac{120.407.728.314}{257.295.365.938} \approx \mathbf{0{,}46797} \approx 46{,}8\%
 \end{equation}
-Nói cách khác, một thành phần sóng có chu kỳ dài $\tau = 214\text{ mẫu}$ ($F_0 \approx 74{,}77\text{ Hz}$) bị dìm biên độ tự nhiên mất hơn $53{,}2\%$ năng lượng chỉ vì hiệu ứng mép cửa sổ! 
+Nói cách khác, một thành phần sóng có chu kỳ dài $\tau = 214\text{ mẫu}$ ($F_0 \approx 74{,}77\text{ Hz}$) bị dìm biên độ tự nhiên mất hơn $53{,}2\%$ năng lượng chỉ vì hiệu ứng mép cửa sổ. 
 
 \begin{firstprin}{Sự cần thiết tuyệt đối của việc chia bù hàm tự tương quan cửa sổ}
 Để khôi phục lại hàm tự tương quan khách quan của tín hiệu $R_x[\tau]$, ta bắt buộc phải triệt tiêu ảnh hưởng hình học của cửa sổ bằng cách chia giá trị tự tương quan đo được $R_{xw}[\tau]$ cho hàm tự tương quan chuẩn hóa của cửa sổ $R_w[\tau] / R_w[0]$:
@@ -120,13 +120,13 @@ Quan sát tỉ số chưa chuẩn hóa:
 \begin{equation}
 \frac{R_{xw}[3]}{R_{xw}[0]} = \frac{4{,}820838}{10{,}125000} \approx \mathbf{0{,}476132}
 \end{equation}
-Dù tín hiệu $x$ lặp lại tuần hoàn hoàn hảo sau mỗi 3 mẫu, tỉ số tương quan đo được bị tụt từ $1{,}0$ xuống dưới $0{,}48$! Nếu một thành phần nhiễu tần số cao tại $\tau = 1$ có tỉ số tương quan giả mạo cỡ $0{,}5$, thuật toán sẽ lập tức chọn nhầm $\tau = 1$.
+Dù tín hiệu $x$ lặp lại tuần hoàn hoàn hảo sau mỗi 3 mẫu, tỉ số tương quan đo được bị tụt từ $1{,}0$ xuống dưới $0{,}48$. Nếu một thành phần nhiễu tần số cao tại $\tau = 1$ có tỉ số tương quan giả mạo cỡ $0{,}5$, thuật toán sẽ lập tức chọn nhầm $\tau = 1$.
 
 Tuy nhiên, khi ta áp dụng phép chuẩn hóa cửa sổ theo phương trình~(\ref{eq:ch08_norm_exact}):
 \begin{equation}
 r[3] = \frac{R_{xw}[3]}{R_{xw}[0]} \times C_{\text{ideal}}[3] = 0{,}476132 \times 2{,}121527 = \mathbf{1{,}010127} \approx 1{,}0
 \end{equation}
-(Giá trị hơi vượt $1{,}0$ do hiệu ứng lượng tử hóa biên trên khung siêu ngắn 8 mẫu; trên khung 638 mẫu của Praat, giá trị này hội tụ chặt chẽ về $1{,}0$). Nhờ nhân bù với $C_{\text{ideal}}[3] = 2{,}1215$, độ mạnh của đỉnh tại chu kỳ thật $\tau_0 = 3$ đã được khôi phục trọn vẹn!
+(Giá trị hơi vượt $1{,}0$ do hiệu ứng lượng tử hóa biên trên khung siêu ngắn 8 mẫu; trên khung 638 mẫu của Praat, giá trị này hội tụ chặt chẽ về $1{,}0$). Nhờ nhân bù với $C_{\text{ideal}}[3] = 2{,}1215$, độ mạnh của đỉnh tại chu kỳ thật $\tau_0 = 3$ đã được khôi phục trọn vẹn.
 
 \begin{figure}[htbp]
 \centering
@@ -154,7 +154,7 @@ Trong thực tế thu âm, giọng nói của con người không bao giờ là 
     \item Tạp âm môi trường tần số thấp (tiếng ù nguồn điện $50/60\text{ Hz}$, tiếng gió micrô, tiếng rung cơ học) tạo ra một thành phần trôi chậm, vô tình cộng thêm một lượng giá trị dương vào các độ trễ lớn $\tau \approx 160..200$.
 \end{itemize}
 
-Hệ quả là tại khung phân tích, đỉnh tương quan tại chu kỳ bội $2\tau_0 = 160$ có thể đạt $r[160] = 0{,}925$, trong khi đỉnh tại chu kỳ thật $\tau_0 = 80$ chỉ đạt $r[80] = 0{,}920$. Nếu bộ ước lượng cao độ chỉ đơn giản lấy chỉ số có tương quan lớn nhất ($\text{argmax}$), nó sẽ lập tức chọn $\tau = 160\text{ mẫu}$ và kết luận cao độ là $100\text{ Hz}$ thay vì $200\text{ Hz}$! Lỗi này trong âm học gọi là \textbf{lỗi chia đôi quãng tám} (octave halving, hay pitch drop).
+Hệ quả là tại khung phân tích, đỉnh tương quan tại chu kỳ bội $2\tau_0 = 160$ có thể đạt $r[160] = 0{,}925$, trong khi đỉnh tại chu kỳ thật $\tau_0 = 80$ chỉ đạt $r[80] = 0{,}920$. Nếu bộ ước lượng cao độ chỉ đơn giản lấy chỉ số có tương quan lớn nhất ($\text{argmax}$), nó sẽ lập tức chọn $\tau = 160\text{ mẫu}$ và kết luận cao độ là $100\text{ Hz}$ thay vì $200\text{ Hz}$. Lỗi này trong âm học gọi là \textbf{lỗi chia đôi quãng tám} (octave halving, hay pitch drop).
 
 \subsubsection*{Nguyên lý của Paul Boersma: Ưu tiên tần số cao}
 Tại sao hiện tượng này lại là một lỗi phân tích? Bởi vì theo định nghĩa vật lý về cao độ giọng nói, chu kỳ cơ bản $T_0$ là \textbf{khoảng thời gian ngắn nhất} mà sau đó dạng sóng lặp lại cấu trúc của nó. Nói cách khác, giữa hai ứng viên tuần hoàn có độ mạnh tương đương nhau, ứng viên có chu kỳ ngắn hơn (tần số cao hơn) luôn luôn là chu kỳ cơ bản thật sự, còn ứng viên có chu kỳ dài hơn chỉ là hệ quả kéo theo của tính tuần hoàn bội.
@@ -181,7 +181,7 @@ với tham số mặc định $\text{octaveCost} = 0{,}01$ và tần số sàn $
 Vì mọi ứng viên hợp lệ đều có tần số $f \ge F_{\text{floor}} = 75\text{ Hz}$, tỉ số $F_{\text{floor}} / f \le 1$, dẫn đến đại lượng $\log_2(F_{\text{floor}} / f) \le 0$. Do đó, số hạng $-\text{octaveCost} \cdot \log_2(F_{\text{floor}} / f)$ thực chất là một \textbf{lượng cộng thưởng dương} cho các ứng viên có tần số cao hơn $75\text{ Hz}$.
 
 \paragraph{2. Giai đoạn quy hoạch động Viterbi / Path Finder (\texttt{fon/Pitch.cpp}, dòng 560):}
-Khi thuật toán tìm đường đi tối ưu Viterbi tính toán hàm chi phí cục bộ (local cost) cho mỗi ứng viên hữu thanh trong khung, công thức được định nghĩa là:
+Khi thuật toán quy hoạch động Viterbi tính toán hàm chi phí cục bộ (local cost) cho mỗi ứng viên hữu thanh trong khung, công thức được định nghĩa là:
 \begin{equation}
 \text{score}_{\text{local}} = \text{strength} - \text{octaveCost} \cdot \log_2\left(\frac{F_{\text{ceiling}}}{f}\right)
 \label{eq:ch08_cost_ceiling}
@@ -203,7 +203,7 @@ Thay các giá trị tham số danh định $F_{\text{floor}} = 75\text{ Hz}$, $
 \begin{equation}
 \Delta_{\text{offset}} = 0{,}01 \times \log_2\left(\frac{600}{75}\right) = 0{,}01 \times \log_2(8) = 0{,}01 \times 3 = \mathbf{0{,}030000}
 \end{equation}
-Hiệu số giữa hai công thức là một \textbf{hằng số tuyệt đối cố định bằng đúng $0{,}030000$}, hoàn toàn độc lập với tần số $f$ của ứng viên (đã được kiểm chứng số học trong \path{verify_v3/ch08_praat_lines.log})! 
+Hiệu số giữa hai công thức là một \textbf{hằng số tuyệt đối cố định bằng đúng $0{,}030000$}, hoàn toàn độc lập với tần số $f$ của ứng viên (đã được kiểm chứng số học trong \path{verify_v3/ch08_praat_lines.log}). 
 
 Vì việc cộng hoặc trừ một hằng số cố định lên toàn bộ các ứng viên trong cùng một khung không làm thay đổi thứ tự tương quan lớn bé giữa chúng, hai công thức này hoàn toàn tương đương nhau về mặt thứ bậc xếp hạng ứng viên (ranking equivalence). 
 
@@ -272,7 +272,7 @@ Khi bước vào hiện thực hóa khối chuẩn hóa và tính điểm quãng
 Về mặt toán học, cách trực tiếp nhất để triệt tiêu ảnh hưởng của cửa sổ là chia giá trị tự tương quan $R[\tau]$ cho $R_w[\tau]$ ở mỗi lag. Tuy nhiên, trên phần cứng số, đây là phương án kém hiệu quả nhất:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \emph{Độ rộng bit khổng lồ:} $R[\tau]$ có thể rộng tới $43\text{ bit}$ có dấu và $R_w[\tau]$ rộng tới $39\text{ bit}$ không dấu ($R_w[0] \approx 2{,}57 \times 10^{11}$). Một bộ chia số nguyên $43 / 39\text{ bit}$ đòi hỏi diện tích logic rất lớn.
-    \item \emph{Tiêu tốn tài nguyên và chu kỳ:} Nếu dùng IP chia đường ống (\texttt{LPM\_DIVIDE}), mỗi bộ chia tiêu tốn hàng nghìn ALM và có latency từ $30$ đến $45\text{ chu kỳ}$. Nếu dùng bộ chia tuần tự Radix-2 để tiết kiệm ALM, mỗi phép chia mất hơn $40\text{ chu kỳ}$; với 189 độ trễ, tổng thời gian chia lên tới $189 \times 40 = 7.560\text{ chu kỳ/khung}$, chiếm thêm $1{,}5\%$ ngân sách thời gian thực mà không giải quyết được bài toán Octave Cost.
+    \item \emph{Tiêu tốn tài nguyên và chu kỳ:} Nếu dùng IP chia đường ống (\texttt{LPM\_DIVIDE}), mỗi bộ chia tiêu tốn nhiều tài nguyên logic ALM và có độ trễ lớn (phải kiểm trong Parameter Editor và Compilation Report của Quartus Prime). Nếu dùng bộ chia tuần tự Radix-2 để tiết kiệm ALM, mỗi phép chia mất hơn $40\text{ chu kỳ}$; với 189 độ trễ, tổng thời gian chia lên tới $189 \times 40 = 7.560\text{ chu kỳ/khung}$, chiếm thêm $1{,}5\%$ ngân sách thời gian thực mà không giải quyết được bài toán Octave Cost.
     \item \emph{Quyết định:} \textbf{Loại bỏ hoàn toàn}.
 \end{itemize}
 
@@ -292,7 +292,7 @@ Tại sao phương án (b) lại bị loại bỏ trong bản chốt v2? Có hai
     Khảo sát giải tích và mô phỏng trên toàn bộ dải âm thanh hài $80\text{ Hz}$ đến $550\text{ Hz}$ trong nhật ký \texttt{verify\_v3/ch08\_norm\_math.log} đã xác nhận: độ lệch đỉnh parabol do phép nhân này gây ra dao động từ $\mathbf{0{,}087\text{ cent}}$ đến $\mathbf{0{,}440\text{ cent}}$ (trung bình $0{,}234\text{ cent}$), hoàn toàn không thể triệt tiêu.
     \item \textbf{Lỗi công thức của Argon:}
     Trong các bản báo cáo cũ, Argon từng viết rằng bảng ROM được sinh theo công thức $C_{\text{eff}} = \text{round}(2^{14} \cdot 2^{-0{,}01 \log_2(\tau/\tau_{\max})})$ ở định dạng Q2.14 và cho ra giá trị $17070$ tại $\tau = 214$. 
-    Đây là một sai sót toán học nghiêm trọng: tại $\tau = \tau_{\max} = 214$, tỉ số $\tau / \tau_{\max} = 1$, nên $\log_2(1) = 0$ và thừa số nhân bằng đúng $1{,}0$. Ở định dạng Q2.14, công thức của Argon cho ra $2^{14} \times 1{,}0 = \mathbf{16384}$, chứ không thể nào ra $17070$! Con số chuẩn tắc $S[214] = \mathbf{17070}$ thực chất sinh ra từ công thức~(\ref{eq:ch08_s_mult_def}) với định dạng Q3.13 lấy mốc tần số trần $600\text{ Hz}$:
+    Đây là một sai sót toán học nghiêm trọng: tại $\tau = \tau_{\max} = 214$, tỉ số $\tau / \tau_{\max} = 1$, nên $\log_2(1) = 0$ và thừa số nhân bằng đúng $1{,}0$. Ở định dạng Q2.14, công thức của Argon cho ra $2^{14} \times 1{,}0 = \mathbf{16384}$, chứ không thể nào ra $17070$. Con số chuẩn tắc $S[214] = \mathbf{17070}$ thực chất sinh ra từ công thức~(\ref{eq:ch08_s_mult_def}) với định dạng Q3.13 lấy mốc tần số trần $600\text{ Hz}$:
     \begin{equation}
     S[214] = \text{round}\left( 17429 \times \left(\frac{16000}{600 \times 214}\right)^{0{,}01} \right) = \text{round}(17429 \times 0{,}979390) = \mathbf{17.070}
     \end{equation}
@@ -330,8 +330,8 @@ Do làm biến dạng vị trí đỉnh parabol và không đồng nhất với 
     K[26] = -383, \quad K[27] = 188, \quad K[100] = 19.995, \quad K[213] = 31.434, \quad K[214] = 31.504
     \end{equation}
 
-    \item \textbf{4. Chuẩn hóa động $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$ để tối ưu hóa silicon DSP:}
-    Giá trị tích lũy $R_0 = \sum x_w^2$ có thể đạt tới $43\text{ bit}$ có dấu ($|x_w| \le 59379$, $R_0 \approx 2{,}25 \times 10^{12}$). Khối Variable Precision DSP của Cyclone V ở cấu hình đơn lẻ hỗ trợ tối đa phép nhân $27 \times 27\text{-bit}$. Nếu đưa trực tiếp toán hạng $43\text{ bit}$ vào phép nhân với $C[\tau]$ ($16\text{ bit}$), Quartus bắt buộc phải phân rã và ghép từ 2 đến 3 khối DSP vật lý!
+    \item \textbf{4. Chuẩn hóa động $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$ để cân bằng tài nguyên silicon DSP:}
+    Giá trị tích lũy $R_0 = \sum x_w^2$ có thể đạt tới $43\text{ bit}$ có dấu ($|x_w| \le 59379$, $R_0 \approx 2{,}25 \times 10^{12}$). Khối Variable Precision DSP của Cyclone V ở cấu hình độc lập hỗ trợ tối đa phép nhân $27 \times 27\text{-bit}$ (CV-51001, Bảng 4; CV-52003, Chương 5). Nếu đưa trực tiếp toán hạng $43\text{ bit}$ vào phép nhân với $C[\tau]$ ($16\text{ bit}$), toán hạng vượt quá độ rộng của khối DSP độc lập, buộc Quartus Prime phải phân rã phép nhân và ghép nối bằng logic ALM (số khối DSP và logic phụ thuộc vào chiến lược tổng hợp và phải kiểm trong Compilation Report của Quartus Prime).
     
     Để giải quyết triệt để rào cản phần cứng này, Golden v2 thực hiện chuẩn hóa động ngay khi nhận được $R_0$:
     \begin{align}
@@ -425,7 +425,7 @@ Khối ROM chứa bảng tra tích hợp $\{C[\tau], K[\tau]\}$ được cấu h
     Dải quét độ trễ từ $\tau = 26$ đến $\tau = 214$ đòi hỏi đúng $189\text{ từ}$ lưu trữ. Do cấu trúc bộ giải mã địa chỉ của khối M10K hoạt động theo lũy thừa của 2, độ sâu 256 từ (tương ứng với bus địa chỉ 8-bit, $\text{addr} \in [0, 255]$) là độ sâu tối thiểu bao trọn 189 từ dùng. Các địa chỉ từ $189$ đến $255$ được điền số 0 và không bao giờ được truy xuất.
 
     \item \textbf{Memory Block Type (Loại khối nhớ phần cứng) = M10K:}
-    Căn cứ theo tài liệu \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (CV-52003, Chương 3, Bảng 3-1: "M10K Embedded Memory Block Configurations"), một khối M10K vật lý chứa dung lượng danh định $10.240\text{ bit}$. Trong các cấu hình tổ chức độ sâu $\times$ độ rộng bit được hỗ trợ, cấu hình $256 \times 40$ (hoặc $256 \times 32$) nằm trọn vẹn bên trong \textbf{đúng 1 khối M10K}. Dung lượng 256 từ 32-bit tiêu tốn $256 \times 32 = 8.192\text{ bit} \le 10.240\text{ bit}$, chiếm đúng $80\%$ dung lượng của một khối M10K đơn lẻ và tiêu tốn $0\text{ ALM}$ logic.
+    Căn cứ theo tài liệu \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (CV-52003, Chương 3: "Embedded Memory Blocks in Cyclone V Devices", Bảng 3-1: "M10K Embedded Memory Block Configurations for Cyclone V Devices"), một khối M10K vật lý chứa dung lượng danh định $10.240\text{ bit}$. Trong các cấu hình tổ chức độ sâu $\times$ độ rộng bit được hỗ trợ, cấu hình $256 \times 32$ nằm trọn vẹn bên trong \textbf{đúng 1 khối M10K}. Dung lượng 256 từ 32-bit tiêu tốn $256 \times 32 = 8.192\text{ bit} \le 10.240\text{ bit}$, chiếm $80\%$ dung lượng của một khối M10K đơn lẻ; số lượng ALM logic tiêu tốn (nếu có để định tuyến giao tiếp) phải kiểm trong Compilation Report của Quartus Prime.
 
     \item \textbf{Clocking Method = Single Clock (\texttt{clk}):}
     Khối ROM đồng bộ hoàn toàn với đồng hồ chính $50\text{ MHz}$ của hệ thống, bảo đảm không xảy ra hiện tượng vượt miền xung nhịp (clock domain crossing).
@@ -446,7 +446,7 @@ Khối ROM chứa bảng tra tích hợp $\{C[\tau], K[\tau]\}$ được cấu h
     \item \textbf{LPM\_WIDTHB = 17 bit:} Độ rộng toán hạng $B$, nhận hệ số bù cửa sổ $C[\tau]$ từ ROM.
     \item \textbf{LPM\_WIDTHP = 44 bit:} Độ rộng của thanh ghi tích ngõ ra ($27 + 17 = 44\text{ bit}$).
     \item \textbf{LPM\_REPRESENTATION = "SIGNED":} Khối \texttt{LPM\_MULT} chỉ có một tham số khai báo kiểu biểu diễn chung cho cả hai toán hạng. Vì $R_n[\tau]$ là số có dấu bù hai (hàm tự tương quan có thể âm), cả hai toán hạng bắt buộc phải được khai báo là "SIGNED".
-    \item \textbf{Bẫy mở rộng bit dấu của $C[\tau]$:} Hệ số $C[\tau]$ bản chất là số không âm định dạng Q2.14 trong dải $[16563, 35030]$. Tại các độ trễ lớn $\tau \ge 170$, giá trị $C[\tau]$ vượt quá $32.767$ (ví dụ $C[214] = 35030$). Nếu người thiết kế ngây thơ khai báo \texttt{LPM\_WIDTHB = 16} với chế độ "SIGNED", bit 15 sẽ bị khối IP hiểu nhầm là bit dấu âm, biến $35030$ thành $-30506$! Do đó, toán hạng $B$ \textbf{bắt buộc phải được mở rộng lên 17 bit} với bit dấu bằng 0: \texttt{\$signed(\{1'b0, rom\_data[31:16]\})}.
+    \item \textbf{Bẫy mở rộng bit dấu của $C[\tau]$:} Hệ số $C[\tau]$ bản chất là số không âm định dạng Q2.14 trong dải $[16563, 35030]$. Tại các độ trễ lớn $\tau \ge 170$, giá trị $C[\tau]$ vượt quá $32.767$ (ví dụ $C[214] = 35030$). Nếu người thiết kế ngây thơ khai báo \texttt{LPM\_WIDTHB = 16} với chế độ "SIGNED", bit 15 sẽ bị khối IP hiểu nhầm là bit dấu âm, biến $35030$ thành $-30506$. Do đó, toán hạng $B$ \textbf{bắt buộc phải được mở rộng lên 17 bit} với bit dấu bằng 0: \texttt{\$signed(\{1'b0, rom\_data[31:16]\})}.
     \item \textbf{LPM\_PIPELINE = 1:} Kích hoạt 1 tầng thanh ghi đường ống ngõ ra, giúp Quartus tận dụng thanh ghi tích có sẵn trong khối DSP phần cứng.
     \item \textbf{Multiplier Circuitry = Dedicated Multiplier Circuitry:} Ép Quartus ánh xạ phép tính vào khối Variable Precision DSP cứng của Cyclone V.
 \end{itemize}
@@ -467,18 +467,18 @@ Theo tài liệu \emph{Cyclone V Device Handbook, Volume 1} (CV-52003, Chương 
     \item Chế độ độc lập thứ hai: \textbf{Một bộ nhân $27 \times 27\text{-bit}$ có dấu duy nhất}.
 \end{itemize}
 
-Vì phép nhân thứ nhất đòi hỏi kích thước $27 \times 17\text{-bit}$ và phép nhân thứ hai đòi hỏi $27 \times 16\text{-bit}$, cả hai phép tính đều vượt quá giới hạn 18 bit của chế độ thứ nhất, nhưng lại nằm \textbf{vừa khít bên trong giới hạn $27 \times 27\text{-bit}$ của chế độ thứ hai}!
+Vì phép nhân thứ nhất đòi hỏi kích thước $27 \times 17\text{-bit}$ và phép nhân thứ hai đòi hỏi $27 \times 16\text{-bit}$, cả hai phép tính đều vượt quá giới hạn 18 bit của chế độ thứ nhất, nhưng lại nằm \textbf{vừa khít bên trong giới hạn $27 \times 27\text{-bit}$ của chế độ thứ hai}.
 
 Do đó, Quartus sẽ phân bổ chính xác:
 \begin{equation}
 N_{\text{DSP}} = 1\text{ khối DSP (cho } R_n \times C) + 1\text{ khối DSP (cho } R_{0n} \times K) = \mathbf{2\text{ khối Variable Precision DSP}}
 \end{equation}
-Tổng số khối DSP tiêu tốn trên toàn chip là đúng $2$ trên tổng số $112\text{ khối DSP}$ có sẵn của dòng Cyclone V 5CSXFC6D6F31C6N (chiếm vỏn vẹn $1{,}78\%$ tài nguyên DSP). Các chỉ số tài nguyên logic ALM và tần số hoạt động tối đa $F_{\max}$ là các đại lượng phụ thuộc vào vị trí định tuyến (place-and-route) và \textbf{(phải đo)} bằng công cụ Compilation Report trong Quartus Prime.
+Tổng số khối DSP tiêu tốn trên toàn chip là đúng $2$ trên tổng số $112\text{ khối DSP}$ có sẵn của dòng Cyclone V 5CSXFC6D6F31C6N (CV-51001, Bảng 4: "Cyclone V SX Device Features", chiếm khoảng $1{,}78\%$ tài nguyên DSP). Các chỉ số tài nguyên logic ALM và tần số hoạt động tối đa $F_{\max}$ là các đại lượng phụ thuộc vào vị trí định tuyến (place-and-route) và \textbf{(phải đo)} bằng công cụ Compilation Report trong Quartus Prime.
 
 \begin{costbox}
 \textbf{Cảnh báo bẫy tiêu hao tài nguyên nếu không chuẩn hóa $\text{sh}$:}
 Nếu người thiết kế bỏ qua bước dịch động $\text{sh}$ và đưa trực tiếp giá trị tự tương quan $R[\tau]$ rộng $43\text{ bit}$ vào nhân với $C[\tau]$ ($16\text{ bit}$), toán hạng 43-bit vượt xa năng lực của một khối DSP $27 \times 27$. 
-Khi đó, Quartus bắt buộc phải phân rã phép nhân thành nhiều tích con: $(R_{\text{high}} \times 2^{18} + R_{\text{low}}) \times C$. Hệ quả là mỗi phép nhân sẽ tiêu tốn từ \textbf{2 đến 3 khối DSP} cộng thêm các bộ cộng ALM bên ngoài để ghép nối kết quả. Toàn bộ khối chuẩn hóa sẽ ngốn từ $4$ đến $6\text{ khối DSP}$ (gấp đôi đến gấp ba lần)! Giải pháp chuẩn hóa động $\text{sh}$ của Golden v2 chính là chiếc chìa khóa vàng giúp tiết kiệm tới $67\%$ tài nguyên DSP.
+Khi đó, toán hạng vượt quá độ rộng của khối DSP độc lập, buộc Quartus Prime phải phân rã phép nhân thành nhiều tích con và ghép nối bằng logic ALM (số khối DSP và logic phụ thuộc vào chiến lược tổng hợp và cần kiểm tra trong Compilation Report của Quartus Prime). Việc chuẩn hóa động $\text{sh}$ giúp đưa cả hai phép nhân về dải kích thước $27 \times 17$ và $27 \times 16$, vừa vặn với chế độ $27 \times 27$ độc lập của khối Variable Precision DSP (CV-52003, Chương 5).
 \end{costbox}
 
 \subsubsection*{Đoạn mã nguyên mẫu instantiating các khối IP (IP Wrapper Snippet)}
@@ -537,8 +537,8 @@ lpm_mult #(
 \textit{Tóm lại: Tuyến thiết kế IP tận dụng đúng 1 khối nhớ M10K (cấu hình $256 \times 32$) và đúng 2 khối Variable Precision DSP ở chế độ $27 \times 27$ nhờ bước chuẩn hóa động $\text{sh}$; việc mở rộng bit dấu $0$ cho hệ số $C[\tau]$ lên 17-bit là bắt buộc để tránh lỗi tràn số bù hai trong khối nhân có dấu của Intel.}
 
 
-\subsection*{8.5. Tuyến thiết kế (B): Module HDL tự viết khớp bit và khớp chu kỳ}
-\addcontentsline{toc}{subsection}{8.5. Tuyến thiết kế (B): Module HDL tự viết khớp bit và khớp chu kỳ}
+\subsection*{8.5. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho chuẩn hóa và chi phí Octave}
+\addcontentsline{toc}{subsection}{8.5. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho chuẩn hóa và chi phí Octave}
 
 \subsubsection*{Kiến trúc vi mô và sơ đồ khối phần cứng}
 Tuyến thiết kế (B) hiện thực hóa toàn bộ quá trình chuẩn hóa cửa sổ và tính điểm quãng tám bằng mã Verilog-2001 khả tổng hợp thuần túy, không phụ thuộc vào các megamodule độc quyền của Intel nhưng tái lập chính xác $100\%$ cấu trúc đường ống và thời gian trễ của Tuyến (A). Thiết kế bao gồm hai module phối hợp chặt chẽ:
@@ -572,7 +572,7 @@ Listing~\ref{lst:ch08_ck_rom} trình bày toàn bộ module bộ nhớ ROM một
 Giải thích chi tiết từng dòng mã nguồn của module \texttt{ch08\_ck\_rom.v}:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dòng 12--21:} Khai báo tham số độ rộng địa chỉ \texttt{ADDR\_W = 8} ($2^8 = 256\text{ từ}$), độ rộng dữ liệu \texttt{DATA\_W = 32}, độ sâu \texttt{DEPTH = 256} và đường dẫn tệp khởi tạo \texttt{INIT\_FILE}.
-    \item \textbf{Dòng 24:} Khai báo mảng bộ nhớ hai chiều \texttt{reg [DATA\_W-1:0] rom [0:DEPTH-1]}. Quartus tự động nhận dạng khai báo này và ánh xạ vào cấu hình $256 \times 40$ của một khối M10K vật lý.
+    \item \textbf{Dòng 24:} Khai báo mảng bộ nhớ hai chiều \texttt{reg [DATA\_W-1:0] rom [0:DEPTH-1]}. Quartus tự động nhận dạng khai báo này và ánh xạ vào cấu hình $256 \times 32$ của một khối M10K vật lý (CV-52003, Chương 3, Bảng 3-1).
     \item \textbf{Dòng 26--28:} Khối \texttt{initial} sử dụng hàm hệ thống \texttt{\$readmemh} để nạp 256 từ mã hex từ tệp \path{golden_v2/rom/ck_rom.hex}. Trong quy trình tổng hợp FPGA thật trên Quartus, chỉ thị này được trình biên dịch chuyển thành dữ liệu nhị phân khởi tạo bitstream cấu hình cho khối M10K.
     \item \textbf{Dòng 31--33:} Khối \texttt{always @(posedge clk)} chốt dữ liệu đọc \texttt{q <= rom[addr]} ở cạnh lên xung nhịp, tạo ra độ trễ đúng 1 chu kỳ xung nhịp và bảo đảm suy diễn thành thanh ghi ngõ ra có sẵn của M10K.
 \end{itemize}
@@ -580,32 +580,33 @@ Giải thích chi tiết từng dòng mã nguồn của module \texttt{ch08\_ck\
 \subsubsection*{Mã nguồn Verilog của module tính toán \texttt{ch08\_norm\_score.v}}
 Quá trình tính toán đường ống của khối chuẩn hóa và tính điểm được phân tách thành hai giai đoạn mã nguồn: Giai đoạn 1--2 (Dịch số học và Nhân DSP) trong Listing~\ref{lst:ch08_norm_pipe12}, và Giai đoạn 3 (Làm tròn và Hiệu số ngõ ra) trong Listing~\ref{lst:ch08_norm_pipe3}.
 
-\lstinputlisting[language=Verilog, firstline=119, lastline=169, firstnumber=119, caption={Đoạn mã Verilog Tầng 1 và Tầng 2: Dịch số học, tra cứu ROM và Khối nhân DSP kép (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe12}]{\detokenize{rtl/v3/ch08_norm_score.v}}
+\lstinputlisting[language=Verilog, firstline=99, lastline=175, firstnumber=99, caption={Đoạn mã Verilog Tầng 1 và Tầng 2: Tra cứu ROM, dịch số học và Khối nhân DSP kép (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe12}]{\detokenize{rtl/v3/ch08_norm_score.v}}
 
 Giải thích chi tiết các bước xử lý trong Tầng 1 và Tầng 2:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Dòng 117:} Tín hiệu \texttt{r\_shifted = in\_R >>> sh\_reg} thực hiện phép dịch phải số học (arithmetic right shift) giữ nguyên bit dấu của giá trị tự tương quan 48-bit có dấu. Phép toán \texttt{>>>} bảo đảm nếu $R[\tau] < 0$, các bit chèn vào phía MSB luôn là bit 1.
-    \item \textbf{Dòng 127--133:} Khi cờ \texttt{in\_valid = 1} và độ trễ nằm trong dải quét $\tau \in [26, 214]$, Tầng 1 sinh địa chỉ ROM $\text{addr} = \tau - 26$, chốt $27\text{ bit}$ thấp của $R_n[\tau]$ vào \texttt{rn\_pipe1}, chốt giá trị $R_{0n}$ vào \texttt{r0n\_pipe1} và nâng cờ hợp lệ \texttt{v\_pipe1 = 1}.
-    \item \textbf{Dòng 152--153:} Tách từ nhớ 32-bit của ROM thành hai hệ số: \texttt{c\_coeff} ($16\text{ bit}$ cao không dấu) và \texttt{k\_coeff} ($16\text{ bit}$ thấp có dấu).
-    \item \textbf{Dòng 166:} Phép nhân thứ nhất thực hiện \texttt{rn\_pipe1 * \$signed(\{1'b0, c\_coeff\})}. Việc ghép thêm bit 0 vào MSB của \texttt{c\_coeff} giúp mở rộng an toàn hệ số không âm $C[\tau]$ thành số có dấu $17\text{ bit}$, ngăn chặn triệt để hiện tượng tràn số âm khi $C[\tau] \ge 32768$. Tích \texttt{prod\_c\_pipe2} là số có dấu $44\text{ bit}$.
-    \item \textbf{Dòng 167:} Phép nhân thứ hai thực hiện \texttt{\$signed(\{1'b0, r0n\_pipe1\}) * k\_coeff}. Năng lượng $R_{0n}$ ($26\text{ bit}$ dương) được mở rộng thành $27\text{ bit}$ có dấu và nhân với $K[\tau]$ ($16\text{ bit}$ có dấu). Tích \texttt{prod\_k\_pipe2} là số có dấu $43\text{ bit}$. Cả hai phép nhân được chốt đồng thời vào thanh ghi Tầng 2 ở cạnh lên xung nhịp kế tiếp.
+    \item \textbf{Dòng 102--104:} Tín hiệu địa chỉ \texttt{rom\_addr} được giải mã tổ hợp trực tiếp từ \texttt{in\_tau - 26} khi cờ \texttt{in\_valid = 1} và $26 \le \tau \le 214$, cấp thẳng vào cổng địa chỉ của \texttt{ch08\_ck\_rom}.
+    \item \textbf{Dòng 126:} Tín hiệu \texttt{r\_shifted = in\_R >>> sh\_reg} thực hiện phép dịch phải số học (arithmetic right shift) giữ nguyên bit dấu của giá trị tự tương quan 48-bit có dấu. Phép toán \texttt{>>>} bảo đảm nếu $R[\tau] < 0$, các bit chèn vào phía MSB luôn là bit 1.
+    \item \textbf{Dòng 135--140:} Tại cạnh lên xung nhịp (Tầng 1), dữ liệu \texttt{rom\_data} từ ROM cùng các thanh ghi đường ống (\texttt{rn\_pipe1}, \texttt{r0n\_pipe1}, \texttt{tau\_pipe1}, \texttt{v\_pipe1}) được chốt đồng thời.
+    \item \textbf{Dòng 158--159:} Tách từ nhớ 32-bit của ROM thành hai hệ số: \texttt{c\_coeff} ($16\text{ bit}$ cao không dấu) và \texttt{k\_coeff} ($16\text{ bit}$ thấp có dấu).
+    \item \textbf{Dòng 172:} Phép nhân thứ nhất thực hiện \texttt{rn\_pipe1 * \$signed(\{1'b0, c\_coeff\})}. Việc ghép thêm bit 0 vào MSB của \texttt{c\_coeff} giúp mở rộng an toàn hệ số không âm $C[\tau]$ thành số có dấu $17\text{ bit}$, ngăn chặn triệt để hiện tượng tràn số âm khi $C[\tau] \ge 32768$. Tích \texttt{prod\_c\_pipe2} là số có dấu $44\text{ bit}$.
+    \item \textbf{Dòng 173:} Phép nhân thứ hai thực hiện \texttt{\$signed(\{1'b0, r0n\_pipe1\}) * k\_coeff}. Năng lượng $R_{0n}$ ($26\text{ bit}$ dương) được mở rộng thành $27\text{ bit}$ có dấu và nhân với $K[\tau]$ ($16\text{ bit}$ có dấu). Tích \texttt{prod\_k\_pipe2} là số có dấu $43\text{ bit}$. Cả hai phép nhân được chốt đồng thời vào thanh ghi Tầng 2 ở cạnh lên xung nhịp kế tiếp.
 \end{itemize}
 
-\lstinputlisting[language=Verilog, firstline=174, lastline=201, firstnumber=174, caption={Đoạn mã Verilog Tầng 3: Làm tròn số học, dịch phân số và trừ Octave Cost (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe3}]{\detokenize{rtl/v3/ch08_norm_score.v}}
+\lstinputlisting[language=Verilog, firstline=180, lastline=206, firstnumber=180, caption={Đoạn mã Verilog Tầng 3: Làm tròn số học, dịch phân số và trừ Octave Cost (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe3}]{\detokenize{rtl/v3/ch08_norm_score.v}}
 
 Giải thích chi tiết các bước xử lý trong Tầng 3:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Dòng 174--175:} Phép cộng hằng số làm tròn $+ 8192$ (tương ứng $+ 2^{13}$, nửa LSB của định dạng phân số $14\text{ bit}$) và phép dịch phải số học \texttt{>>> 14} thực hiện phép chia nguyên làm tròn chuẩn xác cho $2^{14}$, tạo ra đại lượng tương quan chuẩn hóa $U[\tau]$ ($28\text{ bit}$ có dấu).
-    \item \textbf{Dòng 177--178:} Phép cộng hằng số làm tròn $+ 524288$ (tương ứng $+ 2^{19}$, nửa LSB của định dạng phân số $20\text{ bit}$) và phép dịch phải số học \texttt{>>> 20} tạo ra lượng phạt chi phí quãng tám $\text{term}_K$ ($23\text{ bit}$ có dấu).
-    \item \textbf{Dòng 180:} Bộ trừ thực hiện phép trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$. Biểu thức \texttt{\{\{7\{k\_div[22]\}\}, k\_div\}} thực hiện mở rộng bit dấu tường minh từ 23 bit lên 30 bit có dấu trước khi trừ, bảo đảm tính đúng đắn khi $\text{term}_K$ âm (tại $\tau = 26$).
-    \item \textbf{Dòng 182--201:} Khối \texttt{always} chốt toàn bộ các kết quả ngõ ra vào thanh ghi: cờ \texttt{out\_valid}, chỉ số trễ \texttt{out\_tau}, các giá trị $U[\tau]$, $S_c[\tau]$, $R_{0n}$, $\text{sh}$ và cờ báo hoàn tất lag cuối cùng \texttt{out\_last = (tau == 214)}.
+    \item \textbf{Dòng 180--181:} Phép cộng hằng số làm tròn $+ 8192$ (tương ứng $+ 2^{13}$, nửa LSB của định dạng phân số $14\text{ bit}$) và phép dịch phải số học \texttt{>>> 14} thực hiện phép chia nguyên làm tròn chuẩn xác cho $2^{14}$, tạo ra đại lượng tương quan chuẩn hóa $U[\tau]$ ($28\text{ bit}$ có dấu).
+    \item \textbf{Dòng 183--184:} Phép cộng hằng số làm tròn $+ 524288$ (tương ứng $+ 2^{19}$, nửa LSB của định dạng phân số $20\text{ bit}$) và phép dịch phải số học \texttt{>>> 20} tạo ra lượng phạt chi phí quãng tám $\text{term}_K$ ($23\text{ bit}$ có dấu).
+    \item \textbf{Dòng 186:} Bộ trừ thực hiện phép trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$. Biểu thức \texttt{\{\{7\{k\_div[22]\}\}, k\_div\}} thực hiện mở rộng bit dấu tường minh từ 23 bit lên 30 bit có dấu trước khi trừ, bảo đảm tính đúng đắn khi $\text{term}_K$ âm (tại $\tau = 26$).
+    \item \textbf{Dòng 188--206:} Khối \texttt{always} chốt toàn bộ các kết quả ngõ ra vào thanh ghi: cờ \texttt{out\_valid}, chỉ số trễ \texttt{out\_tau}, các giá trị $U[\tau]$, $S_c[\tau]$, $R_{0n}$, $\text{sh}$ và cờ báo hoàn tất lag cuối cùng \texttt{out\_last = (tau == 214)}.
 \end{itemize}
 
-\subsubsection*{Vì sao khối HDL tự viết khớp bit và khớp chu kỳ với Tuyến IP}
+\subsubsection*{Cơ sở bảo đảm tính tương đương định thời và độ chính xác giữa HDL và Tuyến IP}
 Sự tương đương toán học và định thời giữa module HDL tự viết và cấu hình Intel IP được bảo đảm bởi ba yếu tố kiến trúc:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Độ trễ đường ống (Latency):} Khối IP \texttt{altsyncram} có trễ 1 chu kỳ; khối \texttt{LPM\_MULT} có trễ 1 chu kỳ (\texttt{LPM\_PIPELINE = 1}). Module HDL tự viết bố trí 1 chu kỳ đọc ROM (\texttt{addr} $\to$ \texttt{rom\_data}), 1 chu kỳ chốt tích nhân (\texttt{rn\_pipe1} $\to$ \texttt{prod\_c\_pipe2}), và 1 chu kỳ chốt ngõ ra làm tròn. Tổng độ trễ từ ngõ vào $R[\tau]$ đến ngõ ra $U[\tau]$ và $S_c[\tau]$ của cả hai tuyến đều bằng \textbf{đúng 3 chu kỳ xung nhịp}.
-    \item \textbf{Thông lượng liên tục (Throughput):} Cả hai tuyến đều có thông lượng đạt $1\text{ kết quả/chu kỳ}$ (zero-bubble streaming pipeline). Khi 189 độ trễ được phát liên tục, 189 kết quả hợp lệ nối đuôi nhau xuất hiện ở ngõ ra sau 3 nhịp trễ ban đầu.
+    \item \textbf{Độ trễ đường ống (Latency):} Khối IP \texttt{altsyncram} có trễ đọc 1 chu kỳ; khối \texttt{LPM\_MULT} có trễ 1 chu kỳ (\texttt{LPM\_PIPELINE = 1}). Module HDL tự viết cấp địa chỉ tổ hợp cho khối ROM để dữ liệu \texttt{rom\_data} sẵn sàng cùng nhịp với Tầng 1, tiếp đến Tầng 2 chốt tích nhân (\texttt{rn\_pipe1} $\to$ \texttt{prod\_c\_pipe2}), và Tầng 3 chốt ngõ ra làm tròn. Thiết kế gồm 3 tầng thanh ghi đường ống; kết quả hợp lệ xuất hiện sau đúng 2 chu kỳ kể từ khi Tầng 1 lấy mẫu dữ liệu ngõ vào.
+    \item \textbf{Thông lượng liên tục (Throughput):} Cả hai tuyến đều có thông lượng đạt $1\text{ kết quả/chu kỳ}$ (zero-bubble streaming pipeline). Khi 189 độ trễ được phát liên tục, 189 kết quả hợp lệ nối đuôi nhau xuất hiện ở ngõ ra sau các nhịp trễ ban đầu.
     \item \textbf{Khớp bit làm tròn:} Cả hai tuyến đều áp dụng chung công thức cộng nửa LSB dương ($+ 2^{13}$ và $+ 2^{19}$) trước khi dịch phải số học bù hai, triệt tiêu mọi sai số cắt cụt (truncation bias).
 \end{enumerate}
 
@@ -617,33 +618,33 @@ Bảng~\ref{tab:ch08_twin_vs_hdl} đối chiếu chi tiết từng dòng lệnh 
 \small
 \caption{Đối chiếu chi tiết giữa mô hình song sinh Python Twin và mã nguồn Verilog HDL.}
 \label{tab:ch08_twin_vs_hdl}
-\begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} X}
+\begin{tabularx}{\textwidth}{p{3.2cm} p{3.2cm} X}
 \toprule
 \textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa kỹ thuật và cơ chế hoạt động} \\
 \midrule
-Dòng 88--93 & Dòng 80--84, 120--126 & Khởi tạo và reset tích cực mức thấp, xóa toàn bộ các thanh ghi trạng thái đường ống về 0. \\
+Dòng 89--94 & Dòng 80--84, 129--134, 162--168, 189--197 & Khởi tạo và reset tích cực mức thấp, xóa toàn bộ các thanh ghi trạng thái đường ống về 0. \\
 \addlinespace[3pt]
-Dòng 170--175 & Dòng 85--88 & Bắt cờ $\tau = 0$, tính chiều dài bit $\text{bitlen}(R_0)$ và chốt hệ số dịch $\text{sh}$ cùng $R_{0n} = R_0 \gg \text{sh}$. \\
+Dòng 160--166 & Dòng 85--90 & Bắt cờ $\tau = 0$, tính chiều dài bit $\text{bitlen}(R_0)$ và chốt hệ số dịch $\text{sh}$ cùng $R_{0n} = R_0 \gg \text{sh}$. \\
 \addlinespace[3pt]
-Dòng 156--161 & Dòng 127--133 & Tầng 1: Sinh địa chỉ $\text{addr} = \tau - 26$, thực hiện dịch số học $R_n[\tau] = R[\tau] \ggg \text{sh}$ vào thanh ghi \texttt{rn\_pipe1}. \\
+Dòng 146--155 & Dòng 102--104, 126, 135--147 & Tầng 1: Sinh địa chỉ $\text{addr} = \tau - 26$, thực hiện dịch số học $R_n[\tau] = R[\tau] \ggg \text{sh}$ vào thanh ghi \texttt{rn\_pipe1}. \\
 \addlinespace[3pt]
-Dòng 137--145 & Dòng 155--168 & Tầng 2: Nhân song song hai tích $P_C = R_n \times C[\tau]$ ($27\text{s} \times 17\text{s}$) và $P_K = R_{0n} \times K[\tau]$ ($27\text{s} \times 16\text{s}$). \\
+Dòng 127--135 & Dòng 158--159, 169--174 & Tầng 2: Nhân song song hai tích $P_C = R_n \times C[\tau]$ ($27\text{s} \times 17\text{s}$) và $P_K = R_{0n} \times K[\tau]$ ($27\text{s} \times 16\text{s}$). \\
 \addlinespace[3pt]
-Dòng 117 & Dòng 174--175 & Tầng 3: Làm tròn cộng $2^{13}$ và dịch phải 14 bit tạo đại lượng tương quan chuẩn hóa $U[\tau]$. \\
+Dòng 107 & Dòng 180--181 & Tầng 3: Làm tròn cộng $2^{13}$ và dịch phải 14 bit tạo đại lượng tương quan chuẩn hóa $U[\tau]$. \\
 \addlinespace[3pt]
-Dòng 118 & Dòng 177--178 & Tầng 3: Làm tròn cộng $2^{19}$ và dịch phải 20 bit tạo lượng phạt Octave Cost $\text{term}_K$. \\
+Dòng 108 & Dòng 183--184 & Tầng 3: Làm tròn cộng $2^{19}$ và dịch phải 20 bit tạo lượng phạt Octave Cost $\text{term}_K$. \\
 \addlinespace[3pt]
-Dòng 119 & Dòng 180 & Tầng 3: Trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$ tạo điểm chi phí toàn cục cho xếp hạng ứng viên. \\
+Dòng 109 & Dòng 186 & Tầng 3: Trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$ tạo điểm chi phí toàn cục cho xếp hạng ứng viên. \\
 \addlinespace[3pt]
-Dòng 180--200 & Dòng 182--201 & Cạnh lên xung nhịp: Chốt đồng thời ngõ ra \texttt{out\_valid}, \texttt{out\_U}, \texttt{out\_Sc}, \texttt{out\_last} vào flip-flop. \\
+Dòng 181--187, 189--197 & Dòng 188--206 & Cạnh lên xung nhịp: Chốt đồng thời ngõ ra \texttt{out\_valid}, \texttt{out\_U}, \texttt{out\_Sc}, \texttt{out\_last} vào flip-flop. \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \paragraph{Đổi lựa chọn thì sao?}
-Nếu người thiết kế quyết định xóa bỏ thanh ghi Tầng 2 và đưa tích số $P_C, P_K$ thẳng vào bộ cộng làm tròn Tầng 3 trong cùng một chu kỳ (giảm độ trễ từ 3 xuống 2 nhịp): đường tới hạn sẽ kéo dài từ ngõ ra của khối M10K, đi qua bộ nhân DSP $27 \times 27$, đi tiếp qua bộ cộng $44\text{-bit}$ rồi mới tới thanh ghi ngõ ra. Trên chip Cyclone V tốc độ chậm (speed grade -6), quãng đường điện dài này sẽ làm tụt tần số hoạt động tối đa $F_{\max}$ xuống dưới $50\text{ MHz}$ (phải đo). Việc giữ nguyên cấu trúc 3 nhịp là lựa chọn tối ưu, vừa bảo đảm $F_{\max} > 100\text{ MHz}$, vừa khớp hoàn toàn với kiến trúc IP.
+Nếu người thiết kế quyết định xóa bỏ thanh ghi Tầng 2 và đưa tích số $P_C, P_K$ thẳng vào bộ cộng làm tròn Tầng 3 trong cùng một chu kỳ (giảm độ trễ từ 3 xuống 2 nhịp): đường tới hạn sẽ kéo dài từ ngõ ra của khối M10K, đi qua bộ nhân DSP $27 \times 27$, đi tiếp qua bộ cộng $44\text{-bit}$ rồi mới tới thanh ghi ngõ ra. Trên chip Cyclone V tốc độ chậm (speed grade -6), quãng đường điện dài này có thể làm giảm tần số hoạt động tối đa $F_{\max}$ (phải đo trong Quartus Prime). Việc duy trì cấu trúc 3 tầng giúp ngắt mạch các đường trễ tổ hợp dài và bảo đảm độ ổn định định thời (Fmax và tài nguyên cụ thể phải đo trong Quartus Prime).
 
-\textit{Tóm lại: Module HDL tự viết mô phỏng trung thực kiến trúc silicon M10K và DSP của Cyclone V; thiết kế đường ống 3 tầng giúp phân tách quãng đường điện, bảo đảm thông lượng 1 kết quả/chu kỳ và khớp hoàn toàn từng bit lẫn từng chu kỳ với mô hình song sinh Python.}
+\textit{Tóm lại: Module HDL tự viết phản ánh trung thực kiến trúc silicon M10K và DSP của Cyclone V; thiết kế đường ống 3 tầng phân tách quãng đường điện, đạt thông lượng 1 kết quả/chu kỳ và được thiết kế để khớp từng bit lẫn từng chu kỳ với mô hình song sinh Python (kết quả mô phỏng: \todo{box}).}
 
 % =============================================================================
 % 8.6. MÔ HÌNH SONG SINH PYTHON TWIN VÀ KỊCH BẢN KIỂM CHỨNG TESTBENCH
@@ -659,76 +660,19 @@ Nếu người thiết kế quyết định xóa bỏ thanh ghi Tầng 2 và đ�
     \item \textbf{Cơ chế làm tròn nửa lên có bù}: Khớp chính xác thuật toán cộng $2^{13}$ trước khi dịch phải 14 bit cho $U[\tau]$, và cộng $2^{19}$ trước khi dịch phải 20 bit cho $\text{term}_K$.
 \end{enumerate}
 
-Đoạn mã nguồn then chốt từ dòng 109 đến dòng 166 trong phương thức \texttt{step()} của lớp \texttt{Ch08NormTwin} được thể hiện trong Liệt kê~\ref{lst:ch08_twin_core}.
+Đoạn mã nguồn then chốt từ dòng 99 đến dòng 166 trong phương thức \texttt{step()} của lớp \texttt{Ch08NormTwin} được thể hiện trong Liệt kê~\ref{lst:ch08_twin_core}.
 
-\begin{lstlisting}[language=Python, caption={Đoạn mã then chốt của mô hình song sinh Python Twin (\texttt{verify\_v3/ch08\_twin.py}).}, label={lst:ch08_twin_core}, firstline=109, lastline=166, firstnumber=109]
-        if self.v_pipe2:
-            next_out_valid = 1
-            next_out_tau = self.tau_pipe2
-            next_out_R0n = self.r0n_pipe2
-            next_out_sh = self.sh_reg
-            next_out_last = 1 if self.tau_pipe2 == K.TAU_SCAN_MAX else 0
-
-            # Rounding and shifts
-            u_div = (self.prod_c_pipe2 + 8192) >> 14
-            k_div = (self.prod_k_pipe2 + 524288) >> 20
-            sc_diff = u_div - k_div
-
-            # Clamp to 28-bit signed integer range for bit-exact HDL matching
-            # Signed 28-bit range: [-134217728, 134217727]
-            next_out_U = ((u_div + (1 << 27)) % (1 << 28)) - (1 << 27)
-            next_out_Sc = ((sc_diff + (1 << 27)) % (1 << 28)) - (1 << 27)
-        else:
-            next_out_valid = 0
-            next_out_tau = 0
-            next_out_U = 0
-            next_out_Sc = 0
-            next_out_R0n = self.r0n_pipe2
-            next_out_sh = self.sh_reg
-            next_out_last = 0
-
-        # ---------------------------------------------------------------------
-        # Next state computation for Stage 2 (Multiplication)
-        # ---------------------------------------------------------------------
-        if self.v_pipe1:
-            next_v_pipe2 = 1
-            next_tau_pipe2 = self.tau_pipe1
-            next_r0n_pipe2 = self.r0n_pipe1
-            tau = self.tau_pipe1
-            c_coeff = self.C[tau]
-            k\_coeff = self.K[tau]
-            next_prod_c = self.rn_pipe1 * c_coeff
-            next_prod_k = self.r0n_pipe1 * k\_coeff
-        else:
-            next_v_pipe2 = 0
-            next_tau_pipe2 = 0
-            next_r0n_pipe2 = 0
-            next_prod_c = 0
-            next_prod_k = 0
-
-        # ---------------------------------------------------------------------
-        # Next state computation for Stage 1 (ROM Address & Shift)
-        # ---------------------------------------------------------------------
-        if in_valid and (K.TAU_SCAN_MIN <= in_tau <= K.TAU_SCAN_MAX):
-            next_v_pipe1 = 1
-            next_tau_pipe1 = in_tau
-            next_rn_pipe1 = in_R >> self.sh_reg
-            next_r0n_pipe1 = self.r0n_reg
-        else:
-            next_v_pipe1 = 0
-            next_tau_pipe1 = 0
-            next_rn_pipe1 = 0
-            next_r0n_pipe1 = 0
-\end{lstlisting}
+\lstinputlisting[language=Python, firstline=99, lastline=166, firstnumber=99, caption={Đoạn mã then chốt của mô hình song sinh Python Twin (\texttt{verify\_v3/ch08\_twin.py}).}, label={lst:ch08_twin_core}]{\detokenize{verify_v3/ch08_twin.py}}
 
 \paragraph{Giải thích từng dòng mã nguồn Python Twin}
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Dòng 109--114}: Kiểm tra cờ hợp lệ tầng 2 \texttt{self.v\_pipe2}. Nếu tích số đã sẵn sàng, gán cờ hợp lệ ngõ ra \texttt{next\_out\_valid = 1}, chốt chỉ số $\tau$, truyền giá trị $R_{0n}$ và $\text{sh}$. Đặc biệt, dòng 114 kiểm tra điều kiện kết thúc khung $\tau = 214$ để kích hoạt cờ \texttt{next\_out\_last = 1}.
-    \item \textbf{Dòng 117--119}: Thực hiện làm tròn số học đối xứng: tích $P_C$ được cộng $8.192$ ($2^{13}$) trước khi dịch phải 14 bit; tích $P_K$ được cộng $524.288$ ($2^{19}$) trước khi dịch phải 20 bit. Sau đó, điểm toàn cục \texttt{sc\_diff} được tính bằng hiệu đại số trực tiếp.
-    \item \textbf{Dòng 123--124}: Ép dải số nguyên có dấu $28\text{-bit}$ (tương ứng phạm vi $[-134.217.728, 134.217.727]$) để bảo đảm hành vi số học tràn/quay vòng (nếu có) phản ánh chính xác từng bit cắt của thanh ghi phần cứng.
-    \item \textbf{Dòng 125--133}: Nhánh \texttt{else} khi không có dữ liệu hợp lệ ở tầng 2: xóa cờ ngõ ra về 0 và xóa dữ liệu tính toán để tránh lan truyền giá trị rác.
-    \item \textbf{Dòng 137--145}: Tầng 2 kích hoạt khi có cờ \texttt{self.v\_pipe1}. Truy xuất hệ số $C[\tau]$ và $K[\tau]$ từ mảng ROM nạp trước, sau đó nhân số học với $R_n[\tau]$ và $R_{0n}$ tạo ra các tích trung gian \texttt{next\_prod\_c} và \texttt{next\_prod\_k}.
-    \item \textbf{Dòng 156--166}: Tầng 1 bắt tín hiệu ngõ vào khi \texttt{in\_valid = 1} và $26 \le \tau \le 214$. Dịch phải số học ngõ vào $R[\tau]$ theo lượng dịch $\text{sh}$ đã chốt tại $\tau = 0$, đồng thời đồng bộ $R_{0n}$ vào thanh ghi ống dẫn \texttt{next\_r0n\_pipe1}.
+    \item \textbf{Dòng 99--104}: Kiểm tra cờ hợp lệ tầng 2 \texttt{self.v\_pipe2}. Nếu tích số đã sẵn sàng, gán cờ hợp lệ ngõ ra \texttt{next\_out\_valid = 1}, chốt chỉ số $\tau$, truyền giá trị $R_{0n}$ và $\text{sh}$. Dòng 104 kiểm tra điều kiện kết thúc khung $\tau = 214$ để kích hoạt cờ \texttt{next\_out\_last = 1}.
+    \item \textbf{Dòng 106--109}: Thực hiện làm tròn số học đối xứng: tích $P_C$ được cộng $8.192$ ($2^{13}$) trước khi dịch phải 14 bit; tích $P_K$ được cộng $524.288$ ($2^{19}$) trước khi dịch phải 20 bit. Sau đó, điểm toàn cục \texttt{sc\_diff} được tính bằng hiệu đại số trực tiếp.
+    \item \textbf{Dòng 111--114}: Ép dải số nguyên có dấu $28\text{-bit}$ (tương ứng phạm vi $[-134.217.728, 134.217.727]$) để bảo đảm phản ánh chính xác từng bit cắt của thanh ghi phần cứng.
+    \item \textbf{Dòng 115--122}: Nhánh \texttt{else} khi không có dữ liệu hợp lệ ở tầng 2: xóa cờ ngõ ra về 0.
+    \item \textbf{Dòng 127--135}: Tầng 2 kích hoạt khi có cờ \texttt{self.v\_pipe1}. Truy xuất hệ số $C[\tau]$ và $K[\tau]$ từ mảng ROM nạp trước, sau đó nhân số học với $R_n[\tau]$ và $R_{0n}$ tạo ra các tích trung gian \texttt{next\_prod\_c} và \texttt{next\_prod\_k}.
+    \item \textbf{Dòng 146--155}: Tầng 1 kích hoạt khi có \texttt{in\_valid = 1} và $26 \le \tau \le 214$. Dịch phải số học ngõ vào $R[\tau]$ theo lượng dịch $\text{sh}$ đã chốt tại $\tau = 0$, đồng thời đồng bộ $R_{0n}$ vào thanh ghi \texttt{next\_r0n\_pipe1}.
+    \item \textbf{Dòng 160--166}: Bắt cờ $\tau = 0$ khi bắt đầu khung mới: đo chiều dài bit $R_0$, tính hệ số dịch $\text{sh} = \max(0, \text{bitlen} - 26)$ và lưu $R_{0n} = R_0 \gg \text{sh}$.
 \end{itemize}
 
 \paragraph{Quy ước lấy mẫu 2 pha trong Testbench (Sampling Convention)}
@@ -778,7 +722,7 @@ Khối nhớ ROM & ROM: 1-PORT \texttt{altsyncram} ($256 \times 32$), 1 M10K (CV
 \addlinespace[3pt]
 Bộ nhân DSP & 2 khối \texttt{LPM\_MULT} $27 \times 27$ có dấu (UG-01083) & Toán tử \texttt{*} có ép kiểu \texttt{\$signed}, suy luận 2 DSP & Cả hai tuyến chiếm đúng 2 khối Variable Precision DSP $27 \times 27$. \\
 \addlinespace[3pt]
-Tài nguyên ALM & 35--50 ALM (glue logic ngoại vi, phải đo) & 60--80 ALM (tích hợp đường ống và cờ, phải đo) & Tuyến B tốn thêm một ít ALM do tích hợp trọn vẹn bộ dịch và cờ kết thúc. \\
+Tài nguyên ALM & (Phải đo trong Quartus) & (Phải đo trong Quartus) & Số lượng ALM phụ thuộc vào bộ tổng hợp logic và vị trí định tuyến; cần kiểm tra trong Compilation Report của Quartus Prime. \\
 \addlinespace[3pt]
 Độ trễ chu kỳ & 3 chu kỳ xung nhịp & 3 chu kỳ xung nhịp & Hoàn toàn đồng nhất về độ trễ xử lý. \\
 \addlinespace[3pt]
@@ -826,14 +770,10 @@ Giả sử bộ ước lượng không áp dụng kỹ thuật dịch động $\
 \textit{Lời giải:}
 \begin{enumerate}[leftmargin=1.5em]
     \item \textbf{Trường hợp không chuẩn hóa (Toán hạng 43-bit có dấu)}:
-    Toán hạng $R[\tau]$ có 43 bit có dấu, trong khi $C[\tau]$ có 17 bit có dấu và $K[\tau]$ có 16 bit có dấu. Khối Variable Precision DSP của Cyclone V (CV-52005) ở chế độ độc lập chỉ hỗ trợ tối đa phép nhân $27 \times 27$ có dấu hoặc hai phép nhân $18 \times 18$ độc lập. Để thực hiện phép nhân $43 \times 17\text{ bit}$, trình biên dịch Quartus bắt buộc phải phân rã toán hạng 43-bit thành hai phần:
-    \begin{equation}
-        R = R_{\text{high}} \cdot 2^{18} + R_{\text{low}},
-    \end{equation}
-    sau đó thực hiện hai phép nhân con $R_{\text{high}} \times C$ và $R_{\text{low}} \times C$, rồi dùng một mạng cộng gồm khoảng 40--50 ALM bên ngoài khối DSP để ghép nối kết quả. Do đó, mỗi phép nhân đòi hỏi từ 2 đến 3 khối DSP. Tổng tài nguyên cho hai phép nhân dao động từ 4 đến 6 khối DSP và tiêu tốn thêm khoảng 80--100 ALM logic ghép nối.
+    Toán hạng $R[\tau]$ có 43 bit có dấu, trong khi $C[\tau]$ có 17 bit có dấu và $K[\tau]$ có 16 bit có dấu. Khối Variable Precision DSP của Cyclone V (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices") ở chế độ độc lập hỗ trợ tối đa phép nhân $27 \times 27$ có dấu hoặc hai phép nhân $18 \times 18$ độc lập. Để thực hiện phép nhân $43 \times 17\text{ bit}$, toán hạng vượt quá độ rộng của khối DSP độc lập, buộc trình biên dịch Quartus phải phân rã toán hạng thành các phần nhỏ hơn và sử dụng logic ALM để ghép nối kết quả (số lượng khối DSP và ALM cụ thể phải đo trong Quartus Prime).
     \item \textbf{Trường hợp có chuẩn hóa động $\text{sh}$}:
-    Giá trị $R_n[\tau] = R[\tau] \ggg \text{sh}$ được ép dải nghiêm ngặt dưới $2^{26}$, vừa vặn hoàn hảo trong biểu diễn 27 bit có dấu (\texttt{signed [26:0]}). Phép nhân $R_n \times C$ ($27\text{s} \times 17\text{s}$) và $R_{0n} \times K$ ($27\text{s} \times 16\text{s}$) nằm trọn vẹn bên trong năng lực của một khối DSP $27 \times 27$ duy nhất mà không cần phân rã toán hạng.
-    \item \textbf{Kết luận}: Chuẩn hóa động $\text{sh}$ giúp tiết kiệm từ $50\%$ đến $67\%$ số lượng khối DSP của toàn chương (chỉ dùng đúng 2 khối DSP thay vì 4 đến 6 khối) và triệt tiêu hoàn toàn logic cộng ghép nối ngoài, cải thiện đáng kể đường trễ truyền lan và $F_{\max}$.
+    Giá trị $R_n[\tau] = R[\tau] \ggg \text{sh}$ được ép dải nghiêm ngặt dưới $2^{26}$, vừa vặn hoàn hảo trong biểu diễn 27 bit có dấu (\texttt{signed [26:0]}). Phép nhân $R_n \times C$ ($27\text{s} \times 17\text{s}$) và $R_{0n} \times K$ ($27\text{s} \times 16\text{s}$) nằm trọn vẹn bên trong năng lực của 2 khối DSP $27 \times 27$ độc lập mà không cần phân rã toán hạng hay ghép thêm tầng cộng ALM ngoại vi.
+    \item \textbf{Kết luận}: Chuẩn hóa động $\text{sh}$ giúp tối giản cấu trúc tính toán, đưa các phép nhân về dải kích thước hỗ trợ nguyên bản của khối Variable Precision DSP trên Cyclone V, giảm tải tài nguyên và cải thiện đường trễ định thời (số liệu ALM và $F_{\max}$ phải đo trong Quartus Prime).
 \end{enumerate}
 
 \textbf{Bài tập 8.3 (Dẫn xuất giải tích độ lệch đỉnh parabol do hàm trọng số thiên vị):}
@@ -904,4 +844,4 @@ Chứng minh rằng với mọi khung tín hiệu âm thanh và mọi độ tr�
     Giá trị tối đa của $|S_c[\tau]|$ chỉ chiếm khoảng $52\%$ dải biểu diễn của thanh ghi 28-bit có dấu. Mạch luôn bảo đảm khoảng dự trữ an toàn gần 1 bit, triệt tiêu hoàn toàn nguy cơ tràn số trong mọi tình huống.
 \end{enumerate}
 
-\textit{Tóm lại: Toàn bộ cấu trúc chuẩn hóa tự tương quan và tính điểm Octave Cost được hoàn thiện với độ chính xác cao, cân bằng tối ưu giữa tài nguyên phần cứng M10K/DSP và tính toàn vẹn toán học của thuật toán Praat 7.0.03 trên FPGA Cyclone V.}
+\textit{Tóm lại: Toàn bộ cấu trúc chuẩn hóa tự tương quan và tính điểm Octave Cost được hoàn thiện với độ chính xác cao, cân bằng hiệu quả giữa tài nguyên phần cứng M10K/DSP và tính toàn vẹn toán học của thuật toán Praat 7.0.03 trên FPGA Cyclone V.}

@@ -14,9 +14,11 @@
 //        term_k = (R0n * K[tau] + 2^19) >>> 20
 //        Sc[tau] = U[tau] - term_k                        (~ (r(tau) - 0.01*log2(600/f)) * R0n)
 //
-// Pipeline latency: 3 clock cycles from R[tau] input to U[tau]/Sc[tau] output
-//   Stage 1: ROM address generation and dynamic arithmetic shift (Rn = in_R >>> sh)
-//   Stage 2: ROM read and dual DSP multipliers (Rn*C and R0n*K)
+// Pipeline latency: 2 clock cycles from sampling in_tau at Edge 1 to valid U[tau]/Sc[tau] at Edge 3
+//   (3 pipeline register stages: Stage 1 input latch/ROM, Stage 2 DSP mult, Stage 3 output)
+//   Stage 1: Combinational ROM address (in_tau - 26) + synchronous ROM read (1 cycle)
+//            in lockstep with dynamic arithmetic shift (Rn = in_R >>> sh)
+//   Stage 2: Dual DSP multipliers (Rn*C and R0n*K)
 //   Stage 3: Rounding (+2^13, +2^19), shift (>>> 14, >>> 20), subtraction (Sc = U - term_k)
 //
 // Document citations:
@@ -91,9 +93,15 @@ module ch08_norm_score #(
 
     // -------------------------------------------------------------------------
     // ROM instantiation: 256x32 (bits[31:16]=C[tau], bits[15:0]=K[tau])
+    // Combinational address driven directly from in_tau
+    // Read latency = 1 cycle (registered q inside ch08_ck_rom)
     // -------------------------------------------------------------------------
-    reg  [7:0]  rom_addr;
+    wire [7:0]  rom_addr;
     wire [31:0] rom_data;
+
+    assign rom_addr = (in_valid && (in_tau >= TAU_SCAN_MIN[7:0]) && (in_tau <= TAU_SCAN_MAX[7:0]))
+                    ? (in_tau - TAU_SCAN_MIN[7:0])
+                    : 8'd0;
 
     ch08_ck_rom #(
         .ADDR_W    (8),
@@ -107,7 +115,8 @@ module ch08_norm_score #(
     );
 
     // -------------------------------------------------------------------------
-    // Pipeline Stage 1: ROM address generation and arithmetic shift of R[tau]
+    // Pipeline Stage 1: Dynamic arithmetic shift of R[tau] and pipeline registers
+    // In lockstep with ROM read (rom_data and Stage 1 registers update on same clk edge)
     // -------------------------------------------------------------------------
     reg                     v_pipe1;
     reg [7:0]               tau_pipe1;
@@ -118,20 +127,17 @@ module ch08_norm_score #(
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            rom_addr  <= 8'd0;
             v_pipe1   <= 1'b0;
             tau_pipe1 <= 8'd0;
             rn_pipe1  <= {RN_W{1'b0}};
             r0n_pipe1 <= {R0N_W{1'b0}};
         end else begin
             if (in_valid && (in_tau >= TAU_SCAN_MIN[7:0]) && (in_tau <= TAU_SCAN_MAX[7:0])) begin
-                rom_addr  <= in_tau - TAU_SCAN_MIN[7:0];
                 v_pipe1   <= 1'b1;
                 tau_pipe1 <= in_tau;
                 rn_pipe1  <= r_shifted[RN_W-1:0];
                 r0n_pipe1 <= r0n_reg;
             end else begin
-                rom_addr  <= 8'd0;
                 v_pipe1   <= 1'b0;
                 tau_pipe1 <= 8'd0;
                 rn_pipe1  <= {RN_W{1'b0}};

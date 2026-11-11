@@ -1,68 +1,69 @@
 % chuong_v3/fig_ch08_window_effect.tex
 % Minh họa hiệu ứng suy giảm hình học của hàm tự tương quan cửa sổ Hanning Rw[tau]
 % và cơ chế bù suy hao qua hệ số C[tau] = round(2^14 * Rw[0] / Rw[tau])
-\begin{tikzpicture}[x=0.055cm, y=4.0cm, >=Stealth]
+\begin{tikzpicture}[x=0.06cm, y=4.5cm, >=Stealth]
     % Lưới nền mờ
-    \draw[very thin, gray!20, step=1] (0,0) grid[xstep=30, ystep=0.2] (220,1.2);
+    \draw[very thin, gray!20, step=1] (0,-0.5) grid[xstep=30, ystep=0.2] (225,1.2);
 
     % Trục tọa độ
-    \draw[->, thick, black!70] (0,0) -- (230,0) node[right, font=\footnotesize] {Độ trễ $\tau$ (mẫu)};
-    \draw[->, thick, black!70] (0,0) -- (0,1.25) node[above, font=\footnotesize] {Biên độ chuẩn hóa};
+    \draw[->, thick, black!70] (0,0) -- (235,0) node[right, font=\footnotesize] {Độ trễ $\tau$ (mẫu)};
+    \draw[->, thick, black!70] (0,-0.55) -- (0,1.25) node[above, font=\footnotesize] {Biên độ chuẩn hóa};
 
     % Vạch chia trục hoành
     \foreach \x in {0, 26, 60, 100, 140, 180, 214} {
-        \draw[thick, black!60] (\x,0.02) -- (\x,-0.02) node[below, font=\scriptsize] {\x};
+        \draw[thick, black!60] (\x,0.02) -- (\x,-0.02) node[below, font=\scriptsize, fill=white, inner sep=1pt] {\x};
     }
     % Vạch chia trục tung
-    \foreach \y in {0.0, 0.2, 0.4, 0.6, 0.8, 1.0} {
+    \foreach \y in {-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0} {
         \draw[thick, black!60] (2,\y) -- (-2,\y) node[left, font=\scriptsize] {\y};
     }
 
     % Vùng quét trễ tau in [26, 214]
-    \fill[blue!5, opacity=0.8] (26,0) rectangle (214,1.15);
-    \node[blue!70!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt] at (120,1.15) 
+    \fill[blue!5, opacity=0.7] (26,-0.52) rectangle (214,1.16);
+    \node[blue!70!black, font=\scriptsize, fill=white, inner sep=2.5pt, rounded corners=2pt, draw=blue!30] at (120,1.16) 
         {Dải quét trễ phần cứng: $\tau \in [26, 214]$ ($F_0 \in [75, 600]\text{ Hz}$)};
 
-    % Đường cong 1: Tự tương quan của cửa sổ Hanning Rw[tau]/Rw[0] (suy giảm từ 1.0 về ~0.468 tại tau=214)
-    % Số liệu giải tích chuẩn: Rw[0]=1.0, Rw[26]=0.989, Rw[60]=0.943, Rw[100]=0.851, Rw[140]=0.725, Rw[180]=0.584, Rw[214]=0.468
+    % Đường cong 1: Tự tương quan của cửa sổ Hanning Rw[tau]/Rw[0]
     \draw[thick, red!80!black, smooth] plot coordinates {
         (0,1.000) (15,0.996) (26,0.989) (40,0.973) (60,0.943) (80,0.902) 
         (100,0.851) (120,0.791) (140,0.725) (160,0.654) (180,0.584) (200,0.514) (214,0.468)
     };
-    \node[red!80!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (175,0.66) 
+    % Chú thích Rw[tau] đặt ở vùng thoáng (tau in [40, 75], y in [0.4, 0.7]) với mũi tên chỉ lên đường cong đỏ
+    \node[red!80!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=red!40] (lbl_rw) at (60,0.60) 
         {$R_w[\tau] / R_w[0]$ (Cửa sổ co ngắn dần)};
+    \draw[->, thick, red!80!black] (lbl_rw.north) -- (60,0.935);
 
-    % Đường cong 2: Tự tương quan chưa chuẩn hóa của tín hiệu tuần hoàn có chu kỳ tau_0 = 100
-    % Đỉnh tại tau=0 (1.0), tau=100 (bị dìm từ 1.0 xuống 0.851), tau=200 (bị dìm xuống 0.514)
+    % Đường cong 2: Tự tương quan chưa chuẩn hóa Rxw[tau]/Rxw[0]
     \draw[thick, gray!60!black, dashed, smooth] plot coordinates {
         (0,1.000) (20,0.05) (40,-0.45) (60,-0.30) (80,0.25) (95,0.80) 
         (100,0.851) (105,0.80) (120,0.15) (140,-0.35) (160,-0.20) (180,0.15) 
         (195,0.48) (200,0.514) (205,0.48) (214,0.20)
     };
-    \node[gray!70!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (195,0.38) 
+    % Chú thích Rxw đặt ở khoảng thoáng giữa tau=120 và tau=160
+    \node[gray!70!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=gray!40] at (142,0.30) 
         {$R_{xw}[\tau] / R_{xw}[0]$ (Chưa chuẩn hóa: đỉnh bị dìm)};
 
-    % Đường cong 3: Sau khi chuẩn hóa U[tau] / R0n = R_xw / (R0 * Rw_norm)
-    % Các đỉnh chu kỳ phục hồi về đúng 1.0
+    % Đường cong 3: Sau khi chuẩn hóa U[tau] / R0n
     \draw[very thick, blue!85!black, smooth] plot coordinates {
         (0,1.000) (20,0.05) (40,-0.46) (60,-0.32) (80,0.28) (95,0.94) 
         (100,1.000) (105,0.94) (120,0.19) (140,-0.48) (160,-0.31) (180,0.26) 
         (195,0.93) (200,1.000) (205,0.93) (214,0.43)
     };
-    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (95,1.06) 
+    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt] at (75,1.06) 
         {Đỉnh $\tau_0 = 100$ phục hồi $1{,}0$};
-    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (195,1.06) 
+    \node[blue!85!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt] at (175,1.06) 
         {Đỉnh $2\tau_0 = 200$ phục hồi $1{,}0$};
 
-    % Điểm đỉnh và mũi tên chỉ thị
+    % Điểm mốc và mũi tên chỉ thị
     \filldraw[red!80!black] (214,0.468) circle (1.5pt);
-    \node[right, red!80!black, font=\tiny, fill=white] at (214,0.468) {0,468 tại $\tau=214$};
+    \node[above right, red!80!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (214,0.50) 
+        {$0{,}468$ tại $\tau=214$};
 
     \filldraw[blue!85!black] (100,1.0) circle (1.5pt);
     \filldraw[blue!85!black] (200,1.0) circle (1.5pt);
     \draw[->, thick, green!60!black] (100,0.851) -- (100,0.98);
     \draw[->, thick, green!60!black] (200,0.514) -- (200,0.98);
 
-    \node[green!50!black, font=\tiny, fill=white, inner sep=1pt] at (112,0.92) {Bù $\times 1{,}175$};
-    \node[green!50!black, font=\tiny, fill=white, inner sep=1pt] at (212,0.75) {Bù $\times 1{,}946$};
+    \node[right, green!50!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (102,0.92) {Bù $\times 1{,}175$};
+    \node[left, green!50!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (197,0.75) {Bù $\times 1{,}946$};
 \end{tikzpicture}

@@ -4,17 +4,18 @@
 Bit-exact, cycle-accurate Python twin of rtl/v3/ch08_norm_score.v.
 Generates test stimuli and expected vectors for tb/v3/tb_ch08_norm.v.
 
-Pipeline Structure (3 cycles latency from R[tau] to U[tau]/Sc[tau]):
-  Stage 0 (Latch R0):
+Pipeline Structure (2 clock cycles latency from sampling in_tau to out_valid; 3 pipeline register stages):
+  Stage 0 (Latch R0 on in_tau == 0):
     sh = max(0, bitlen(R0) - 26)
     R0n = R0 >> sh
-  Stage 1 (ROM address & shift):
+  Stage 1 (Combinational ROM addr & shift, registered on Edge 1):
     rom_addr = in_tau - 26
     rn_pipe1 = in_R >> sh (signed arithmetic shift)
-  Stage 2 (Dual DSP Multiplications):
+    rom_data = {C[tau], K[tau]} (synchronous ROM registered read, 1 cycle)
+  Stage 2 (Dual DSP Multiplications, registered on Edge 2):
     prod_c = rn_pipe1 * C[tau] (signed 27x17)
     prod_k = R0n * K[tau] (signed 27x16)
-  Stage 3 (Rounding & Output):
+  Stage 3 (Rounding & Output, registered on Edge 3):
     U = (prod_c + 8192) >> 14
     term_k = (prod_k + 524288) >> 20
     Sc = U - term_k
@@ -81,9 +82,9 @@ class NormScoreTwin:
     def step(self, rst_n, in_valid, in_tau, in_R):
         """Cycle-accurate step function.
         Simulates hardware registered behavior:
-        1. Capture current registered outputs.
-        2. Compute next internal state.
-        3. Advance internal registers on posedge clk.
+        1. Compute next internal state from current registers and inputs.
+        2. Advance internal registers on posedge clk.
+        3. Return registered outputs after the clock edge (matching @(posedge clk); #1).
         """
         if not rst_n:
             self.reset()
@@ -91,17 +92,6 @@ class NormScoreTwin:
                 'out_valid': 0, 'out_tau': 0, 'out_U': 0,
                 'out_Sc': 0, 'out_R0n': 0, 'out_sh': 0, 'out_last': 0
             }
-
-        # Current outputs reflecting Stage 3 registers
-        curr_out = {
-            'out_valid': int(self.out_valid),
-            'out_tau': int(self.out_tau),
-            'out_U': int(self.out_U),
-            'out_Sc': int(self.out_Sc),
-            'out_R0n': int(self.out_R0n),
-            'out_sh': int(self.out_sh),
-            'out_last': int(self.out_last)
-        }
 
         # ---------------------------------------------------------------------
         # Next state computation for Stage 3 (Outputs)
@@ -151,7 +141,7 @@ class NormScoreTwin:
             next_prod_k = 0
 
         # ---------------------------------------------------------------------
-        # Next state computation for Stage 1 (ROM Address & Shift)
+        # Next state computation for Stage 1 (Combinational ROM Address & Shift)
         # ---------------------------------------------------------------------
         if in_valid and (K.TAU_SCAN_MIN <= in_tau <= K.TAU_SCAN_MAX):
             next_v_pipe1 = 1
@@ -196,7 +186,15 @@ class NormScoreTwin:
         self.out_sh = next_out_sh
         self.out_last = next_out_last
 
-        return curr_out
+        return {
+            'out_valid': int(self.out_valid),
+            'out_tau': int(self.out_tau),
+            'out_U': int(self.out_U),
+            'out_Sc': int(self.out_Sc),
+            'out_R0n': int(self.out_R0n),
+            'out_sh': int(self.out_sh),
+            'out_last': int(self.out_last)
+        }
 
 
 def generate_verification_vectors():
