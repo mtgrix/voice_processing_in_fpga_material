@@ -32,6 +32,8 @@ This script compares:
 import math
 import sys
 import os
+import glob
+import wave
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "golden_v2"))
 from constants import FS, DX, X1, PITCH_FLOOR, PERIODS_PER_WINDOW, TIME_STEP, HOP_NOMINAL
@@ -137,7 +139,24 @@ def main():
     print(f"   overlap (theor.) = {geom['theoretical_overlap']} samples (640 - 160 = 480, 75.00%)")
     print()
 
-    print("2. Standard Test Files:")
+    print("2. Golden WAV Files from golden_v2/ (used in Ch.13 verification):")
+    golden_dir = os.path.join(os.path.dirname(__file__), "..", "golden_v2")
+    golden_wavs = sorted(glob.glob(os.path.join(golden_dir, "*.wav")))
+    if golden_wavs:
+        for gpath in golden_wavs:
+            bname = os.path.basename(gpath)
+            with wave.open(gpath, "rb") as wf:
+                nx = wf.getnframes()
+                fs_w = wf.getframerate()
+            res = analyze_file_grid(nx, bname)
+            print(f"   - Golden WAV: {bname} (fs = {fs_w} Hz, nx = {nx} samples, duration = {res['duration']:.4f} s):")
+            print(f"     nframes    = {res['nframes']}")
+            print(f"     t1         = {res['t1']:.6f} s")
+            print(f"     first_win0 = {res['first_win0']} (HPS discards {res['first_win0']} samples)")
+            print(f"     hop range  = [{res['hop_min']}, {res['hop_max']}] -> Regular 160: {res['is_regular']}")
+    print()
+
+    print("3. Synthetic Edge Case File Lengths:")
     files = [
         (44800, "Synthetic Glide Clean / Noisy 2.8 s (golden_v2)"),
         (19744, "Illustrative Short File 1.234 s (Ch.1 example)"),
@@ -158,7 +177,7 @@ def main():
             print(f"     starts[0..2] = {res['starts0'][:3]}")
     print()
 
-    print("3. Floor Trap Analysis:")
+    print("4. Floor Trap Analysis:")
     anomalies = investigate_floor_trap()
     print(f"   Total anomalies (hop != 160) across 50,000 file lengths: {len(anomalies)}")
     if anomalies:

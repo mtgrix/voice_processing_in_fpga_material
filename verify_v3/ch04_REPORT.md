@@ -10,13 +10,13 @@
 
 | Mục | Mở đầu bằng bài toán thực tế | Ví dụ tính tay / Kịch bản Python | Phương án + Đánh đổi + Lựa chọn số liệu | Tuyến IP Intel | Tuyến HDL tự viết | Song sinh + Iverilog | Câu tóm tắt bản chất |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **4.1. Vì sao 3 chu kỳ, vì sao 10 ms** | Có | Có (`ch04_frame_grid.py`) | Có ($N=1, 2, 3, 5$ chu kỳ, $40\text{ ms}$, hop $10\text{ ms}$) | Không áp dụng | Không áp dụng | Khớp 100% Python | Có |
-| **4.2. Căn lưới khung giống Praat và bẫy số lẻ** | Có | Có (`ch04_frame_grid.py`, `ch04_praat_lines.py`) | Có (Căn lưới $t_1$, bỏ $1$ vs $33$ mẫu, bẫy $159/161$) | Không áp dụng | Không áp dụng | Khớp 100% Python | Có |
+| **4.1. Vì sao 3 chu kỳ, vì sao 10 ms** | Có | Có (`ch04_frame_grid.py`) | Có ($N=1, 2, 3, 5$ chu kỳ, $40\text{ ms}$, hop $10\text{ ms}$) | Không áp dụng | Không áp dụng | Pass (6/6) | Có |
+| **4.2. Căn lưới khung giống Praat và bẫy số lẻ** | Có | Có (`ch04_frame_grid.py`, `ch04_praat_lines.py`) | Có (Căn lưới $t_1$, bỏ $1$ vs $33$ mẫu, bẫy $159/161$) | Không áp dụng | Không áp dụng | Pass (50.000/50.000) | Có |
 | **4.3. Phân tích các phương án phần lưu đệm** | Có | Có (Bảng so sánh 3 phương án phần cứng) | Có (10.208 FF vs 800 từ + ALM vs 1024 từ 2 M10K) | Không áp dụng | Không áp dụng | Không áp dụng | Có |
 | **4.4. Tuyến (A): Khối IP Intel RAM: 2-PORT** | Có | Có (Giải mã 7 tham số, CV-52003, UG-01068) | Có (Latency 1 vs 2, Old Data vs Don't Care) | Có (Mẫu khai báo và timing IP) | Không áp dụng | Không áp dụng | Có |
-| **4.5. Tuyến (B): Mã nguồn HDL suy diễn M10K** | Có | Có (Dãy `rd_base` 0..960..96, logic 10-bit) | Có (Atomic sample count, `REGISTERED_OUTPUT`) | Không áp dụng | Có (`rtl/v3/ch04_ring_buffer.v`, 45 dòng) | Khớp 100% Twin | Có |
+| **4.5. Tuyến (B): Mã nguồn HDL suy diễn M10K** | Có | Có (Dãy `rd_base` 0..960..96, logic 10-bit) | Có (Atomic sample count, `REGISTERED_OUTPUT`) | Không áp dụng | Có (`rtl/v3/ch04_ring_buffer.v`, 45 dòng) | 3.500/3.500 vector Twin | Có |
 | **4.6. Kiểm chứng song sinh, Testbench và Bài tập** | Có | Có (Bảng đối chiếu 6 khối, quy ước lấy mẫu) | Có (3.500 chu kỳ, 5 góc biên, phản áp) | Có (Bảng so sánh IP vs HDL) | Có (`tb/v3/tb_ch04_ring_buffer.v`) | 3.500/3.500 vector Twin; Iverilog `\todo{box}` | Có |
-| **Bài tập thực hành (4 bài tập)** | Có | Có (`verify_v3/ch04_exercises.py`) | Có (Định lượng dung lượng, FPU-free, modulo, flush) | Không áp dụng | Không áp dụng | Khớp 100% Python | Có |
+| **Bài tập thực hành (4 bài tập)** | Có | Có (`verify_v3/ch04_exercises.py`) | Có (Định lượng dung lượng, FPU-free, modulo, flush) | Không áp dụng | Không áp dụng | Pass (4/4) | Có |
 
 ---
 
@@ -24,8 +24,8 @@
 
 - **Số trang biên dịch trong PDF hoàn chỉnh (`phan_moi_v3.pdf`):** 16 trang (trang 102 đến trang 117).
 - **Tổng số trang toàn sách:** 118 trang.
-- **Số từ trong tệp TeX (`wc -w chuong_v3/chuong_04_chia_khung_ram_vong.tex`):** 9.566 từ.
-- **Số dòng trong tệp TeX:** 647 dòng.
+- **Số từ trong tệp TeX (`wc -w chuong_v3/chuong_04_chia_khung_ram_vong.tex`):** 9.667 từ.
+- **Số dòng trong tệp TeX:** 654 dòng.
 - **Số hình vẽ TikZ kỹ thuật:** 2 hình.
   - Hình 7 (`chuong_v3/fig_ch04_frame_grid.tex`): Lưới căn khung thời gian Praat, bước nhảy hop 160 mẫu, vùng chồng lấp 478 mẫu, độ trễ bỏ qua mẫu đầu `lead_discard`.
   - Hình 8 (`chuong_v3/fig_ch04_ring_buffer.tex`): Sơ đồ kiến trúc phần cứng khối RAM vòng 1024 từ, giao diện Avalon-ST Sink, Cổng A ghi, Cổng B đọc, con trỏ ghi `wr_ptr`, con trỏ gốc `rd_base`, bộ đếm mẫu tồn `sample_count` và các cờ bắt tay.
