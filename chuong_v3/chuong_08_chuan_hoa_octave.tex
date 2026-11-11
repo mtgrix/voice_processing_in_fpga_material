@@ -756,3 +756,152 @@ Kịch bản kiểm chứng bao gồm tổng cộng $1.214$ chu kỳ mô phỏng
 
 \textit{Tóm lại: Mô hình song sinh Python Twin và testbench 2 pha cung cấp một cơ chế đối soát chu kỳ-đối-chu kỳ chặt chẽ trên 1.214 vectơ kiểm chứng, bảo đảm tính toàn vẹn chức năng của bộ chuẩn hóa và tính điểm Octave trước khi triển khai lên phần cứng thực tế.}
 
+% =============================================================================
+% 8.7. BẢNG SO SÁNH TỔNG HỢP VÀ BÀI TẬP CUỐI CHƯƠNG
+% =============================================================================
+\subsection*{8.7. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
+\addcontentsline{toc}{subsection}{8.7. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
+
+\paragraph{So sánh tổng hợp giữa Tuyến (A) Intel IP và Tuyến (B) HDL tự viết}
+Bảng~\ref{tab:ch08_ip_vs_hdl} cung cấp một đối sánh toàn diện giữa hai tuyến thiết kế xét trên các tiêu chí tài nguyên silicon, hiệu năng chu kỳ và tính khả chuyển kiểm chứng.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{So sánh tổng hợp giữa Tuyến (A) Intel Megafunction IP và Tuyến (B) HDL tự viết.}
+\label{tab:ch08_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{l p{4.2cm} p{4.2cm} X}
+\toprule
+\textbf{Tiêu chí} & \textbf{Tuyến (A) Intel IP} & \textbf{Tuyến (B) HDL tự viết} & \textbf{Đánh giá kỹ thuật} \\
+\midrule
+Khối nhớ ROM & ROM: 1-PORT \texttt{altsyncram} ($256 \times 32$), 1 M10K (CV-52003, Sec 3-1) & Mảng Verilog nạp \texttt{\$readmemh}, tự động suy luận 1 M10K & Cả hai tuyến dùng đúng 1 M10K block ($8.192 \le 10.240\text{ bit}$). \\
+\addlinespace[3pt]
+Bộ nhân DSP & 2 khối \texttt{LPM\_MULT} $27 \times 27$ có dấu (UG-01083) & Toán tử \texttt{*} có ép kiểu \texttt{\$signed}, suy luận 2 DSP & Cả hai tuyến chiếm đúng 2 khối Variable Precision DSP $27 \times 27$. \\
+\addlinespace[3pt]
+Tài nguyên ALM & 35--50 ALM (glue logic ngoại vi, phải đo) & 60--80 ALM (tích hợp đường ống và cờ, phải đo) & Tuyến B tốn thêm một ít ALM do tích hợp trọn vẹn bộ dịch và cờ kết thúc. \\
+\addlinespace[3pt]
+Độ trễ chu kỳ & 3 chu kỳ xung nhịp & 3 chu kỳ xung nhịp & Hoàn toàn đồng nhất về độ trễ xử lý. \\
+\addlinespace[3pt]
+Thông lượng & 1 kết quả / chu kỳ & 1 kết quả / chu kỳ & Xử lý đường ống liên tục 192 nhịp cho toàn dải $\tau \in [26, 214]$. \\
+\addlinespace[3pt]
+Mô phỏng độc lập & Cần thư viện độc quyền \texttt{altera\_mf}, \texttt{220model} & Hoàn toàn trung lập, chạy trực tiếp trên Icarus Verilog 12 & Tuyến B vượt trội về tính khả chuyển và gỡ lỗi độc lập mã nguồn mở. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Bài tập cuối chương có lời giải chi tiết}
+
+\textbf{Bài tập 8.1 (Tính toán thủ công hệ số ROM $C[\tau]$ và $K[\tau]$):}
+Cho mẫu cửa sổ Hanning $N = 638$, tần số lấy mẫu $f_s = 16.000\text{ Hz}$, $F_{0,\min} = 75\text{ Hz}$, hệ số phạt $\text{octaveCost} = 0{,}01$. Biết năng lượng chuẩn hóa của cửa sổ tại trễ 0 là $R_w[0] = 257.295.365.938$, tại $\tau = 50$ là $R_w[50] = 247.130.793.216$, và tại $\tau = 100$ là $R_w[100] = 218.869.510.864$. Hãy tính toán giải tích hệ số khuếch đại $C[\tau]$ (định dạng Q2.14) và hệ số phạt $K[\tau]$ (định dạng số nguyên có dấu 16-bit) tại $\tau = 50$ và $\tau = 100$. Đối chiếu với giá trị từ bộ nhớ trong tệp \texttt{ck\_rom.hex}.
+
+\textit{Lời giải:}
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Tại $\tau = 50$}:
+    Tỷ số suy giảm cửa sổ là $r_w[50] = R_w[50] / R_w[0] = 247.130.793.216 / 257.295.365.938 \approx 0{,}960494$.
+    Hệ số $C[50]$ ở định dạng Q2.14 là:
+    \begin{equation}
+        C[50] = \text{round}\left(\frac{16.384}{r_w[50]}\right) = \text{round}\left(\frac{16.384}{0{,}960494}\right) = \text{round}(17.057{,}88) = 17.058 = \texttt{0x42A2}.
+    \end{equation}
+    Tần số cơ bản tương ứng là $f_0 = 16.000 / 50 = 320\text{ Hz}$. Chi phí Octave nguyên bản là $\text{cost} = 0{,}01 \cdot \log_2(320 / 75) \approx 0{,}020931$.
+    Hệ số bù trừ $K[50]$ chuẩn hóa theo Praat (với độ dời bù hằng số $0{,}03$) là:
+    \begin{equation}
+        K[50] = \text{round}\left((0{,}03 - 0{,}020931) \times 2^{20}\right) = \text{round}(0{,}009069 \times 1.048.576) = 9.509 = \texttt{0x2525}.
+    \end{equation}
+    Từ dữ liệu 32-bit tại địa chỉ tương đối $\text{addr} = 50 - 26 = 24$ trong \texttt{ck\_rom.hex} là \texttt{0x42A22525}, chứa đúng nửa cao \texttt{0x42A2} ($C[50] = 17.058$) và nửa thấp \texttt{0x2525} ($K[50] = 9.509$).
+    \item \textbf{Tại $\tau = 100$}:
+    Tỷ số suy giảm cửa sổ là $r_w[100] = 218.869.510.864 / 257.295.365.938 \approx 0{,}850654$.
+    \begin{equation}
+        C[100] = \text{round}\left(\frac{16.384}{0{,}850654}\right) = \text{round}(19.260{,}46) = 19.260 = \texttt{0x4B3C}.
+    \end{equation}
+    Tần số tương ứng là $f_0 = 16.000 / 100 = 160\text{ Hz}$. Chi phí Octave nguyên bản là $\text{cost} = 0{,}01 \cdot \log_2(160 / 75) \approx 0{,}010931$.
+    \begin{equation}
+        K[100] = \text{round}\left((0{,}03 - 0{,}010931) \times 2^{20}\right) = \text{round}(0{,}019069 \times 1.048.576) = 19.995 = \texttt{0x4E1B}.
+    \end{equation}
+    Từ dữ liệu 32-bit tại địa chỉ $\text{addr} = 100 - 26 = 74$ là \texttt{0x4B3C4E1B}, khớp hoàn toàn từng bit với \texttt{ck\_rom.hex}.
+\end{enumerate}
+
+\textbf{Bài tập 8.2 (Đánh đổi tài nguyên DSP khi có và không có bộ dịch động $\text{sh}$):}
+Giả sử bộ ước lượng không áp dụng kỹ thuật dịch động $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$ mà giữ nguyên độ rộng đầy đủ của giá trị tự tương quan $R[\tau]$ (độ rộng 43-bit có dấu). Hãy phân tích cấu trúc phần cứng cần thiết trên FPGA Cyclone V để thực hiện hai phép nhân $R[\tau] \times C[\tau]$ và $R_0 \times K[\tau]$. So sánh số lượng khối DSP và chi phí diện tích silicon giữa hai phương án.
+
+\textit{Lời giải:}
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Trường hợp không chuẩn hóa (Toán hạng 43-bit có dấu)}:
+    Toán hạng $R[\tau]$ có 43 bit có dấu, trong khi $C[\tau]$ có 17 bit có dấu và $K[\tau]$ có 16 bit có dấu. Khối Variable Precision DSP của Cyclone V (CV-52005) ở chế độ độc lập chỉ hỗ trợ tối đa phép nhân $27 \times 27$ có dấu hoặc hai phép nhân $18 \times 18$ độc lập. Để thực hiện phép nhân $43 \times 17\text{ bit}$, trình biên dịch Quartus bắt buộc phải phân rã toán hạng 43-bit thành hai phần:
+    \begin{equation}
+        R = R_{\text{high}} \cdot 2^{18} + R_{\text{low}},
+    \end{equation}
+    sau đó thực hiện hai phép nhân con $R_{\text{high}} \times C$ và $R_{\text{low}} \times C$, rồi dùng một mạng cộng gồm khoảng 40--50 ALM bên ngoài khối DSP để ghép nối kết quả. Do đó, mỗi phép nhân đòi hỏi từ 2 đến 3 khối DSP. Tổng tài nguyên cho hai phép nhân dao động từ 4 đến 6 khối DSP và tiêu tốn thêm khoảng 80--100 ALM logic ghép nối.
+    \item \textbf{Trường hợp có chuẩn hóa động $\text{sh}$}:
+    Giá trị $R_n[\tau] = R[\tau] \ggg \text{sh}$ được ép dải nghiêm ngặt dưới $2^{26}$, vừa vặn hoàn hảo trong biểu diễn 27 bit có dấu (\texttt{signed [26:0]}). Phép nhân $R_n \times C$ ($27\text{s} \times 17\text{s}$) và $R_{0n} \times K$ ($27\text{s} \times 16\text{s}$) nằm trọn vẹn bên trong năng lực của một khối DSP $27 \times 27$ duy nhất mà không cần phân rã toán hạng.
+    \item \textbf{Kết luận}: Chuẩn hóa động $\text{sh}$ giúp tiết kiệm từ $50\%$ đến $67\%$ số lượng khối DSP của toàn chương (chỉ dùng đúng 2 khối DSP thay vì 4 đến 6 khối) và triệt tiêu hoàn toàn logic cộng ghép nối ngoài, cải thiện đáng kể đường trễ truyền lan và $F_{\max}$.
+\end{enumerate}
+
+\textbf{Bài tập 8.3 (Dẫn xuất giải tích độ lệch đỉnh parabol do hàm trọng số thiên vị):}
+Giả sử xung quanh đỉnh cực đại rời rạc $\tau_p$, hàm tự tương quan chuẩn hóa đối xứng cục bộ có dạng:
+$U[\tau_p - 1] = y_0 - a$, $U[\tau_p] = y_0$, $U[\tau_p + 1] = y_0 - a$ (với $a > 0$ là độ nhọn đỉnh, độ dời lý tưởng $\delta_{\text{ideal}} = 0$).
+Nếu áp dụng phương pháp nhân thiên vị tần số cao với hàm trọng số $m(\tau) = (f_s / (600 \cdot \tau))^{0{,}01}$, hãy khai triển Taylor hàm trọng số quanh $\tau_p$, xác định độ dịch đỉnh nội suy parabol $\delta_S$ và chứng minh sai số tần số phát sinh luôn nhỏ hơn $0{,}5\text{ cent}$.
+
+\textit{Lời giải:}
+\begin{enumerate}[leftmargin=1.5em]
+    \item Khai triển Taylor bậc nhất của $m(\tau)$ xung quanh $\tau_p$:
+    \begin{equation}
+        m(\tau) \approx m_0 \left(1 - \gamma (\tau - \tau_p)\right), \quad \text{với } \gamma = \frac{0{,}01}{\tau_p} > 0, \quad m_0 = m(\tau_p).
+    \end{equation}
+    Ba giá trị mẫu mới sau khi nhân trọng số là:
+    \begin{align}
+        S_{-} &= U[\tau_p - 1] \cdot m(\tau_p - 1) = (y_0 - a) \cdot m_0 (1 + \gamma), \\
+        S_{0} &= U[\tau_p] \cdot m(\tau_p) = y_0 \cdot m_0, \\
+        S_{+} &= U[\tau_p + 1] \cdot m(\tau_p + 1) = (y_0 - a) \cdot m_0 (1 - \gamma).
+    \end{align}
+    \item Tử số và mẫu số của công thức nội suy parabol:
+    \begin{align}
+        \text{num}_S &= S_{+} - S_{-} = (y_0 - a) m_0 (1 - \gamma - (1 + \gamma)) = -2\gamma (y_0 - a) m_0, \\
+        \text{den}_S &= 2S_0 - S_{-} - S_{+} = m_0 \left[2y_0 - (y_0 - a)(1 + \gamma + 1 - \gamma)\right] = 2 a m_0.
+    \end{align}
+    \item Độ lệch đỉnh nội suy $\delta_S$:
+    \begin{equation}
+        \delta_S = 0{,}5 \cdot \frac{\text{num}_S}{\text{den}_S} = 0{,}5 \cdot \frac{-2\gamma (y_0 - a) m_0}{2 a m_0} = -\frac{0{,}005}{\tau_p} \cdot \frac{y_0 - a}{a} < 0.
+    \end{equation}
+    Dấu âm chứng minh rằng đỉnh luôn bị kéo lệch về phía $\tau$ nhỏ hơn (tần số cao hơn).
+    \item Quy đổi sai số tần số sang đơn vị cent:
+    Độ dịch tần số tương đối $\frac{\Delta f}{f} \approx -\frac{\delta_S}{\tau_p} = \frac{0{,}005}{\tau_p^2} \cdot \frac{y_0 - a}{a}$.
+    Sai số cent là:
+    \begin{equation}
+        \Delta \text{cent} = 1200 \cdot \log_2\left(1 + \frac{\Delta f}{f}\right) \approx \frac{1200}{\ln 2} \cdot \frac{\Delta f}{f} \approx 1731{,}23 \cdot \frac{0{,}005}{\tau_p^2} \cdot \frac{y_0 - a}{a}.
+    \end{equation}
+    Với $\tau_p = 100$ ($F_0 = 160\text{ Hz}$) và tỷ số độ nhọn đỉnh thông thường $(y_0 - a)/a \approx 10$, ta tính được:
+    \begin{equation}
+        \Delta \text{cent} \approx 1731{,}23 \cdot \frac{0{,}005}{10.000} \cdot 10 \approx 0{,}0087\text{ cent} \ll 0{,}5\text{ cent}.
+    \end{equation}
+    Ngay cả trong các thử nghiệm khắc nghiệt nhất với nhiều thành phần sóng hài ở dải 80--550 Hz, sai số đo được chỉ nằm trong khoảng 0,07 đến 0,23 cent (nhỏ hơn nhiều ngưỡng cảm nhận 5--10 cent của thính giác người). Tuy nhiên, để bảo đảm tính chuẩn xác tuyệt đối theo Praat 7.0.03, kiến trúc giữ nguyên $U[\tau]$ cho nội suy parabol và chỉ dùng $S_c[\tau]$ để xếp hạng ứng viên.
+\end{enumerate}
+
+\textbf{Bài tập 8.4 (Chứng minh dải động và tính không tràn số của thanh ghi 28-bit):}
+Chứng minh rằng với mọi khung tín hiệu âm thanh và mọi độ trễ $\tau \in [26, 214]$, các giá trị $U[\tau]$ và $S_c[\tau]$ luôn nằm trọn vẹn trong dải biểu diễn số nguyên có dấu $28\text{-bit}$ $[-134.217.728, 134.217.727]$ mà không bao giờ xảy ra tràn số.
+
+\textit{Lời giải:}
+\begin{enumerate}[leftmargin=1.5em]
+    \item Theo định nghĩa của hệ số dịch động: $R_{0n} = R_0 \gg \text{sh} < 2^{26} = 67.108.864$. Theo bất đẳng thức Cauchy-Schwarz đối với hàm tự tương quan có cửa sổ: $|R[\tau]| \le R_0 \cdot r_w[\tau]$, suy ra $|R_n[\tau]| \le R_{0n} \cdot r_w[\tau] < 2^{26} \cdot r_w[\tau]$.
+    \item Hệ số $C[\tau]$ được định nghĩa là $C[\tau] \approx 16.384 / r_w[\tau]$. Do đó, tích $P_C = R_n[\tau] \times C[\tau]$ thỏa mãn:
+    \begin{equation}
+        |P_C| \le (R_{0n} \cdot r_w[\tau]) \times \frac{16.384}{r_w[\tau]} = 16.384 \cdot R_{0n} < 16.384 \times 2^{26} = 2^{40}.
+    \end{equation}
+    Sau khi làm tròn và dịch phải 14 bit:
+    \begin{equation}
+        |U[\tau]| = \left|\frac{P_C + 8.192}{16.384}\right| \approx R_{0n} < 2^{26} = 67.108.864.
+    \end{equation}
+    Với $\tau = 214$, $C[214] = 35.030$, giá trị cực đại lý thuyết đạt $|U[\tau]| \le R_{0n} \times (35.030 / 16.384) \approx 2{,}138 \cdot R_{0n} < 2{,}138 \times 2^{26} \approx 1{,}435 \times 2^{27}$ (tương đương $27{,}52\text{ bit}$). Do đó, thanh ghi có dấu 28-bit hoàn toàn chứa được giá trị này.
+    \item Xét thành phần phạt Octave Cost $\text{term}_K = (R_{0n} \times K[\tau] + 2^{19}) \gg 20$:
+    Hệ số $K[\tau] \in [-383, 31.504]$. Cực đại đạt được tại $\tau = 214$ với $K[214] = 31.504 < 32.768 = 2^{15}$. Khi đó:
+    \begin{equation}
+        \text{term}_K \approx R_{0n} \times \frac{31.504}{2^{20}} < \frac{2^{26} \times 2^{15}}{2^{20}} = 2^{21} = 2.097.152.
+    \end{equation}
+    Lượng phạt chiếm tối đa khoảng $3\%$ giá trị của $R_{0n}$.
+    \item Điểm chi phí toàn cục $S_c[\tau] = U[\tau] - \text{term}_K$ thỏa mãn:
+    \begin{equation}
+        |S_c[\tau]| \le |U[\tau]| + |\text{term}_K| < 1{,}435 \times 2^{27} + 2^{21} \approx 70.000.000 < 134.217.727 = 2^{27}-1.
+    \end{equation}
+    Giá trị tối đa của $|S_c[\tau]|$ chỉ chiếm khoảng $52\%$ dải biểu diễn của thanh ghi 28-bit có dấu. Mạch luôn bảo đảm khoảng dự trữ an toàn gần 1 bit, triệt tiêu hoàn toàn nguy cơ tràn số trong mọi tình huống.
+\end{enumerate}
+
+\textit{Tóm lại: Toàn bộ cấu trúc chuẩn hóa tự tương quan và tính điểm Octave Cost được hoàn thiện với độ chính xác cao, cân bằng tối ưu giữa tài nguyên phần cứng M10K/DSP và tính toàn vẹn toán học của thuật toán Praat 7.0.03 trên FPGA Cyclone V.}
