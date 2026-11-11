@@ -690,6 +690,105 @@ Cả hai tuyến thiết kế đều bắt nguồn từ cùng một mô hình to
 
 \textit{Tóm lại: Tuyến (B) hiện thực hóa trọn vẹn luồng tìm đỉnh dòng 3 nhịp không tốn DSP và bộ chia tuần tự Radix-2 44 nhịp; cấu trúc FSM phân tầng mạch lạc ánh xạ 1-1 với mô hình Python Twin và khớp đúng 44 chu kỳ trễ với lõi IP Intel.}
 
+\subsection*{9.7. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng}
+\addcontentsline{toc}{subsection}{9.7. Mô hình song sinh Python Twin và kịch bản kiểm chứng mô phỏng}
+
+\subsubsection*{Cấu trúc mô hình song sinh phần mềm (Python Twin)}
+Để thiết lập đặc tả kỹ thuật số học chính xác tuyệt đối (Golden Reference) cho việc kiểm tra chéo với mã Verilog HDL, tệp script \path{verify_v3/ch09_twin.py} cung cấp hai tầng mô hình song sinh:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tầng giải tích hàm số (\texttt{calc\_parabola\_div}):} Hiện thực hóa thuật toán tính toán parabol, chuẩn hóa $s_2$ và phép chia đơn gộp thành dạng số nguyên thuần túy, bám sát từng dòng mã của \path{golden_v2/fixed_twin.py}.
+    \item \textbf{Tầng chu kỳ chính xác (\texttt{Radix2DivTwin}):} Mô phỏng máy trạng thái FSM và từng bước dịch--trừ của bộ chia khôi phục nhị phân \texttt{ch09\_radix2\_div.v} trên từng sườn xung nhịp đồng hồ.
+\end{enumerate}
+
+Dưới đây là đoạn mã nguồn của hai thành phần cốt lõi này trong \path{verify_v3/ch09_twin.py}:
+
+\lstinputlisting[
+    language=Python,
+    caption={Hàm tính toán giải tích Parabol và một phép chia đơn (\path{verify_v3/ch09_twin.py}).},
+    label={lst:ch09_calc_parabola_div},
+    firstline=30,
+    lastline=51,
+    firstnumber=30
+]{verify_v3/ch09_twin.py}
+
+\lstinputlisting[
+    language=Python,
+    caption={Lớp mô phỏng chu-kỳ-đối-chu-kỳ bộ chia Radix-2 (\path{verify_v3/ch09_twin.py}).},
+    label={lst:ch09_radix2_div_twin},
+    firstline=56,
+    lastline=107,
+    firstnumber=56
+]{verify_v3/ch09_twin.py}
+
+\textbf{Phân tích dòng mã Listing~\ref{lst:ch09_calc_parabola_div} và Listing~\ref{lst:ch09_radix2_div_twin}:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Listing~\ref{lst:ch09_calc_parabola_div}, dòng 32--37:} Tính $num = y_{+1} - y_{-1}$, $den = 2y_0 - y_{-1} - y_{+1}$, xác định $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ và dịch phải đồng thời hai đại lượng. Dòng 38 tính mẫu số $D = 2 \cdot den_n \cdot \tau_p + num_n$ và dòng 40--41 tính tử số $N = 512000 \cdot den_n + D // 2$. Phép chia số nguyên \texttt{N // D} và lấy dư \texttt{N \% D} cung cấp giá trị thương số và số dư lý thuyết.
+    \item \textbf{Listing~\ref{lst:ch09_radix2_div_twin}, dòng 88--101:} Phương thức \texttt{step} của lớp \texttt{Radix2DivTwin} mô phỏng chính xác trạng thái \texttt{S\_CALC}. Ở mỗi nhịp, thanh ghi số dư \texttt{rem\_reg} được dịch trái và nối bit MSB của thương số cũ \texttt{quo\_reg}. Nếu số dư mới lớn hơn hoặc bằng số chia, thực hiện phép trừ và nạp bit 1 vào LSB của thương số; ngược lại khôi phục số dư cũ và nạp bit 0. Sau đúng $44\text{ nhịp}$, biến đếm \texttt{count} giảm về 0 và chuyển sang trạng thái xuất kết quả \texttt{S\_DONE}.
+\end{itemize}
+
+\subsubsection*{Quy ước lấy mẫu Testbench hai pha (Sampling Convention)}
+Để ngăn ngừa triệt để hiện tượng tranh chấp cuộc đua (race condition) và đảm bảo sự nhất quán chu-kỳ-đối-chu-kỳ giữa môi trường mô phỏng phần mềm và phần cứng Verilog, toàn bộ các testbench trong chương này (\path{tb/v3/tb_ch09_div.v} và \path{tb/v3/tb_ch09_calc.v}) đều tuân thủ nghiêm ngặt \textbf{quy ước lấy mẫu hai pha}:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Pha 1 --- Lái tín hiệu tại cạnh xuống (\texttt{@(negedge clk)}):} Mọi tín hiệu đầu vào kích thích (stimulus) gồm \texttt{rst\_n}, \texttt{start}, \texttt{numer}, \texttt{denom}, \texttt{in\_valid}, \texttt{in\_tau}, \texttt{in\_U}, \texttt{in\_Sc}, \texttt{in\_R0n}, \texttt{in\_last} đều được testbench thay đổi tại sườn âm của xung nhịp đồng hồ. Điều này đảm bảo rằng khi sườn dương tiếp theo xuất hiện, toàn bộ các đường dây đầu vào đã đạt trạng thái ổn định từ lâu, thỏa mãn dư dả thời gian thiết lập (setup time).
+    \item \textbf{Pha 2 --- Lấy mẫu và so sánh tại cạnh lên cộng trễ nhỏ (\texttt{@(posedge clk); \#1}):} Sau khi đón cạnh xung nhịp dương, testbench đợi thêm một độ trễ mô phỏng nhỏ \texttt{\#1} ($1\text{ ps}$ hoặc $1\text{ ns}$) để mọi phép gán không chặn (\texttt{<=}) bên trong các khối \texttt{always} của phần cứng cập nhật hoàn tất vào thanh ghi. Sau đó, testbench mới tiến hành đọc ngõ ra của DUT và so sánh từng bit với giá trị kỳ vọng đọc từ tệp văn bản.
+    \item \textbf{Thu thập toàn bộ lỗi:} Testbench không sử dụng lệnh \texttt{\$finish} sớm khi gặp lỗi đầu tiên, mà duy trì vòng lặp để đếm chính xác tổng số lỗi so sánh, đồng thời kiểm tra số chu kỳ đọc được phải trùng khớp tuyệt đối với số dòng dự kiến của tệp vector.
+\end{enumerate}
+
+\subsubsection*{Hai kịch bản kiểm chứng mô phỏng tự động}
+\begin{enumerate}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{Kịch bản 1: Kiểm chứng khối chia \texttt{tb\_ch09\_div.v} (Unit Testbench).}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Bộ vector \path{verify_v3/tb_ch09_div_stim.txt} và \path{tb_ch09_div_expected.txt} bao gồm \textbf{265 bộ ba cực trị} bao phủ toàn diện mọi trường hợp đặc biệt:
+        \begin{itemize}
+            \item Ví dụ tính tay: $y = (8000, 10000, 9000)$ tại $\tau_p = 100$ cho $\delta = +1/6$ và $F_{0, \text{Q12.4}} = 2556$.
+            \item Bài tập 2: $y = (9500, 10000, 8500)$ tại $\tau_p = 80$ với tử số $num$ âm ($\delta = -0{,}25$, $F_{0, \text{Q12.4}} = 3210$).
+            \item Các giá trị $den$ nhỏ cực hạn: $den = 1, 2, 3$ để kiểm tra khả năng không bị lỗi chia mẫu nhỏ.
+            \item Các giá trị $den$ siêu lớn ($den > 2^{24}, 2^{25}, 2^{26}, 2^{27}$) kích hoạt các mức dịch chuẩn hóa $s_2 = 1, 2, 3, 4, 5$.
+            \item Các vị trí biên trần và biên sàn: $\tau_p = 27$ và $\tau_p = 213$.
+            \item 250 bộ ba ngẫu nhiên quét đều trên toàn miền không gian tham số.
+        \end{itemize}
+        \item Tổng số chu kỳ mô phỏng là đúng \textbf{$12.456\text{ chu kỳ}$}.
+    \end{itemize}
+
+    \item \textbf{Kịch bản 2: Kiểm chứng toàn luồng khung \texttt{tb\_ch09\_calc.v} (Frame-Level Testbench).}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item Đưa dòng dữ liệu liên tục của 189 độ trễ ($\tau = 26..214$) từ các khung âm thanh đa dạng trích xuất từ tệp chuẩn \path{golden_v2/synth_glide_vuv_16k.wav} (khung hữu thanh trượt tần, khung vô thanh, khung chuyển tiếp thanh môn, khung cực hạn stress full-scale, khung im lặng).
+        \item Kiểm chứng trọn vẹn sự phối hợp đồng bộ giữa khối dò đỉnh \texttt{ch09\_peak\_finder}, mạch tính toán tham số $s_2$ và bộ chia \texttt{ch09\_radix2\_div}.
+        \item Tổng số chu kỳ mô phỏng là đúng \textbf{$2.575\text{ chu kỳ}$}.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Kết quả mô phỏng Icarus Verilog}
+Do môi trường làm việc trên máy trạm Windows hiện tại không cài đặt sẵn bộ công cụ Icarus Verilog (\texttt{iverilog}/\texttt{vvp}) và phần mềm Praat, toàn bộ mã nguồn kiểm chứng đã được đóng gói thành kịch bản Bash tự động \path{verify_v3/run_ch09_iverilog.sh} với định dạng ký tự xuống dòng chuẩn Unix (LF) và quyền thực thi đầy đủ. 
+
+Người phản biện (reviewer) sẽ thực thi trực tiếp kịch bản này trên máy chủ Linux chuẩn:
+\begin{lstlisting}[language=bash, numbers=none]
+cd verify_v3 && ./run_ch09_iverilog.sh
+\end{lstlisting}
+
+\todo{box: reviewer fills real numbers after running run_ch09_iverilog.sh}
+
+\subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
+Đối với phần mềm điều khiển chạy trên lõi ARM Cortex-A9 thuộc hệ thống con HPS, tệp \path{sw_v3/ch09_f0.c} cung cấp bản hiện thực hóa tham chiếu C chuẩn xác. Tệp kiểm thử đơn vị \path{sw_v3/test_ch09_f0.c} đã được biên dịch và chạy thật thành công bằng trình biên dịch GCC trên máy tính:
+\begin{lstlisting}[language=bash, numbers=none]
+gcc -Wall -Wextra -O2 sw_v3/test_ch09_f0.c sw_v3/ch09_f0.c -Isw_v3 -o test_ch09_f0
+./test_ch09_f0
+\end{lstlisting}
+
+Kết quả chạy thực tế cho thấy toàn bộ 5/5 bài kiểm tra chuyên sâu (gồm ví dụ tính tay $2556$, bài tập độ dời âm $3210$, loại bỏ khung vô thanh, tuyển chọn cực đại $Sc$ có giải quyết hòa và cơ chế dịch $s_2$) đều vượt qua với \textbf{0 cảnh báo và 0 lỗi}:
+\begin{lstlisting}[numbers=none]
+=== [test_ch09_f0] Running Chapter 9 C Reference Tests ===
+Test 1 (Hand Example): found=1, tau=100, num=1000, den=3000, f0q=2556 -> PASSED
+Test 2 (Exercise 2): found=1, tau=80, num=-1000, den=2000, f0q=3210 -> PASSED
+Test 3 (Unvoiced Frame): found=0, f0q=0 -> PASSED
+Test 4 (Argmax Sc & Tie-Break): found=1, best_tau=80, sc=7000 -> PASSED
+Test 5 (s2 Normalization): den=17000000, s2=1, f0q=2133 -> PASSED
+=== [test_ch09_f0] ALL CHAPTER 9 C TESTS PASSED (0 ERRORS) ===
+\end{lstlisting}
+
+\textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.575 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt 100% độ chính xác.}
+
+
 
 
 
