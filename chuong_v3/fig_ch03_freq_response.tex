@@ -76,17 +76,17 @@
     \node[anchor=west, font=\tiny\bfseries, color=teal!80!black]   at (10.85, 1.16) {63 tap: $-19{,}5\text{ dB}$};
     \node[anchor=west, font=\tiny\bfseries, color=purple!80!black] at (10.85, 0.60) {127 tap: $-24{,}2\text{ dB}$};
 
-    % Legend Box (placed top-left inside graph)
-    \draw[draw=gray!50, fill=white, rounded corners=3pt, thin] (0.4, 0.2) rectangle (4.6, 2.0);
-    \node[anchor=north west, font=\tiny\bfseries, color=black!85] at (0.5, 1.95) {Chú giải phương án:};
-    \draw[curve31] (0.6, 1.55) -- (1.2, 1.55);
-    \node[anchor=west, font=\tiny] at (1.25, 1.55) {Phương án (b): 31 tap (chọn, trễ 15)};
-    \draw[curve63] (0.6, 1.15) -- (1.2, 1.15);
-    \node[anchor=west, font=\tiny] at (1.25, 1.15) {Phương án (c): 63 tap (trễ 31)};
-    \draw[curve127] (0.6, 0.75) -- (1.2, 0.75);
-    \node[anchor=west, font=\tiny] at (1.25, 0.75) {Phương án (d): 127 tap (trễ 63)};
-    \draw[curvetarget] (0.6, 0.35) -- (1.2, 0.35);
-    \node[anchor=west, font=\tiny] at (1.25, 0.35) {Boersma 1993 (đích lý thuyết)};
+    % Legend Box (placed in empty lower-left area with generous vertical and horizontal spacing)
+    \draw[draw=gray!50, fill=white, rounded corners=4pt, thin] (0.4, 0.15) rectangle (6.7, 2.50);
+    \node[anchor=north west, font=\scriptsize\bfseries, color=black!85] at (0.6, 2.42) {Chú giải các phương án bộ lọc:};
+    \draw[curve31] (0.7, 1.82) -- (1.5, 1.82);
+    \node[anchor=west, font=\scriptsize] at (1.6, 1.82) {Phương án (b): 31 tap (chọn, $\tau_g = 15$ mẫu)};
+    \draw[curve63] (0.7, 1.37) -- (1.5, 1.37);
+    \node[anchor=west, font=\scriptsize] at (1.6, 1.37) {Phương án (c): 63 tap ($\tau_g = 31$ mẫu)};
+    \draw[curve127] (0.7, 0.92) -- (1.5, 0.92);
+    \node[anchor=west, font=\scriptsize] at (1.6, 0.92) {Phương án (d): 127 tap ($\tau_g = 63$ mẫu)};
+    \draw[curvetarget] (0.7, 0.47) -- (1.5, 0.47);
+    \node[anchor=west, font=\scriptsize] at (1.6, 0.47) {Boersma (1993) (đường đích lý thuyết)};
 
     % Axis Frame
     \draw[axisline] (0.0, -0.1) -- (10.8, -0.1);

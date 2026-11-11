@@ -327,7 +327,7 @@ Sau đúng 16 chu kỳ tính toán, kết quả tích lũy hoàn chỉnh đượ
 
 \begin{figure}[htbp]
 \centering
-\input{chuong_v3/fig_ch03_folded_arch.tex}
+\resizebox{\textwidth}{!}{\input{chuong_v3/fig_ch03_folded_arch.tex}}
 \caption{Sơ đồ kiến trúc phần cứng khối lọc FIR 31 tap gấp thời gian với bộ tiền cộng 17-bit và 1 khối DSP (\texttt{rtl/v3/ch03\_fir\_filter.v}).}
 \label{fig:ch03_folded_arch}
 \end{figure}
@@ -370,7 +370,7 @@ Dưới đây là toàn bộ mã nguồn phần cứng của khối lọc FIR 31
 \lstinputlisting[language=Verilog, firstline=22, lastline=195, caption={Mã nguồn Verilog hoàn chỉnh của khối FIR 31 tap gấp thời gian (rtl/v3/ch03\_fir\_filter.v)}]{rtl/v3/ch03_fir_filter.v}
 
 \subsubsection*{Giải thích mã nguồn dòng-từng-dòng}
-Để làm rõ cơ chế vận hành của mạch, chúng tôi thuyết minh chi tiết từng khối mã trong tệp \texttt{rtl/v3/ch03\_fir\_filter.v}:
+Để làm rõ cơ chế vận hành, dưới đây là thuyết minh chi tiết từng khối mã trong tệp\\ \texttt{rtl/v3/ch03\_fir\_filter.v}:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dòng 22--40:} Khai báo module \texttt{ch03\_fir\_filter} với 3 tham số generic: độ rộng dữ liệu âm thanh \texttt{DATA\_WIDTH = 16}, độ rộng hệ số lọc \texttt{COEFF\_WIDTH = 16}, và độ rộng thanh ghi tích lũy \texttt{ACC\_WIDTH = 40}. Các cổng giao tiếp gồm xung nhịp \texttt{clk}, xóa \texttt{rst\_n}, cờ cấu hình chuyển mạch \texttt{bypass}, kèm theo cặp giao tiếp Avalon-ST Sink (ngõ vào) và Source (ngõ ra).
     \item \textbf{Dòng 43--49:} Định nghĩa 3 trạng thái của FSM: \texttt{S\_IDLE} (chờ mẫu âm thanh mới), \texttt{S\_CALC} (thực hiện 16 bước nhân tích lũy gấp thời gian), và \texttt{S\_WAIT\_OUT} (giữ mẫu đầu ra chờ hạ nguồn tiếp nhận khi có phản áp). Khai báo thanh ghi bước \texttt{step} 4-bit ($0..15$).
@@ -485,11 +485,11 @@ Kịch bản kiểm thử trong tệp \texttt{verify\_v3/ch03\_fir\_twin.py} đ�
 
 Toàn bộ 3.390 chu kỳ kích thích và phản hồi kỳ vọng được xuất ra hai tệp văn bản\\ \texttt{verify\_v3/tb\_ch03\_fir\_stim.txt} và \texttt{verify\_v3/tb\_ch03\_fir\_expected.txt}.
 
-\paragraph{Quy ước thời điểm lấy mẫu giữa tín hiệu tổ hợp và tuần tự.}
+\paragraph{Quy ước thời điểm lấy mẫu tín hiệu tổ hợp và tuần tự.}
 Trong giao thức Avalon-ST với \texttt{readyLatency = 0}, cờ \texttt{sink\_ready} là một tín hiệu tổ hợp (combinational output) thể hiện khả năng tiếp nhận dữ liệu ngay tại chu kỳ xung nhịp hiện hành. Để tránh hiện tượng lệch pha một chu kỳ khi đối soát, kịch bản testbench \texttt{tb/v3/tb\_ch03\_fir.v} áp dụng quy ước: kích thích đầu vào được nạp tại sườn âm của xung nhịp (\texttt{@(negedge clk)}), chờ tín hiệu tổ hợp xác lập (\texttt{\#1}), và đối soát \texttt{sink\_ready} ngay trước sườn dương (\texttt{@(posedge clk)}). Khi sườn dương xung nhịp xuất hiện, quá trình bắt tay diễn ra và bộ điều khiển FSM chuyển trạng thái (khiến \texttt{sink\_ready} lập tức rơi về 0 nếu chuyển sang \texttt{S\_CALC}). Các tín hiệu ngõ ra tuần tự có thanh ghi chốt như \texttt{source\_valid}, \texttt{source\_data}, trạng thái FSM \texttt{state} và bước đếm \texttt{step} được lấy mẫu và kiểm tra ngay sau sườn dương (\texttt{@(posedge clk); \#1}). Quy ước phân tách này đảm bảo kiểm chứng đồng nhất giữa mô hình phần cứng RTL và mô hình song sinh Python.
 
 \subsubsection*{Kết quả kiểm thử mô phỏng chu kỳ HDL với Icarus Verilog}
-Kịch bản testbench Verilog \texttt{tb/v3/tb\_ch03\_fir.v} được thiết kế để biên dịch với lệnh \texttt{iverilog -g2012 -Wall} thông qua tệp thực thi \texttt{verify\_v3/run\_ch03\_iverilog.sh}. Kết quả chạy thực tế trên môi trường Linux sẽ do người đánh giá (reviewer) thực hiện và ghi nhận vào nhật ký \texttt{verify\_v3/ch03\_iverilog.log}:
+Kịch bản testbench \texttt{tb/v3/tb\_ch03\_fir.v} được biên dịch bằng công cụ \texttt{iverilog} (tùy chọn \texttt{-g2012 -Wall}) qua kịch bản \texttt{verify\_v3/run\_ch03\_iverilog.sh}. Kết quả chạy thực tế trên Linux do người đánh giá (reviewer) thực hiện và ghi vào tệp\\ \texttt{verify\_v3/ch03\_iverilog.log}:
 
 \todo{box}
 
