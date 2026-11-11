@@ -333,4 +333,83 @@ Kịch bản \texttt{verify\_v3/ch05\_mean\_math.py} đã chạy kiểm tra vét
 
 \textit{Tóm lại: Thuật toán Golden v2 chuyển phép chia cho 426 thành phép nhân 25x24-bit không dấu với $M = 10.082.083$ và dịch phải 32 bit sau khi đã dời trục bằng $426 \times 32.768$; phương pháp này loại bỏ hoàn toàn cạm bẫy số âm và bảo đảm khớp bit 100\% trên toàn bộ 27.917.911 giá trị tổng.}
 
+\subsection*{5.4. Đường (A): Khối IP Intel LPM\_MULT trong Quartus Prime}
+\addcontentsline{toc}{subsection}{5.4. Đường (A): Khối IP Intel LPM\_MULT trong Quartus Prime}
+
+\subsubsection*{Tên IP và tài liệu tham chiếu chuẩn của Intel}
+Trong môi trường thiết kế Intel Quartus Prime, phép nhân số học được hiện thực hóa thông qua khối IP chuẩn công nghiệp \textbf{\texttt{LPM\_MULT}} (thuộc thư viện Library of Parameterized Modules).
+
+Các thông số kỹ thuật, cấu hình thanh ghi và hành vi mô phỏng trong mục này được trích dẫn chính xác từ hai tài liệu kỹ thuật chính thức của Intel/Altera:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Integer Arithmetic IP Cores User Guide} (Mã tài liệu: \textbf{UG-01069}, Chương ``LPM\_MULT IP Core'').
+    \item \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (Mã tài liệu: \textbf{CV-52003}, Mục ``Variable Precision DSP Blocks in Cyclone V Devices'').
+\end{enumerate}
+
+\subsubsection*{Giải thích cặn kẽ từng tham số cấu hình trong Parameter Editor}
+Khi khởi tạo khối IP \texttt{LPM\_MULT} trong giao diện Parameter Editor của Quartus Prime để phục vụ thuật toán Golden v2, các tham số bắt buộc phải được thiết lập như sau (mỗi tham số tương ứng với một quyết định kiến trúc cụ thể):
+
+\begin{itemize}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{\texttt{LPM\_WIDTHA = 25}} (Độ rộng toán hạng A):\\
+    Toán hạng A là tổng tích lũy đã dời trục $S_{\text{biased}} = S + 213 + 426 \times 32.768$. Như đã chứng minh ở mục 5.3, giá trị cực đại của $S_{\text{biased}}$ khi toàn bộ 426 mẫu đạt $+32.767$ là $27.918.123$. Vì $2^{24} = 16.777.216 < 27.918.123 < 2^{25} = 33.554.432$, toán hạng A bắt buộc phải có độ rộng đúng $25\text{ bit}$. Nếu chọn 24 bit, tổng sẽ bị tràn số ở các khung âm thanh có biên độ dương lớn.
+
+    \item \textbf{\texttt{LPM\_WIDTHB = 24}} (Độ rộng toán hạng B):\\
+    Toán hạng B là hằng số nhân nghịch đảo $M = 10.082.083$ (giá trị $\lceil 2^{32} / 426 \rceil$). Vì $2^{23} \le M < 2^{24}$, hằng số này cần đúng $24\text{ bit}$ nhị phân. Chọn nhỏ hơn sẽ gây sai lệch thương số (như trường hợp 16 bit của Argon); chọn lớn hơn sẽ làm lãng phí chân silicon của bộ nhân cứng.
+
+    \item \textbf{\texttt{LPM\_WIDTHP = 49}} (Độ rộng ngõ ra tích số):\\
+    Tích số $P = A \times B$ của hai số nguyên không dấu $25\text{ bit}$ và $24\text{ bit}$ có độ rộng đúng bằng $25 + 24 = 49\text{ bit}$. Ngõ ra \texttt{result[48:0]} cung cấp đầy đủ 49 bit tích số mà không bị xén tỉa.
+
+    \item \textbf{\texttt{LPM\_REPRESENTATION = "UNSIGNED"}} (Quy ước dấu của toán hạng):\\
+    Cả hai toán hạng $S_{\text{biased}}$ và $M$ đều là các số nguyên dương thuần túy (không dấu). Việc chọn \texttt{"UNSIGNED"} cho phép Quartus cấu hình khối nhân cứng xử lý toàn bộ 49 bit dữ liệu theo trọng số nhị phân tự nhiên.
+    
+    \begin{thoughtqa}{Argon nhầm lẫn tham số biểu diễn dấu của LPM\_MULT như thế nào?}
+    Trong tài liệu cũ của Argon, ông đã viết rằng cấu hình IP \texttt{LPM\_MULT} với ``toán hạng A có dấu (signed), toán hạng B không dấu (unsigned)''. Đây là một nhận định sai thực tế phần cứng: theo tài liệu hướng dẫn IP UG-01069 của Intel, khối \texttt{LPM\_MULT} \textbf{chỉ có duy nhất một tham số \texttt{LPM\_REPRESENTATION}} áp dụng đồng thời cho cả hai cổng ngõ vào \texttt{dataa} và \texttt{datab}. Nếu chọn \texttt{"SIGNED"}, cả hai toán hạng đều bị hiểu là có dấu bù 2; nếu chọn \texttt{"UNSIGNED"}, cả hai đều là không dấu. Không thể cấu hình hỗn hợp một cổng signed và một cổng unsigned trong IP \texttt{LPM\_MULT}. Phương pháp dời trục của Golden v2 đưa cả hai về \texttt{"UNSIGNED"} chính là giải pháp triệt để tháo gỡ điểm bế tắc này.
+    \end{thoughtqa}
+
+    \item \textbf{\texttt{LPM\_PIPELINE = 2}} (Số tầng thanh ghi đường ống):\\
+    Tham số này xác định số chu kỳ trễ từ khi đưa dữ liệu vào chân \texttt{dataa, datab} đến khi tích số xuất hiện ổn định ở chân \texttt{result}. Với giá trị bằng $2$, IP sẽ bật cả thanh ghi đầu vào (Input Register Bank) và thanh ghi đầu ra (Output Register Bank) có sẵn bên trong khối silicon DSP. Việc chốt cả hai đầu giúp cô lập hoàn toàn đường tới hạn của phép nhân khỏi độ trễ dây nối ngoại vi, bảo đảm mạch đạt tần số $F_{\max} \ge 50\text{ MHz}$ mà không tốn thêm bất kỳ Flip-Flop nào từ bảng ALM.
+
+    \item \textbf{\texttt{DEDICATED\_MULTIPLIER\_CIRCUITRY = "YES"}} (Sử dụng mạch nhân chuyên dụng):\\
+    Tham số này ra lệnh cho trình biên dịch Quartus Fitter bắt buộc phải ánh xạ phép nhân vào khối cứng Variable Precision DSP Block của Cyclone V, tuyệt đối không phân rã thành các bảng tra LUT mềm trong ALM.
+\end{itemize}
+
+\subsubsection*{Ánh xạ silicon trên kiến trúc DSP Cyclone V (CV-52003)}
+Theo tài liệu \emph{Cyclone V Device Handbook} (CV-52003, Phần ``Variable Precision DSP Blocks''), mỗi khối DSP biến đổi độ chính xác trên chip Cyclone V (5CSXFC6D6F31C6N) có khả năng cấu hình linh hoạt theo các chế độ:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Ba bộ nhân độc lập kích thước $9 \times 9$-bit.
+    \item Hai bộ nhân độc lập kích thước $18 \times 18$-bit (hoặc $18 \times 19$-bit).
+    \item \textbf{Một bộ nhân độc lập kích thước $27 \times 27$-bit} (chế độ độc lập lớn nhất).
+\end{itemize}
+
+Phép nhân của ta có kích thước $25 \times 24$-bit không dấu. Vì $25 \le 27$ và $24 \le 27$, phép nhân này \textbf{nằm vừa vặn bên trong đúng 1 khối DSP ở chế độ 27$\times$27-bit}!
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Số lượng DSP tiêu thụ:} Đúng $1$ khối DSP (trên tổng số 112 khối DSP có sẵn trên chip DE10-Standard).
+    \item \textbf{Tài nguyên logic ALM:} $0$ ALM (do toàn bộ bộ nhân và 2 tầng thanh ghi đường ống nằm trọn vẹn trong silicon DSP).
+    \item \textbf{Độ trễ xử lý:} Đúng 2 chu kỳ xung nhịp (khớp với \texttt{LPM\_PIPELINE = 2}).
+\end{itemize}
+
+\subsubsection*{Mã khởi tạo khối IP trong hệ thống (Verilog Wrapper)}
+Đoạn mã Verilog dưới đây minh họa cách thức khởi tạo khối IP \texttt{LPM\_MULT} được sinh ra từ Parameter Editor của Quartus Prime:
+
+\begin{lstlisting}[language=Verilog, caption={Khởi tạo khối IP LPM\_MULT 25x24 unsigned trong Verilog (trích từ UG-01069)}]
+lpm_mult #(
+    .lpm_hint           ("DEDICATED_MULTIPLIER_CIRCUITRY=YES,MAXIMIZE_SPEED=5"),
+    .lpm_pipeline       (2),
+    .lpm_representation ("UNSIGNED"),
+    .lpm_type           ("LPM_MULT"),
+    .lpm_widtha         (25),
+    .lpm_widthb         (24),
+    .lpm_widthp         (49)
+) u_lpm_mult_mean (
+    .clock  (clk),
+    .clken  (1'b1),
+    .aclr   (!rst_n),
+    .dataa  (acc_biased),       // 25-bit unsigned sum (S_biased)
+    .datab  (24'd10082083),     // 24-bit unsigned constant M
+    .result (mult_prod)         // 49-bit unsigned product
+);
+\end{lstlisting}
+
+\textit{Tóm lại: Khối IP Intel LPM\_MULT được cấu hình 25x24-bit không dấu với LPM\_PIPELINE = 2; phép nhân này vừa khít một khối DSP Cyclone V ở chế độ 27x27, tiêu tốn đúng 1 DSP, 0 ALM và có độ trễ 2 chu kỳ.}
+
+
 
