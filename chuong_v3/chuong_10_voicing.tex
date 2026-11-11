@@ -183,9 +183,9 @@ Khi nhìn vào công thức ngưỡng của Praat:
 \begin{equation*}
     \frac{S_c}{R_{0n}} > 0{,}45 + \max\left(0,\, 2 - \frac{LP}{GP} \cdot \frac{145}{3}\right)
 \end{equation*}
-một lập trình viên phần mềm trên máy tính x86 có thể thực hiện nó trong vài nano giây bằng các lệnh FPU thông thường. Nhưng trên chip FPGA Cyclone V, việc hiện thực hóa công thức này theo nguyên bản dấu phẩy động là một thảm họa về chi phí phần cứng.
+một lập trình viên phần mềm trên máy tính x86 có thể thực hiện nó bằng các lệnh FPU thông thường. Nhưng trên chip FPGA Cyclone V, việc hiện thực hóa công thức này theo nguyên bản dấu phẩy động đòi hỏi chi phí phần cứng rất lớn.
 Để tính $I = LP / GP$, ta cần một bộ chia dấu phẩy động 32-bit (Single Precision Floating Point Divider). Để tính $\text{strength} = S_c / R_{0n}$, ta cần thêm một bộ chia dấu phẩy động thứ hai. Sau đó là các bộ nhân, bộ trừ và bộ so sánh dấu phẩy động theo chuẩn IEEE-754.
-Hai bộ chia dấu phẩy động pipelined của thư viện Altera FPGA sẽ tiêu tốn hàng nghìn ALM, sinh ra độ trễ từ 15 đến 30 chu kỳ, và biến một phép so sánh ngưỡng đơn giản thành một khối mạch cồng kềnh, tiêu hao tài nguyên logic quý giá vốn cần dành cho bộ tính $F_0$ và bộ nhớ M10K.
+Hai bộ chia dấu phẩy động pipelined của thư viện Altera FPGA tiêu tốn lượng lớn ALM và sinh ra độ trễ đường ống nhiều chu kỳ (phải đo trong Quartus), biến một phép so sánh ngưỡng thành một khối mạch phức tạp, tiêu hao tài nguyên logic vốn cần dành cho các khối tính toán khác.
 
 Câu hỏi cốt tử của người thiết kế phần cứng là: \emph{Có thể biến toàn bộ biểu thức trên thành các phép toán số nguyên thuần túy, không cần bất kỳ bộ chia nào, mà vẫn bảo đảm chính xác từng bit so với Praat hay không?}
 
@@ -375,7 +375,7 @@ Hãy thử hình dung sơ đồ kết nối nếu ta cố tình xây dựng kh�
     \item Tiếp theo, ta cần thêm 2 khối IP nhân đa năng (\texttt{LPM\_MULT}) cho hai tích biến số: một bộ nhân $35 \times 18\text{ bit}$ có dấu cho vế trái LHS, và một bộ nhân $34 \times 18\text{ bit}$ không dấu cho vế phải RHS.
     \item Tiếp đó là một khối IP trừ (\texttt{LPM\_ADD\_SUB}), các khối logic bão hòa cực đại, logic phát hiện bẫy im lặng, và cuối cùng là một khối IP so sánh 54-bit (\texttt{LPM\_COMPARE}).
 \end{itemize}
-Việc ghép nối gần 10 module IP Megafunction đóng kín với các giao diện tín hiệu, độ trễ pipeline và cờ báo khác nhau đòi hỏi một lượng logic keo (glue logic) khổng lồ, khiến đường định thời trở nên phức tạp và việc mô phỏng kiểm chứng độc lập trên các công cụ mã nguồn mở (như Icarus Verilog) gần như bất khả thi do vướng thư viện mô phỏng độc quyền.
+Việc ghép nối nhiều module IP Megafunction đóng kín với các giao diện tín hiệu, độ trễ pipeline và cờ báo khác nhau đòi hỏi lượng logic keo (glue logic) đáng kể, khiến đường định thời trở nên phức tạp và việc mô phỏng kiểm chứng độc lập trên các công cụ mã nguồn mở (như Icarus Verilog) gần như bất khả thi do vướng thư viện mô phỏng độc quyền.
 
 Đặc biệt, bản chất toán học của các hệ số $100$, $45$, $3$, $6$, $145$ là các hằng số nguyên nhỏ cố định. Trong thiết kế mạch số chuyên nghiệp, các phép nhân với hằng số cố định \textbf{không bao giờ dùng bộ nhân phần cứng}, mà được thay thế hoàn toàn bằng \textbf{mạng dịch bit và bộ cộng (Shift-and-Add network)}. Vì vậy, tài liệu này quyết định: \emph{Khối quyết định vô thanh chỉ triển khai duy nhất bằng tuyến HDL tự viết}, kiểm soát chính xác từng tầng thanh ghi và tối ưu hóa diện tích silicon tối đa.
 
@@ -408,7 +408,7 @@ Dịch bit sang trái $k$ vị trí trong Verilog (\texttt{x << k}) tương đư
     \end{equation}
     Chỉ cần 2 bộ cộng 24-bit.
 \end{enumerate}
-Toàn bộ các phép nhân hằng số trong bất đẳng thức được tính toán đồng thời song song trong mạng logic tổ hợp với thời gian trễ lan truyền nhỏ hơn $3\text{ ns}$ trên công nghệ bán dẫn $28\text{ nm}$ của Cyclone V.
+Toàn bộ các phép nhân hằng số trong bất đẳng thức được tính toán đồng thời song song trong mạng logic tổ hợp, trễ lan truyền cụ thể phải đo trong Quartus (Timing Analyzer).
 
 \subsubsection*{Vi kiến trúc đường ống 3 tầng của module ch10\_voicing.v}
 Để bảo đảm tần số hoạt động cực đại $F_{\max}$ vượt xa mức $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$) của hệ thống lõi, khối tính toán được cấu trúc thành một đường ống xử lý 3 tầng thanh ghi độc lập (3-stage pipeline), như được minh họa chi tiết trên Hình \ref{fig:ch10_pipeline}.
@@ -456,16 +456,16 @@ Dưới đây là toàn bộ phần thân tính toán của module \texttt{ch10\
     \item \textbf{Dòng 60--67 (Tính các thừa số và độ dốc):} Thừa số $3 \cdot GP$ được tạo ra bằng ghép bit \texttt{\{in\_gp, 1'b0\} + \{2'b00, in\_gp\}} (tương ứng $2\cdot GP + GP$), đạt độ rộng 18-bit. Thừa số $100 \cdot R_{0n}$ có độ rộng 34-bit. Hiệu số dốc $\text{ramp\_diff} = 6 \cdot GP - 145 \cdot LP$ được ép kiểu có dấu \texttt{\$signed} 25-bit. Biểu thức tam nguyên ở dòng 67 kiểm tra dấu: nếu $\text{ramp\_diff} > 0$ thì lấy giá trị 18-bit thấp, nếu âm hoặc bằng 0 thì bão hòa về đúng $18'd0$, hiện thực hóa hoàn hảo hàm $\max(0, \dots)$ của Praat.
     \item \textbf{Dòng 69 (Bộ dò bẫy im lặng):} Kết hợp 4 điều kiện: $R_{0n} = 0$, $LP = 0$, $GP = 0$ hoặc không có đỉnh hợp lệ nào được tìm thấy. Bất kỳ điều kiện nào xuất hiện cũng khiến \texttt{comb\_silence\_trap} tích cực (mức 1).
     \item \textbf{Dòng 79--97 (Thanh ghi Tầng 1):} Chốt toàn bộ các kết quả trung gian vào các thanh ghi \texttt{s1\_*} tại cạnh lên xung nhịp \texttt{clk}, bảo đảm cách ly hoàn toàn trễ dây dẫn của tầng dịch-cộng với tầng nhân phía sau.
-    \item \textbf{Dòng 102--125 (Tầng nhân 2):} Thực hiện hai phép nhân song song: $\text{LHS} = t_1 \times (3\cdot GP)$ và $\text{RHS} = (100\cdot R_{0n}) \times \text{ramp\_pos}$. Cả hai tích số đều được ép kiểu có dấu \texttt{\$signed} 54-bit. Trình biên dịch Quartus Prime sẽ tự động ánh xạ hai phép nhân này vào các khối phần cứng chuyên dụng Variable Precision DSP của Cyclone V (hoặc tổng hợp thành mảng cộng ALM tùy chọn cấu hình). Các tích số được chốt vào thanh ghi \texttt{s2\_lhs} và \texttt{s2\_rhs}.
+    \item \textbf{Dòng 102--125 (Tầng nhân 2):} Thực hiện hai phép nhân song song: $\text{LHS} = t_1 \times (3\cdot GP)$ và $\text{RHS} = (100\cdot R_{0n}) \times \text{ramp\_pos}$. Cả hai tích số đều được ép kiểu có dấu \texttt{\$signed} 54-bit. Trình biên dịch Quartus Prime có thể ánh xạ hai phép nhân này vào các khối phần cứng chuyên dụng DSP hoặc tổng hợp bằng logic ALM (việc phân bổ tài nguyên cụ thể phải kiểm trong Quartus). Các tích số được chốt vào thanh ghi \texttt{s2\_lhs} và \texttt{s2\_rhs}.
     \item \textbf{Dòng 130--146 (Tầng so sánh 3 và Ngõ ra):} So sánh lớn hơn chặt \texttt{s2\_lhs > s2\_rhs} kết hợp cờ \texttt{!s2\_silence\_trap}. Nếu thỏa mãn, \texttt{comb\_is\_voiced} bật lên 1. Bộ ghép kênh gán giá trị \texttt{s2\_f0\_raw} vào \texttt{out\_f0}; ngược lại nếu vô thanh gán bằng $16'd0$. Cờ \texttt{out\_valid} bật lên 1 chu kỳ thông báo kết quả sẵn sàng.
 \end{itemize}
 
 \subsubsection*{Chỗ dễ vướng: Vì sao không gộp cả 3 tầng thành mạch tổ hợp 1 chu kỳ?}
 Một câu hỏi tự nhiên là: tại sao ta không bỏ hết các thanh ghi trung gian ở Tầng 1 và Tầng 2 để có kết quả ngay trong 1 chu kỳ xung nhịp?
 Hãy nhìn vào quãng đường điện (đường tới hạn -- critical path) nếu gộp thành 1 chu kỳ:
-Tín hiệu đầu vào phải chạy qua mạng dịch-cộng Tầng 1 (trễ khoảng $2{,}5\text{ ns}$), sau đó đi qua bộ nhân 54-bit Tầng 2 (trễ khoảng $6{,}5\text{ ns}$), tiếp tục đi qua chuỗi carry-chain so sánh 54-bit Tầng 3 (trễ khoảng $3{,}5\text{ ns}$), và cuối cùng là bộ ghép kênh MUX và dây định tuyến giữa các khối ALM rải rác trên chip (trễ định tuyến interconnect thêm khoảng $4\text{ đến }6\text{ ns}$). Tổng thời gian lan truyền có thể chạm ngưỡng $18\text{ ns}$, tiệm cận chu kỳ $20\text{ ns}$ của xung nhịp $50\text{ MHz}$. Mạch sẽ có nguy cơ vi phạm thời gian thiết lập (setup time violation) khi nhiệt độ chip tăng cao hoặc khi Fitter phải bố trí các khối ở xa nhau.
+Tín hiệu đầu vào phải chạy qua một chuỗi logic tổ hợp rất dài: từ mạng dịch-cộng Tầng 1, qua phép nhân 54-bit Tầng 2, qua chuỗi so sánh 54-bit Tầng 3, và cuối cùng qua bộ ghép kênh MUX cùng dây định tuyến trên chip. Đường lan truyền tổ hợp dài như vậy trong 1 chu kỳ duy nhất tiềm ẩn nguy cơ vi phạm thời gian thiết lập (setup time violation) ở tần số xung nhịp $50\text{ MHz}$.
 
-Bằng cách ngắt quãng đường làm 3 chặng có thanh ghi chốt ở giữa, thời gian trễ của mỗi tầng chỉ còn dưới $6\text{ ns}$, cho phép mạch dễ dàng vượt qua kiểm tra định thời (Timing Analysis) với $F_{\max}$ ước tính trên $150\text{ MHz}$ (phải đo trong Quartus Prime). Việc tăng thêm 2 chu kỳ trễ là hoàn toàn vô hại đối với hệ thống xử lý khung âm thanh $10\text{ ms}$.
+Bằng cách ngắt chuỗi tính toán làm 3 chặng có các thanh ghi chốt ở giữa, đường tới hạn của mỗi tầng được rút ngắn đáng kể, giúp mạch dễ dàng đáp ứng yêu cầu định thời (tần số hoạt động cực đại $F_{\max}$ cụ thể phải đo trong Quartus Prime bằng Timing Analyzer). Việc tăng thêm 2 chu kỳ trễ hoàn toàn không ảnh hưởng đến ngân sách $500.000\text{ chu kỳ}$ của bước nhảy khung $10\text{ ms}$ ($0{,}0006\%$).
 
 \textit{Tóm lại: Module \texttt{ch10\_voicing.v} được thiết kế bằng HDL tự viết với đường ống 3 tầng thanh ghi; toàn bộ các hằng số được nhân bằng mạng dịch-cộng 0 DSP, hai phép nhân 54-bit được cách ly an toàn, giải quyết triệt để bài toán định thời mà không tốn bất kỳ khối RAM M10K nào.}
 
@@ -561,12 +561,12 @@ Bảng \ref{tab:ch10_ip_vs_hdl} so sánh toàn diện giữa phương án giả 
 \toprule
 \textbf{Tiêu chí kỹ thuật} & \textbf{Tuyến (A): Thư viện Intel IP} & \textbf{Tuyến (B): HDL tự viết (\texttt{ch10\_voicing.v})} \\
 \midrule
-Cấu trúc module & Ghép nối gần 10 IP riêng lẻ (\texttt{LPM\_MULT}, \texttt{LPM\_ADD\_SUB}, \texttt{LPM\_COMPARE}) & 1 module duy nhất, mạch lạc, dưới 150 dòng Verilog. \\
+Cấu trúc module & Ghép nối nhiều IP riêng lẻ (\texttt{LPM\_MULT}, \texttt{LPM\_ADD\_SUB}, \texttt{LPM\_COMPARE}) & 1 module duy nhất, mạch lạc, dưới 150 dòng Verilog. \\
 Tài nguyên M10K RAM & 0 khối M10K (tính toán thuần túy). & 0 khối M10K (tính toán thuần túy). \\
-Tài nguyên DSP & Tiêu tốn từ 2 đến 7 khối Variable Precision DSP. & Tùy chọn 0 DSP (dịch-cộng ALM) hoặc 2 khối DSP cho 2 tích 54-bit. \\
-Tài nguyên Logic ALM & Tốn nhiều ALM keo nối các wrapper IP (phải đo trong Quartus). & Tối ưu hóa cực đại, chỉ gồm mạng dịch-cộng và thanh ghi (phải đo trong Quartus). \\
-Tần số cực đại $F_{\max}$ & Phụ thuộc định tuyến giữa các khối IP rải rác (phải đo). & Thiết kế đường ống 3 tầng an toàn, dự kiến $> 150\text{ MHz}$ (phải đo). \\
-Độ trễ xử lý (Latency) & Khó đồng bộ, dao động từ 4 đến 8 chu kỳ tùy IP wrapper. & \textbf{Đúng 3 chu kỳ xung nhịp} cố định, tuyệt đối tin cậy. \\
+Tài nguyên DSP & Tiêu tốn các khối Variable Precision DSP (phải kiểm trong Quartus). & Tùy chọn tổng hợp bằng ALM hoặc dùng khối DSP (phải kiểm trong Quartus). \\
+Tài nguyên Logic ALM & Tốn ALM keo nối các wrapper IP (phải đo trong Quartus). & Gồm mạng dịch-cộng và thanh ghi (phải đo trong Quartus). \\
+Tần số cực đại $F_{\max}$ & Phụ thuộc định tuyến giữa các khối IP (phải đo trong Quartus). & Đường ống 3 tầng, đáp ứng xung nhịp $50\text{ MHz}$ (phải đo trong Quartus). \\
+Độ trễ xử lý (Latency) & Phụ thuộc cấu hình wrapper từng IP (phải đo). & \textbf{Đúng 3 chu kỳ xung nhịp} cố định. \\
 Thông lượng (Throughput) & 1 kết quả / chu kỳ. & \textbf{1 kết quả / chu kỳ} (hoàn toàn pipelined). \\
 Khả năng kiểm chứng & Đòi hỏi thư viện độc quyền \texttt{220model} của Quartus. & Độc lập hoàn toàn, mô phỏng tự do trên Icarus Verilog, Verilator, ModelSim. \\
 \bottomrule
@@ -679,7 +679,7 @@ Giả sử một khung âm thanh nhân tạo cực đại (stress frame) có cá
         \text{RHS}_{\max} &\approx 2{,}639 \times 10^{15} < 2^{52} \approx 4{,}504 \times 10^{15} \ll 2^{53} \approx 9{,}007 \times 10^{15}
     \end{align*}
     Cả hai vế đều nhỏ hơn một nửa ngưỡng tràn số của 54-bit. Định dạng 54-bit hoàn toàn triệt tiêu nguy cơ tràn số.
-    \item Trên kiến trúc Cyclone V, bộ so sánh số nguyên 54-bit được tổng hợp trực tiếp thành chuỗi carry-chain cứng chuyên dụng trong các khối ALM. Mỗi ALM chứa 2 bộ cộng toàn phần (Full Adder) với đường carry cứng siêu tốc (trễ lan truyền dưới $0{,}05\text{ ns}$ mỗi bit). Toàn bộ phép so sánh 54-bit chỉ tiêu tốn khoảng 27 ALM và hoàn tất trong chưa đầy $3{,}5\text{ ns}$. Ngược lại, một bộ chia dấu phẩy động IEEE-754 tiêu tốn hơn 800 ALM và sinh ra độ trễ hàng chục chu kỳ.
+    \item Trên kiến trúc Cyclone V, bộ so sánh số nguyên 54-bit được tổng hợp thành chuỗi carry-chain trong các khối ALM. Số lượng ALM và thời gian trễ lan truyền cụ thể phải đo trong Quartus Prime (Compilation Report và Timing Analyzer). Ngược lại, một giải pháp dùng bộ chia dấu phẩy động IEEE-754 đòi hỏi số lượng ALM lớn hơn rất nhiều cùng độ trễ đường ống nhiều chu kỳ (phải đo trong Quartus).
 \end{enumerate}
 
 \paragraph{Bài tập 10.4 (Các ca biên, bẫy im lặng và độ nhạy sát ngưỡng).}
