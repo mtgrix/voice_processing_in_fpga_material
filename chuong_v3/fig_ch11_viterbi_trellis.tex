@@ -70,31 +70,32 @@
     % -------------------------------------------------------------------------
     % CÁC ĐƯỜNG CHUYỂN TRẠNG THÁI VÀ CHI PHÍ (TRANSITION COSTS)
     % -------------------------------------------------------------------------
-    % Chuyển tiếp mờ giữa các ứng viên
-    \draw[wire_trans] (c_p_uv.east) -- (c_c_uv.west);
-    \draw[wire_trans] (c_p_uv.east) -- (c_c_v1.west);
-    \draw[wire_trans] (c_p_v1.east) -- (c_c_uv.west);
-    \draw[wire_trans] (c_p_v1.east) -- (c_c_v2.west);
-    \draw[wire_trans] (c_p_v2.east) -- (c_c_v1.west);
-    \draw[wire_trans] (c_p_v2.east) -- (c_c_v2.west);
+    % 1. Chuyển tiếp vô thanh - vô thanh: UV -> UV (chi phí = 0)
+    \draw[wire_trans, draw=green!60!black] (c_p_uv.east) -- (c_c_uv.west);
+    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=green!60!black, text=green!60!black] at (4.0, 4.95) {UV--UV: $0$};
 
+    % 2. Đổi trạng thái V/UV: c_1 (vô thanh) -> c_2 (hữu thanh) (chi phí = 0,14)
+    \draw[wire_trans, draw=purple!80!black] (c_p_uv.east) -- (c_c_v1.west);
+    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=purple!60, text=purple!80!black] at (3.8, 3.48) {Đổi V/UV: $0{,}14$};
+
+    % 3. Nhảy tần số F0: c_2 -> c_3 (chi phí = 0,35*|log2(f1/f2)|)
+    \draw[wire_trans, draw=blue!80!black] (c_p_v1.east) -- (c_c_v2.west);
+    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=blue!50, text=blue!80!black] at (4.0, 2.05) {Nhảy $F_0$: $0{,}35|\log_2\frac{f_1}{f_2}|$};
+
+    % Chuyển tiếp giữa khung t và t+1
     \draw[wire_trans] (c_c_uv.east) -- (c_n_uv.west);
     \draw[wire_trans] (c_c_v1.east) -- (c_n_v2.west);
     \draw[wire_trans] (c_c_v2.east) -- (c_n_v1.west);
 
-    % Đường đi tối ưu Viterbi toàn cục (màu đỏ đậm có con trỏ)
+    % Đường đi tối ưu Viterbi toàn cục (màu đỏ đậm có mũi tên)
     \draw[wire_viterbi] (c_p_v1.east) -- (c_c_v1.west);
     \draw[wire_viterbi] (c_c_v1.east) -- (c_n_v1.west);
 
-    % Nhãn chi phí chuyển trạng thái
-    \node[lbl_tag, draw=blue!40, text=blue!80!black] at (4.0, 3.7) {\scriptsize Nhảy $F_0$: $0{,}35|\log_2\frac{f_1}{f_2}|$};
-    \node[lbl_tag, draw=purple!40, text=purple!80!black] at (4.0, 2.3) {\scriptsize Đổi V/UV: $0{,}14$};
-    \node[lbl_tag, draw=green!60!black, text=green!50!black] at (4.0, 4.7) {\scriptsize UV--UV: $0$};
-
     % -------------------------------------------------------------------------
     % ĐƯỜNG TRUY VẾT NGƯỢC (BACKTRACKING)
+    % Mũi tên trỏ từ khung cuối N ngược về khung đầu (phải sang trái)
     % -------------------------------------------------------------------------
-    \draw[draw=orange!90!black, ultra thick, dashed, <-] (14.0, 5.6) -- node[above=2pt, font=\scriptsize\bfseries, text=orange!90!black] {Truy vết ngược toàn bộ file ($N \to 1$)} (2.0, 5.6);
+    \draw[draw=orange!90!black, ultra thick, dashed, ->] (14.0, 5.6) -- node[above=2pt, font=\scriptsize\bfseries, text=orange!90!black] {Truy vết ngược toàn bộ file ($N \to 1$)} (2.0, 5.6);
 
     % -------------------------------------------------------------------------
     % CHÚ THÍCH PHÂN TÁCH VITERBI VS MEDIAN-3
