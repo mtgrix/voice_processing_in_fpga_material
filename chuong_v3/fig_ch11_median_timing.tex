@@ -10,14 +10,14 @@
     clk_line/.style={draw=black!85, thick},
     data_bus/.style={draw=blue!80!black, thick},
     val_line/.style={draw=green!60!black, thick},
-    annot/.style={font=\scriptsize, fill=white, inner sep=1.2pt}
+    annot/.style={font=\scriptsize, fill=white, inner sep=1.5pt}
 ]
 
     % -------------------------------------------------------------------------
     % LƯỚI CHU KỲ XUNG NHỊP T1 .. T8
     % -------------------------------------------------------------------------
     \foreach \t in {1,2,3,4,5,6,7,8} {
-        \draw[grid_line] (\t*2.0 - 0.5, 5.5) -- (\t*2.0 - 0.5, -3.8);
+        \draw[grid_line] (\t*2.0 - 0.5, 5.5) -- (\t*2.0 - 0.5, -5.3);
         \node[font=\scriptsize\bfseries, text=black!70] at (\t*2.0 + 0.5, 5.3) {T\t};
     }
 
@@ -31,70 +31,69 @@
     % CÁC TÍN HIỆU ĐẦU VÀO
     % -------------------------------------------------------------------------
     % in_valid
-    \node[sig_name] at (1.2, 3.6) {in\_valid};
-    \draw[val_line] (1.5, 3.3) -- (1.5+12.0, 3.3) -- (1.5+12.0, 3.0) -- (1.5+14.0, 3.0);
-    \draw[val_line] (1.5, 3.0) -- (1.5, 3.3);
-    \node[font=\tiny, text=green!50!black] at (7.5, 3.5) {Mức 1 (Khung 0 đến 5)};
+    \node[sig_name] at (1.2, 3.5) {in\_valid};
+    \draw[val_line] (1.5, 3.0) -- (1.5, 3.4) -- (13.5, 3.4) -- (13.5, 3.0) -- (15.5, 3.0);
+    \node[annot, text=green!50!black] at (7.5, 3.4) {Mức 1 (Khung 0 đến 5)};
 
     % in_first & in_last
-    \node[sig_name] at (1.2, 2.4) {in\_first};
-    \draw[val_line] (1.5, 2.1) -- (3.5, 2.1) -- (3.5, 1.8) -- (15.5, 1.8);
-    \draw[val_line] (1.5, 1.8) -- (1.5, 2.1);
-    \node[font=\tiny, text=green!50!black] at (2.5, 2.3) {Khung 0};
+    \node[sig_name] at (1.2, 2.3) {in\_first};
+    \draw[val_line] (1.5, 1.8) -- (1.5, 2.2) -- (3.5, 2.2) -- (3.5, 1.8) -- (15.5, 1.8);
+    \node[annot, text=green!50!black] at (2.5, 2.2) {Khung 0};
 
-    \node[sig_name] at (1.2, 1.3) {in\_last};
-    \draw[val_line] (1.5, 0.7) -- (11.5, 0.7) -- (11.5, 1.0) -- (13.5, 1.0) -- (13.5, 0.7) -- (15.5, 0.7);
-    \node[font=\tiny, text=green!50!black] at (12.5, 1.2) {Khung 5};
+    \node[sig_name] at (1.2, 1.1) {in\_last};
+    \draw[val_line] (1.5, 0.6) -- (11.5, 0.6) -- (11.5, 1.0) -- (13.5, 1.0) -- (13.5, 0.6) -- (15.5, 0.6);
+    \node[annot, text=green!50!black] at (12.5, 1.0) {Khung 5};
 
-    % in_f0
-    \node[sig_name] at (1.2, 0.1) {in\_f0};
-    \draw[data_bus] (1.5, 0.1) -- (13.5, 0.1);
+    % in_f0: Vẽ bus 2 đường biên với giá trị nằm trong khoảng trắng không bị gạch ngang
+    \node[sig_name] at (1.2, 0.0) {in\_f0};
     \foreach \x/\val in {1/120, 2/122, 3/244, 4/121, 5/0, 6/0} {
-        \draw[data_bus] (\x*2.0 - 0.5, -0.2) rectangle (\x*2.0 + 1.5, 0.4);
-        \node[font=\scriptsize\bfseries] at (\x*2.0 + 0.5, 0.1) {\val};
+        \draw[data_bus, fill=white] (\x*2.0 - 0.5, -0.25) rectangle (\x*2.0 + 1.5, 0.25);
+        \node[font=\scriptsize\bfseries] at (\x*2.0 + 0.5, 0.0) {\val};
     }
-    \node[font=\scriptsize, text=black!40] at (14.5, 0.1) {---};
+    \node[font=\scriptsize, text=black!40] at (14.5, 0.0) {---};
+
+    % Chú thích lặp biên tại chu kỳ T1
+    \node[annot, text=blue!80!black] at (2.5, -0.6) {Lặp biên: $z_0=z_1=z_2=120$};
+    \draw[draw=blue!80!black, thick, ->] (2.5, -0.28) -- (2.5, -0.48);
+    \draw[draw=blue!80!black, thick, ->] (2.5, -0.72) -- (2.5, -0.92);
 
     % -------------------------------------------------------------------------
     % CÁC THANH GHI NỘI TẠI
     % -------------------------------------------------------------------------
     % f0_z1 (mẫu trung tâm đang xét)
-    \node[sig_name] at (1.2, -1.0) {f0\_z1};
+    \node[sig_name] at (1.2, -1.2) {f0\_z1};
     \foreach \x/\val in {1/120, 2/122, 3/244, 4/121, 5/0, 6/0, 7/0} {
-        \draw[data_bus] (\x*2.0 - 0.5, -1.3) rectangle (\x*2.0 + 1.5, -0.7);
-        \node[font=\scriptsize\bfseries, text=blue!80!black] at (\x*2.0 + 0.5, -1.0) {\val};
+        \draw[data_bus, fill=white] (\x*2.0 - 0.5, -1.45) rectangle (\x*2.0 + 1.5, -0.95);
+        \node[font=\scriptsize\bfseries, text=blue!80!black] at (\x*2.0 + 0.5, -1.2) {\val};
     }
 
     % f0_z2 (mẫu quá khứ)
-    \node[sig_name] at (1.2, -1.9) {f0\_z2};
+    \node[sig_name] at (1.2, -2.2) {f0\_z2};
     \foreach \x/\val in {1/120, 2/120, 3/122, 4/244, 5/121, 6/0, 7/0} {
-        \draw[data_bus] (\x*2.0 - 0.5, -2.2) rectangle (\x*2.0 + 1.5, -1.6);
-        \node[font=\scriptsize\bfseries, text=purple!80!black] at (\x*2.0 + 0.5, -1.9) {\val};
+        \draw[data_bus, fill=white] (\x*2.0 - 0.5, -2.45) rectangle (\x*2.0 + 1.5, -1.95);
+        \node[font=\scriptsize\bfseries, text=purple!80!black] at (\x*2.0 + 0.5, -2.2) {\val};
     }
 
     % -------------------------------------------------------------------------
     % CÁC TÍN HIỆU ĐẦU RA
     % -------------------------------------------------------------------------
     % out_valid
-    \node[sig_name] at (1.2, -2.8) {out\_valid};
-    \draw[val_line] (1.5, -3.1) -- (3.5, -3.1) -- (3.5, -2.8) -- (15.5, -2.8) -- (15.5, -3.1);
-    \node[font=\tiny, text=green!50!black] at (2.5, -2.9) {Chờ (0)};
-    \node[font=\tiny, text=green!50!black] at (9.5, -2.6) {Mức 1 (Xuất đủ 6 khung)};
+    \node[sig_name] at (1.2, -3.1) {out\_valid};
+    \draw[val_line] (1.5, -3.3) -- (3.5, -3.3) -- (3.5, -2.9) -- (15.5, -2.9) -- (15.5, -3.3);
+    \node[annot, text=green!50!black] at (2.5, -3.1) {Chờ (0)};
+    \node[annot, text=green!50!black] at (9.5, -2.9) {Mức 1 (Xuất đủ 6 khung)};
 
     % f0_med / out_f0
-    \node[sig_name] at (1.2, -3.8) {out\_f0};
-    \node[font=\scriptsize, text=black!40] at (2.5, -3.8) {---};
+    \node[sig_name] at (1.2, -4.2) {out\_f0};
+    \node[font=\scriptsize, text=black!40] at (2.5, -4.2) {---};
     \foreach \x/\val/\fr in {2/120/khung 0, 3/122/khung 1, 4/122/khung 2, 5/121/khung 3, 6/0/khung 4, 7/0/khung 5} {
-        \draw[draw=orange!80!black, fill=orange!10, thick] (\x*2.0 - 0.5, -4.1) rectangle (\x*2.0 + 1.5, -3.5);
-        \node[font=\scriptsize\bfseries, text=orange!90!black] at (\x*2.0 + 0.5, -3.8) {\val};
-        \node[font=\tiny, text=black!65] at (\x*2.0 + 0.5, -4.3) {\fr};
+        \draw[draw=orange!80!black, fill=orange!10, thick] (\x*2.0 - 0.5, -4.45) rectangle (\x*2.0 + 1.5, -3.95);
+        \node[font=\scriptsize\bfseries, text=orange!90!black] at (\x*2.0 + 0.5, -4.2) {\val};
+        \node[font=\scriptsize, text=black!70] at (\x*2.0 + 0.5, -4.8) {\fr};
     }
 
     % Mũi tên nhịp xả Flush Beat tại chu kỳ T7
-    \draw[draw=red!80!black, thick, ->] (14.5, -2.3) -- node[right=2pt, font=\tiny\bfseries, text=red!80!black, fill=white, inner sep=1pt] {Flush beat!} (14.5, -3.4);
-
-    % Mũi tên lặp biên mẫu đầu tại chu kỳ T1
-    \draw[draw=blue!80!black, thick, ->] (2.3, -0.3) -- node[right=2pt, font=\tiny, text=blue!80!black, fill=white, inner sep=1pt] {Lặp biên: $z_1=z_2=120$} (2.3, -0.65);
+    \draw[draw=red!80!black, thick, ->] (14.5, -2.5) -- node[right=3pt, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1.5pt] {Flush beat!} (14.5, -3.8);
 
 \end{tikzpicture}%
 }
