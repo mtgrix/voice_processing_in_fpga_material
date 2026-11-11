@@ -7,7 +7,7 @@
 \begin{itemize}
     \item Thấu hiểu bản chất vật lý của ranh giới vô thanh / hữu thanh: vì sao việc tìm cực đại tự tương quan thuần túy luôn sinh ra tần số giả trong các đoạn im lặng và phụ âm xát vô thanh.
     \item Nắm vững cơ chế đánh giá độ mạnh của ứng viên vô thanh trong mã nguồn Praat 7.0.03: từ tỉ số biên độ đỉnh tương đối $I = LP / GP$ đến hàm phạt tuyến tính vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$.
-    \item Phân tích tường minh nguyên nhân loại bỏ mô hình ngưỡng năng lượng toàn cục $E_{\text{ref}}$ (golden v1) và dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit bám sát tuyệt đối Praat (golden v2).
+    \item Phân tích tường minh nguyên nhân loại bỏ mô hình ngưỡng năng lượng toàn cục $E_{\text{ref}}$ (golden v1) và dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit bám sát thuật toán Praat (golden v2).
     \item Nắm vững vi kiến trúc đường ống 3 tầng của module HDL tự viết \texttt{ch10\_voicing.v}: tối ưu hóa hằng số bằng phép dịch-cộng không tốn DSP, loại bỏ hoàn toàn bộ chia dấu phẩy động và triệt tiêu bẫy im lặng.
     \item Kiểm chứng tính tương đương chu kỳ-đối-chu kỳ giữa mô hình song sinh Python Twin và phần cứng Verilog trên hơn 600 bộ vectơ thử nghiệm góc, xác nhận chỉ số lỗi quyết định vô thanh $\text{VDE} = 0 / 277$ khung trên hai tệp âm thanh chuẩn.
 \end{itemize}
@@ -93,7 +93,7 @@ Chuyển đổi sang quy ước chỉ số mảng đếm từ 0 trong ngôn ng�
     j_{\text{start}} &= 213 - 1 = 212, \\
     j_{\text{end}}   &= 426 - 1 = 425.
 \end{align}
-Tổng số mẫu nằm trong phạm vi quét đỉnh cục bộ là $425 - 212 + 1 = 214\text{ mẫu}$, nằm đối xứng hoàn hảo quanh tâm của khung phân tích 638 mẫu (mẫu tâm nằm tại $j = 318$ và $319$). Tín hiệu quét là các mẫu $x_w[j]$ \emph{đã nhân cửa sổ Hanning}. Cực đại biên độ cục bộ là:
+Tổng số mẫu nằm trong phạm vi quét đỉnh cục bộ là $425 - 212 + 1 = 214\text{ mẫu}$, nằm đối xứng quanh tâm của khung phân tích 638 mẫu (mẫu tâm nằm tại $j = 318$ và $319$). Tín hiệu quét là các mẫu $x_w[j]$ \emph{đã nhân cửa sổ Hanning}. Cực đại biên độ cục bộ là:
 \begin{equation}
     LP = \max_{j = 212..425} |x_w[j]|
 \end{equation}
@@ -147,7 +147,7 @@ Hàm số $R_{\text{unvoiced}}(I)$ chia miền cường độ $I \in [0, 1]$ th�
     \begin{equation}
         I_{\text{end}} = \frac{2}{\frac{145}{3}} = \frac{6}{145} \approx 0{,}0413793... \approx 0{,}0414
     \end{equation}
-    Trong khoảng này, giá trị $2 - I \cdot \frac{145}{3}$ dương và giảm tuyến tính từ $0{,}55$ về $0$. Do đó, $R_{\text{unvoiced}}$ giảm mượt mà từ $1{,}00$ xuống $0{,}45$. Đây là một đặc điểm thiết kế tinh tế của Paul Boersma: thay vì áp đặt một bước nhảy bậc thang đột ngột (gây hiện tượng chớp tắt vô thanh / hữu thanh chập chờn khi tín hiệu mấp mé ngưỡng), Praat tạo ra một \emph{vùng đệm giảm xóc tuyến tính}. Tín hiệu càng yếu thì đòi hỏi tính tuần hoàn càng phải hoàn hảo mới được công nhận là hữu thanh.
+    Trong khoảng này, giá trị $2 - I \cdot \frac{145}{3}$ dương và giảm tuyến tính từ $0{,}55$ về $0$. Do đó, $R_{\text{unvoiced}}$ giảm mượt mà từ $1{,}00$ xuống $0{,}45$. Đây là một đặc điểm thiết kế tinh tế của Paul Boersma: thay vì áp đặt một bước nhảy bậc thang đột ngột (gây hiện tượng chớp tắt vô thanh / hữu thanh chập chờn khi tín hiệu mấp mé ngưỡng), Praat tạo ra một \emph{vùng đệm giảm xóc tuyến tính}. Tín hiệu càng yếu thì đòi hỏi tính tuần hoàn càng phải cao mới được công nhận là hữu thanh.
 
     \item \textbf{Phân vùng 3: Vùng tiếng nói tích cực ($I \ge 0{,}0414$).}
     Khi $I \ge \frac{6}{145}$, ta có $2 - I \cdot \frac{145}{3} \le 0$, khiến hàm $\max(0, \dots) = 0$. Khi đó:
@@ -167,7 +167,7 @@ Hàm số $R_{\text{unvoiced}}(I)$ chia miền cường độ $I \in [0, 1]$ th�
 \textbf{Đọc hình.} Hình \ref{fig:ch10_voicing_curve} trình bày trực quan quy luật phân định vô thanh / hữu thanh của Praat 7.0.03 trên mặt phẳng tọa độ $(I, R)$. Trục hoành biểu diễn tỉ số cường độ biên độ đỉnh $I = LP / GP$; trục tung biểu diễn độ mạnh ngưỡng $R$. Đường cong màu đỏ đậm thể hiện hàm số $R_{\text{unvoiced}}(I)$. Tại vùng im lặng màu đỏ nhạt ($I < 0{,}03$), đường ngưỡng vọt lên trên mức $1{,}00$, khiến mọi ứng viên (kể cả điểm C có tính chu kỳ cao $S_c/R_{0n} = 0{,}80$) đều bị đánh rớt xuống vô thanh. Tại vùng dốc màu cam ($0{,}03 \le I < 0{,}0414$), đường ngưỡng giảm tuyến tính từ $1{,}00$ xuống $0{,}45$. Tại vùng tiếng nói tích cực màu xanh nhạt ($I \ge 0{,}0414$), đường ngưỡng nằm ngang cố định tại $0{,}45$. Điểm xanh A ($S_c/R_{0n} = 0{,}75$) nằm phía trên đường ngưỡng nên được công nhận là hữu thanh; trong khi điểm đỏ B ($S_c/R_{0n} = 0{,}30$) nằm phía dưới nên bị phân loại là vô thanh.
 
 \subsubsection*{Chỗ dễ vướng: Vì sao Praat dùng tỉ số biên độ thay vì tỉ số năng lượng RMS?}
-Nhiều kỹ sư khi thiết kế hệ thống phát hiện tiếng nói (VAD -- \emph{Voice Activity Detection}) thường có phản xạ tự nhiên là tính năng lượng trung bình bình phương (RMS energy hoặc $R[0] = \sum x^2$). Tuy nhiên, Paul Boersma đã chọn cực đại biên độ tuyệt đối $\max |x_w[j]|$. Lý do nằm ở đặc tính âm học của các âm thanh bật và phụ âm tắc:
+Nhiều kỹ sư khi thiết kế hệ thống phát hiện tiếng nói (VAD -- \emph{Voice Activity Detection}) thường có phản xạ tự nhiên là tính năng lượng trung bình bình phương (RMS energy hoặc $R[0] = \sum x^2$). Tuy nhiên, Paul Boersma đã chọn biên độ đỉnh cực đại $\max |x_w[j]|$. Lý do nằm ở đặc tính âm học của các âm thanh bật và phụ âm tắc:
 Một xung đóng mở dây thanh đột ngột (glottal pulse) ở đầu một âm tiết có thể tạo ra một đỉnh biên độ rất sắc nhọn nhưng thời gian tồn tại cực ngắn (chỉ vài mẫu). Nếu tính tổng bình phương $R[0]$ trên toàn bộ cửa sổ 638 mẫu, năng lượng trung bình sẽ bị san phẳng ra toàn khung, khiến tỉ số năng lượng rơi xuống rất thấp và có nguy cơ bị gạt nhầm vào khoảng lặng. Ngược lại, đại lượng $LP = \max |x_w[j]|$ giữ nguyên được biên độ đỉnh thực tế của luồng áp suất âm thanh, giúp bảo toàn tính hữu thanh của các phụ âm bật ngay tại thời điểm thanh môn vừa mở.
 
 \textit{Tóm lại: Praat quyết định vô thanh bằng cách so sánh ứng viên hữu thanh với một ứng viên vô thanh đối trọng mang độ mạnh $R_{\text{unvoiced}}(I) = 0{,}45 + \max(0, 2 - I \cdot 145/3)$; đường ngưỡng này tự động dâng lên trên $1{,}0$ để biến mọi khung có $I < 0{,}03$ thành vô thanh, triệt tiêu hoàn toàn tiếng ù và tạp âm khoảng lặng.}
@@ -187,7 +187,7 @@ một lập trình viên phần mềm trên máy tính x86 có thể thực hi�
 Để tính $I = LP / GP$, ta cần một bộ chia dấu phẩy động 32-bit (Single Precision Floating Point Divider). Để tính $\text{strength} = S_c / R_{0n}$, ta cần thêm một bộ chia dấu phẩy động thứ hai. Sau đó là các bộ nhân, bộ trừ và bộ so sánh dấu phẩy động theo chuẩn IEEE-754.
 Hai bộ chia dấu phẩy động pipelined của thư viện Altera FPGA tiêu tốn lượng lớn ALM và sinh ra độ trễ đường ống nhiều chu kỳ (phải đo trong Quartus), biến một phép so sánh ngưỡng thành một khối mạch phức tạp, tiêu hao tài nguyên logic vốn cần dành cho các khối tính toán khác.
 
-Câu hỏi cốt tử của người thiết kế phần cứng là: \emph{Có thể biến toàn bộ biểu thức trên thành các phép toán số nguyên thuần túy, không cần bất kỳ bộ chia nào, mà vẫn bảo đảm chính xác từng bit so với Praat hay không?}
+Câu hỏi quan trọng đặt ra cho người thiết kế phần cứng là: \emph{Có thể biến toàn bộ biểu thức trên thành các phép toán số nguyên thuần túy, không cần bất kỳ bộ chia nào, mà vẫn bảo đảm chính xác từng bit so với Praat hay không?}
 
 \subsubsection*{Dạng phần cứng thứ nhất (Golden v1) và vì sao bị loại bỏ}
 Trong giai đoạn đầu của dự án (phiên bản golden v1), nhóm nghiên cứu đã cố gắng tránh phép chia bằng cách đưa ra một mô hình ngưỡng năng lượng đơn giản hóa:
@@ -198,13 +198,13 @@ Trong giai đoạn đầu của dự án (phiên bản golden v1), nhóm nghiên
 Mặc dù công thức này chỉ dùng phép nhân số nguyên, nó đã bộc lộ bốn khiếm khuyết chết người khiến nó bị loại bỏ hoàn toàn trong bản đặc tả chuẩn (golden v2):
 \begin{enumerate}
     \item \textbf{Phá vỡ tính trực tiếp (Streaming) của luồng phần cứng:} Để có được giá trị $E_{\text{ref}} = \max R_0$ của cả tệp, FPGA bắt buộc phải quét qua toàn bộ tệp âm thanh một lượt trước để tính và lưu trữ $R_0$ của từng khung, tìm cực đại $E_{\text{ref}}$, rồi mới có thể quay lại từ đầu để quyết định vô thanh / hữu thanh! Điều này đòi hỏi hoặc phải có một bộ đệm SDRAM khổng lồ bên ngoài để lưu toàn bộ tệp, hoặc phải truyền dữ liệu âm thanh qua cầu HPS--FPGA hai lần liên tiếp. Kiến trúc đường ống thời gian thực bị phá vỡ hoàn toàn.
-    \item \textbf{Lệch pha bản chất vật lý giữa năng lượng và biên độ:} Đại lượng $E_{\text{ref}}$ là tổng bình phương $x^2$, trong khi Praat dùng biên độ đỉnh tuyệt đối $|x|$. Tỉ số $9 / 10000 = 0{,}0009 = (0{,}03)^2$ làm bình phương bậc hai sự suy giảm của tín hiệu. Trong các đoạn âm thanh có dải động lớn (ví dụ có tiếng hét to xen lẫn tiếng thì thầm), $E_{\text{ref}}$ bị đẩy lên rất cao bởi tiếng hét, khiến ngưỡng $0{,}0009 \cdot E_{\text{ref}}$ vô tình cắt đứt toàn bộ các đoạn thì thầm hoặc phụ âm nhẹ vốn có biên độ vừa phải.
+    \item \textbf{Lệch pha bản chất vật lý giữa năng lượng và biên độ:} Đại lượng $E_{\text{ref}}$ là tổng bình phương $x^2$, trong khi Praat dùng biên độ đỉnh $|x|$. Tỉ số $9 / 10000 = 0{,}0009 = (0{,}03)^2$ làm bình phương bậc hai sự suy giảm của tín hiệu. Trong các đoạn âm thanh có dải động lớn (ví dụ có tiếng hét to xen lẫn tiếng thì thầm), $E_{\text{ref}}$ bị đẩy lên rất cao bởi tiếng hét, khiến ngưỡng $0{,}0009 \cdot E_{\text{ref}}$ vô tình cắt đứt toàn bộ các đoạn thì thầm hoặc phụ âm nhẹ vốn có biên độ vừa phải.
     \item \textbf{Cắt bỏ hoàn toàn vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$:} Golden v1 áp dụng một ngưỡng cắt cứng bậc thang ($R_0 \ge 0{,}0009 \cdot E_{\text{ref}}$). Hệ quả là tại các khung âm thanh mấp mé ngưỡng, trạng thái vô thanh / hữu thanh bị giật cục, tạo ra hiện tượng nhảy tần số giả giữa các khung kề nhau, làm sai lệch kết quả lọc trung vị Median-3 ở Chương 11.
     \item \textbf{Quy tắc so sánh dấu lớn hơn chặt (Strict inequality):} Golden v1 sử dụng dấu $\ge$ ($S_c \cdot 100 \ge 45 \cdot R_0$). Trong thiết kế phần cứng của ta, điều kiện hữu thanh sử dụng dấu so sánh lớn hơn chặt ($>$), tức $\text{LHS} > \text{RHS}$. Trường hợp hòa điểm được kiểm chứng thực nghiệm trong kiểm định dữ liệu thực tế (golden audit), đạt $0 / 277$ khác biệt so với kết quả của Praat.
 \end{enumerate}
 
 \subsubsection*{Dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit (Golden v2)}
-Để khắc phục triệt để các nhược điểm trên mà không cần dùng bộ chia dấu phẩy động, giải pháp chốt của ta là thực hiện \textbf{nhân chéo mẫu số quy đồng} toàn bộ biểu thức quyết định của Praat.
+Để khắc phục các nhược điểm trên mà không cần dùng bộ chia dấu phẩy động, giải pháp chốt của ta là thực hiện \textbf{nhân chéo mẫu số quy đồng} toàn bộ biểu thức quyết định của Praat.
 
 Xuất phát từ điều kiện hữu thanh của Praat trong chế độ so sánh đơn khung (tương ứng với cấu hình R2 không chi phí chuyển trạng thái trong Viterbi): độ mạnh của ứng viên hữu thanh tốt nhất phải lớn hơn chặt độ mạnh của ứng viên vô thanh:
 \begin{equation}
@@ -242,7 +242,7 @@ Nhân cả hai vế với số dương $M_{\text{chung}}$, chiều bất đẳng
     \item Vế phải: $\text{RHS} = (100 \cdot R_{0n}) \cdot \max(0,\, 6 \cdot GP - 145 \cdot LP)$.
     \item Điều kiện hữu thanh: $\text{LHS} > \text{RHS}$.
 \end{itemize}
-Phép so sánh này hoàn toàn không chứa bất kỳ phép chia nào, không có số thực dấu phẩy động, nhưng cho kết quả quyết định vô thanh / hữu thanh \emph{trùng khớp từng bit 100\%} với thuật toán Praat!
+Phép so sánh này hoàn toàn không chứa bất kỳ phép chia nào, không có số thực dấu phẩy động, nhưng cho kết quả quyết định vô thanh / hữu thanh trùng khớp với thuật toán Praat trên toàn bộ dữ liệu kiểm định!
 
 \subsubsection*{Phân tích độ rộng bit và chứng minh không tràn số trên định dạng 54-bit}
 Để thiết kế thanh ghi phần cứng và bộ so sánh trong Verilog, ta phải phân tích dải động cực đại của từng số hạng nhằm chứng minh mạch không bao giờ bị tràn số.
@@ -293,10 +293,10 @@ So sánh với các cận cực đại:
     |\text{LHS}| < 2^{51} < 2^{53}, \qquad \text{RHS} < 2^{52} < 2^{53}
 \end{equation*}
 Cả hai vế đều có biên độ nhỏ hơn một nửa ngưỡng tràn số của định dạng 54-bit.
-\textbf{Kết luận:} Việc sử dụng định dạng số nguyên có dấu 54-bit (\texttt{signed [53:0]}) bảo đảm an toàn toán học tuyệt đối 100\%, không bao giờ xảy ra tràn số trong bất kỳ kịch bản âm thanh thực tế hay nhân tạo nào.
+\textbf{Kết luận:} Việc sử dụng định dạng số nguyên có dấu 54-bit (\texttt{signed [53:0]}) bảo đảm an toàn toán học, không xảy ra tràn số trong bất kỳ kịch bản âm thanh thực tế hay nhân tạo nào.
 
 \subsubsection*{Bẫy im lặng và điều kiện tiên quyết bắt buộc}
-Có một cạm bẫy toán học cực kỳ nguy hiểm trong phép nhân chéo mà mọi kỹ sư FPGA phải lưu tâm: \emph{điều gì xảy ra nếu mẫu số bị triệt tiêu về 0?}
+Một trường hợp biên quan trọng trong phép nhân chéo cần được xử lý cẩn trọng: \emph{điều gì xảy ra nếu mẫu số bị triệt tiêu về 0?}
 
 Hãy xét tình huống một khung im lặng hoàn toàn có năng lượng bằng 0 ($R_{0n} = 0$).
 Nếu mạch phần cứng bỏ qua kiểm tra điều kiện này và đưa trực tiếp vào phương trình nhân chéo \eqref{eq:ch10_cross_mult_inequality}:
@@ -344,7 +344,7 @@ Bảng \ref{tab:ch10_hand_calc} liệt kê kết quả tính toán chi tiết c�
 \end{tabular}
 \end{table}
 
-\textbf{Đọc bảng.} Bảng \ref{tab:ch10_hand_calc} chứng minh sự trùng khớp tuyệt đối giữa hai cách tính:
+\textbf{Đọc bảng.} Bảng \ref{tab:ch10_hand_calc} chứng minh sự trùng khớp giữa hai cách tính:
 Tại ca 1 (tiếng nói hữu thanh), tỉ số tương quan đạt $S_c / R_{0n} = 0{,}80 > 0{,}45$, hiệu số $\text{LHS} - \text{RHS} = +2{,}10 \times 10^{12} > 0$, cả hai phương pháp đều cho kết quả Hữu thanh.
 Tại ca 3 (khoảng lặng), mặc dù tương quan khá cao ($S_c / R_{0n} = 0{,}70$), nhưng vì $I = 0{,}020 < 0{,}03$, ngưỡng vô thanh dâng lên $R_{\text{unv}} = 1{,}483$, vế phải nhân chéo vọt lên $\text{RHS} = 6{,}20 \times 10^{12} > \text{LHS} = 1{,}50 \times 10^{12}$, dập tắt hoàn toàn tín hiệu thành Vô thanh.
 Tại ca 6 và ca 7, khi tỉ số quét sát ngưỡng $0{,}4499$ và $0{,}4501$, hiệu số $\text{LHS} - \text{RHS}$ đổi dấu chính xác từ $-6 \times 10^8$ sang $+6 \times 10^8$, chứng minh độ nhạy phân giải số nguyên cực kỳ sắc nét.
@@ -356,9 +356,9 @@ Khi chạy mô hình nhân chéo số nguyên trên toàn bộ 277 khung của h
     \item Tệp sạch \texttt{synth\_glide\_vuv\_16k.wav} ($GP = 22.946$): số khung hữu thanh là $208 / 277$, số khung vô thanh là $69 / 277$. So sánh với kết quả tham chiếu của phần mềm Praat 7.0.03 chế độ R2, số lỗi quyết định vô thanh là \textbf{$\text{VDE} = 0 / 277$ ($0{,}0000\%$)}.
     \item Tệp có nhiễu \texttt{synth\_glide\_vuv\_16k\_snr5.wav} ($GP = 22.937$, $\text{SNR} = 5\text{ dB}$): số khung hữu thanh là $207 / 277$, số khung vô thanh là $70 / 277$. Số lỗi quyết định vô thanh cũng là \textbf{$\text{VDE} = 0 / 277$ ($0{,}0000\%$)}.
 \end{itemize}
-Toàn bộ 277 khung trên cả hai tệp đều có quyết định trùng khớp 100\% giữa bất đẳng thức nhân chéo số nguyên và thuật toán gốc của Praat (nhật ký \texttt{verify\_v3/ch10\_golden\_audit.log}).
+Toàn bộ 277 khung trên cả hai tệp đều có quyết định trùng khớp 100\% (277/277 khung) giữa bất đẳng thức nhân chéo số nguyên và thuật toán gốc của Praat (nhật ký \texttt{verify\_v3/ch10\_golden\_audit.log}).
 
-\textit{Tóm lại: Bằng phép nhân chéo với mẫu số chung dương $300 \cdot R_{0n} \cdot GP$, bài toán so sánh ngưỡng vô thanh được chuyển hóa thành bất đẳng thức số nguyên $(100\cdot S_c - 45\cdot R_{0n})\cdot 3\cdot GP > 100\cdot R_{0n}\cdot \max(0, 6\cdot GP - 145\cdot LP)$; định dạng 54-bit có dấu loại bỏ hoàn toàn bộ chia dấu phẩy động mà vẫn triệt tiêu 100\% lỗi VDE so với Praat.}
+\textit{Tóm lại: Bằng phép nhân chéo với mẫu số chung dương $300 \cdot R_{0n} \cdot GP$, bài toán so sánh ngưỡng vô thanh được chuyển hóa thành bất đẳng thức số nguyên $(100\cdot S_c - 45\cdot R_{0n})\cdot 3\cdot GP > 100\cdot R_{0n}\cdot \max(0, 6\cdot GP - 145\cdot LP)$; định dạng 54-bit có dấu loại bỏ hoàn toàn bộ chia dấu phẩy động mà vẫn đạt $\text{VDE} = 0/277$ so với Praat.}
 
 % ============================================================================
 % 10.3. TUYẾN THIẾT KẾ HDL TỰ VIẾT
@@ -453,7 +453,7 @@ Dưới đây là toàn bộ phần thân tính toán của module \texttt{ch10\
 \subsubsection*{Phân tích chi tiết từng khối mã nguồn Verilog}
 \begin{itemize}
     \item \textbf{Dòng 52--58 (Tính toán số hạng $t_1$):} Tín hiệu điểm số $S_c$ mang dấu được mở rộng dấu tường minh 7 bit lên 35-bit (\texttt{sc\_ext = \{\{7\{in\_sc[27]\}\}, in\_sc\}}). Sau đó nhân với 100 bằng 3 phép dịch trái \texttt{<<< 6}, \texttt{<<< 5}, \texttt{<<< 2}. Năng lượng $R_{0n}$ là số không dấu được đệm 8 bit 0 ở đầu để thành số có dấu 35-bit (\texttt{r0n\_ext = \{8'd0, in\_r0n\}}), rồi nhân với 45 bằng 4 số hạng dịch. Hiệu số \texttt{comb\_term1 = term\_100\_sc - term\_45\_r0n} được tính toán với độ rộng 35-bit, hoàn toàn triệt tiêu nguy cơ tràn số âm hay dương.
-    \item \textbf{Dòng 60--67 (Tính các thừa số và độ dốc):} Thừa số $3 \cdot GP$ được tạo ra bằng ghép bit \texttt{\{in\_gp, 1'b0\} + \{2'b00, in\_gp\}} (tương ứng $2\cdot GP + GP$), đạt độ rộng 18-bit. Thừa số $100 \cdot R_{0n}$ có độ rộng 34-bit. Hiệu số dốc $\text{ramp\_diff} = 6 \cdot GP - 145 \cdot LP$ được ép kiểu có dấu \texttt{\$signed} 25-bit. Biểu thức tam nguyên ở dòng 67 kiểm tra dấu: nếu $\text{ramp\_diff} > 0$ thì lấy giá trị 18-bit thấp, nếu âm hoặc bằng 0 thì bão hòa về đúng $18'd0$, hiện thực hóa hoàn hảo hàm $\max(0, \dots)$ của Praat.
+    \item \textbf{Dòng 60--67 (Tính các thừa số và độ dốc):} Thừa số $3 \cdot GP$ được tạo ra bằng ghép bit \texttt{\{in\_gp, 1'b0\} + \{2'b00, in\_gp\}} (tương ứng $2\cdot GP + GP$), đạt độ rộng 18-bit. Thừa số $100 \cdot R_{0n}$ có độ rộng 34-bit. Hiệu số dốc $\text{ramp\_diff} = 6 \cdot GP - 145 \cdot LP$ được ép kiểu có dấu \texttt{\$signed} 25-bit. Biểu thức tam nguyên ở dòng 67 kiểm tra dấu: nếu $\text{ramp\_diff} > 0$ thì lấy giá trị 18-bit thấp, nếu âm hoặc bằng 0 thì bão hòa về đúng $18'd0$, hiện thực hóa hàm $\max(0, \dots)$ của Praat.
     \item \textbf{Dòng 69 (Bộ dò bẫy im lặng):} Kết hợp 4 điều kiện: $R_{0n} = 0$, $LP = 0$, $GP = 0$ hoặc không có đỉnh hợp lệ nào được tìm thấy. Bất kỳ điều kiện nào xuất hiện cũng khiến \texttt{comb\_silence\_trap} tích cực (mức 1).
     \item \textbf{Dòng 79--97 (Thanh ghi Tầng 1):} Chốt toàn bộ các kết quả trung gian vào các thanh ghi \texttt{s1\_*} tại cạnh lên xung nhịp \texttt{clk}, bảo đảm cách ly hoàn toàn trễ dây dẫn của tầng dịch-cộng với tầng nhân phía sau.
     \item \textbf{Dòng 102--125 (Tầng nhân 2):} Thực hiện hai phép nhân song song: $\text{LHS} = t_1 \times (3\cdot GP)$ và $\text{RHS} = (100\cdot R_{0n}) \times \text{ramp\_pos}$. Cả hai tích số đều được ép kiểu có dấu \texttt{\$signed} 54-bit. Trình biên dịch Quartus Prime có thể ánh xạ hai phép nhân này vào các khối phần cứng chuyên dụng DSP hoặc tổng hợp bằng logic ALM (việc phân bổ tài nguyên cụ thể phải kiểm trong Quartus). Các tích số được chốt vào thanh ghi \texttt{s2\_lhs} và \texttt{s2\_rhs}.
@@ -467,7 +467,7 @@ Tín hiệu đầu vào phải chạy qua một chuỗi logic tổ hợp rất d
 
 Bằng cách ngắt chuỗi tính toán làm 3 chặng có các thanh ghi chốt ở giữa, đường tới hạn của mỗi tầng được rút ngắn đáng kể, giúp mạch dễ dàng đáp ứng yêu cầu định thời (tần số hoạt động cực đại $F_{\max}$ cụ thể phải đo trong Quartus Prime bằng Timing Analyzer). Việc tăng thêm 2 chu kỳ trễ hoàn toàn không ảnh hưởng đến ngân sách $500.000\text{ chu kỳ}$ của bước nhảy khung $10\text{ ms}$ ($0{,}0006\%$).
 
-\textit{Tóm lại: Module \texttt{ch10\_voicing.v} được thiết kế bằng HDL tự viết với đường ống 3 tầng thanh ghi; toàn bộ các hằng số được nhân bằng mạng dịch-cộng 0 DSP, hai phép nhân 54-bit được cách ly an toàn, giải quyết triệt để bài toán định thời mà không tốn bất kỳ khối RAM M10K nào.}
+\textit{Tóm lại: Module \texttt{ch10\_voicing.v} được thiết kế bằng HDL tự viết với đường ống 3 tầng thanh ghi; toàn bộ các hằng số được nhân bằng mạng dịch-cộng 0 DSP, hai phép nhân 54-bit được cách ly an toàn, đáp ứng yêu cầu định thời mà không tốn bất kỳ khối RAM M10K nào.}
 
 % ============================================================================
 % 10.4. MÔ HÌNH SONG SINH PYTHON TWIN VÀ KIỂM CHỨNG
@@ -476,7 +476,7 @@ Bằng cách ngắt chuỗi tính toán làm 3 chặng có các thanh ghi chốt
 \addcontentsline{toc}{subsection}{10.4. Mô hình song sinh Python Twin, kịch bản kiểm chứng mô phỏng và bài tập cuối chương}
 
 \subsubsection*{Cấu trúc mô hình song sinh phần mềm (Python Twin)}
-Để bảo đảm mã RTL Verilog hoạt động chính xác tuyệt đối theo từng chu kỳ xung nhịp và từng bit dữ liệu, ta xây dựng mô hình song sinh phần mềm \texttt{VoicingTwin} trong tệp \texttt{verify\_v3/ch10\_twin.py}. Mô hình này mô phỏng chính xác thứ tự cập nhật của ba tầng thanh ghi đường ống trong phần cứng:
+Để bảo đảm mã RTL Verilog hoạt động chính xác theo từng chu kỳ xung nhịp và từng bit dữ liệu, ta xây dựng mô hình song sinh phần mềm \texttt{VoicingTwin} trong tệp \texttt{verify\_v3/ch10\_twin.py}. Mô hình này mô phỏng chính xác thứ tự cập nhật của ba tầng thanh ghi đường ống trong phần cứng:
 Tầng 3 đọc giá trị cũ của Tầng 2; Tầng 2 đọc giá trị cũ của Tầng 1; và Tầng 1 đọc dữ liệu ngõ vào mới. Cơ chế cập nhật ngược từ ngõ ra về ngõ vào này phản ánh chính xác ngữ nghĩa của phép gán không chặn (\emph{non-blocking assignment} \texttt{<=}) trong ngôn ngữ Verilog.
 
 Đoạn mã nguồn hàm cập nhật chu kỳ \texttt{clock()} của mô hình song sinh được trình bày trong Listing \ref{lst:ch10_twin_py} (dòng 90 đến 171):
@@ -515,7 +515,7 @@ Dòng 145--163 & Dòng 89--96, 119--123, 140--145 & Chốt dữ liệu đồng b
     \item \textbf{Pha kích thích ngõ vào (Drive phase):} Tất cả các tín hiệu ngõ vào (\texttt{in\_valid}, \texttt{in\_f0\_raw}, \texttt{in\_sc}, \texttt{in\_r0n}, \texttt{in\_lp}, \texttt{in\_gp}, \texttt{in\_cand\_found}) được lái tích cực tại cạnh xuống của xung nhịp (\texttt{@(negedge clk)}). Lúc này, đồng hồ đang ở mức thấp, bảo đảm các tín hiệu ngõ vào có đủ thời gian lan truyền và ổn định hoàn toàn trước khi cạnh lên kế tiếp xuất hiện.
     \item \textbf{Pha kiểm tra ngõ ra (Sample phase):} Sau khi phát hiện cạnh lên của xung nhịp (\texttt{@(posedge clk)}), Testbench chờ thêm một khoảng trễ nhỏ \texttt{\#1} ($1\text{ ns}$) để mô phỏng thời gian giữ (clock-to-output delay) của thanh ghi, rồi mới tiến hành đọc và so sánh các ngõ ra đã chốt (\texttt{out\_valid}, \texttt{out\_voiced}, \texttt{out\_f0}, \texttt{out\_lhs}, \texttt{out\_rhs}) với dữ liệu kỳ vọng sinh ra từ mô hình Python Twin.
 \end{itemize}
-Quy ước này loại trừ triệt để hiện tượng lệch nhịp giữa bộ kích thích và mạch thử nghiệm, đồng thời bảo đảm Testbench không bao giờ ngắt sớm khi gặp lỗi mà luôn ghi nhận và đếm đầy đủ tổng số lỗi so sánh.
+Quy ước này loại trừ hiện tượng lệch nhịp giữa bộ kích thích và mạch thử nghiệm, đồng thời bảo đảm Testbench không bao giờ ngắt sớm khi gặp lỗi mà luôn ghi nhận và đếm đầy đủ tổng số lỗi so sánh.
 
 \subsubsection*{Bộ vectơ kiểm thử góc và xác minh mô phỏng}
 Tệp kích thích \texttt{verify\_v3/ch10\_twin.py} đã sinh ra tổng cộng \textbf{641 bộ vectơ kiểm thử toàn diện}, chạy xuyên suốt \textbf{1.408 chu kỳ xung nhịp} (bao gồm các khoảng nghỉ ngẫu nhiên từ 0 đến 3 chu kỳ giữa các khung để kiểm tra tính độc lập và khả năng chịu tải liên tục của đường ống). Bộ vectơ bao phủ đầy đủ các kịch bản góc (edge cases) khắc nghiệt nhất:
@@ -652,7 +652,7 @@ Cho một khung âm thanh có các tham số: $GP = 20.000$, $LP = 760$, $R_{0n}
     \begin{equation*}
         \text{LHS} - \text{RHS} = 1.500.000.000.000 - 980.000.000.000 = +520.000.000.000 > 0
     \end{equation*}
-    Vì $\text{LHS} > \text{RHS}$ và không dính bẫy im lặng, khung được phán đoán là \textbf{HỮU THANH (Voiced)}. Hai phương pháp cho kết quả đồng nhất tuyệt đối (nhật ký \texttt{verify\_v3/ch10\_exercises.log}).
+    Vì $\text{LHS} > \text{RHS}$ và không dính bẫy im lặng, khung được phán đoán là \textbf{HỮU THANH (Voiced)}. Hai phương pháp cho kết quả đồng nhất (nhật ký \texttt{verify\_v3/ch10\_exercises.log}).
 \end{enumerate}
 
 \paragraph{Bài tập 10.3 (Phân tích độ rộng bit và tràn số phần cứng).}
@@ -695,7 +695,7 @@ Giả sử một khung âm thanh nhân tạo cực đại (stress frame) có cá
         \text{LHS} &= (100 \cdot 500.000 - 45 \cdot 0) \cdot 3 \cdot 20.000 = 50.000.000 \times 60.000 = +3.000.000.000.000 \\
         \text{RHS} &= 100 \cdot 0 \cdot \max(0,\, 6\cdot 20.000 - 145\cdot 1.000) = 0
     \end{align*}
-    Mạch so sánh sẽ thấy $\text{LHS} > \text{RHS}$ ($3 \times 10^{12} > 0$) và phán đoán sai lầm rằng khung im lặng $R_0 = 0$ là \textbf{HỮU THANH}! Điều này chứng minh rằng cờ \texttt{silence\_trap} là điều kiện bảo vệ phần cứng bắt buộc tuyệt đối.
+    Mạch so sánh sẽ thấy $\text{LHS} > \text{RHS}$ ($3 \times 10^{12} > 0$) và phán đoán sai lầm rằng khung im lặng $R_0 = 0$ là \textbf{HỮU THANH}! Điều này chứng minh rằng cờ \texttt{silence\_trap} là điều kiện bảo vệ phần cứng bắt buộc.
     \item Vì $I = 0{,}10 \ge 0{,}0414$, ta có $6 \cdot GP - 145 \cdot LP = 6\cdot 20.000 - 145\cdot 2.000 = 120.000 - 290.000 = -170.000 < 0 \implies \text{ramp\_pos} = 0 \implies \text{RHS} = 0$.
     \begin{itemize}
         \item Với $S_c = 449.999$ (tỉ số $S_c / R_{0n} = 0{,}449999 < 0{,}45$):
@@ -709,7 +709,7 @@ Giả sử một khung âm thanh nhân tạo cực đại (stress frame) có cá
         \end{equation*}
         $\text{LHS} = +100 \times 60.000 = +6.000.000 > 0 = \text{RHS} \implies$ \textbf{HỮU THANH}.
     \end{itemize}
-    Chỉ cần độ lệch 2 đơn vị trong $S_c$ (tương đương chênh lệch $2 \times 10^{-6}$), giá trị LHS đã đổi dấu từ $-6.000.000$ sang $+6.000.000$, minh chứng độ phân giải và tính nhạy bén tuyệt đối của bất đẳng thức nhân chéo số nguyên.
+    Chỉ cần độ lệch 2 đơn vị trong $S_c$ (tương đương chênh lệch $2 \times 10^{-6}$), giá trị LHS đã đổi dấu từ $-6.000.000$ sang $+6.000.000$, minh chứng độ phân giải và tính nhạy bén của bất đẳng thức nhân chéo số nguyên.
 \end{enumerate}
 
-\textit{Tóm lại: Mô hình song sinh Python Twin và phần cứng Verilog của Chương 10 đạt độ tương thích chu kỳ-đối-chu kỳ 100\% trên 641 bộ vectơ kiểm thử; bất đẳng thức nhân chéo 54-bit kết hợp cờ bẫy im lặng bảo đảm phân định vô thanh / hữu thanh hoàn toàn tin cậy và đạt độ chính xác sắc nét từng bit.}
+\textit{Tóm lại: Mô hình song sinh Python Twin và phần cứng Verilog của Chương 10 đạt độ tương thích chu kỳ-đối-chu kỳ trên 641/641 bộ vectơ kiểm thử (1.408/1.408 chu kỳ xung nhịp); bất đẳng thức nhân chéo 54-bit kết hợp cờ bẫy im lặng bảo đảm phân định vô thanh / hữu thanh hoàn toàn tin cậy và đạt độ chính xác sắc nét từng bit.}
