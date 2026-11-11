@@ -106,6 +106,9 @@ module tb_ch03_fir;
 
         $display("=== STARTING CH03 FIR CYCLE-BY-CYCLE VERIFICATION ===");
 
+        // Align to falling edge before starting cycle-by-cycle verification
+        @(negedge clk);
+
         // Run cycle by cycle
         while ($fscanf(stim_fd, "%d %d %d %h %d\n",
                        stim_rst_n, stim_bypass, stim_s_vld, stim_s_dat, stim_m_rdy) == 5 &&
@@ -113,24 +116,28 @@ module tb_ch03_fir;
                        exp_c, exp_rst_n, exp_bypass, exp_s_vld, exp_s_dat, exp_m_rdy,
                        exp_s_rdy, exp_m_vld, exp_m_dat, exp_state, exp_step) == 11) begin
 
-            // Drive inputs before posedge clk
-            rst_n        <= (stim_rst_n != 0) ? 1'b1 : 1'b0;
-            bypass       <= (stim_bypass != 0) ? 1'b1 : 1'b0;
-            sink_valid   <= (stim_s_vld != 0) ? 1'b1 : 1'b0;
-            sink_data    <= stim_s_dat;
-            source_ready <= (stim_m_rdy != 0) ? 1'b1 : 1'b0;
+            // 1. Drive inputs during clock low phase (at negedge clk)
+            rst_n        = (stim_rst_n != 0) ? 1'b1 : 1'b0;
+            bypass       = (stim_bypass != 0) ? 1'b1 : 1'b0;
+            sink_valid   = (stim_s_vld != 0) ? 1'b1 : 1'b0;
+            sink_data    = stim_s_dat;
+            source_ready = (stim_m_rdy != 0) ? 1'b1 : 1'b0;
 
-            // Wait for clock edge and delta settle
-            @(posedge clk);
+            // 2. Allow combinational outputs to settle before posedge clk
             #1;
 
-            // Check sink_ready
+            // 3. Sample and check combinational output (sink_ready) BEFORE the clock edge
             if (sink_ready !== ((exp_s_rdy != 0) ? 1'b1 : 1'b0)) begin
                 $display("[FAIL] Cycle %0d: sink_ready mismatch (got %b, exp %0d)",
                          cycle_idx, sink_ready, exp_s_rdy);
                 errors = errors + 1;
             end
 
+            // 4. Wait for rising clock edge where registers update
+            @(posedge clk);
+            #1;
+
+            // 5. Sample and check registered outputs AFTER posedge clk
             // Check source_valid
             if (source_valid !== ((exp_m_vld != 0) ? 1'b1 : 1'b0)) begin
                 $display("[FAIL] Cycle %0d: source_valid mismatch (got %b, exp %0d)",
@@ -159,12 +166,10 @@ module tb_ch03_fir;
                 errors = errors + 1;
             end
 
-            if (errors >= 20) begin
-                $display("Too many comparison errors (>= 20). Aborting simulation.");
-                $finish;
-            end
-
             cycle_idx = cycle_idx + 1;
+
+            // 6. Return to falling edge for next stimulus cycle
+            @(negedge clk);
         end
 
         $fclose(stim_fd);

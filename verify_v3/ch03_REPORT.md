@@ -53,7 +53,7 @@ Theo đúng nguyên tắc trung thực học thuật của đề cương:
 4. **Kết quả chạy mô phỏng chu kỳ bằng Icarus Verilog trên Linux:**
    - Script thực thi `verify_v3/run_ch03_iverilog.sh` đã được tạo sẵn với chuẩn xuống dòng Unix LF và cấp quyền thực thi.
    - Testbench `tb/v3/tb_ch03_fir.v` đọc 3.390 chu kỳ từ `tb_ch03_fir_stim.txt` và `tb_ch03_fir_expected.txt`.
-   - Trong văn bản LaTeX, kết quả được đánh dấu giữ chỗ bằng khối `\todo{box: [TODO: box: kết quả chạy iverilog trên Linux: Simulation completed 3390 cycles. Total comparison errors: 0. [PASS] CH03 FIR MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 3390 CYCLES; nhật ký verify_v3/ch03_iverilog.log]}` để người đánh giá (reviewer) chạy thực tế trên Linux và điền số liệu.
+   - Trong văn bản LaTeX, kết quả được đánh dấu giữ chỗ bằng khối `\todo{box}` để người đánh giá (reviewer) chạy thực tế trên Linux và điền số liệu.
 5. **Dòng mã nguồn chính xác trong Praat 7.0.03:** Được đánh dấu bằng ký hiệu chuẩn `TODO-PRAAT-LINE` để người đánh giá điền số dòng chính xác từ bản cài Linux 7.0.03.
 
 ---

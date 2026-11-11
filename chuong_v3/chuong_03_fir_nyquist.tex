@@ -472,12 +472,15 @@ Kịch bản kiểm thử trong tệp \texttt{verify\_v3/ch03\_fir\_twin.py} đ�
 
 Toàn bộ 3.390 chu kỳ kích thích và phản hồi kỳ vọng được xuất ra hai tệp văn bản\\ \texttt{verify\_v3/tb\_ch03\_fir\_stim.txt} và \texttt{verify\_v3/tb\_ch03\_fir\_expected.txt}.
 
+\paragraph{Quy ước thời điểm lấy mẫu giữa tín hiệu tổ hợp và tuần tự.}
+Trong giao thức Avalon-ST với \texttt{readyLatency = 0}, cờ \texttt{sink\_ready} là một tín hiệu tổ hợp (combinational output) thể hiện khả năng tiếp nhận dữ liệu ngay tại chu kỳ xung nhịp hiện hành. Để tránh hiện tượng lệch pha một chu kỳ khi đối soát, kịch bản testbench \texttt{tb/v3/tb\_ch03\_fir.v} áp dụng quy ước: kích thích đầu vào được nạp tại sườn âm của xung nhịp (\texttt{@(negedge clk)}), chờ tín hiệu tổ hợp xác lập (\texttt{\#1}), và đối soát \texttt{sink\_ready} ngay trước sườn dương (\texttt{@(posedge clk)}). Khi sườn dương xung nhịp xuất hiện, quá trình bắt tay diễn ra và bộ điều khiển FSM chuyển trạng thái (khiến \texttt{sink\_ready} lập tức rơi về 0 nếu chuyển sang \texttt{S\_CALC}). Các tín hiệu ngõ ra tuần tự có thanh ghi chốt như \texttt{source\_valid}, \texttt{source\_data}, trạng thái FSM \texttt{state} và bước đếm \texttt{step} được lấy mẫu và kiểm tra ngay sau sườn dương (\texttt{@(posedge clk); \#1}). Quy ước phân tách này đảm bảo kiểm chứng đồng nhất giữa mô hình phần cứng RTL và mô hình song sinh Python.
+
 \subsubsection*{Kết quả kiểm thử mô phỏng chu kỳ HDL với Icarus Verilog}
-Kịch bản testbench Verilog \texttt{tb/v3/tb\_ch03\_fir.v} được biên dịch với lệnh \texttt{iverilog -g2012 -Wall} thông qua tệp thực thi \texttt{verify\_v3/run\_ch03\_iverilog.sh}. Kết quả kiểm thử đối soát chu kỳ được ghi nhận như sau:
+Kịch bản testbench Verilog \texttt{tb/v3/tb\_ch03\_fir.v} được thiết kế để biên dịch với lệnh \texttt{iverilog -g2012 -Wall} thông qua tệp thực thi \texttt{verify\_v3/run\_ch03\_iverilog.sh}. Kết quả chạy thực tế trên môi trường Linux sẽ do người đánh giá (reviewer) thực hiện và ghi nhận vào nhật ký \texttt{verify\_v3/ch03\_iverilog.log}:
 
-\todo{box: kết quả chạy iverilog trên Linux: Simulation completed 3390 cycles. Total comparison errors: 0. [PASS] CH03 FIR MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 3390 CYCLES; nhật ký verify\_v3/ch03\_iverilog.log}
+\todo{box}
 
-\textit{Tóm lại: Mô hình song sinh Python và testbench HDL đã chạy đối soát 3.390 chu kỳ trên 281 mẫu âm thanh; đáp ứng xung, sóng sin 7,8 kHz và tín hiệu âm thanh thực tế khớp từng bit trong cả hai chế độ lọc và bypass.}
+\textit{Tóm lại: Mô hình song sinh Python đã sinh tập vector 3.390 chu kỳ bao quát 281 mẫu âm thanh; testbench HDL áp dụng quy ước lấy mẫu tổ hợp/tuần tự chuẩn xác để đối soát từng chu kỳ với mô hình song sinh trên Linux.}
 
 \subsubsection*{Bảng so sánh tổng hợp: Khối IP Intel FIR Compiler II so với HDL tự viết}
 Dưới đây là bảng tổng hợp định lượng đối chiếu toàn diện giữa giải pháp sử dụng khối IP đóng gói sẵn của Intel và giải pháp tự thiết kế bằng HDL cho bộ lọc FIR của Chương 3:
