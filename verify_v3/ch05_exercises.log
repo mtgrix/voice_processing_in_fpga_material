@@ -1,0 +1,73 @@
+===========================================================================
+EXERCISE 5.1: DC OFFSET ARTIFACT ON AUTOCORRELATION
+===========================================================================
+Signal s[n]: [-1000, -1000, 1000, 1000, -1000, -1000, 1000, 1000] (mean = 0.0)
+DC offset c = 500.0, x[n] = [-500, -500, 1500, 1500, -500, -500, 1500, 1500] (mean = 500.0)
+tau |    Rs[tau] |    Rx[tau] |  Rw[tau] |      rs[tau] |      rx[tau] |    rx - rs
+---------------------------------------------------------------------------
+  0 |  8000000.0 | 10000000.0 |      8.0 |   1000000.00 |   1250000.00 |  250000.00
+  1 |  1000000.0 |  2750000.0 |      7.0 |    142857.14 |    392857.14 |  250000.00
+  2 | -6000000.0 | -4500000.0 |      6.0 |  -1000000.00 |   -750000.00 |  250000.00
+  3 | -1000000.0 |   250000.0 |      5.0 |   -200000.00 |     50000.00 |  250000.00
+  4 |  4000000.0 |  5000000.0 |      4.0 |   1000000.00 |   1250000.00 |  250000.00
+
+Decomposition Analysis:
+  Rx[tau] = Rs[tau] + c * [sum_{n=0}^{N-1-tau} s[n] + sum_{n=tau}^{N-1} s[n]] + c^2 * Rw[tau]
+  When the partial window sums of s[n] vanish, rx[tau] - rs[tau] = c^2 = 250000.0.
+---------------------------------------------------------------------------
+
+===========================================================================
+EXERCISE 5.2: RECIPROCAL MULTIPLIER DERIVATION FOR L = 426, 640, 800
+===========================================================================
+Span L = 426:
+  Max biased sum: 27918123 (requires 25 bits)
+  Minimal shift k: 26
+  Optimal multiplier M = ceil(2^26 / 426) = 157533 (Hex: 0x2675D, 18 bits)
+  Product width: 43 bits
+Span L = 640:
+  Max biased sum: 41942720 (requires 26 bits)
+  Minimal shift k: 25
+  Optimal multiplier M = ceil(2^25 / 640) = 52429 (Hex: 0xCCCD, 16 bits)
+  Product width: 42 bits
+Span L = 800:
+  Max biased sum: 52428400 (requires 26 bits)
+  Minimal shift k: 27
+  Optimal multiplier M = ceil(2^27 / 800) = 167773 (Hex: 0x28F5D, 18 bits)
+  Product width: 44 bits
+---------------------------------------------------------------------------
+
+===========================================================================
+EXERCISE 5.3: INTEL CYCLONE V DSP BLOCK MAPPING FOR 25x24 MULTIPLIER
+===========================================================================
+Cyclone V Variable-Precision DSP Block Capabilities (CV-52003):
+  1. Independent Multiplier Modes per Variable-Precision DSP Block:
+     - Three 9x9 multipliers
+     - Two 18x18 (or 18x19) multipliers
+     - One 27x27 multiplier (either signed or unsigned)
+  2. Local Mean Multiplier Dimensions:
+     - Operand A: S_biased, 25 bits unsigned (0 to 27,918,123)
+     - Operand B: M = 10,082,083, 24 bits unsigned
+     - Since 25 <= 27 and 24 <= 27:
+       A 25x24 unsigned multiplication fits ENTIRELY inside ONE Cyclone V DSP block in 27x27 mode!
+     - Resource consumption: EXACTLY 1 DSP Block, 0 ALM logic for multiplication.
+  3. Comparison if synthesized in soft ALM logic:
+     - 25x24 unsigned multiplier in soft logic requires ~300 to 450 ALMs.
+     - Dedicated DSP hardware saves routing congestion and guarantees timing closure at 50 MHz.
+---------------------------------------------------------------------------
+
+===========================================================================
+EXERCISE 5.4: DC-BLOCKER CUTOFF FREQUENCIES AND WORDLENGTH
+===========================================================================
+ Shift r |   alpha = 1 - 2^-r |   Exact fc (-3dB) (Hz) |    Approx (1-a)*fs/2pi |   Gain @ 75Hz (dB)
+-----------------------------------------------------------------------------------------------
+       7 |         0.99218750 |                19.8172 |                19.8944 |            -0.2635
+       8 |         0.99609375 |                 9.9278 |                 9.9472 |            -0.0590
+       9 |         0.99804688 |                 4.9687 |                 4.9736 |            -0.0106
+
+Internal State Wordlength Requirement:
+  Difference equation: y[n] = x[n] - x[n-1] + alpha * y[n-1] = dx[n] + y[n-1] - (y[n-1] >> r)
+  If y[n] is stored in 16 bits with no fractional bits, the shift (y[n-1] >> 8) truncates to 0
+  whenever |y[n-1]| < 256, creating a DC limit cycle of amplitude up to +/-255!
+  By extending the internal accumulator to Q16.16 (32 bits total, 16 integer + 16 fractional):
+  The feedback resolution is 2^-16 = 0.000015, eliminating limit cycles and quantization DC drift.
+===========================================================================

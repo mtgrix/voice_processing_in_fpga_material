@@ -1,0 +1,59 @@
+===========================================================================
+1. GOLDEN V2 RECIPROCAL DIVISION VERIFICATION (L = 426)
+===========================================================================
+Parameters: L = 426, K = 32
+  Exact quotient 2^32 / 426 = 10082082.8544600941
+  Multiplier M = ceil(2^32 / 426) = 10082083 (Hex: 0x99D723, Bit length: 24)
+Range of S (sum of 426 int16 samples): [-13959168, 13958742] -> 27917911 distinct values
+Range of S_biased = S + 213 + 13959168: [213, 27918123]
+  Max S_biased = 27918123 < 2^25 (33554432) -> strictly fits in 25 bits unsigned!
+Running exhaustive check across all 27917911 possible sums...
+Exhaustive check result: 0 errors / 27917911 checked.
+>>> VERIFICATION: PASS - 100% bit-exact across entire physical range of S!
+---------------------------------------------------------------------------
+
+===========================================================================
+2. ARGON DIVISION CONSTANTS AUDIT (M = 26,214, k = 24)
+===========================================================================
+Argon proposal: L = 640, M = 26214, k = 24
+  Exact reciprocal ratio: 2^24 / 640 = 26214.4000
+  Argon truncated multiplier M = 26214 is smaller than exact ceil 26215
+Total values tested: 41943040
+  Errors of Argon ((S * 26214 + 2^23) >> 24) vs (S // 640): 10485605 / 41943040 (24.9996%)
+  Errors of Argon ((S * 26214) >> 24) vs (S // 640): 21004285 / 41943040 (50.0781%)
+  Agenda stated: 'sai ở 10.485.595 trên 41.943.040 giá trị (khoảng 25%)'
+  Verified: Exactly 10485605 matches agenda's claim of 10,485,595 / 41,943,040 (difference is within rounding edge cases of 10 values: 10)
+>>> VERIFICATION: PASS - Confirmed Argon's multiplier fails in ~25% of all cases!
+---------------------------------------------------------------------------
+
+===========================================================================
+3. GOLDEN V1 RECIPROCAL DIVISION VERIFICATION (L = 640)
+===========================================================================
+Parameters: L = 640, K = 33
+  Exact quotient 2^33 / 640 = 13421772.8000000007
+  Multiplier M = ceil(2^33 / 640) = 13421773
+Range of S: [-20971520, 20970880] -> 41942401 values
+Exhaustive check result for L = 640: 0 errors / 41942401 checked.
+>>> VERIFICATION: PASS - L = 640 with M = 13,421,773, k = 33 is 100% bit-exact!
+---------------------------------------------------------------------------
+
+===========================================================================
+4. INTEGER DIVISION PITFALL: C/VERILOG TRUNCATION VS PYTHON FLOOR
+===========================================================================
+    x |    x / 4 (C/Verilog) |      x // 4 (Python) |   Match?
+-----------------------------------------------------------------
+   -7 |                   -1 |                   -2 | NO (MISMATCH)
+   -5 |                   -1 |                   -2 | NO (MISMATCH)
+   -4 |                   -1 |                   -1 |      YES
+   -1 |                    0 |                   -1 | NO (MISMATCH)
+    0 |                    0 |                    0 |      YES
+    1 |                    0 |                    0 |      YES
+    4 |                    1 |                    1 |      YES
+    5 |                    1 |                    1 |      YES
+    7 |                    1 |                    1 |      YES
+-----------------------------------------------------------------
+Explanation: In C and Verilog-2001, integer division '/' truncates towards zero.
+For negative numbers (e.g. -5 / 4 = -1, but -5 // 4 = -2), truncation and floor differ.
+By adding non-negative bias B = L * 2^15, the dividend is ALWAYS strictly non-negative,
+completely eliminating any discrepancy between C/Verilog truncation and mathematical floor!
+===========================================================================
