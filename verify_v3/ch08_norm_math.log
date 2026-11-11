@@ -58,10 +58,13 @@ unbiased parabolic interpolation on U[tau] = R[tau]*C[tau] exactly as Praat does
 ================================================================================
 5. AUDIT OF DYNAMIC SHIFT NORMALIZATION (sh = max(0, bitlen(R0) - 26))
 ================================================================================
-Theoretical relative resolution of 26-bit mantissa (2^-26): 1.49011612e-08
-Agenda Ch.8 statement: 'Sai số tương đối <= 1,5·10^-8'
-Verification: 1.49011612e-08 <= 1.500000e-08 is TRUE.
+Agenda Ch.8 statement: 'relative error <= 1,5e-8 of the sh normalization'
+  Agenda value (assuming 26-bit full scale 2^-26): 1.49011612e-08 <= 1.5e-8
+  Correct worst-case theoretical bound (R0_min = 2^(bitlen-1), 2^-25): < 2.98023224e-08
 Maximum empirical truncation relative error across all R0: 2.98020941e-08
+Comparison report: Empirical max error (2.98020941e-08) is strictly bounded by 2^-25 (2.98023224e-08).
+  Note: The agenda's 1.5e-8 bound corresponds to 2^-26 (~1.49e-8), whereas the mathematically
+  correct worst-case bound is 2^-25 (~2.98e-8).
 
 ================================================================================
 6. AUDIT: U[tau]/R0n REPRODUCES PRAAT'S r[tau] ON GOLDEN FRAMES

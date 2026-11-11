@@ -175,13 +175,14 @@ def audit_dynamic_shift_normalization():
     print("=" * 80)
     # The mantissa is kept to 26 bits.
     # The maximum truncated portion is 2^sh - 1.
-    # Since R0 >= 2^(bitlen - 1) and sh = bitlen - 26:
-    # Truncation error relative to full-scale mantissa is 2^-26.
+    # When R0 is at its lower bound for a given bit length: R0 >= 2^(bitlen - 1).
+    # Since sh = bitlen - 26:
+    # rel_err = (R0 - (R0 >> sh) << sh) / R0 < 2^sh / 2^(bitlen - 1) = 2^-25.
     err_2_26 = 2.0 ** (-26)
-    print(f"Theoretical relative resolution of 26-bit mantissa (2^-26): {err_2_26:.8e}")
-    print(f"Agenda Ch.8 statement: 'Sai số tương đối <= 1,5·10^-8'")
-    assert err_2_26 < 1.5e-8, f"2^-26 ({err_2_26}) exceeds 1.5e-8"
-    print(f"Verification: {err_2_26:.8e} <= 1.500000e-08 is TRUE.")
+    err_2_25 = 2.0 ** (-25)
+    print(f"Agenda Ch.8 statement: 'relative error <= 1,5e-8 of the sh normalization'")
+    print(f"  Agenda value (assuming 26-bit full scale 2^-26): {err_2_26:.8e} <= 1.5e-8")
+    print(f"  Correct worst-case theoretical bound (R0_min = 2^(bitlen-1), 2^-25): < {err_2_25:.8e}")
 
     # Empirical sweep of dynamic shift truncation error across bit lengths 26 to 43
     max_emp_err = 0.0
@@ -194,6 +195,10 @@ def audit_dynamic_shift_normalization():
             if rel_err > max_emp_err:
                 max_emp_err = rel_err
     print(f"Maximum empirical truncation relative error across all R0: {max_emp_err:.8e}")
+    print(f"Comparison report: Empirical max error ({max_emp_err:.8e}) is strictly bounded by 2^-25 ({err_2_25:.8e}).")
+    print(f"  Note: The agenda's 1.5e-8 bound corresponds to 2^-26 (~1.49e-8), whereas the mathematically")
+    print(f"  correct worst-case bound is 2^-25 (~2.98e-8).")
+    assert max_emp_err < err_2_25, f"Empirical error ({max_emp_err}) exceeds 2^-25 ({err_2_25})"
 
 def audit_reproduction_of_praat_r():
     print("\n" + "=" * 80)
