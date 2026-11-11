@@ -411,5 +411,113 @@ lpm_mult #(
 
 \textit{Tóm lại: Khối IP Intel LPM\_MULT được cấu hình 25x24-bit không dấu với LPM\_PIPELINE = 2; phép nhân này vừa khít một khối DSP Cyclone V ở chế độ 27x27, tiêu tốn đúng 1 DSP, 0 ALM và có độ trễ 2 chu kỳ.}
 
+\subsection*{5.5. Đường (B): Hiện thực hóa phần cứng HDL tự viết}
+\addcontentsline{toc}{subsection}{5.5. Đường (B): Hiện thực hóa phần cứng HDL tự viết}
+
+\subsubsection*{Ý tưởng kiến trúc và cơ chế phối hợp tự động với RAM vòng}
+Module phần cứng tự viết \texttt{ch05\_local\_mean.v} được thiết kế với mục tiêu tối ưu hóa chu kỳ, tự động hóa toàn bộ quá trình đọc dữ liệu từ bộ đệm vòng và thực hiện phép trừ trung bình cục bộ cho từng khung. 
+
+Kiến trúc hoạt động của module được chia làm hai pha kế tiếp nhau:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Pha 1: Đọc và tích lũy 426 mẫu trung tâm:}\\
+    Khi nhận xung kích hoạt \texttt{start = 1} từ bộ điều khiển khung, mạch chuyển sang trạng thái phát địa chỉ đọc \texttt{STATE\_ISSUE}. Bộ đếm \texttt{issue\_cnt} quét tuần tự $426$ chỉ số offset từ $106$ tới $531$, đặt lên chân \texttt{rd\_sample\_idx} và bật cờ \texttt{rd\_en = 1}. Bộ đệm vòng (Chương 4) nhận địa chỉ và trả về mẫu âm thanh \texttt{rd\_data} kèm cờ \texttt{rd\_valid = 1} sau đúng 1 chu kỳ trễ đọc.
+    
+    Các mẫu \texttt{rd\_data} được chuyển sang miền không âm bằng cổng XOR với \texttt{16'h8000} (cộng $32.768$) và đưa vào bộ tích lũy $25\text{ bit}$ \texttt{acc} (đã được nạp sẵn hằng số $+213$ khi khởi động). Sau đúng 426 chu kỳ nạp mẫu, biến \texttt{acc} chứa trọn vẹn giá trị tổng $S_{\text{biased}}$.
+    
+    \item \textbf{Pha 2: Nhân đường ống và chốt trung bình:}\\
+    Mạch đi qua hai tầng đường ống: tầng \texttt{STATE\_MULT1} chốt hai toán hạng vào thanh ghi \texttt{mult\_a\_r} và \texttt{mult\_b\_r}; tầng \texttt{STATE\_MULT2} thực hiện phép nhân nhị phân $25 \times 24\text{ bit}$, chốt kết quả vào thanh ghi $49\text{ bit}$ \texttt{mult\_prod\_r}. Ở trạng thái \texttt{STATE\_DONE}, mạch trích xuất các bit $[47:32]$, đảo bit MSB để trừ $32.768$, chốt kết quả vào thanh ghi ngõ ra \texttt{mean\_out} và bật cờ \texttt{mean\_valid = 1}.
+    
+    \item \textbf{Pha 3: Trừ trung bình dòng dữ liệu (Streaming Subtraction):}\\
+    Sau khi \texttt{mean\_out} đã được chốt cố định, trong pha cửa sổ hóa Hanning tiếp theo (Chương 6), $638\text{ mẫu}$ của khung được đọc lại từ RAM vòng và đưa vào cổng \texttt{sub\_data\_in}. Mạch thực hiện phép trừ có dấu $17\text{ bit}$ $d[n] = x[n] - \texttt{mean\_out}$, đưa ra chân \texttt{diff\_data\_out[16:0]} kèm cờ \texttt{diff\_valid\_out = 1}.
+\end{enumerate}
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch05_local_mean_arch.tex}
+\caption{Sơ đồ kiến trúc vi mô phần cứng khối tính trung bình cục bộ (\texttt{ch05\_local\_mean.v}), minh họa bộ đếm địa chỉ quét 426 mẫu, bộ tích lũy 25-bit dời trục, khối nhân đường ống 2 tầng và bộ trừ 17-bit.}
+\label{fig:ch05_local_mean_arch}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch05_local_mean_arch} mô tả chi tiết dòng chảy dữ liệu và điều khiển bên trong khối \texttt{ch05\_local\_mean.v}. Ở góc trên bên trái, xung \texttt{start} kích hoạt FSM và bộ đếm địa chỉ, phát ra cờ đọc \texttt{rd\_en} và địa chỉ tương đối \texttt{rd\_sample\_idx} quét từ $106$ đến $531$ nối sang RAM vòng. Mẫu dữ liệu phản hồi \texttt{rd\_data} đi qua khối chuyển đổi không âm $\oplus \texttt{16'h8000}$ rồi nạp vào bộ tích lũy $25\text{ bit}$ (đã chứa sẵn $+213$). Giá trị tổng $S_{\text{biased}}$ đi tiếp vào bộ nhân đường ống 2 tầng $25 \times 24$-bit (ánh xạ vào 1 khối DSP), nhân với hằng số $M = 10.082.083$. Tích số $49\text{ bit}$ đi qua khối trích xuất bit $[47:32]$ và đổi dấu để chốt vào thanh ghi \texttt{mean\_out[15:0]}, đồng thời bật cờ báo \texttt{mean\_valid}. Ở nửa dưới, dòng dữ liệu mẫu \texttt{sub\_data\_in} đi vào bộ trừ $17\text{ bit}$, trừ đi \texttt{mean\_out} để tạo ra tín hiệu sai phân $d[n]$ phục vụ cho khối nhân cửa sổ Hanning.
+
+\subsubsection*{Trích dẫn mã nguồn HDL cốt lõi}
+Đoạn mã Verilog-2001 dưới đây trích dẫn trực tiếp từ tệp \path{rtl/v3/ch05_local_mean.v}, thể hiện toàn bộ máy trạng thái FSM và đường ống tính toán:
+
+\lstinputlisting[
+    language=Verilog,
+    firstline=102,
+    lastline=173,
+    firstnumber=102,
+    caption={Máy trạng thái FSM và đường ống tính trung bình cục bộ (\texttt{rtl/v3/ch05\_local\_mean.v:102--173})}
+]{rtl/v3/ch05_local_mean.v}
+
+\subsubsection*{Giải thích cặn kẽ mã nguồn Verilog từng dòng}
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Dòng 103--116 (Trạng thái \texttt{STATE\_IDLE}):} Khi ở trạng thái rỗi, mạch hạ cờ \texttt{busy = 0} và cờ \texttt{rd\_en = 0}. Khi có xung \texttt{start = 1}, mạch lập tức bật \texttt{busy = 1}, xóa cờ \texttt{mean\_valid}, đặt lại hai bộ đếm \texttt{issue\_cnt = 0} và \texttt{collect\_cnt = 0}, nạp sẵn độ lệch làm tròn \texttt{acc = 25'd213}, phát địa chỉ đọc đầu tiên $\texttt{rd\_sample\_idx} = 106$ (\texttt{SPAN\_OFFSET}) và bật \texttt{rd\_en = 1} để chuyển sang \texttt{STATE\_ISSUE}.
+    \item \textbf{Dòng 118--140 (Trạng thái \texttt{STATE\_ISSUE}):} Trong trạng thái này, mạch đồng thời thực hiện hai nhiệm vụ: phát địa chỉ đọc và thu nhận mẫu trả về. Ở dòng 120--126, mỗi chu kỳ bộ đếm \texttt{issue\_cnt} tăng 1 và phát địa chỉ $\texttt{SPAN\_OFFSET} + \texttt{issue\_cnt} + 1$. Khi đã phát đủ 426 địa chỉ (\texttt{issue\_cnt == 425}), cờ \texttt{rd\_en} được hạ về 0. Song song với đó, ở dòng 129--136, mỗi khi cờ \texttt{rd\_valid = 1} từ RAM vòng báo về, mẫu \texttt{rd\_data} được ánh xạ thành số không âm \texttt{(rd\_data \^{} 16'h8000)} rồi cộng dồn vào thanh ghi \texttt{acc}. Khi bộ đếm tích lũy \texttt{collect\_cnt} chạm mốc 425 (đủ 426 mẫu), mạch chuyển thẳng sang trạng thái nhân \texttt{STATE\_MULT1}.
+    \item \textbf{Dòng 141--150 (Trạng thái \texttt{STATE\_WAIT\_RD}):} Nếu việc phát địa chỉ hoàn tất trước khi toàn bộ mẫu kịp trả về (do độ trễ đường truyền), mạch dừng phát (\texttt{rd\_en = 0}) và chuyển sang trạng thái chờ này để thu nốt những mẫu cuối cùng cho tới khi \texttt{collect\_cnt == 425}.
+    \item \textbf{Dòng 152--157 (Trạng thái \texttt{STATE\_MULT1}):} Đây là tầng thanh ghi đầu vào của bộ nhân. Mạch chốt tổng \texttt{acc} vào thanh ghi \texttt{mult\_a\_r} và nạp hằng số $M = 10.082.083$ vào \texttt{mult\_b\_r}, sau đó chuyển sang \texttt{STATE\_MULT2}. Tầng này khớp với \texttt{INPUT\_REGISTER} của khối DSP.
+    \item \textbf{Dòng 159--164 (Trạng thái \texttt{STATE\_MULT2}):} Thực hiện phép nhân $25 \times 24\text{ bit}$ không dấu:
+    \texttt{mult\_prod\_r <= mult\_a\_r * mult\_b\_r}. Tích số $49\text{ bit}$ được chốt vào thanh ghi ngõ ra của bộ nhân, khớp với \texttt{OUTPUT\_REGISTER} của khối DSP.
+    \item \textbf{Dòng 165--173 (Trạng thái \texttt{STATE\_DONE}):} Trích xuất thương số từ các bit $[47:32]$: bit 47 được đảo dấu (\texttt{\~{}mult\_prod\_r[47]}) nhằm trừ đi $32.768$, ghép với các bit \texttt{mult\_prod\_r[46:32]} tạo thành giá trị trung bình có dấu $16\text{ bit}$ hoàn chỉnh \texttt{mean\_out}. Cờ \texttt{mean\_valid} được kéo lên 1, cờ \texttt{busy} hạ xuống 0 và mạch quay trở về trạng thái \texttt{STATE\_IDLE}.
+\end{itemize}
+
+\subsubsection*{Trích dẫn mã nguồn mô hình song sinh Python}
+Dưới đây là đoạn mã mô phỏng chu kỳ bit-đối-bit trích từ lớp \texttt{LocalMeanTwin} trong tệp \path{verify_v3/ch05_mean_twin.py}:
+
+\lstinputlisting[
+    language=Python,
+    firstline=69,
+    lastline=126,
+    firstnumber=69,
+    caption={Mô hình song sinh Python chu-kỳ-đối-chu-kỳ (\texttt{verify\_v3/ch05\_mean\_twin.py:69--126})}
+]{verify_v3/ch05_mean_twin.py}
+
+\subsubsection*{Bảng đối chiếu dòng mã giữa Python Twin và Verilog HDL}
+Bảng~\ref{tab:ch05_twin_vs_hdl} đối soát trực tiếp từng dòng mã logic giữa mô hình song sinh Python và hiện thực phần cứng Verilog, chứng minh tính tương đương tuyệt đối về mặt chức năng và thời gian nhịp.
+
+\begin{table}[H]
+\centering
+\caption{Bảng đối chiếu trực tiếp giữa mã nguồn mô hình song sinh Python và Verilog HDL}
+\label{tab:ch05_twin_vs_hdl}
+\footnotesize
+\begin{tabularx}{\textwidth}{p{2.6cm} p{2.6cm} X}
+\toprule
+\textbf{Python Twin (Dòng)} & \textbf{Verilog HDL (Dòng)} & \textbf{Ý nghĩa kiến trúc và vai trò phần cứng} \\
+\midrule
+Dòng 69--80 & Dòng 103--115 & Trạng thái \texttt{STATE\_IDLE}: chờ xung \texttt{start}, nạp sẵn hằng số làm tròn $+213$ vào \texttt{acc}, bật \texttt{rd\_en} và khởi tạo địa chỉ đọc đầu tiên $106$. \\
+\addlinespace[3pt]
+Dòng 82--88 & Dòng 119--126 & Trạng thái \texttt{STATE\_ISSUE}: tăng bộ đếm \texttt{issue\_cnt}, phát địa chỉ quét từ $106$ tới $531$, tự động hạ \texttt{rd\_en} khi phát đủ 426 địa chỉ. \\
+\addlinespace[3pt]
+Dòng 90--95 & Dòng 129--136 & Đổi dấu mẫu âm thanh sang số dương (\texttt{XOR 0x8000}), tích lũy vào thanh ghi $25\text{ bit}$ \texttt{acc}, chuyển sang nhân khi đủ 426 mẫu. \\
+\addlinespace[3pt]
+Dòng 99--106 & Dòng 141--150 & Trạng thái \texttt{STATE\_WAIT\_RD}: chờ thu nhận nốt các mẫu còn lại trên đường truyền từ RAM vòng. \\
+\addlinespace[3pt]
+Dòng 108--111 & Dòng 152--156 & Trạng thái \texttt{STATE\_MULT1}: chốt toán hạng $S_{\text{biased}}$ và hằng số $M = 10.082.083$ vào tầng thanh ghi ngõ vào bộ nhân. \\
+\addlinespace[3pt]
+Dòng 113--115 & Dòng 159--163 & Trạng thái \texttt{STATE\_MULT2}: tính tích số $49\text{ bit}$ không dấu, chốt vào thanh ghi ngõ ra của khối nhân DSP. \\
+\addlinespace[3pt]
+Dòng 117--125 & Dòng 165--172 & Trạng thái \texttt{STATE\_DONE}: dịch phải 32 bit, trừ $32.768$ bằng cách đảo bit 15, chốt \texttt{mean\_out} và bật cờ \texttt{mean\_valid}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Vì sao khớp hoàn toàn với khối IP Intel LPM\_MULT}
+Thiết kế HDL tự viết khớp bit và khớp chu kỳ hoàn toàn với đường (A) IP Intel \texttt{LPM\_MULT} vì ba lý do kiến trúc:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Cấu trúc hai tầng thanh ghi đường ống:} Hai trạng thái \texttt{STATE\_MULT1} và \texttt{STATE\_MULT2} trong FSM tương ứng chính xác với hai tầng thanh ghi cứng \texttt{INPUT\_REGISTER} và \texttt{OUTPUT\_REGISTER} được kích hoạt khi cấu hình \texttt{LPM\_PIPELINE = 2}.
+    \item \textbf{Độ rộng và biểu diễn toán hạng không dấu:} Toán hạng $25\text{ bit}$ và $24\text{ bit}$ được nhân thuần túy không dấu, khớp đúng chế độ cấu hình \texttt{LPM\_REPRESENTATION = "UNSIGNED"}.
+    \item \textbf{Trích xuất và khôi phục dấu chính xác:} Thao tác trích xuất \texttt{mult\_prod\_r[47:32]} và đảo bit 15 tương đương toán học với phép trừ $32.768$, tái tạo chính xác giá trị trung bình có dấu $16\text{ bit}$ mà không gây lệch dù chỉ một bit đơn vị LSB.
+\end{enumerate}
+
+\subsubsection*{Đánh đổi kiến trúc: Thay đổi lựa chọn phần cứng thì sao?}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Nếu bỏ bớt 1 tầng thanh ghi (chỉ dùng \texttt{LPM\_PIPELINE = 1}):} Độ trễ tính toán giảm đi đúng $1$ chu kỳ xung nhịp (tổng thời gian tính trung bình từ $429$ chu kỳ giảm xuống $428$ chu kỳ). Tuy nhiên, đường tới hạn phải chạy xuyên suốt từ thanh ghi tích lũy \texttt{acc}, qua dây nối Fitter, đi vào bộ nhân và dừng ở thanh ghi tích số. Ở tần số $50\text{ MHz}$, thay đổi này không cải thiện đáng kể thông lượng ($1$ chu kỳ trên $500.000$ chu kỳ hop là $0{,}0002\%$), nhưng lại làm giảm biên độ an toàn định thời (slack). Ta chọn giữ nguyên 2 tầng thanh ghi để bảo đảm mạch an toàn tuyệt đối.
+    \item \textbf{Nếu thực hiện phép trừ $d = x - \text{mean}$ bằng mạch tổ hợp thuần:} Tiết kiệm được $1$ chu kỳ trễ trên đường dẫn dữ liệu sang khối Hanning. Tuy nhiên, ngõ ra của RAM vòng sẽ phải đi qua bộ trừ $17\text{ bit}$ rồi chạy thẳng tới bộ nhân Hanning (Chương 6). Quãng đường logic kéo dài này sẽ trở thành đường tới hạn chi phối tần số $F_{\max}$ của toàn chip. Do đó, việc chốt thanh ghi \texttt{diff\_data\_out} tại ngõ ra của bộ trừ là quyết định đúng đắn.
+\end{itemize}
+
+\textit{Tóm lại: Khối HDL tự viết \texttt{ch05\_local\_mean.v} tích hợp FSM tự động quét 426 mẫu từ RAM vòng, tích lũy dời trục và nhân đường ống 2 tầng khớp hoàn toàn khối IP LPM\_MULT; bộ trừ 17-bit có chốt thanh ghi bảo đảm cách ly đường tới hạn cho các khối xử lý tiếp theo.}
+
+
 
 
