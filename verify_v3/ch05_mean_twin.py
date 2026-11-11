@@ -337,7 +337,7 @@ def generate_dc_blocker_vectors():
         stim_lines.append(f"1 {bypass} {sink_valid} {sink_data & 0xFFFF:04X} {source_ready}\n")
 
         # Expected format: sink_ready source_valid source_data
-        exp_lines.append(f"{sink_ready} {source_valid} {source_data & 0xFFFF:04X}\n")
+        exp_lines.append(f"{int(sink_ready)} {int(source_valid)} {source_data & 0xFFFF:04X}\n")
 
     stim_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_dc_blocker_stim.txt')
     exp_path = os.path.join(os.path.dirname(__file__), 'tb_ch05_dc_blocker_expected.txt')

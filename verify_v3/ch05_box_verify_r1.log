@@ -1,0 +1,17 @@
+=== Compiling and running tb_ch05_local_mean ===
+=== STARTING CH05 LOCAL MEAN CYCLE-BY-CYCLE VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 88970
+Total comparison errors: 0
+=== ALL 88970 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch05_local_mean.v:198: $finish called at 1779420000 (1ps)
+=== Compiling and running tb_ch05_dc_blocker ===
+=== STARTING CH05 DC-BLOCKER CYCLE-BY-CYCLE VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 1000
+Total comparison errors: 0
+=== ALL 1000 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch05_dc_blocker.v:155: $finish called at 20020000 (1ps)
+=== All Chapter 5 iverilog testbenches passed successfully! ===

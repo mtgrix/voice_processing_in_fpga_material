@@ -1,10 +1,10 @@
 Generating Local Mean vectors (ch05_local_mean)...
 Total test frames to simulate: 205
-Generated 88970 stimulus cycles for 205 frames -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch05_mean_stim.txt
-Generated 88970 expected cycles -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch05_mean_expected.txt
+Generated 88970 stimulus cycles for 205 frames -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch05_mean_stim.txt
+Generated 88970 expected cycles -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch05_mean_expected.txt
 
 Generating DC-Blocker vectors (ch05_dc_blocker)...
-Generated 1000 DC-blocker stimulus cycles -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch05_dc_blocker_stim.txt
-Generated 1000 DC-blocker expected cycles -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch05_dc_blocker_expected.txt
+Generated 1000 DC-blocker stimulus cycles -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch05_dc_blocker_stim.txt
+Generated 1000 DC-blocker expected cycles -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch05_dc_blocker_expected.txt
 
 All Chapter 5 stimulus and expected vector files generated successfully!
