@@ -21,6 +21,10 @@ CH06 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
    Code   : case AC_GAUSS: periodsPerWindow *= 2; brent_depth = SINC700
    Ý nghĩa: Nhân đôi độ dài cửa sổ (6 chu kỳ) cho AC_GAUSS
 
+[fon/Sound_to_Pitch.cpp:334--339]
+   Code   : halfnsamp_window = nsamp_window/2 - 1; nsamp_window = halfnsamp_window*2;
+   Ý nghĩa: Tính độ dài cửa sổ chẵn (N = 1278 cho 6 chu kỳ Gaussian, N = 638 cho 3 chu kỳ Hanning)
+
 [fon/Sound_to_Pitch.cpp:409]
    Code   : window.resize (nsamp_window);
    Ý nghĩa: Cấp phát bộ nhớ cho mảng cửa sổ kích thước N = 638
@@ -28,6 +32,10 @@ CH06 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
 [fon/Sound_to_Pitch.cpp:413--415]
    Code   : The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window.
    Ý nghĩa: Chú thích Boersma: Hanning 2-5 dB cho 3 chu kỳ, Gaussian 25-29 dB cho 6 chu kỳ (nguồn không nêu mốc so sánh)
+
+[fon/Sound_to_Pitch.cpp:417--421]
+   Code   : window[i] = (exp(-48.0 * ((i - imid) / (nsamp_window + 1))^2) - edge) / (1 - edge);
+   Ý nghĩa: Công thức cửa sổ Gaussian của Praat
 
 [fon/Sound_to_Pitch.cpp:422--424]
    Code   : window[i] = 0.5 - 0.5 * cos(NUM2pi * i / (nsamp_window + 1));

@@ -142,7 +142,7 @@ def audit_boundary_samples():
 
 def audit_gaussian_comparison():
     print("\n" + "=" * 78)
-    print("4. COMPARISON: PRAAT HANNING (N=638) VS PRAAT GAUSSIAN (N=638, N=1276)")
+    print("4. COMPARISON: PRAAT HANNING (N=638) VS PRAAT GAUSSIAN (N=638, N=1278)")
     print("=" * 78)
     # Praat 7.0.03 Sound_to_Pitch.cpp:
     # lines 413-415:
@@ -150,6 +150,9 @@ def audit_gaussian_comparison():
     #  The Gaussian window is 25 to 29 dB better for 6 periods/window."
     # (Note: Reference baseline not stated in Praat source comment).
     # lines 303-306: AC_GAUSS doubles window length: periodsPerWindow *= 2.
+    # lines 334-339: dt_window = 6/75 s, nsamp_window = floor(0.08*16000) = 1280,
+    # halfnsamp_window = 1280/2 - 1 = 639, nsamp_window = 639*2 = 1278.
+    # lines 417-421: Gaussian formula window[i] = (exp(-48*(i-imid)^2 / (N+1)^2) - edge)/(1-edge)
     
     def calc_window_spectrum(w, fs=16000.0, N_FFT=131072):
         N = len(w)
@@ -181,18 +184,18 @@ def audit_gaussian_comparison():
     w_gauss_638 = np.array([(math.exp(-48.0 * ((i - imid_638) ** 2) / ((638 + 1) ** 2)) - edge) / (1.0 - edge) for i in range(1, 638 + 1)])
     bw_g638, sl_g638 = calc_window_spectrum(w_gauss_638)
 
-    # 3. Praat Gaussian at N = 1276 (6 periods, periodsPerWindow *= 2)
-    imid_1276 = 0.5 * (1276 + 1)
-    w_gauss_1276 = np.array([(math.exp(-48.0 * ((i - imid_1276) ** 2) / ((1276 + 1) ** 2)) - edge) / (1.0 - edge) for i in range(1, 1276 + 1)])
-    bw_g1276, sl_g1276 = calc_window_spectrum(w_gauss_1276)
+    # 3. Praat Gaussian at N = 1278 (6 periods, periodsPerWindow *= 2)
+    imid_1278 = 0.5 * (1278 + 1)
+    w_gauss_1278 = np.array([(math.exp(-48.0 * ((i - imid_1278) ** 2) / ((1278 + 1) ** 2)) - edge) / (1.0 - edge) for i in range(1, 1278 + 1)])
+    bw_g1278, sl_g1278 = calc_window_spectrum(w_gauss_1278)
 
     print(f"Hanning N+1 (N = 638, 3 periods)    : 3-dB BW = {bw_h638:.2f} Hz, Highest Sidelobe = {sl_h638:.2f} dB")
     print(f"Praat Gaussian (N = 638, 3 periods) : 3-dB BW = {bw_g638:.2f} Hz, Highest Sidelobe = {sl_g638:.2f} dB")
-    print(f"Praat Gaussian (N = 1276, 6 periods): 3-dB BW = {bw_g1276:.2f} Hz, Highest Sidelobe = {sl_g1276:.2f} dB")
+    print(f"Praat Gaussian (N = 1278, 6 periods): 3-dB BW = {bw_g1278:.2f} Hz, Highest Sidelobe = {sl_g1278:.2f} dB")
     print("\nObservation:")
     print("  - At 3 periods (N = 638), Gaussian 3-dB bandwidth is wide (64.94 Hz vs 36.13 Hz).")
-    print("  - At 6 periods (N = 1276), Gaussian achieves 32.71 Hz BW with sidelobes suppressed to -124.90 dB.")
-    print("  - AC_GAUSS requires 2x memory (1276 samples) compared to AC_HANNING (638 samples).")
+    print(f"  - At 6 periods (N = 1278), Gaussian achieves {bw_g1278:.2f} Hz BW with sidelobes suppressed to {sl_g1278:.2f} dB.")
+    print("  - AC_GAUSS requires 2x memory (1278 samples) compared to AC_HANNING (638 samples).")
 
 
 def main():

@@ -8,12 +8,16 @@ against the Q1.15 fixed-point ROM format.
 Verified facts from reviewer note (n):
 - fon/Sound_to_Pitch.cpp:
   lines 39-40: #define AC_HANNING 0, AC_GAUSS 1
+  lines 299-301: sinc70 + Brent interpolation depth
+  lines 303-306: AC_GAUSS periodsPerWindow *= 2
+  lines 334-339: window length calculation (1278 for 6 periods, 638 for 3 periods)
   line 409: window.resize (nsamp_window);
   lines 413-415: comment on Hanning 2 to 5 dB better for 3 periods/window
+  lines 417-421: Gaussian window formula
   lines 422-424: Hanning N+1 formula
   lines 429-442: windowR normalized autocorrelation of the window via FFT
   line 78: frame[j] = (z[i] - localMean) * window[j];
-  lines 299-301: sinc70 + Brent interpolation depth
+  lines 88-101: LocalPeak search range
 """
 
 import sys
@@ -27,8 +31,10 @@ CITATIONS = [
     ("fon/Sound_to_Pitch.cpp", "88--101", "LocalPeak: j from halfnsamp_window - halfnsamp_period + 1 to + halfnsamp_period", "Phạm vi dò đỉnh cục bộ LP (212..425, 0-based)"),
     ("fon/Sound_to_Pitch.cpp", "299--301", "case AC_HANNING: brent_depth = NUM_PEAK_INTERPOLATE_SINC70", "Cấu hình 3 chu kỳ và nội suy SINC70 cho AC_HANNING"),
     ("fon/Sound_to_Pitch.cpp", "303--306", "case AC_GAUSS: periodsPerWindow *= 2; brent_depth = SINC700", "Nhân đôi độ dài cửa sổ (6 chu kỳ) cho AC_GAUSS"),
+    ("fon/Sound_to_Pitch.cpp", "334--339", "halfnsamp_window = nsamp_window/2 - 1; nsamp_window = halfnsamp_window*2;", "Tính độ dài cửa sổ chẵn (N = 1278 cho 6 chu kỳ Gaussian, N = 638 cho 3 chu kỳ Hanning)"),
     ("fon/Sound_to_Pitch.cpp", "409", "window.resize (nsamp_window);", "Cấp phát bộ nhớ cho mảng cửa sổ kích thước N = 638"),
     ("fon/Sound_to_Pitch.cpp", "413--415", "The Hanning window is 2 to 5 dB better for 3 periods/window. The Gaussian window is 25 to 29 dB better for 6 periods/window.", "Chú thích Boersma: Hanning 2-5 dB cho 3 chu kỳ, Gaussian 25-29 dB cho 6 chu kỳ (nguồn không nêu mốc so sánh)"),
+    ("fon/Sound_to_Pitch.cpp", "417--421", "window[i] = (exp(-48.0 * ((i - imid) / (nsamp_window + 1))^2) - edge) / (1 - edge);", "Công thức cửa sổ Gaussian của Praat"),
     ("fon/Sound_to_Pitch.cpp", "422--424", "window[i] = 0.5 - 0.5 * cos(NUM2pi * i / (nsamp_window + 1));", "Công thức Hanning N+1 (i = 1..N), không có mẫu 0 ở hai biên"),
     ("fon/Sound_to_Pitch.cpp", "429--442", "windowR = normalized autocorrelation of the window via FFT", "Tính tự tương quan chuẩn hóa của cửa sổ R_w qua FFT 1024 điểm")
 ]

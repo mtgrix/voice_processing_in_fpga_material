@@ -38,16 +38,16 @@ Praat 7.0.03 N+1 formulation (Sound_to_Pitch.cpp:422-424):
 Key insight: Praat avoids wasting 2 boundary samples in every 638-sample frame!
 
 ==============================================================================
-4. COMPARISON: PRAAT HANNING (N=638) VS PRAAT GAUSSIAN (N=638, N=1276)
+4. COMPARISON: PRAAT HANNING (N=638) VS PRAAT GAUSSIAN (N=638, N=1278)
 ==============================================================================
 Hanning N+1 (N = 638, 3 periods)    : 3-dB BW = 36.13 Hz, Highest Sidelobe = -31.47 dB
 Praat Gaussian (N = 638, 3 periods) : 3-dB BW = 64.94 Hz, Highest Sidelobe = -124.89 dB
-Praat Gaussian (N = 1276, 6 periods): 3-dB BW = 32.71 Hz, Highest Sidelobe = -124.90 dB
+Praat Gaussian (N = 1278, 6 periods): 3-dB BW = 32.47 Hz, Highest Sidelobe = -124.89 dB
 
 Observation:
   - At 3 periods (N = 638), Gaussian 3-dB bandwidth is wide (64.94 Hz vs 36.13 Hz).
-  - At 6 periods (N = 1276), Gaussian achieves 32.71 Hz BW with sidelobes suppressed to -124.90 dB.
-  - AC_GAUSS requires 2x memory (1276 samples) compared to AC_HANNING (638 samples).
+  - At 6 periods (N = 1278), Gaussian achieves 32.47 Hz BW with sidelobes suppressed to -124.89 dB.
+  - AC_GAUSS requires 2x memory (1278 samples) compared to AC_HANNING (638 samples).
 
 ==============================================================================
 ALL CH06 HANNING MATHEMATICAL AUDITS PASSED SUCCESSFULLY!
