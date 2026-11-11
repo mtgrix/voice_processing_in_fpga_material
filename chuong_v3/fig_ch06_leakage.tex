@@ -3,77 +3,92 @@
 
 \begin{tikzpicture}[>=Stealth, font=\small, scale=0.95, every node/.style={transform shape}]
 
-    % Trục tọa độ
-    \draw[->, thick, color=black!70] (-0.5, 0) -- (11.5, 0) node[right, font=\footnotesize] {Tần số normalized ($f / f_s$)};
-    \draw[->, thick, color=black!70] (0, -4.5) -- (0, 3.8) node[above, font=\footnotesize] {Biên độ phổ (dB)};
+    % Trục tọa độ: Trục hoành đặt ở đáy y = 0 (-50 dB), trục tung từ y = 0 đến y = 5.6
+    \draw[->, thick, draw=black!70] (0, 0) -- (11.5, 0);
+    \node[font=\scriptsize, text=black!85] at (5.5, -0.6) {Tần số chuẩn hóa ($f / f_s$)};
+    \draw[->, thick, draw=black!70] (0, 0) -- (0, 5.6) node[above=2pt, font=\scriptsize, text=black!80] {Biên độ phổ chuẩn hóa (dB)};
 
-    % Lưới nền mờ
-    \draw[dashed, color=black!15] (0, 3) -- (11, 3);
-    \draw[dashed, color=black!15] (0, 1.5) -- (11, 1.5);
-    \draw[dashed, color=black!15] (0, 0) -- (11, 0);
-    \draw[dashed, color=black!15] (0, -1.5) -- (11, -1.5);
-    \draw[dashed, color=black!15] (0, -3.0) -- (11, -3.0);
+    % Lưới nền mờ (các mốc 10 dB từ 0 dB đến -40 dB)
+    \draw[dashed, color=black!15] (0, 5.0) -- (11.0, 5.0);
+    \draw[dashed, color=black!15] (0, 4.0) -- (11.0, 4.0);
+    \draw[dashed, color=black!15] (0, 3.0) -- (11.0, 3.0);
+    \draw[dashed, color=black!15] (0, 2.0) -- (11.0, 2.0);
+    \draw[dashed, color=black!15] (0, 1.0) -- (11.0, 1.0);
 
-    % Nhãn trục Y
-    \node[left, font=\tiny, color=black!60] at (0, 3) {$0\text{ dB}$ (Đỉnh DC)};
-    \node[left, font=\tiny, color=black!60] at (0, 1.5) {$-10\text{ dB}$};
-    \node[left, font=\tiny, color=black!60] at (0, 0) {$-20\text{ dB}$};
-    \node[left, font=\tiny, color=black!60] at (0, -1.5) {$-30\text{ dB}$};
-    \node[left, font=\tiny, color=black!60] at (0, -3.0) {$-40\text{ dB}$};
+    % Vạch chia và nhãn trục Y (đặt lùi sang trái x = -0.15, không chạm đường cong)
+    \draw[thick, black!60] (0, 5.0) -- (-0.12, 5.0);
+    \draw[thick, black!60] (0, 4.0) -- (-0.12, 4.0);
+    \draw[thick, black!60] (0, 3.0) -- (-0.12, 3.0);
+    \draw[thick, black!60] (0, 2.0) -- (-0.12, 2.0);
+    \draw[thick, black!60] (0, 1.0) -- (-0.12, 1.0);
+    \draw[thick, black!60] (0, 0.0) -- (-0.12, 0.0);
+
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 5.0) {$0\text{ dB}$ (Đỉnh DC)};
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 4.0) {$-10\text{ dB}$};
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 3.0) {$-20\text{ dB}$};
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 2.0) {$-30\text{ dB}$};
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 1.0) {$-40\text{ dB}$};
+    \node[left, font=\scriptsize, text=black!75] at (-0.15, 0.0) {$-50\text{ dB}$};
+
+    % Vạch chia và nhãn trục X (tại đáy)
+    \foreach \x/\val in {0/{0}, 2/{0{,}003}, 4/{0{,}006}, 6/{0{,}009}, 8/{0{,}012}, 10/{0{,}015}} {
+        \draw[thick, black!60] (\x, 0) -- (\x, -0.12);
+        \node[below, font=\scriptsize, text=black!75] at (\x, -0.12) {$\val$};
+    }
 
     % Đường phổ Cửa sổ chữ nhật (Màu đỏ nét đứt)
-    % Búp chính hẹp (0.89), búp bên đầu tiên -13.3 dB (y = 1.0), suy giảm chậm -6 dB/oct
+    % Búp chính hẹp, búp bên đầu tiên -13.3 dB (y = 3.67), suy giảm chậm -6 dB/oct
     \draw[thick, red!80!black, dashed] 
-        (0, 3) 
-        .. controls (0.4, 2.8) and (0.8, -1.5) .. (1.0, -4.0) % Búp chính
-        .. controls (1.1, -1.5) and (1.3, 1.0) .. (1.5, 1.0)  % Búp bên 1 (-13.3 dB)
-        .. controls (1.7, 1.0) and (1.9, -1.5) .. (2.0, -4.0)
-        .. controls (2.1, -1.5) and (2.3, 0.4) .. (2.5, 0.4)  % Búp bên 2 (-17.9 dB)
-        .. controls (2.7, 0.4) and (2.9, -1.5) .. (3.0, -4.0)
-        .. controls (3.1, -1.5) and (3.3, 0.0) .. (3.5, 0.0)  % Búp bên 3 (-20.8 dB)
-        .. controls (3.8, 0.0) and (4.2, -1.5) .. (4.5, -4.0)
-        .. controls (4.8, -1.5) and (5.2, -0.6) .. (5.5, -0.6)
-        .. controls (6.0, -0.6) and (7.0, -2.0) .. (8.0, -4.0)
-        .. controls (9.0, -2.5) and (10.0, -2.0) .. (11.0, -2.5);
+        (0, 5.0) 
+        .. controls (0.4, 4.8) and (0.8, 0.5) .. (1.0, 0.2) % Búp chính rơi xuống đáy
+        .. controls (1.1, 0.5) and (1.3, 3.67) .. (1.5, 3.67)  % Búp bên 1 (-13.3 dB)
+        .. controls (1.7, 3.67) and (1.9, 0.5) .. (2.0, 0.3)
+        .. controls (2.1, 0.5) and (2.3, 3.21) .. (2.5, 3.21)  % Búp bên 2 (-17.9 dB)
+        .. controls (2.7, 3.21) and (2.9, 0.6) .. (3.0, 0.4)
+        .. controls (3.1, 0.6) and (3.3, 2.92) .. (3.5, 2.92)  % Búp bên 3 (-20.8 dB)
+        .. controls (3.8, 2.92) and (4.2, 0.8) .. (4.5, 0.5)
+        .. controls (4.8, 0.8) and (5.2, 2.5) .. (5.5, 2.5)
+        .. controls (6.0, 2.5) and (7.0, 1.2) .. (8.0, 2.2)
+        .. controls (9.0, 2.2) and (10.0, 1.8) .. (11.0, 1.8);
 
     % Đường phổ Cửa sổ Hanning N+1 (Màu xanh đậm nét liền)
-    % Búp chính rộng hơn (1.44), búp bên đầu tiên -31.5 dB (y = -1.72), suy giảm rất dốc -18 dB/oct
+    % Búp chính rộng hơn, búp bên đầu tiên -31.5 dB (y = 1.85), suy giảm rất dốc -18 dB/oct
     \draw[very thick, blue!80!black] 
-        (0, 3) 
-        .. controls (0.7, 2.7) and (1.5, -1.5) .. (1.8, -4.2) % Búp chính
-        .. controls (2.0, -2.5) and (2.3, -1.72) .. (2.6, -1.72) % Búp bên 1 (-31.5 dB)
-        .. controls (2.9, -1.72) and (3.2, -2.8) .. (3.5, -4.2)
-        .. controls (3.8, -3.5) and (4.1, -2.9) .. (4.5, -2.9)  % Búp bên 2 (-41 dB)
-        .. controls (4.9, -2.9) and (5.2, -3.8) .. (5.5, -4.2)
-        .. controls (6.0, -4.0) and (7.0, -4.0) .. (8.0, -4.2)
-        .. controls (9.0, -4.1) and (10.0, -4.1) .. (11.0, -4.2);
+        (0, 5.0) 
+        .. controls (0.7, 4.7) and (1.5, 0.5) .. (1.8, 0.1) % Búp chính
+        .. controls (2.1, 0.3) and (2.5, 1.85) .. (2.9, 1.85) % Búp bên 1 (-31.5 dB)
+        .. controls (3.3, 1.85) and (3.5, 0.2) .. (3.8, 0.1)
+        .. controls (4.1, 0.1) and (4.4, 0.90) .. (4.6, 0.90)  % Búp bên 2 (-41 dB)
+        .. controls (4.9, 0.90) and (5.2, 0.1) .. (5.5, 0.05)
+        .. controls (6.0, 0.05) and (7.0, 0.05) .. (8.0, 0.05)
+        .. controls (9.0, 0.05) and (10.0, 0.05) .. (11.0, 0.05);
 
-    % Mũi tên và ghi chú búp bên chữ nhật
-    \draw[<-] (1.5, 1.05) -- (2.5, 2.2) 
-        node[above, font=\scriptsize, fill=white, inner sep=2pt, draw=red!60!black, rounded corners=2pt] 
-        {\textbf{Chữ nhật: Búp bên đầu $-13{,}3\text{ dB}$}};
+    % Mũi tên và ghi chú búp bên chữ nhật (đặt trên cao trong khoảng trống sạch)
+    \draw[<-, thick, red!80!black] (1.5, 3.75) -- (2.3, 4.65);
+    \node[anchor=south, font=\scriptsize, fill=white, inner sep=2.5pt, draw=red!70!black, rounded corners=2pt] 
+        at (2.5, 4.65) {\textbf{Chữ nhật: Búp bên đầu $-13{,}3\text{ dB}$}};
 
-    % Mũi tên và ghi chú búp bên Hanning
-    \draw[<-] (2.6, -1.68) -- (3.8, -0.7) 
-        node[right, font=\scriptsize, fill=white, inner sep=2pt, draw=blue!60!black, rounded corners=2pt] 
-        {\textbf{Hanning $N+1$: Búp bên đầu $-31{,}5\text{ dB}$}};
+    % Mũi tên và ghi chú búp bên Hanning (đặt trong khoảng trống sạch giữa hai đường phổ)
+    \draw[<-, thick, blue!80!black] (2.9, 1.85) -- (4.2, 1.35);
+    \node[anchor=west, font=\scriptsize, fill=white, inner sep=2.5pt, draw=blue!80!black, rounded corners=2pt] 
+        at (4.2, 1.35) {\textbf{Hanning $N+1$: Búp bên đầu $-31{,}5\text{ dB}$}};
 
-    % Mũi tên thể hiện độ suy hao bổ sung 18.2 dB
-    \draw[<->, thick, purple!80!black] (2.6, 0.95) -- (2.6, -1.65);
-    \node[right, font=\scriptsize, color=purple!90!black, fill=white, inner sep=1pt] at (2.65, -0.35) 
+    % Mũi tên thể hiện độ suy hao bổ sung 18.2 dB (tại x = 1.9 trong khoảng trống giữa hai búp)
+    \draw[<->, thick, purple!80!black] (1.9, 3.67) -- (1.9, 1.85);
+    \node[right, font=\scriptsize, text=purple!90!black, fill=white, inner sep=1.5pt] at (1.95, 2.76) 
         {\textbf{Suy hao vượt trội $+18{,}2\text{ dB}$}};
 
-    % Chú giải tốc độ dốc
-    \node[above, font=\scriptsize, color=red!80!black, fill=white, inner sep=1pt] at (7.5, 0.5) 
+    % Chú giải tốc độ dốc (đặt ở vùng thưa phía bên phải)
+    \node[above, font=\scriptsize, text=red!80!black, fill=white, inner sep=1.5pt] at (8.5, 2.5) 
         {Chữ nhật: Dốc chậm $-6\text{ dB/octave}$};
-    \node[below, font=\scriptsize, color=blue!80!black, fill=white, inner sep=1pt] at (7.5, -1.8) 
+    \node[above, font=\scriptsize, text=blue!80!black, fill=white, inner sep=1.5pt] at (8.5, 0.3) 
         {Hanning: Dốc nhanh $-18\text{ dB/octave}$};
 
-    % Hộp ghi chú góc trên bên phải
-    \node[anchor=north east, draw=black!30, fill=white, rounded corners=3pt, inner sep=4pt] at (11.2, 3.6) {
+    % Hộp chú giải góc trên bên phải
+    \node[anchor=north east, draw=black!30, fill=white, rounded corners=3pt, inner sep=4pt] at (11.2, 5.3) {
         \begin{tabular}{ll}
-            \tikz\draw[thick, red!80!black, dashed] (0,0) -- (0.6,0); & \footnotesize Cửa sổ chữ nhật (Rectangular) \\
-            \tikz\draw[very thick, blue!80!black] (0,0) -- (0.6,0); & \footnotesize Cửa sổ Hanning $N+1$ (Praat 7.0.03) \\
+            \tikz\draw[thick, red!80!black, dashed] (0,0) -- (0.6,0); & \scriptsize Cửa sổ chữ nhật (Rectangular) \\
+            \tikz\draw[very thick, blue!80!black] (0,0) -- (0.6,0); & \scriptsize Cửa sổ Hanning $N+1$ (Praat 7.0.03) \\
         \end{tabular}
     };
 

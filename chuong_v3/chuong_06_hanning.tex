@@ -100,8 +100,8 @@ Trong mã nguồn Praat 7.0.03 tại tệp \path{fon/Sound_to_Pitch.cpp}, Paul B
 
 Trong cấu trúc thực thi của Praat, hai phương pháp này được phân nhánh như sau:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Cấu hình \texttt{AC\_HANNING} (dòng 299--301):} Sử dụng cửa sổ Hanning với độ dài danh định 3 chu kỳ ($N = 638\text{ mẫu}$ tại $f_s = 16\text{ kHz}, F_{\text{floor}} = 75\text{ Hz}$) kết hợp nội suy \texttt{brent\_depth = NUM\_PEAK\_INTERPOLATE\_SINC70}.
-    \item \textbf{Cấu hình \texttt{AC\_GAUSS} (dòng 303--306):} Tác giả nhân đôi chiều dài cửa sổ qua câu lệnh \texttt{periodsPerWindow *= 2} (tương ứng 6 chu kỳ hay $N = 1.276\text{ mẫu}$) và nâng độ sâu nội suy lên \texttt{SINC700}.
+    \item \textbf{Cấu hình \texttt{AC\_HANNING} (dòng 299--301):} Dùng cửa sổ Hanning độ dài 3 chu kỳ ($N = 638\text{ mẫu}$ tại $f_s = 16\text{ kHz}$) và nội suy sinc 70 điểm (\texttt{NUM\_PEAK\_INTERPOLATE\_SINC70}).
+    \item \textbf{Cấu hình \texttt{AC\_GAUSS} (dòng 303--306):} Nhân đôi chiều dài cửa sổ qua lệnh \texttt{periodsPerWindow *= 2} (tương ứng 6 chu kỳ hay $N = 1.276\text{ mẫu}$) và dùng nội suy sinc 700 điểm (\texttt{SINC700}).
 \end{itemize}
 
 Khảo sát đáp ứng phổ số trị (được tính toán độc lập trong kịch bản \path{verify_v3/ch06_hanning_math.py}):
