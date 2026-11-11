@@ -1,0 +1,83 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 9. Tìm đỉnh, nội suy parabol, $F_0 = f_s/\tau^*$ và bộ chia}
+\addcontentsline{toc}{section}{Chương 9. Tìm đỉnh, nội suy parabol, F0 = fs/tau* và bộ chia}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của giới hạn lấy mẫu rời rạc: chứng minh bước nhảy chu kỳ 1 mẫu giữa $\tau = 31$ và $\tau = 32$ tạo ra khoảng cách tần số lên tới $16{,}13\text{ Hz}$ (tương đương $54{,}96\text{ cent} \approx 55\text{ cent}$, vượt xa ngưỡng phân biệt cao độ $5\text{ cent}$ của tai người); phân tích cơ sở lựa chọn định dạng số nguyên Q12.4 với độ phân giải $1/16\text{ Hz}$, mang lại sai số lượng tử hóa chỉ từ $0{,}22\text{ cent}$ (tại $500\text{ Hz}$) đến $1{,}08\text{ cent}$ (tại $100\text{ Hz}$).
+    \item Khảo sát giải thuật tìm đỉnh trong mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 186--188, 193--199, 345): phân định rõ ràng giữa dải quét phần cứng $[26, 214]$ ($189\text{ lag}$) và dải tìm kiếm ứng viên $[27, 213]$ ($187\text{ điểm}$); phân tích điều kiện đỉnh cục bộ ba điểm $U[\tau] > U[\tau-1] \land U[\tau] \ge U[\tau+1]$ kết hợp cổng thanh âm $1000 \cdot U[\tau] > 225 \cdot R_{0n}$ (chuyển hóa thành $40 \cdot U > 9 \cdot R_{0n}$, 0 khối DSP); giải mã cơ chế chọn ứng viên có điểm chi phí cực đại $\operatorname{argmax} Sc[\tau]$ và quy tắc giải quyết hòa ưu tiên độ trễ nhỏ gặp trước.
+    \item Dẫn xuất chặt chẽ công thức nội suy cực trị parabol đúng dấu: xác định tọa độ đỉnh liên tục $\tau^* = \tau_p + \delta$ với $\delta = (y_{+1} - y_{-1}) / (2(2y_0 - y_{-1} - y_{+1}))$, vạch rõ sai lầm đổi ngược dấu trong các tài liệu cũ; chứng minh bước đột phá gộp hai phép chia liên tiếp thành \textbf{đúng một phép chia duy nhất}: $F_{0, \text{Q12.4}} = \lfloor (512000 \cdot den_n + D/2) / D \rfloor$ với $D = 2 \cdot den_n \cdot \tau_p + num_n$; phân tích lỗi thiếu thừa số 2 của phiên bản v1 dẫn đến sai lệch $5\text{ LSB}$.
+    \item Khám phá cơ chế chuẩn hóa động $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ bằng mạch giải mã ưu tiên (priority encoder) 5 tầng: chứng minh chặn trên độ rộng bit của tử số $N < 2^{44}$ và mẫu số $D < 2^{34}$, từ đó thiết lập chính xác hai tham số của khối chia IP Intel $\texttt{LPM\_WIDTHN} = 44$ và $\texttt{LPM\_WIDTHD} = 34$ (bác bỏ con số suy đoán 48 bit không căn cứ).
+    \item Phân tích toàn diện ba phương án thiết kế bộ chia phần cứng: chứng minh bộ chia tổ hợp vi phạm thời gian chu kỳ $20\text{ ns}$ (đường tới hạn $> 25\text{ ns}$); chỉ rõ bộ chia đường ống \texttt{LPM\_DIVIDE} (Tuyến A, theo tài liệu Intel UG-01069) gây lãng phí hàng trăm ALM cho thông lượng $1\text{ kết quả/chu kỳ}$ không sử dụng; bảo vệ quyết định chốt lựa chọn bộ chia tuần tự khôi phục Radix-2 (Tuyến B) tiêu tốn đúng $44\text{ chu kỳ}$, chiếm vỏn vẹn $0{,}009\%$ ngân sách thời gian thực $500.000\text{ chu kỳ/khung}$ và tiết kiệm hơn $80\%$ diện tích silicon.
+    \item Hiện thực hóa và kiểm chứng chu-kỳ-đối-chu-kỳ: xây dựng module dò đỉnh dòng \texttt{ch09\_peak\_finder.v}, bộ chia tuần tự \texttt{ch09\_radix2\_div.v} và khối tính toán đỉnh \texttt{ch09\_f0\_calc.v}; kiểm chứng qua mô hình song sinh Python (\texttt{ch09\_twin.py}) trên $12.456\text{ chu kỳ}$ chia (265 bộ ba cực trị) và $2.575\text{ chu kỳ}$ toàn khung tín hiệu từ bộ dữ liệu chuẩn \path{golden_v2}.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{9.1. Sự cần thiết của nội suy cực trị và giới hạn của lưới lấy mẫu rời rạc}
+\addcontentsline{toc}{subsection}{9.1. Sự cần thiết của nội suy cực trị và giới hạn của lưới lấy mẫu rời rạc}
+
+\subsubsection*{Vấn đề thực tế: Bước nhảy thô bạo 55 cent trên lưới rời rạc}
+Hãy hình dung một tình huống cụ thể trong xử lý tiếng nói và âm nhạc: một giọng nữ cao hoặc giọng trẻ em phát âm một nguyên âm có cao độ cơ bản nằm xung quanh $500\text{ Hz}$. Tại tần số lấy mẫu chuẩn của hệ thống $f_s = 16.000\text{ Hz}$, chu kỳ dao động của dây thanh âm được đo bằng số mẫu trễ tương ứng là:
+\begin{equation}
+\tau = \frac{f_s}{F_0} = \frac{16.000}{500} = 32{,}00\text{ mẫu}
+\end{equation}
+
+Nếu dạng sóng dao động với chu kỳ thực tế hơi nhanh hơn một chút, chẳng hạn $F_0 = 508\text{ Hz}$, chu kỳ lý tưởng trong miền thời gian liên tục sẽ là $\tau^* = 16.000 / 508 \approx 31{,}496\text{ mẫu}$. Tuy nhiên, khối nhân--cộng dồn MAC ở Chương 7 chỉ tính toán hàm tự tương quan $R[\tau]$ trên các chỉ số nguyên rời rạc $\tau \in \{26, 27, \dots, 214\}$. Điều gì sẽ xảy ra nếu một kỹ sư ngây thơ quyết định chọn trực tiếp chỉ số nguyên $\tau$ có tương quan cực đại mà không thực hiện phép nội suy?
+
+Khi đỉnh tương quan thực tế rơi vào khoảng giữa $\tau = 31$ và $\tau = 32$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu mạch chọn chỉ số nguyên $\tau = 31$: Tần số ước lượng là $F_0 = 16.000 / 31 \approx \mathbf{516{,}13\text{ Hz}}$.
+    \item Nếu mạch chọn chỉ số nguyên $\tau = 32$: Tần số ước lượng là $F_0 = 16.000 / 32 = \mathbf{500{,}00\text{ Hz}}$.
+\end{itemize}
+
+Khoảng chênh lệch tần số giữa hai mẫu trễ liền kề là:
+\begin{equation}
+\Delta F_0 = 516{,}1290 - 500{,}0000 = \mathbf{16{,}1290\text{ Hz}} \approx 16{,}13\text{ Hz}
+\end{equation}
+
+Để đánh giá mức độ nghiêm trọng của bước nhảy này đối với thính giác con người, ta chuyển đổi độ chênh lệch trên sang đơn vị \textbf{cent} (thang đo logarit chuẩn trong âm học, trong đó 1 quãng tám bằng $1200\text{ cent}$ và 1 nửa cung bằng $100\text{ cent}$):
+\begin{equation}
+\Delta \text{cents} = 1200 \times \log_2\left( \frac{516{,}1290}{500{,}0000} \right) = 1200 \times \log_2\left( \frac{32}{31} \right) \approx \mathbf{54{,}9644\text{ cent}} \approx 55\text{ cent}
+\end{equation}
+(kết quả đã được xác minh độc lập qua nhật ký tính toán \texttt{verify\_v3/ch09\_math\_audit.log}).
+
+\begin{physicalinsight}
+Ngưỡng phân biệt cao độ tối thiểu của tai người bình thường (Just Noticeable Difference -- JND) đối với các thanh âm thuần và tiếng nói dao động trong khoảng từ $5\text{ cent}$ đến $10\text{ cent}$ (tương đương độ lệch tần số chỉ từ $0{,}3\%$ đến $0{,}6\%$). 
+
+Bước nhảy rời rạc $55\text{ cent}$ giữa $\tau = 31$ và $\tau = 32$ lớn gấp \textbf{11 lần} ngưỡng nhận biết của tai người ($55 / 5 = 11{,}0$). Nó vượt quá một nửa cung âm nhạc ($50\text{ cent}$). Nếu không có phép nội suy đỉnh, đường biểu diễn $F_0$ theo thời gian sẽ bị biến thành những bậc thang thô thiển, tạo ra hiện tượng méo cao độ nghiêm trọng và phá hủy hoàn toàn đặc trưng ngữ điệu tự nhiên của giọng nói.
+\end{physicalinsight}
+
+\subsubsection*{Độ phân giải của định dạng số cố định Q12.4}
+Để lưu trữ và truyền nhận giá trị cao độ giữa FPGA và bộ xử lý HPS qua cầu giao tiếp Avalon mà không cần dùng đến dấu phẩy động 32-bit cồng kềnh, hệ thống chuẩn hóa đầu ra cao độ dưới dạng số nguyên không dấu $16\text{ bit}$ ở định dạng \textbf{Q12.4} (với 12 bit phần nguyên và 4 bit phần phân số, tức $F_{0, \text{Q12.4}} = 16 \times F_0$).
+
+Độ phân giải của bit có trọng số nhỏ nhất (LSB) trong định dạng Q12.4 là:
+\begin{equation}
+\Delta F_{\text{LSB}} = \frac{1}{2^4} = \frac{1}{16} = \mathbf{0{,}0625\text{ Hz}}
+\end{equation}
+
+Hãy định lượng sai số lượng tử hóa mà bước nhảy $1/16\text{ Hz}$ này gây ra tại hai đầu cực trị của dải tần số tìm kiếm tiếng nói:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Ở vùng tần số thấp} $F_0 = 100\text{ Hz}$ (ứng với giọng nam trầm, $\tau \approx 160$):
+    \begin{equation}
+    \Delta \text{cents}_{100} = 1200 \times \log_2\left( \frac{100{,}0625}{100} \right) \approx \mathbf{1{,}0817\text{ cent}} \approx 1{,}08\text{ cent}
+    \end{equation}
+    \item \textbf{Ở vùng tần số cao} $F_0 = 500\text{ Hz}$ (ứng với giọng nữ cao hoặc trẻ em, $\tau \approx 32$):
+    \begin{equation}
+    \Delta \text{cents}_{500} = 1200 \times \log_2\left( \frac{500{,}0625}{500} \right) \approx \mathbf{0{,}2164\text{ cent}} \approx 0{,}22\text{ cent}
+    \end{equation}
+\end{itemize}
+
+Cả hai mức sai số lượng tử hóa $1{,}08\text{ cent}$ và $0{,}22\text{ cent}$ đều nhỏ hơn rất nhiều so với ngưỡng thính giác con người ($5\text{ cent}$). Điều này đưa đến một kết luận then chốt: \textbf{định dạng Q12.4 hoàn toàn bảo toàn độ mịn âm học của cao độ}, với điều kiện tiên quyết là vị trí cực trị dưới mẫu $\tau^*$ phải được tính toán chính xác qua phép nội suy liên tục trước khi chuyển sang miền số nguyên.
+
+\subsubsection*{Chỗ dễ vướng: Ở độ trễ lớn có cần nội suy không?}
+Người mới bắt đầu thường tự hỏi: \emph{"Ở vùng tần số thấp $\tau \approx 160$ ($100\text{ Hz}$), khoảng cách giữa hai mẫu trễ $\tau = 160$ và $\tau = 161$ chỉ chênh lệch $16000/160 - 16000/161 = 100 - 99{,}3789 \approx 0{,}621\text{ Hz}$, nhỏ hơn nhiều so với $16{,}13\text{ Hz}$ ở $\tau = 31$. Vậy liệu ta có thể bỏ nội suy ở vùng $\tau$ lớn không?"}
+
+Câu trả lời dứt khoát là \textbf{không}. Hãy tính bước nhảy cent tại $\tau = 160$:
+\begin{equation}
+\Delta \text{cents}_{160} = 1200 \times \log_2\left( \frac{161}{160} \right) \approx 10{,}78\text{ cent}
+\end{equation}
+Giá trị $10{,}78\text{ cent}$ vẫn gấp hơn \textbf{2 lần} ngưỡng nhận thức $5\text{ cent}$ của đôi tai! Hơn thế nữa, việc tạo nhánh rẽ có điều kiện (nội suy cho $\tau$ nhỏ nhưng bỏ qua cho $\tau$ lớn) chỉ làm phức tạp hóa máy trạng thái FSM và tiêu tốn thêm diện tích logic, trong khi không đem lại bất kỳ lợi ích nào về thông lượng. Do đó, phép nội suy cực trị liên tục được áp dụng đồng nhất cho mọi khung hữu thanh trên toàn dải $\tau \in [27, 213]$.
+
+\textit{Tóm lại: Lưới lấy mẫu thời gian rời rạc tạo ra bước nhảy tần số khổng lồ 16,13 Hz (55 cent) ở vùng chu kỳ ngắn; nội suy cực trị liên tục tau* là bắt buộc để vượt qua giới hạn mẫu nguyên, và định dạng Q12.4 đem lại độ phân giải cực mịn từ 0,22 đến 1,08 cent trên toàn dải cao độ tiếng nói.}

@@ -1,0 +1,77 @@
+% chuong_v3/fig_ch09_divider_arch.tex
+% So sánh ba phương án kiến trúc bộ chia phần cứng trên FPGA Cyclone V
+% (a) Tổ hợp thuần; (b) LPM_DIVIDE đường ống; (c) Tuần tự Radix-2 (lựa chọn chốt).
+\begin{tikzpicture}[
+    >=Stealth,
+    box/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=2pt,
+                align=center, font=\scriptsize, inner sep=4pt},
+    warnbox/.style={rectangle, draw=red!70!black, fill=red!6, thick, rounded corners=2pt,
+                    align=center, font=\scriptsize, inner sep=4pt},
+    optbox/.style={rectangle, draw=green!60!black, fill=green!8, thick, rounded corners=2pt,
+                   align=center, font=\scriptsize, inner sep=4pt},
+    line/.style={draw, thick, ->, shorten >=1pt}
+]
+
+    % =========================================================================
+    % PHƯƠNG ÁN 1: BỘ CHIA TỔ HỢP THUẦN
+    % =========================================================================
+    \node[warnbox, minimum width=4.5cm, minimum height=3.6cm] (opt1) at (0, 0) {};
+    \node[above, font=\scriptsize\bfseries, text=red!80!black] at (opt1.north) 
+        {(a) Bộ chia tổ hợp thuần (Combinational)};
+
+    \node[box, fill=white, minimum width=3.8cm] at (0, 0.9) {
+        \textbf{44 tầng trừ nối tiếp}\\[1pt]
+        $N$ tầng ô trừ có nhớ lan truyền
+    };
+    \node[font=\scriptsize, align=center] at (0, -0.4) {
+        Latency: \textbf{0 chu kỳ} (thuần tổ hợp)\\[1pt]
+        Đường tới hạn: $> 25\text{ ns}$ (44 tầng)\\[1pt]
+        $F_{\max} < 40\text{ MHz}$ (\textbf{vi phạm 50 MHz!})\\[1pt]
+        Tài nguyên: $\approx 350\text{ ALM}$ (không chốt)
+    };
+
+    % =========================================================================
+    % PHƯƠNG ÁN 2: BỘ CHIA ĐƯỜNG ỐNG LPM_DIVIDE
+    % =========================================================================
+    \node[box, minimum width=4.8cm, minimum height=3.6cm] (opt2) at (5.4, 0) {};
+    \node[above, font=\scriptsize\bfseries, text=blue!80!black] at (opt2.north) 
+        {(b) LPM\_DIVIDE đường ống (Intel IP)};
+
+    \node[box, fill=white, minimum width=4.2cm] at (5.4, 0.9) {
+        \textbf{44 tầng thanh ghi đường ống}\\[1pt]
+        Mỗi nhịp tính 1 bit thương số
+    };
+    \node[font=\scriptsize, align=center] at (5.4, -0.4) {
+        Latency: \textbf{44 chu kỳ}\\[1pt]
+        Throughput: \textbf{1 phép chia / chu kỳ}\\[1pt]
+        $F_{\max} > 150\text{ MHz}$ (đạt 50 MHz)\\[1pt]
+        Tài nguyên: $\approx 500\text{ ALM}$ (lãng phí!)\\[1pt]
+        \emph{Thừa thông lượng (chỉ cần 1 chia/khung)}
+    };
+
+    % =========================================================================
+    % PHƯƠNG ÁN 3: BỘ CHIA TUẦN TỰ RADIX-2 (LỰA CHỌN CHỐT)
+    % =========================================================================
+    \node[optbox, minimum width=5.0cm, minimum height=3.6cm] (opt3) at (11.0, 0) {};
+    \node[above, font=\scriptsize\bfseries, text=green!50!black] at (opt3.north) 
+        {(c) Bộ chia tuần tự Radix-2 (\textbf{Đã chốt})};
+
+    \node[box, fill=white, minimum width=4.4cm] at (11.0, 0.9) {
+        \textbf{1 bộ trừ duy nhất + Bộ dịch vòng}\\[1pt]
+        Vòng lặp tính toán $44\text{ nhịp}$
+    };
+    \node[font=\scriptsize, align=center] at (11.0, -0.4) {
+        Latency: \textbf{44 chu kỳ} ($880\text{ ns}$ tại 50 MHz)\\[1pt]
+        Throughput: 1 phép chia / 45 chu kỳ\\[1pt]
+        $F_{\max} > 150\text{ MHz}$ (dư dả ở 50 MHz)\\[1pt]
+        Tài nguyên: \textbf{$\approx 80\text{ ALM}$}, 0 DSP, 0 M10K\\[1pt]
+        \textbf{Chiếm 0,009\% ngân sách 500.000 chu kỳ!}
+    };
+
+    % Khung ghi chú phía dưới
+    \node[draw=gray!60, fill=gray!5, rounded corners=2pt, font=\scriptsize, align=center, inner sep=4pt] at (5.4, -2.4) {
+        \textbf{Đánh giá thiết kế:} Với tốc độ khung $10\text{ ms}$ (hop 160 mẫu = 500.000 chu kỳ ở 50 MHz), lõi FPGA chỉ thực hiện đúng \textbf{1 phép chia duy nhất} mỗi khung.\\
+        Phương án (c) tiết kiệm $> 80\%$ diện tích logic ALM so với bộ chia đường ống (b) trong khi đáp ứng hoàn hảo ngân sách thời gian thực.
+    };
+
+\end{tikzpicture}

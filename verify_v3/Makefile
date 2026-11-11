@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 clean
 
-all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08
+all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -140,5 +140,20 @@ ch08:
 	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch08_norm.exe', 'test_ch08_norm') if os.path.exists(f)]"
 	@echo "=== [ch08] All Chapter 8 verifications completed successfully ==="
 
+ch09:
+	@echo "=== [ch09] Running Praat 7.0.03 citations audit ==="
+	$(PYTHON) ch09_praat_lines.py > ch09_praat_lines.log
+	@echo "=== [ch09] Running mathematical, bit-width and dynamic range audit ==="
+	$(PYTHON) ch09_math_audit.py > ch09_math_audit.log
+	@echo "=== [ch09] Running chapter exercises verification ==="
+	$(PYTHON) ch09_exercises.py > ch09_exercises.log
+	@echo "=== [ch09] Running F0 twin and vector generation ==="
+	$(PYTHON) ch09_twin.py > ch09_twin.log
+	@echo "=== [ch09] Running HPS C reference F0 calculation test ==="
+	gcc -Wall -Wextra -O2 ../sw_v3/test_ch09_f0.c ../sw_v3/ch09_f0.c -I../sw_v3 -o test_ch09_f0
+	./test_ch09_f0
+	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch09_f0.exe', 'test_ch09_f0') if os.path.exists(f)]"
+	@echo "=== [ch09] All Chapter 9 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_*
