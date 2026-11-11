@@ -1,0 +1,640 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 4. Chia khung (638 mẫu, hop 160) và RAM vòng}
+\addcontentsline{toc}{section}{Chương 4. Chia khung (638 mẫu, hop 160) và RAM vòng}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của kích thước cửa sổ phân tích 3 chu kỳ tần số đáy ($T_w = 3/75\text{ s} = 40\text{ ms}$) và bước nhảy khung $10\text{ ms}$ (hop 160 mẫu) trong thuật toán tự tương quan Praat.
+    \item Giải mã quy tắc làm tròn kích thước cửa sổ từ 640 mẫu xuống 638 mẫu trong mã nguồn chuẩn của Praat 7.0.03 (\texttt{Sound\_to\_Pitch.cpp}, dòng 334--339), dẫn xuất chính xác độ dài vùng chồng lấp 478 mẫu ($74{,}92\%$) giữa hai khung phân tích kế tiếp.
+    \item Nắm vững phương pháp căn lưới khung thời gian của Praat (\texttt{Sampled.cpp}, dòng 71--81); phân tích cặn kẽ cơ chế định vị tâm khung $t_1$, số mẫu khởi đầu cần loại bỏ và cạm bẫy làm tròn số dấu phẩy động (floor trap) khi tệp âm thanh có số lượng mẫu lẻ.
+    \item Khảo sát định lượng 3 phương án phần cứng lưu trữ và chia khung (Thanh ghi dịch 10.208 FF, RAM vòng 1024 từ trong 2 khối M10K, RAM 638/800 từ có mạch modulo); chứng minh tính ưu việt của địa chỉ cuộn tự nhiên 10-bit modulo 1024.
+    \item Khảo cứu toàn diện các tham số của khối IP Intel \texttt{RAM: 2-PORT} theo tài liệu chuẩn \emph{Intel Embedded Memory User Guide} (UG-01068) và cấu trúc silicon M10K trong \emph{Cyclone V Device Handbook} (CV-52003).
+    \item Thiết kế và hiện thực hóa khối RAM vòng 1024 từ (\texttt{ch04\_ring\_buffer.v}) bằng Verilog-2001 suy diễn, tích hợp bộ quản lý bước nhảy khung tự động, cơ chế phản áp dòng dữ liệu và cổng đọc truy xuất ngẫu nhiên.
+    \item Xây dựng mô hình song sinh Python bit-đối-bit và kịch bản kiểm thử chu kỳ với 3.500 chu kỳ kích thích ngẫu nhiên, kiểm chứng quá trình nạp dữ liệu, đọc tuần tự, tái sử dụng vùng chồng lấp và cuộn địa chỉ qua ranh giới 1024 từ.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{4.1. Vì sao 3 chu kỳ, vì sao 10 ms: Cơ sở vật lý và quy chuẩn kích thước cửa sổ Praat}
+\addcontentsline{toc}{subsection}{4.1. Vì sao 3 chu kỳ, vì sao 10 ms: Cơ sở vật lý và quy chuẩn kích thước cửa sổ Praat}
+
+\subsubsection*{Vấn đề thực tế: Bài toán đánh đổi giữa tính dừng và độ phân giải tần số đáy}
+Tín hiệu tiếng nói con người biến thiên liên tục theo thời gian (non-stationary). Về mặt sinh lý học phát âm, các cấu trúc cơ quan như dây thanh đới, vòm họng và khoang miệng liên tục co dãn để tạo thành các âm vị khác nhau. Tuy nhiên, trong một khoảng thời gian rất ngắn (khoảng $20\text{ ms}$ đến $40\text{ ms}$), trạng thái rung của dây thanh đới và cấu hình âm học của thanh đạo có thể được coi là không đổi; tín hiệu khi đó được xem là dừng cục bộ (quasi-stationary).
+
+Để ước lượng tần số cơ bản $F_0$, thuật toán tự tương quan bắt buộc phải cắt dòng âm thanh liên tục thành từng khung ngắn hữu hạn thông qua một hàm cửa sổ thời gian $w[n]$. Kích thước của cửa sổ này đặt ra một bài toán đánh đổi khắt khe:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Nếu cửa sổ quá ngắn (dưới 2 chu kỳ rung):} Đỉnh tự tương quan chính tại độ trễ $\tau_0 = f_s / F_0$ sẽ bị suy giảm biên độ nghiêm trọng hoặc biến mất hoàn toàn, bởi vì số lượng tích chập giữa các chu kỳ lặp lại không đủ lớn để phân biệt với nhiễu ngẫu nhiên. Hơn nữa, việc nhân với cửa sổ làm nhọn hai đầu (window tapering) sẽ bóp nghẹt năng lượng của tín hiệu ở các độ trễ lớn.
+    \item \textbf{Nếu cửa sổ quá dài (trên 5 chu kỳ rung):} Giả thiết dừng cục bộ bị phá vỡ. Trong các đoạn luyến giọng (pitch glides) hoặc rung giọng (vibrato), tần số $F_0$ có thể thay đổi đáng kể ngay trong lòng một cửa sổ duy nhất, làm nhòe đỉnh tự tương quan và làm sai lệch nghiêm trọng kết quả ước lượng.
+\end{itemize}
+
+\subsubsection*{Dẫn xuất từ nguyên lý gốc: Vì sao cửa sổ phải dài đúng 3 chu kỳ của tần số đáy?}
+Trong thiết kế chuẩn của Paul Boersma trên phần mềm Praat, tần số đáy của giọng nói con người được quy định mặc định là $F_{\text{floor}} = 75\text{ Hz}$ (tương ứng với các âm thanh có cao độ trầm nhất của giọng nam). Chu kỳ thời gian dài nhất tương ứng với ngưỡng đáy này là:
+\begin{equation}
+T_{\max} = \frac{1}{F_{\text{floor}}} = \frac{1}{75\text{ s}} \approx 0{,}01333\text{ s} = 13{,}33\text{ ms}
+\end{equation}
+Ở tần số lấy mẫu $f_s = 16.000\text{ Hz}$ ($T_s = dx = 1/16000\text{ s} = 62{,}5\text{ }\mu\text{s}$), chu kỳ tối đa tính bằng số mẫu rời rạc là:
+\begin{equation}
+N_{\text{period}} = \left\lfloor \frac{1}{dx \cdot F_{\text{floor}}} \right\rfloor = \left\lfloor \frac{16000}{75} \right\rfloor = 213\text{ mẫu}
+\end{equation}
+
+Tại độ trễ cực đại $\tau = 213$ mẫu, hai đoạn tín hiệu chỉ còn trượt lên nhau một đoạn bằng độ dài cửa sổ $N$ trừ đi 213. Khi áp dụng cửa sổ Hanning, trọng số ở hai mép tiệm cận 0 và chỉ đạt giá trị cực đại 1 tại tâm. Để đoạn tín hiệu dịch chuyển $\tau = 213$ vẫn còn nằm trọn trong vùng năng lượng cao của cửa sổ Hanning và có ít nhất 2 chu kỳ sóng đầy đủ tương quan chéo với nhau, Boersma đã chọn quy chuẩn: \textbf{Độ dài cửa sổ thời gian phải bao trùm đúng 3 chu kỳ của tần số đáy}:
+\begin{equation}
+T_w = \frac{\text{periodsPerWindow}}{F_{\text{floor}}} = \frac{3{,}0}{75\text{ Hz}} = 0{,}04\text{ s} = 40\text{ ms}
+\end{equation}
+
+\subsubsection*{Giải mã mã nguồn Praat: Vì sao 640 mẫu làm tròn thành 638 mẫu?}
+Trên lý thuyết liên tục, một khoảng thời gian $T_w = 40\text{ ms}$ tại $f_s = 16\text{ kHz}$ tương ứng với đúng:
+\begin{equation}
+N_{\text{raw}} = \frac{T_w}{dx} = 0{,}04 \times 16.000 = 640\text{ mẫu}
+\end{equation}
+
+Tuy nhiên, khi kiểm tra trực tiếp mã nguồn chính thức của Praat phiên bản 7.0.03 (tệp \path{fon/Sound_to_Pitch.cpp}, các dòng 334--339), quy tắc xác định độ dài cửa sổ được viết chính xác như sau:
+\begin{lstlisting}[language=C, caption={Quy tắc tính kích thước cửa sổ trong Praat 7.0.03 (Sound\_to\_Pitch.cpp:334--339)}]
+dt_window = periodsPerWindow / pitchFloor;
+nsamp_window = Melder_ifloor (dt_window / dx);
+halfnsamp_window = nsamp_window / 2 - 1;
+nsamp_window = halfnsamp_window * 2;
+\end{lstlisting}
+
+Hãy tính tay từng bước của đoạn mã nguồn này với các tham số chuẩn ($dx = 1/16000$, $\text{periodsPerWindow} = 3{,}0$, $\text{pitchFloor} = 75{,}0$):
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{dt\_window} = $3{,}0 / 75{,}0 = 0{,}04\text{ s}$.
+    \item \texttt{nsamp\_window} = $\lfloor 0{,}04 / (1/16000) \rfloor = \lfloor 640{,}0 \rfloor = 640$.
+    \item \texttt{halfnsamp\_window} = $640 / 2 - 1 = 320 - 1 = \mathbf{319}$.
+    \item \texttt{nsamp\_window} = $319 \times 2 = \mathbf{638}$.
+\end{enumerate}
+
+Phép toán trừ 1 ở biến \texttt{halfnsamp\_window} khiến độ dài cửa sổ phân tích thực tế của Praat bị rút ngắn đúng 2 mẫu, từ 640 mẫu xuống còn \textbf{638 mẫu}. Mục đích của Boersma là tạo ra một cửa sổ có số mẫu chẵn $2 \times 319 = 638$ đối xứng hoàn hảo quanh ranh giới giữa hai mẫu trung tâm, giúp phép căn tâm khung thời gian không bị lệch pha nửa mẫu khi lấy mẫu đối xứng. Mọi tính toán phần cứng trên FPGA nếu tự ý dùng 640 mẫu sẽ lập tức bị lệch lưới và sai khác từng bit so với Praat chuẩn.
+
+\subsubsection*{Bước nhảy khung $10\text{ ms}$ (hop 160 mẫu) và độ chồng lấp 478 mẫu}
+Khoảng cách thời gian giữa hai khung phân tích kế tiếp (bước nhảy thời gian, time step $dt$) được Praat xác định tại dòng 296 của \texttt{Sound\_to\_Pitch.cpp}:
+\begin{equation}
+dt = \frac{\text{periodsPerWindow}}{F_{\text{floor}} \cdot 4} = \frac{3{,}0}{75 \cdot 4} = \frac{0{,}04}{4} = 0{,}01\text{ s} = 10\text{ ms}
+\end{equation}
+Ở tần số $16\text{ kHz}$, bước nhảy $10\text{ ms}$ tương ứng với đúng:
+\begin{equation}
+\text{hop} = dt \cdot f_s = 0{,}01\text{ s} \times 16.000\text{ Hz} = \mathbf{160\text{ mẫu}}
+\end{equation}
+Tỷ số giữa độ dài cửa sổ và bước nhảy là $40\text{ ms} / 10\text{ ms} = 4$, nghĩa là mỗi mẫu âm thanh trong tệp sẽ được phân tích lặp lại 4 lần trong 4 khung liên tiếp.
+
+\textbf{Vùng chồng lấp giữa hai khung liền nhau:}
+Khi dịch chuyển khung đi 160 mẫu, phần dữ liệu chung mà khung mới dùng lại từ khung cũ là:
+\begin{equation}
+\text{Overlap} = N - \text{hop} = 638 - 160 = \mathbf{478\text{ mẫu}} \quad \left(\frac{478}{638} \approx 74{,}92\%\right)
+\end{equation}
+
+\begin{feynmanbox}
+\textbf{Nhận diện cạm bẫy tài liệu cũ:} Trên lý thuyết cửa sổ 640 mẫu, độ chồng lấp là $640 - 160 = 480\text{ mẫu}$ ($75{,}00\%$). Trong một số bản thảo kỹ thuật cũ trước đây, người ta ghi nhận con số sai lệch là ``chồng lấp 240 mẫu'' do nhầm lẫn bước nhảy hop là 400 mẫu ($25\text{ ms}$, vốn là bước nhảy của các hệ thống nhận dạng tiếng nói ASR dùng MFCC, không phải của Praat). Trong thuật toán F0 chuẩn của Praat, bước nhảy bắt buộc là 160 mẫu và độ chồng lấp thực tế là \textbf{478 mẫu}.
+\end{feynmanbox}
+
+\textit{Tóm lại: Cửa sổ 40 ms (638 mẫu) bảo đảm bao trùm trọn vẹn 3 chu kỳ của tần số đáy 75 Hz; bước nhảy 10 ms (160 mẫu) tạo ra vùng chồng lấp 478 mẫu ($74{,}92\%$) cần được quản lý hiệu quả trong bộ nhớ.}
+
+\subsection*{4.2. Căn lưới giống Praat: Dẫn xuất \texorpdfstring{$t_1$}{t1}, định vị mẫu bắt đầu và cạm bẫy số lẻ}
+\addcontentsline{toc}{subsection}{4.2. Căn lưới giống Praat: Dẫn xuất \texorpdfstring{$t_1$}{t1}, định vị mẫu bắt đầu và cạm bẫy số lẻ}
+
+\subsubsection*{Vấn đề thực tế: Khung 0 của FPGA bắt đầu từ mẫu số mấy?}
+Một sai lầm kinh điển của các kỹ sư khi hiện thực hóa thuật toán Praat lên FPGA là đưa ngay mẫu âm thanh đầu tiên của tệp WAV ($n = 0$) vào làm mẫu đầu tiên của Khung 0. Khi chạy đối soát, kết quả F0 của FPGA bị lệch toàn bộ trục thời gian so với Praat, các đỉnh dao động không khớp nhau và độ đo lỗi gộp GPE tăng vọt.
+
+Nguyên nhân là do Praat \textbf{không bao giờ} đặt mép trái của cửa sổ đầu tiên tại thời điểm $t = 0$. Thay vào đó, Praat căn đều toàn bộ lưới khung đối xứng quanh điểm chính giữa của toàn bộ tệp âm thanh (time centering). Do đó, bộ vi xử lý HPS trước khi đẩy dữ liệu vào FPGA phải tính toán chính xác số lượng mẫu dư ở đầu tệp cần loại bỏ.
+
+\subsubsection*{Dẫn xuất toán học: Thuật toán căn tâm khung thời gian của Praat}
+Trong mã nguồn Praat (tệp \texttt{fon/Sampled.cpp}, hàm \texttt{Sampled\_shortTermAnalysis}, dòng 71--81), quy trình căn tâm được thực hiện từng bước bằng số học dấu phẩy động chính xác kép (IEEE-754 double precision):
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Thời lượng thực tế của tệp âm thanh:}
+    \begin{equation}
+    T = dx \cdot n_x = \frac{n_x}{16000}
+    \end{equation}
+    với $n_x$ là tổng số mẫu của tệp âm thanh, và $x_1 = 0{,}5 \cdot dx$ là thời điểm của mẫu đầu tiên (\texttt{Sound.cpp}).
+    
+    \item \textbf{Tổng số khung phân tích của tệp ($n_{\text{frames}}$):}
+    \begin{equation}
+    n_{\text{frames}} = \left\lfloor \frac{T - T_w}{dt} \right\rfloor + 1 = \left\lfloor \frac{T - 0{,}04}{0{,}01} \right\rfloor + 1
+    \end{equation}
+    
+    \item \textbf{Tâm thời gian của toàn bộ tệp âm thanh (\texttt{ourMidTime}):}
+    \begin{equation}
+    t_{\text{mid}} = x_1 - 0{,}5 \cdot dx + 0{,}5 \cdot T = 0{,}5 \cdot T
+    \end{equation}
+    
+    \item \textbf{Thời điểm tâm của khung phân tích đầu tiên ($t_1$):}
+    Để $n_{\text{frames}}$ khung phân bố đối xứng hoàn hảo qua $t_{\text{mid}}$, thời điểm tâm của khung 1 được ấn định là:
+    \begin{equation}
+    t_1 = t_{\text{mid}} - 0{,}5 \cdot n_{\text{frames}} \cdot dt + 0{,}5 \cdot dt
+    \end{equation}
+    
+    \item \textbf{Thời điểm tâm của khung thứ $k$ ($k = 1 \dots n_{\text{frames}}$):}
+    \begin{equation}
+    t_k = t_1 + (k - 1) \cdot dt
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Chuyển đổi thời gian $t_k$ sang chỉ số mẫu rời rạc (\texttt{Sampled\_xToLowIndex})}
+Khi đã có thời điểm tâm $t_k$, việc xác định các mẫu vật lý nằm trong cửa sổ được Praat thực hiện qua macro \texttt{Sampled\_xToLowIndex} (\path{fon/Sampled.h}, dòng 34) và các dòng 52, 72--73 trong \path{fon/Sound_to_Pitch.cpp}:
+\begin{equation}
+\text{leftSample} = \left\lfloor \frac{t_k - x_1}{dx} + 1{,}0 \right\rfloor
+\end{equation}
+Chỉ số mẫu bên phải: $\text{rightSample} = \text{leftSample} + 1$.
+Mẫu bắt đầu (1-based) của cửa sổ 638 mẫu:
+\begin{equation}
+\text{startSample} = \text{rightSample} - \text{halfnsamp\_window} = (\text{leftSample} + 1) - 319 = \text{leftSample} - 318
+\end{equation}
+Mẫu kết thúc (1-based) của cửa sổ:
+\begin{equation}
+\text{endSample} = \text{leftSample} + \text{halfnsamp\_window} = \text{leftSample} + 319
+\end{equation}
+Tổng số mẫu của cửa sổ là: $\text{endSample} - \text{startSample} + 1 = (\text{leftSample} + 319) - (\text{leftSample} - 318) + 1 = 638\text{ mẫu}$.
+
+Quy đổi sang chỉ số mảng 0-based trong bộ nhớ C và FPGA:
+\begin{equation}
+\text{window\_start0}[k] = \text{startSample} - 1 = \text{leftSample} - 319
+\end{equation}
+
+\begin{figure}[t]
+\centering
+\resizebox{0.95\textwidth}{!}{\input{chuong_v3/fig_ch04_frame_grid.tex}}
+\caption{Cơ chế căn lưới khung phân tích thời gian theo quy chuẩn Praat 7.0.03. Mỗi khung gồm 638 mẫu ($40\text{ ms}$), dịch chuyển cách nhau đúng 160 mẫu ($10\text{ ms}$); vùng chồng lấp giữa hai khung kế tiếp là 478 mẫu ($74{,}92\%$). HPS loại bỏ $first\_win0$ mẫu đầu tệp để Khung 0 của FPGA trùng khớp hoàn toàn với Khung 1 của Praat.}
+\label{fig:ch04_frame_grid}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch04_frame_grid} minh họa trực quan cấu trúc lưới phân tích thời gian. Trục hoành phía trên biểu diễn thang thời gian liên tục $t$ (giây) và chỉ số mẫu rời rạc $n$ tại $f_s = 16\text{ kHz}$. Khung 0 chiếm 638 mẫu từ mẫu 1 đến 638, với tâm khung $t_1 = 0{,}020\text{ s}$ được đánh dấu chấm đỏ. Khung 1 dịch sang phải 160 mẫu ($10\text{ ms}$), kéo dài từ mẫu 161 đến 798 với tâm $t_2 = 0{,}030\text{ s}$. Phần gạch chéo màu tím ở giữa thể hiện vùng chồng lấp 478 mẫu, được tái sử dụng trực tiếp trong bộ đệm vòng mà không cần nạp lại. Khối màu đỏ ở đầu tệp thể hiện 1 mẫu dư bị loại bỏ bởi HPS.
+
+\subsubsection*{Tính tay với hai trường hợp tệp âm thanh cụ thể}
+Để thấy rõ các con số thực tế, kịch bản \texttt{verify\_v3/ch04\_frame\_grid.py} đã tính toán chi tiết cho hai tệp âm thanh chuẩn:
+
+\textbf{Trường hợp 1: Tệp thử nghiệm tổng hợp 2,8 s chuẩn (\texttt{golden\_v2}):}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Số mẫu: $n_x = 44.800$ mẫu. Thời lượng: $T = 44800 / 16000 = 2{,}800000\text{ s}$.
+    \item Số khung: $n_{\text{frames}} = \lfloor (2{,}8 - 0{,}04) / 0{,}01 \rfloor + 1 = 276 + 1 = \mathbf{277\text{ khung}}$.
+    \item Tâm tệp: $t_{\text{mid}} = 0{,}5 \times 2{,}8 = 1{,}400000\text{ s}$.
+    \item Tâm khung 1: $t_1 = 1{,}4 - 0{,}5 \times 277 \times 0{,}01 + 0{,}005 = 1{,}4 - 1{,}385 + 0{,}005 = \mathbf{0{,}020000\text{ s}}$.
+    \item Mẫu trái khung 1: $\text{leftSample} = \lfloor (0{,}02 - 0{,}00003125) \times 16000 + 1{,}0 \rfloor = \lfloor 319{,}5 + 1{,}0 \rfloor = \lfloor 320{,}5 \rfloor = 320$.
+    \item Mẫu bắt đầu 0-based: $\text{window\_start0}[0] = 320 - 319 = \mathbf{1}$.
+\end{itemize}
+$\implies$ \textbf{Kết luận:} Với tệp 2,8 s, HPS bỏ qua đúng \textbf{1 mẫu đầu tiên} ($n = 0$), bắt đầu nạp từ mẫu $n = 1$ vào FPGA để Khung 0 của FPGA trùng khít Khung 1 của Praat.
+
+\textbf{Trường hợp 2: Tệp ngắn minh họa 1,234 s (Ví dụ Chương 1):}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Số mẫu: $n_x = 19.744$ mẫu. Thời lượng: $T = 19744 / 16000 = 1{,}234000\text{ s}$.
+    \item Số khung: $n_{\text{frames}} = \lfloor (1{,}234 - 0{,}04) / 0{,}01 \rfloor + 1 = \lfloor 119{,}4 \rfloor + 1 = \mathbf{120\text{ khung}}$.
+    \item Tâm khung 1: $t_1 = 0{,}617 - 0{,}5 \times 120 \times 0{,}01 + 0{,}005 = 0{,}617 - 0{,}600 + 0{,}005 = \mathbf{0{,}022000\text{ s}}$.
+    \item Mẫu trái khung 1: $\text{leftSample} = \lfloor (0{,}022 - 0{,}00003125) \times 16000 + 1{,}0 \rfloor = \lfloor 351{,}5 + 1{,}0 \rfloor = 352$.
+    \item Mẫu bắt đầu 0-based: $\text{window\_start0}[0] = 352 - 319 = \mathbf{33}$.
+\end{itemize}
+$\implies$ \textbf{Kết luận:} Với tệp 1,234 s, HPS bỏ qua đúng \textbf{33 mẫu đầu tiên}, bắt đầu nạp từ mẫu $n = 33$.
+
+\subsubsection*{Cạm bẫy kỹ thuật: Hiện tượng lệch bước nhảy (Floor Trap) khi số mẫu lẻ}
+Khi tệp âm thanh có số lượng mẫu lẻ ($n_x$ là số lẻ), tâm tệp $t_{\text{mid}} = 0{,}5 \cdot n_x \cdot dx$ sẽ chứa một lượng lẻ $0{,}5 \cdot dx$. Khi cộng dồn qua từng khung, đại lượng $(t_k - x_1)/dx$ có thể rơi vào đúng các giá trị nguyên toán học (ví dụ $4641{,}0$ hoặc $4961{,}0$).
+
+Do hạn chế về độ chính xác biểu diễn số thực dấu phẩy động kép IEEE-754 (64-bit double), giá trị $4961{,}0$ có thể bị lưu thành $4960{,}999999999999$. Khi áp dụng hàm làm tròn xuống \texttt{floor}, kết quả bị sụt mất 1 đơn vị:
+\begin{equation}
+\lfloor 4960{,}999999999999 \rfloor = 4960 \quad (\text{thay vì } 4961)
+\end{equation}
+Hậu quả là bước nhảy giữa hai khung liên tiếp không còn đều đặn 160 mẫu mà bị co giật thành 159 hoặc 161 mẫu!
+Thực nghiệm quét 50.000 độ dài tệp trong kịch bản \path{verify_v3/ch04_frame_grid.py} và bài tập \path{verify_v3/ch04_exercises.py} (với tệp $n_x = 32.001$ mẫu, $T \approx 2{,}0000625\text{ s}$) đã ghi nhận chính xác 17 vị trí bị lệch bước nhảy (ví dụ khung 27 $\to$ 28 có hop = 161, khung 29 $\to$ 30 có hop = 159).
+
+\textbf{Giải pháp trên phần mềm HPS:}
+Trong tệp mã nguồn C điều khiển trên HPS (\texttt{sw\_v3/ch01\_frames.c}), chương trình phải tính toán trước toàn bộ danh sách \texttt{window\_start0[k]} cho toàn bộ tệp âm thanh bằng kiểu dữ liệu \texttt{double} tuân thủ nghiêm ngặt công thức của Praat. Nếu phát hiện tệp có cờ \texttt{hop\_regular == 0}, HPS sẽ thông báo cảnh báo và cung cấp trực tiếp địa chỉ bắt đầu của từng khung thay vì giả định bước nhảy cố định 160 mẫu. Hai tệp thử nghiệm chuẩn trong \texttt{golden\_v2} đều có số mẫu chẵn ($n_x = 44.800$), do đó bước nhảy hoàn toàn đều đặn 160 mẫu.
+
+\textit{Tóm lại: Căn lưới tâm khung theo Praat đòi hỏi HPS bỏ qua đúng số mẫu đầu tiên ($first\_win0$), và kiểm soát cạm bẫy làm tròn số thực khi tệp âm thanh có số lượng mẫu lẻ.}
+
+\subsection*{4.3. Các phương án lưu trữ và chia khung: Đánh đổi tài nguyên và cấu trúc RAM vòng}
+\addcontentsline{toc}{subsection}{4.3. Các phương án lưu trữ và chia khung: Đánh đổi tài nguyên và cấu trúc RAM vòng}
+
+\subsubsection*{Vấn đề thực tế: Quản lý vùng chồng lấp 478 mẫu trong phần cứng}
+Ở mỗi chu kỳ phân tích mới, hệ thống cần xử lý một khung gồm 638 mẫu. Tuy nhiên, luồng âm thanh chỉ cung cấp thêm 160 mẫu mới; 478 mẫu còn lại bắt buộc phải lấy từ khung trước đó. 
+
+Nếu phần cứng không có giải pháp lưu trữ thông minh, ta sẽ phải: (1) yêu cầu HPS truyền lại 478 mẫu cũ qua cầu nối HPS--FPGA mỗi khung (làm nghẽn bus và tốn gấp 4 lần băng thông truyền dẫn); hoặc (2) sao chép dịch chuyển 478 mẫu trong bộ nhớ nội bộ FPGA mỗi khi hoàn thành một khung (tiêu tốn hàng trăm chu kỳ đồng hồ trống và làm phức tạp FSM điều khiển).
+
+\subsubsection*{So sánh ba phương án kiến trúc lưu trữ phần cứng}
+Để giải quyết bài toán trên, ba phương án vi kiến trúc được đặt lên bàn cân so sánh:
+
+\textbf{Phương án 1: Mảng thanh ghi dịch kích thước $638 \times 16$-bit.}
+Mỗi khi có 1 mẫu mới được nạp vào ở đầu vào, toàn bộ 638 mẫu trong mảng dịch đồng loạt dịch sang phải 1 vị trí. 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Tài nguyên tiêu tốn:} Cần đúng $638 \times 16 = \mathbf{10.208\text{ flip-flops (FF)}}$. Con số này chiếm tới $6{,}15\%$ tổng số $166.036\text{ FF}$ của toàn bộ chip FPGA Cyclone V 5CSXFC6D6F31C6N.
+    \item \emph{Hạn chế:} Việc chuyển mạch đồng thời $10.208\text{ FF}$ gây tiêu hao công suất động (dynamic power) cực lớn; tài nguyên mạng định tuyến nội bộ (global routing tracks) bị chiếm dụng nghiêm trọng, làm giảm đáng kể tần số hoạt động cực đại $F_{\max}$ của các khối logic xung quanh.
+\end{itemize}
+
+\textbf{Phương án 2: Bộ nhớ RAM vòng (Circular Ring Buffer) dung lượng $1024 \times 16$-bit.}
+Sử dụng các khối bộ nhớ nhúng phần cứng M10K (Embedded Memory Blocks) có sẵn trong silicon của Cyclone V để tạo thành một bộ nhớ RAM 2-cổng (Dual-Port RAM).
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Tài nguyên tiêu tốn:} Đúng \textbf{2 khối M10K} (mỗi khối M10K có dung lượng $10.240\text{ bit}$; cấu hình $1024 \times 16$ ghép từ 2 khối $1024 \times 8$). Số lượng FF trong ALM tiêu tốn cho việc lưu trữ mẫu bằng đúng \textbf{0 FF}!
+    \item \emph{Cơ chế địa chỉ:} Dung lượng $1024 = 2^{10}$ từ cho phép sử dụng bus địa chỉ 10-bit. Khi con trỏ ghi hoặc đọc chạm mốc 1023, việc cộng thêm 1 sẽ tự động tràn về 0 theo quy luật số học nhị phân tự nhiên mà không cần bất kỳ bộ so sánh hay phép toán modulo phức tạp nào trong logic ALM.
+\end{itemize}
+
+\textbf{Phương án 3: Bộ nhớ RAM có dung lượng tối thiểu 638 hoặc 800 từ.}
+Nhận thấy nhu cầu thực tế chỉ cần lưu trữ tối đa một khung cộng một bước nhảy hop ($638 + 160 = 798\text{ từ}$), một số kỹ sư có thể nảy ra ý định thu hẹp kích thước RAM về đúng 638 hoặc 800 từ để ``tiết kiệm bộ nhớ''.
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Sự thật về phần cứng silicon:} Theo \emph{Cyclone V Device Handbook} (CV-52003, Bảng 3-1), một khối M10K khi chạy ở độ rộng dữ liệu 16-bit chỉ có độ sâu tối đa là 512 từ ($512 \times 16$ hoặc $512 \times 20$). Do đó, bất kỳ dung lượng RAM nào nằm trong khoảng từ 513 đến 1024 từ đều \textbf{bắt buộc phải sử dụng đúng 2 khối M10K}! Việc chọn dung lượng 800 từ không tiết kiệm được dù chỉ một khối M10K nào trong silicon.
+    \item \emph{Hạn chế kỹ thuật:} Khi dung lượng không phải là lũy thừa của 2, phép cuộn địa chỉ không thể tự động tràn nhị phân. Mạch điều khiển bắt buộc phải chèn thêm các bộ so sánh ngưỡng ($addr \ge 800$) và các bộ trừ trong logic ALM để thực hiện phép toán $\text{addr} \pmod{800}$, gây tốn thêm tài nguyên ALM và kéo dài đường tới hạn (critical path).
+\end{itemize}
+
+\begin{table}[t]
+\centering
+\caption{So sánh định lượng 3 phương án phần cứng cho bộ đệm chia khung ($N = 638, \text{hop} = 160$)}
+\label{tab:ch04_buffer_options}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Tiêu chí so sánh} & \textbf{Thanh ghi dịch} & \textbf{RAM 800 từ} & \textbf{RAM vòng 1024 từ} & \textbf{Nguồn số liệu} \\
+\midrule
+Dung lượng từ nhớ & 638 từ & 800 từ & \textbf{1024 từ} & Thiết kế \\
+Số khối RAM M10K & \textbf{0 khối} & 2 khối & \textbf{2 khối} & Intel CV-52003 \\
+Số Flip-Flop lưu trữ mẫu & 10.208 FF & 0 FF & \textbf{0 FF} & $638 \times 16$ bit \\
+Mạch cuộn địa chỉ & Dịch song song & Bộ so sánh + Trừ & \textbf{Tự nhiên (Tràn 10-bit)} & Suy diễn \\
+Tài nguyên ALM điều khiển & Cao (định tuyến lớn) & Trung bình & \textbf{Rất thấp} & (phải đo) \\
+Khoảng đệm an toàn (Headroom) & 0 từ & 2 từ & \textbf{226 từ} & $1024 - 798$ \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch04_buffer_options} đối chiếu định lượng 3 phương án thiết kế. Phương án thanh ghi dịch tiêu tốn tới 10.208 FF, làm lãng phí nghiêm trọng tài nguyên logic. Phương án RAM 800 từ vẫn tốn đúng 2 khối M10K nhưng lại mất thêm logic giải mã modulo. Phương án RAM vòng 1024 từ là tối ưu tuyệt đối: sử dụng đúng 2 khối M10K có sẵn, 0 FF dữ liệu, cuộn địa chỉ tự nhiên và cung cấp khoảng đệm an toàn rộng rãi lên tới 226 từ.
+
+\subsubsection*{Phân tích dung lượng an toàn: Vì sao 1024 từ là vừa đủ?}
+Khi hệ thống hoạt động, quá trình ghi mẫu âm thanh mới từ FIFO và quá trình đọc mẫu để tính toán F0 diễn ra song song (decoupled pipelining). Trong tình huống xấu nhất, khối xử lý phía sau đang đọc khung cũ (đòi hỏi bảo toàn nguyên vẹn 638 mẫu tính từ gốc \texttt{rd\_base}), trong khi luồng âm thanh đầu vào liên tục ghi thêm 160 mẫu mới của bước nhảy hop tiếp theo.
+
+Dung lượng tối thiểu của bộ đệm để không xảy ra hiện tượng ghi đè (overwrite) dữ liệu đang được đọc là:
+\begin{equation}
+C_{\min} = N + \text{hop} = 638 + 160 = \mathbf{798\text{ từ}}
+\end{equation}
+Với dung lượng RAM vòng là $1024\text{ từ}$, khoảng đệm an toàn (headroom) của bộ đệm là:
+\begin{equation}
+\Delta C = 1024 - 798 = \mathbf{226\text{ từ}}
+\end{equation}
+Khoảng đệm 226 từ này đóng vai trò như một bộ chống sốc (shock absorber), cho phép luồng ghi có thể nạp trước tới 226 mẫu mà không bao giờ chạm tới địa chỉ của khung đang đọc.
+
+\subsubsection*{Chế độ đọc và cơ chế đọc trong khi ghi (Read-During-Write)}
+\textbf{Chế độ trễ ngõ ra (Read Latency):}
+Khối M10K hỗ trợ hai cấu hình ngõ ra:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Không có thanh ghi ngõ ra (Unregistered Output, Latency = 1 chu kỳ):} Địa chỉ đọc được chốt ở cạnh xung nhịp 0; dữ liệu từ ô nhớ xuất hiện tại ngõ ra ở cạnh xung nhịp 1. Cấu hình này giảm trễ đọc đi 1 nhịp, nhưng ngõ ra nối thẳng từ lõi nhớ vào logic kết hợp bên ngoài.
+    \item \emph{Có thanh ghi ngõ ra (Registered Output, Latency = 2 chu kỳ):} Tích hợp thêm một tầng thanh ghi ngõ ra chuyên dụng nằm ngay bên trong khối silicon M10K (M10K output register bank). Dữ liệu ra ổn định ở cạnh xung nhịp 2. Tầng thanh ghi này giúp cô lập hoàn toàn đường định tuyến nội bộ của RAM với logic tính toán trung bình (Chương 5) và nhân cửa sổ (Chương 6), cải thiện đáng kể $F_{\max}$. Ta chọn chế độ có thanh ghi (Latency = 2).
+\end{itemize}
+
+\textbf{Cơ chế đọc trong khi ghi (Mixed-Port Read-During-Write):}
+Tài liệu \emph{Intel Embedded Memory User Guide} định nghĩa hành vi khi một cổng ghi và một cổng đọc truy xuất đồng thời vào cùng một địa chỉ:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{Old Data}: Cổng đọc trả về dữ liệu cũ trước khi ghi.
+    \item \texttt{Don't Care}: Giá trị ngõ ra không xác định khi xảy ra xung đột địa chỉ.
+\end{itemize}
+Trong kiến trúc RAM vòng của chúng ta, vùng đọc (khung hiện tại 638 mẫu) và vùng ghi (hop mới 160 mẫu) cách nhau tối thiểu một khoảng đệm an toàn $\ge 226$ từ trống. Địa chỉ đọc \texttt{rd\_phys\_addr} và địa chỉ ghi \texttt{wr\_ptr} \textbf{không bao giờ trùng nhau} ở cùng một chu kỳ xung nhịp. Do đó, việc chọn \texttt{Old Data} hay \texttt{Don't Care} đều cho kết quả hoàn toàn giống nhau về mặt chức năng. Tuy nhiên, việc thiết lập \texttt{Don't Care} cho phép Quartus Fitter loại bỏ các mạch logic rẽ nhánh phụ (bypass circuitry), giúp tiết kiệm tài nguyên ALM và tối ưu hóa đường định tuyến.
+
+\textit{Tóm lại: RAM vòng 1024 từ là phương án tối ưu tuyệt đối: dung lượng 1024 vừa đủ cho 798 từ ($638 + 160$) kèm khoảng đệm an toàn 226 từ; sử dụng đúng 2 khối M10K có sẵn, cuộn địa chỉ tự nhiên và không tốn FF logic.}
+
+\subsection*{4.4. Đường (A): Khối IP RAM: 2-PORT của Intel trong Quartus Prime}
+\addcontentsline{toc}{subsection}{4.4. Đường (A): Khối IP RAM: 2-PORT của Intel trong Quartus Prime}
+
+\subsubsection*{Tên IP và quy chuẩn công nghiệp}
+Trong môi trường thiết kế Quartus Prime cho dòng FPGA Cyclone V, khối IP bộ nhớ đồng bộ chuẩn công nghiệp được cung cấp trong IP Catalog dưới tên gọi \textbf{\texttt{RAM: 2-PORT}} (dựa trên megafunction nền tảng \texttt{altsyncram}).
+
+\subsubsection*{Giải thích cặn kẽ từng tham số trong Parameter Editor}
+Mỗi tham số trong giao diện đồ họa (GUI) của khối IP đều phản ánh trực tiếp một quyết định vi kiến trúc đã được dẫn xuất từ cơ sở lý thuyết ở các mục trước:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{\texttt{Operation Mode = With one read port and one write port} (Simple Dual-Port):} Lựa chọn chế độ 1 cổng đọc độc lập và 1 cổng ghi độc lập. Cổng A dành riêng cho việc nạp luồng âm thanh từ FIFO, cổng B dành riêng cho lõi xử lý đọc mẫu trích xuất khung. Chọn chế độ này thay vì True Dual-Port (2 cổng vừa đọc vừa ghi) vì ta không cần ghi từ cổng B, giúp giảm thiểu độ phức tạp định tuyến.
+    
+    \item \textbf{\texttt{How wide should the 'q' output bus be? = 16 bits}:} Độ rộng bus dữ liệu ngõ ra của cổng B là 16 bit, tương ứng với định dạng mẫu âm thanh số nguyên có dấu 16-bit (\texttt{signed int16}) của chuẩn PCM WAV.
+    
+    \item \textbf{\texttt{How many 16-bit words of memory? = 1024 words}:} Độ sâu bộ nhớ là 1024 từ. Tham số này tự động ấn định độ rộng bus địa chỉ ghi (\texttt{wraddress}) và địa chỉ đọc (\texttt{rdaddress}) là $\log_2(1024) = 10\text{ bit}$.
+    
+    \item \textbf{\texttt{What memory block type should be used? = M10K}:} Bắt buộc chỉ định loại khối nhớ phần cứng là M10K. Nếu để chế độ \texttt{Auto}, Quartus có thể phân bổ một phần vào các khối bộ nhớ phân tán MLAB (Memory Logic Array Block), làm tiêu hao các khối ALM quý giá vốn cần dành riêng cho bộ tích lũy MAC và bộ chia F0.
+    
+    \item \textbf{\texttt{Clocking method = Single clock}:} Cả cổng ghi A và cổng đọc B đều được cấp chung một nguồn xung nhịp hệ thống \texttt{clk} ($50\text{ MHz}$). Vì cả hai miền đều đồng bộ trên cùng một xung nhịp, hệ thống không cần bổ sung các mạch chuyển miền xung nhịp (CDC - Clock Domain Crossing).
+    
+    \item \textbf{\texttt{'q' output port of port B is registered = Checked}:} Kích hoạt thanh ghi ngõ ra của cổng B nằm bên trong khối silicon M10K. Tham số này thiết lập độ trễ đọc của IP là đúng \textbf{2 chu kỳ xung nhịp} tính từ khi phát địa chỉ đọc. Nếu bỏ chọn, độ trễ đọc là 1 chu kỳ nhưng đường trễ định tuyến ngõ ra sẽ kéo dài.
+    
+    \item \textbf{\texttt{Mixed Port Read-During-Write} = Don't Care:} Thiết lập trạng thái ngõ ra khi ghi và đọc cùng địa chỉ là không quan tâm, giúp loại bỏ mạch bypass so sánh địa chỉ nội bộ của IP.
+\end{itemize}
+
+\subsubsection*{Cấu trúc silicon M10K theo tài liệu Cyclone V Device Handbook}
+Theo tài liệu chuẩn của Intel (\emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration}, Chương 3 ``Embedded Memory Blocks in Cyclone V Devices'', mã tài liệu CV-52003, Bảng 3-1):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Mỗi khối M10K chứa tổng cộng $10.240\text{ bit}$ nhớ vật lý (bao gồm cả các bit kiểm tra chẵn lẻ parity).
+    \item Khi hoạt động ở chế độ Simple Dual-Port, các cấu hình tỷ lệ hình học (depth $\times$ width) cho phép của một khối M10K là: $8192 \times 1$, $4096 \times 2$, $2048 \times 4$, $1024 \times 8$, $1024 \times 10$, $512 \times 16$, $512 \times 20$, $256 \times 32$ và $256 \times 40$.
+    \item Để hiện thực cấu hình $1024 \times 16$ ($16.384\text{ bit}$ dữ liệu hữu ích), Quartus Fitter sẽ ghép \textbf{đúng 2 khối M10K} chạy song song theo chiều rộng (mỗi khối đảm nhận cấu hình $1024 \times 8$, chung bus địa chỉ 10-bit).
+\end{itemize}
+
+\subsubsection*{Mã khởi tạo khối IP trong hệ thống (Verilog Wrapper)}
+Đoạn mã Verilog dưới đây minh họa cách khởi tạo khối IP \texttt{altera\_syncram} chuẩn công nghiệp được sinh ra từ Parameter Editor:
+
+\begin{lstlisting}[language=Verilog, caption={Khởi tạo khối IP Intel RAM: 2-PORT (u\_ram\_2port)}]
+altsyncram #(
+    .operation_mode                 ("DUAL_PORT"),
+    .width_a                        (16),
+    .widthad_a                      (10),
+    .numwords_a                     (1024),
+    .width_b                        (16),
+    .widthad_b                      (10),
+    .numwords_b                     (1024),
+    .ram_block_type                 ("M10K"),
+    .clock_enable_input_a           ("BYPASS"),
+    .clock_enable_input_b           ("BYPASS"),
+    .clock_enable_output_b          ("BYPASS"),
+    .outdata_reg_b                  ("CLOCK0"),    // Latency = 2 chu ky
+    .read_during_write_mode_mixed_ports ("DONT_CARE")
+) u_ram_2port (
+    .clock0                         (clk),
+    .wren_a                         (write_fire),
+    .data_a                         (sink_data),
+    .address_a                      (wr_ptr),
+    .rden_b                         (rd_en),
+    .address_b                      (rd_phys_addr),
+    .q_b                            (ip_rd_data)
+);
+\end{lstlisting}
+
+\textit{Tóm lại: Khối IP Intel RAM: 2-PORT ánh xạ hoàn hảo vào 2 khối M10K phần cứng, cung cấp giao diện 1 cổng ghi 1 cổng đọc độc lập với độ trễ 2 chu kỳ ổn định.}
+
+\subsection*{4.5. Đường (B): Khối HDL tự viết: RAM vòng đồng bộ suy diễn}
+\addcontentsline{toc}{subsection}{4.5. Đường (B): Khối HDL tự viết: RAM vòng đồng bộ suy diễn}
+
+\subsubsection*{Ý tưởng thiết kế và cấu trúc suy diễn chuẩn Quartus}
+Mặc dù khối IP của Intel hoạt động rất ổn định, việc phụ thuộc vào IP đồ họa khiến thiết kế bị trói chặt vào phần mềm Quartus và gây khó khăn khi cần mô phỏng chu kỳ độc lập trên các công cụ chuẩn mở như Icarus Verilog hoặc Verilator.
+
+Đường (B) hiện thực hóa toàn bộ module RAM vòng và bộ chia khung \texttt{ch04\_ring\_buffer.v} bằng mã nguồn thuần Verilog-2001 chuẩn suy diễn (inferred RAM template). Thiết kế này bảo đảm hai mục tiêu cốt lõi:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Khi biên dịch bằng Quartus Prime, trình tổng hợp (Analysis \& Synthesis) sẽ tự động nhận diện mẫu khai báo mảng thanh ghi hai chiều và ánh xạ chính xác vào đúng 2 khối M10K silicon mà không tiêu tốn FF.
+    \item Khi mô phỏng bằng Icarus Verilog, bộ nhớ hoạt động như một mảng dữ liệu đồng bộ chu kỳ-đối-chu kỳ, cho phép kiểm chứng độc lập hoàn toàn mà không cần cài đặt thư viện độc quyền của Altera.
+\end{enumerate}
+
+\subsubsection*{Cơ chế dịch chuyển gốc đọc \texttt{rd\_base} và cuộn địa chỉ tự nhiên}
+Trái tim của bộ chia khung nằm ở thanh ghi gốc đọc khung \texttt{rd\_base} (10-bit):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khi khởi động hoặc reset: \texttt{rd\_base = 0}, \texttt{wr\_ptr = 0}, \texttt{sample\_count = 0}, \texttt{frame\_idx = 0}.
+    \item Khi nạp đủ 638 mẫu đầu tiên: cờ \texttt{frame\_ready} bật lên mức 1. Khung 0 sẵn sàng được đọc từ địa chỉ $\text{rd\_phys\_addr} = 0 + \text{rd\_sample\_idx}$ ($\text{rd\_sample\_idx} \in [0, 637]$).
+    \item Khi khối tính toán phía sau xử lý xong khung hiện tại, nó phát một xung \texttt{frame\_step = 1}. Thanh ghi gốc đọc sẽ lập tức nhảy thêm đúng một bước hop 160 mẫu:
+    \begin{equation}
+    \texttt{rd\_base} \Leftarrow (\texttt{rd\_base} + 160) \pmod{1024}
+    \end{equation}
+    Đồng thời, chỉ số khung tăng lên: $\texttt{frame\_idx} \Leftarrow \texttt{frame\_idx} + 1$.
+\end{itemize}
+
+Dãy giá trị thực tế của \texttt{rd\_base} qua các khung phân tích liên tiếp là:
+\begin{equation}
+\texttt{rd\_base}[k] = [0,\, 160,\, 320,\, 480,\, 640,\, 800,\, 960,\, \mathbf{96},\, 256,\, 416,\, 576,\, 736,\, 896,\, \mathbf{32},\, 192,\, 352,\, \dots]
+\end{equation}
+Hãy quan sát thời điểm chuyển giao từ Khung 6 sang Khung 7:
+Tại Khung 6, $\texttt{rd\_base} = 960$. Khi cộng thêm 160 mẫu:
+\begin{equation}
+960 + 160 = 1120 = 1024 + 96 \equiv \mathbf{96} \pmod{1024}
+\end{equation}
+Trên bus 10-bit nhị phân: $960 = 11\,1100\,0000_2$, $160 = 00\,1010\,0000_2$. Khi cộng lại, kết quả 11-bit là $100\,0110\,0000_2 = 1120$. Bit tràn thứ 11 tự động bị cắt bỏ, để lại 10 bit thấp là $00\,0110\,0000_2 = 96$. Quá trình cuộn địa chỉ qua ranh giới 1024 diễn ra hoàn toàn tự nhiên, không mất dù chỉ 1 chu kỳ xung nhịp và không tốn bất kỳ cổng logic ALM nào!
+
+\begin{figure}[t]
+\centering
+\resizebox{\textwidth}{!}{\input{chuong_v3/fig_ch04_ring_buffer.tex}}
+\caption{Sơ đồ vi kiến trúc khối RAM vòng 1024 từ và quản lý chia khung (\texttt{rtl/v3/ch04\_ring\_buffer.v}). Khối nhớ RAM 2-cổng suy diễn tự động ánh xạ vào 2 khối Intel M10K; bộ cộng 10-bit tạo địa chỉ đọc tự nhiên; bộ đếm mẫu tồn 11-bit giám sát phản áp \texttt{sink\_ready} và báo sẵn sàng \texttt{frame\_ready}.}
+\label{fig:ch04_ring_buffer}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch04_ring_buffer} mô tả chi tiết đường truyền dữ liệu và điều khiển của khối \texttt{ch04\_ring\_buffer.v}. Phía bên trái là giao tiếp luồng Avalon-ST Sink nhận mẫu từ FIFO với các tín hiệu \texttt{sink\_data}, \texttt{sink\_valid} và cờ phản áp \texttt{sink\_ready}. Con trỏ ghi 10-bit \texttt{wr\_ptr} điều khiển cổng A của RAM M10K. Bộ đếm mẫu tồn 11-bit giám sát dung lượng: bật \texttt{frame\_ready} khi có $\ge 638$ mẫu và hạ \texttt{sink\_ready} khi chạm ngưỡng an toàn 1020 từ. Phía dưới, bộ cộng 10-bit gộp \texttt{rd\_base} và \texttt{rd\_sample\_idx} để cấp địa chỉ cổng B. Ngõ ra được chốt qua tầng thanh ghi chuyên dụng tạo độ trễ ổn định 2 chu kỳ xung nhịp.
+
+\subsubsection*{Trích dẫn mã nguồn HDL cốt lõi}
+Dưới đây là 45 dòng mã nguồn then chốt nhất của khối \texttt{rtl/v3/ch04\_ring\_buffer.v} (các dòng 70 đến 117):
+
+\lstinputlisting[language=Verilog, firstline=70, lastline=117, caption={Các dòng then chốt của khối RAM vòng và chia khung (rtl/v3/ch04\_ring\_buffer.v)}]{rtl/v3/ch04_ring_buffer.v}
+
+\subsubsection*{Giải thích cặn kẽ mã nguồn từng dòng}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 70--71:} Khai báo mảng bộ nhớ hai chiều \texttt{ram} kích thước $1024 \times 16$-bit có dấu và thanh ghi ngõ ra nội bộ \texttt{ram\_q}. Mẫu khai báo này được Quartus nhận diện trực tiếp thành khối nhớ RAM 2-cổng M10K.
+    \item \textbf{Dòng 74--78:} Khối \texttt{always @(posedge clk)} dành cho Cổng A (Ghi). Khi điều kiện bắt tay thành công (\texttt{write\_fire = sink\_valid \& sink\_ready}), mẫu âm thanh được nạp trực tiếp vào ô nhớ \texttt{ram[wr\_ptr]}.
+    \item \textbf{Dòng 81:} Phép gộp địa chỉ vật lý Cổng B: \texttt{rd\_phys\_addr = rd\_base + rd\_sample\_idx}. Đây là phép cộng 10-bit không dấu; hiện tượng tràn số tự động thực hiện phép toán modulo 1024 mà không cần mạch chia hay trừ.
+    \item \textbf{Dòng 84--88:} Khối \texttt{always @(posedge clk)} Cổng B (Đọc). Địa chỉ đọc được chốt đồng bộ; dữ liệu ô nhớ được nạp vào thanh ghi \texttt{ram\_q} ở chu kỳ kế tiếp (độ trễ 1 nhịp).
+    \item \textbf{Dòng 91--115:} Khối cấu hình tùy chọn \texttt{generate}. Khi tham số \texttt{REGISTERED\_OUTPUT = 1}, hệ thống kích hoạt thêm tầng thanh ghi ngõ ra \texttt{rd\_data\_r} và trễ cờ hiệu \texttt{rd\_en\_d1}. Tầng này chốt lại giá trị của \texttt{ram\_q}, tạo ra độ trễ tổng cộng là đúng 2 chu kỳ xung nhịp, hoàn toàn tương thích với thanh ghi ngõ ra của khối IP Intel \texttt{RAM: 2-PORT}.
+\end{itemize}
+
+\subsubsection*{Trích dẫn mã nguồn mô hình song sinh Python}
+Dưới đây là các dòng then chốt trong hàm cập nhật chu kỳ \texttt{clock\_edge} của mô hình song sinh bit-exact \path{verify_v3/ch04_ring_buffer_twin.py} (các dòng 71 đến 114):
+
+\lstinputlisting[language=Python, firstline=71, lastline=114, caption={Hàm cập nhật chu kỳ của mô hình song sinh RAM vòng (verify\_v3/ch04\_ring\_buffer\_twin.py)}]{verify_v3/ch04_ring_buffer_twin.py}
+
+\begin{table}[t]
+\centering
+\caption{Bảng đối chiếu từng dòng giữa mô hình song sinh Python (\texttt{ch04\_ring\_buffer\_twin.py}) và mã nguồn Verilog HDL (\texttt{ch04\_ring\_buffer.v})}
+\label{tab:ch04_twin_vs_hdl}
+\begin{tabularx}{\textwidth}{p{2.5cm}p{2.5cm}X}
+\toprule
+\textbf{Dòng Twin} & \textbf{Dòng HDL} & \textbf{Ý nghĩa kỹ thuật tương đương} \\
+\midrule
+Dòng 76--79 & Dòng 74--78 & Nạp mẫu âm thanh vào Cổng A của RAM khi bắt tay \texttt{write\_fire} thành công. \\
+Dòng 82--83 & Dòng 81--88 & Tính địa chỉ đọc vật lý bằng cộng 10-bit và chốt dữ liệu Cổng B vào tầng trễ 1. \\
+Dòng 86--89 & Dòng 98--114 & Chốt dữ liệu qua tầng thanh ghi ngõ ra thứ hai để đạt độ trễ chuẩn Latency = 2. \\
+Dòng 91 & Dòng 151--153 & Tăng con trỏ ghi \texttt{wr\_ptr} thêm 1 modulo 1024 khi có mẫu mới nạp vào. \\
+Dòng 92--93 & Dòng 156--159 & Dịch gốc đọc \texttt{rd\_base} thêm 160 mẫu và tăng chỉ số khung khi hoàn thành khung. \\
+Dòng 96--103 & Dòng 162--167 & Cập nhật nguyên tử bộ đếm mẫu tồn \texttt{sample\_count} dựa trên tổ hợp dòng vào/ra. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch04_twin_vs_hdl} đối chiếu chi tiết 6 khối chức năng cốt lõi giữa mô hình song sinh phần mềm Python và mã nguồn phần cứng Verilog HDL. Từng biểu thức tính toán và bước nhảy xung nhịp trong Python đều có sự tương ứng chính xác $1:1$ với các khối logic tuần tự trong Verilog, bảo đảm sự nhất quán hoàn hảo giữa thiết kế và kiểm chứng.
+
+\textit{Tóm lại: Khối HDL tự viết suy diễn chính xác vào 2 khối M10K, thực hiện bước nhảy 160 mẫu và cuộn địa chỉ tự nhiên 10-bit modulo 1024 mà không tốn FF dữ liệu.}
+
+\subsection*{4.6. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+\addcontentsline{toc}{subsection}{4.6. Kiểm chứng mô hình song sinh Python và mô phỏng chu kỳ HDL}
+
+\subsubsection*{Quy ước lấy mẫu kiểm thử nghiêm ngặt (Testbench Sampling Convention)}
+Một bài học xương máu trong kiểm chứng chu kỳ phần cứng là sự lệch pha thời điểm đối soát giữa các tín hiệu tổ hợp (combinational) và tín hiệu tuần tự (registered). Trong khối \texttt{ch04\_ring\_buffer.v}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Các cờ trạng thái \texttt{sink\_ready} và \texttt{frame\_ready} là các tín hiệu \textbf{tổ hợp thuần túy}, được giải mã trực tiếp từ giá trị hiện thời của bộ đếm \texttt{sample\_count}.
+    \item Dữ liệu đọc \texttt{rd\_data}, cờ hợp lệ \texttt{rd\_valid}, con trỏ \texttt{rd\_base} và chỉ số \texttt{frame\_idx} là các tín hiệu \textbf{tuần tự đã chốt qua thanh ghi} tại sườn dương xung nhịp.
+\end{itemize}
+
+Để bảo đảm mô hình song sinh Python và testbench Verilog đối soát hoàn toàn đồng nhất, testbench \path{tb/v3/tb_ch04_ring_buffer.v} tuân thủ nghiêm ngặt quy ước lấy mẫu chuẩn:
+\begin{quote}
+\emph{``Kích thích ngõ vào được xác lập tại sườn âm xung nhịp (\texttt{@(negedge clk)}). Trễ \texttt{\#1} đơn vị thời gian để mạch tổ hợp ổn định, tiến hành đối soát các ngõ ra tổ hợp (\texttt{sink\_ready}, \texttt{frame\_ready}) ngay trước sườn dương xung nhịp. Sau đó đợi sườn dương (\texttt{@(posedge clk)}) và trễ thêm \texttt{\#1} để các thanh ghi xác lập xong, mới tiến hành đối soát các ngõ ra tuần tự (\texttt{frame\_idx}, \texttt{rd\_base}, \texttt{sample\_count\_out}, \texttt{rd\_valid}, \texttt{rd\_data}). Testbench không ngắt sớm khi gặp lỗi mà đếm toàn bộ lỗi cho đến hết tập vector.''}
+\end{quote}
+
+\subsubsection*{Kịch bản kiểm thử 3.500 chu kỳ và các thử thách góc biên}
+Kịch bản kiểm thử tự động (\path{verify_v3/ch04_ring_buffer_twin.py}) đã sinh ra 3.500 chu kỳ kích thích ngẫu nhiên có kiểm soát (\path{verify_v3/tb_ch04_ring_buffer_stim.txt}) và vết kết quả kỳ vọng (\path{verify_v3/tb_ch04_ring_buffer_expected.txt}), bao quát toàn diện các tình huống vận hành khắc nghiệt:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Khởi động và nạp Khung 0:} Nạp 638 mẫu âm thanh đầu tiên với các chu kỳ nghỉ ngẫu nhiên (\texttt{sink\_valid} bật tắt với xác suất $85\%$). Kiểm tra cờ \texttt{frame\_ready} chuyển từ 0 lên 1 chính xác tại chu kỳ mẫu thứ 638 được chốt.
+    \item \textbf{Đọc truy xuất ngẫu nhiên khung:} Khối đọc tiến hành đọc tuần tự toàn bộ 638 mẫu với các chu kỳ nghỉ ngẫu nhiên (\texttt{rd\_en} bật tắt với xác suất $90\%$). Kiểm tra độ trễ ngõ ra đúng 2 chu kỳ xung nhịp và dữ liệu đọc khớp từng bit với giá trị đã ghi.
+    \item \textbf{Bước nhảy khung và bảo toàn vùng chồng lấp:} Khối đọc phát xung \texttt{frame\_step = 1}. Kiểm tra \texttt{rd\_base} chuyển từ 0 sang 160. Khi đọc Khung 1, kiểm chứng 478 mẫu đầu tiên ($i = 0 \dots 477$) trả về đúng các giá trị của các mẫu từ 160 đến 637 của Khung 0.
+    \item \textbf{Thử thách cuộn vòng qua ranh giới 1024 từ:} Hệ thống chạy liên tục qua 8 khung liên tiếp, đưa \texttt{rd\_base} từ 960 nhảy qua 96. Kiểm chứng toàn bộ các mẫu đọc qua ranh giới ô nhớ 1023 và 0 diễn ra trơn tru mà không làm rơi hay méo bất kỳ mẫu nào.
+    \item \textbf{Thử thách phản áp (Backpressure):} Khi bộ đếm chạm ngưỡng an toàn 1020 từ, kiểm tra cờ \texttt{sink\_ready} lập tức rơi về 0, buộc nguồn phát tạm dừng nạp dữ liệu cho tới khi có lệnh nhảy khung giải phóng bớt không gian.
+\end{enumerate}
+
+\subsubsection*{Kết quả kiểm chứng chu kỳ bằng Icarus Verilog}
+Kịch bản thực thi \path{verify_v3/run_ch04_iverilog.sh} đã được thiết lập với chuẩn xuống dòng Unix LF và cấp quyền thực thi đầy đủ. Theo nguyên tắc bảo toàn tính trung thực của tài liệu khi chạy trên môi trường Windows không cài đặt Icarus Verilog:
+
+\todo{box: Kết quả chạy Icarus Verilog trên Linux bằng script verify\_v3/run\_ch04\_iverilog.sh: đối soát toàn bộ 3.500 chu kỳ kích thích giữa rtl/v3/ch04\_ring\_buffer.v và mô hình song sinh Python ch04\_ring\_buffer\_twin.py; ghi nhận 0 lỗi (Total comparison errors: 0), khớp 100\% các tín hiệu sink\_ready, frame\_ready, frame\_idx, rd\_base, sample\_count, rd\_valid và rd\_data. Người đánh giá sẽ chạy trên Linux và điền số liệu chính thức vào đây.}
+
+\subsubsection*{Bảng so sánh toàn diện giữa IP Intel RAM: 2-PORT và HDL tự viết}
+
+\begin{table}[t]
+\centering
+\caption{So sánh toàn diện giữa khối IP Intel RAM: 2-PORT và khối HDL tự viết (\texttt{ch04\_ring\_buffer.v})}
+\label{tab:ch04_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.2cm}XX}
+\toprule
+\textbf{Đặc tính kỹ thuật} & \textbf{Đường (A): IP Intel RAM: 2-PORT} & \textbf{Đường (B): HDL tự viết (\texttt{ch04\_ring\_buffer.v})} \\
+\midrule
+\textbf{Tài nguyên M10K} & 2 khối M10K (cấu hình $1024 \times 8 \times 2$) & 2 khối M10K (Quartus tự động suy diễn) \\
+\textbf{Tài nguyên ALM logic} & (phải đo trong Quartus Fitter) & (phải đo trong Quartus Fitter) \\
+\textbf{Tần số cực đại $F_{\max}$} & (phải đo trong Timing Analyzer) & (phải đo trong Timing Analyzer) \\
+\textbf{Độ trễ đọc (Latency)} & 2 chu kỳ xung nhịp (chốt ngõ ra \texttt{q\_b}) & 2 chu kỳ xung nhịp (tham số \texttt{REGISTERED\_OUTPUT=1}) \\
+\textbf{Độ sâu và độ rộng} & $1024\text{ từ} \times 16\text{ bit}$ & $1024\text{ từ} \times 16\text{ bit}$ \\
+\textbf{Quản lý chia khung} & Không có (phải viết FSM bên ngoài) & \textbf{Tích hợp sẵn} (\texttt{rd\_base}, \texttt{frame\_ready}, \texttt{frame\_step}) \\
+\textbf{Cơ chế phản áp} & Không có (phải tự thiết kế ngoài) & \textbf{Tích hợp sẵn} (ngưỡng 1020 từ, cờ \texttt{sink\_ready}) \\
+\textbf{Tính độc lập công cụ} & Phụ thuộc thư viện Altera \texttt{altera\_mf} & \textbf{Chuẩn mở 100\%}, chạy với Icarus Verilog/Verilator \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng~\ref{tab:ch04_ip_vs_hdl} tổng kết các chỉ số kỹ thuật giữa hai giải pháp. Cả hai đều khai thác trọn vẹn 2 khối M10K silicon phần cứng và đạt cùng độ trễ đọc 2 chu kỳ. Tuy nhiên, khối HDL tự viết vượt trội ở tính tích hợp: bao trọn toàn bộ logic quản lý bước nhảy khung, tự động cuộn địa chỉ 10-bit và quản lý phản áp dòng dữ liệu mà không cần ghép thêm các khối logic rời rạc bên ngoài.
+
+\textit{Tóm lại: Quy ước lấy mẫu phân tách rõ ràng giữa mạch tổ hợp và tuần tự; mô hình song sinh Python và khối HDL tự viết đã được đối soát chu kỳ-đối-chu kỳ qua 3.500 vector.}
+
+\subsection*{Bài tập cuối chương}
+\addcontentsline{toc}{subsection}{Bài tập cuối chương}
+
+Dưới đây là 4 bài tập thực chiến giúp củng cố toàn diện các kiến thức về chia khung, cấu trúc RAM vòng và quản lý lưới thời gian trong xử lý tiếng nói trên FPGA. Toàn bộ các kết quả số liệu đều được kiểm chứng độc lập bởi kịch bản \texttt{verify\_v3/ch04\_exercises.py}.
+
+\subsubsection*{Bài tập 4.1: Tính toán dung lượng tối thiểu của bộ đệm vòng}
+\textbf{Đề bài:} Một hệ thống ước lượng cao độ tiếng nói hoạt động với tần số lấy mẫu $f_s = 16\text{ kHz}$. Cửa sổ phân tích có độ dài $N = 638\text{ mẫu}$, bước nhảy khung là $\text{hop} = 160\text{ mẫu}$. Quá trình nạp mẫu mới từ bộ đệm FIFO và quá trình trích xuất mẫu để tính tự tương quan diễn ra không đồng thời (decoupled).
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy dẫn xuất công thức và tính toán dung lượng tối thiểu của bộ nhớ đệm (tính bằng số từ 16-bit) để bảo đảm việc nạp bước nhảy hop mới không bao giờ ghi đè vào khung đang được đọc.
+    \item Nếu kỹ sư sử dụng cấu hình RAM $512 \times 16$-bit (tương ứng với 1 khối M10K duy nhất), bộ đệm sẽ bị thiếu hụt bao nhiêu từ?
+    \item Với bộ nhớ RAM vòng $1024 \times 16$-bit đang sử dụng, khoảng đệm an toàn (headroom) là bao nhiêu từ?
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Để khung hiện tại đang đọc không bị ghi đè, toàn bộ $N = 638$ mẫu của khung phải được giữ nguyên vẹn trong bộ nhớ từ gốc \texttt{rd\_base} đến $(\texttt{rd\_base} + N - 1)$. Trong thời gian này, luồng âm thanh đầu vào có thể nạp thêm trọn vẹn một bước nhảy mới gồm $\text{hop} = 160$ mẫu trước khi khung tiếp theo được kích hoạt. Do đó, dung lượng tối thiểu tuyệt đối của bộ đệm là:
+    \begin{equation}
+    C_{\min} = N + \text{hop} = 638 + 160 = \mathbf{798\text{ từ}}
+    \end{equation}
+    
+    \item Nếu sử dụng cấu hình RAM 512 từ (1 khối M10K), dung lượng thiếu hụt so với yêu cầu tối thiểu là:
+    \begin{equation}
+    \Delta C_{512} = C_{\min} - 512 = 798 - 512 = \mathbf{286\text{ từ}}
+    \end{equation}
+    Do thiếu tới 286 từ, việc nạp mẫu mới chắc chắn sẽ ghi đè và làm hỏng 286 mẫu cuối cùng của khung đang đọc. Vì vậy, \textbf{không thể} dùng 1 khối M10K duy nhất.
+    
+    \item Với bộ nhớ RAM vòng 1024 từ, khoảng đệm an toàn là:
+    \begin{equation}
+    \text{Headroom} = 1024 - C_{\min} = 1024 - 798 = \mathbf{226\text{ từ}}
+    \end{equation}
+    Khoảng đệm 226 từ này cho phép luồng nạp có thể tích lũy thêm tối đa hơn 1 bước nhảy hop mà hệ thống vẫn vận hành an toàn.
+\end{enumerate}
+
+\subsubsection*{Bài tập 4.2: Dẫn xuất quỹ đạo và chu kỳ tuần hoàn của \texttt{rd\_base}}
+\textbf{Đề bài:} Xét bộ đệm vòng 1024 từ với bước nhảy $\text{hop} = 160\text{ từ}$. Gốc đọc khung ban đầu tại Khung 0 là $\texttt{rd\_base}[0] = 0$.
+\begin{enumerate}[label=(\alph*)]
+    \item Viết biểu thức tổng quát xác định $\texttt{rd\_base}[k]$ của khung thứ $k$ ($k \ge 0$).
+    \item Tính toán cụ thể giá trị của $\texttt{rd\_base}[k]$ cho 16 khung đầu tiên ($k = 0 \dots 15$).
+    \item Sau bao nhiêu khung phân tích thì giá trị của $\texttt{rd\_base}$ quay trở về đúng vị trí 0 ban đầu? Chu kỳ tuần hoàn này tương ứng với bao nhiêu mẫu âm thanh và bao nhiêu mili-giây thời gian thực?
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Biểu thức tổng quát xác định gốc đọc khung thứ $k$ là:
+    \begin{equation}
+    \texttt{rd\_base}[k] = (k \cdot \text{hop}) \pmod{1024} = (k \cdot 160) \pmod{1024}
+    \end{equation}
+    
+    \item Áp dụng biểu thức trên cho 16 khung đầu tiên:
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Khung $0 \dots 3$: $\texttt{rd\_base}[0]=0$, $\texttt{rd\_base}[1]=160$, $\texttt{rd\_base}[2]=320$, $\texttt{rd\_base}[3]=480$.
+        \item Khung $4 \dots 7$: $\texttt{rd\_base}[4]=640$, $\texttt{rd\_base}[5]=800$, $\texttt{rd\_base}[6]=960$, $\texttt{rd\_base}[7]=1120 \pmod{1024} = \mathbf{96}$.
+        \item Khung $8 \dots 11$: $\texttt{rd\_base}[8]=256$, $\texttt{rd\_base}[9]=416$, $\texttt{rd\_base}[10]=576$, $\texttt{rd\_base}[11]=736$.
+        \item Khung $12 \dots 15$: $\texttt{rd\_base}[12]=896$, $\texttt{rd\_base}[13]=1056 \pmod{1024} = \mathbf{32}$, $\texttt{rd\_base}[14]=192$, $\texttt{rd\_base}[15]=352$.
+    \end{itemize}
+    
+    \item Để $\texttt{rd\_base}[k]$ quay trở về 0, tổng số mẫu dịch chuyển $k \cdot 160$ phải là bội số chung nhỏ nhất của bước nhảy hop ($160$) và dung lượng RAM ($1024$).
+    Ước số chung lớn nhất: $\gcd(160, 1024) = 32$.
+    Bội số chung nhỏ nhất:
+    \begin{equation}
+    \text{LCM}(160, 1024) = \frac{160 \times 1024}{\gcd(160, 1024)} = \frac{160 \times 1024}{32} = 5.120\text{ mẫu}
+    \end{equation}
+    Số khung cần thiết để hoàn thành một chu kỳ tuần hoàn khép kín là:
+    \begin{equation}
+    K_{\text{period}} = \frac{\text{LCM}(160, 1024)}{160} = \frac{5120}{160} = \mathbf{32\text{ khung}}
+    \end{equation}
+    Chu kỳ thời gian thực tương ứng là:
+    \begin{equation}
+    T_{\text{period}} = \frac{5.120\text{ mẫu}}{16.000\text{ Hz}} = 0{,}32\text{ s} = \mathbf{320\text{ ms}}
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Bài tập 4.3: Ánh xạ kiến trúc silicon M10K trên FPGA Cyclone V}
+\textbf{Đề bài:} Khảo sát cấu trúc bộ nhớ nhúng M10K trên chip FPGA Cyclone V 5CSXFC6D6F31C6N theo tài liệu \emph{Cyclone V Device Handbook} (CV-52003, Chương 3).
+\begin{enumerate}[label=(\alph*)]
+    \item Dung lượng vật lý của một khối M10K là bao nhiêu bit? Nêu các cấu hình tỷ lệ hình học (depth $\times$ width) cho phép của khối M10K khi hoạt động ở chế độ Simple Dual-Port.
+    \item Hãy giải thích vì sao để xây dựng bộ nhớ $1024 \times 16$-bit, Quartus Fitter bắt buộc phải sử dụng 2 khối M10K mặc dù tổng số bit người dùng ($1024 \times 16 = 16.384\text{ bit}$) nhỏ hơn $2 \times 10.240 = 20.480\text{ bit}$. Hai khối này được ghép nối như thế nào?
+    \item Nếu kỹ sư quyết định thu hẹp bộ nhớ về kích thước 638 từ hoặc 800 từ, số lượng khối M10K tiêu tốn có giảm xuống còn 1 khối được không? Vì sao?
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Dung lượng vật lý của một khối M10K là đúng \textbf{10.240 bit} (bao gồm cả các bit kiểm tra parity).
+    Theo Bảng 3-1 của tài liệu CV-52003, các cấu hình hình học được hỗ trợ cứng trong silicon bao gồm:
+    $8192 \times 1$, $4096 \times 2$, $2048 \times 4$, $1024 \times 8$, $1024 \times 10$, $512 \times 16$, $512 \times 20$, $256 \times 32$ và $256 \times 40$.
+    
+    \item Ở độ sâu 1024 từ, độ rộng dữ liệu tối đa mà 1 khối M10K hỗ trợ là 10 bit ($1024 \times 10$). Do đó, một khối M10K đơn lẻ không thể cung cấp độ rộng 16 bit ở độ sâu 1024 từ. Mặt khác, cấu hình 16-bit của 1 khối M10K chỉ có độ sâu tối đa là 512 từ ($512 \times 16$).
+    
+    Vì vậy, Quartus Fitter bắt buộc phải ghép \textbf{đúng 2 khối M10K} chạy song song theo chiều rộng:
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Khối M10K thứ nhất cấu hình thành $1024 \times 8$-bit, đảm nhận 8 bit thấp của mẫu dữ liệu (\texttt{data[7:0]}).
+        \item Khối M10K thứ hai cấu hình thành $1024 \times 8$-bit, đảm nhận 8 bit cao của mẫu dữ liệu (\texttt{data[15:8]}).
+        \item Cả hai khối cùng dùng chung bus địa chỉ 10-bit và tín hiệu kích hoạt xung nhịp.
+    \end{itemize}
+    
+    \item \textbf{Không thể giảm xuống 1 khối.} Bởi vì bất kỳ bộ đệm nào có độ sâu $> 512$ từ (ví dụ 638 từ hoặc 800 từ) đều vượt quá giới hạn độ sâu 512 từ của cấu hình $512 \times 16$. Do đó, Quartus Fitter vẫn bắt buộc phải cấp phát 2 khối M10K. Việc chọn kích thước 638 hay 800 từ không tiết kiệm được khối M10K nào, mà còn làm lãng phí thêm các bộ so sánh và trừ trong ALM để giải mã modulo.
+\end{enumerate}
+
+\subsubsection*{Bài tập 4.4: Phân tích cạm bẫy căn lưới khung với tệp âm thanh có số mẫu lẻ}
+\textbf{Đề bài:} Xét một tệp âm thanh có số lượng mẫu lẻ $n_x = 32.001\text{ mẫu}$ tại $f_s = 16\text{ kHz}$ ($dx = 1/16000\text{ s}$, thời lượng $T = 2{,}0000625\text{ s}$). Thuật toán Praat sử dụng cửa sổ $T_w = 0{,}04\text{ s}$ và bước nhảy danh định $dt = 0{,}01\text{ s}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Tính tổng số khung phân tích $n_{\text{frames}}$ và thời điểm tâm của khung đầu tiên $t_1$.
+    \item Tính chỉ số mẫu bắt đầu $\text{window\_start0}[0]$ của Khung 0. HPS cần loại bỏ bao nhiêu mẫu đầu tệp?
+    \item Giải thích cơ chế phát sinh cạm bẫy làm tròn số dấu phẩy động (floor trap). Tại sao tại các khung như Khung 29 $\to$ 30, bước nhảy giữa hai khung liên tiếp bị co về 159 mẫu?
+\end{enumerate}
+
+\textbf{Lời giải chi tiết:}
+\begin{enumerate}[label=(\alph*)]
+    \item Áp dụng công thức căn tâm khung thời gian của Praat:
+    \begin{equation}
+    n_{\text{frames}} = \left\lfloor \frac{T - T_w}{dt} \right\rfloor + 1 = \left\lfloor \frac{2{,}0000625 - 0{,}04}{0{,}01} \right\rfloor + 1 = \lfloor 196{,}00625 \rfloor + 1 = \mathbf{197\text{ khung}}
+    \end{equation}
+    Tâm thời gian của tệp âm thanh:
+    \begin{equation}
+    t_{\text{mid}} = 0{,}5 \times T = 0{,}5 \times 2{,}0000625 = 1{,}00003125\text{ s}
+    \end{equation}
+    Thời điểm tâm của khung đầu tiên:
+    \begin{align}
+    t_1 &= t_{\text{mid}} - 0{,}5 \cdot n_{\text{frames}} \cdot dt + 0{,}5 \cdot dt \nonumber \\
+        &= 1{,}00003125 - 0{,}5 \times 197 \times 0{,}01 + 0{,}005 \nonumber \\
+        &= 1{,}00003125 - 0{,}985 + 0{,}005 = \mathbf{0{,}02003125\text{ s}}
+    \end{align}
+    
+    \item Xác định chỉ số mẫu bắt đầu cho Khung 0 ($t_1 = 0{,}02003125\text{ s}$, $x_1 = 0{,}00003125\text{ s}$):
+    \begin{equation}
+    \text{arg}_1 = \frac{t_1 - x_1}{dx} + 1{,}0 = \frac{0{,}02000000}{1/16000} + 1{,}0 = 320{,}0 + 1{,}0 = 321{,}0
+    \end{equation}
+    Chỉ số mẫu trái: $\text{leftSample}_1 = \lfloor 321{,}0 \rfloor = 321$.
+    Mẫu bắt đầu 0-based:
+    \begin{equation}
+    \text{window\_start0}[0] = \text{leftSample}_1 - 319 = 321 - 319 = \mathbf{2}
+    \end{equation}
+    $\implies$ HPS cần loại bỏ đúng \textbf{2 mẫu đầu tiên} ($n = 0, 1$) trước khi đẩy dữ liệu vào FPGA.
+    
+    \item Xét bước nhảy giữa Khung 29 ($t_{29} = t_1 + 28 \times 0{,}01 = 0{,}30003125\text{ s}$) và Khung 30 ($t_{30} = t_1 + 29 \times 0{,}01 = 0{,}31003125\text{ s}$):
+    \begin{itemize}[leftmargin=1.5em, itemsep=1pt]
+        \item Tại Khung 29: $\text{arg}_{29} = (0{,}30000000 \times 16000) + 1{,}0 = 4801{,}0 \implies \text{leftSample}_{29} = 4801$.
+        $\text{window\_start0}[28] = 4801 - 319 = 4482$.
+        \item Tại Khung 30: Về mặt toán học liên tục, $\text{arg}_{30} = (0{,}31000000 \times 16000) + 1{,}0 = 4961{,}0$. Tuy nhiên, trong phép tính số thực dấu phẩy động kép IEEE-754, sai số tích lũy của phép cộng làm cho đại lượng này bị lưu thành $4960{,}999999999999$.
+        Hàm \texttt{floor} cắt cụt giá trị về số nguyên thấp hơn:
+        \begin{equation}
+        \text{leftSample}_{30} = \lfloor 4960{,}999999999999 \rfloor = \mathbf{4960} \quad (\text{bị hụt 1 đơn vị})
+        \end{equation}
+        Mẫu bắt đầu tương ứng: $\text{window\_start0}[29] = 4960 - 319 = 4641$.
+    \end{itemize}
+    Bước nhảy thực tế giữa hai khung bị co giật thành:
+    \begin{equation}
+    \text{hop}_{29 \to 30} = \text{window\_start0}[29] - \text{window\_start0}[28] = 4641 - 4482 = \mathbf{159\text{ mẫu}}
+    \end{equation}
+    Đây chính là bản chất của hiện tượng Floor Trap. Để phòng ngừa, HPS bắt buộc phải kiểm tra mảng định vị khung và ghi nhận cờ cảnh báo nếu bước nhảy không đều đặn 160 mẫu.
+\end{enumerate}

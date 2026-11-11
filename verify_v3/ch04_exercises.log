@@ -1,0 +1,43 @@
+===========================================================================
+VERIFICATION: CH04 CHAPTER EXERCISES (EXACT NUMERICAL DERIVATIONS)
+===========================================================================
+Exercise 1: Circular Buffer Capacity and Headroom
+  Frame length N       = 638 samples
+  Hop length           = 160 samples
+  Minimum capacity     = 798 words (638 + 160)
+  Actual capacity      = 1024 words (2^10)
+  Safety headroom      = 226 words (1024 - 798)
+  Deficit of 512 words = 286 words (798 - 512)
+
+Exercise 2: rd_base Modulo 1024 Trajectory and Periodicity
+  GCD(160, 1024)       = 32
+  LCM(160, 1024)       = 5120 samples
+  Periodicity in frames= 32 frames
+  Periodicity in time  = 320.0 ms
+  First 16 values of rd_base:
+    k= 0.. 3: [0, 160, 320, 480]
+    k= 4.. 7: [640, 800, 960, 96]
+    k= 8..11: [256, 416, 576, 736]
+    k=12..15: [896, 32, 192, 352]
+
+Exercise 3: Cyclone V M10K Memory Geometry
+  Total bits in 1 M10K = 10240 bits
+  User capacity 1024x16= 16384 bits
+  Max depth for x16 cfg= 512 words (512x16 or 512x20)
+  Max width for 1K depth= 10 bits (1Kx8 or 1Kx10)
+  M10K blocks (1024x16)= 2 blocks (2x 1024x8 parallel)
+  M10K blocks (638x16) = 2 blocks (still exceeds 512)
+
+Exercise 4: Odd-Length File Grid Alignment and Floor Trap
+  Audio samples nx     = 32001 (2.0000625 s)
+  Number of frames     = 197
+  Center time t1       = 0.02003125 s
+  First window start0  = 1
+  Last window start0   = 31362
+  Irregular hop count  = 17
+    Frame 27->28: hop=161, t=0.290031 s, arg=4641.000000000000, left=4641
+    Frame 29->30: hop=159, t=0.310031 s, arg=4960.999999999999, left=4960
+    Frame 34->35: hop=161, t=0.360031 s, arg=5761.000000000000, left=5761
+    Frame 36->37: hop=159, t=0.380031 s, arg=6080.999999999999, left=6080
+    Frame 40->41: hop=161, t=0.420031 s, arg=6721.000000000000, left=6721
+===========================================================================

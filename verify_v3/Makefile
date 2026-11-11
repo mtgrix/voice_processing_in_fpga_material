@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 clean
 
-all: ch00 ch01 ch02 ch03
+all: ch00 ch01 ch02 ch03 ch04
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -69,5 +69,16 @@ ch03:
 	$(PYTHON) ch03_exercises.py > ch03_exercises.log
 	@echo "=== [ch03] All Chapter 3 verifications completed successfully ==="
 
+ch04:
+	@echo "=== [ch04] Running Praat frame geometry and floor trap audit ==="
+	$(PYTHON) ch04_frame_grid.py > ch04_frame_grid.log
+	@echo "=== [ch04] Running Praat 7.0.03 citations audit ==="
+	$(PYTHON) ch04_praat_lines.py > ch04_praat_lines.log
+	@echo "=== [ch04] Running Ring Buffer twin and vector generation ==="
+	$(PYTHON) ch04_ring_buffer_twin.py > ch04_ring_buffer_twin.log
+	@echo "=== [ch04] Running chapter exercises verification ==="
+	$(PYTHON) ch04_exercises.py > ch04_exercises.log
+	@echo "=== [ch04] All Chapter 4 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_*
