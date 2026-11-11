@@ -245,3 +245,174 @@ Khối MAC trực tiếp chỉ tiêu tốn đúng \textbf{$19{,}7\%$ ngân sách
 Vì tất cả các lý do kỹ thuật trên, thiết kế này dứt khoát lựa chọn \textbf{kiến trúc MAC trực tiếp trong miền thời gian}. 
 
 \textit{Tóm lại: FFT có vẻ ít phép nhân hơn trên lý thuyết, nhưng đòi hỏi bộ nhớ đệm M10K gấp $4\times$, logic điều khiển bướm phức tạp và dễ phát sinh méo lượng tử; trong khi đó, 1 bộ MAC trực tiếp chỉ chiếm $19{,}7\%$ ngân sách thời gian thực (RTF $\approx 0{,}197$) ở 50 MHz, bảo đảm độ chính xác số học nguyên bản và tiết kiệm tối đa tài nguyên silicon.}
+
+
+\subsection*{7.3. Khảo sát kiến trúc MAC có thanh ghi: Ba phương án và đánh đổi trễ vs thông lượng}
+\addcontentsline{toc}{subsection}{7.3. Khảo sát kiến trúc MAC có thanh ghi: Ba phương án và đánh đổi trễ vs thông lượng}
+
+\subsubsection*{Một dòng code, bao nhiêu việc trên silicon?}
+Trong ngôn ngữ C, câu lệnh tích lũy:
+\begin{lstlisting}[language=C, numbers=none]
+acc += xw[n] * xw[n + tau];
+\end{lstlisting}
+trông như một thao tác đơn giản, hoàn tất trong một tích tắc. Nhưng trên cấu trúc phần cứng FPGA, đó là cả một hành trình dịch chuyển điện tích qua các khối tài nguyên vật lý:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Phát địa chỉ và đọc bộ nhớ:} Địa chỉ $(n, n+\tau)$ được đưa vào cổng địa chỉ của khối nhớ nhúng M10K. Sau một cạnh xung nhịp, hai mẫu âm thanh $17\text{-bit}$ $x_w[n]$ và $x_w[n+\tau]$ xuất hiện ở ngõ ra dữ liệu của M10K.
+    \item \textbf{Dây nối liên khối (Routing wires):} Dữ liệu từ các khối RAM M10K phải chạy qua mạng lưới dây nối toàn cục (global interconnect) để đi tới khối Variable Precision DSP. Tùy thuộc vào vị trí mà thuật toán định tuyến Fitter của Quartus bố trí hai khối này trên bề mặt chip, quãng đường dây dẫn này có thể ngắn vài trăm micrômét hoặc dài hàng milimét, đóng góp một độ trễ truyền dẫn $T_{\text{wire}}$ đáng kể.
+    \item \textbf{Phép nhân cứng $17 \times 17\text{-bit}$:} Hai toán hạng đi vào bộ nhân silicon bên trong khối DSP, sinh ra tích số có dấu $34\text{-bit}$ $p$ sau thời gian trễ logic $T_{\text{mult}}$.
+    \item \textbf{Phép cộng dồn và chốt thanh ghi:} Tích số $p$ đi tiếp vào bộ cộng $48\text{-bit}$ để cộng với giá trị tích lũy cũ, và giá trị mới dừng lại trước cửa thanh ghi tổng \texttt{acc}, chờ cạnh xung nhịp tiếp theo để chốt lại.
+\end{enumerate}
+
+Ở tần số xung nhịp $50\text{ MHz}$, mỗi chu kỳ đồng hồ kéo dài đúng $T_{\text{clk}} = 20\text{ ns}$. Nếu toàn bộ quãng đường điện từ ngõ ra RAM, qua dây nối, qua bộ nhân, qua bộ cộng rồi tới thanh ghi tổng bị ép phải hoàn tất trong duy nhất một chu kỳ xung nhịp, thì tần số hoạt động cực đại $F_{\max}$ của toàn bộ hệ thống sẽ bị bóp nghẹt bởi quãng đường dài nhất ấy. Người ta gọi quãng đường đó là \textbf{đường tới hạn} (Critical Path).
+
+\subsubsection*{Thứ không thể bỏ: Bản chất bắt buộc của thanh ghi tích lũy}
+Trước khi so sánh các phương án đường ống, người kỹ sư cần thấu hiểu một chân lý vật lý nền tảng: \textbf{Phép cộng dồn bắt buộc phải có thanh ghi}. 
+
+Tổng của nhịp này là toán hạng ngõ vào của nhịp kế tiếp:
+\begin{equation}
+\text{acc}[k] = \text{acc}[k-1] + p[k]
+\end{equation}
+Nếu không có một phần tử nhớ giữ trạng thái qua cạnh đồng hồ, tín hiệu ngõ ra của bộ cộng sẽ hồi tiếp ngay lập tức về ngõ vào tổ hợp của chính nó, tạo thành một mạch vòng tổ hợp không ổn định (combinational loop), gây dao động ký sinh và vi phạm quy tắc thiết kế đồng bộ. Do đó, trên đời \textbf{không thể tồn tại một mạch MAC tổ hợp thuần túy}. Câu hỏi thiết kế kiến trúc thực sự không phải là "có dùng thanh ghi hay không", mà là: \textbf{Có nên chia nhỏ quãng đường phía trước bộ cộng thành nhiều chặng đường ống hay không?}
+
+\subsubsection*{Phân tích ba phương án chốt thanh ghi và đường tới hạn}
+Xét ba phương án kiến trúc chốt thanh ghi đường ống được minh họa trong Hình~\ref{fig:ch07_pipeline_options}:
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{\input{chuong_v3/fig_ch07_pipeline_options.tex}}
+\caption{So sánh ba phương án chốt thanh ghi đường ống trong khối nhân tích lũy MAC trên FPGA Cyclone V.}
+\label{fig:ch07_pipeline_options}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch07_pipeline_options} thể hiện rõ rệt sự phân rã các chặng đường ống. Ở Phương án 1, ngõ ra M10K chạy tuột qua bộ nhân và bộ cộng vào thanh ghi tổng, tạo nên đường tới hạn dài nhất. Ở Phương án 2 (phương án được chọn), việc kích hoạt tầng thanh ghi đầu vào \texttt{a\_r, b\_r} có sẵn trong silicon DSP giúp chia đôi quãng đường mà không tốn thêm tài nguyên ALM nào. Ở Phương án 3, việc chèn thêm thanh ghi tích số đòi hỏi lấy khoảng 32 FF ngoài ALM vì khối DSP Cyclone V không có thanh ghi cứng tại vị trí này, trở nên lãng phí ở tần số 50 MHz.
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Phương án 1: Không chốt toán hạng ở cửa DSP (Trễ 2 chu kỳ).}
+    Dữ liệu đọc ra từ khối nhớ M10K đi thẳng trực tiếp vào bộ nhân của khối DSP, qua bộ cộng dồn, rồi dừng ở thanh ghi tổng \texttt{acc}.
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Độ trễ (Latency):} Mất đúng $2\text{ chu kỳ}$ tính từ lúc phát địa chỉ tới khi tổng được cập nhật (1 chu kỳ đọc RAM M10K và 1 chu kỳ nhân-cộng dồn).
+        \item \emph{Đường tới hạn:} Bắt đầu từ thanh ghi địa chỉ ngõ vào của M10K, qua thời gian trễ đọc $T_{\text{co}}(\text{M10K})$, qua dây nối liên khối $T_{\text{wire}}$, qua bộ nhân $T_{\text{mult}}$, qua bộ cộng $T_{\text{add}}$, tới thời gian thiết lập $T_{\text{su}}$ của thanh ghi \texttt{acc}. Đường tới hạn này phụ thuộc trực tiếp vào việc Fitter đặt khối M10K xa hay gần khối DSP. Nếu Fitter đặt M10K ở góc xa của chip, độ trễ dây $T_{\text{wire}}$ có thể làm $F_{\max}$ tụt giảm.
+    \end{itemize}
+
+    \item \textbf{Phương án 2: Chốt toán hạng ở cửa khối DSP (Trễ 3 chu kỳ -- LỰA CHỌN CỦA DỰ ÁN).}
+    Thêm một tầng thanh ghi đồng bộ \texttt{a\_r, b\_r} ngay tại cửa ngõ vào của khối DSP.
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Đặc tính silicon Cyclone V:} Trong cấu trúc phần cứng của khối Variable Precision DSP (CV-52003 Chương 5), Intel đã tích hợp sẵn một hàng thanh ghi đầu vào (Input Register Bank) bằng silicon cứng. Do đó, việc kích hoạt tầng thanh ghi này \textbf{tiêu tốn đúng 0 khối logic ALM}!
+        \item \emph{Phân tách đường tới hạn:} Quãng đường điện được chia đôi hoàn hảo:
+        \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+            \item Chặng 1: Từ thanh ghi địa chỉ M10K $\to$ đọc M10K $\to$ dây nối $\to$ chốt vào thanh ghi \texttt{a\_r, b\_r}.
+            \item Chặng 2: Từ thanh ghi \texttt{a\_r, b\_r} $\to$ bộ nhân $\to$ bộ cộng $\to$ thanh ghi tổng \texttt{acc}.
+        \end{itemize}
+        Đường tới hạn của phép nhân-cộng hoàn toàn bị cô lập bên trong nội bộ khối DSP, không còn phụ thuộc vào chiều dài dây nối bên ngoài.
+        \item \emph{Độ trễ (Latency):} Tăng thêm đúng 1 chu kỳ, tổng cộng là $3\text{ chu kỳ}$ tính từ lúc phát địa chỉ tới lúc kết quả $R[\tau]$ xuất hiện.
+    \end{itemize}
+
+    \item \textbf{Phương án 3: Chốt thêm cả tích số giữa bộ nhân và bộ cộng (Trễ 4 chu kỳ).}
+    Chèn thêm một tầng thanh ghi $34\text{-bit}$ trung gian giữa ngõ ra bộ nhân và ngõ vào bộ cộng.
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Hạn chế silicon Cyclone V:} Khối Variable Precision DSP của Cyclone V \textbf{không có thanh ghi cứng tại vị trí giữa bộ nhân và bộ tích lũy} (chỉ các dòng FPGA cao cấp như Arria 10 hay Stratix 10 mới hỗ trợ thanh ghi pipeline này bên trong DSP). Nếu cố ép cấu hình này, Quartus buộc phải kéo kết quả nhân ra ngoài mảng logic để chốt vào khoảng 32 đến 34 flip-flop của các khối ALM, rồi kéo ngược trở lại khối DSP để cộng dồn.
+        \item \emph{Đánh giá:} Ở tần số danh định $50\text{ MHz}$ ($20\text{ ns}$), thời gian thực hiện của bộ nhân $17 \times 17$ và bộ cộng $48\text{-bit}$ bên trong silicon DSP chỉ chiếm chưa tới $4\text{ ns}$. Việc chèn thêm tầng thanh ghi này là hoàn toàn dư thừa, vừa làm lãng phí ALM ngoài, vừa tăng trễ không cần thiết.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Chỗ dễ vướng: Độ trễ (Latency) có làm chậm 98.540 phép tính không?}
+Một câu hỏi kinh điển mà anh Tú hay bất kỳ người học thiết kế vi mạch nào cũng sẽ thắc mắc: \emph{"Tăng độ trễ từ 2 chu kỳ lên 3 chu kỳ có làm chậm quá trình tính toán của 98.540 phép tính hay không?"}
+
+Câu trả lời dứt khoát là: \textbf{Hoàn toàn không, vì độ trễ (Latency) và thông lượng (Throughput) là hai khái niệm hoàn toàn khác nhau!}
+
+Hãy hình dung một băng chuyền đóng gói công nghiệp có chiều dài 3 mét:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Món hàng đầu tiên đặt lên băng chuyền mất đúng $3\text{ giây}$ mới chạy tới điểm cuối (đây là \emph{độ trễ}).
+    \item Nhưng một khi băng chuyền đã được lấp đầy (đường ống đã nạp đầy), cứ mỗi giây tiếp theo sẽ có đều đặn đúng một món hàng rơi ra ở đầu cuối (đây là \emph{thông lượng} 1 món/giây).
+\end{itemize}
+
+Trong module tự tương quan, bộ phát địa chỉ phát liên tục $98.540\text{ cặp địa chỉ}$ liền mạch nhau qua từng chu kỳ xung nhịp, không có lấy một chu kỳ nghỉ. Sau khi cặp địa chỉ cuối cùng được phát ra ở chu kỳ thứ $98.539$, dữ liệu của nó chỉ mất thêm đúng 3 chu kỳ để đi hết đường ống và cập nhật giá trị $R[214]$ cuối cùng vào chu kỳ thứ $98.543$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Với Phương án 1 (trễ 2 nhịp): Tổng thời gian là $98.540 + 2 = \mathbf{98.542\text{ chu kỳ}}$.
+    \item Với Phương án 2 (trễ 3 nhịp): Tổng thời gian là $98.540 + 3 = \mathbf{98.543\text{ chu kỳ}}$.
+\end{itemize}
+Chênh lệch giữa hai phương án là đúng \textbf{1 chu kỳ xung nhịp duy nhất} trên tổng số $98.543\text{ chu kỳ}$, tương đương với mức chênh lệch:
+\begin{equation}
+\frac{1}{98.543} \approx 0{,}001015\% \approx \mathbf{0{,}001\%}
+\end{equation}
+Một phần nghìn của một phần trăm thời gian hoàn toàn không có ý nghĩa gì đối với hiệu năng hệ thống, nhưng đổi lại, hệ thống nhận được một đường tới hạn được cân bằng hoàn hảo và một $F_{\max}$ an toàn vượt bậc!
+
+\subsubsection*{Cơ chế chuyển tiếp Zero-Bubble: Vai trò của cờ \texttt{sload} và \texttt{last}}
+Làm thế nào để bộ tích lũy chuyển đổi giữa hai độ trễ liên tiếp $\tau$ và $\tau+1$ mà không cần chèn các chu kỳ "bong bóng" (bubble cycles) để xóa thanh ghi tổng về $0$?
+
+Câu trả lời nằm ở tín hiệu điều khiển \textbf{\texttt{sload}} (Synchronous Load) của khối DSP:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Cờ \texttt{sload} được bộ phát địa chỉ bật lên mức 1 đúng vào chu kỳ phát cặp mẫu đầu tiên ($n = 0$) của một độ trễ mới.
+    \item Khi cờ \texttt{sload} đã đi qua đường ống và tới bộ tích lũy, nó ra lệnh cho bộ cộng: \emph{"Nạp thẳng tích số mới $p$ vào thanh ghi tổng \texttt{acc}, thay vì cộng $p$ với giá trị cũ!"}
+    \begin{equation}
+    \text{acc} \le \text{sload\_r} \ ? \ p \ : \ (\text{acc} + p)
+    \end{equation}
+    Nhờ cơ chế nạp đè này, thanh ghi \texttt{acc} tự động được khởi tạo lại giá trị cho lag mới ngay tại nhịp tính đầu tiên, mà \textbf{hoàn toàn không tốn một chu kỳ nào để reset về 0}!
+\end{itemize}
+
+Cái giá phải trả của cơ chế này là gì? Đó là \textbf{kết quả của lag cũ chỉ tồn tại trên thanh ghi tổng đúng duy nhất một chu kỳ xung nhịp}! Ngay chu kỳ tiếp theo, tích đầu tiên của lag mới sẽ lập tức ghi đè lên thanh ghi \texttt{acc}. Vì vậy, hệ thống phải bắt được kết quả hoàn tất một cách tuyệt đối chính xác:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Cờ \textbf{\texttt{last}} được bật lên tại cặp mẫu cuối cùng ($n = N - 1 - \tau$) của mỗi lag.
+    \item Cờ \texttt{last} được đưa qua đúng số tầng thanh ghi trễ bằng với dữ liệu (\texttt{last\_r}). Khi \texttt{last\_r} tới tầng tích lũy, nó kích hoạt tín hiệu \textbf{\texttt{out\_valid}} lên mức 1 đúng vào chu kỳ mà \texttt{acc} chứa tổng hoàn chỉnh của độ trễ đó. Mạch tiêu thụ bên ngoài (hoặc bộ đệm kết quả) chỉ việc chốt giá trị \texttt{acc} khi \texttt{out\_valid} = 1.
+\end{itemize}
+
+\subsubsection*{Tính toán mẫu bằng tay (Hand Calculation Walkthrough)}
+Để hình dung dòng chảy tín hiệu chu kỳ-đối-chu-kỳ, ta thực hiện tính toán trên một khung đồ chơi cực nhỏ gồm 4 mẫu: $x_w = [2, -3, 4, 1]$ ($N = 4$). Ta cần tính hai độ trễ liên tiếp:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item $\tau = 1$: Có $4 - 1 = 3\text{ cặp mẫu}$ ($n = 0, 1, 2$):
+    \begin{equation}
+    R[1] = 2 \cdot (-3) + (-3) \cdot 4 + 4 \cdot 1 = (-6) + (-12) + 4 = \mathbf{-14}
+    \end{equation}
+    \item $\tau = 2$: Có $4 - 2 = 2\text{ cặp mẫu}$ ($n = 0, 1$):
+    \begin{equation}
+    R[2] = 2 \cdot 4 + (-3) \cdot 1 = 8 + (-3) = \mathbf{5}
+    \end{equation}
+\end{itemize}
+
+Hai lag được phát liên tục, nối tiếp nhau không một nhịp nghỉ, qua 8 chu kỳ xung nhịp đầu tiên (Bảng~\ref{tab:ch07_hand_trace}):
+
+\begin{table}[H]
+\centering
+\caption{Bảng tính tay diễn biến đường ống MAC qua từng chu kỳ xung nhịp ($x_w = [2, -3, 4, 1]$).}
+\label{tab:ch07_hand_trace}
+\small
+\begin{tabular}{ccccccc}
+\toprule
+\textbf{Nhịp} & \textbf{Địa chỉ phát (sload, last)} & \textbf{RAM trả ra} & \textbf{Thanh ghi vào $a_r, b_r$ ($sload_r$)} & \textbf{Tích $p$} & \textbf{acc} & \textbf{out\_valid} \\
+\midrule
+0 & $(0,1)\ (1, 0)$ & – & – & – & – & 0 \\
+1 & $(1,2)\ (0, 0)$ & $2, -3$ & – & – & – & 0 \\
+2 & $(2,3)\ (0, 1)$ & $-3, 4$ & $2, -3\ (1)$ & $-6$ & – & 0 \\
+3 & $(0,2)\ (1, 0)$ & $4, 1$ & $-3, 4\ (0)$ & $-12$ & $-6$ & 0 \\
+4 & $(1,3)\ (0, 1)$ & $2, 4$ & $4, 1\ (0)$ & $4$ & $-18$ & 0 \\
+5 & – & $-3, 1$ & $2, 4\ (1)$ & $8$ & $\mathbf{-14}$ & $\mathbf{1}$ \\
+6 & – & – & $-3, 1\ (0)$ & $-3$ & $8$ & 0 \\
+7 & – & – & – & – & $\mathbf{5}$ & $\mathbf{1}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\par\noindent\textbf{Đọc bảng tính tay:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại \textbf{Nhịp 0}: Địa chỉ $(0, 1)$ của lag 1 được phát ra cùng cờ $\text{sload} = 1$. RAM bắt đầu chu kỳ đọc.
+    \item Tại \textbf{Nhịp 1}: RAM trả ra hai giá trị mẫu $2$ và $-3$. Cặp địa chỉ $(1, 2)$ được phát tiếp.
+    \item Tại \textbf{Nhịp 2}: Mẫu $2, -3$ được chốt vào thanh ghi ngõ vào DSP $a_r, b_r$ cùng cờ $\text{sload}_r = 1$. Bộ nhân tổ hợp tính ra $p = 2 \times (-3) = -6$.
+    \item Tại \textbf{Nhịp 3}: Vì $\text{sload}_r = 1$, bộ tích lũy nạp thẳng tích $-6$ vào \texttt{acc}. Đồng thời, cặp mẫu tiếp theo $(-3, 4)$ được chốt vào $a_r, b_r$, sinh ra tích $p = -12$.
+    \item Tại \textbf{Nhịp 4}: \texttt{acc} tích lũy thêm $-12$, trở thành $-18$. Cặp cuối cùng của lag 1 $(4, 1)$ sinh ra tích $p = 4$.
+    \item Tại \textbf{Nhịp 5}: \texttt{acc} cộng thêm $4$, đạt giá trị $\mathbf{-14}$. Cờ $\text{last}$ của lag 1 đã đi trọn đường ống và kích hoạt $\mathbf{\text{out\_valid} = 1}$! Giá trị $\mathbf{-14}$ chính là kết quả $R[1]$ chuẩn xác.
+    \item Tại \textbf{Nhịp 6}: Ngay nhịp kế tiếp, vì cặp $(2, 4)$ của lag 2 đi kèm $\text{sload}_r = 1$, giá trị tích $p = 8$ lập tức \textbf{nạp đè} lên \texttt{acc}, xóa sạch giá trị $-14$ cũ mà không cần chu kỳ reset nào.
+    \item Tại \textbf{Nhịp 7}: Tích cuối cùng của lag 2 $p = -3$ được cộng vào $8$, \texttt{acc} đạt $\mathbf{5}$ và cờ $\mathbf{\text{out\_valid} = 1}$ xuất hiện, chốt giá trị $R[2] = 5$.
+\end{itemize}
+
+\subsubsection*{Lựa chọn thiết kế và căn cứ kỹ thuật}
+Thiết kế của tài liệu này dứt khoát lựa chọn \textbf{Phương án 2} vì bốn căn cứ kỹ thuật không thể phủ nhận:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tận dụng silicon cứng miễn phí:} Tầng thanh ghi vào có sẵn bên trong khối DSP của Cyclone V, kích hoạt lên tiêu tốn đúng 0 khối logic ALM.
+    \item \textbf{Độ trễ không làm giảm hiệu năng:} Tăng thêm 1 chu kỳ trễ chỉ làm tăng $0{,}001\%$ tổng thời gian tính toán trên $98.543\text{ chu kỳ}$.
+    \item \textbf{Độc lập với dây nối định tuyến:} Đường tới hạn của bộ nhân và bộ cộng hoàn toàn nằm gọn trong silicon DSP, giúp thiết kế dễ dàng đạt tần số mục tiêu $50\text{ MHz}$ mà không phụ thuộc vào vị trí bố trí linh kiện của Fitter.
+    \item \textbf{Tương thích hoàn hảo với IP Intel:} Cấu hình này khớp chính xác $100\%$ với mô hình sinh mã của khối IP chuẩn Intel \texttt{ALTERA\_MULT\_ADD}.
+\end{enumerate}
+
+Tần số hoạt động cực đại $F_{\max}$ thực tế và số lượng ALM tiêu tốn cụ thể của cả hai phương án là các đại lượng \textbf{(phải đo)} trên phần mềm Quartus Prime với chip Cyclone V 5CSXFC6D6F31C6N.
+
+\textit{Tóm lại: Phép cộng tích lũy bắt buộc phải có thanh ghi; việc chốt thêm một tầng thanh ghi ở cửa khối DSP tận dụng tài nguyên silicon có sẵn (0 ALM), chia đôi đường tới hạn và chỉ tăng $0{,}001\%$ thời gian thực, đồng thời cơ chế \texttt{sload} giúp chuyển đổi giữa các lag liên tục mà không phát sinh bất kỳ chu kỳ nhàn rỗi nào.}
