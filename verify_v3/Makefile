@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 ch04 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 clean
 
-all: ch00 ch01 ch02 ch03 ch04
+all: ch00 ch01 ch02 ch03 ch04 ch05
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -80,5 +80,18 @@ ch04:
 	$(PYTHON) ch04_exercises.py > ch04_exercises.log
 	@echo "=== [ch04] All Chapter 4 verifications completed successfully ==="
 
+ch05:
+	@echo "=== [ch05] Running Praat citations and double vs int mean audit ==="
+	$(PYTHON) ch05_praat_lines.py > ch05_praat_lines.log
+	@echo "=== [ch05] Running reciprocal division mathematical audit ==="
+	$(PYTHON) ch05_mean_math.py > ch05_mean_math.log
+	@echo "=== [ch05] Running DC effect and DC-blocker analysis ==="
+	$(PYTHON) ch05_dc_effect.py > ch05_dc_effect.log
+	@echo "=== [ch05] Running Local Mean and DC-Blocker twin vector generation ==="
+	$(PYTHON) ch05_mean_twin.py > ch05_mean_twin.log
+	@echo "=== [ch05] Running chapter exercises verification ==="
+	$(PYTHON) ch05_exercises.py > ch05_exercises.log
+	@echo "=== [ch05] All Chapter 5 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_*

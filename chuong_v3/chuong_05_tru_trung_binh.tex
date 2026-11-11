@@ -1,0 +1,123 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 5. Trừ trung bình cục bộ, với DC-blocker tùy chọn}
+\addcontentsline{toc}{section}{Chương 5. Trừ trung bình cục bộ, với DC-blocker tùy chọn}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất vật lý và nguồn gốc toán học của thành phần một chiều (DC offset) trong tín hiệu âm thanh; chứng minh chặt chẽ cơ chế độ lệch $+c^2$ nâng bổng đường tự tương quan chuẩn hóa và làm sụp đổ ngưỡng quyết định hữu thanh (\texttt{VOICING\_THRESHOLD} $= 0{,}45$).
+    \item Khám phá mã nguồn Praat 7.0.03 (\texttt{Sound\_to\_Pitch.cpp}, dòng 59--66), phân tích vì sao Boersma tính trung bình cục bộ trên đúng 426 mẫu ($2 \times 213$ mẫu quanh tâm khung) thay vì 640 hay 638 mẫu; chứng minh tính tối ưu khi đọc trực tiếp từ bộ đệm vòng (Ring Buffer) mà không tốn thêm bộ nhớ RAM.
+    \item Nắm vững kỹ thuật chia cho hằng số bằng phép nhân số nguyên nghịch đảo; vạch rõ sai lầm của Argon ($M = 26.214, k = 24$ gây lỗi $25\%$), dẫn xuất thuật toán Golden v2 ($M = 10.082.083, k = 32$) kết hợp độ lệch không âm $B = 426 \times 2^{15}$, bảo đảm khớp bit tuyệt đối $100\%$ trên toàn bộ $27.917.911$ giá trị tổng vật lý.
+    \item Khảo sát chuyên sâu khối IP Intel \texttt{LPM\_MULT} theo tài liệu \emph{Integer Arithmetic IP Cores User Guide} (UG-01069) và kiến trúc khối DSP biến đổi độ chính xác trong \emph{Cyclone V Device Handbook} (CV-52003); giải thích tường tận vì sao phép nhân $25 \times 24$-bit không dấu vừa vặn trong đúng 1 khối DSP 27$\times$27.
+    \item Hiện thực hóa module phần cứng Verilog-2001 (\texttt{ch05\_local\_mean.v}) và bộ lọc DC-blocker tùy chọn bậc 1 (\texttt{ch05\_dc\_blocker.v}, $\alpha = 1 - 2^{-8}$); giải mã cấu trúc thanh ghi tích lũy 36-bit chống hiện tượng tràn số và chu trình giới hạn (limit cycle).
+    \item Thực thi kiểm chứng bit-đối-bit và chu-kỳ-đối-chu-kỳ giữa mô hình song sinh Python và mô phỏng HDL trên 205 khung tín hiệu thực nghiệm và các trường hợp góc biên khắc nghiệt.
+\end{itemize}
+\end{learningobj}
+
+\subsection*{5.1. Bản chất và tác hại của mức DC trong tự tương quan}
+\addcontentsline{toc}{subsection}{5.1. Bản chất và tác hại của mức DC trong tự tương quan}
+
+\subsubsection*{Vấn đề thực tế: Sự thật phũ phàng về độ lệch một chiều và tiếng thì thầm bị biến thành tiếng nói}
+Giả sử một hệ thống thu âm giọng nói có micro hoặc mạch khuếch đại tiền khuếch đại (preamplifier) bị lệch điện áp phân cực nhẹ. Dòng âm thanh số hóa $16\text{ bit}$ thu được không dao động quanh mức $0$ mà bị nâng lên một mức một chiều $c = +1000$ đơn vị biên độ (chỉ chiếm khoảng $3\%$ dải toàn thang $32.768$, tai người hoàn toàn không nghe thấy tiếng ù này). 
+
+Khi người nói dừng phát âm để chuyển sang một đoạn thì thầm hoặc một khoảng lặng vô thanh (vùng unvoiced hoặc silence), năng lượng tín hiệu thực chất chỉ là nhiễu nền ngẫu nhiên với độ lệch chuẩn $\sigma = 1000$. Thuật toán tự tương quan trên FPGA được kích hoạt để phân tích khung $638\text{ mẫu}$. Nếu mạch phần cứng bỏ qua bước khử trung bình và đưa trực tiếp tín hiệu có mức DC vào khối nhân cửa sổ Hanning rồi tính tự tương quan $R(\tau)$, điều gì sẽ xảy ra?
+
+Thay vì nhận diện đây là khoảng lặng với $r(\tau) \approx 0$ và phân loại đúng là vô thanh (Unvoiced), giá trị tự tương quan chuẩn hóa tại mọi độ trễ $\tau$ bị kéo vọt lên trên $0{,}60$. Con số này vượt xa ngưỡng hữu thanh chuẩn của Praat (\texttt{VOICING\_THRESHOLD} $= 0{,}45$). Hệ thống kết luận sai lầm rằng đây là một nguyên âm hữu thanh (Voiced) với độ tin cậy rất cao, sinh ra một cao độ $F_0$ giả tạo và làm bùng nổ tỷ lệ lỗi quyết định hữu thanh (VDE). Toàn bộ thuật toán sụp đổ chỉ vì một mức điện áp tĩnh không nhìn thấy bằng mắt thường.
+
+\subsubsection*{Dẫn xuất từ nguyên lý gốc: Cơ chế xuất hiện thành phần $+c^2$ nâng bổng đường tự tương quan}
+Để hiểu vì sao mức DC tĩnh $c$ lại gây ra hậu quả nghiêm trọng đến vậy, ta phân tích biểu thức toán học từ nguyên lý đầu tiên. Giả sử đoạn tín hiệu âm thanh thực $x[n]$ bao gồm thành phần sóng âm dao động thực thụ $s[n]$ (có giá trị kỳ vọng bằng $0$) cộng với một mức một chiều không đổi $c$:
+\begin{equation}
+x[n] = s[n] + c, \quad \text{với } \frac{1}{N} \sum_{n=0}^{N-1} s[n] \approx 0
+\end{equation}
+
+Khi áp dụng hàm cửa sổ thời gian $w[n]$ (cửa sổ Hanning độ dài $N = 638$), tín hiệu sau cửa sổ hóa là:
+\begin{equation}
+x_w[n] = x[n] \cdot w[n] = (s[n] + c) \cdot w[n] = s_w[n] + c \cdot w[n]
+\end{equation}
+trong đó $s_w[n] = s[n] w[n]$ là tín hiệu sóng âm đã nhân cửa sổ. Hàm tự tương quan ngắn hạn chưa chuẩn hóa tại độ trễ $\tau$ được tính bằng tích vô hướng trượt:
+\begin{equation}
+R_{xw}(\tau) = \sum_{n=0}^{N-1-\tau} x_w[n] \cdot x_w[n+\tau] = \sum_{n=0}^{N-1-\tau} \Big[ s_w[n] + c \cdot w[n] \Big] \Big[ s_w[n+\tau] + c \cdot w[n+\tau] \Big]
+\end{equation}
+
+Khai triển biểu thức tích dưới dấu tổng, ta thu được bốn số hạng riêng biệt:
+\begin{equation}
+R_{xw}(\tau) = \underbrace{\sum_{n=0}^{N-1-\tau} s_w[n] s_w[n+\tau]}_{R_{sw}(\tau)} + c \sum_{n=0}^{N-1-\tau} s_w[n] w[n+\tau] + c \sum_{n=0}^{N-1-\tau} s_w[n+\tau] w[n] + c^2 \underbrace{\sum_{n=0}^{N-1-\tau} w[n] w[n+\tau]}_{R_w(\tau)}
+\end{equation}
+trong đó $R_{sw}(\tau)$ là tự tương quan của tín hiệu sạch, còn $R_w(\tau)$ là tự tương quan năng lượng của chính hàm cửa sổ Hanning.
+
+Vì $s[n]$ là tín hiệu dao động xoay chiều có giá trị trung bình bằng $0$ và không tương quan với mức tĩnh $c$, các số hạng chéo tích giữa $s_w$ và $w$ sẽ triệt tiêu lẫn nhau khi lấy tổng trên số lượng mẫu đủ lớn:
+\begin{equation}
+c \sum_{n=0}^{N-1-\tau} s_w[n] w[n+\tau] \approx 0, \quad c \sum_{n=0}^{N-1-\tau} s_w[n+\tau] w[n] \approx 0
+\end{equation}
+
+Khi đó, tự tương quan của tín hiệu có mức DC thu gọn thành:
+\begin{equation}
+R_{xw}(\tau) \approx R_{sw}(\tau) + c^2 \cdot R_w(\tau)
+\end{equation}
+
+Hãy chú ý đến bước chuẩn hóa cửa sổ ở Chương 8: để loại bỏ ảnh hưởng suy giảm năng lượng của hàm cửa sổ Hanning ở các độ trễ lớn, thuật toán Praat bắt buộc phải chia hàm tự tương quan đo được cho hàm tự tương quan của cửa sổ:
+\begin{equation}
+r_x(\tau) = \frac{R_{xw}(\tau)}{R_w(\tau)} \approx \frac{R_{sw}(\tau) + c^2 \cdot R_w(\tau)}{R_w(\tau)} = \frac{R_{sw}(\tau)}{R_w(\tau)} + c^2 = r_s(\tau) + \mathbf{c^2}
+\end{equation}
+
+\begin{physicalinsight}
+\textbf{Khám phá then chốt:} Sau khi chuẩn hóa chia cho $R_w(\tau)$, thành phần một chiều $c$ biến thành một \textbf{hằng số dương tuyệt đối} $+c^2$ được cộng phẳng vào mọi độ trễ $\tau$!
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Vì $c^2 \ge 0$, mức DC không bao giờ làm giảm mà luôn \textbf{nâng bổng toàn bộ đáy và đỉnh} của đường cong tự tương quan lên cao.
+    \item Đối với âm thanh vô thanh hoặc đoạn lặng, $r_s(\tau) \approx 0$. Tuy nhiên, do bị cộng thêm $+c^2$, giá trị tự tương quan chuẩn hóa theo tỷ lệ năng lượng trở thành $r_x(\tau)/r_x(0) \approx c^2 / (\sigma^2 + c^2)$. Khi năng lượng DC $c^2$ tương đương phương sai nhiễu $\sigma^2$, tỷ số này đạt $0{,}50 > 0{,}45$, khiến bộ so sánh voicing khẳng định chắc chắn rằng tín hiệu có tuần hoàn!
+\end{itemize}
+\end{physicalinsight}
+
+\subsubsection*{Tính toán bằng tay: Ví dụ sóng vuông 8 mẫu cộng mức DC +1000}
+Để minh chứng tường minh công thức $r_x(\tau) = r_s(\tau) + c^2$, ta xét một ví dụ số học thu nhỏ gồm $N = 8$ mẫu được tính toán độc lập bằng kịch bản \texttt{verify\_v3/ch05\_dc\_effect.py}. 
+
+Xét tín hiệu sóng vuông đối xứng chu kỳ $4$ mẫu:
+\begin{equation}
+s[n] = [-1000, -1000, 1000, 1000, -1000, -1000, 1000, 1000]
+\end{equation}
+Tín hiệu này có giá trị trung bình thực sự bằng $0$ ($\sum s[n] = 0$). Ta cộng thêm mức DC $c = +1000$, tạo thành tín hiệu thực tế:
+\begin{equation}
+x[n] = s[n] + 1000 = [0, 0, 2000, 2000, 0, 0, 2000, 2000]
+\end{equation}
+
+Áp dụng hai trường hợp cửa sổ: cửa sổ chữ nhật ($w[n] = 1$) và cửa sổ Hanning chuẩn Praat ($w[i] = 0{,}5 - 0{,}5\cos(2\pi i / 9)$, $i = 1 \dots 8$). Bảng~\ref{tab:ch05_dc_hand_calc} trình bày chi tiết kết quả tính toán tự tương quan và tự tương quan chuẩn hóa cho các độ trễ $\tau = 0 \dots 4$.
+
+\begin{table}[H]
+\centering
+\caption{Tính toán bằng tay tác hại của mức DC $c = +1000$ lên tự tương quan ($N = 8$ mẫu, trích từ log \texttt{verify\_v3/ch05\_dc\_effect.log})}
+\label{tab:ch05_dc_hand_calc}
+\footnotesize
+\begin{tabular}{crrrrrr}
+\toprule
+\textbf{Độ trễ $\tau$} & \textbf{$R_s(\tau)$} & \textbf{$R_x(\tau)$} & \textbf{$R_w(\tau)$} & \textbf{$r_s(\tau) = R_s/R_w$} & \textbf{$r_x(\tau) = R_x/R_w$} & \textbf{Độ lệch $r_x - r_s$} \\
+\midrule
+\multicolumn{7}{l}{\textbf{Trường hợp 1: Cửa sổ chữ nhật ($w[n] = 1$)}} \\
+0 & $8.000.000{,}0$ & $16.000.000{,}0$ & $8{,}0000$ & $1.000.000{,}00$ & $2.000.000{,}00$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+1 & $1.000.000{,}0$ & $8.000.000{,}0$  & $7{,}0000$ & $142.857{,}14$   & $1.142.857{,}14$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+2 & $-6.000.000{,}0$ & $0{,}0$         & $6{,}0000$ & $-1.000.000{,}00$ & $0{,}00$         & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+3 & $-1.000.000{,}0$ & $4.000.000{,}0$  & $5{,}0000$ & $-200.000{,}00$  & $800.000{,}00$   & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+4 & $4.000.000{,}0$ & $8.000.000{,}0$  & $4{,}0000$ & $1.000.000{,}00$ & $2.000.000{,}00$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+\midrule
+\multicolumn{7}{l}{\textbf{Trường hợp 2: Cửa sổ Hanning Praat-8 ($N+1$)}} \\
+0 & $3.375.000{,}0$ & $6.750.000{,}0$ & $3{,}3750$ & $1.000.000{,}00$ & $2.000.000{,}00$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+1 & $-8.931{,}5$    & $3.102.868{,}5$ & $3{,}1118$ & $-2.870{,}19$    & $997.129{,}81$   & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+2 & $-2.431.670{,}4$ & $0{,}0$         & $2{,}4317$ & $-1.000.000{,}00$ & $0{,}00$         & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+3 & $12.033{,}3$    & $1.602.868{,}5$ & $1{,}5908$ & $7.564{,}16$     & $1.007.564{,}16$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+4 & $846.664{,}8$   & $1.693.329{,}6$ & $0{,}8467$ & $1.000.000{,}00$ & $2.000.000{,}00$ & $\mathbf{+1.000.000{,}00}$ ($= c^2$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Nhìn vào cột cuối cùng của Bảng~\ref{tab:ch05_dc_hand_calc}: ở cả hai loại hàm cửa sổ, hiệu số $r_x(\tau) - r_s(\tau)$ tại mọi độ trễ $\tau \in \{0, 1, 2, 3, 4\}$ đều bằng \textbf{chính xác tuyệt đối} $1.000.000{,}00 = c^2$. Tại $\tau = 2$ (nửa chu kỳ dao động), giá trị chuẩn hóa của tín hiệu sạch là $-1.000.000$ (tương quan nghịch cực đại, $r_s(2)/r_s(0) = -1{,}0$). Nhưng khi có DC, giá trị này bị kéo thẳng lên $0{,}0$, xóa sạch hoàn toàn dấu vết đối pha của dạng sóng!
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch05_dc_effect.tex}
+\caption{Hiện tượng mức một chiều DC $+c$ nâng bổng đường cong tự tương quan chuẩn hóa thêm một lượng $+c^2$, kéo các đỉnh nhiễu vô thanh vượt ngưỡng \texttt{VOICING\_THRESHOLD} $= 0{,}45$.}
+\label{fig:ch05_dc_effect}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch05_dc_effect} so sánh trực quan hàm tự tương quan chuẩn hóa $r(\tau)/r(0)$ của một khung âm thanh vô thanh (nhiễu trắng ngẫu nhiên, $\sigma = 1000$) trước và sau khi bị nhiễm mức DC $c = +1000$. Đường màu xanh nét đậm biểu diễn tín hiệu sạch đã được trừ trung bình hoàn toàn: đồ thị dao động ngẫu nhiên quanh trục hoành $0{,}0$, đỉnh cực đại trong dải quét $\tau \in [26, 214]$ chỉ đạt $0{,}1977$, nằm hoàn toàn bên trong miền vô thanh an toàn (vùng phủ màu xanh lá, bên dưới đường đứt nét màu đỏ biểu diễn ngưỡng \texttt{VOICING\_THRESHOLD} $= 0{,}45$). Ngược lại, đường màu cam nét đậm biểu diễn tín hiệu chưa được trừ trung bình: toàn bộ quỹ đạo bị đẩy tịnh tiến lên trên một khoảng $+c^2$, khiến đỉnh cực đại bị đội lên tới $0{,}6023$. Đỉnh này vượt qua ngưỡng đỏ $0{,}45$, kích hoạt cảnh báo sai và đánh dấu sai khung vô thanh thành hữu thanh.
+
+\textit{Tóm lại: Mức DC tĩnh $c$ sinh ra thành phần $+c^2 R_w(\tau)$ trong tự tương quan thô, và sau khi chia cho cửa sổ sẽ biến thành một độ lệch dương $+c^2$ đồng đều trên mọi độ trễ, phá hủy ranh giới nhận diện vô thanh và bắt buộc phần cứng phải có khối trừ trung bình cục bộ.}

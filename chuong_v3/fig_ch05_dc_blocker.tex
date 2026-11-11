@@ -1,0 +1,102 @@
+% chuong_v3/fig_ch05_dc_blocker.tex
+% Microarchitecture of the 1st-order IIR DC-blocker filter (ch05_dc_blocker.v)
+\begin{tikzpicture}[>=stealth, font=\small, scale=0.88, every node/.style={transform shape}]
+
+    % Style definitions
+    \tikzstyle{block}     = [draw=blue!80!black, fill=blue!6, thick, rounded corners=4pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{regbox}    = [draw=teal!80!black, fill=teal!8, thick, rounded corners=4pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{calcbox}   = [draw=orange!80!black, fill=orange!8, thick, rounded corners=4pt, 
+                             inner sep=5pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{muxbox}    = [draw=purple!80!black, fill=purple!8, thick, rounded corners=3pt, 
+                             inner sep=4pt, align=center, font=\scriptsize\bfseries]
+    \tikzstyle{dataline}  = [->, very thick, color=teal!80!black]
+    \tikzstyle{ctrlline}  = [->, thick, dashed, color=red!80!black]
+    \tikzstyle{portlabel} = [font=\scriptsize\ttfamily]
+
+    % Frame boundary
+    \draw[draw=blue!60!black, fill=blue!1, thick, rounded corners=6pt, dashed] 
+        (-8.8, -4.6) rectangle (9.2, 4.6);
+    \node[anchor=north west, font=\footnotesize\bfseries, text=blue!90!black, fill=blue!1, inner sep=2pt] 
+        at (-8.5, 4.45) {Kiến trúc bộ lọc triệt tiêu một chiều DC-Blocker (\texttt{ch05\_dc\_blocker.v})};
+
+    % Left Ports (Sink Interface)
+    \node[portlabel, anchor=east] (p_s_data)  at (-9.0,  2.2) {\texttt{sink\_data[15:0]}};
+    \node[portlabel, anchor=east] (p_s_valid) at (-9.0,  0.8) {\texttt{sink\_valid}};
+    \node[portlabel, anchor=east] (p_s_ready) at (-9.0, -0.6) {\texttt{sink\_ready}};
+    \node[portlabel, anchor=east] (p_bypass)  at (-9.0, -3.2) {\texttt{bypass}};
+
+    % Right Ports (Source Interface)
+    \node[portlabel, anchor=west] (p_d_data)  at (9.4,  2.2) {\texttt{source\_data[15:0]}};
+    \node[portlabel, anchor=west] (p_d_valid) at (9.4,  0.8) {\texttt{source\_valid}};
+    \node[portlabel, anchor=west] (p_d_ready) at (9.4, -0.6) {\texttt{source\_ready}};
+
+    % 1. Input Differentiator (Top Left)
+    \node[regbox, minimum width=1.6cm, minimum height=1.1cm] (z_x) at (-5.8, 1.2)
+        {Trễ $z^{-1}$\\$x[n-1]$};
+    \node[calcbox, minimum width=1.6cm, minimum height=1.1cm] (sub_x) at (-3.8, 2.2)
+        {Bộ trừ\\$dx[n]$};
+
+    % 2. Scaling dx to Q20.16 (Mid Left)
+    \node[calcbox, minimum width=2.0cm, minimum height=1.1cm] (shift_dx) at (-1.4, 2.2)
+        {Dịch trái $16$\\$dx \cdot 2^{16}$};
+
+    % 3. Main Accumulator Adder (Center)
+    \node[calcbox, minimum width=2.2cm, minimum height=1.2cm] (adder_w) at (1.2, 2.2)
+        {Bộ cộng\\$w[n]$ (36-bit)};
+
+    % 4. State Register z^-1 (Center Bottom)
+    \node[regbox, minimum width=2.2cm, minimum height=1.2cm] (z_w) at (1.2, -0.8)
+        {Thanh ghi trạng thái\\$z^{-1}$ (36-bit Q20.16)\\$w[n-1]$};
+
+    % 5. Feedback Arithmetic Shift (Center Left Bottom)
+    \node[calcbox, minimum width=2.6cm, minimum height=1.1cm] (shift_fb) at (-2.2, -0.8)
+        {Nhân $\alpha = 1 - 2^{-8}$\\$w - (w \ggg 8)$};
+
+    % 6. Rounding & Saturation (Right Center)
+    \node[calcbox, minimum width=2.6cm, minimum height=1.3cm] (sat_box) at (4.4, 2.2)
+        {Làm tròn \& Bão hòa\\$(w + 2^{15}) \ggg 16$\\Kẹp $[-32768, 32767]$};
+
+    % 7. Bypass Multiplexer (Far Right)
+    \node[muxbox, minimum width=1.4cm, minimum height=2.2cm] (mux) at (7.4, 2.2)
+        {Mux\\$2:1$};
+
+    % Signal Interconnections
+    % Sink data branch to z_x and sub_x
+    \draw[dataline] (p_s_data) -- (-6.8, 2.2) |- (z_x.west);
+    \draw[dataline] (-6.8, 2.2) -- (sub_x.west);
+    \draw[dataline] (z_x.east) -| (sub_x.south);
+
+    % sub_x to shift_dx to adder_w
+    \draw[dataline] (sub_x.east) -- (shift_dx.west);
+    \draw[dataline] (shift_dx.east) -- (adder_w.west);
+
+    % adder_w to sat_box
+    \draw[dataline] (adder_w.east) -- (sat_box.west) 
+        node[midway, above, font=\tiny\bfseries, fill=white] {36-bit};
+
+    % State register feedback loop
+    \draw[dataline] (adder_w.south) -- (z_w.north);
+    \draw[dataline] (z_w.west) -- (shift_fb.east);
+    \draw[dataline] (shift_fb.north) |- (adder_w.south west);
+
+    % sat_box to Mux input 0
+    \draw[dataline] (sat_box.east) -- (mux.150)
+        node[near end, above, font=\tiny\bfseries] {$0$};
+
+    % Bypass path from p_s_data to Mux input 1
+    \draw[dataline] (-6.8, 2.2) -- (-6.8, 3.8) -- (6.4, 3.8) |- (mux.30)
+        node[near end, above, font=\tiny\bfseries] {$1$ (Bypass)};
+
+    % Bypass control
+    \draw[ctrlline] (p_bypass) -- (7.4, -3.2) -- (mux.south);
+
+    % Mux to source_data
+    \draw[dataline] (mux.east) -- (p_d_data);
+
+    % Handshake lines
+    \draw[ctrlline] (p_s_valid) -- (p_d_valid);
+    \draw[ctrlline] (p_d_ready) -- (p_s_ready);
+
+\end{tikzpicture}
