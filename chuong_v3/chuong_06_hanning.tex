@@ -119,7 +119,7 @@ for (integer i = 1; i <= nsamp_window; i ++)
     window [i] = 0.5 - 0.5 * cos (NUM2pi * i / (nsamp_window + 1));
 \end{lstlisting}
 
-Hãy chú ý thật kỹ chỉ số $i$ và mẫu số: vòng lặp chạy từ $i = 1$ đến $N$ (\texttt{nsamp\_window} $= 638$), và góc pha được chia cho $N + 1 = 639$! Đây là công thức Hanning dạng $N+1$, khác biệt với công thức Hanning đối xứng tiêu chuẩn thường gặp trong MATLAB (\texttt{hann(N, 'symmetric')}) hay SciPy (\texttt{scipy.signal.windows.hann(N, sym=True)}).
+Hãy chú ý thật kỹ chỉ số $i$ và mẫu số: vòng lặp chạy từ $i = 1$ đến $N$ (\texttt{nsamp\_window} $= 638$), và góc pha được chia cho $N + 1 = 639$! Đây là công thức Hanning dạng $N+1$, khác biệt với công thức Hanning đối xứng tiêu chuẩn thường gặp trong MATLAB (\texttt{hann(N, 'symmetric')}) hay SciPy (\path{scipy.signal.windows.hann}).
 
 Trong các tài liệu xử lý tín hiệu tiêu chuẩn, cửa sổ Hanning đối xứng được định nghĩa trên chỉ số mảng $0$-based ($k = 0 \dots N-1$) với mẫu số chia cho $N - 1$:
 \begin{equation}
