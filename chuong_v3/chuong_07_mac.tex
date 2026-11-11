@@ -888,3 +888,159 @@ Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi 
 \todo[inline]{box: Kết quả chạy iverilog trên Linux: 7.460 vector kiểm chứng chu-kỳ-đối-chu-kỳ, 3.040 kết quả tự tương quan qua 16 khung khớp bit 100\% với golden\_v2/hdl\_check/exp.hex, 0 lỗi sai lệch.}
 
 \textit{Tóm lại: Khối MAC HDL tự viết tái lập hoàn hảo cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ; toàn bộ 3.040 kết quả tự tương quan trên 16 khung thử nghiệm đạt độ khớp bit tuyệt đối $100\%$ với chuẩn golden.}
+
+
+\subsection*{7.9. Tổng kết so sánh IP và HDL, quy ước kiểm chứng và bài tập}
+\addcontentsline{toc}{subsection}{7.9. Tổng kết so sánh IP và HDL, quy ước kiểm chứng và bài tập}
+
+\subsubsection*{Quy ước kiểm chứng mẫu 2 pha trong Testbench (2-Phase Sampling Convention)}
+Trong các hệ thống số xử lý tín hiệu tốc độ cao, việc đồng bộ thời điểm kích thích dữ liệu ngõ vào và thời điểm kiểm tra ngõ ra giữa mô hình mô phỏng phần mềm (Python Twin) và môi trường kiểm chứng phần cứng (Verilog Testbench) là yếu tố quyết định để tránh các lỗi chạy đua xung nhịp (race conditions) hoặc sai lệch một chu kỳ (off-by-one cycle error). Thiết kế tự tương quan trong chương này tuân thủ nghiêm ngặt \textbf{quy ước kiểm chứng mẫu 2 pha}:
+
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Pha 1 (Kích thích ở cạnh xuống xung nhịp):}
+    Tại cạnh xuống của xung nhịp (\texttt{@(negedge clk)}), testbench gán các giá trị kích thích ngõ vào bao gồm tín hiệu điều khiển (\texttt{rst\_n}, \texttt{in\_valid}, \texttt{in\_sload}, \texttt{in\_last}) và các toán hạng âm thanh (\texttt{a}, \texttt{b}). Việc đổi giá trị ở cạnh xuống tạo ra nửa chu kỳ xung nhịp hoàn toàn ổn định (setup time rộng rãi) trước khi cạnh lên kế tiếp xuất hiện, giúp triệt tiêu hoàn toàn nguy cơ vi phạm thời gian thiết lập. Sau đó, testbench đợi một độ trễ mô phỏng nhỏ \texttt{\#1} để kiểm tra các tín hiệu tổ hợp nội bộ (nếu cần).
+    
+    \item \textbf{Pha 2 (Kiểm tra ngõ ra thanh ghi ở cạnh lên xung nhịp):}
+    Tại cạnh lên của xung nhịp (\texttt{@(posedge clk)}), các flip-flop vật lý bên trong khối DSP và RAM chốt trạng thái mới. Testbench đợi một độ trễ mô phỏng \texttt{\#1} để các cổng ngõ ra thanh ghi cập nhật ổn định, sau đó tiến hành đối chiếu giá trị \texttt{out\_valid} và thanh ghi tích lũy \texttt{acc} với dữ liệu kỳ vọng từ tệp vector của Python twin.
+\end{itemize}
+
+Mô hình song sinh Python \texttt{MacUnitTwin.step()} phản ánh chuẩn xác quy trình 2 pha này: hàm trước tiên tính toán logic tổ hợp của tầng tích lũy dựa trên giá trị thanh ghi hiện tại, sau đó mới cập nhật tầng thanh ghi đầu vào và thanh ghi tích lũy sang chu kỳ tiếp theo. Đặc biệt, testbench tuân thủ nguyên tắc không ngắt ngang khi phát hiện sai lệch đầu tiên (không early abort), mà ghi nhận toàn bộ các vi phạm, in thông báo \texttt{[FAIL]} kèm chỉ số chu kỳ cụ thể và tổng kết tổng số lỗi so sánh bằng thông báo chuẩn \texttt{Total comparison errors: N}.
+
+\subsubsection*{Bảng so sánh toàn diện giữa Tuyến (A) (IP Intel) và Tuyến (B) (HDL tự viết)}
+Bảng~\ref{tab:ch07_ip_vs_hdl} tổng hợp so sánh đa chiều giữa phương án tích hợp khối IP cứng \texttt{ALTERA\_MULT\_ADD} và phương án thiết kế Verilog HDL tự viết \texttt{ch07\_mac\_unit.v}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{So sánh toàn diện giữa tuyến IP Intel ALTERA\_MULT\_ADD và tuyến HDL tự viết.}
+\label{tab:ch07_ip_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.8cm} p{4.6cm} X}
+\toprule
+\textbf{Tiêu chí kỹ thuật} & \textbf{Tuyến (A): IP ALTERA\_MULT\_ADD} & \textbf{Tuyến (B): HDL ch07\_mac\_unit.v} \\
+\midrule
+\textbf{Bản chất hiện thực} & Sinh tự động từ IP Catalog của Quartus Prime & Mã nguồn Verilog RTL chuẩn, suy diễn tự động \\
+\addlinespace[3pt]
+\textbf{Khối Variable Precision DSP} & Đúng 1 khối DSP cứng (18x18 bit) & Đúng 1 khối DSP cứng (18x18 bit) \\
+\addlinespace[3pt]
+\textbf{Tài nguyên bộ nhớ M10K} & 2 khối M10K (từ \texttt{ch07\_xw\_ram}, $512 \times 20$) & 2 khối M10K (từ \texttt{ch07\_xw\_ram}, $512 \times 20$) \\
+\addlinespace[3pt]
+\textbf{Tài nguyên ALM logic} & 0 ALM cho lõi tính toán; \textbf{(phải đo)} cho bộ ghép & 0 ALM cho lõi tính toán; \textbf{(phải đo)} cho FSM và đệm \\
+\addlinespace[3pt]
+\textbf{Tần số cực đại $F_{\max}$} & \textbf{(phải đo)} bằng TimeQuest & \textbf{(phải đo)} bằng TimeQuest \\
+\addlinespace[3pt]
+\textbf{Độ trễ đường ống (Latency)} & Đúng 2 chu kỳ tính từ cổng DSP & Đúng 2 chu kỳ tính từ cổng DSP \\
+\addlinespace[3pt]
+\textbf{Tính khả chuyển mô phỏng} & Phụ thuộc thư viện mô phỏng của Intel (\texttt{altera\_mf}) & Khả chuyển $100\%$ trên Icarus Verilog, Verilator, ModelSim \\
+\addlinespace[3pt]
+\textbf{Khả năng gỡ lỗi nội bộ} & Cấu trúc hộp đen (Black-box), khó thâm nhập tín hiệu ngầm & Mã nguồn mở hoàn toàn, dễ dàng gán cờ probe hoặc trích xuất bus \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Bài tập vận dụng và lời giải chi tiết}
+
+\paragraph{Bài tập 7.1 (Độ dài FFT tối thiểu chống chồng lấn vòng).}
+\textit{Đề bài:} Cho khung tín hiệu âm thanh có độ dài $N = 638\text{ mẫu}$, cần tính tự tương quan tuyến tính cho các độ trễ lên tới $\tau_{\max} = 214$.
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Xác định độ dài FFT tối thiểu theo lý thuyết ($N_{\text{min}}$) để tích chập vòng qua miền tần số không bị chồng lấn mép (aliasing).
+    \item Khi Praat lựa chọn $N_{\text{FFT}} = 1024$ (lũy thừa 2 nhỏ nhất lớn hơn $N_{\text{min}}$), khoảng đệm bảo vệ (safety margin) thu được là bao nhiêu mẫu?
+\end{enumerate}
+
+\textit{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Biến đổi tự tương quan tuyến tính giữa tín hiệu có độ dài $N$ và chính nó với độ trễ $\tau$ tương đương phép nhân chập có chiều dài trải rộng. Để không xảy ra hiện tượng cuộn vòng biên khi tính toán qua biến đổi Fourier rời rạc (DFT/FFT), kích thước lưới tần số tối thiểu phải chứa đủ chiều dài của tín hiệu cộng với độ trễ cực đại:
+    \begin{equation}
+    N_{\text{min}} = N + \tau_{\max} = 638 + 214 = \mathbf{852\text{ mẫu}}
+    \end{equation}
+    
+    \item Vì các thuật toán biến đổi FFT nhanh cơ số 2 (radix-2 FFT) đòi hỏi kích thước mẫu phải là một lũy thừa của 2, kích thước lũy thừa 2 nhỏ nhất thỏa mãn $2^k \ge 852$ là:
+    \begin{equation}
+    N_{\text{FFT}} = 2^{\lceil \log_2(852) \rceil} = 2^{10} = \mathbf{1024\text{ điểm}}
+    \end{equation}
+    Khoảng đệm an toàn dự phòng giữa kích thước FFT thực tế và ngưỡng tới hạn lý thuyết là:
+    \begin{equation}
+    \Delta_{\text{margin}} = N_{\text{FFT}} - N_{\text{min}} = 1024 - 852 = \mathbf{172\text{ mẫu}}
+    \end{equation}
+    Khoảng đệm 172 mẫu này chứng minh rằng tại mọi độ trễ $\tau \le 214$, kết quả tự tương quan do Praat tính toán qua thuật toán FFT 1024 điểm hoàn toàn trùng khớp với kết quả tự tương quan tuyến tính trực tiếp (Direct MAC) mà không hề có bất kỳ thành phần chồng lấn vòng nào.
+\end{enumerate}
+
+\paragraph{Bài tập 7.2 (Chi phí chu kỳ chuyển lag nếu không có cờ nạp đè \texttt{sload}).}
+\textit{Đề bài:} Giả sử kiến trúc bộ MAC không hỗ trợ cờ nạp đè đồng bộ \texttt{sload}, mà sau khi kết thúc mỗi độ trễ $\tau$ bắt buộc phải chèn 1 chu kỳ trống (bubble cycle) để đưa thanh ghi tích lũy \texttt{acc} về 0.
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tính tổng số chu kỳ phát sinh thêm trong một khung phân tích (quét lag $\tau = 0$ và 189 lag $\tau \in [26, 214]$).
+    \item Đánh giá tỷ lệ phần trăm thời gian thực thi gia tăng và ý nghĩa kiến trúc của cơ chế zero-bubble.
+\end{enumerate}
+
+\textit{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tổng số lượng lag cần tính toán trong một khung phân tích là:
+    \begin{equation}
+    N_{\text{lags}} = 1\text{ (lag 0)} + (214 - 26 + 1)\text{ (quét pitch)} = 1 + 189 = \mathbf{190\text{ giá trị lag}}
+    \end{equation}
+    Nếu mỗi lần chuyển dịch sang một lag mới đòi hỏi chèn đúng 1 chu kỳ bubble để reset thanh ghi tích lũy, số chu kỳ phát sinh thêm trên toàn khung là đúng $\mathbf{190\text{ chu kỳ xung nhịp}}$.
+    
+    \item Tổng số chu kỳ chuẩn tắc của kiến trúc zero-bubble là $98.543\text{ chu kỳ}$. Khi có thêm bubble, tổng chu kỳ sẽ là $98.543 + 190 = 98.733\text{ chu kỳ}$. Tỷ lệ gia tăng thời gian thực thi là:
+    \begin{equation}
+    \Delta_{\text{overhead}} = \frac{190}{98.543} \times 100\% \approx \mathbf{0{,}1928\%}
+    \end{equation}
+    Mặc dù mức chi phí thời gian này rất nhỏ (chưa tới $0{,}2\%$), việc tận dụng cờ \texttt{sload} có sẵn trong silicon DSP cứng đem lại lợi ích kiến trúc to lớn: máy trạng thái FSM phát địa chỉ liên tục không ngắt quãng, loại bỏ hoàn toàn các thanh ghi đếm trạng thái chờ và đơn giản hóa việc căn nhịp dữ liệu ngõ ra.
+\end{enumerate}
+
+\paragraph{Bài tập 7.3 (Chứng minh toán học bộ tích lũy 48-bit chống tràn số tuyệt đối).}
+\textit{Đề bài:} Mẫu âm thanh sau cửa sổ Hanning $x_w[n]$ có biên độ cực đại $|x_w| \le 65.535$ ($17\text{ bit}$ có dấu) và chiều dài khung $N = 638$.
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Dẫn xuất cận trên số học lý thuyết của giá trị tự tương quan $R[\tau]$.
+    \item Chứng minh rằng thanh ghi tích lũy $48\text{ bit}$ hoàn toàn miễn nhiễm với hiện tượng tràn số và tính độ dự phòng (Headroom) theo đơn vị bit.
+\end{enumerate}
+
+\textit{Lời giải:}
+\begin{enumerate}[label=(\alph*), itemsep=2pt]
+    \item Tích số của hai mẫu tín hiệu cực đại là:
+    \begin{equation}
+    p_{\max} = 65.535 \times 65.535 = 4.294.836.225
+    \end{equation}
+    Cận trên tổng tích lũy xuất hiện tại lag $\tau = 0$ khi toàn bộ 638 mẫu tín hiệu đều đạt biên độ cực đại cùng dấu (tín hiệu sóng vuông cực hạn):
+    \begin{equation}
+    S_{\max} = \sum_{n=0}^{637} p_{\max} = 638 \times 4.294.836.225 = \mathbf{2.740.105.511.550}
+    \end{equation}
+    
+    \item Lấy logarithm cơ số 2 của giá trị cực đại:
+    \begin{equation}
+    \log_2(S_{\max}) = \log_2(2.740.105.511.550) \approx 41{,}3217
+    \end{equation}
+    Để biểu diễn số nguyên có dấu bù hai có độ lớn đạt $S_{\max}$, số bit tối thiểu cần thiết là:
+    \begin{equation}
+    W_{\text{min}} = \lceil 41{,}3217 \rceil + 1\text{ (bit dấu)} = 42 + 1 = \mathbf{43\text{ bit}}
+    \end{equation}
+    Vì thiết kế sử dụng độ rộng tích lũy $W = 48\text{ bit}$, ta có khoảng dự phòng an toàn:
+    \begin{equation}
+    \text{Headroom} = 48 - 43 = \mathbf{5\text{ bit}}
+    \end{equation}
+    Dự phòng $5\text{ bit}$ đồng nghĩa với việc bộ tích lũy có thể dung nạp một giá trị tổng lớn gấp $2^5 = 32$ lần giá trị cực hạn lý thuyết $S_{\max}$ trước khi xảy ra hiện tượng tràn bit số học (overflow). Do đó, thiết kế được bảo đảm an toàn toán học tuyệt đối.
+\end{enumerate}
+
+\paragraph{Bài tập 7.4 (Hiện tượng nghẽn cổ chai bộ nhớ khi mở rộng lên 2 khối DSP).}
+\textit{Đề bài:} Phân tích nguyên nhân tại sao khi mở rộng kiến trúc lên 2 khối DSP để tính song song 2 độ trễ $\tau_1, \tau_2$ trong cùng một chu kỳ xung nhịp, ta không thể sử dụng chung 1 bộ nhớ True Dual-Port RAM 638x17 mà buộc phải nhân đôi bộ nhớ lên 2 khối RAM riêng biệt (tiêu tốn 4 khối M10K)?
+
+\textit{Lời giải:}
+Để hai khối DSP có thể tính toán độc lập và đạt thông lượng liên tục 1 chu kỳ/mẫu:
+\begin{align}
+\text{DSP 1 tính:} \quad & R[\tau_1] = \sum x_w[n] \cdot x_w[n+\tau_1] \\
+\text{DSP 2 tính:} \quad & R[\tau_2] = \sum x_w[n] \cdot x_w[n+\tau_2]
+\end{align}
+Trong mỗi chu kỳ xung nhịp, hệ thống cần cung cấp đồng thời 3 mẫu dữ liệu độc lập:
+\begin{enumerate}[itemsep=1pt]
+    \item Mẫu gốc: $x_w[n]$ (dùng chung cho cả hai DSP).
+    \item Mẫu trễ thứ nhất: $x_w[n+\tau_1]$ (cấp cho DSP 1).
+    \item Mẫu trễ thứ hai: $x_w[n+\tau_2]$ (cấp cho DSP 2).
+\end{enumerate}
+Tuy nhiên, khối bộ nhớ nhúng cứng M10K trên FPGA Cyclone V ở cấu hình True Dual-Port chỉ hỗ trợ tối đa \textbf{2 cổng truy xuất vật lý} (Port A và Port B). Không thể truy xuất 3 địa chỉ khác nhau trong cùng một chu kỳ từ một cấu trúc 2 cổng. Đây chính là hiện tượng \emph{bức tường bộ nhớ} (Memory Wall) điển hình trong kiến trúc phần cứng.
+
+Để giải quyết, giải pháp khả thi duy nhất là nhân đôi bộ nhớ (Memory Duplication): khởi tạo 2 bản sao độc lập của bộ đệm $x_w$, mỗi bản sao chiếm 2 khối M10K (tổng cộng 4 khối M10K). Khi đó:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Bản sao RAM 1 (2 M10K): Cung cấp $x_w[n]$ qua Port A và $x_w[n+\tau_1]$ qua Port B cho DSP 1.
+    \item Bản sao RAM 2 (2 M10K): Cung cấp $x_w[n]$ qua Port A và $x_w[n+\tau_2]$ qua Port B cho DSP 2.
+\end{itemize}
+Sự đánh đổi này khẳng định tính đúng đắn của quyết định lựa chọn kiến trúc 1 DSP mặc định ở Mục 7.2: tiết kiệm được 2 khối M10K và 1 khối DSP trong khi vẫn hoàn toàn đáp ứng thời gian thực với $\text{RTF} = 0{,}197$.
+
+\textit{Tóm lại: Quy ước kiểm chứng mẫu 2 pha bảo đảm loại bỏ hoàn toàn race condition trong mô phỏng; bảng so sánh minh chứng HDL tự viết đạt hiệu năng và độ trễ tương đương $100\%$ với IP lõi Intel nhưng vượt trội về tính khả chuyển; bốn bài tập định lượng đã chứng minh tính chặt chẽ về toán học và sự tối ưu phần cứng của thiết kế.}
