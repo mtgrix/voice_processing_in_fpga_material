@@ -10,8 +10,8 @@
     \item Khảo sát mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 79--80, 144--164, 344--345, 401--403); giải mã định lý đệm số $0$ từ $638$ lên $1024\text{ điểm}$ FFT của Paul Boersma và chứng minh bằng giải tích rằng giới hạn không cuộn vòng (no circular wrap-around) đạt tới $\tau \le 386\text{ mẫu}$, bảo đảm tự tương quan vòng qua FFT đồng nhất tuyệt đối với tự tương quan tuyến tính qua MAC trực tiếp (sai số dấu phẩy động $\sim 10^{-16}$).
     \item Phân tích toàn diện sự đánh đổi giữa thuật toán FFT và kiến trúc MAC trực tiếp trên FPGA; chứng minh rằng với ngân sách $500.000\text{ chu kỳ/khung}$ ($10\text{ ms}$ tại $50\text{ MHz}$), một bộ MAC đơn lẻ trên 1 khối DSP chỉ chiếm $19{,}7\%$ thời gian thực ($\text{RTF} \approx 0{,}197$), loại bỏ hoàn toàn sự phức tạp của bộ đệm ping-pong, bộ quay pha twiddle ROM và mạch quản lý tăng trưởng bit.
     \item Khảo sát sâu sắc ba phương án chốt thanh ghi đường ống trong khối DSP Cyclone V: phân tích sự thật không thể bỏ thanh ghi tích lũy, so sánh giữa không chốt toán hạng (trễ 2 nhịp) và chốt toán hạng tại cửa khối DSP (trễ 3 nhịp, tận dụng thanh ghi cứng có sẵn 0 ALM); làm rõ sự khác biệt giữa độ trễ (latency) và thông lượng (throughput), chứng minh độ trễ 3 chu kỳ chỉ làm sai khác $0{,}001\%$ thời gian thực trên $98.543\text{ chu kỳ}$.
-    \item Dẫn xuất độ rộng từ bit toán hạng $17\text{-bit}$ có dấu và chứng minh bằng toán học cận trên $43\text{-bit}$ của bộ cộng tích lũy, đính chính nhận định "48 bit tự nhiên" của Argon bằng việc chỉ rõ bộ tích lũy phần cứng Cyclone V rộng tới $64\text{ bit}$ (CV-52003 Chương 5).
-    \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng: Tuyến (A) cấu hình khối IP Intel \texttt{ALTERA\_MULT\_ADD} (UG-01069) cùng cờ nạp đè đồng bộ \texttt{accum\_sload} để chuyển tiếp lag zero-bubble; Tuyến (B) module HDL tự viết \texttt{ch07\_mac\_unit.v}, bộ đệm khung True Dual-Port RAM 2 khối M10K \texttt{ch07\_xw\_ram.v} và khối điều khiển phát địa chỉ liên tục \texttt{ch07\_mac\_engine.v}.
+    \item Dẫn xuất độ rộng từ bit toán hạng $17\text{-bit}$ có dấu và chứng minh bằng toán học cận trên $43\text{-bit}$ của bộ cộng tích lũy, đính chính nhận định "48 bit tự nhiên" của Argon bằng việc chỉ rõ bộ tích lũy phần cứng Cyclone V hỗ trợ tới $64\text{ bit}$ (\emph{Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices}).
+    \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng: Tuyến (A) cấu hình khối IP Intel \texttt{ALTERA\_MULT\_ADD} (\emph{Integer Arithmetic IP Cores User Guide}) cùng cờ nạp đè đồng bộ \texttt{accum\_sload} để chuyển tiếp lag zero-bubble; Tuyến (B) module HDL tự viết \texttt{ch07\_mac\_unit.v}, bộ đệm khung True Dual-Port RAM 2 khối M10K \texttt{ch07\_xw\_ram.v} và khối điều khiển phát địa chỉ liên tục \texttt{ch07\_mac\_engine.v}.
     \item Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ giữa mô hình song sinh Python (\texttt{ch07\_mac\_twin.py}) và mô phỏng Verilog trên $7.460\text{ vector}$; mô hình song sinh tái hiện toàn bộ $3.040\text{ kết quả}$ đường chuẩn từ \texttt{golden\_v2/hdl\_check/} trên 16 khung tín hiệu bao gồm 2 khung stress biên cực hạn ($|x_w| = 59.379$), và kiểm chứng HDL được ghi nhận trong hộp kết quả mô phỏng.
 \end{itemize}
 \end{learningobj}
@@ -237,9 +237,9 @@ Hệ số thời gian thực (Real-Time Factor -- RTF) của riêng khối MAC �
 \end{equation}
 
 \begin{physicalinsight}
-\textbf{Nhìn thấy vật lý: Sự xa xỉ của ngân sách thời gian thực.}
-Khối MAC trực tiếp chỉ tiêu tốn đúng \textbf{$19{,}7\%$ ngân sách thời gian thực} của một bước nhảy khung $10\text{ ms}$! Sau khi tính xong trong chưa đầy $2\text{ ms}$, phần cứng MAC hoàn toàn rảnh rỗi trong hơn $8\text{ ms}$ còn lại ($401.457\text{ chu kỳ}$ nhàn rỗi) trước khi khung âm thanh tiếp theo xuất hiện.
-\par\noindent Việc cố gắng nhồi nhét một cấu trúc FFT phức tạp để giảm thời gian tính từ $1{,}97\text{ ms}$ xuống $0{,}8\text{ ms}$ là hoàn toàn vô nghĩa trong bối cảnh này: nó không đem lại bất kỳ cải thiện nào cho người dùng cuối (vẫn phải chờ đủ $10\text{ ms}$ để có bước nhảy âm thanh mới), trong khi làm tiêu tốn thêm ít nhất 6 khối M10K và hàng trăm ALM, đồng thời đưa vào hệ thống nguy cơ sai số lượng tử tích lũy.
+\textbf{Nhìn thấy vật lý: Ngân sách thời gian thực của khối MAC.}
+Khối MAC trực tiếp tiêu tốn \textbf{$19{,}7\%$ ngân sách thời gian thực} của một bước nhảy khung $10\text{ ms}$ ($\text{RTF} \approx 0{,}197$). Sau khi tính xong trong chưa đầy $2\text{ ms}$ ($98.543\text{ chu kỳ}$), phần cứng MAC ở trạng thái nhàn rỗi trong hơn $8\text{ ms}$ còn lại ($401.457\text{ chu kỳ}$) trước khi khung âm thanh tiếp theo xuất hiện.
+\par\noindent Việc hiện thực cấu trúc FFT phức tạp (như phân tích ở Mục 7.1) để giảm số chu kỳ tính toán là không cần thiết trong bối cảnh này: bộ ước lượng F0 xử lý theo từng bước nhảy khung $10\text{ ms}$, do đó thời gian tính toán $1{,}97\text{ ms}$ của khối MAC trực tiếp đã đáp ứng yêu cầu thời gian thực với biên an toàn hơn $80\%$, trong khi giữ được cấu trúc điều khiển đơn giản và tiết kiệm tài nguyên bộ nhớ nhúng.
 \end{physicalinsight}
 
 Vì tất cả các lý do kỹ thuật trên, thiết kế này dứt khoát lựa chọn \textbf{kiến trúc MAC trực tiếp trong miền thời gian}. 
@@ -284,34 +284,34 @@ Xét ba phương án kiến trúc chốt thanh ghi đường ống được minh
 \label{fig:ch07_pipeline_options}
 \end{figure}
 
-\textbf{Đọc hình.} Hình~\ref{fig:ch07_pipeline_options} thể hiện rõ rệt sự phân rã các chặng đường ống. Ở Phương án 1, ngõ ra M10K chạy tuột qua bộ nhân và bộ cộng vào thanh ghi tổng, tạo nên đường tới hạn dài nhất. Ở Phương án 2 (phương án được chọn), việc kích hoạt tầng thanh ghi đầu vào \texttt{a\_r, b\_r} có sẵn trong silicon DSP giúp chia đôi quãng đường mà không tốn thêm tài nguyên ALM nào. Ở Phương án 3, việc chèn thêm thanh ghi tích số đòi hỏi lấy khoảng 32 FF ngoài ALM vì khối DSP Cyclone V không có thanh ghi cứng tại vị trí này, trở nên lãng phí ở tần số 50 MHz.
+\textbf{Đọc hình.} Hình~\ref{fig:ch07_pipeline_options} thể hiện sự phân rã các chặng đường ống. Ở Phương án 1, ngõ ra M10K chạy qua bộ nhân và bộ cộng vào thanh ghi tổng, tạo nên đường tới hạn dài. Ở Phương án 2 (phương án được chọn), việc kích hoạt tầng thanh ghi đầu vào \texttt{a\_r, b\_r} có sẵn trong silicon DSP giúp chia đôi quãng đường tới hạn (tài nguyên ALM và thanh ghi cụ thể phải kiểm trong Quartus). Ở Phương án 3, việc chèn thêm tầng thanh ghi tích số trung gian giữa bộ nhân và bộ cộng là không cần thiết ở tần số 50 MHz (khả năng khối DSP hỗ trợ thanh ghi cứng tại vị trí này hay phải suy luận ngoài ALM phải kiểm trong Parameter Editor và Quartus).
 
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{Phương án 1: Không chốt toán hạng ở cửa DSP (Trễ 2 chu kỳ).}
     Dữ liệu đọc ra từ khối nhớ M10K đi thẳng trực tiếp vào bộ nhân của khối DSP, qua bộ cộng dồn, rồi dừng ở thanh ghi tổng \texttt{acc}.
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
         \item \emph{Độ trễ (Latency):} Mất đúng $2\text{ chu kỳ}$ tính từ lúc phát địa chỉ tới khi tổng được cập nhật (1 chu kỳ đọc RAM M10K và 1 chu kỳ nhân-cộng dồn).
-        \item \emph{Đường tới hạn:} Bắt đầu từ thanh ghi địa chỉ ngõ vào của M10K, qua thời gian trễ đọc $T_{\text{co}}(\text{M10K})$, qua dây nối liên khối $T_{\text{wire}}$, qua bộ nhân $T_{\text{mult}}$, qua bộ cộng $T_{\text{add}}$, tới thời gian thiết lập $T_{\text{su}}$ của thanh ghi \texttt{acc}. Đường tới hạn này phụ thuộc trực tiếp vào việc Fitter đặt khối M10K xa hay gần khối DSP. Nếu Fitter đặt M10K ở góc xa của chip, độ trễ dây $T_{\text{wire}}$ có thể làm $F_{\max}$ tụt giảm.
+        \item \emph{Đường tới hạn:} Bắt đầu từ thanh ghi địa chỉ ngõ vào của M10K, qua thời gian trễ đọc $T_{\text{co}}(\text{M10K})$, qua dây nối liên khối $T_{\text{wire}}$, qua bộ nhân $T_{\text{mult}}$, qua bộ cộng $T_{\text{add}}$, tới thời gian thiết lập $T_{\text{su}}$ của thanh ghi \texttt{acc}. Đường tới hạn này phụ thuộc trực tiếp vào việc Fitter đặt khối M10K xa hay gần khối DSP. Nếu Fitter đặt M10K ở xa khối DSP, độ trễ dây $T_{\text{wire}}$ có thể làm giảm $F_{\max}$.
     \end{itemize}
 
     \item \textbf{Phương án 2: Chốt toán hạng ở cửa khối DSP (Trễ 3 chu kỳ -- LỰA CHỌN CỦA DỰ ÁN).}
     Thêm một tầng thanh ghi đồng bộ \texttt{a\_r, b\_r} ngay tại cửa ngõ vào của khối DSP.
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
-        \item \emph{Đặc tính silicon Cyclone V:} Trong cấu trúc phần cứng của khối Variable Precision DSP (CV-52003 Chương 5), Intel đã tích hợp sẵn một hàng thanh ghi đầu vào (Input Register Bank) bằng silicon cứng. Do đó, việc kích hoạt tầng thanh ghi này \textbf{tiêu tốn đúng 0 khối logic ALM}!
-        \item \emph{Phân tách đường tới hạn:} Quãng đường điện được chia đôi hoàn hảo:
+        \item \emph{Đặc tính silicon Cyclone V:} Theo tài liệu \emph{Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices}, Intel tích hợp sẵn một hàng thanh ghi đầu vào (Input Register Bank) bằng silicon cứng. Do đó, việc kích hoạt tầng thanh ghi này tận dụng các flip-flop có sẵn trong khối DSP (mức tiêu tốn ALM logic thực tế phải kiểm trong Quartus).
+        \item \emph{Phân tách đường tới hạn:} Quãng đường điện được chia đôi:
         \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
             \item Chặng 1: Từ thanh ghi địa chỉ M10K $\to$ đọc M10K $\to$ dây nối $\to$ chốt vào thanh ghi \texttt{a\_r, b\_r}.
             \item Chặng 2: Từ thanh ghi \texttt{a\_r, b\_r} $\to$ bộ nhân $\to$ bộ cộng $\to$ thanh ghi tổng \texttt{acc}.
         \end{itemize}
-        Đường tới hạn của phép nhân-cộng hoàn toàn bị cô lập bên trong nội bộ khối DSP, không còn phụ thuộc vào chiều dài dây nối bên ngoài.
-        \item \emph{Độ trễ (Latency):} Tăng thêm đúng 1 chu kỳ, tổng cộng là $3\text{ chu kỳ}$ tính từ lúc phát địa chỉ tới lúc kết quả $R[\tau]$ xuất hiện.
+        Đường tới hạn của phép nhân-cộng nằm bên trong nội bộ khối DSP, không còn phụ thuộc vào chiều dài dây nối bên ngoài.
+        \item \emph{Độ trễ (Latency):} Tăng thêm 1 chu kỳ, tổng cộng là $3\text{ chu kỳ}$ tính từ lúc phát địa chỉ tới lúc kết quả $R[\tau]$ xuất hiện.
     \end{itemize}
 
     \item \textbf{Phương án 3: Chốt thêm cả tích số giữa bộ nhân và bộ cộng (Trễ 4 chu kỳ).}
-    Chèn thêm một tầng thanh ghi $34\text{-bit}$ trung gian giữa ngõ ra bộ nhân và ngõ vào bộ cộng.
+    Chèn thêm một tầng thanh ghi trung gian giữa ngõ ra bộ nhân và ngõ vào bộ cộng.
     \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
-        \item \emph{Hạn chế silicon Cyclone V:} Khối Variable Precision DSP của Cyclone V \textbf{không có thanh ghi cứng tại vị trí giữa bộ nhân và bộ tích lũy} (chỉ các dòng FPGA cao cấp như Arria 10 hay Stratix 10 mới hỗ trợ thanh ghi pipeline này bên trong DSP). Nếu cố ép cấu hình này, Quartus buộc phải kéo kết quả nhân ra ngoài mảng logic để chốt vào khoảng 32 đến 34 flip-flop của các khối ALM, rồi kéo ngược trở lại khối DSP để cộng dồn.
-        \item \emph{Đánh giá:} Ở tần số danh định $50\text{ MHz}$ ($20\text{ ns}$), thời gian thực hiện của bộ nhân $17 \times 17$ và bộ cộng $48\text{-bit}$ bên trong silicon DSP chỉ chiếm chưa tới $4\text{ ns}$. Việc chèn thêm tầng thanh ghi này là hoàn toàn dư thừa, vừa làm lãng phí ALM ngoài, vừa tăng trễ không cần thiết.
+        \item \emph{Đặc điểm cấu trúc:} Việc khối DSP trong Cyclone V có hỗ trợ thanh ghi pipeline phần cứng giữa bộ nhân và bộ tích lũy hay phải suy luận các flip-flop bên ngoài mảng logic ALM là yếu tố (phải kiểm trong Parameter Editor và Quartus).
+        \item \emph{Đánh giá:} Ở tần số danh định $50\text{ MHz}$ (chu kỳ $20\text{ ns}$), đường tới hạn qua tầng thanh ghi đầu vào ở Phương án 2 đã đáp ứng biên thời gian an toàn, do đó không cần thiết phải chèn thêm tầng thanh ghi trung gian này.
     \end{itemize}
 \end{enumerate}
 
@@ -502,20 +502,20 @@ Hệ số an toàn đạt hơn $60\%$! Con số này chứng minh bằng toán h
 \subsubsection*{Thực tế silicon trên Cyclone V và đính chính sai sót của tài liệu cũ}
 Trong các bản thảo trước đây, tác giả Argon từng nhận định rằng: \emph{"Bộ cộng dồn của FPGA có độ rộng 48 bit tự nhiên"}. Đây là một nhận định thiếu chính xác về cấu trúc silicon của Intel Cyclone V.
 
-Khi tra cứu tài liệu phần cứng chuẩn của Intel: *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices", Mục 5-4: "Accumulator", Hình 5-5), ta thấy cấu trúc thực tế:
+Khi tra cứu tài liệu phần cứng chuẩn của Intel: \emph{Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices}, ta thấy cấu trúc thực tế:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Bộ tích lũy cứng (Hardwired Accumulator) được tích hợp sẵn bên trong mỗi khối Variable Precision DSP của Cyclone V có độ rộng thực tế lên tới \textbf{64 bit}!
+    \item Bộ tích lũy cứng (Hardwired Accumulator) được tích hợp sẵn bên trong mỗi khối Variable Precision DSP của Cyclone V có độ rộng thực tế lên tới \textbf{64 bit}.
     \item Bộ cộng này có thể cấu hình ở các chế độ tích lũy số nguyên có dấu với ngõ ra từ 1 đến 64 bit.
 \end{itemize}
 
 Thiết kế này chọn độ rộng ngõ ra của module MAC là \textbf{48-bit có dấu} (\texttt{acc[47:0]}):
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
-    \item \textbf{Dư thừa an toàn:} $48\text{ bit}$ bao trọn hoàn toàn nhu cầu $43\text{ bit}$, mang lại thêm 5 bit bảo vệ chống tràn ($2^{47} / S_{\max} \approx 51{,}3\times$).
-    \item \textbf{Căn chỉnh dữ liệu tối ưu:} Độ rộng 48 bit là bội số của 16 bit ($3 \times 16\text{-bit}$), rất thuận tiện cho việc ghép nối vào thanh ghi bus Avalon-MM, truyền nhận dữ liệu hoặc đóng gói sang HPS.
-    \item \textbf{Hoàn toàn không tốn ALM:} Vì bộ tích lũy trong silicon DSP vốn đã rộng 64 bit, việc chọn ngõ ra 48 bit (hoặc bất kỳ độ rộng nào từ 43 đến 64) đều được thực hiện bên trong khối DSP cứng, tiêu tốn đúng \textbf{0 khối logic ALM ngoài}.
+    \item \textbf{Dư thừa an toàn:} $48\text{ bit}$ bao trọn nhu cầu $43\text{ bit}$, mang lại thêm 5 bit bảo vệ chống tràn ($2^{47} / S_{\max} \approx 51{,}3\times$).
+    \item \textbf{Căn chỉnh dữ liệu thuận tiện:} Độ rộng 48 bit là bội số của 16 bit ($3 \times 16\text{-bit}$), rất thuận tiện cho việc ghép nối vào thanh ghi bus Avalon-MM, truyền nhận dữ liệu hoặc đóng gói sang HPS.
+    \item \textbf{Tận dụng silicon DSP:} Vì bộ tích lũy trong silicon DSP vốn đã rộng tới 64 bit, việc chọn ngõ ra 48 bit nằm hoàn toàn bên trong khối DSP cứng (mức tiêu tốn ALM logic thực tế phải kiểm trong Quartus).
 \end{enumerate}
 
-\textit{Tóm lại: Toán hạng $17\text{-bit}$ sinh ra tích số $34\text{-bit}$; tổng của tối đa $638\text{ tích}$ đòi hỏi cận trên toán học đúng $43\text{-bit}$ có dấu. Bộ tích lũy cứng trong silicon DSP Cyclone V rộng tới $64\text{ bit}$, do đó việc chọn $48\text{-bit}$ vừa bảo đảm chống tràn tuyệt đối, vừa tiêu tốn 0 ALM và tối ưu cho giao tiếp bus.}
+\textit{Tóm lại: Toán hạng $17\text{-bit}$ sinh ra tích số $34\text{-bit}$; tổng của tối đa $638\text{ tích}$ đòi hỏi cận trên toán học đúng $43\text{-bit}$ có dấu. Bộ tích lũy cứng trong silicon DSP Cyclone V hỗ trợ tới $64\text{ bit}$, do đó việc chọn $48\text{-bit}$ vừa bảo đảm chống tràn số, vừa phù hợp cho việc ghép nối bus.}
 
 
 \subsection*{7.5. Kiến trúc bộ nhớ RAM đệm khung hai cổng đọc}
@@ -534,7 +534,7 @@ Hậu quả là thông lượng của hệ thống bị cắt giảm một nửa
 \subsubsection*{Phân tích hình học silicon của khối nhớ nhúng M10K}
 Tại sao bộ đệm khung $x_w$ dài $638\text{ mẫu}$, mỗi mẫu $17\text{-bit}$, lại tiêu tốn chính xác \textbf{2 khối M10K}? Hãy cùng kiểm tra bảng thông số vật lý của chip Cyclone V:
 
-Theo tài liệu *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 3: "Embedded Memory Blocks in Cyclone V Devices", Bảng 3-1: "M10K Embedded Memory Block Configurations"), mỗi khối nhớ nhúng M10K có dung lượng danh định cố định là:
+Theo tài liệu \emph{Cyclone V Device Handbook Vol.1, CV-52003, Embedded Memory Blocks in Cyclone V Devices} (Bảng 3-1: "M10K Embedded Memory Block Configurations"), mỗi khối nhớ nhúng M10K có dung lượng danh định cố định là:
 \begin{equation}
 C_{\text{M10K}} = 10.240\text{ bit}
 \end{equation}
@@ -682,7 +682,7 @@ Vì $\text{RTF} = 0{,}197$ đã là một con số quá nhanh so với thời gi
 \subsubsection*{Tên gọi chuẩn xác và bối cảnh IP trên Cyclone V}
 Khi xây dựng mạch nhân tích lũy trên các dòng FPGA của Intel, nhiều tài liệu cũ và các bản thiết kế kế thừa từ các thế hệ Cyclone II, Cyclone IV thường sử dụng khối IP có tên gọi \texttt{ALTMULT\_ACCUM}. Tuy nhiên, đối với họ vi mạch Cyclone V SoC trên kit DE10-Standard, Intel đã tái cấu trúc toàn diện kiến trúc khối tính toán số học DSP thành khối \textbf{Variable Precision DSP}. Tên gọi chính thức và duy nhất được hỗ trợ đầy đủ trong công cụ thiết kế IP Catalog của Quartus Prime là \textbf{\texttt{ALTERA\_MULT\_ADD}} (Multiply Adder IP Core).
 
-Tài liệu hướng dẫn sử dụng chuẩn tắc của khối IP này là: *Integer Arithmetic IP Cores User Guide* (Intel Document ID: UG-01069, mục "ALTERA\_MULT\_ADD (Multiply-Add) IP Core").
+Tài liệu hướng dẫn sử dụng của khối IP này là: \emph{Integer Arithmetic IP Cores User Guide} (mục "ALTERA\_MULT\_ADD (Multiply-Add) IP Core").
 
 \subsubsection*{Giải thích chi tiết từng tham số trong Parameter Editor}
 Khi khởi tạo khối IP \texttt{ALTERA\_MULT\_ADD} trong giao diện đồ họa Parameter Editor của Quartus Prime, mỗi tham số cấu hình trả lời trực tiếp cho một bài toán thiết kế kiến trúc đã được dẫn xuất ở các mục trước:
@@ -695,29 +695,29 @@ Khi khởi tạo khối IP \texttt{ALTERA\_MULT\_ADD} trong giao diện đồ h�
     Quy định độ rộng bit của hai toán hạng ngõ vào $a$ ($x_w[n]$) và $b$ ($x_w[n+\tau]$). Căn cứ theo dẫn xuất dải động ở Mục 7.4, mẫu âm thanh sau khi trừ trung bình và nhân cửa sổ Hanning có thể đạt biên độ tới $\pm 65.535$, bắt buộc phải dùng đủ $17\text{ bit}$.
     
     \item \textbf{\texttt{REPRESENTATION = "SIGNED"}:}
-    Xác định định dạng số học của toán hạng là số nguyên có dấu bù hai. Đây là tham số sinh tử: nếu chọn nhầm \texttt{UNSIGNED}, một giá trị âm như $-3$ ($17\text{-bit}$ là \texttt{0x1FFFD}) sẽ bị bộ nhân coi là số dương lớn $+131.069$, làm kết quả tự tương quan sai lệch hàng triệu đơn vị.
+    Xác định định dạng số học của toán hạng là số nguyên có dấu bù hai. Đây là tham số trọng yếu: nếu chọn nhầm \texttt{UNSIGNED}, một giá trị âm như $-3$ ($17\text{-bit}$ là \texttt{0x1FFFD}) sẽ bị bộ nhân coi là số dương lớn $+131.069$, làm kết quả tự tương quan sai lệch hàng triệu đơn vị.
     
     \item \textbf{\texttt{WIDTH\_RESULT = 48}:}
-    Độ rộng của thanh ghi kết quả tích lũy ngõ ra. Căn cứ Mục 7.4, cận trên toán học cho 638 mẫu cực hạn đòi hỏi tối thiểu $43\text{ bit}$ có dấu. Vì bộ cộng tích lũy vật lý trong khối DSP Cyclone V rộng tới $64\text{ bit}$ (CV-52003 Chương 5), việc cấu hình ngõ ra thành $48\text{ bit}$ hoàn toàn nằm trong silicon cứng và tiêu tốn đúng 0 ALM ngoài.
+    Độ rộng của thanh ghi kết quả tích lũy ngõ ra. Căn cứ Mục 7.4, cận trên toán học cho 638 mẫu cực hạn đòi hỏi tối thiểu $43\text{ bit}$ có dấu. Vì bộ cộng tích lũy vật lý trong khối DSP Cyclone V hỗ trợ tới $64\text{ bit}$ (\emph{Cyclone V Device Handbook Vol.1, CV-52003, Variable Precision DSP Blocks in Cyclone V Devices}), việc cấu hình ngõ ra thành $48\text{ bit}$ nằm trong silicon cứng của DSP (mức tiêu tốn ALM logic thực tế nếu có phải kiểm trong Quartus).
     
     \item \textbf{\texttt{INPUT\_REGISTER\_A0/B0 = "CLOCK0"}:}
-    Kích hoạt tầng thanh ghi đầu vào (Input Register Bank) bên trong khối DSP cho cả hai cổng A và B, được điều khiển bởi xung nhịp \texttt{clk} (\texttt{CLOCK0}). Đây chính là việc hiện thực hóa \textbf{Phương án 2}: chia đôi đường tới hạn từ RAM M10K và tận dụng các flip-flop cứng có sẵn trong silicon DSP (tiêu tốn 0 ALM).
+    Kích hoạt tầng thanh ghi đầu vào (Input Register Bank) bên trong khối DSP cho cả hai cổng A và B, được điều khiển bởi xung nhịp \texttt{clk} (\texttt{CLOCK0}). Đây chính là việc hiện thực hóa \textbf{Phương án 2}: chia đôi đường tới hạn từ RAM M10K và tận dụng các flip-flop cứng có sẵn trong silicon DSP (mức tiêu tốn ALM logic ngoài nếu có phải kiểm trong Quartus).
     
     \item \textbf{\texttt{MULTIPLIER\_REGISTER0 = "UNREGISTERED"}:}
-    Quy định không chèn thêm thanh ghi đường ống giữa ngõ ra bộ nhân và ngõ vào bộ cộng. Như đã phân tích ở Phương án 3 (Mục 7.3), khối DSP Cyclone V không có thanh ghi vật lý ở vị trí này; việc đặt \texttt{UNREGISTERED} giúp loại bỏ hoàn toàn việc Quartus phải chiếm dụng 32 FF từ các khối ALM ngoài.
+    Quy định không chèn thêm thanh ghi đường ống giữa ngõ ra bộ nhân và ngõ vào bộ cộng. Như đã phân tích ở Phương án 3 (Mục 7.3), việc đặt \texttt{UNREGISTERED} tránh suy luận thêm thanh ghi ngoài ALM (phải kiểm trong Parameter Editor/Quartus).
     
     \item \textbf{\texttt{ACCUMULATOR = "YES"}:}
     Bật chức năng cộng dồn tích lũy hồi tiếp bên trong khối DSP cứng, biến bộ nhân thành bộ MAC hoàn chỉnh.
     
     \item \textbf{\texttt{ACCUM\_SLOAD\_REGISTER}}: đặt là \texttt{"CLOCK0"}.
-    Sinh ra cổng tín hiệu điều khiển \texttt{accum\_sload} (Synchronous Load) và chốt nó qua cùng một tầng thanh ghi ngõ vào với toán hạng (sử dụng cùng xung nhịp \texttt{CLOCK0}). Khi \texttt{accum\_sload = 1}, bộ tích lũy sẽ \emph{nạp đè} tích số mới vào thanh ghi tổng thay vì cộng dồn, tạo nên cơ chế chuyển tiếp lag zero-bubble hoàn hảo.
+    Sinh ra cổng tín hiệu điều khiển \texttt{accum\_sload} (Synchronous Load) và chốt nó qua cùng một tầng thanh ghi ngõ vào với toán hạng (sử dụng cùng xung nhịp \texttt{CLOCK0}). Khi \texttt{accum\_sload = 1}, bộ tích lũy sẽ \emph{nạp đè} tích số mới vào thanh ghi tổng thay vì cộng dồn, tạo nên cơ chế chuyển tiếp lag zero-bubble.
     
     \item \textbf{\texttt{OUTPUT\_REGISTER = "CLOCK0"}:}
     Kích hoạt thanh ghi tổng ở ngõ ra bộ tích lũy. Đây là tầng chốt kết quả cuối cùng trước khi đưa ra bus dữ liệu.
 \end{itemize}
 
 \subsubsection*{Phân tích độ trễ và tài nguyên của khối IP}
-Theo tài liệu *Integer Arithmetic IP Cores User Guide* (UG-01069), với cấu hình:
+Theo tài liệu \emph{Integer Arithmetic IP Cores User Guide}, với cấu hình:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Thanh ghi vào: \texttt{INPUT\_REGISTER = CLOCK0} (1 chu kỳ trễ).
     \item Thanh ghi tích: \texttt{MULTIPLIER\_REGISTER = UNREGISTERED} (0 chu kỳ trễ).
@@ -729,12 +729,12 @@ Khi ghép nối ngõ vào của IP với bộ nhớ True Dual-Port RAM \texttt{c
 \begin{equation}
 \text{Latency}_{\text{total}} = 1\text{ (RAM M10K)} + 2\text{ (IP ALTERA\_MULT\_ADD)} = \mathbf{3\text{ chu kỳ xung nhịp}}
 \end{equation}
-Con số này khớp tuyệt đối với mô hình toán học và bảng tính tay ở Mục 7.3.
+Con số này khớp với mô hình toán học và bảng tính tay ở Mục 7.3.
 
 Về tài nguyên phần cứng, khối IP \texttt{ALTERA\_MULT\_ADD} cấu hình $17 \times 17\text{-bit}$ chiếm dụng:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Khối DSP:} Đúng \textbf{1 khối Variable Precision DSP} (trong tổng số 112 khối DSP trên chip Cyclone V, chiếm chưa tới $0{,}9\%$ tài nguyên toàn chip).
-    \item \textbf{Tài nguyên ALM logic:} \textbf{0 ALM} cho khối nhân và cộng tích lũy thuần túy (toàn bộ phép tính nằm trọn trong silicon cứng).
+    \item \textbf{Tài nguyên ALM logic:} Khối nhân và cộng tích lũy chủ yếu nằm trong silicon DSP cứng (số lượng ALM logic phụ trợ nếu có phải kiểm trong Quartus).
     \item \textbf{Tần số cực đại $F_{\max}$ và ALM mạch đệm:} Là các giá trị \textbf{(phải đo)} trên phần mềm Quartus Prime sau khi chạy hoàn chỉnh Fitter và TimeQuest Timing Analyzer.
 \end{itemize}
 
