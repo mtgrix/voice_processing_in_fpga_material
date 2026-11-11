@@ -1,5 +1,6 @@
 % chuong_v3/fig_ch02_readylatency.tex
 % Comparison of Avalon-ST handshake with readyLatency = 0 versus readyLatency = 1
+% Reference: Intel Avalon Interface Specifications (MNL-AVALONIF, Section 3.4)
 \begin{tikzpicture}[x=1.35cm, y=0.85cm, >=stealth, font=\small]
 
     % Style definitions
@@ -11,7 +12,7 @@
 
     % Title 1: readyLatency = 0
     \node[anchor=west, font=\normalsize\bfseries, color=blue!70!black] at (-1.8, 4.8) 
-        {(a) Giao tiếp Avalon-ST với \texttt{readyLatency} = 0 (Bắt tay cùng chu kỳ)};
+        {(a) Giao tiếp Avalon-ST với \texttt{readyLatency} = 0 (Bắt tay tức thời cùng chu kỳ)};
 
     % Vertical cycle markers for Part (a)
     \foreach \c in {3,4,5,6,7,8} {
@@ -44,14 +45,14 @@
     \node[datalabel] at (1.5, 0.7) {11};
     % Beat 12: [2, 4] (held across cycle 5!)
     \draw[busline] (2,0.5) -- (2,0.9) -- (4,0.9) -- (4,0.5) -- (2,0.5);
-    \node[datalabel] at (3.0, 0.7) {12 (giữ do ready=0)};
+    \node[datalabel] at (3.0, 0.7) {12 (giữ)};
     % Beat 13: [4, 5]
     \draw[busline] (4,0.5) -- (4,0.9) -- (5,0.9) -- (5,0.5) -- (4,0.5);
     \node[datalabel] at (4.5, 0.7) {13};
     % Idle: [5, 6]
     \draw[dashed, color=gray!60] (5,0.7) -- (6,0.7);
 
-    % Transfer markers (checkmarks)
+    % Transfer markers
     \node[font=\scriptsize\bfseries, color=green!60!black] at (0.5, 0.15) {Nhận (10)};
     \node[font=\scriptsize\bfseries, color=green!60!black] at (1.5, 0.15) {Nhận (11)};
     \node[font=\scriptsize\bfseries, color=red!70!black]   at (2.5, 0.15) {Chờ (stall)};
@@ -63,7 +64,7 @@
 
     % Title 2: readyLatency = 1
     \node[anchor=west, font=\normalsize\bfseries, color=purple!70!black] at (-1.8, -1.0) 
-        {(b) Giao tiếp Avalon-ST với \texttt{readyLatency} = 1 (Tín hiệu ready báo trước 1 chu kỳ)};
+        {(b) Bất đồng cấu hình: Phía phát theo \texttt{readyLatency} = 1, phía nhận theo \texttt{readyLatency} = 0};
 
     % Vertical cycle markers for Part (b)
     \foreach \c in {3,4,5,6,7,8} {
@@ -106,11 +107,15 @@
     % Idle: [5, 6]
     \draw[dashed, color=gray!60] (5,-4.8) -- (6,-4.8);
 
-    % Action notes with safe spacing
-    \node[font=\tiny, color=purple!80!black] at (0.5, -5.45) {Tín chỉ CK2};
-    \node[font=\tiny, color=purple!80!black] at (1.5, -5.45) {Tín chỉ CK3};
-    \node[font=\tiny\bfseries, color=purple!80!black] at (2.5, -5.45) {Tín chỉ CK4};
-    \node[font=\tiny\bfseries, color=red!70!black]   at (3.5, -5.45) {Dừng (CK5=0)};
-    \node[font=\tiny, color=purple!80!black] at (4.5, -5.45) {Tín chỉ CK6};
+    % Transfer markers for Part (b)
+    \node[font=\scriptsize\bfseries, color=green!60!black] at (0.5, -5.45) {Nhận (10)};
+    \node[font=\scriptsize\bfseries, color=green!60!black] at (1.5, -5.45) {Nhận (11)};
+    \node[font=\scriptsize\bfseries, color=red!70!black]   at (2.5, -5.45) {MẤT (12)};
+    \node[font=\scriptsize\bfseries, color=gray!70!black]  at (3.5, -5.45) {Dừng phát};
+    \node[font=\scriptsize\bfseries, color=green!60!black] at (4.5, -5.45) {Nhận (13)};
+
+    % Explanatory caption note inside diagram
+    \node[anchor=north, font=\scriptsize\itshape, color=purple!85!black] at (2.5, -5.85) 
+        {* Tại CK 5: Phía phát đẩy 12 do nhận tín chỉ từ CK 4; nhưng phía nhận (RL=0, ready=0) từ chối $\implies$ Mẫu 12 bị mất.};
 
 \end{tikzpicture}
