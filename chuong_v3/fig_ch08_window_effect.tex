@@ -28,10 +28,10 @@
         (0,1.000) (15,0.996) (26,0.989) (40,0.973) (60,0.943) (80,0.902) 
         (100,0.851) (120,0.791) (140,0.725) (160,0.654) (180,0.584) (200,0.514) (214,0.468)
     };
-    % Chú thích Rw[tau] đặt ở vùng thoáng (tau in [40, 75], y in [0.4, 0.7]) với mũi tên chỉ lên đường cong đỏ
-    \node[red!80!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=red!40] (lbl_rw) at (60,0.60) 
+    % Chú thích Rw[tau] đặt ở vùng thoáng (tau in [25, 65], y in [0.45, 0.75]) với mũi tên chỉ lên đường cong đỏ
+    \node[red!80!black, font=\scriptsize, fill=white, inner sep=2.5pt, rounded corners=1pt, draw=red!40] (lbl_rw) at (46,0.60) 
         {$R_w[\tau] / R_w[0]$ (Cửa sổ co ngắn dần)};
-    \draw[->, thick, red!80!black] (lbl_rw.north) -- (60,0.935);
+    \draw[->, thick, red!80!black] (lbl_rw.north) -- (46,0.965);
 
     % Đường cong 2: Tự tương quan chưa chuẩn hóa Rxw[tau]/Rxw[0]
     \draw[thick, gray!60!black, dashed, smooth] plot coordinates {
@@ -39,9 +39,10 @@
         (100,0.851) (105,0.80) (120,0.15) (140,-0.35) (160,-0.20) (180,0.15) 
         (195,0.48) (200,0.514) (205,0.48) (214,0.20)
     };
-    % Chú thích Rxw đặt ở khoảng thoáng giữa tau=120 và tau=160
-    \node[gray!70!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=gray!40] at (142,0.30) 
-        {$R_{xw}[\tau] / R_{xw}[0]$ (Chưa chuẩn hóa: đỉnh bị dìm)};
+    % Chú thích Rxw đặt ở khoảng thoáng trung tâm (tau in [122, 154], y in [0.05, 0.19]), mũi tên chỉ thẳng xuống đáy đường cong xám
+    \node[gray!70!black, font=\scriptsize, align=center, fill=white, inner sep=2.5pt, rounded corners=1pt, draw=gray!40] (lbl_rxw) at (138,0.12) 
+        {$R_{xw}[\tau] / R_{xw}[0]$\\(Chưa chuẩn hóa: đỉnh bị dìm)};
+    \draw[->, thick, gray!60!black] (lbl_rxw.south) -- (138,-0.33);
 
     % Đường cong 3: Sau khi chuẩn hóa U[tau] / R0n
     \draw[very thick, blue!85!black, smooth] plot coordinates {

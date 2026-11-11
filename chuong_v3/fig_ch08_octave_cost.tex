@@ -42,14 +42,16 @@
     \node[right, red!85!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=red!30] at (168,0.88) 
         {$S_c[160] = 0{,}899$};
 
-    % Mũi tên phạt Octave Cost
-    \draw[->, thick, purple!75!black] (80,0.920) -- (80,0.905);
-    \node[right, purple!80!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (82,0.912) 
+    % Mũi tên và nhãn phạt Octave Cost - Đặt nhãn vào khoảng không thoáng (y=0.83), cung dẫn uốn cong hoàn toàn trên đường cong
+    \draw[->, very thick, purple!75!black] (80,0.920) -- (80,0.905);
+    \node[purple!80!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=purple!40] (lbl_cost80) at (96,0.83) 
         {Trừ $0{,}0158$};
+    \draw[->, thick, purple!75!black] (lbl_cost80.north west) to[out=135, in=-20] (81.5,0.912);
 
-    \draw[->, thick, purple!75!black] (160,0.925) -- (160,0.900);
-    \node[left, purple!80!black, font=\scriptsize, fill=white, inner sep=1.5pt] at (158,0.912) 
+    \draw[->, very thick, purple!75!black] (160,0.925) -- (160,0.900);
+    \node[purple!80!black, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt, draw=purple!40] (lbl_cost160) at (144,0.83) 
         {Trừ $0{,}0259$};
+    \draw[->, thick, purple!75!black] (lbl_cost160.north east) to[out=45, in=200] (158.5,0.912);
 
     % Hộp phân định kết luận - Đặt hoàn toàn ngoài vùng đồ thị, cách xa trục hoành
     \node[draw=green!60!black, fill=green!5, rounded corners=3pt, font=\scriptsize, align=left, inner sep=6pt] at (125,0.36) {
