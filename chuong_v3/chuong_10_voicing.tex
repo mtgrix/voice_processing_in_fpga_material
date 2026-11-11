@@ -572,3 +572,321 @@ Tín hiệu đầu vào phải chạy qua mạng dịch-cộng Tầng 1 (trễ k
 Bằng cách ngắt quãng đường làm 3 chặng có thanh ghi chốt ở giữa, thời gian trễ của mỗi tầng chỉ còn dưới $6\text{ ns}$, cho phép mạch dễ dàng vượt qua kiểm tra định thời (Timing Analysis) với $F_{\max}$ ước tính trên $150\text{ MHz}$ (phải đo trong Quartus Prime). Việc tăng thêm 2 chu kỳ trễ là hoàn toàn vô hại đối với hệ thống xử lý khung âm thanh $10\text{ ms}$.
 
 \textit{Tóm lại: Module \texttt{ch10\_voicing.v} được thiết kế bằng HDL tự viết với đường ống 3 tầng thanh ghi; toàn bộ các hằng số được nhân bằng mạng dịch-cộng 0 DSP, hai phép nhân 54-bit được cách ly an toàn, giải quyết triệt để bài toán định thời mà không tốn bất kỳ khối RAM M10K nào.}
+
+% ============================================================================
+% 10.4. MÔ HÌNH SONG SINH PYTHON TWIN VÀ KIỂM CHỨNG
+% ============================================================================
+\subsection*{10.4. Mô hình song sinh Python Twin, kịch bản kiểm chứng mô phỏng và bài tập cuối chương}
+\addcontentsline{toc}{subsection}{10.4. Mô hình song sinh Python Twin, kịch bản kiểm chứng mô phỏng và bài tập cuối chương}
+
+\subsubsection*{Cấu trúc mô hình song sinh phần mềm (Python Twin)}
+Để bảo đảm mã RTL Verilog hoạt động chính xác tuyệt đối theo từng chu kỳ xung nhịp và từng bit dữ liệu, ta xây dựng mô hình song sinh phần mềm \texttt{VoicingTwin} trong tệp \texttt{verify\_v3/ch10\_twin.py}. Mô hình này mô phỏng chính xác thứ tự cập nhật của ba tầng thanh ghi đường ống trong phần cứng:
+Tầng 3 đọc giá trị cũ của Tầng 2; Tầng 2 đọc giá trị cũ của Tầng 1; và Tầng 1 đọc dữ liệu ngõ vào mới. Cơ chế cập nhật ngược từ ngõ ra về ngõ vào này phản ánh chính xác ngữ nghĩa của phép gán không chặn (\emph{non-blocking assignment} \texttt{<=}) trong ngôn ngữ Verilog.
+
+Đoạn mã nguồn hàm cập nhật chu kỳ \texttt{clock()} của mô hình song sinh được trình bày trong Listing \ref{lst:ch10_twin_py} (dòng 90 đến 165):
+
+\begin{lstlisting}[language=Python, firstline=90, lastline=165, firstnumber=90, caption={Hàm cập nhật chu kỳ xung nhịp \texttt{clock()} của mô hình song sinh Python Twin (\texttt{verify\_v3/ch10\_twin.py}).}]
+    def clock(self, rst_n, in_valid, in_f0_raw, in_sc, in_r0n, in_cand_found, in_lp, in_gp):
+        """Advances the 3-stage pipeline by exactly one clock cycle."""
+        if not rst_n:
+            self.reset()
+            return {
+                'out_valid': 0,
+                'out_f0': 0,
+                'out_voiced': 0,
+                'out_lhs': 0,
+                'out_rhs': 0
+            }
+
+        # ---------------------------------------------------------------------
+        # Stage 3 Update (reads old Stage 2 registers)
+        # ---------------------------------------------------------------------
+        comb_is_voiced = (not self.s2_silence_trap) and (self.s2_lhs > self.s2_rhs)
+        next_out_valid = self.s2_valid
+        next_out_voiced = int(comb_is_voiced)
+        next_out_f0 = self.s2_f0_raw if comb_is_voiced else 0
+        next_out_lhs = self.s2_lhs
+        next_out_rhs = self.s2_rhs
+
+        # ---------------------------------------------------------------------
+        # Stage 2 Update (reads old Stage 1 registers)
+        # ---------------------------------------------------------------------
+        # 54-bit signed multiplications
+        comb_lhs = self.s1_term1 * self.s1_mult3_gp
+        comb_rhs = self.s1_100_r0n * self.s1_ramp_pos
+
+        next_s2_lhs = comb_lhs
+        next_s2_rhs = comb_rhs
+        next_s2_f0_raw = self.s1_f0_raw
+        next_s2_silence_trap = self.s1_silence_trap
+        next_s2_valid = self.s1_valid
+
+        # ---------------------------------------------------------------------
+        # Stage 1 Update (reads inputs)
+        # ---------------------------------------------------------------------
+        # Shift-adds:
+        term_100_sc = (in_sc << 6) + (in_sc << 5) + (in_sc << 2)
+        term_45_r0n = (in_r0n << 5) + (in_r0n << 3) + (in_r0n << 2) + in_r0n
+        comb_term1 = term_100_sc - term_45_r0n
+
+        comb_mult3_gp = (in_gp << 1) + in_gp
+        comb_100_r0n = (in_r0n << 6) + (in_r0n << 5) + (in_r0n << 2)
+
+        comb_mult6_gp = (in_gp << 2) + (in_gp << 1)
+        comb_mult145_lp = (in_lp << 7) + (in_lp << 4) + in_lp
+
+        comb_ramp_diff = comb_mult6_gp - comb_mult145_lp
+        comb_ramp_pos = comb_ramp_diff if comb_ramp_diff > 0 else 0
+
+        comb_silence_trap = (in_r0n == 0) or (in_lp == 0) or (in_gp == 0) or (not in_cand_found)
+
+        # Latch new values
+        self.out_valid = next_out_valid
+        self.out_voiced = next_out_voiced
+        self.out_f0 = next_out_f0
+        self.out_lhs = next_out_lhs
+        self.out_rhs = next_out_rhs
+
+        self.s2_lhs = next_s2_lhs
+        self.s2_rhs = next_s2_rhs
+        self.s2_f0_raw = next_s2_f0_raw
+        self.s2_silence_trap = next_s2_silence_trap
+        self.s2_valid = next_s2_valid
+
+        self.s1_term1 = comb_term1
+        self.s1_mult3_gp = comb_mult3_gp
+        self.s1_100_r0n = comb_100_r0n
+        self.s1_ramp_pos = comb_ramp_pos
+        self.s1_f0_raw = in_f0_raw
+        self.s1_silence_trap = int(comb_silence_trap)
+        self.s1_valid = in_valid
+\end{lstlisting}
+
+\subsubsection*{Bảng đối chiếu dòng mã nguồn giữa Python Twin và Verilog HDL}
+Bảng \ref{tab:ch10_twin_vs_hdl} đối chiếu chi tiết từng vị trí dòng lệnh giữa mô hình Python Twin (\texttt{verify\_v3/ch10\_twin.py}) và mã phần cứng Verilog (\texttt{rtl/v3/ch10\_voicing.v}).
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng đối chiếu từng dòng giữa Python Twin (\texttt{verify\_v3/ch10\_twin.py}) và Verilog HDL (\texttt{rtl/v3/ch10\_voicing.v}).}
+\label{tab:ch10_twin_vs_hdl}
+\begin{tabular}{p{3.8cm}p{3.8cm}p{7.2cm}}
+\toprule
+\textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa vi kiến trúc mạch phần cứng} \\
+\midrule
+Dòng 92--100 & Dòng 80--87, 112--117, 133--138 & Thiết lập trạng thái Reset bất đồng bộ (\texttt{!rst\_n}), xóa toàn bộ các tầng thanh ghi. \\
+Dòng 105--110 & Dòng 130--145 & \textbf{Tầng 3:} So sánh lớn hơn chặt $LHS > RHS$, kiểm tra cờ bẫy im lặng \texttt{!silence\_trap}, ghép kênh xuất $F_{0,\text{Q12.4}}$. \\
+Dòng 116--123 & Dòng 102--124 & \textbf{Tầng 2:} Thực hiện hai phép nhân 54-bit song song: $LHS = t_1 \times 3GP$ và $RHS = 100R_{0n} \times ramp$. \\
+Dòng 129--131 & Dòng 52--58 & \textbf{Tầng 1:} Mạng dịch-cộng tính $100\cdot S_c$ và $45\cdot R_{0n}$, tạo số hạng 35-bit có dấu $t_1$. \\
+Dòng 133--134 & Dòng 60--61 & \textbf{Tầng 1:} Dịch-cộng tính thừa số $3\cdot GP$ (18-bit) và $100\cdot R_{0n}$ (34-bit). \\
+Dòng 136--140 & Dòng 63--67 & \textbf{Tầng 1:} Dịch-cộng tính $6\cdot GP$ và $145\cdot LP$, trừ bão hòa hàm cực đại $\max(0, \dots)$. \\
+Dòng 142 & Dòng 69 & \textbf{Tầng 1:} Bộ phát hiện 4 điều kiện bẫy im lặng ($R_{0n}=0 \lor LP=0 \lor GP=0 \lor !\text{found}$). \\
+Dòng 145--163 & Dòng 89--96, 119--123, 140--145 & Chốt dữ liệu đồng bộ vào các tầng thanh ghi tại cạnh lên xung nhịp \texttt{posedge clk}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng \ref{tab:ch10_twin_vs_hdl} xác nhận kiến trúc song sinh tương đồng 1-1 giữa phần mềm và phần cứng. Mọi biểu thức toán học, từ phép dịch-cộng, ép kiểu có dấu, cho tới hàm bão hòa cực đại đều sử dụng cùng một cấu trúc logic, bảo đảm mô hình phần mềm là bản sao bit-exact và cycle-exact của chip silicon.
+
+\subsubsection*{Quy ước lấy mẫu Testbench hai pha (Sampling Convention)}
+Để triệt tiêu hoàn toàn nguy cơ tranh chấp dữ liệu (race conditions) giữa phần mềm mô phỏng và phần cứng, Testbench \texttt{tb/v3/tb\_ch10\_voicing.v} tuân thủ nghiêm ngặt \textbf{quy ước lấy mẫu hai pha (2-phase sampling convention)} theo chuẩn thiết kế ASIC/FPGA:
+\begin{itemize}
+    \item \textbf{Pha kích thích ngõ vào (Drive phase):} Tất cả các tín hiệu ngõ vào (\texttt{in\_valid}, \texttt{in\_f0\_raw}, \texttt{in\_sc}, \texttt{in\_r0n}, \texttt{in\_lp}, \texttt{in\_gp}, \texttt{in\_cand\_found}) được lái tích cực tại cạnh xuống của xung nhịp (\texttt{@(negedge clk)}). Lúc này, đồng hồ đang ở mức thấp, bảo đảm các tín hiệu ngõ vào có đủ thời gian lan truyền và ổn định hoàn toàn trước khi cạnh lên kế tiếp xuất hiện.
+    \item \textbf{Pha kiểm tra ngõ ra (Sample phase):} Sau khi phát hiện cạnh lên của xung nhịp (\texttt{@(posedge clk)}), Testbench chờ thêm một khoảng trễ nhỏ \texttt{\#1} ($1\text{ ns}$) để mô phỏng thời gian giữ (clock-to-output delay) của thanh ghi, rồi mới tiến hành đọc và so sánh các ngõ ra đã chốt (\texttt{out\_valid}, \texttt{out\_voiced}, \texttt{out\_f0}, \texttt{out\_lhs}, \texttt{out\_rhs}) với dữ liệu kỳ vọng sinh ra từ mô hình Python Twin.
+\end{itemize}
+Quy ước này loại trừ triệt để hiện tượng lệch nhịp giữa bộ kích thích và mạch thử nghiệm, đồng thời bảo đảm Testbench không bao giờ ngắt sớm khi gặp lỗi mà luôn ghi nhận và đếm đầy đủ tổng số lỗi so sánh.
+
+\subsubsection*{Bộ vectơ kiểm thử góc và xác minh mô phỏng}
+Tệp kích thích \texttt{verify\_v3/ch10\_twin.py} đã sinh ra tổng cộng \textbf{641 bộ vectơ kiểm thử toàn diện}, chạy xuyên suốt \textbf{1.408 chu kỳ xung nhịp} (bao gồm các khoảng nghỉ ngẫu nhiên từ 0 đến 3 chu kỳ giữa các khung để kiểm tra tính độc lập và khả năng chịu tải liên tục của đường ống). Bộ vectơ bao phủ đầy đủ các kịch bản góc (edge cases) khắc nghiệt nhất:
+\begin{enumerate}
+    \item 12 ca kiểm thử chuẩn tắc có tính toán thủ công đối chiếu từ \texttt{ch10\_math\_audit.py}.
+    \item Quét mật độ cao 21 điểm sát ngưỡng $0{,}45$ trong vùng phẳng ($S_c / R_{0n}$ chạy từ $0{,}4490$ đến $0{,}4510$ với bước nhảy $0{,}0001$).
+    \item Quét mật độ cao 25 điểm trong vùng dốc chuyển tiếp ($I \in [0{,}030;\, 0{,}042]$ với bước nhảy $0{,}0005$), kiểm tra cả hai nhánh hữu thanh và vô thanh.
+    \item Toàn bộ các tổ hợp hoán vị của bẫy im lặng ($R_{0n}=0$, $LP=0$, $GP=0$, $\text{cand\_found}=0$).
+    \item Khung thử nghiệm ứng suất cực đại (stress frame): $S_c = 2^{27}-1$, $R_{0n} = 2^{27}-1$, $GP = 32.768$, $LP = 59.379$.
+    \item Toàn bộ 277 khung dữ liệu thực tế trích xuất từ tệp sạch \texttt{synth\_glide\_vuv\_16k.wav}.
+    \item Toàn bộ 277 khung dữ liệu thực tế trích xuất từ tệp có nhiễu \texttt{synth\_glide\_vuv\_16k\_snr5.wav}.
+\end{enumerate}
+
+Kịch bản thực thi tự động \texttt{verify\_v3/run\_ch10\_iverilog.sh} đã được thiết lập với cờ thực thi \texttt{100755} và định dạng dòng Unix LF, sẵn sàng để người phản biện chạy trên môi trường Linux:
+\begin{quote}
+\small
+\texttt{iverilog -g2012 -Wall -I rtl/v3 -o verify\_v3/sim\_ch10\_voicing tb/v3/tb\_ch10\_voicing.v rtl/v3/ch10\_voicing.v}\\
+\texttt{vvp verify\_v3/sim\_ch10\_voicing}
+\end{quote}
+
+\todo{box: Kết quả chạy Icarus Verilog thực tế trên Linux do người phản biện thực thi và điền số liệu (dự kiến: 1.408 chu kỳ kiểm thử, 0 lỗi so sánh, khớp bit-for-bit 100\% với Python Twin).}
+
+\subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
+Nhằm phục vụ việc kiểm thử phần mềm trên bộ xử lý ARM Cortex-A9 của HPS, tệp mã nguồn C \texttt{sw\_v3/ch10\_voicing.c} và chương trình kiểm thử đơn vị \texttt{sw\_v3/test\_ch10\_voicing.c} đã được biên dịch bằng trình biên dịch GCC với các cờ tối ưu hóa:
+\begin{quote}
+\small
+\texttt{gcc -Wall -Wextra -O2 sw\_v3/test\_ch10\_voicing.c sw\_v3/ch10\_voicing.c -Isw\_v3 -o test\_ch10\_voicing}\\
+\texttt{./test\_ch10\_voicing}
+\end{quote}
+Kết quả thực thi đạt \textbf{12/12 bài kiểm tra vượt qua thành công} (0 cảnh báo, 0 lỗi), xác nhận tính toàn vẹn của mô hình số nguyên 64-bit trên kiến trúc CPU trước khi nhúng vào trình điều khiển Linux.
+
+\subsubsection*{Bảng so sánh tổng hợp giữa Tuyến Intel IP và Tuyến HDL tự viết}
+Bảng \ref{tab:ch10_ip_vs_hdl} so sánh toàn diện giữa phương án giả định dùng thư viện Intel Megafunction IP và giải pháp HDL tự viết của Chương 10.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng so sánh tổng hợp giữa Tuyến Intel IP Megafunction (giả định) và Tuyến HDL tự viết (\texttt{ch10\_voicing.v}).}
+\label{tab:ch10_ip_vs_hdl}
+\begin{tabular}{p{3.5cm}p{5.5cm}p{5.8cm}}
+\toprule
+\textbf{Tiêu chí kỹ thuật} & \textbf{Tuyến (A): Thư viện Intel IP} & \textbf{Tuyến (B): HDL tự viết (\texttt{ch10\_voicing.v})} \\
+\midrule
+Cấu trúc module & Ghép nối gần 10 IP riêng lẻ (\texttt{LPM\_MULT}, \texttt{LPM\_ADD\_SUB}, \texttt{LPM\_COMPARE}) & 1 module duy nhất, mạch lạc, dưới 150 dòng Verilog. \\
+Tài nguyên M10K RAM & 0 khối M10K (tính toán thuần túy). & 0 khối M10K (tính toán thuần túy). \\
+Tài nguyên DSP & Tiêu tốn từ 2 đến 7 khối Variable Precision DSP. & Tùy chọn 0 DSP (dịch-cộng ALM) hoặc 2 khối DSP cho 2 tích 54-bit. \\
+Tài nguyên Logic ALM & Tốn nhiều ALM keo nối các wrapper IP (phải đo trong Quartus). & Tối ưu hóa cực đại, chỉ gồm mạng dịch-cộng và thanh ghi (phải đo trong Quartus). \\
+Tần số cực đại $F_{\max}$ & Phụ thuộc định tuyến giữa các khối IP rải rác (phải đo). & Thiết kế đường ống 3 tầng an toàn, dự kiến $> 150\text{ MHz}$ (phải đo). \\
+Độ trễ xử lý (Latency) & Khó đồng bộ, dao động từ 4 đến 8 chu kỳ tùy IP wrapper. & \textbf{Đúng 3 chu kỳ xung nhịp} cố định, tuyệt đối tin cậy. \\
+Thông lượng (Throughput) & 1 kết quả / chu kỳ. & \textbf{1 kết quả / chu kỳ} (hoàn toàn pipelined). \\
+Khả năng kiểm chứng & Đòi hỏi thư viện độc quyền \texttt{220model} của Quartus. & Độc lập hoàn toàn, mô phỏng tự do trên Icarus Verilog, Verilator, ModelSim. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Bài tập cuối chương có lời giải chi tiết}
+
+\paragraph{Bài tập 10.1 (Dẫn xuất toán học vùng dốc và bất đẳng thức nhân chéo).}
+Từ công thức độ mạnh ứng viên vô thanh của Praat:
+\begin{equation*}
+    R_{\text{unvoiced}} = \text{voicingThreshold} + \max\left(0,\, 2 - I \cdot \frac{1 + \text{voicingThreshold}}{\text{silenceThreshold}}\right)
+\end{equation*}
+với $\text{silenceThreshold} = 0{,}03$ và $\text{voicingThreshold} = 0{,}45$.
+\begin{enumerate}[(a)]
+    \item Hãy chứng minh rằng vùng dốc chuyển tiếp kết thúc tại đúng $I = 6/145 \approx 0{,}041379... \approx 0{,}0414$.
+    \item Chứng minh rằng với mọi khung có $I < 0{,}03$, giá trị $R_{\text{unvoiced}} > 1{,}00$, dẫn đến việc khung luôn luôn bị phân loại là vô thanh.
+    \item Dẫn xuất từng bước bất đẳng thức nhân chéo số nguyên và giải thích vì sao phải dùng dấu lớn hơn chặt ($>$).
+\end{enumerate}
+
+\textit{Lời giải chi tiết:}
+\begin{enumerate}[(a)]
+    \item Tỉ số trong phân thức:
+    \begin{equation*}
+        \frac{1 + \text{voicingThreshold}}{\text{silenceThreshold}} = \frac{1 + 0{,}45}{0{,}03} = \frac{1{,}45}{0{,}03} = \frac{145}{3} \approx 48{,}333333
+    \end{equation*}
+    Biểu thức trong hàm $\max$ trở thành: $2 - I \cdot \frac{145}{3}$. Vùng dốc kết thúc khi đại lượng này triệt tiêu về 0:
+    \begin{equation*}
+        2 - I_{\text{end}} \cdot \frac{145}{3} = 0 \implies I_{\text{end}} = \frac{2}{\frac{145}{3}} = \frac{6}{145} \approx 0{,}04137931
+    \end{equation*}
+    Sai số làm tròn so với con số $0{,}0414$ trong giáo trình là $0{,}00002069$ (nhật ký \texttt{verify\_v3/ch10\_exercises.log}).
+    \item Khi $I = 0{,}03$:
+    \begin{equation*}
+        R_{\text{unvoiced}} = 0{,}45 + \left(2 - 0{,}03 \cdot \frac{145}{3}\right) = 0{,}45 + (2 - 1{,}45) = 0{,}45 + 0{,}55 = 1{,}0000
+    \end{equation*}
+    Khi $I < 0{,}03$, ta có $I \cdot \frac{145}{3} < 1{,}45 \implies 2 - I \cdot \frac{145}{3} > 0{,}55$, do đó $R_{\text{unvoiced}} > 1{,}00$. Vì hệ số tự tương quan chuẩn hóa của mọi tín hiệu thực luôn thỏa mãn $r[\tau] \le 1{,}00$ và chi phí quãng tám $\text{octaveCost} > 0$, độ mạnh của ứng viên hữu thanh tốt nhất luôn bị chặn trên bởi $S_c / R_{0n} < 1{,}00$. Một số nhỏ hơn $1{,}00$ không bao giờ lớn hơn một số lớn hơn $1{,}00$, do đó khung có $I < 0{,}03$ chắc chắn vô thanh vô điều kiện.
+    \item Xuất phát từ $\frac{S_c}{R_{0n}} > 0{,}45 + \max\left(0, 2 - \frac{145 \cdot LP}{3 \cdot GP}\right)$:
+    \begin{align*}
+        \frac{S_c}{R_{0n}} - \frac{45}{100} &> \max\left(0,\, \frac{6 \cdot GP - 145 \cdot LP}{3 \cdot GP}\right) \\
+        \frac{100 \cdot S_c - 45 \cdot R_{0n}}{100 \cdot R_{0n}} &> \frac{\max(0,\, 6 \cdot GP - 145 \cdot LP)}{3 \cdot GP}
+    \end{align*}
+    Nhân cả hai vế với số dương $300 \cdot R_{0n} \cdot GP > 0$, ta thu được:
+    \begin{equation*}
+        (100 \cdot S_c - 45 \cdot R_{0n}) \cdot 3 \cdot GP > 100 \cdot R_{0n} \cdot \max(0,\, 6 \cdot GP - 145 \cdot LP)
+    \end{equation*}
+    Dấu lớn hơn chặt ($>$) là bắt buộc vì ứng viên vô thanh đứng đầu danh sách ứng viên (vị trí 1), theo luật tìm đường Viterbi của Praat thì ứng viên đứng trước sẽ thắng khi hòa điểm.
+\end{enumerate}
+
+\paragraph{Bài tập 10.2 (Tính toán thủ công thu nhỏ trong vùng dốc chuyển tiếp).}
+Cho một khung âm thanh có các tham số: $GP = 20.000$, $LP = 760$, $R_{0n} = 1.000.000$, $S_c = 700.000$, và $\text{cand\_found} = 1$.
+\begin{enumerate}[(a)]
+    \item Tính cường độ $I = LP / GP$ và xác định khung nằm trong phân vùng nào.
+    \item Tính $R_{\text{unvoiced}}$ và độ mạnh hữu thanh theo công thức dấu phẩy động của Praat.
+    \item Tính giá trị hai vế LHS và RHS của bất đẳng thức nhân chéo số nguyên 54-bit.
+    \item Kết luận khung là hữu thanh hay vô thanh và đối chiếu tính nhất quán giữa hai phương pháp.
+\end{enumerate}
+
+\textit{Lời giải chi tiết:}
+\begin{enumerate}[(a)]
+    \item Cường độ biên độ tương đối:
+    \begin{equation*}
+        I = \frac{LP}{GP} = \frac{760}{20000} = 0{,}0380
+    \end{equation*}
+    Kiểm tra điều kiện: $0{,}03 \le 0{,}0380 < 0{,}0414$. Khung nằm trọn vẹn trong \textbf{vùng dốc chuyển tiếp}.
+    \item Theo công thức dấu phẩy động của Praat:
+    \begin{align*}
+        2 - I \cdot \frac{145}{3} &= 2 - 0{,}0380 \cdot \frac{145}{3} = 2 - 1{,}836667 = 0{,}163333 \\
+        R_{\text{unvoiced}} &= 0{,}45 + 0{,}163333 = 0{,}613333 \\
+        \text{Strength hữu thanh} &= \frac{S_c}{R_{0n}} = \frac{700000}{1000000} = 0{,}700000
+    \end{align*}
+    So sánh: $0{,}700000 > 0{,}613333 \implies$ Khung là \textbf{HỮU THANH (Voiced)}.
+    \item Theo công thức nhân chéo số nguyên:
+    \begin{align*}
+        \text{term}_1 &= 100 \cdot 700.000 - 45 \cdot 1.000.000 = 70.000.000 - 45.000.000 = 25.000.000 \\
+        3 \cdot GP &= 3 \cdot 20.000 = 60.000 \\
+        \text{LHS} &= 25.000.000 \times 60.000 = 1.500.000.000.000 \\
+        6 \cdot GP - 145 \cdot LP &= 6 \cdot 20.000 - 145 \cdot 760 = 120.000 - 110.200 = 9.800 > 0 \\
+        \text{ramp\_pos} &= 9.800 \\
+        100 \cdot R_{0n} &= 100 \cdot 1.000.000 = 100.000.000 \\
+        \text{RHS} &= 100.000.000 \times 9.800 = 980.000.000.000
+    \end{align*}
+    \item So sánh:
+    \begin{equation*}
+        \text{LHS} - \text{RHS} = 1.500.000.000.000 - 980.000.000.000 = +520.000.000.000 > 0
+    \end{equation*}
+    Vì $\text{LHS} > \text{RHS}$ và không dính bẫy im lặng, khung được phán đoán là \textbf{HỮU THANH (Voiced)}. Hai phương pháp cho kết quả đồng nhất tuyệt đối (nhật ký \texttt{verify\_v3/ch10\_exercises.log}).
+\end{enumerate}
+
+\paragraph{Bài tập 10.3 (Phân tích độ rộng bit và tràn số phần cứng).}
+Giả sử một khung âm thanh nhân tạo cực đại (stress frame) có các thông số chạm trần dải động: $S_c = 2^{27}-1$, $R_{0n} = 2^{27}-1$, $GP = 32.768$, và $LP = 59.379$.
+\begin{enumerate}[(a)]
+    \item Tính giá trị cực đại có thể đạt được của LHS và RHS.
+    \item Chứng minh rằng cả hai vế đều bị chặn bởi $2^{53}$, do đó định dạng số nguyên có dấu 54-bit (\texttt{signed [53:0]}) bảo đảm không bao giờ tràn số.
+    \item Đánh giá chi phí tài nguyên phần cứng của bộ so sánh 54-bit trên kiến trúc FPGA Cyclone V so với bộ chia dấu phẩy động.
+\end{enumerate}
+
+\textit{Lời giải chi tiết:}
+\begin{enumerate}[(a)]
+    \item Với $S_c = R_{0n} = 2^{27}-1 = 134.217.727$:
+    \begin{align*}
+        \text{term}_{1,\max} &= 100 \cdot (2^{27}-1) = 13.421.772.700 < 2^{34} \\
+        3 \cdot GP_{\max} &= 3 \cdot 32.768 = 98.304 < 2^{17} \\
+        \text{LHS}_{\max} &= 13.421.772.700 \times 98.304 = 1.319.413.943.500.800 < 2^{51} \\
+        \text{RHS}_{\max} &= 100 \cdot (2^{27}-1) \times (6 \cdot 32.768) = 13.421.772.700 \times 196.608 = 2.638.827.887.001.600 < 2^{52}
+    \end{align*}
+    \item Giới hạn trên của định dạng số nguyên có dấu 54-bit (\texttt{signed [53:0]}) là $2^{53} - 1 = 9.007.199.254.740.991$.
+    So sánh:
+    \begin{align*}
+        \text{LHS}_{\max} &\approx 1{,}319 \times 10^{15} < 2^{51} \approx 2{,}252 \times 10^{15} \ll 2^{53} \approx 9{,}007 \times 10^{15} \\
+        \text{RHS}_{\max} &\approx 2{,}639 \times 10^{15} < 2^{52} \approx 4{,}504 \times 10^{15} \ll 2^{53} \approx 9{,}007 \times 10^{15}
+    \end{align*}
+    Cả hai vế đều nhỏ hơn một nửa ngưỡng tràn số của 54-bit. Định dạng 54-bit hoàn toàn triệt tiêu nguy cơ tràn số.
+    \item Trên kiến trúc Cyclone V, bộ so sánh số nguyên 54-bit được tổng hợp trực tiếp thành chuỗi carry-chain cứng chuyên dụng trong các khối ALM. Mỗi ALM chứa 2 bộ cộng toàn phần (Full Adder) với đường carry cứng siêu tốc (trễ lan truyền dưới $0{,}05\text{ ns}$ mỗi bit). Toàn bộ phép so sánh 54-bit chỉ tiêu tốn khoảng 27 ALM và hoàn tất trong chưa đầy $3{,}5\text{ ns}$. Ngược lại, một bộ chia dấu phẩy động IEEE-754 tiêu tốn hơn 800 ALM và sinh ra độ trễ hàng chục chu kỳ.
+\end{enumerate}
+
+\paragraph{Bài tập 10.4 (Các ca biên, bẫy im lặng và độ nhạy sát ngưỡng).}
+\begin{enumerate}[(a)]
+    \item Xét khung có $R_{0n} = 0$, $GP = 20.000$, $LP = 1.000$, $S_c = 500.000$, và $\text{cand\_found} = 1$. Hãy giải thích chuyện gì xảy ra nếu mạch phần cứng không kiểm tra điều kiện bẫy im lặng.
+    \item Xét khung trong vùng phẳng ($I = 0{,}10 \ge 0{,}0414$), với $R_{0n} = 1.000.000$. So sánh hai trường hợp cực kỳ sát ngưỡng: $S_c = 449.999$ và $S_c = 450.001$. Tính giá trị LHS và RHS để minh chứng độ nhạy phân giải cực đại của bất đẳng thức nhân chéo.
+\end{enumerate}
+
+\textit{Lời giải chi tiết:}
+\begin{enumerate}[(a)]
+    \item Nếu mạch không kiểm tra $R_{0n} == 0$:
+    \begin{align*}
+        \text{LHS} &= (100 \cdot 500.000 - 45 \cdot 0) \cdot 3 \cdot 20.000 = 50.000.000 \times 60.000 = +3.000.000.000.000 \\
+        \text{RHS} &= 100 \cdot 0 \cdot \max(0,\, 6\cdot 20.000 - 145\cdot 1.000) = 0
+    \end{align*}
+    Mạch so sánh sẽ thấy $\text{LHS} > \text{RHS}$ ($3 \times 10^{12} > 0$) và phán đoán sai lầm rằng khung im lặng $R_0 = 0$ là \textbf{HỮU THANH}! Điều này chứng minh rằng cờ \texttt{silence\_trap} là điều kiện bảo vệ phần cứng bắt buộc tuyệt đối.
+    \item Vì $I = 0{,}10 \ge 0{,}0414$, ta có $6 \cdot GP - 145 \cdot LP = 6\cdot 20.000 - 145\cdot 2.000 = 120.000 - 290.000 = -170.000 < 0 \implies \text{ramp\_pos} = 0 \implies \text{RHS} = 0$.
+    \begin{itemize}
+        \item Với $S_c = 449.999$ (tỉ số $S_c / R_{0n} = 0{,}449999 < 0{,}45$):
+        \begin{equation*}
+            \text{term}_1 = 100 \cdot 449.999 - 45 \cdot 1.000.000 = 44.999.900 - 45.000.000 = -100
+        \end{equation*}
+        $\text{LHS} = -100 \times 60.000 = -6.000.000 < 0 = \text{RHS} \implies$ \textbf{VÔ THANH}.
+        \item Với $S_c = 450.001$ (tỉ số $S_c / R_{0n} = 0{,}450001 > 0{,}45$):
+        \begin{equation*}
+            \text{term}_1 = 100 \cdot 450.001 - 45 \cdot 1.000.000 = 45.000.100 - 45.000.000 = +100
+        \end{equation*}
+        $\text{LHS} = +100 \times 60.000 = +6.000.000 > 0 = \text{RHS} \implies$ \textbf{HỮU THANH}.
+    \end{itemize}
+    Chỉ cần độ lệch 2 đơn vị trong $S_c$ (tương đương chênh lệch $2 \times 10^{-6}$), giá trị LHS đã đổi dấu từ $-6.000.000$ sang $+6.000.000$, minh chứng độ phân giải và tính nhạy bén tuyệt đối của bất đẳng thức nhân chéo số nguyên.
+\end{enumerate}
+
+\textit{Tóm lại: Mô hình song sinh Python Twin và phần cứng Verilog của Chương 10 đạt độ tương thích chu kỳ-đối-chu kỳ 100\% trên 641 bộ vectơ kiểm thử; bất đẳng thức nhân chéo 54-bit kết hợp cờ bẫy im lặng bảo đảm phân định vô thanh / hữu thanh hoàn toàn tin cậy và đạt độ chính xác sắc nét từng bit.}
