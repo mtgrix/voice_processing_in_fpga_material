@@ -1,0 +1,9 @@
+=== Compiling and running tb_ch04_ring_buffer ===
+=== STARTING CH04 RING BUFFER CYCLE-BY-CYCLE VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 3500
+Total comparison errors: 0
+=== ALL 3500 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch04_ring_buffer.v:209: $finish called at 70020000 (1ps)
+=== All Chapter 4 iverilog testbenches passed successfully! ===

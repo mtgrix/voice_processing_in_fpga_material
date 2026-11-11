@@ -1,8 +1,8 @@
 ======================================================================
 CH04 RING BUFFER TWIN: VECTOR GENERATION
 ======================================================================
-Generated 3500 stimulus vectors -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch04_ring_buffer_stim.txt
-Generated 3500 expected vectors -> C:\Users\NGOC\f0_v3\uoc_luong_f0_praat_fpga_quartus\verify_v3\tb_ch04_ring_buffer_expected.txt
+Generated 3500 stimulus vectors -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch04_ring_buffer_stim.txt
+Generated 3500 expected vectors -> /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch04_ring_buffer_expected.txt
 
 Stimulus Header (first 5 lines):
   0 0 0 0000 0 0 000
