@@ -131,7 +131,7 @@ Công thức độ mạnh ứng viên vô thanh \eqref{eq:praat_unvoiced_strengt
 
 Hàm số $R_{\text{unvoiced}}(I)$ chia miền cường độ $I \in [0, 1]$ thành ba phân vùng vật lý rõ rệt:
 \begin{enumerate}
-    \item \textbf{Phân vùng 1: Im lặng tuyệt đối ($I < 0{,}03$).}
+    \item \textbf{Phân vùng 1: Vùng im lặng ($I < 0{,}03$).}
     Khi cường độ tín hiệu nhỏ hơn $3\%$ đỉnh toàn cục ($I < 0{,}03$):
     \begin{equation}
         2 - I \cdot \frac{145}{3} > 2 - 0{,}03 \cdot \frac{145}{3} = 2 - 1{,}45 = 0{,}55
@@ -164,7 +164,7 @@ Hàm số $R_{\text{unvoiced}}(I)$ chia miền cường độ $I \in [0, 1]$ th�
     \label{fig:ch10_voicing_curve}
 \end{figure}
 
-\textbf{Đọc hình.} Hình \ref{fig:ch10_voicing_curve} trình bày trực quan quy luật phân định vô thanh / hữu thanh của Praat 7.0.03 trên mặt phẳng tọa độ $(I, R)$. Trục hoành biểu diễn tỉ số cường độ biên độ đỉnh $I = LP / GP$; trục tung biểu diễn độ mạnh ngưỡng $R$. Đường cong màu đỏ đậm thể hiện hàm số $R_{\text{unvoiced}}(I)$. Tại vùng im lặng màu đỏ nhạt ($I < 0{,}03$), đường ngưỡng vọt lên trên mức $1{,}00$, khiến mọi ứng viên (kể cả điểm C có tính chu kỳ cao $S_c/R_{0n} = 0{,}80$) đều bị đánh rớt xuống vô thanh. Tại vùng dốc màu cam ($0{,}03 \le I < 0{,}0414$), đường ngưỡng dốc thẳng đứng từ $1{,}00$ xuống $0{,}45$. Tại vùng tiếng nói tích cực màu xanh nhạt ($I \ge 0{,}0414$), đường ngưỡng nằm ngang cố định tại $0{,}45$. Điểm xanh A ($S_c/R_{0n} = 0{,}75$) nằm phía trên đường ngưỡng nên được công nhận là hữu thanh; trong khi điểm đỏ B ($S_c/R_{0n} = 0{,}30$) nằm phía dưới nên bị phân loại là vô thanh.
+\textbf{Đọc hình.} Hình \ref{fig:ch10_voicing_curve} trình bày trực quan quy luật phân định vô thanh / hữu thanh của Praat 7.0.03 trên mặt phẳng tọa độ $(I, R)$. Trục hoành biểu diễn tỉ số cường độ biên độ đỉnh $I = LP / GP$; trục tung biểu diễn độ mạnh ngưỡng $R$. Đường cong màu đỏ đậm thể hiện hàm số $R_{\text{unvoiced}}(I)$. Tại vùng im lặng màu đỏ nhạt ($I < 0{,}03$), đường ngưỡng vọt lên trên mức $1{,}00$, khiến mọi ứng viên (kể cả điểm C có tính chu kỳ cao $S_c/R_{0n} = 0{,}80$) đều bị đánh rớt xuống vô thanh. Tại vùng dốc màu cam ($0{,}03 \le I < 0{,}0414$), đường ngưỡng giảm tuyến tính từ $1{,}00$ xuống $0{,}45$. Tại vùng tiếng nói tích cực màu xanh nhạt ($I \ge 0{,}0414$), đường ngưỡng nằm ngang cố định tại $0{,}45$. Điểm xanh A ($S_c/R_{0n} = 0{,}75$) nằm phía trên đường ngưỡng nên được công nhận là hữu thanh; trong khi điểm đỏ B ($S_c/R_{0n} = 0{,}30$) nằm phía dưới nên bị phân loại là vô thanh.
 
 \subsubsection*{Chỗ dễ vướng: Vì sao Praat dùng tỉ số biên độ thay vì tỉ số năng lượng RMS?}
 Nhiều kỹ sư khi thiết kế hệ thống phát hiện tiếng nói (VAD -- \emph{Voice Activity Detection}) thường có phản xạ tự nhiên là tính năng lượng trung bình bình phương (RMS energy hoặc $R[0] = \sum x^2$). Tuy nhiên, Paul Boersma đã chọn cực đại biên độ tuyệt đối $\max |x_w[j]|$. Lý do nằm ở đặc tính âm học của các âm thanh bật và phụ âm tắc:

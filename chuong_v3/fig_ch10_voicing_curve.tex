@@ -1,6 +1,6 @@
 % chuong_v3/fig_ch10_voicing_curve.tex
 % Đồ thị hàm ngưỡng độ mạnh ứng viên vô thanh R_unvoiced(I) của Praat
-% Thể hiện 3 phân vùng: Im lặng tuyệt đối (I < 0.03), Dốc chuyển tiếp (0.03 <= I < 0.0414),
+% Thể hiện 3 phân vùng: Vùng im lặng (I < 0.03), Dốc chuyển tiếp (0.03 <= I < 0.0414),
 % và Tiếng nói tích cực (I >= 0.0414).
 \begin{tikzpicture}[
     >=Stealth,
@@ -67,23 +67,26 @@
         {Vùng tiếng nói tích cực\\($I \ge 0{,}0414$)};
 
     % Chú thích bản chất vùng im lặng
-    \node[font=\tiny, text=red!70!black, align=center, fill=white, inner sep=1pt] at (2.4, 2.0)
+    \node[font=\scriptsize, text=red!70!black, align=center, fill=white, inner sep=1.5pt] at (2.4, 1.2)
         {$R_{\text{unvoiced}} > 1{,}00$\\(Vô thanh vô điều kiện)};
 
     % Điểm mẫu thử nghiệm
     % Điểm A: Voiced trong vùng tích cực (I = 0.055 -> x = 8.8, Sc/R0n = 0.75 -> y = 0.75*3.5 = 2.625)
     \node[pt_voiced] (ptA) at (8.8, 2.625) {};
-    \node[above right, font=\scriptsize, fill=white, inner sep=1pt] at (ptA)
+    \node[left=3pt, font=\scriptsize\bfseries, text=green!60!black] at (ptA) {A};
+    \node[right=8pt, font=\scriptsize, fill=white, inner sep=1.5pt] at (ptA)
         {Ứng viên hữu thanh ($S_c/R_{0n} = 0{,}75 > 0{,}45$)};
 
     % Điểm B: Unvoiced trong vùng tích cực (I = 0.055 -> x = 8.8, Sc/R0n = 0.30 -> y = 0.30*3.5 = 1.05)
     \node[pt_unvoiced] (ptB) at (8.8, 1.05) {};
-    \node[below right, font=\scriptsize, fill=white, inner sep=1pt] at (ptB)
+    \node[left=3pt, font=\scriptsize\bfseries, text=red!70!black] at (ptB) {B};
+    \node[right=8pt, font=\scriptsize, fill=white, inner sep=1.5pt] at (ptB)
         {Ứng viên vô thanh ($S_c/R_{0n} = 0{,}30 \le 0{,}45$)};
 
-    % Điểm C: Ứng viên trong vùng im lặng có tương quan cao (I = 0.015 -> x = 2.4, Sc/R0n = 0.80 -> y = 2.80)
-    \node[pt_unvoiced] (ptC) at (2.4, 2.80) {};
-    \node[right, font=\tiny, align=left, fill=white, inner sep=1pt] at (2.55, 3.0)
+    % Điểm C: Ứng viên trong vùng im lặng có tương quan cao (I = 0.009 -> x = 1.4, Sc/R0n = 0.80 -> y = 2.80)
+    \node[pt_unvoiced] (ptC) at (1.4, 2.80) {};
+    \node[left=3pt, font=\scriptsize\bfseries, text=red!70!black] at (ptC) {C};
+    \node[right=6pt, font=\scriptsize, align=left, fill=white, inner sep=1.5pt] at (ptC)
         {Nhiễu/ù có tính chu kỳ ($S_c/R_{0n} = 0{,}80$)\\nhưng $I < 0{,}03 \implies$ Vô thanh};
 
     % Mũi tên chỉ thị đường ngưỡng
