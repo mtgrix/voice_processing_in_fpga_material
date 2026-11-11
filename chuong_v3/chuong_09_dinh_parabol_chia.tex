@@ -179,3 +179,232 @@ Vì vậy, kiến trúc FPGA của ta \textbf{chốt dừng lại ở phép nộ
 
 \textit{Tóm lại: Dải quét [26, 214] cung cấp đủ hàng xóm biên cho dải tìm kiếm [27, 213]; điều kiện 3 điểm cùng bất đẳng thức 40U > 9R0n lọc sạch các gợn sóng nhiễu mà không tốn DSP, và bộ dò đỉnh chọn ứng viên có Sc cực đại với nguyên tắc gặp trước thắng khi hòa.}
 
+\subsection*{9.3. Dẫn xuất công thức nội suy parabol đúng dấu và gộp một phép chia duy nhất}
+\addcontentsline{toc}{subsection}{9.3. Dẫn xuất công thức nội suy parabol đúng dấu và gộp một phép chia duy nhất}
+
+\subsubsection*{Bản chất hình học: Xấp xỉ đỉnh liên tục qua đa thức bậc hai}
+Tại vị trí đỉnh nguyên $\tau_p \in [27, 213]$ được bộ dò đỉnh chọn lựa, ta có bộ ba giá trị tương quan chuẩn hóa rời rạc:
+\begin{equation}
+y_{-1} = U[\tau_p - 1], \quad y_0 = U[\tau_p], \quad y_{+1} = U[\tau_p + 1]
+\end{equation}
+
+Vì hàm tự tương quan thực tế trong miền thời gian liên tục là một hàm khả vi trơn tru xung quanh điểm cực đại, vùng đỉnh lân cận $\tau_p$ có thể xấp xỉ chặt chẽ bằng một đường parabol bậc hai $y(t) = a t^2 + b t + c$, trong đó biến số cục bộ $t = \tau - \tau_p$ nhận các giá trị rời rạc $t \in \{-1, 0, +1\}$.
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch09_parabola_peak.tex}
+\caption{Hình học phép nội suy cực trị Parabol qua 3 điểm rời rạc $(y_{-1}, y_0, y_{+1})$ và xác định vị trí đỉnh liên tục $\tau^* = \tau_p + \delta$.}
+\label{fig:ch09_parabola_peak}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch09_parabola_peak} biểu diễn trực quan cơ chế nội suy cực trị liên tục từ ba mẫu rời rạc. Ba điểm tròn màu xanh là các giá trị đo được tại các chỉ số nguyên $(\tau_p - 1, y_{-1})$, $(\tau_p, y_0)$ và $(\tau_p + 1, y_{+1})$. Đường parabol màu xanh đậm đi qua trọn vẹn cả ba điểm này. Vị trí đỉnh thực sự của đường cong (điểm màu đỏ) nằm lệch khỏi mẫu nguyên $\tau_p$ một khoảng phân số $\delta$. Khi $y_{+1} > y_{-1}$ (hàng xóm bên phải cao hơn bên trái), đỉnh thực sự bị hút về phía bên phải, tương ứng với $\delta > 0$ và chu kỳ dao động thực $\tau^* > \tau_p$. Ngược lại, nếu $y_{+1} < y_{-1}$, đỉnh sẽ lệch sang trái với $\delta < 0$.
+
+\subsubsection*{Dẫn xuất toán học: Tọa độ cực trị và quy luật dấu}
+Thiết lập hệ phương trình xác định ba hệ số $a, b, c$ đi qua ba điểm thực nghiệm:
+\begin{align}
+y(-1) &= a(-1)^2 + b(-1) + c = a - b + c = y_{-1} \label{eq:ch09_p_m1} \\
+y(0)  &= a(0)^2 + b(0) + c = c = y_0 \label{eq:ch09_p_0} \\
+y(+1) &= a(+1)^2 + b(+1) + c = a + b + c = y_{+1} \label{eq:ch09_p_p1}
+\end{align}
+
+Từ phương trình~(\ref{eq:ch09_p_0}), ta có ngay hệ số tự do:
+\begin{equation}
+c = y_0
+\end{equation}
+
+Lấy phương trình~(\ref{eq:ch09_p_p1}) trừ phương trình~(\ref{eq:ch09_p_m1}):
+\begin{equation}
+y_{+1} - y_{-1} = (a + b + c) - (a - b + c) = 2b \implies b = \frac{y_{+1} - y_{-1}}{2}
+\label{eq:ch09_b_solve}
+\end{equation}
+
+Lấy phương trình~(\ref{eq:ch09_p_p1}) cộng phương trình~(\ref{eq:ch09_p_m1}):
+\begin{equation}
+y_{+1} + y_{-1} = (a + b + c) + (a - b + c) = 2a + 2c = 2a + 2y_0
+\end{equation}
+Từ đó suy ra hệ số bậc hai $a$:
+\begin{equation}
+2a = y_{+1} + y_{-1} - 2y_0 = -(2y_0 - y_{-1} - y_{+1}) \implies a = -\frac{2y_0 - y_{-1} - y_{+1}}{2}
+\label{eq:ch09_a_solve}
+\end{equation}
+
+Để tìm vị trí cực đại liên tục $t = \delta$, ta lấy đạo hàm bậc nhất của $y(t)$ theo $t$ và cho triệt tiêu:
+\begin{equation}
+\frac{dy}{dt} = 2a\delta + b = 0 \implies \delta = -\frac{b}{2a}
+\end{equation}
+
+Thay biểu thức của $b$ từ~(\ref{eq:ch09_b_solve}) và $2a$ từ~(\ref{eq:ch09_a_solve}) vào, ta thu được:
+\begin{equation}
+\delta = -\frac{\frac{y_{+1} - y_{-1}}{2}}{-(2y_0 - y_{-1} - y_{+1})} = \frac{y_{+1} - y_{-1}}{\mathbf{2(2y_0 - y_{-1} - y_{+1})}} = \frac{num}{2 \cdot den}
+\label{eq:ch09_delta_exact}
+\end{equation}
+trong đó hai đại lượng nguyên then chốt được định nghĩa là:
+\begin{equation}
+num = y_{+1} - y_{-1}, \qquad den = 2y_0 - y_{-1} - y_{+1} = (y_0 - y_{-1}) + (y_0 - y_{+1})
+\end{equation}
+
+\begin{equationcard}
+\textbf{Định lý về dấu và tính hợp lệ của độ dời đỉnh $\delta$:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Vì $\tau_p$ là một đỉnh cục bộ hợp lệ ($y_0 > y_{-1}$ và $y_0 \ge y_{+1}$), mẫu số luôn thỏa mãn:
+    \begin{equation}
+    den = (y_0 - y_{-1}) + (y_0 - y_{+1}) \ge 1 + 0 = 1 > 0
+    \end{equation}
+    Mẫu số $den$ luôn dương nghiêm ngặt, phép chia không bao giờ rơi vào trường hợp chia cho 0.
+    \item Dấu của $\delta$ hoàn toàn được quyết định bởi tử số $num = y_{+1} - y_{-1}$:
+    \begin{itemize}
+        \item Khi $y_{+1} > y_{-1} \implies num > 0 \implies \delta > 0$: Đỉnh liên tục nằm về bên phải $\tau_p$ ($\tau^* > \tau_p$).
+        \item Khi $y_{+1} < y_{-1} \implies num < 0 \implies \delta < 0$: Đỉnh liên tục nằm về bên trái $\tau_p$ ($\tau^* < \tau_p$).
+        \item Khi $y_{+1} = y_{-1} \implies num = 0 \implies \delta = 0$: Đỉnh liên tục trùng đúng mẫu nguyên $\tau_p$.
+    \end{itemize}
+    \item Vì $y_0$ là cực đại cục bộ, độ dời luôn nằm trong nửa khoảng khoảng cách mẫu: $|\delta| \le 0{,}5$.
+\end{itemize}
+\end{equationcard}
+
+\textbf{Vạch rõ sai lầm ngược dấu trong tài liệu cũ:} Trong một số tài liệu thiết kế trước đây (như tài liệu dự thảo của Argon), công thức nội suy từng bị viết sai thành $\delta = (y_{-1} - y_{+1}) / (2(2y_0 - y_{-1} - y_{+1}))$. Công thức đó đảo lộn hoàn toàn chiều lệch vật lý: khi hàng xóm phải cao hơn hàng xóm trái, nó lại kéo đỉnh dời sang bên trái! Mã nguồn chuẩn của Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 195--198) và hệ thống của ta luôn áp dụng công thức đúng dấu~(\ref{eq:ch09_delta_exact}).
+
+\subsubsection*{Tính toán thủ công thu nhỏ: Bộ ba mẫu (8000, 10000, 9000) tại $\tau_p = 100$}
+Khảo sát ví dụ tính tay kinh điển với các giá trị hàm tương quan nguyên:
+\begin{equation}
+y_{-1} = 8000, \quad y_0 = 10000, \quad y_{+1} = 9000, \quad \text{tại } \tau_p = 100
+\end{equation}
+
+Thực hiện từng bước tính toán giải tích:
+\begin{align}
+num &= y_{+1} - y_{-1} = 9000 - 8000 = \mathbf{1000} \\
+den &= 2y_0 - y_{-1} - y_{+1} = 2 \times 10000 - 8000 - 9000 = 20000 - 17000 = \mathbf{3000} \\
+\delta &= \frac{num}{2 \cdot den} = \frac{1000}{2 \times 3000} = \frac{1000}{6000} = \mathbf{+\frac{1}{6}} \approx +0{,}166667
+\end{align}
+
+Vị trí chu kỳ cực trị liên tục là:
+\begin{equation}
+\tau^* = \tau_p + \delta = 100 + \frac{1}{6} = \frac{601}{6} \approx \mathbf{100{,}166667\text{ mẫu}}
+\end{equation}
+
+Tần số cơ bản thực tế ở $f_s = 16.000\text{ Hz}$ là:
+\begin{equation}
+F_0 = \frac{f_s}{\tau^*} = \frac{16.000}{\frac{601}{6}} = \frac{96.000}{601} \approx \mathbf{159{,}7338\text{ Hz}} \approx 159{,}73\text{ Hz}
+\end{equation}
+
+Giá trị tương ứng ở định dạng chuẩn Q12.4 ($F_{0, \text{Q12.4}} = 16 \times F_0$) là:
+\begin{equation}
+F_{0, \text{Q12.4}} = 16 \times \frac{96.000}{601} = \frac{1.536.000}{601} \approx \mathbf{2555{,}7404} \xrightarrow{\text{làm tròn}} \mathbf{2556}
+\end{equation}
+(khớp chính xác với con số $2556$ đã kiểm chứng trong nhật ký \texttt{verify\_v3/ch09\_math\_audit.log}).
+
+\subsubsection*{Bước đột phá: Gộp hai phép chia thành một phép chia duy nhất}
+Trong triển khai phần cứng ngây thơ, người ta thường thực hiện tuần tự: (1) Chia $num / (2 \cdot den)$ để tìm $\delta$, rồi (2) Lấy $f_s / (\tau_p + \delta)$. Phương pháp tiếp cận này có hai nhược điểm chết người trên FPGA:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Đòi hỏi hai bộ chia phần cứng độc lập (hoặc phải dùng chung một bộ chia nhưng tốn gấp đôi số chu kỳ FSM).
+    \item Sai số lượng tử hóa của phép chia $\delta$ (ở dạng số cố định) sẽ đi thẳng vào mẫu số của phép tính $F_0$, làm suy giảm nghiêm trọng độ chính xác của cao độ đầu ra.
+\end{enumerate}
+
+Để khắc phục triệt để, ta thực hiện biến đổi giải tích thuần túy để \textbf{gộp hai phép chia thành đúng một phép chia duy nhất}:
+\begin{equation}
+F_0 = \frac{f_s}{\tau^*} = \frac{f_s}{\tau_p + \frac{num}{2 \cdot den}} = \frac{f_s}{\frac{2 \cdot den \cdot \tau_p + num}{2 \cdot den}} = \frac{2 \cdot f_s \cdot den}{2 \cdot den \cdot \tau_p + num}
+\end{equation}
+
+Chuyển đổi sang định dạng Q12.4 bằng cách nhân thêm thừa số $2^4 = 16$:
+\begin{equation}
+F_{0, \text{Q12.4}} = 16 \times F_0 = \frac{16 \times 2 \times f_s \cdot den}{2 \cdot den \cdot \tau_p + num} = \frac{32 \times 16.000 \cdot den}{2 \cdot den \cdot \tau_p + num} = \frac{\mathbf{512000 \cdot den}}{\mathbf{2 \cdot den \cdot \tau_p + num}}
+\label{eq:ch09_single_div_exact}
+\end{equation}
+
+Đặt mẫu số tổng hợp là:
+\begin{equation}
+D = 2 \cdot den \cdot \tau_p + num
+\end{equation}
+Để thực hiện làm tròn số nguyên tới giá trị gần nhất trong phép chia nguyên không dấu ($A / B \to \lfloor (A + B/2) / B \rfloor$), ta cộng thêm một lượng bù nửa mẫu số $\lfloor D / 2 \rfloor$ vào tử số trước khi đưa vào bộ chia:
+\begin{equation}
+F_{0, \text{Q12.4}} = \left\lfloor \frac{512000 \cdot den + \lfloor D/2 \rfloor}{D} \right\rfloor
+\label{eq:ch09_round_f0}
+\end{equation}
+
+\textbf{Thử nghiệm lại bằng ví dụ tính tay:}
+Với $num = 1000$, $den = 3000$, $\tau_p = 100$:
+\begin{align}
+D &= 2 \times 3000 \times 100 + 1000 = 600000 + 1000 = \mathbf{601000} \\
+N_{\text{gốc}} &= 512000 \times 3000 = \mathbf{1.536.000.000} \\
+\frac{N_{\text{gốc}}}{D} &= \frac{1.536.000.000}{601000} = \frac{1.536.000}{601} \approx \mathbf{2555{,}7404} \\
+F_{0, \text{Q12.4}} &= \left\lfloor \frac{1.536.000.000 + 300500}{601000} \right\rfloor = \left\lfloor \frac{1.536.300.500}{601000} \right\rfloor = \mathbf{2556}
+\end{align}
+Kết quả cho ra đúng số nguyên $2556$, triệt tiêu hoàn toàn sai số trung gian!
+
+\textbf{Sai sót của phiên bản v1:} Trong tài liệu v1, công thức từng bị ghi nhầm thành $F_{0, \text{Q12.4}} = 256000 \cdot den / (\tau_p \cdot den + num)$. Công thức này bị thiếu mất một thừa số $2$ ở đại lượng $\delta$, tương đương với việc coi $\delta = num / den$ (gấp đôi độ dời thật). Áp dụng công thức sai đó cho ví dụ tính tay:
+\begin{equation}
+\frac{256000 \times 3000}{100 \times 3000 + 1000} = \frac{768.000.000}{301.000} \approx \mathbf{2551{,}495} \xrightarrow{\text{làm tròn}} \mathbf{2551}
+\end{equation}
+Kết quả bị lệch mất $5\text{ LSB}$ ($2556 - 2551 = 5$), tương đương sai số tần số $5/16 = 0{,}3125\text{ Hz}$ ($\approx 3{,}4\text{ cent}$). Bản v2 và mô hình \path{golden_v2} đã sửa dứt điểm sai sót này theo đúng phương trình~(\ref{eq:ch09_round_f0}).
+
+\subsubsection*{Chuẩn hóa động $s_2$ và suy xuất độ rộng bit LPM\_WIDTHN = 44, LPM\_WIDTHD = 34}
+Sau khi có công thức gộp một phép chia, câu hỏi phần cứng tiếp theo là: \emph{Độ rộng bit của tử số và mẫu số đưa vào bộ chia là bao nhiêu?}
+
+Nhiều tài liệu trước đây ghi chép tùy tiện "Numerator 48 bit, Denominator 32 bit" mà không có bất kỳ dẫn xuất toán học nào. Hãy phân tích dải biến thiên thực tế:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Vì $R_{0n} < 2^{27}$ và $U[\tau] < 2^{27}$, đại lượng $den = 2y_0 - y_{-1} - y_{+1}$ có thể đạt tới $2 \times 2^{27} = 2^{28}$. Trong các trường hợp tín hiệu cực đại có độ dốc gắt, $den$ có thể vượt trên $2^{29}$ hoặc xấp xỉ $2^{30}$.
+    \item Nếu giữ nguyên $den$, tử số $512000 \cdot den \approx 2^{19} \times 2^{30} = 2^{49}$. Mẫu số $D \approx 2 \cdot den \cdot \tau_p \approx 2 \times 213 \times 2^{30} \approx 426 \times 2^{30} \approx 2^{39}$. Bộ chia khi đó bắt buộc phải rộng ít nhất 50 bit!
+\end{itemize}
+
+Để khống chế kích thước silicon và tối ưu hóa thời gian tính toán, \path{golden_v2/fixed_twin.py} áp dụng cơ chế \textbf{chuẩn hóa động bằng độ dịch $s_2$}:
+\begin{equation}
+s_2 = \max(0, \operatorname{bitlen}(den) - 24)
+\end{equation}
+Đại lượng $s_2$ được tính toán cực nhanh qua mạch giải mã ưu tiên (Priority Encoder) 5 tầng trên các bit cao $den[28:24]$:
+\begin{equation}
+s_2 = \begin{cases}
+5, & \text{nếu } den[28] = 1 \\
+4, & \text{nếu } den[27] = 1 \\
+3, & \text{nếu } den[26] = 1 \\
+2, & \text{nếu } den[25] = 1 \\
+1, & \text{nếu } den[24] = 1 \\
+0, & \text{ngược lại}
+\end{cases}
+\end{equation}
+
+Sau đó, hai đại lượng $num$ và $den$ được dịch phải đồng thời $s_2$ bit:
+\begin{equation}
+num_n = num \ggg s_2 \quad (\text{dịch số học giữ dấu}), \qquad den_n = den \gg s_2
+\end{equation}
+
+Nhờ phép dịch này, giá trị chuẩn hóa $den_n$ luôn luôn bị chặn trên bởi $24\text{ bit}$:
+\begin{equation}
+1 \le den_n \le 2^{24} - 1 = \mathbf{16.777.215}
+\end{equation}
+
+Từ giới hạn $24\text{ bit}$ của $den_n$, ta thiết lập chặn trên toán học chặt chẽ cho toàn bộ toán hạng của bộ chia:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Chặn trên của mẫu số $D$:}
+    Vì $\tau_p \le 213$ và $|num_n| \le den_n$, mẫu số thỏa mãn:
+    \begin{equation}
+    D = 2 \cdot den_n \cdot \tau_p + num_n \le (2 \times 213 + 1) \cdot den_n = 427 \times (2^{24} - 1) = \mathbf{7.163.870.805}
+    \end{equation}
+    Vì $7.163.870.805 < 2^{33} = 8.589.934.592 < 2^{34}$, mẫu số $D$ đảm bảo nằm vừa khít trong \textbf{34 bit không dấu}.
+    \item \textbf{Chặn dưới của mẫu số $D$:}
+    Vì $\tau_p \ge 27$ và $num_n \ge -den_n$, ta có:
+    \begin{equation}
+    D \ge 2 \cdot den_n \cdot 27 - den_n = 53 \cdot den_n \ge 53 > 0
+    \end{equation}
+    Mẫu số $D$ luôn luôn dương nghiêm ngặt, loại bỏ hoàn toàn khả năng chia cho 0 hoặc tràn số âm.
+    \item \textbf{Chặn trên của tử số $N$:}
+    Thành phần tích $512000 \cdot den_n$ đạt cực đại là:
+    \begin{equation}
+    512000 \times (2^{24} - 1) = \mathbf{8.589.934.080.000} < 2^{43} = 8.796.093.022.208
+    \end{equation}
+    Khi cộng thêm lượng bù làm tròn $\lfloor D / 2 \rfloor < 3.581.935.403 < 2^{32}$:
+    \begin{equation}
+    N = 512000 \cdot den_n + \lfloor D/2 \rfloor < 8.589.934.080.000 + 3.581.935.403 = \mathbf{8.593.516.015.403}
+    \end{equation}
+    Vì $8.593.516.015.403 < 2^{43} + 2^{32} < 2^{44} = 17.592.186.044.416$, tử số $N$ đảm bảo nằm trọn vẹn trong \textbf{44 bit không dấu}.
+\end{enumerate}
+
+\begin{equationcard}
+\textbf{Kích thước toán hạng của bộ chia phần cứng:}
+\begin{equation}
+\texttt{LPM\_WIDTHN} = \mathbf{44}, \qquad \texttt{LPM\_WIDTHD} = \mathbf{34}
+\end{equation}
+Cả hai toán hạng đưa vào bộ chia đều là số nguyên dương không dấu (\texttt{LPM\_NREPRESENTATION = "UNSIGNED"}, \texttt{LPM\_DREPRESENTATION = "UNSIGNED"}). Phép chia số nguyên 44 bit cho 34 bit sinh ra thương số có độ rộng tối đa $44 - 34 + 1 = 11\text{ bit}$ (hoàn toàn vừa vặn trong thanh ghi ngõ ra $16\text{ bit}$ của định dạng Q12.4).
+\end{equationcard}
+
+\textit{Tóm lại: Đỉnh liên tục tau* = tau_p + delta được gộp với phép chia cao độ thành đúng một phép chia số nguyên duy nhất F0_Q12.4 = round(512000*den / (2*den*tau_p + num)); cơ chế chuẩn hóa động s2 khống chế toán hạng vừa khít trong LPM_WIDTHN = 44 bit và LPM_WIDTHD = 34 bit không dấu.}
+
+
