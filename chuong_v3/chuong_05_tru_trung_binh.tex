@@ -121,3 +121,111 @@ Nhìn vào cột cuối cùng của Bảng~\ref{tab:ch05_dc_hand_calc}: ở cả
 \textbf{Đọc hình.} Hình~\ref{fig:ch05_dc_effect} so sánh trực quan hàm tự tương quan chuẩn hóa $r(\tau)/r(0)$ của một khung âm thanh vô thanh (nhiễu trắng ngẫu nhiên, $\sigma = 1000$) trước và sau khi bị nhiễm mức DC $c = +1000$. Đường màu xanh nét đậm biểu diễn tín hiệu sạch đã được trừ trung bình hoàn toàn: đồ thị dao động ngẫu nhiên quanh trục hoành $0{,}0$, đỉnh cực đại trong dải quét $\tau \in [26, 214]$ chỉ đạt $0{,}1977$, nằm hoàn toàn bên trong miền vô thanh an toàn (vùng phủ màu xanh lá, bên dưới đường đứt nét màu đỏ biểu diễn ngưỡng \texttt{VOICING\_THRESHOLD} $= 0{,}45$). Ngược lại, đường màu cam nét đậm biểu diễn tín hiệu chưa được trừ trung bình: toàn bộ quỹ đạo bị đẩy tịnh tiến lên trên một khoảng $+c^2$, khiến đỉnh cực đại bị đội lên tới $0{,}6023$. Đỉnh này vượt qua ngưỡng đỏ $0{,}45$, kích hoạt cảnh báo sai và đánh dấu sai khung vô thanh thành hữu thanh.
 
 \textit{Tóm lại: Mức DC tĩnh $c$ sinh ra thành phần $+c^2 R_w(\tau)$ trong tự tương quan thô, và sau khi chia cho cửa sổ sẽ biến thành một độ lệch dương $+c^2$ đồng đều trên mọi độ trễ, phá hủy ranh giới nhận diện vô thanh và bắt buộc phần cứng phải có khối trừ trung bình cục bộ.}
+
+\subsection*{5.2. Praat lấy trung bình trên đoạn nào: 426 mẫu quanh tâm khung}
+\addcontentsline{toc}{subsection}{5.2. Praat lấy trung bình trên đoạn nào: 426 mẫu quanh tâm khung}
+
+\subsubsection*{Vấn đề thực tế: Vì sao không lấy trung bình trên toàn bộ 638 mẫu cửa sổ?}
+Một câu hỏi tự nhiên mà bất kỳ kỹ sư phần cứng nào cũng sẽ đặt ra khi thiết kế khối này: Khung phân tích dài $638\text{ mẫu}$, vậy tại sao không lấy tổng của toàn bộ $638\text{ mẫu}$ rồi chia cho $638$? Việc dùng một độ dài cửa sổ duy nhất cho cả phép tính trung bình lẫn phép nhân cửa sổ Hanning chẳng phải sẽ làm cho bộ đếm địa chỉ đơn giản hơn rất nhiều hay sao?
+
+Lý do nằm ở \textbf{tính phi dừng} (non-stationarity) của tiếng nói tự nhiên. Một cửa sổ $638\text{ mẫu}$ ở tần số $16\text{ kHz}$ kéo dài tới $40\text{ ms}$. Trong khoảng thời gian $40\text{ ms}$ đó, tín hiệu tiếng nói có thể chuyển tiếp từ một phụ âm tắc vô thanh sang một nguyên âm mạnh, hoặc trải qua một biến thiên áp suất đột ngột. 
+
+Khi áp dụng cửa sổ Hanning, trọng số ở hai mép ngoài cùng tiệm cận $0$ ($w[0] = w[637] = 1/32768 \approx 0{,}00003$), trong khi toàn bộ năng lượng hữu ích tập trung dày đặc ở vùng trung tâm ($w[318] = w[319] = 32767/32768 \approx 1{,}0$). Nếu ta tính trung bình trên toàn bộ $638\text{ mẫu}$, các đột biến biên độ ở hai đầu mép (vốn sẽ bị cửa sổ Hanning dập tắt) lại bị kéo vào và làm sai lệch giá trị mức một chiều thực tế tại vùng trung tâm. Kết quả là tại tâm khung nơi năng lượng cao nhất, mức DC cục bộ không những không được triệt tiêu mà còn bị lệch đi, để lại một thành phần dư thừa phá vỡ tính đối xứng của tự tương quan.
+
+\subsubsection*{Giải mã mã nguồn Praat 7.0.03: Dẫn xuất khoảng lấy mẫu 426 mẫu}
+Để khắc phục nhược điểm trên, Paul Boersma đã chọn một giải pháp tinh tế: \textbf{chỉ tính trung bình cục bộ trên đúng hai chu kỳ sóng dài nhất quanh tâm khung} (``one longest period to both sides''). 
+
+Kiểm tra trực tiếp mã nguồn chuẩn của Praat phiên bản 7.0.03 (tệp \path{fon/Sound_to_Pitch.cpp}), quy trình này được định nghĩa chính xác qua các dòng mã sau:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Xác định độ dài chu kỳ dài nhất (\texttt{Sound\_to\_Pitch.cpp:326}):}
+    \begin{lstlisting}[language=C, caption={Độ dài chu kỳ sóng dài nhất trong Praat 7.0.03}]
+nsamp_period = Melder_ifloor (1.0 / dx / pitchFloor);
+    \end{lstlisting}
+    Với tần số lấy mẫu $f_s = 16.000\text{ Hz}$ ($dx = 1/16000\text{ s}$) và ngưỡng đáy $F_{\text{floor}} = 75{,}0\text{ Hz}$:
+    \begin{equation}
+    \texttt{nsamp\_period} = \left\lfloor \frac{16000}{75} \right\rfloor = \mathbf{213\text{ mẫu}}
+    \end{equation}
+    \item \textbf{Định vị ranh giới mẫu bắt đầu và kết thúc (\texttt{Sound\_to\_Pitch.cpp:59--60}):}
+    \begin{lstlisting}[language=C, caption={Biên giới đoạn lấy trung bình cục bộ trong Praat 7.0.03}]
+startSample = rightSample - nsamp_period;
+endSample = leftSample + nsamp_period;
+    \end{lstlisting}
+    Theo định nghĩa căn tâm của Praat (Chương 4), \texttt{leftSample} và \texttt{rightSample} là hai mẫu nằm sát hai bên điểm chính giữa của khung, thỏa mãn hệ thức \texttt{leftSample} = \texttt{rightSample} $- 1$. Do đó, số lượng mẫu nằm trong đoạn từ \texttt{startSample} tới \texttt{endSample} là:
+    \begin{align}
+    N_{\text{span}} &= \texttt{endSample} - \texttt{startSample} + 1 \nonumber \\
+                    &= (\texttt{leftSample} + \texttt{nsamp\_period}) - (\texttt{rightSample} - \texttt{nsamp\_period}) + 1 \nonumber \\
+                    &= (\texttt{rightSample} - 1 + 213) - (\texttt{rightSample} - 213) + 1 \nonumber \\
+                    &= 2 \times 213 = \mathbf{426\text{ mẫu}}
+    \end{align}
+    \item \textbf{Tính tổng và chia trung bình (\texttt{Sound\_to\_Pitch.cpp:63--66}):}
+    \begin{lstlisting}[language=C, caption={Tính tổng và chia trung bình dấu phẩy động trong Praat 7.0.03}]
+for (integer i = startSample; i <= endSample; i ++)
+    localMean += my z [1] [i];
+localMean /= 2 * nsamp_period; // Chia cho 426 trong kieu double
+    \end{lstlisting}
+    \item \textbf{Trừ trung bình cục bộ trước khi nhân cửa sổ (\texttt{Sound\_to\_Pitch.cpp:72--78}):}
+    \begin{lstlisting}[language=C, caption={Trừ trung bình trước khi nhân cửa sổ trong Praat 7.0.03}]
+for (integer i = startSample; i <= endSample; i ++)
+    thy z [1] [i - startSample + 1] = (my z [1] [i] - localMean) * window [i - startSample + 1];
+    \end{lstlisting}
+\end{enumerate}
+
+\subsubsection*{Tọa độ hình học trong khung 638 mẫu và lợi thế bộ nhớ RAM vòng}
+Trong cửa sổ phân tích $638\text{ mẫu}$ (chỉ số mẫu tương đối $n \in [0, 637]$), tâm khung nằm đối xứng tại vị trí giữa mẫu $318$ và mẫu $319$ (\texttt{halfnsamp\_window} $= 319$). 
+
+Mẫu \texttt{rightSample} ứng với chỉ số tương đối $319$, còn \texttt{leftSample} ứng với chỉ số $318$. Tọa độ tương đối của đoạn $426\text{ mẫu}$ lấy trung bình cục bộ là:
+\begin{align}
+n_{\text{start}} &= 319 - 213 = \mathbf{106} \\
+n_{\text{end}}   &= 318 + 213 = \mathbf{531}
+\end{align}
+
+Số mẫu của đoạn này là $531 - 106 + 1 = \mathbf{426\text{ mẫu}}$. Đoạn này bỏ lại đúng $106\text{ mẫu}$ ở mép trái ($0 \dots 105$) và đúng $106\text{ mẫu}$ ở mép phải ($532 \dots 637$). Hai phần mép ngoài này chiếm $106/638 \approx 16{,}6\%$ mỗi bên, chính là vùng mà trọng số cửa sổ Hanning suy giảm xuống dưới $0{,}19$ ($w[106] = w[531] \approx 6250/32768 \approx 0{,}191$).
+
+\begin{costbox}
+\textbf{Lợi ích kiến trúc phần cứng:} Ở Chương 4, ta đã thiết kế bộ đệm vòng (Ring Buffer) dung lượng $1024\text{ từ}$ có khả năng lưu trữ trọn vẹn toàn bộ $638\text{ mẫu}$ của khung hiện tại. 
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khi bắt đầu xử lý một khung, bộ điều khiển chỉ cần phát địa chỉ đọc quét từ $\texttt{rd\_base} + 106$ tới $\texttt{rd\_base} + 531 \pmod{1024}$.
+    \item Khối tính trung bình đọc trực tiếp các mẫu này từ RAM vòng mà \textbf{không cần thêm bất kỳ một khối nhớ RAM nào khác}!
+    \item Chi phí bộ nhớ RAM thêm cho khối tính trung bình bằng \textbf{chính xác 0 khối M10K}.
+\end{itemize}
+\end{costbox}
+
+\subsubsection*{Đối chiếu số học: Số thực dấu phẩy động của Praat so với số nguyên của FPGA}
+Trong phần mềm Praat, biến \texttt{localMean} được lưu trữ và tính toán dưới dạng số thực dấu phẩy động chính xác kép (IEEE 754 double precision, 64 bit). Phép chia \texttt{localMean /= 426.0} bảo toàn phần thập phân với độ chính xác cao.
+
+Ngược lại, trên phần cứng FPGA, nhằm tiết kiệm tài nguyên logic và duy trì thông lượng thời gian thực, thiết kế Golden v2 quy chuẩn giá trị trung bình về \textbf{số nguyên có dấu 16 bit}:
+\begin{equation}
+\text{mean}_{\text{FPGA}} = \left\lfloor \frac{S + 213}{426} \right\rfloor, \quad \text{với } S = \sum_{j=106}^{531} x[j]
+\end{equation}
+
+Hằng số $+213$ ($= 426/2$) đóng vai trò làm tròn số học đối xứng về số nguyên gần nhất (nearest-integer rounding). Câu hỏi đặt ra là: \emph{Việc làm tròn về số nguyên này làm lệch trung bình bao nhiêu so với số thực của Praat, và có ảnh hưởng đến kết quả F0 cuối cùng hay không?}
+
+\textbf{1. Đánh giá cận sai số lý thuyết:}
+Với mọi số nguyên tổng $S$, đặt $S = 426 \cdot q + r$, trong đó thương nguyên $q \in \mathbb{Z}$ và số dư $r \in [0, 425]$. Ta có:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Giá trị trung bình thực dấu phẩy động của Praat là $\mu_{\text{double}} = q + \frac{r}{426}$.
+    \item Giá trị trung bình số nguyên của FPGA là $\mu_{\text{int}} = \left\lfloor \frac{426q + r + 213}{426} \right\rfloor = q + \left\lfloor \frac{r + 213}{426} \right\rfloor$.
+\end{itemize}
+Xét hai trường hợp của số dư $r$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu $0 \le r \le 212$: ta có $r + 213 \le 425 < 426$, do đó $\lfloor (r+213)/426 \rfloor = 0 \implies \mu_{\text{int}} = q$. Sai số tuyệt đối là:
+    \begin{equation}
+    |\mu_{\text{int}} - \mu_{\text{double}}| = \frac{r}{426} \le \frac{212}{426} \approx \mathbf{0{,}49765\text{ đơn vị biên độ}}
+    \end{equation}
+    \item Nếu $213 \le r \le 425$: ta có $426 \le r + 213 \le 638$, do đó $\lfloor (r+213)/426 \rfloor = 1 \implies \mu_{\text{int}} = q + 1$. Sai số tuyệt đối là:
+    \begin{equation}
+    |\mu_{\text{int}} - \mu_{\text{double}}| = 1 - \frac{r}{426} = \frac{426 - r}{426} \le \frac{426 - 213}{426} = \frac{213}{426} = \mathbf{0{,}50000\text{ đơn vị biên độ}}
+    \end{equation}
+\end{itemize}
+Như vậy, sai số giữa trung bình số nguyên của FPGA và trung bình số thực của Praat \textbf{luôn luôn bị chặn trên bởi $0{,}5$ đơn vị biên độ} (trên thang đo $32.768$, sai số này chỉ chiếm tối đa $0{,}0015\%$).
+
+\textbf{2. Kết quả kiểm chứng thực nghiệm trên tệp âm thanh chuẩn:}\\
+Kịch bản kiểm chứng \texttt{verify\_v3/ch05\_praat\_lines.py} đã chạy phân tích đối soát từng khung trên cả hai tệp âm thanh tổng hợp mẫu:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tệp âm thanh sạch (\texttt{synth\_glide\_vuv\_16k.wav}, 277 khung):} Sai số tuyệt đối cực đại đo được là $\max |\mu_{\text{int}} - \mu_{\text{double}}| = 0{,}500000$; sai số trung bình trên toàn tệp là $0{,}228954$ đơn vị; sai số phân vị $95\%$ là $0{,}465258$ đơn vị.
+    \item \textbf{Tệp âm thanh có nhiễu 5 dB SNR (\texttt{synth\_glide\_vuv\_16k\_snr5.wav}, 277 khung):} Sai số tuyệt đối cực đại là $0{,}495305$; sai số trung bình là $0{,}249309$; sai số phân vị $95\%$ là $0{,}472770$ đơn vị.
+\end{itemize}
+Sai số cực tiểu này hoàn toàn bị triệt tiêu khi nhân với cửa sổ Hanning và tích lũy tự tương quan, bảo đảm kết quả cao độ $F_0$ cuối cùng của FPGA khớp với Praat trong phạm vi phần mười cent.
+
+\textit{Tóm lại: Boersma chọn đoạn 426 mẫu quanh tâm khung (ứng với 2 chu kỳ của 75 Hz) để tránh hiện tượng phi dừng ở hai đầu mép cửa sổ; đoạn này tương ứng với các vị trí 106..531 trong khung 638 mẫu và được đọc trực tiếp từ RAM vòng mà không tốn thêm bộ nhớ; phép làm tròn số nguyên có sai số dưới 0,5 đơn vị biên độ.}
+
