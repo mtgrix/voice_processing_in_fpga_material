@@ -98,7 +98,7 @@ Câu trả lời nằm trực tiếp tại dòng 344--345 trong tệp mã nguồ
 maximumLag = std::min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
 \end{lstlisting}
 
-Với chiều dài cửa sổ chuẩn hóa của Praat là $N = \text{nsamp\_window} = 638\text{ mẫu}$ và số chu kỳ tối thiểu trên mỗi cửa sổ là $\text{periodsPerWindow} = 3$ (ứng với Pitch floor $75\text{ Hz}$ tại $f_s = 16.000\text{ Hz}$):
+Với chiều dài cửa sổ chuẩn hóa của Praat là $N = 638\text{ mẫu}$ (\texttt{nsamp\_window}), số chu kỳ tối thiểu mỗi cửa sổ là $\text{periodsPerWindow} = 3$, tương ứng với Pitch floor $75\text{ Hz}$ tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$:
 \begin{equation}
 \text{maximumLag} = \left\lfloor \frac{638}{3} \right\rfloor + 2 = 212 + 2 = \mathbf{214}
 \end{equation}
@@ -405,7 +405,7 @@ Từ giới hạn $24\text{ bit}$ của $den_n$, ta thiết lập chặn trên t
 Cả hai toán hạng đưa vào bộ chia đều là số nguyên dương không dấu (\texttt{LPM\_NREPRESENTATION = "UNSIGNED"}, \texttt{LPM\_DREPRESENTATION = "UNSIGNED"}). Phép chia số nguyên 44 bit cho 34 bit sinh ra thương số có độ rộng tối đa $44 - 34 + 1 = 11\text{ bit}$ (hoàn toàn vừa vặn trong thanh ghi ngõ ra $16\text{ bit}$ của định dạng Q12.4).
 \end{equationcard}
 
-\textit{Tóm lại: Đỉnh liên tục tau* = tau_p + delta được gộp với phép chia cao độ thành đúng một phép chia số nguyên duy nhất F0_Q12.4 = round(512000*den / (2*den*tau_p + num)); cơ chế chuẩn hóa động s2 khống chế toán hạng vừa khít trong LPM_WIDTHN = 44 bit và LPM_WIDTHD = 34 bit không dấu.}
+\textit{Tóm lại: Đỉnh liên tục $\tau^* = \tau_p + \delta$ được gộp với phép chia cao độ thành đúng một phép chia số nguyên duy nhất $F_{0, \text{Q12.4}} = \operatorname{round}(512000 \cdot den / (2 \cdot den \cdot \tau_p + num))$; cơ chế chuẩn hóa động $s_2$ khống chế toán hạng vừa khít trong $\texttt{LPM\_WIDTHN} = 44\text{ bit}$ và $\texttt{LPM\_WIDTHD} = 34\text{ bit}$ không dấu.}
 
 \subsection*{9.4. Các phương án thiết kế bộ chia phần cứng, sự đánh đổi và lựa chọn}
 \addcontentsline{toc}{subsection}{9.4. Các phương án thiết kế bộ chia phần cứng, sự đánh đổi và lựa chọn}
@@ -483,7 +483,7 @@ Khớp chu kỳ giữa Tuyến A và Tuyến B trong chương này không có ng
 \textbf{Khớp chu kỳ có nghĩa là cùng độ trễ (latency):} Từ thời điểm cờ khởi động \texttt{start} được phát ra, cả hai tuyến đều mất đúng \textbf{44 chu kỳ đồng hồ} để đưa cờ hoàn tất \texttt{done} và giá trị thương số hợp lệ ra thanh ghi ngõ ra. Nhờ sự đồng nhất tuyệt đối về độ trễ này, máy trạng thái FSM điều phối của lõi FPGA ở Chương 12 có thể hoán đổi linh hoạt giữa module IP Intel và module HDL tự viết mà không cần thay đổi bất kỳ một dòng mã điều khiển nào!
 \end{thoughtqa}
 
-\textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh 10 ms, bộ chia tuần tự Radix-2 chỉ mất đúng 44 chu kỳ (0,0088% thời gian) nhưng tiết kiệm hơn 80% diện tích logic ALM so với bộ chia đường ống LPM_DIVIDE; hai tuyến được thiết kế cùng độ trễ 44 nhịp để có thể thay thế tương đương trong hệ thống.}
+\textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh $10\text{ ms}$, bộ chia tuần tự Radix-2 chỉ mất đúng $44\text{ chu kỳ}$ ($0{,}0088\%$ thời gian) nhưng tiết kiệm hơn $80\%$ diện tích logic ALM so với bộ chia đường ống \texttt{LPM\_DIVIDE}; hai tuyến được thiết kế cùng độ trễ $44\text{ nhịp}$ để có thể thay thế tương đương trong hệ thống.}
 
 \subsection*{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
 \addcontentsline{toc}{subsection}{9.5. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (LPM\_DIVIDE)}
@@ -541,7 +541,7 @@ Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div
 
 \lstinputlisting[
     language=Verilog,
-    caption={Mã nguồn Verilog bao bọc lõi IP Intel LPM\_DIVIDE (\path{rtl/v3/ch09_lpm_div_wrapper.v}).},
+    caption={Mã nguồn Verilog bao bọc lõi IP Intel LPM\_DIVIDE (\texttt{rtl/v3/ch09\_lpm\_div\_wrapper.v}).},
     label={lst:ch09_lpm_div_wrapper},
     firstline=19,
     lastline=49,
@@ -555,7 +555,7 @@ Dưới đây là toàn bộ mã nguồn module bao bọc \texttt{ch09\_lpm\_div
     \item \textbf{Tần số Fmax (phải đo):} Nhờ có 44 tầng thanh ghi chốt trung gian, mỗi tầng chỉ tính toán phép trừ 1 bit, đường tới hạn ngắn giúp IP dễ dàng đạt $F_{\max} > 150\text{ MHz}$ trên Cyclone V (tốc độ cấp C6).
 \end{itemize}
 
-\textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP LPM_DIVIDE chuẩn của Intel với LPM_WIDTHN = 44, LPM_WIDTHD = 34 và LPM_PIPELINE = 44; cấu hình này đạt Fmax vượt trội trên 150 MHz nhưng tiêu tốn khoảng 450-600 ALM vì phải duy trì thông lượng 1 kết quả/chu kỳ không cần thiết.}
+\textit{Tóm lại: Tuyến (A) hiện thực hóa bộ chia qua lõi IP \texttt{LPM\_DIVIDE} chuẩn của Intel với $\texttt{LPM\_WIDTHN} = 44$, $\texttt{LPM\_WIDTHD} = 34$ và $\texttt{LPM\_PIPELINE} = 44$; cấu hình này đạt $F_{\max}$ vượt trội trên $150\text{ MHz}$ nhưng tiêu tốn khoảng $450$--$600\text{ ALM}$ vì phải duy trì thông lượng $1\text{ kết quả/chu kỳ}$ không cần thiết.}
 
 \subsection*{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
 \addcontentsline{toc}{subsection}{9.6. Tuyến thiết kế (B): Thiết kế module HDL tự viết cho bộ dò đỉnh, chuẩn hóa s2 và bộ chia Radix-2}
@@ -582,7 +582,7 @@ Dưới đây là đoạn mã nguồn lõi của module dò đỉnh \path{rtl/v3
 
 \lstinputlisting[
     language=Verilog,
-    caption={Mã nguồn Verilog khối dò đỉnh cục bộ và chọn cực đại Sc (\path{rtl/v3/ch09_peak_finder.v}).},
+    caption={Mã nguồn Verilog khối dò đỉnh cục bộ và chọn cực đại Sc (\texttt{rtl/v3/ch09\_peak\_finder.v}).},
     label={lst:ch09_peak_finder},
     firstline=57,
     lastline=145,
@@ -604,7 +604,7 @@ Module \path{rtl/v3/ch09_radix2_div.v} hiện thực hóa thuật toán chia kh�
 
 \lstinputlisting[
     language=Verilog,
-    caption={Mã nguồn Verilog bộ chia tuần tự Radix-2 khôi phục 44/34 bit (\path{rtl/v3/ch09_radix2_div.v}).},
+    caption={Mã nguồn Verilog bộ chia tuần tự Radix-2 khôi phục 44/34 bit (\texttt{rtl/v3/ch09\_radix2\_div.v}).},
     label={lst:ch09_radix2_div},
     firstline=43,
     lastline=95,
@@ -629,7 +629,7 @@ Module \path{rtl/v3/ch09_f0_calc.v} kết nối bộ dò đỉnh, bộ chia và 
 
 \lstinputlisting[
     language=Verilog,
-    caption={Mã nguồn Verilog khối tính toán F0 parabol và điều phối tích hợp (\path{rtl/v3/ch09_f0_calc.v}).},
+    caption={Mã nguồn Verilog khối tính toán F0 parabol và điều phối tích hợp (\texttt{rtl/v3/ch09\_f0\_calc.v}).},
     label={lst:ch09_f0_calc},
     firstline=120,
     lastline=225,
@@ -664,12 +664,12 @@ Bảng~\ref{tab:ch09_twin_vs_hdl} đối chiếu chi tiết mối liên hệ án
 \texttt{fixed\_twin.py: 73} & \texttt{ch09\_peak\_finder.v: 66--69} & Điều kiện đỉnh cục bộ 3 điểm $U > u_{-1} \land U \ge u_{+1}$ và cổng thanh âm $40U > 9R_{0n}$ \\
 \texttt{fixed\_twin.py: 74--75} & \texttt{ch09\_peak\_finder.v: 114--121} & Tuyển chọn ứng viên $\operatorname{argmax} Sc$, ưu tiên ứng viên có $\tau$ nhỏ hơn khi điểm số hòa nhau \\
 \texttt{fixed\_twin.py: 82--83} & \texttt{ch09\_f0\_calc.v: 194--197} & Tính toán tham số parabol: $num = y_{+1} - y_{-1}$ và $den = 2y_0 - y_{-1} - y_{+1}$ \\
-\texttt{fixed\_twin.py: 85} & \texttt{ch09\_f0_calc.v: 120--127} & Mạch giải mã ưu tiên 5 tầng xác định độ dịch chuẩn hóa $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ \\
-\texttt{fixed\_twin.py: 86} & \texttt{ch09\_f0_calc.v: 129--131} & Dịch phải số học $num \ggg s_2$ và dịch logic $den \gg s_2$ để đưa $den_n \le 2^{24}-1$ \\
-\texttt{fixed\_twin.py: 87} & \texttt{ch09\_f0_calc.v: 134--139} & Tính toán mẫu số tổng hợp $D = 2 \cdot den_n \cdot \tau_p + num_n$ ($34\text{ bit}$ không dấu) \\
-\texttt{fixed\_twin.py: 88} & \texttt{ch09\_f0_calc.v: 142--147} & Nhân $512000 \cdot den_n$ bằng dịch--trừ và cộng bù làm tròn nửa mẫu số $D//2$ ($44\text{ bit}$) \\
-\texttt{fixed\_twin.py: 88} & \texttt{ch09\_radix2_div.v: 76--88} & Thực thi phép chia nguyên tuần tự 44 chu kỳ: $Q = \lfloor N / D \rfloor$ \\
-\texttt{fixed\_twin.py: 90} & \texttt{ch09\_f0_calc.v: 219--223} & Chốt kết quả $F_{0, \text{raw}}$ (Q12.4) và các cờ trạng thái chuyển tiếp sang Chương 10 \\
+\texttt{fixed\_twin.py: 85} & \texttt{ch09\_f0\_calc.v: 120--127} & Mạch giải mã ưu tiên 5 tầng xác định độ dịch chuẩn hóa $s_2 = \max(0, \operatorname{bitlen}(den) - 24)$ \\
+\texttt{fixed\_twin.py: 86} & \texttt{ch09\_f0\_calc.v: 129--131} & Dịch phải số học $num \ggg s_2$ và dịch logic $den \gg s_2$ để đưa $den_n \le 2^{24}-1$ \\
+\texttt{fixed\_twin.py: 87} & \texttt{ch09\_f0\_calc.v: 134--139} & Tính toán mẫu số tổng hợp $D = 2 \cdot den_n \cdot \tau_p + num_n$ ($34\text{ bit}$ không dấu) \\
+\texttt{fixed\_twin.py: 88} & \texttt{ch09\_f0\_calc.v: 142--147} & Nhân $512000 \cdot den_n$ bằng dịch--trừ và cộng bù làm tròn nửa mẫu số $D//2$ ($44\text{ bit}$) \\
+\texttt{fixed\_twin.py: 88} & \texttt{ch09\_radix2\_div.v: 76--88} & Thực thi phép chia nguyên tuần tự 44 chu kỳ: $Q = \lfloor N / D \rfloor$ \\
+\texttt{fixed\_twin.py: 90} & \texttt{ch09\_f0\_calc.v: 219--223} & Chốt kết quả $F_{0, \text{raw}}$ (Q12.4) và các cờ trạng thái chuyển tiếp sang Chương 10 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -704,7 +704,7 @@ Dưới đây là đoạn mã nguồn của hai thành phần cốt lõi này tr
 
 \lstinputlisting[
     language=Python,
-    caption={Hàm tính toán giải tích Parabol và một phép chia đơn (\path{verify_v3/ch09_twin.py}).},
+    caption={Hàm tính toán giải tích Parabol và một phép chia đơn (\texttt{verify\_v3/ch09\_twin.py}).},
     label={lst:ch09_calc_parabola_div},
     firstline=30,
     lastline=51,
@@ -713,7 +713,7 @@ Dưới đây là đoạn mã nguồn của hai thành phần cốt lõi này tr
 
 \lstinputlisting[
     language=Python,
-    caption={Lớp mô phỏng chu-kỳ-đối-chu-kỳ bộ chia Radix-2 (\path{verify_v3/ch09_twin.py}).},
+    caption={Lớp mô phỏng chu-kỳ-đối-chu-kỳ bộ chia Radix-2 (\texttt{verify\_v3/ch09\_twin.py}).},
     label={lst:ch09_radix2_div_twin},
     firstline=56,
     lastline=107,
@@ -766,7 +766,7 @@ Người phản biện (reviewer) sẽ thực thi trực tiếp kịch bản nà
 cd verify_v3 && ./run_ch09_iverilog.sh
 \end{lstlisting}
 
-\todo{box: reviewer fills real numbers after running run_ch09_iverilog.sh}
+\todo{box: reviewer fills real numbers after running run\_ch09\_iverilog.sh}
 
 \subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
 Đối với phần mềm điều khiển chạy trên lõi ARM Cortex-A9 thuộc hệ thống con HPS, tệp \path{sw_v3/ch09_f0.c} cung cấp bản hiện thực hóa tham chiếu C chuẩn xác. Tệp kiểm thử đơn vị \path{sw_v3/test_ch09_f0.c} đã được biên dịch và chạy thật thành công bằng trình biên dịch GCC trên máy tính:
@@ -786,7 +786,7 @@ Test 5 (s2 Normalization): den=17000000, s2=1, f0q=2133 -> PASSED
 === [test_ch09_f0] ALL CHAPTER 9 C TESTS PASSED (0 ERRORS) ===
 \end{lstlisting}
 
-\textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.575 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt 100% độ chính xác.}
+\textit{Tóm lại: Mô hình song sinh Python Twin và kịch bản testbench hai pha xác lập chuẩn so sánh chu-kỳ-đối-chu-kỳ trên 12.456 chu kỳ chia đơn vị và 2.575 chu kỳ khung tín hiệu thực tế; mã nguồn C trên HPS được kiểm chứng độc lập đạt tuyệt đối 5/5 kiểm tra thành công (0 lỗi).}
 
 \subsection*{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
 \addcontentsline{toc}{subsection}{9.8. Bảng so sánh tổng hợp giữa Intel IP và HDL, quy ước kiểm chứng và bài tập cuối chương}
@@ -885,9 +885,10 @@ Toàn bộ khối phần cứng và thuật toán của Chương 9 được bả
     \begin{align}
     D &= 2 \cdot den \cdot \tau_p + num = 2 \times 2000 \times 80 + (-1000) = 320000 - 1000 = \mathbf{319000} \\
     N &= 512000 \cdot den = 512000 \times 2000 = \mathbf{1.024.000.000} \\
-    F_{0, \text{Q12.4}} &= \left\lfloor \frac{N + \lfloor D / 2 \rfloor}{D} \right\rfloor = \left\lfloor \frac{1.024.000.000 + 159500}{319000} \right\rfloor = \left\lfloor \frac{1.024.159.500}{319000} \right\rfloor = \mathbf{3210}
+    F_{0, \text{Q12.4}} &= \left\lfloor \frac{N + \lfloor D / 2 \rfloor}{D} \right\rfloor = \left\lfloor \frac{1.024.000.000 + 159500}{319000} \right\rfloor \\
+    &= \left\lfloor \frac{1.024.159.500}{319000} \right\rfloor = \mathbf{3210}
     \end{align}
-    Phép chia số nguyên duy nhất cho ra kết quả chính xác tuyệt đối là $3210$, khớp hoàn toàn với mô phỏng song sinh (\texttt{verify\_v3/ch09\_exercises.log}).
+    Phép chia số nguyên duy nhất cho ra kết quả chính xác tuyệt đối là $3210$, khớp hoàn toàn với kết quả mô phỏng song sinh trong tệp \path{verify_v3/ch09_exercises.log}.
 \end{enumerate}
 
 \paragraph{Bài tập 3: Dải biến thiên của chuẩn hóa động $s_2$ và độ rộng bit bộ chia.}
