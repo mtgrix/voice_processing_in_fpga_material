@@ -689,8 +689,9 @@ Tập vector kiểm thử được mô hình song sinh Python (\path{verify_v3/c
     \item \textbf{Khung khoảng lặng (Silence Frame, $638\text{ mẫu}$):} Tín hiệu phẳng bằng 0, kiểm chứng việc khử trôi dạt và bảo đảm toàn bộ ngõ ra $x_w$ và đỉnh $LP$ giữ đúng mức 0.
 \end{enumerate}
 
-\begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Mục chờ kiểm chứng Icarus Verilog trên Linux (Reviewer)}]
-\todo{box}
+\begin{tcolorbox}[colback=yellow!10!white,colframe=yellow!50!black,title={Kết quả chạy Icarus Verilog chu kỳ-đối-chu kỳ (Reviewer)}]
+\small\texttt{tb\_ch06\_hanning: 3250 vectors -- Total comparison errors: 0}\\
+\footnotesize(Icarus Verilog 12.0 \texttt{-g2012 -Wall}, không có cảnh báo; nhật ký \texttt{verify\_v3/ch06\_iverilog.log}; các kịch bản Python \texttt{ch06\_*.py} chạy lại trên Linux cho kết quả trùng khớp với nhật ký đã commit.)
 \end{tcolorbox}
 
 \subsection*{Bài tập cuối chương}
