@@ -416,3 +416,103 @@ Thiết kế của tài liệu này dứt khoát lựa chọn \textbf{Phương �
 Tần số hoạt động cực đại $F_{\max}$ thực tế và số lượng ALM tiêu tốn cụ thể của cả hai phương án là các đại lượng \textbf{(phải đo)} trên phần mềm Quartus Prime với chip Cyclone V 5CSXFC6D6F31C6N.
 
 \textit{Tóm lại: Phép cộng tích lũy bắt buộc phải có thanh ghi; việc chốt thêm một tầng thanh ghi ở cửa khối DSP tận dụng tài nguyên silicon có sẵn (0 ALM), chia đôi đường tới hạn và chỉ tăng $0{,}001\%$ thời gian thực, đồng thời cơ chế \texttt{sload} giúp chuyển đổi giữa các lag liên tục mà không phát sinh bất kỳ chu kỳ nhàn rỗi nào.}
+
+
+\subsection*{7.4. Dẫn xuất độ rộng bit toán hạng và bộ tích lũy}
+\addcontentsline{toc}{subsection}{7.4. Dẫn xuất độ rộng bit toán hạng và bộ tích lũy}
+
+\subsubsection*{Vấn đề thực tế: Nguy cơ tràn số âm thầm trong bộ tích lũy năng lượng}
+Hãy xem xét điều gì sẽ xảy ra nếu người thiết kế chủ quan chọn độ rộng của bộ tích lũy tự tương quan là $32\text{-bit}$ (độ rộng chuẩn của kiểu số nguyên \texttt{int32\_t} thông thường). Trong một bài phát biểu bình thường, giọng nói có biên độ nhỏ, giá trị $R[\tau]$ có thể tạm thời nằm trong khoảng $32\text{-bit}$. Nhưng khi người nói phát âm một nguyên âm có cường độ cực đại sát ngưỡng bão hòa (full-scale), hoặc khi xuất hiện tiếng vỗ tay, tiếng nổ đột biến, năng lượng của $638\text{ mẫu}$ tích lũy lại sẽ lập tức vượt ngưỡng $2^{31}-1 = 2.147.483.647$.
+
+Trong số học bù hai, khi một số dương vượt qua ngưỡng $2^{31}-1$, bit dấu số 31 bị bật lên $1$, biến toàn bộ tổng năng lượng khổng lồ thành một số âm lớn! Đỉnh tự tương quan cao nhất của khung âm thanh $R[\tau_0]$ bị lật ngược thành một đáy âm sâu hoắm. Bộ tìm đỉnh ở Chương 9 sẽ không thể tìm thấy bất kỳ ứng viên nào, và bộ phân loại hữu thanh ở Chương 10 sẽ kết luận khung âm thanh có năng lượng âm là vô thanh. Lỗi tràn số này hoàn toàn im lặng, không có cờ báo động phần cứng nào phát ra, nhưng phá hủy toàn bộ kết quả F0 của hệ thống.
+
+Để ngăn chặn tuyệt đối thảm họa này, độ rộng của toán hạng và bộ tích lũy phải được dẫn xuất chặt chẽ từ nguyên lý toán học và kiểm chứng với trường hợp xấu nhất.
+
+\subsubsection*{Dẫn xuất từng bước: Từ mẫu ngõ vào tới cận trên của bộ tích lũy}
+Quy trình dẫn xuất độ rộng bit trải qua ba bước liên tiếp:
+
+\paragraph{Bước 1: Độ rộng toán hạng ngõ vào $x_w$.}
+Ở Chương 5 và Chương 6, ta đã chứng minh rằng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tín hiệu âm thanh thô $x[n] \in [-32.768, +32.767]$ ($16\text{-bit}$ có dấu).
+    \item Trung bình cục bộ $\text{mean} \in [-32.768, +32.767]$.
+    \item Hiệu số lệch tâm $d[n] = x[n] - \text{mean}$ có dải động:
+    \begin{equation}
+    d[n] \in [-32.768 - 32.767, +32.767 - (-32.768)] = [-65.535, +65.535]
+    \end{equation}
+    \item Cửa sổ Hanning $w[n] \in [0, 32.767]$ (định dạng Q1.15 không dấu).
+    \item Mẫu sau cửa sổ hóa:
+    \begin{equation}
+    x_w[n] = \frac{d[n] \cdot w[n] + 16.384}{32.768} \in [-65.535, +65.535]
+    \end{equation}
+\end{itemize}
+Để chứa trọn giá trị cực đại $\pm 65.535$, toán hạng $x_w$ bắt buộc phải có độ rộng \textbf{17-bit có dấu} (gồm 1 bit dấu và 16 bit biên độ, cho dải biểu diễn $[-65.536, +65.535]$). Trong khung kiểm thử khắc nghiệt Stress Frame A (\texttt{golden\_v2/hdl\_check/xw.hex}), mẫu thực nghiệm đạt tới $|x_w| = 59.379$, vượt xa giới hạn 16-bit ($32.767$).
+
+Toán hạng $17\text{-bit}$ có dấu hoàn toàn nằm vừa vặn bên trong một bộ nhân cứng $18 \times 18\text{-bit}$ của khối Variable Precision DSP trên Cyclone V.
+
+\paragraph{Bước 2: Độ rộng tích số $p = x_w[n] \cdot x_w[n+\tau]$.}
+Khi nhân hai số $17\text{-bit}$ có dấu:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tích dương cực đại xảy ra khi cả hai mẫu cùng đạt giá trị âm cực hạn:
+    \begin{equation}
+    p_{\max} = (-65.535) \times (-65.535) = \mathbf{4.294.836.225}
+    \end{equation}
+    So sánh với ngưỡng $2^{32} = 4.294.967.296$:
+    \begin{equation}
+    p_{\max} < 2^{32}
+    \end{equation}
+    \item Tích âm cực tiểu xảy ra khi hai mẫu có giá trị đối nghịch:
+    \begin{equation}
+    p_{\min} = (-65.535) \times (+65.535) = \mathbf{-4.294.836.225} > -2^{32}
+    \end{equation}
+\end{itemize}
+Do đó, tích số $p$ có dải động nằm gọn trong khoảng $(-2^{32}, +2^{32})$. Trong biểu diễn số bù hai, một số nguyên nằm trong khoảng này đòi hỏi chính xác \textbf{34-bit có dấu} (1 bit dấu và 33 bit biên độ).
+
+\paragraph{Bước 3: Độ rộng bộ cộng tích lũy $N = 638\text{ mẫu}$.}
+Độ trễ $\tau = 0$ ($R[0]$) có số lượng số hạng tích lũy lớn nhất: đúng $N = 638\text{ số hạng}$.
+Trường hợp xấu nhất về mặt toán học (Worst-Case Bound) là một khung tín hiệu bão hòa toàn phần liên tục ở mức cực đại $|x_w| = 65.535$. Khi đó, tổng năng lượng tích lũy đạt giá trị trần lý thuyết:
+\begin{equation}
+S_{\max} = 638 \times p_{\max} = 638 \times 4.294.836.225 = \mathbf{2.740.105.511.550}
+\end{equation}
+
+Ta xác định số bit biên độ cần thiết để chứa giá trị $S_{\max}$:
+\begin{equation}
+B_{\text{mag}} = \log_2(S_{\max}) = \log_2(2.740.105.511.550) \approx \mathbf{41{,}3174\text{ bit}}
+\end{equation}
+
+Thêm 1 bit dấu cho số bù hai:
+\begin{equation}
+B_{\text{signed}} = B_{\text{mag}} + 1 \approx 41{,}3174 + 1 = 42{,}3174\text{ bit}
+\end{equation}
+Lấy hàm trần (ceiling), ta thu được cận dưới độ rộng bit bắt buộc:
+\begin{equation}
+B_{\text{min}} = \lceil 42{,}3174 \rceil = \mathbf{43\text{ bit có dấu}}
+\end{equation}
+
+Khoảng biểu diễn của số bù hai $43\text{-bit}$ là:
+\begin{equation}
+[-2^{42}, +2^{42}-1] = [-4.398.046.511.104, +4.398.046.511.103]
+\end{equation}
+Tỷ số an toàn (Safety Headroom) của $43\text{-bit}$ so với trường hợp xấu nhất là:
+\begin{equation}
+\frac{2^{42}}{S_{\max}} = \frac{4.398.046.511.104}{2.740.105.511.550} \approx \mathbf{1{,}6051}
+\end{equation}
+Hệ số an toàn đạt hơn $60\%$! Con số này chứng minh bằng toán học rằng: \textbf{Một bộ tích lũy 43-bit có dấu được bảo đảm tuyệt đối không bao giờ bị tràn số, ngay cả trong điều kiện tín hiệu cực đoan nhất có thể tưởng tượng được!} (Kiểm chứng qua kịch bản \path{verify_v3/ch07_mac_math.py}).
+
+\subsubsection*{Thực tế silicon trên Cyclone V và đính chính sai sót của tài liệu cũ}
+Trong các bản thảo trước đây, tác giả Argon từng nhận định rằng: \emph{"Bộ cộng dồn của FPGA có độ rộng 48 bit tự nhiên"}. Đây là một nhận định thiếu chính xác về cấu trúc silicon của Intel Cyclone V.
+
+Khi tra cứu tài liệu phần cứng chuẩn của Intel: *Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration* (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices", Mục 5-4: "Accumulator", Hình 5-5), ta thấy cấu trúc thực tế:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Bộ tích lũy cứng (Hardwired Accumulator) được tích hợp sẵn bên trong mỗi khối Variable Precision DSP của Cyclone V có độ rộng thực tế lên tới \textbf{64 bit}!
+    \item Bộ cộng này có thể cấu hình ở các chế độ tích lũy số nguyên có dấu với ngõ ra từ 1 đến 64 bit.
+\end{itemize}
+
+Thiết kế này chọn độ rộng ngõ ra của module MAC là \textbf{48-bit có dấu} (\texttt{acc[47:0]}):
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dư thừa an toàn:} $48\text{ bit}$ bao trọn hoàn toàn nhu cầu $43\text{ bit}$, mang lại thêm 5 bit bảo vệ chống tràn ($2^{47} / S_{\max} \approx 51{,}3\times$).
+    \item \textbf{Căn chỉnh dữ liệu tối ưu:} Độ rộng 48 bit là bội số của 16 bit ($3 \times 16\text{-bit}$), rất thuận tiện cho việc ghép nối vào thanh ghi bus Avalon-MM, truyền nhận dữ liệu hoặc đóng gói sang HPS.
+    \item \textbf{Hoàn toàn không tốn ALM:} Vì bộ tích lũy trong silicon DSP vốn đã rộng 64 bit, việc chọn ngõ ra 48 bit (hoặc bất kỳ độ rộng nào từ 43 đến 64) đều được thực hiện bên trong khối DSP cứng, tiêu tốn đúng \textbf{0 khối logic ALM ngoài}.
+\end{enumerate}
+
+\textit{Tóm lại: Toán hạng $17\text{-bit}$ sinh ra tích số $34\text{-bit}$; tổng của tối đa $638\text{ tích}$ đòi hỏi cận trên toán học đúng $43\text{-bit}$ có dấu. Bộ tích lũy cứng trong silicon DSP Cyclone V rộng tới $64\text{ bit}$, do đó việc chọn $48\text{-bit}$ vừa bảo đảm chống tràn tuyệt đối, vừa tiêu tốn 0 ALM và tối ưu cho giao tiếp bus.}
