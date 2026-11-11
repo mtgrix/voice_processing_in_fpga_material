@@ -518,6 +518,118 @@ Thiết kế HDL tự viết khớp bit và khớp chu kỳ hoàn toàn với đ
 
 \textit{Tóm lại: Khối HDL tự viết \texttt{ch05\_local\_mean.v} tích hợp FSM tự động quét 426 mẫu từ RAM vòng, tích lũy dời trục và nhân đường ống 2 tầng khớp hoàn toàn khối IP LPM\_MULT; bộ trừ 17-bit có chốt thanh ghi bảo đảm cách ly đường tới hạn cho các khối xử lý tiếp theo.}
 
+\subsection*{5.6. Bộ lọc loại bỏ thành phần một chiều DC-Blocker (tùy chọn)}
+\addcontentsline{toc}{subsection}{5.6. Bộ lọc loại bỏ thành phần một chiều DC-Blocker (tùy chọn)}
+
+\subsubsection*{Vấn đề thực tế: Hiện tượng trôi dạt đường đáy tần số cực thấp}
+Trong các bản ghi âm thực địa, ngoài mức DC tĩnh cố định, tín hiệu tiếng nói thường xuyên bị nhiễm hiện tượng \textbf{trôi dạt đường đáy} (baseline drift hoặc low-frequency rumble). Đây là các dao động điện áp tần số cực thấp (từ $0{,}1\text{ Hz}$ đến $5\text{ Hz}$) sinh ra do rung động cơ học của micro, luồng gió phả vào màng thu, hoặc sự thay đổi nhiệt độ của mạch tiền khuếch đại analog.
+
+Hiện tượng trôi dạt này khiến mức một chiều cục bộ thay đổi liên tục giữa các khung: khung trước có thể bị lệch $+800$, khung sau lại trôi xuống $-600$. Mặc dù phép trừ trung bình cục bộ của Praat (mục 5.2) xử lý tốt mức DC tĩnh trong từng khung đơn lẻ, nhưng sự biến thiên dốc của đường đáy ngay trong lòng một cửa sổ $40\text{ ms}$ có thể gây méo mó dạng sóng. Để làm sạch triệt để tín hiệu trước khi đưa vào các thuật toán ước lượng cao độ, một bộ lọc khử thành phần một chiều \textbf{DC-Blocker} là công cụ tiền xử lý hữu hiệu.
+
+\subsubsection*{Hàm truyền, vị trí điểm cực - điểm không và tần số cắt}
+Bộ lọc DC-Blocker chuẩn là một bộ lọc số IIR (Infinite Impulse Response) bậc 1 có hàm truyền đạt trong miền $Z$:
+\begin{equation}
+H(z) = \frac{1 - z^{-1}}{1 - \alpha z^{-1}}
+\end{equation}
+với hệ số phản hồi $\alpha$ được chọn có dạng lũy thừa của 2 để tối ưu hóa phần cứng:
+\begin{equation}
+\alpha = 1 - 2^{-8} = 1 - \frac{1}{256} = \frac{255}{256} = \mathbf{0{,}99609375}
+\end{equation}
+
+\textbf{1. Phân tích điểm cực và điểm không:}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Điểm không (Zero) tại $z = 1$ ($\omega = 0$ rad/mẫu, ứng với tần số $0\text{ Hz}$):}\\
+    Tại điểm $0\text{ Hz}$, tử số $1 - z^{-1} = 1 - 1 = 0$, do đó $H(1) = 0$. Đáp ứng biên độ đạt $-\infty\text{ dB}$, triệt tiêu hoàn toàn $100\%$ điện áp một chiều tĩnh.
+    \item \textbf{Điểm cực (Pole) tại $z = \alpha = 0{,}99609375$ (nằm trên trục thực dương):}\\
+    Vì $|\alpha| < 1$, điểm cực nằm hoàn toàn bên trong vòng tròn đơn vị, bảo đảm bộ lọc IIR \textbf{ổn định tiệm cận tuyệt đối} (BIBO stable).
+\end{itemize}
+
+\textbf{2. Dẫn xuất tần số cắt $-3\text{ dB}$ ($f_c$):}\\
+Tần số cắt tại điểm công suất giảm một nửa ($|H(e^{j\omega_c})|^2 = 1/2$) được xác định từ phương trình:
+\begin{equation}
+\frac{|1 - e^{-j\omega_c}|^2}{|1 - \alpha e^{-j\omega_c}|^2} = \frac{2 - 2\cos\omega_c}{1 + \alpha^2 - 2\alpha\cos\omega_c} = \frac{1}{2}
+\end{equation}
+Nhân chéo và rút gọn, ta thu được biểu thức giải tích chính xác:
+\begin{equation}
+\cos\omega_c = \frac{3 - \alpha^2}{2(2 - \alpha)}
+\end{equation}
+Với $\alpha = 0{,}99609375$, ta tính được tần số góc $\omega_c \approx 0{,}00389868\text{ rad/mẫu}$. Ở tần số lấy mẫu $f_s = 16.000\text{ Hz}$, tần số cắt chính xác là:
+\begin{equation}
+f_c = \frac{\omega_c \cdot f_s}{2\pi} = \mathbf{9{,}928\text{ Hz}}
+\end{equation}
+Công thức xấp xỉ bậc nhất cho kết quả gần sát:
+\begin{equation}
+f_{c,\text{approx}} = \frac{(1-\alpha)f_s}{2\pi} = \frac{2^{-8} \times 16.000}{2\pi} \approx 9{,}947\text{ Hz} \approx 9{,}9\text{ Hz}
+\end{equation}
+(trích xuất từ log kiểm chứng \texttt{verify\_v3/ch05\_dc\_effect.log}).
+
+\textbf{3. Đáp ứng biên độ và pha tại tần số đáy ($F_{\text{floor}} = 75\text{ Hz}$):}\\
+Tần số cắt $f_c \approx 9{,}9\text{ Hz}$ nằm rất xa bên dưới tần số đáy thấp nhất của giọng người ($75\text{ Hz}$). Tại $f = 75\text{ Hz}$:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Độ lợi biên độ: $|H(75\text{ Hz})| = 0{,}993227$ (độ suy hao chỉ \textbf{$-0{,}0590\text{ dB}$}, hoàn toàn không làm giảm âm lượng tiếng nói).
+    \item Độ lệch pha: $\angle H(75\text{ Hz}) = +7{,}5691^\circ$ (pha sớm nhẹ, hoàn toàn tuyến tính trong dải âm vực).
+\end{itemize}
+
+\textbf{4. Đáp ứng bước nhảy thời gian (Step Response):}\\
+Khi có một bước nhảy điện áp một chiều $x[n] = +1000$ xuất hiện ở ngõ vào, ngõ ra của bộ lọc suy giảm theo hàm mũ $y[n] = 1000 \cdot \alpha^n$. Hằng số thời gian suy giảm bằng $\tau = -1/\ln(\alpha) \approx 255{,}5\text{ mẫu}$ ($16{,}0\text{ ms}$). Sau $1000\text{ mẫu}$ ($62{,}5\text{ ms}$), giá trị ngõ ra chỉ còn $19{,}96$, và sau $2000\text{ mẫu}$ ($125\text{ ms}$) giảm còn $0{,}40$, hoàn toàn xóa sạch độ lệch DC.
+
+\subsubsection*{Phương trình sai phân và hiện thực hóa phần cứng không tốn bộ nhân}
+Biến đổi ngược phương trình hàm truyền miền $Z$ về miền thời gian rời rạc:
+\begin{equation}
+y[n] - \alpha y[n-1] = x[n] - x[n-1]
+\end{equation}
+Thay $\alpha = 1 - 2^{-8}$, ta có:
+\begin{align}
+y[n] &= x[n] - x[n-1] + (1 - 2^{-8}) y[n-1] \nonumber \\
+     &= \underbrace{x[n] - x[n-1]}_{dx[n]} + y[n-1] - (y[n-1] \gg 8)
+\end{align}
+
+\begin{physicalinsight}
+\textbf{Ưu thế phần cứng tuyệt đối:} Phép nhân với $\alpha = 0{,}99609375$ được thay thế hoàn toàn bằng \textbf{phép dịch phải số học 8 bit và phép trừ}! 
+Khối DC-Blocker \textbf{không tiêu tốn bất kỳ khối DSP nào}, toàn bộ datapath được tổng hợp từ logic cộng trừ cơ bản của ALM.
+\end{physicalinsight}
+
+\subsubsection*{Thiết kế thanh ghi trạng thái 36-bit chống hiện tượng Limit Cycle}
+Một cạm bẫy kinh điển khi thiết kế bộ lọc IIR số nguyên là \textbf{hiện tượng chu trình giới hạn} (limit cycle) do cắt cụt số học:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Nếu lưu trạng thái $y[n-1]$ bằng số nguyên $16\text{ bit}$ không có phần thập phân, khi biên độ $|y[n-1]| < 256$, phép dịch phải $y[n-1] \gg 8$ sẽ bị cắt cụt về đúng $0$.
+    \item Khi đó, thành phần phản hồi tiêu tán biến mất, bộ lọc bị kẹt vĩnh viễn ở một mức DC tĩnh giả tạo có biên độ lên tới $\pm 255$ đơn vị!
+\end{itemize}
+
+Để triệt tiêu hoàn toàn chu trình giới hạn, module \texttt{ch05\_dc\_blocker.v} mở rộng thanh ghi tích lũy trạng thái nội bộ \texttt{w\_acc} lên \textbf{$36\text{ bit}$ có dấu theo định dạng Q20.16} ($20\text{ bit}$ phần nguyên và $16\text{ bit}$ phần thập phân):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tín hiệu vi phân đầu vào $dx[n] = x[n] - x[n-1]$ có độ rộng $17\text{ bit}$ có dấu ($[-65535, +65535]$), được nhân với $2^{16}$ bằng cách dịch trái 16 bit: \texttt{dx\_scaled = \{dx, 16'd0\}}.
+    \item Độ phân giải phản hồi đạt tới $2^{-16} \approx 0{,}000015$, xóa sạch mọi sai số cắt cụt.
+    \item $20\text{ bit}$ phần nguyên cung cấp độ dự trữ biên độ an toàn cực lớn, ngăn chặn tuyệt đối hiện tượng tràn số ngay cả khi tín hiệu đầu vào nhảy đột ngột từ cực âm $-32.768$ lên cực dương $+32.767$.
+    \item Ngõ ra $16\text{ bit}$ được làm tròn số học bằng cách cộng $2^{15}$ (\texttt{36'sh0000\_8000}), dịch phải 16 bit và đi qua bộ kẹp bão hòa đối xứng $[-32.768, +32.767]$.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch05_dc_blocker.tex}
+\caption{Kiến trúc phần cứng bộ lọc DC-Blocker IIR bậc 1 (\texttt{ch05\_dc\_blocker.v}), sử dụng bộ trừ đầu vào, thanh ghi trạng thái 36-bit Q20.16, mạch dịch phải 8-bit và bộ ghép kênh bypass.}
+\label{fig:ch05_dc_blocker}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch05_dc_blocker} trình bày kiến trúc vi mô của khối \texttt{ch05\_dc\_blocker.v}. Tín hiệu vào \texttt{sink\_data} đi qua tầng trễ $z^{-1}$ và bộ trừ để tạo ra sai phân bậc nhất $dx[n]$. Giá trị này được dịch trái 16 bit đưa vào bộ cộng trạng thái 36-bit, kết hợp với nhánh phản hồi qua bộ dịch phải 8 bit để tạo ra độ lợi $\alpha = 1 - 2^{-8}$. Kết quả sau đó được làm tròn đối xứng $+2^{15}$, dịch phải 16 bit và đi qua bộ bão hòa số nguyên 16 bit. Một bộ ghép kênh $2:1$ ở ngõ ra được điều khiển bởi tín hiệu \texttt{bypass}: khi \texttt{bypass = 0}, mạch đưa ra tín hiệu đã lọc; khi \texttt{bypass = 1}, tín hiệu đầu vào đi thẳng tới ngõ ra \texttt{source\_data} mà không bị can thiệp.
+
+\subsubsection*{Vì sao tùy chọn và mặc định BYPASS khi so với Praat?}
+Trong quy trình tính toán chuẩn của Praat (\texttt{Sound\_to\_Pitch.cpp}), \textbf{Paul Boersma hoàn toàn không sử dụng bộ lọc DC-Blocker}. Thay vào đó, Praat dựa hoàn toàn vào bước trừ trung bình cục bộ trên từng khung (mục 5.2).
+
+Việc bật bộ lọc DC-Blocker sẽ làm dịch pha nhẹ ($+7{,}57^\circ$ tại $75\text{ Hz}$) và làm thay đổi rất nhỏ biên độ của các sóng hài tần số thấp. Mặc dù sự thay đổi này có lợi cho việc nghe thực tế, nhưng nó sẽ làm xuất hiện độ lệch vài phần trăm cent so với kết quả tham chiếu của phần mềm Praat 7.0.03 trên máy tính.
+
+\begin{thoughtqa}{Argon nói bộ lọc DC-Blocker để chống bão hòa ADC, có đúng không?}
+Trong tài liệu v1, Argon viết rằng bộ lọc DC-Blocker được đưa vào ``để chống bão hòa bộ chuyển đổi tương tự - số (ADC)''. Nhận định này hoàn toàn sai lệch về mặt kiến trúc hệ thống:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Trên bo mạch DE10-Standard trong hướng thiết kế hiện tại, luồng âm thanh được đọc từ \textbf{tệp WAV số hóa trên thẻ nhớ SD thông qua vi xử lý HPS}, sau đó đẩy qua cầu giao tiếp vào FPGA. Hệ thống \textbf{hoàn toàn không có khối ADC analog nào} nối trực tiếp vào luồng xử lý F0.
+    \item Một bộ lọc số đặt \emph{bên trong} FPGA không bao giờ có thể ``chống bão hòa'' cho một phần cứng ADC đặt ở \emph{bên ngoài} (nếu ADC bị bão hòa điện áp ở phần cứng, tín hiệu số đưa vào FPGA đã bị xén bằng phẳng ngọn từ trước, không bộ lọc số nào có thể phục hồi lại được).
+    \item Do đó, ta khẳng định chính xác: Khối DC-Blocker là một module tiền xử lý số học thuần túy nhằm loại bỏ trôi dạt đường đáy tần số cực thấp; và trong toàn bộ các phép đo kiểm chuẩn đối soát với Praat 7.0.03, \textbf{khối này bắt buộc phải được đặt ở chế độ BYPASS (\texttt{bypass = 1})}.
+\end{itemize}
+\end{thoughtqa}
+
+\textit{Tóm lại: Khối DC-blocker IIR bậc 1 với $\alpha = 1 - 2^{-8}$ ($f_c \approx 9{,}9\text{ Hz}$) loại bỏ hoàn toàn thành phần trôi dạt một chiều mà không cần bộ nhân DSP; thanh ghi 36-bit Q20.16 chống triệt để hiện tượng limit cycle; khối này được đặt mặc định bypass khi so sánh đối soát với Praat 7.0.03.}
+
+
 
 
 
