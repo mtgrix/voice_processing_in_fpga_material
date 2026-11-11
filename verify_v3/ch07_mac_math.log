@@ -1,0 +1,56 @@
+==============================================================================
+CH07 MAC OPERATIONS AND CYCLE BUDGET AUDIT
+==============================================================================
+Window length N (v2)        : 638 samples
+Lag range                   : 26..214 (189 lags)
+MACs for tau=26..214 (v2)   : 97902 (formula: 189 * (612 + 424) / 2 = 97902)
+Total MACs with R[0] (v2)   : 98540 (97902 + 638 = 98540)
+MACs for tau=26..214 (v1)   : 98280 (N=640)
+Total MACs with R[0] (v1)   : 98920 (98280 + 640 = 98920)
+Difference (v1 - v2 scan)   : 378 MACs
+Difference (v1 - v2 total)  : 380 MACs
+
+==============================================================================
+REAL-TIME BUDGET AND LATENCY ANALYSIS (50 MHz, hop 160)
+==============================================================================
+Clock frequency f_clk       : 50,000,000 Hz (period T_clk = 20.0 ns)
+Sampling frequency fs       : 16,000 Hz
+Cycles per audio sample     : 3125 cycles
+Cycles per hop (160 samples): 500,000 cycles
+Pipeline latency            : 3 cycles
+Total cycles per frame      : 98,543 cycles (98,540 issue + 3 latency)
+MAC Core RTF                : 0.197086 (19.71% of real-time budget)
+Remaining budget for system : 80.29% (401,457 cycles)
+
+==============================================================================
+BIT-WIDTH BOUND AND ACCUMULATOR SIZING DERIVATION
+==============================================================================
+Maximum |xw|                : 65,535 (17-bit signed)
+Maximum product |p|         : 4,294,836,225 (< 2^32 = 4,294,967,296)
+Product bit-width           : 34 bits signed
+Maximum 638-term sum        : 2,740,105,511,550
+log2(max_sum_638)           : 41.3174 magnitude bits
+Minimum signed width needed : ceil(42.3174) = 43 bits (43 bits)
+2^42 (bound for 43-bit)     : 4,398,046,511,104
+Safety margin (2^42 / max)  : 1.61x (guaranteed no overflow)
+Cyclone V DSP accumulator   : 64 bits hardwired
+Output width chosen         : 48 bits (holds 43 bits with 5 guard bits, 0 extra ALMs)
+
+==============================================================================
+HAND CALCULATION TRACE (xw = [2, -3, 4, 1])
+==============================================================================
+R[1] = 2*(-3) + (-3)*4 + 4*1 = -14
+R[2] = 2*4 + (-3)*1          = 5
+
+Detailed cycle-by-cycle trace:
+Cycle | Addr (sload,last) | RAM data | DSP in (sload_r) | Prod p | Accum acc | out_valid
+------------------------------------------------------------------------------
+   0  | (0,1) sload=1 last=0 | -        | -                 | -      | -          |         0
+   1  | (1,2) sload=0 last=0 | 2, -3    | -                 | -      | -          |         0
+   2  | (2,3) sload=0 last=1 | -3, 4    | 2, -3 (sload=1)   | -6     | -          |         0
+   3  | (0,2) sload=1 last=0 | 4, 1     | -3, 4 (sload=0)   | -12    | -6         |         0
+   4  | (1,3) sload=0 last=1 | 2, 4     | 4, 1 (sload=0)    | 4      | -18        |         0
+   5  | -                    | -3, 1    | 2, 4 (sload=1)    | 8      | -14 [R1]   |         1
+   6  | -                    | -        | -3, 1 (sload=0)   | -3     | 8          |         0
+   7  | -                    | -        | -                 | -      | 5 [R2]     |         1
+==============================================================================

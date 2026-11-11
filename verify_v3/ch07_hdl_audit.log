@@ -1,0 +1,31 @@
+==============================================================================
+CH07 GOLDEN HDL_CHECK REPRODUCTION AND BIT-EXACT AUDIT
+==============================================================================
+Loaded 10,208 samples from /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/hdl_check/xw.hex
+Loaded 3,040 expected sums from /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/../golden_v2/hdl_check/exp.hex
+Frames: 16 (14 speech frames + 2 full-scale stress frames)
+Per-frame results: 190 (R[0] and R[26..214])
+------------------------------------------------------------------------------
+Frame  0 (Speech Frame): max|xw|=11908, R[0]=  3457253100, R[26]=   114354003, R[214]=   -28781272 -> PASS (190/190)
+Frame  1 (Speech Frame): max|xw|=20368, R[0]= 12981892487, R[26]=  2879563634, R[214]=   -56086787 -> PASS (190/190)
+Frame  2 (Speech Frame): max|xw|=14525, R[0]= 12574899186, R[26]=  1848182532, R[214]= -2771646012 -> PASS (190/190)
+Frame  3 (Speech Frame): max|xw|=16561, R[0]= 12891866451, R[26]=  -550384909, R[214]=  3047089716 -> PASS (190/190)
+Frame  4 (Speech Frame): max|xw|=13335, R[0]= 12147720497, R[26]= -3198073359, R[214]= -2470450102 -> PASS (190/190)
+Frame  5 (Speech Frame): max|xw|=16917, R[0]= 12680681478, R[26]= -4504028315, R[214]=  3251424056 -> PASS (190/190)
+Frame  6 (Speech Frame): max|xw|=19393, R[0]= 13713049210, R[26]= -5530917456, R[214]=   737758775 -> PASS (190/190)
+Frame  7 (Speech Frame): max|xw|=17294, R[0]= 13172633635, R[26]= -5833557158, R[214]=   888782239 -> PASS (190/190)
+Frame  8 (Speech Frame): max|xw|= 9528, R[0]=  3400905777, R[26]=    62700327, R[214]=   -43672136 -> PASS (190/190)
+Frame  9 (Speech Frame): max|xw|=10664, R[0]=  2990937693, R[26]=   -34828683, R[214]=   -34263407 -> PASS (190/190)
+Frame 10 (Speech Frame): max|xw|=16896, R[0]= 13586907029, R[26]=  -738979330, R[214]=  3422134364 -> PASS (190/190)
+Frame 11 (Speech Frame): max|xw|=15627, R[0]= 12595136379, R[26]=  -277010369, R[214]=  3569955757 -> PASS (190/190)
+Frame 12 (Speech Frame): max|xw|=15427, R[0]= 12647742835, R[26]=  -462546613, R[214]=  3644291222 -> PASS (190/190)
+Frame 13 (Speech Frame): max|xw|= 9398, R[0]=  2675089757, R[26]=  -174904340, R[214]=    59714917 -> PASS (190/190)
+Frame 14 (Stress Frame): max|xw|=59379, R[0]=147702548534, R[26]= 37028386744, R[214]= -3711648854 -> PASS (190/190)
+Frame 15 (Stress Frame): max|xw|=48884, R[0]=202759260969, R[26]=-63456774206, R[214]=-15164571156 -> PASS (190/190)
+------------------------------------------------------------------------------
+Total results checked : 3,040 (16 frames x 190 lags)
+Total bit mismatches  : 0
+Issue cycles per frame: 98,540 (638 for R[0] + 97,902 for tau=26..214)
+Total cycles per frame: 98,543 (98,540 issue + 3 pipeline latency)
+==============================================================================
+=== AUDIT VERDICT: 3,040 / 3,040 MATCHED 100% BIT-EXACT ===

@@ -1,0 +1,56 @@
+==============================================================================
+CH07 FFT VS DIRECT MAC MATHEMATICAL EQUIVALENCE AUDIT
+==============================================================================
+--- Frame: 150 Hz Pure Sine Frame ---
+  R[0] Direct MAC            : 127993087675.470520
+  ac[0] 1024-FFT             : 127993087675.470520
+  R[26] Direct MAC           : 8139454489.296543
+  ac[26] 1024-FFT            : 8139454489.296527
+  R[214] Direct MAC          : 85257795846.528107
+  ac[214] 1024-FFT           : 85257795846.528107
+  Max absolute error (all 190 lags): 3.81469727e-05
+  Max relative error wrt R[0]      : 2.98039319e-16
+  => PASS: Mathematically identical within float64 precision.
+--- Frame: Clean Speech Frame 50 (Voiced) ---
+  R[0] Direct MAC            : 47289826635.000000
+  ac[0] 1024-FFT             : 47289826635.000008
+  R[26] Direct MAC           : 3476429761.000000
+  ac[26] 1024-FFT            : 3476429760.999999
+  R[214] Direct MAC          : -7933005516.000000
+  ac[214] 1024-FFT           : -7933005516.000000
+  Max absolute error (all 190 lags): 1.52587891e-05
+  Max relative error wrt R[0]      : 3.22665363e-16
+  => PASS: Mathematically identical within float64 precision.
+--- Frame: Noisy Speech Frame 100 (SNR 5dB) ---
+  R[0] Direct MAC            : 12668973316.000000
+  ac[0] 1024-FFT             : 12668973315.999996
+  R[26] Direct MAC           : -4264882612.000000
+  ac[26] 1024-FFT            : -4264882611.999999
+  R[214] Direct MAC          : 1817496556.000000
+  ac[214] 1024-FFT           : 1817496555.999999
+  Max absolute error (all 190 lags): 3.81469727e-06
+  Max relative error wrt R[0]      : 3.01105478e-16
+  => PASS: Mathematically identical within float64 precision.
+--- Frame: Full-Scale Stress Frame A (|xw|_max = 59379) ---
+  R[0] Direct MAC            : 147702548534.000000
+  ac[0] 1024-FFT             : 147702548534.000000
+  R[26] Direct MAC           : 37028386744.000000
+  ac[26] 1024-FFT            : 37028386744.000000
+  R[214] Direct MAC          : -3711648854.000000
+  ac[214] 1024-FFT           : -3711648854.000001
+  Max absolute error (all 190 lags): 1.52587891e-05
+  Max relative error wrt R[0]      : 1.03307554e-16
+  => PASS: Mathematically identical within float64 precision.
+--- Frame: Full-Scale Stress Frame B (Square Wave) ---
+  R[0] Direct MAC            : 202759260969.000000
+  ac[0] 1024-FFT             : 202759260969.000000
+  R[26] Direct MAC           : -63456774206.000000
+  ac[26] 1024-FFT            : -63456774205.999992
+  R[214] Direct MAC          : -15164571156.000000
+  ac[214] 1024-FFT           : -15164571156.000000
+  Max absolute error (all 190 lags): 3.05175781e-05
+  Max relative error wrt R[0]      : 1.50511390e-16
+  => PASS: Mathematically identical within float64 precision.
+==============================================================================
+ALL 5 FRAMES VERIFIED: FFT AC == DIRECT MAC (ZERO CIRCULAR WRAP FOR TAU <= 386)
+==============================================================================

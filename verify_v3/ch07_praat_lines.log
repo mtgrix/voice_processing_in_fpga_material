@@ -1,0 +1,41 @@
+==============================================================================
+CH07 PRAAT 7.0.03 SOURCE CODE CITATIONS AUDIT
+==============================================================================
+[fon/Sound_to_Pitch.cpp:344]
+   Code   : minimumLag = max (2, Melder_ifloor (1.0 / my dx / pitchCeiling));
+   Ý nghĩa: Xác định độ trễ tối thiểu (minimumLag = floor(16000/600) = 26 tại fs=16kHz, ceiling=600Hz)
+
+[fon/Sound_to_Pitch.cpp:345]
+   Code   : maximumLag = min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
+   Ý nghĩa: Xác định độ trễ tối đa (maximumLag = floor(638/3) + 2 = 212 + 2 = 214 tại N=638, 3 chu kỳ)
+
+[fon/Sound_to_Pitch.cpp:401--403]
+   Code   : nsampFFT = 1; while (nsampFFT < nsamp_window * (1.0 + interpolation_depth)) nsampFFT *= 2;
+   Ý nghĩa: Kích thước FFT 1024 điểm (lũy thừa 2 nhỏ nhất >= 638 * 1.5 = 957 -> 1024)
+
+[fon/Sound_to_Pitch.cpp:79--80]
+   Code   : for (integer j = nsamp_window + 1; j <= nsampFFT; j ++) frame [j] = 0.0;
+   Ý nghĩa: Đệm số 0 vào đuôi khung từ vị trí 639 đến 1024 để chống chồng phổ trong miền thời gian
+
+[fon/Sound_to_Pitch.cpp:144--156]
+   Code   : /* The FFT of the autocorrelation is the power spectrum. */ ... NUMfft_forward ... NUMfft_backward
+   Ý nghĩa: Tính tự tương quan bằng cặp biến đổi FFT: phổ công suất |X(k)|^2 rồi biến đổi ngược IFFT
+
+[fon/Sound_to_Pitch.cpp:158--164]
+   Code   : r [0] = 1.0; for (integer i = 1; i <= brent_ixmax; i ++) r [i] = ac [i + 1] / (ac [1] * windowR [i + 1]);
+   Ý nghĩa: Chuẩn hóa tự tương quan: chia cho năng lượng ac[1] và hàm tự tương quan cửa sổ windowR, r[0] = 1
+
+==============================================================================
+NUMERICAL VERIFICATION OF PRAAT FORMULAS
+==============================================================================
+Sampling frequency fs        : 16000.0 Hz (dx = 62.50 us)
+Pitch ceiling                : 600.0 Hz
+Window length nsamp_window   : 638 samples
+Periods per window           : 3.0
+Minimum lag (line 344)       : 26 (floor(16000/600) = 26)
+Maximum lag (line 345)       : 214 (floor(638/3) + 2 = 212 + 2 = 214)
+FFT size nsampFFT (line 401) : 1024 (smallest power of 2 >= 957.0 -> 1024)
+Zero padding span (line 79)  : samples 639 to 1024 (386 zero samples)
+No-wrap margin for linear ac : nsampFFT - nsamp_window = 386 samples
+Check condition max_lag <= 386: 214 <= 386 -> True (NO CIRCULAR WRAP)
+==============================================================================

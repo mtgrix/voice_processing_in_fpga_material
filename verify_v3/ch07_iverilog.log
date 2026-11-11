@@ -1,0 +1,7 @@
+=== STARTING CH07 MAC UNIT CYCLE-BY-CYCLE VERIFICATION ===
+-------------------------------------------------------
+Simulation finished. Total cycles tested: 7460
+Total comparison errors: 0
+=== ALL 7460 VECTORS MATCHED SUCCESSFULLY ===
+-------------------------------------------------------
+tb/v3/tb_ch07_mac.v:160: $finish called at 149220000 (1ps)

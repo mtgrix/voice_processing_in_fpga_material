@@ -1,0 +1,37 @@
+==============================================================================
+CH07 EXERCISES NUMERICAL VERIFICATION
+==============================================================================
+--- Exercise 7.1: Minimum FFT Size for Zero Circular Wrap ---
+Window length N               : 638
+Maximum lag tau_max           : 214
+Minimum linear length N+tau   : 852 points
+Next power-of-2 FFT size      : 1024 points (1024)
+Max safe lag with 1024 FFT    : 386 (1024 - 638 = 386)
+Safety margin (386 - 214)     : 172 samples
+
+--- Exercise 7.2: Zero-Bubble Transition vs 1-Cycle Bubble ---
+Total lags calculated         : 190
+Zero-bubble issue cycles      : 98,540
+Extra cycles with 1-cyc bubble: 190
+Total issue cycles with bubble: 98,730
+Overhead percentage           : 0.1928%
+
+--- Exercise 7.3: 43-Bit Accumulator Overflow Bound ---
+Maximum |xw|                  : 65,535
+Maximum product |p|           : 4,294,836,225
+Maximum 638-term sum          : 2,740,105,511,550
+Bits needed (with sign)       : 42.3174 -> 43 bits
+43-bit signed positive bound  : 4,398,046,511,104 (2^42)
+Safety headroom ratio         : 1.6051x (60.51% headroom)
+
+--- Exercise 7.4: Dual-DSP Architecture Trade-offs ---
+Single-DSP cycles per frame   : 98,543 (RTF = 0.197086)
+Dual-DSP cycles per frame     : 49,592 (RTF = 0.099184)
+Speedup factor                : 1.99x
+Resource comparison           :
+  - DSP: 1 vs 2 Variable Precision blocks (+1 DSP)
+  - M10K: 2 vs 4 blocks (needs 2x RAM copies for 3 read ports, +2 M10K)
+
+==============================================================================
+ALL 4 EXERCISES VERIFIED SUCCESSFULLY
+==============================================================================
