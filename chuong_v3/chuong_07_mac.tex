@@ -592,3 +592,85 @@ Căn cứ theo tài liệu *Embedded Memory (RAM: 1-PORT, RAM: 2-PORT, ROM: 1-PO
 Nhờ kiến trúc hai cổng đọc độc lập này, bộ phát địa chỉ FSM có thể liên tục đẩy $98.540\text{ cặp địa chỉ}$ $(n, n+\tau)$ vào RAM qua từng nhịp, và RAM trả ra đều đặn 2 mẫu mỗi nhịp sau 1 chu kỳ trễ, nuôi bộ MAC chạy hết công suất $100\%$.
 
 \textit{Tóm lại: Khung $638 \times 17\text{-bit}$ ($10.846\text{ bit}$) vượt quá dung lượng $10.240\text{ bit}$ và độ sâu 512 từ của một M10K, bắt buộc phải ghép 2 khối M10K ở cấu hình $1024 \times 10$; cấu trúc True Dual-Port RAM cung cấp độ trễ đọc đúng 1 chu kỳ, cho phép đọc đồng thời hai mẫu $x_w[n]$ và $x_w[n+\tau]$ liên tục mỗi nhịp.}
+
+
+\subsection*{7.6. Phương án mở rộng: Tính song song nhiều lag bằng hai khối DSP}
+\addcontentsline{toc}{subsection}{7.6. Phương án mở rộng: Tính song song nhiều lag bằng hai khối DSP}
+
+\subsubsection*{Vấn đề thực tế: Khi nào thì một khối DSP trở nên không đủ?}
+Trong hệ thống đơn kênh giọng nói chuẩn $f_s = 16.000\text{ Hz}$ của đề tài, một khối DSP chạy ở tần số $50\text{ MHz}$ chỉ chiếm $19{,}7\%$ thời gian thực, hoàn toàn dư dả. Nhưng hãy đặt hệ thống vào một kịch bản ứng dụng công nghiệp mở rộng:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Hệ thống xử lý âm thanh đa kênh (Multi-Channel Audio): Ví dụ micro mảng (microphone array) gồm 4 hoặc 8 micro đồng thời để định hướng búp sóng (beamforming) và ước lượng cao độ từng kênh độc lập.
+    \item Hệ thống xử lý âm thanh độ phân giải cao (High-Definition Audio): Tần số lấy mẫu tăng lên $48\text{ kHz}$ hoặc $96\text{ kHz}$, số mẫu trong một khung $40\text{ ms}$ tăng gấp 3 đến 6 lần ($N = 1.914$ hoặc $3.828\text{ mẫu}$), đẩy số phép tính MAC lên hàng triệu phép tính mỗi khung.
+\end{itemize}
+Khi đó, ngân sách chu kỳ của một khối DSP đơn lẻ sẽ bị tràn, và câu hỏi kỹ thuật xuất hiện: \emph{Làm thế nào để tăng tốc phần cứng tính tự tương quan lên gấp đôi, và sự đánh đổi tài nguyên trên FPGA là gì?}
+
+\subsubsection*{Nguyên lý song song hóa: Ghép 2 khối MAC tính đồng thời 2 độ trễ}
+Để giảm thời gian tính toán xuống một nửa, giải pháp kiến trúc tự nhiên nhất là khai thác khả năng song song mức toán tử của FPGA: triển khai \textbf{hai khối MAC DSP độc lập} ($\text{DSP}_1$ và $\text{DSP}_2$) hoạt động đồng thời:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tại mỗi chu kỳ xung nhịp, thay vì chỉ tính tích của một độ trễ $\tau$, phần cứng tính toán song song hai độ trễ khác nhau: $\tau_1$ và $\tau_2$ (ví dụ: $\text{DSP}_1$ phụ trách tính các lag chẵn $\tau \in \{26, 28, \dots, 214\}$, còn $\text{DSP}_2$ phụ trách tính các lag lẻ $\tau \in \{27, 29, \dots, 213\}$; hoặc chia đôi dải quét thành hai nửa $[26, 120]$ và $[121, 214]$).
+    \item Khối $\text{DSP}_1$ tính:
+    \begin{equation}
+    p_1[n] = x_w[n] \cdot x_w[n+\tau_1]
+    \end{equation}
+    \item Khối $\text{DSP}_2$ tính:
+    \begin{equation}
+    p_2[n] = x_w[n] \cdot x_w[n+\tau_2]
+    \end{equation}
+\end{itemize}
+
+\paragraph{Phân tích số chu kỳ và RTF của phương án 2 DSP:}
+Tổng số $97.902\text{ cặp toán hạng}$ của dải quét được chia đều cho 2 khối DSP, mỗi khối chỉ phải xử lý khoảng $97.902 / 2 = 48.951\text{ chu kỳ}$. Cộng thêm $638\text{ chu kỳ}$ tính $R[0]$ và $3\text{ chu kỳ}$ trễ đường ống, tổng thời gian xử lý toàn khung giảm xuống:
+\begin{equation}
+N_{\text{cycles, dual}} \approx 48.951 + 638 + 3 = \mathbf{49.592\text{ chu kỳ xung nhịp}}
+\end{equation}
+So sánh với thời gian của 1 DSP ($98.543\text{ chu kỳ}$):
+\begin{equation}
+\text{Tốc độ tăng trưởng} \approx \frac{98.543}{49.592} \approx \mathbf{1{,}99\times}
+\end{equation}
+Hệ số thời gian thực của lõi MAC giảm xuống mức ấn tượng:
+\begin{equation}
+\text{RTF}_{\text{dual}} = \frac{49.592}{500.000} \approx \mathbf{0{,}099184 \approx 0{,}10}
+\end{equation}
+Khối MAC chỉ chiếm đúng $10\%$ thời lượng của một bước nhảy khung $10\text{ ms}$!
+
+\subsubsection*{Bức tường băng thông bộ nhớ (Memory Wall) và sự đánh đổi tài nguyên M10K}
+Một sự gia tăng tốc độ tính toán gấp đôi không bao giờ đến miễn phí. Nút thắt lớn nhất của kiến trúc 2 DSP không nằm ở bộ nhân, mà nằm ở \textbf{băng thông cổng đọc của bộ nhớ RAM}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Hãy quan sát hai phép nhân:
+    \begin{equation}
+    \text{DSP}_1 \text{ cần: } x_w[n] \text{ và } x_w[n+\tau_1]
+    \end{equation}
+    \begin{equation}
+    \text{DSP}_2 \text{ cần: } x_w[n] \text{ và } x_w[n+\tau_2]
+    \end{equation}
+    Cả hai bộ nhân đều cần chung mẫu cơ sở $x_w[n]$ tại thời điểm $n$. Mẫu này có thể được phát chung (broadcast) từ một cổng đọc duy nhất.
+    \item Tuy nhiên, với mẫu dịch trễ, $\text{DSP}_1$ đòi hỏi địa chỉ $n+\tau_1$ trong khi $\text{DSP}_2$ đòi hỏi địa chỉ $n+\tau_2$. Vì $\tau_1 \ne \tau_2$, đây là hai địa chỉ ô nhớ hoàn toàn độc lập và khác biệt!
+    \item Do đó, tại mỗi chu kỳ xung nhịp, hệ thống đòi hỏi phải đọc đồng thời đúng \textbf{3 mẫu âm thanh độc lập}: $x_w[n]$, $x_w[n+\tau_1]$ và $x_w[n+\tau_2]$.
+\end{itemize}
+
+Vấn đề nan giải xuất hiện: Khối M10K của Cyclone V là cấu trúc phần cứng True Dual-Port, nghĩa là nó \textbf{chỉ có tối đa 2 cổng đọc vật lý độc lập}. Một bộ nhớ True Dual-Port không thể nào cung cấp 3 cổng đọc trong cùng một chu kỳ xung nhịp!
+
+Để giải quyết bài toán 3 cổng đọc, người kỹ sư phần cứng có hai hướng đi:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Nhân đôi bộ nhớ RAM (Memory Duplication):}
+    Tạo ra hai bản sao song sinh độc lập của bộ đệm khung: $\text{RAM}_A$ và $\text{RAM}_B$. Khi nạp khung âm thanh, dữ liệu được ghi đồng thời vào cả hai RAM. Khi tính MAC:
+    \begin{itemize}[leftmargin=1.2em, itemsep=1pt]
+        \item $\text{RAM}_A$ (2 cổng đọc): Cổng A1 đọc $x_w[n]$ (phát chung cho cả 2 DSP), Cổng B1 đọc $x_w[n+\tau_1]$ cấp cho $\text{DSP}_1$.
+        \item $\text{RAM}_B$ (2 cổng đọc): Cổng B2 đọc $x_w[n+\tau_2]$ cấp cho $\text{DSP}_2$ (cổng A2 để trống).
+    \end{itemize}
+    Cái giá phải trả: Tài nguyên bộ nhớ RAM bị nhân đôi, tiêu tốn \textbf{4 khối M10K} (thay vì 2 khối M10K ở kiến trúc 1 DSP).
+    \item \textbf{Phân chia ngân hàng bộ nhớ (Bank Interleaving):}
+    Chia bộ nhớ thành các khối nhỏ (ví dụ ngân hàng chẵn và ngân hàng lẻ). Nhưng vì khoảng cách trễ $\tau_1$ và $\tau_2$ biến thiên liên tục, hiện tượng xung đột truy cập ngân hàng (Bank Conflict) sẽ xảy ra khi hai địa chỉ cùng rơi vào một ngân hàng, làm phát sinh các chu kỳ chờ (stall cycle) và phá vỡ tính đơn giản của đường ống.
+\end{enumerate}
+
+\subsubsection*{Lựa chọn thiết kế của tài liệu}
+So sánh hai phương án:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Kiến trúc 1 DSP: Tốn 1 khối DSP Variable Precision, 2 khối M10K, chiếm $19{,}7\%$ ngân sách thời gian thực ($\text{RTF} \approx 0{,}197$).
+    \item Kiến trúc 2 DSP: Tốn 2 khối DSP Variable Precision (+1 DSP), 4 khối M10K (+2 M10K), chiếm $10\%$ ngân sách thời gian thực ($\text{RTF} \approx 0{,}10$).
+\end{itemize}
+
+Vì $\text{RTF} = 0{,}197$ đã là một con số quá nhanh so với thời gian thực (hệ thống rảnh rỗi hơn $80\%$ thời gian), việc tiêu tốn thêm 1 DSP và 2 khối M10K chỉ để đưa RTF từ $0{,}197$ xuống $0{,}10$ là hoàn toàn lãng phí trên kit DE10-Standard. Do đó, tài liệu này \textbf{lựa chọn kiến trúc 1 DSP làm cấu hình mặc định chuẩn tắc}. Phương án 2 DSP được trình bày chi tiết như một "nút vặn mở rộng" (scalable configuration parameter) trong trường hợp người đọc muốn nâng cấp hệ thống để xử lý tín hiệu âm thanh đa kênh.
+
+\textit{Tóm lại: Dùng 2 khối DSP có thể giảm thời gian tính toán xuống một nửa (RTF từ $0{,}197$ xuống $\approx 0{,}10$), nhưng đòi hỏi 3 cổng đọc đồng thời, buộc phải nhân đôi bộ nhớ lên 4 khối M10K; do 1 DSP đã thừa sức đáp ứng thời gian thực, kiến trúc 1 DSP được chọn làm mặc định tối ưu.}
