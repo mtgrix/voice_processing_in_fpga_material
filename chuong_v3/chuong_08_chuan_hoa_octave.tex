@@ -260,3 +260,142 @@ Khảo sát dấu của $K[\tau]$ trên dải quét $\tau \in [26, 214]$:
 \textbf{Đọc hình.} Hình~\ref{fig:ch08_octave_cost} minh họa tác động quyết định của chi phí quãng tám lên việc phân định ứng viên cao độ. Đường màu xanh lam liền nét biểu diễn hàm tự tương quan chuẩn hóa $U[\tau]$: đỉnh tại chu kỳ cơ bản thật sự $\tau_0 = 80$ ($200\text{ Hz}$) đạt $0{,}920$, nhưng do nhiễu trầm, đỉnh tại chu kỳ bội $2\tau_0 = 160$ ($100\text{ Hz}$) lại nhỉnh hơn ở mức $0{,}925$. Nếu chọn cực đại trực tiếp từ $U[\tau]$, thuật toán sẽ rơi vào lỗi chia đôi quãng tám. Đường màu đỏ nét đứt biểu diễn điểm chi phí toàn cục $S_c[\tau] = U[\tau] - \text{term}_K$: ứng viên $\tau = 80$ chỉ bị phạt một lượng nhỏ $0{,}0158$ (điểm tụt xuống $0{,}904$), trong khi ứng viên $\tau = 160$ bị phạt nặng hơn ở mức $0{,}0259$ (điểm tụt xuống $0{,}899$). Nhờ khoản chênh lệch phạt $0{,}0101$ này, trật tự được đảo ngược: $S_c[80] = 0{,}904 > S_c[160] = 0{,}899$, bảo đảm thuật toán luôn chọn chuẩn xác tần số cơ bản của giọng nói.
 
 \textit{Tóm lại: Các tín hiệu tuần hoàn luôn có đỉnh tự tương quan tại các bội số chu kỳ, dễ gây lỗi chia đôi quãng tám khi có nhiễu trầm; Praat sử dụng Octave Cost để phạt nhẹ các chu kỳ dài theo quy luật logarit; bảng tra số nguyên $K[\tau]$ định dạng 16-bit có dấu mã hóa chính xác lượng phạt này, giúp thuật toán ưu tiên chuẩn xác chu kỳ cơ bản ngắn nhất.}
+
+
+\subsection*{8.3. Các phương án thiết kế phần cứng, sự đánh đổi và giải pháp chốt bám sát Praat}
+\addcontentsline{toc}{subsection}{8.3. Các phương án thiết kế phần cứng, sự đánh đổi và giải pháp chốt bám sát Praat}
+
+\subsubsection*{Phân tích không gian giải pháp và sự đánh đổi tài nguyên}
+Khi bước vào hiện thực hóa khối chuẩn hóa và tính điểm quãng tám trên FPGA, người kỹ sư phần cứng đứng trước ba phương án kiến trúc với sự đánh đổi sâu sắc giữa độ phức tạp silicon, độ trễ thời gian và độ chính xác âm học.
+
+\paragraph{Phương án (a): Thực hiện phép chia trực tiếp $R[\tau] / R_w[\tau]$ ở từng độ trễ.}
+Về mặt toán học, cách trực tiếp nhất để triệt tiêu ảnh hưởng của cửa sổ là chia giá trị tự tương quan $R[\tau]$ cho $R_w[\tau]$ ở mỗi lag. Tuy nhiên, trên phần cứng số, đây là phương án kém hiệu quả nhất:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Độ rộng bit khổng lồ:} $R[\tau]$ có thể rộng tới $43\text{ bit}$ có dấu và $R_w[\tau]$ rộng tới $39\text{ bit}$ không dấu ($R_w[0] \approx 2{,}57 \times 10^{11}$). Một bộ chia số nguyên $43 / 39\text{ bit}$ đòi hỏi diện tích logic rất lớn.
+    \item \emph{Tiêu tốn tài nguyên và chu kỳ:} Nếu dùng IP chia đường ống (\texttt{LPM\_DIVIDE}), mỗi bộ chia tiêu tốn hàng nghìn ALM và có latency từ $30$ đến $45\text{ chu kỳ}$. Nếu dùng bộ chia tuần tự Radix-2 để tiết kiệm ALM, mỗi phép chia mất hơn $40\text{ chu kỳ}$; với 189 độ trễ, tổng thời gian chia lên tới $189 \times 40 = 7.560\text{ chu kỳ/khung}$, chiếm thêm $1{,}5\%$ ngân sách thời gian thực mà không giải quyết được bài toán Octave Cost.
+    \item \emph{Quyết định:} \textbf{Loại bỏ hoàn toàn}.
+\end{itemize}
+
+\paragraph{Phương án (b): Gộp Octave Cost thành thừa số nhân trong ROM (phiên bản Golden v1).}
+Trong phiên bản Golden v1 trước đây, để tránh phép trừ số học và tận dụng một phép nhân duy nhất, người ta đã gộp cả hai đại lượng chuẩn hóa cửa sổ và chi phí quãng tám thành một hệ số nhân tích hợp $S[\tau]$:
+\begin{equation}
+S[\tau] = \text{round}\left( 2^{13} \cdot \frac{R_w[0]}{R_w[\tau]} \cdot \left(\frac{f}{600}\right)^{0{,}01} \right) = \text{round}\left( 2^{13} \cdot C_{\text{real}}[\tau] \cdot \left(\frac{16000}{600 \cdot \tau}\right)^{0{,}01} \right)
+\label{eq:ch08_s_mult_def}
+\end{equation}
+trong đó bảng tra $S[\tau]$ được lưu ở định dạng Q3.13 ($13\text{ bit}$ phân số).
+
+Tại sao phương án (b) lại bị loại bỏ trong bản chốt v2? Có hai lý do kỹ thuật mang tính quyết định:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Làm nghiêng đỉnh parabol và gây sai số tần số từ $0{,}07$ đến $0{,}23\text{ cent}$:} 
+    Praat áp dụng chi phí quãng tám dưới dạng \textbf{phép trừ trên độ mạnh} của ứng viên ($r - \text{cost}$), trong khi vị trí đỉnh nội suy parabol $\tau^*$ vẫn được tính toán thuần túy trên hàm tương quan chuẩn hóa $r[\tau]$. 
+    Khi gộp thành phép nhân $R \cdot S[\tau]$, ta đang vô tình nhân hàm tương quan với một hàm nghịch biến theo $\tau$: $m(\tau) \propto \tau^{-0{,}01}$. Thừa số nhân này làm dốc sườn trái của đỉnh parabol lên và đè sườn phải xuống, kéo đỉnh cực đại lệch về phía độ trễ nhỏ hơn (tần số cao hơn). 
+    Khảo sát giải tích và mô phỏng trên toàn bộ dải âm thanh hài $80\text{ Hz}$ đến $550\text{ Hz}$ trong nhật ký \path{verify_v3/ch08_norm_math.log} đã xác nhận: độ lệch đỉnh parabol do phép nhân này gây ra dao động từ $\mathbf{0{,}087\text{ cent}}$ đến $\mathbf{0{,}440\text{ cent}}$ (trung bình $0{,}234\text{ cent}$), hoàn toàn không thể triệt tiêu.
+    \item \textbf{Lỗi công thức của Argon:}
+    Trong các bản báo cáo cũ, Argon từng viết rằng bảng ROM được sinh theo công thức $C_{\text{eff}} = \text{round}(2^{14} \cdot 2^{-0{,}01 \log_2(\tau/\tau_{\max})})$ ở định dạng Q2.14 và cho ra giá trị $17070$ tại $\tau = 214$. 
+    Đây là một sai sót toán học nghiêm trọng: tại $\tau = \tau_{\max} = 214$, tỉ số $\tau / \tau_{\max} = 1$, nên $\log_2(1) = 0$ và thừa số nhân bằng đúng $1{,}0$. Ở định dạng Q2.14, công thức của Argon cho ra $2^{14} \times 1{,}0 = \mathbf{16384}$, chứ không thể nào ra $17070$! Con số chuẩn tắc $S[214] = \mathbf{17070}$ thực chất sinh ra từ công thức~(\ref{eq:ch08_s_mult_def}) với định dạng Q3.13 lấy mốc tần số trần $600\text{ Hz}$:
+    \begin{equation}
+    S[214] = \text{round}\left( 17429 \times \left(\frac{16000}{600 \times 214}\right)^{0{,}01} \right) = \text{round}(17429 \times 0{,}979390) = \mathbf{17.070}
+    \end{equation}
+    Tương tự, tại $\tau = 26$, $S[26] = \mathbf{8.283}$ (số liệu kiểm chứng từ \texttt{golden/lab_1_3_5.py}).
+\end{enumerate}
+Do làm biến dạng vị trí đỉnh parabol và không đồng nhất với thuật toán của Praat, phương án (b) \textbf{bị loại bỏ hoàn toàn}.
+
+\paragraph{Phương án (c): Đã chốt --- Trừ đúng như Praat qua bảng tra tích hợp $256 \times 32$ và chuẩn hóa động.}
+Đây là giải pháp được chốt chính thức trong phiên bản Golden v2, bảo đảm sự trung thực tuyệt đối với thuật toán của Paul Boersma. Kiến trúc này dựa trên bốn trụ cột kỹ thuật:
+
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{1. Bảng tra tích hợp $256 \times 32$ trong đúng 1 khối M10K:}
+    Thay vì dùng hai khối ROM độc lập, hai bảng $C[\tau]$ và $K[\tau]$ được ghép chung vào một từ nhớ $32\text{-bit}$:
+    \begin{equation}
+    \text{ROM\_WORD}[\tau - 26] = \{ C[\tau][15:0],\; K[\tau][15:0] \}
+    \end{equation}
+    Dải quét $\tau \in [26, 214]$ gồm đúng $189\text{ từ}$, truy xuất bằng địa chỉ $8\text{-bit}$ ($\text{addr} = \tau - 26 \in [0, 188]$). Tổng dung lượng lưu trữ là $256 \times 32 = 8.192\text{ bit}$, nhỏ hơn dung lượng $10.240\text{ bit}$ của một khối nhớ nhúng M10K trên Cyclone V. Do đó, cả hai bảng được đóng gói trọn vẹn trong \textbf{đúng 1 khối M10K} (tệp \path{golden_v2/rom/ck_rom.{hex,mif}}).
+    
+    \item \textbf{2. Bảng bù cửa sổ $C[\tau]$ định dạng Q2.14 không dấu (16 bit cao $[31:16]$):}
+    \begin{equation}
+    C[\tau] = \text{round}\left( 2^{14} \cdot \frac{R_w[0]}{R_w[\tau]} \right)
+    \end{equation}
+    Một điểm cốt tử mà Golden v2 đính chính: $C[\tau]$ phải được tính từ hàm tự tương quan của \textbf{chính cửa sổ Hanning đã lượng tử hóa phần cứng $w_q[n]$} (cửa sổ Q1.15 thực sự nhân vào mẫu ở Chương 6), chứ không phải từ hàm cosin liên tục lý thuyết.
+    Các giá trị mốc chuẩn tắc đã kiểm:
+    \begin{equation}
+    C[26] = 16.563, \quad C[27] = 16.578, \quad C[100] = 19.260, \quad C[213] = 34.773, \quad C[214] = 35.030
+    \end{equation}
+
+    \item \textbf{3. Bảng phạt chi phí $K[\tau]$ định dạng có dấu 16-bit (16 bit thấp $[15:0]$):}
+    \begin{equation}
+    K[\tau] = \text{round}\left( 2^{20} \cdot 0{,}01 \cdot \log_2\left(\frac{600 \cdot \tau}{16000}\right) \right)
+    \end{equation}
+    Các giá trị mốc chuẩn tắc đã kiểm:
+    \begin{equation}
+    K[26] = -383, \quad K[27] = 188, \quad K[100] = 19.995, \quad K[213] = 31.434, \quad K[214] = 31.504
+    \end{equation}
+
+    \item \textbf{4. Chuẩn hóa động $\text{sh} = \max(0, \text{bitlen}(R_0) - 26)$ để tối ưu hóa silicon DSP:}
+    Giá trị tích lũy $R_0 = \sum x_w^2$ có thể đạt tới $43\text{ bit}$ có dấu ($|x_w| \le 59379$, $R_0 \approx 2{,}25 \times 10^{12}$). Khối Variable Precision DSP của Cyclone V ở cấu hình đơn lẻ hỗ trợ tối đa phép nhân $27 \times 27\text{-bit}$. Nếu đưa trực tiếp toán hạng $43\text{ bit}$ vào phép nhân với $C[\tau]$ ($16\text{ bit}$), Quartus bắt buộc phải phân rã và ghép từ 2 đến 3 khối DSP vật lý!
+    
+    Để giải quyết triệt để rào cản phần cứng này, Golden v2 thực hiện chuẩn hóa động ngay khi nhận được $R_0$:
+    \begin{align}
+    \text{sh} &= \max(0, \text{bitlen}(R_0) - 26) \label{eq:ch08_sh_def} \\
+    R_{0n} &= R_0 \gg \text{sh} \label{eq:ch08_r0n_def} \\
+    R_n[\tau] &= R[\tau] \ggg \text{sh} \label{eq:ch08_rn_def}
+    \end{align}
+    Sau phép dịch, $R_{0n}$ co về tối đa $26\text{ bit}$ không dấu ($R_{0n} < 2^{26} = 67.108.864$), và $R_n[\tau]$ co về tối đa $27\text{ bit}$ có dấu.
+\end{itemize}
+
+\begin{physicalinsight}
+\textbf{Đánh giá độ chính xác của phép chuẩn hóa động $\text{sh}$:}
+Khi ta dịch phải $R_0$ và $R[\tau]$ đi $\text{sh}$ bit, phần thông tin bị cắt bỏ tối đa là $2^{\text{sh}} - 1$. Vì phần giữ lại $R_{0n}$ có độ dài 26 bit, sai số tương đối do làm tròn số học (relative truncation error) được khống chế ở mức:
+\begin{equation}
+\epsilon_{\text{rel}} < \frac{2^{\text{sh}}}{R_0} \le \frac{2^{\text{sh}}}{2^{\text{bitlen}-1}} = \frac{2^{\text{bitlen}-26}}{2^{\text{bitlen}-1}} = 2^{-25} \approx 2{,}98 \times 10^{-8}
+\end{equation}
+Xét trên toàn bộ thang đo mantissa $26\text{ bit}$ ($2^{26}$ mức lượng tử), độ phân giải tỉ đối của một LSB bằng đúng $2^{-26} \approx \mathbf{1{,}4901 \times 10^{-8} \le 1{,}5 \times 10^{-8}}$. Sai số này nhỏ hơn $0{,}0000015\%$, hoàn toàn biến mất trong sai số lượng tử chung của hệ thống âm thanh 16-bit.
+\end{physicalinsight}
+
+\subsubsection*{Tách bạch hai đại lượng: $U[\tau]$ và $S_c[\tau]$}
+Sau khi thực hiện các phép nhân DSP và dịch làm tròn, hệ thống tạo ra hai luồng dữ liệu độc lập:
+\begin{align}
+U[\tau] &= (R_n[\tau] \cdot C[\tau] + 2^{13}) \ggg 14 \label{eq:ch08_u_def} \\
+\text{term}_K &= (R_{0n} \cdot K[\tau] + 2^{19}) \ggg 20 \label{eq:ch08_termk_def} \\
+S_c[\tau] &= U[\tau] - \text{term}_K \label{eq:ch08_sc_def}
+\end{align}
+
+Hai đại lượng này phục vụ hai nhiệm vụ chuyên biệt:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Đại lượng $U[\tau]$} xấp xỉ tỉ số $r(\tau) \cdot R_{0n}$, đại diện cho hàm tự tương quan chuẩn hóa thuần túy (không chứa Octave Cost). Nó được dùng riêng cho việc kiểm tra điều kiện đỉnh cục bộ ($U[\tau] > U[\tau-1]$, $U[\tau] \ge U[\tau+1]$) và nội suy parabol ở Chương 9. Vì $U[\tau]$ không bị chi phí quãng tám làm nghiêng sườn, vị trí đỉnh parabol $\tau^*$ được xác định hoàn toàn khách quan và không bị lệch tần số.
+    \item \textbf{Đại lượng $S_c[\tau]$} xấp xỉ $(r(\tau) - 0{,}01 \log_2(600/f)) \cdot R_{0n}$, đại diện cho điểm chi phí toàn cục của Path Finder trong Praat. Nó được dùng riêng cho việc xếp hạng các ứng viên đỉnh và đánh giá bất đẳng thức hữu thanh/vô thanh ở Chương 10.
+\end{itemize}
+
+\subsubsection*{Bảng tính tay thu nhỏ (Trace Table) trên các độ trễ tiêu biểu}
+Để theo dõi chính xác từng bước biến đổi dữ liệu của thuật toán trên phần cứng, Bảng~\ref{tab:ch08_trace} trình bày bảng tính tay chi tiết với một khung dữ liệu thực tế có năng lượng $R_0 = 60.000.000$ (tương ứng $\text{bitlen} = 26$, $\text{sh} = 0$, $R_{0n} = 60.000.000$) trên 4 giá trị độ trễ tiêu biểu: $\tau = 26, 27, 100, 214$.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Bảng tính tay thu nhỏ theo dõi quá trình chuẩn hóa $U[\tau]$ và tính điểm $S_c[\tau]$ ($R_0 = 60.000.000$, $\text{sh} = 0$, số liệu khớp hoàn toàn với \texttt{verify_v3/ch08_norm_math.log}).}
+\label{tab:ch08_trace}
+\begin{tabularx}{\textwidth}{l rrrr}
+\toprule
+\textbf{Bước tính toán / Đại lượng} & $\mathbf{\tau = 26}$ & $\mathbf{\tau = 27}$ & $\mathbf{\tau = 100}$ & $\mathbf{\tau = 214}$ \\
+\midrule
+Tự tương quan gốc $R[\tau]$ & $50.000.000$ & $49.500.000$ & $48.000.000$ & $25.000.000$ \\
+Hệ số dịch $\text{sh}$ / Toán hạng $R_n[\tau]$ & $0$ / $50.000.000$ & $0$ / $49.500.000$ & $0$ / $48.000.000$ & $0$ / $25.000.000$ \\
+Hệ số bù cửa sổ $C[\tau]$ (Q2.14) & $16.563$ & $16.578$ & $19.260$ & $35.030$ \\
+Hệ số phạt quãng tám $K[\tau]$ (Signed) & $-383$ & $+188$ & $+19.995$ & $+31.504$ \\
+\addlinespace[3pt]
+Tích $P_C = R_n[\tau] \times C[\tau]$ & $828.150.000.000$ & $820.611.000.000$ & $924.480.000.000$ & $875.750.000.000$ \\
+Làm tròn và dịch: $(P_C + 8192) \ggg 14$ & $\mathbf{50.546.265}$ & $\mathbf{50.086.121}$ & $\mathbf{56.425.781}$ & $\mathbf{53.451.538}$ \\
+\textbf{Đại lượng tương quan chuẩn hóa $U[\tau]$} & $\mathbf{50.546.265}$ & $\mathbf{50.086.121}$ & $\mathbf{56.425.781}$ & $\mathbf{53.451.538}$ \\
+Tỉ số tương đương: $U[\tau] / R_{0n}$ & $0{,}842438$ & $0{,}834769$ & $0{,}940430$ & $0{,}890859$ \\
+\addlinespace[3pt]
+Tích $P_K = R_{0n} \times K[\tau]$ & $-22.980.000.000$ & $+11.280.000.000$ & $+1.199.700.000.000$ & $+1.890.240.000.000$ \\
+Làm tròn và dịch: $(P_K + 524288) \ggg 20$ & $\mathbf{-21.915}$ & $\mathbf{+10.757}$ & $\mathbf{+1.144.124}$ & $\mathbf{+1.802.673}$ \\
+Lượng phạt Octave Cost ($\text{term}_K$) & $-21.915$ & $+10.757$ & $+1.144.124$ & $+1.802.673$ \\
+\addlinespace[3pt]
+Hiệu số $S_c[\tau] = U[\tau] - \text{term}_K$ & $\mathbf{50.568.180}$ & $\mathbf{50.075.364}$ & $\mathbf{55.281.657}$ & $\mathbf{51.648.865}$ \\
+\textbf{Điểm chi phí toàn cục $S_c[\tau]$} & $\mathbf{50.568.180}$ & $\mathbf{50.075.364}$ & $\mathbf{55.281.657}$ & $\mathbf{51.648.865}$ \\
+Điểm tương đương: $S_c[\tau] / R_{0n}$ & $0{,}842803$ & $0{,}834590$ & $0{,}921361$ & $0{,}860814$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\textit{Tóm lại: Chia trực tiếp tốn tài nguyên quá lớn; gộp chi phí vào ROM nhân làm lệch đỉnh parabol từ $0{,}07$ đến $0{,}23\text{ cent}$; kiến trúc trừ đúng như Praat qua ROM tích hợp $256 \times 32$ (1 M10K) kết hợp chuẩn hóa động $\text{sh}$ bảo đảm độ chính xác sai số dưới $1{,}5 \times 10^{-8}$, đưa hai phép nhân vào vừa vặn đúng 2 khối DSP $27 \times 27$ và phân tách độc lập hai đại lượng $U[\tau]$ cho parabol và $S_c[\tau]$ cho xếp hạng.}
