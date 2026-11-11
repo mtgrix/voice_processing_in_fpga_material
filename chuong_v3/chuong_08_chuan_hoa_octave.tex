@@ -399,3 +399,139 @@ Hiệu số $S_c[\tau] = U[\tau] - \text{term}_K$ & $\mathbf{50.568.180}$ & $\ma
 \end{table}
 
 \textit{Tóm lại: Chia trực tiếp tốn tài nguyên quá lớn; gộp chi phí vào ROM nhân làm lệch đỉnh parabol từ $0{,}07$ đến $0{,}23\text{ cent}$; kiến trúc trừ đúng như Praat qua ROM tích hợp $256 \times 32$ (1 M10K) kết hợp chuẩn hóa động $\text{sh}$ bảo đảm độ chính xác sai số dưới $1{,}5 \times 10^{-8}$, đưa hai phép nhân vào vừa vặn đúng 2 khối DSP $27 \times 27$ và phân tách độc lập hai đại lượng $U[\tau]$ cho parabol và $S_c[\tau]$ cho xếp hạng.}
+
+
+\subsection*{8.4. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (ROM: 1-PORT và LPM\_MULT)}
+\addcontentsline{toc}{subsection}{8.4. Tuyến thiết kế (A): Hiện thực hóa qua thư viện Intel IP (ROM: 1-PORT và LPM\_MULT)}
+
+\subsubsection*{Cấu trúc khối IP và các tài liệu kỹ thuật chuẩn của Intel}
+Để hiện thực hóa khối chuẩn hóa cửa sổ và tính điểm Octave Cost theo đường dẫn thư viện IP của Intel trên dòng chip Cyclone V (cụ thể là chip 5CSXFC6D6F31C6N trên kit DE10-Standard), thiết kế tích hợp hai khối chức năng phần cứng được sinh từ Parameter Editor của Quartus Prime:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item Khối bộ nhớ chỉ đọc một cổng \texttt{ROM: 1-PORT}, được hướng dẫn trong tài liệu \emph{Embedded Memory (RAM: 1-PORT, RAM: 2-PORT, ROM: 1-PORT, and ROM: 2-PORT) User Guide} (tài liệu mã hiệu UG-01068 của Intel).
+    \item Khối nhân số nguyên cấu hình cao \texttt{LPM\_MULT}, được chuẩn hóa trong tài liệu \emph{Integer Arithmetic IP Cores User Guide} (tài liệu mã hiệu UG-01069 của Intel).
+\end{enumerate}
+
+\subsubsection*{Giải thích chi tiết các tham số của khối IP \texttt{ROM: 1-PORT}}
+Khối ROM chứa bảng tra tích hợp $\{C[\tau], K[\tau]\}$ được cấu hình trong giao diện Parameter Editor với các tham số kỹ thuật then chốt:
+
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Operation Mode (Chế độ hoạt động) = Single Port ROM:} 
+    Khối chỉ thực hiện đọc dữ liệu từ bảng tra cố định theo từng nhịp xung nhịp. Các hệ số $C[\tau]$ và $K[\tau]$ không bao giờ bị ghi đè trong quá trình xử lý khung âm thanh, do đó một cổng đọc độc lập là đủ, không cần cấu hình Dual-Port phức tạp.
+
+    \item \textbf{Data Width (Độ rộng từ dữ liệu) = 32 bit:}
+    Mỗi từ nhớ chứa trọn vẹn cả hai tham số: 16 bit cao $[31:16]$ dành cho hệ số chuẩn hóa $C[\tau]$ (Q2.14 không dấu) và 16 bit thấp $[15:0]$ dành cho hệ số chi phí quãng tám $K[\tau]$ (16 bit có dấu bù hai). Việc ghép chung hai tham số vào một từ nhớ 32-bit cho phép đọc đồng thời cả hai giá trị chỉ trong đúng một chu kỳ xung nhịp duy nhất.
+
+    \item \textbf{Number of Words (Độ sâu từ nhớ) = 256 từ:}
+    Dải quét độ trễ từ $\tau = 26$ đến $\tau = 214$ đòi hỏi đúng $189\text{ từ}$ lưu trữ. Do cấu trúc bộ giải mã địa chỉ của khối M10K hoạt động theo lũy thừa của 2, độ sâu 256 từ (tương ứng với bus địa chỉ 8-bit, $\text{addr} \in [0, 255]$) là độ sâu tối thiểu bao trọn 189 từ dùng. Các địa chỉ từ $189$ đến $255$ được điền số 0 và không bao giờ được truy xuất.
+
+    \item \textbf{Memory Block Type (Loại khối nhớ phần cứng) = M10K:}
+    Căn cứ theo tài liệu \emph{Cyclone V Device Handbook, Volume 1: Device Interfaces and Integration} (CV-52003, Chương 3, Bảng 3-1: "M10K Embedded Memory Block Configurations"), một khối M10K vật lý chứa dung lượng danh định $10.240\text{ bit}$. Trong các cấu hình tổ chức độ sâu $\times$ độ rộng bit được hỗ trợ, cấu hình $256 \times 40$ (hoặc $256 \times 32$) nằm trọn vẹn bên trong \textbf{đúng 1 khối M10K}. Dung lượng 256 từ 32-bit tiêu tốn $256 \times 32 = 8.192\text{ bit} \le 10.240\text{ bit}$, chiếm đúng $80\%$ dung lượng của một khối M10K đơn lẻ và tiêu tốn $0\text{ ALM}$ logic.
+
+    \item \textbf{Clocking Method = Single Clock (\texttt{clk}):}
+    Khối ROM đồng bộ hoàn toàn với đồng hồ chính $50\text{ MHz}$ của hệ thống, bảo đảm không xảy ra hiện tượng vượt miền xung nhịp (clock domain crossing).
+
+    \item \textbf{Output Port Registering = Registered (\texttt{q} port):}
+    Kích hoạt thanh ghi ngõ ra \texttt{q} bên trong khối M10K. Cấu hình này tạo ra độ trễ đọc (read latency) cố định đúng $1\text{ chu kỳ xung nhịp}$ tính từ thời điểm cấp địa chỉ \texttt{addr}. Thanh ghi này nằm sẵn trong silicon của khối M10K, giúp ngắt mạch đường tới hạn từ bộ giải mã địa chỉ sang ngõ ra dữ liệu, tăng tối đa tần số $F_{\max}$ mà không tốn thêm flip-flop bên ngoài ALM.
+
+    \item \textbf{Memory Initialization File = \texttt{ck\_rom.hex} (hoặc \texttt{ck\_rom.mif}):}
+    Chỉ định tệp khởi tạo dữ liệu nhị phân chứa 256 từ hex được sinh tự động từ kịch bản \path{golden_v2/gen_roms.py}.
+\end{itemize}
+
+\subsubsection*{Giải thích chi tiết các tham số của hai khối nhân \texttt{LPM\_MULT}}
+Để hoàn tất tính toán $U[\tau]$ và $S_c[\tau]$, thiết kế sử dụng hai bộ nhân \texttt{LPM\_MULT} độc lập:
+
+\paragraph{1. Bộ nhân thứ nhất: Tích tương quan cửa sổ $R_n[\tau] \times C[\tau]$}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{LPM\_WIDTHA = 27 bit:} Độ rộng toán hạng $A$, nhận giá trị tự tương quan đã chuẩn hóa động $R_n[\tau] = R[\tau] \ggg \text{sh}$. Sau phép dịch, $|R_n[\tau]| \le R_{0n} < 2^{26}$, nên $27\text{ bit}$ có dấu (\texttt{signed [26:0]}) biểu diễn trọn vẹn dải giá trị từ $-67.108.864$ đến $+67.108.863$.
+    \item \textbf{LPM\_WIDTHB = 17 bit:} Độ rộng toán hạng $B$, nhận hệ số bù cửa sổ $C[\tau]$ từ ROM.
+    \item \textbf{LPM\_WIDTHP = 44 bit:} Độ rộng của thanh ghi tích ngõ ra ($27 + 17 = 44\text{ bit}$).
+    \item \textbf{LPM\_REPRESENTATION = "SIGNED":} Khối \texttt{LPM\_MULT} chỉ có một tham số khai báo kiểu biểu diễn chung cho cả hai toán hạng. Vì $R_n[\tau]$ là số có dấu bù hai (hàm tự tương quan có thể âm), cả hai toán hạng bắt buộc phải được khai báo là "SIGNED".
+    \item \textbf{Bẫy mở rộng bit dấu của $C[\tau]$:} Hệ số $C[\tau]$ bản chất là số không âm định dạng Q2.14 trong dải $[16563, 35030]$. Tại các độ trễ lớn $\tau \ge 170$, giá trị $C[\tau]$ vượt quá $32.767$ (ví dụ $C[214] = 35030$). Nếu người thiết kế ngây thơ khai báo \texttt{LPM\_WIDTHB = 16} với chế độ "SIGNED", bit 15 sẽ bị khối IP hiểu nhầm là bit dấu âm, biến $35030$ thành $-30506$! Do đó, toán hạng $B$ \textbf{bắt buộc phải được mở rộng lên 17 bit} với bit dấu bằng 0: \texttt{\$signed(\{1'b0, rom\_data[31:16]\})}.
+    \item \textbf{LPM\_PIPELINE = 1:} Kích hoạt 1 tầng thanh ghi đường ống ngõ ra, giúp Quartus tận dụng thanh ghi tích có sẵn trong khối DSP phần cứng.
+    \item \textbf{Multiplier Circuitry = Dedicated Multiplier Circuitry:} Ép Quartus ánh xạ phép tính vào khối Variable Precision DSP cứng của Cyclone V.
+\end{itemize}
+
+\paragraph{2. Bộ nhân thứ hai: Tích chi phí quãng tám $R_{0n} \times K[\tau]$}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{LPM\_WIDTHA = 27 bit:} Nhận năng lượng chuẩn hóa $R_{0n}$ ($26\text{ bit}$ không dấu được mở rộng thêm 1 bit dấu 0 thành $27\text{ bit}$ có dấu: \texttt{\$signed(\{1'b0, r0n\_reg\})}).
+    \item \textbf{LPM\_WIDTHB = 16 bit:} Nhận hệ số phạt quãng tám $K[\tau]$ từ ROM ($16\text{ bit}$ có dấu bù hai, dải $[-383, +31504]$).
+    \item \textbf{LPM\_WIDTHP = 43 bit:} Độ rộng thanh ghi tích ngõ ra ($27 + 16 = 43\text{ bit}$).
+    \item \textbf{LPM\_REPRESENTATION = "SIGNED":} Khối IP xử lý phép nhân có dấu giữa $R_{0n} \ge 0$ và $K[\tau]$ (có thể âm tại $\tau = 26$).
+    \item \textbf{LPM\_PIPELINE = 1:} Kích hoạt 1 tầng thanh ghi ngõ ra trong khối DSP.
+\end{itemize}
+
+\subsubsection*{Cơ chế ánh xạ silicon: Khối Variable Precision DSP $27 \times 27$}
+Theo tài liệu \emph{Cyclone V Device Handbook, Volume 1} (CV-52003, Chương 5: "Variable Precision DSP Blocks in Cyclone V Devices"), mỗi khối Variable Precision DSP của Cyclone V có thể được phần mềm Quartus cấu hình động ở một trong hai chế độ độc lập:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Chế độ độc lập thứ nhất: Hai bộ nhân $18 \times 18\text{-bit}$ có dấu độc lập.
+    \item Chế độ độc lập thứ hai: \textbf{Một bộ nhân $27 \times 27\text{-bit}$ có dấu duy nhất}.
+\end{itemize}
+
+Vì phép nhân thứ nhất đòi hỏi kích thước $27 \times 17\text{-bit}$ và phép nhân thứ hai đòi hỏi $27 \times 16\text{-bit}$, cả hai phép tính đều vượt quá giới hạn 18 bit của chế độ thứ nhất, nhưng lại nằm \textbf{vừa khít bên trong giới hạn $27 \times 27\text{-bit}$ của chế độ thứ hai}!
+
+Do đó, Quartus sẽ phân bổ chính xác:
+\begin{equation}
+N_{\text{DSP}} = 1\text{ khối DSP (cho } R_n \times C) + 1\text{ khối DSP (cho } R_{0n} \times K) = \mathbf{2\text{ khối Variable Precision DSP}}
+\end{equation}
+Tổng số khối DSP tiêu tốn trên toàn chip là đúng $2$ trên tổng số $112\text{ khối DSP}$ có sẵn của dòng Cyclone V 5CSXFC6D6F31C6N (chiếm vỏn vẹn $1{,}78\%$ tài nguyên DSP). Các chỉ số tài nguyên logic ALM và tần số hoạt động tối đa $F_{\max}$ là các đại lượng phụ thuộc vào vị trí định tuyến (place-and-route) và \textbf{(phải đo)} bằng công cụ Compilation Report trong Quartus Prime.
+
+\begin{costbox}
+\textbf{Cảnh báo bẫy tiêu hao tài nguyên nếu không chuẩn hóa $\text{sh}$:}
+Nếu người thiết kế bỏ qua bước dịch động $\text{sh}$ và đưa trực tiếp giá trị tự tương quan $R[\tau]$ rộng $43\text{ bit}$ vào nhân với $C[\tau]$ ($16\text{ bit}$), toán hạng 43-bit vượt xa năng lực của một khối DSP $27 \times 27$. 
+Khi đó, Quartus bắt buộc phải phân rã phép nhân thành nhiều tích con: $(R_{\text{high}} \times 2^{18} + R_{\text{low}}) \times C$. Hệ quả là mỗi phép nhân sẽ tiêu tốn từ \textbf{2 đến 3 khối DSP} cộng thêm các bộ cộng ALM bên ngoài để ghép nối kết quả. Toàn bộ khối chuẩn hóa sẽ ngốn từ $4$ đến $6\text{ khối DSP}$ (gấp đôi đến gấp ba lần)! Giải pháp chuẩn hóa động $\text{sh}$ của Golden v2 chính là chiếc chìa khóa vàng giúp tiết kiệm tới $67\%$ tài nguyên DSP.
+\end{costbox}
+
+\subsubsection*{Đoạn mã nguyên mẫu instantiating các khối IP (IP Wrapper Snippet)}
+Dưới đây là đoạn mã Verilog minh họa cách ghép nối các khối IP Intel \texttt{altsyncram} và \texttt{lpm\_mult} theo đúng tham số đã phân tích:
+
+\begin{lstlisting}[language=Verilog, caption={Ghép nối các module IP Intel ROM: 1-PORT và LPM\_MULT cho chuẩn hóa và Octave Cost.}]
+// 1. Khoi ROM: 1-PORT (altsyncram) chua bang tra tich hop {C[tau], K[tau]}
+wire [31:0] rom_q;
+altsyncram #(
+    .operation_mode      ("ROM"),
+    .width_a             (32),
+    .widthad_a           (8),
+    .numwords_a          (256),
+    .outdata_reg_a       ("CLOCK0"),       // Read latency = 1 cycle
+    .init_file           ("golden_v2/rom/ck_rom.hex"),
+    .intended_device_family ("Cyclone V")
+) u_ip_rom (
+    .clock0   (clk),
+    .address_a (rom_addr),                 // 8-bit addr = tau - 26
+    .q_a       (rom_q)                     // [31:16]=C (Q2.14), [15:0]=K (Signed)
+);
+
+// 2. Bo nhan LPM_MULT 1: Rn[tau] x C[tau] (27-bit signed x 17-bit signed)
+wire signed [43:0] prod_c_ip;
+lpm_mult #(
+    .lpm_widtha          (27),
+    .lpm_widthb          (17),
+    .lpm_widthp          (44),
+    .lpm_representation  ("SIGNED"),
+    .lpm_pipeline        (1),              // Registered product
+    .lpm_type            ("LPM_MULT")
+) u_ip_mult_c (
+    .clock  (clk),
+    .dataa  (rn_stage1),                   // 27-bit signed Rn[tau]
+    .datab  ($signed({1'b0, rom_q[31:16]})), // 17-bit signed C[tau]
+    .result (prod_c_ip)                    // 44-bit signed product
+);
+
+// 3. Bo nhan LPM_MULT 2: R0n x K[tau] (27-bit signed x 16-bit signed)
+wire signed [42:0] prod_k_ip;
+lpm_mult #(
+    .lpm_widtha          (27),
+    .lpm_widthb          (16),
+    .lpm_widthp          (43),
+    .lpm_representation  ("SIGNED"),
+    .lpm_pipeline        (1),
+    .lpm_type            ("LPM_MULT")
+) u_ip_mult_k (
+    .clock  (clk),
+    .dataa  ($signed({1'b0, r0n_stage1})),  // 27-bit signed R0n
+    .datab  ($signed(rom_q[15:0])),        // 16-bit signed K[tau]
+    .result (prod_k_ip)                    // 43-bit signed product
+);
+\end{lstlisting}
+
+\textit{Tóm lại: Tuyến thiết kế IP tận dụng đúng 1 khối nhớ M10K (cấu hình $256 \times 32$) và đúng 2 khối Variable Precision DSP ở chế độ $27 \times 27$ nhờ bước chuẩn hóa động $\text{sh}$; việc mở rộng bit dấu $0$ cho hệ số $C[\tau]$ lên 17-bit là bắt buộc để tránh lỗi tràn số bù hai trong khối nhân có dấu của Intel.}
