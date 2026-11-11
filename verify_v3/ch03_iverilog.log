@@ -1,25 +1,7 @@
 === Compiling and running tb_ch03_fir ===
 === STARTING CH03 FIR CYCLE-BY-CYCLE VERIFICATION ===
-[FAIL] Cycle 5: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 21: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 22: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 38: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 39: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 55: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 56: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 72: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 73: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 90: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 91: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 108: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 111: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 128: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 129: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 145: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 146: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 162: sink_ready mismatch (got 1, exp 0)
-[FAIL] Cycle 163: sink_ready mismatch (got 0, exp 1)
-[FAIL] Cycle 179: sink_ready mismatch (got 1, exp 0)
-Too many comparison errors (>= 20). Aborting simulation.
-tb/v3/tb_ch03_fir.v:164: $finish called at 3591000 (1ps)
-ERROR: tb_ch03_fir reported FAIL!
+Simulation completed 3390 cycles.
+Total comparison errors: 0
+=== [PASS] CH03 FIR MATCHED PYTHON TWIN BIT-FOR-BIT AND CYCLE-FOR-CYCLE ON 3390 CYCLES ===
+tb/v3/tb_ch03_fir.v:187: $finish called at 67820000 (1ps)
+=== All Chapter 3 iverilog testbenches passed successfully! ===
