@@ -1,172 +1,178 @@
 % chuong_v3/fig_ch08_norm_arch.tex
 % Sơ đồ kiến trúc vi mô phần cứng của module ch08_norm_score.v
-% Bố cục 2 hàng (2 rows) rõ ràng, font chữ >= \scriptsize, không đường kẻ cắt chữ
+% Bố cục lưới luồng thẳng từ trái sang phải (Left-to-Right Grid):
+% Inputs | Stage 0 | Stage 1 + ROM | Stage 2 DSPs | Stage 3 Round/Sub | Outputs
+% Tuyệt đối không có đường quay ngược, không đường kẻ cắt chữ, lề hộp thoáng rộng.
 \begin{tikzpicture}[
     >=Stealth,
     block/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=2pt,
-                  align=center, font=\scriptsize, inner sep=4pt, minimum height=0.9cm},
+                  align=center, font=\scriptsize, inner sep=4pt},
     romblk/.style={rectangle, draw=orange!80!black, fill=orange!10, thick, rounded corners=2pt,
-                   align=center, font=\scriptsize, inner sep=4pt, minimum height=1.1cm},
+                   align=center, font=\scriptsize, inner sep=4pt},
     dspblk/.style={rectangle, draw=red!75!black, fill=red!8, thick, rounded corners=2pt,
-                   align=center, font=\scriptsize, inner sep=4pt, minimum height=1.0cm},
+                   align=center, font=\scriptsize, inner sep=4pt},
     regblk/.style={rectangle, draw=gray!80!black, fill=gray!20, thick,
-                   align=center, font=\scriptsize\bfseries, inner sep=3pt, minimum width=0.6cm, minimum height=1.1cm},
+                   align=center, font=\scriptsize\bfseries, inner sep=2pt, minimum width=0.55cm},
     roundblk/.style={rectangle, draw=green!60!black, fill=green!8, thick, rounded corners=2pt,
-                     align=center, font=\scriptsize, inner sep=4pt, minimum height=0.95cm},
+                     align=center, font=\scriptsize, inner sep=4pt},
     line/.style={draw, thick, ->, shorten >=1pt},
-    bus/.style={draw, very thick, ->, shorten >=1pt, blue!75!black},
     pipeline/.style={draw=purple!70!black, dashed, very thick}
 ]
 
     % =========================================================================
-    % HÀNG 1: TẦNG 0 (LATCH R0 & TÍNH sh) VÀ TẦNG 1 (ĐỊA CHỈ ROM, ĐỌC ROM, DỊCH Rn)
+    % CỘT 0: NGÕ VÀO MAC (x = 1.2)
     % =========================================================================
-
-    % Khối tín hiệu ngõ vào
-    \node[block, draw=black!80, fill=gray!10, minimum width=2.4cm] (in_box) at (0, 2.3) {
-        \textbf{Ngõ vào MAC}\\[2pt]
+    \node[block, draw=black!80, fill=gray!10, minimum width=2.4cm, minimum height=2.4cm] (in_box) at (1.2, 0.0) {
+        \textbf{Ngõ vào MAC}\\[3pt]
         \texttt{in\_valid}\\
         \texttt{in\_tau [7:0]}\\
         \texttt{in\_R [47:0]}
     };
 
-    % Nhánh xử lý R0 (tau = 0)
-    \node[block, minimum width=2.7cm] (prio) at (3.5, 3.8) {
-        \textbf{Priority Encoder}\\
-        $\text{len} = \text{bitlen}(R_0)$\\
+    % =========================================================================
+    % CỘT 1: TẦNG 0 - XỬ LÝ R0 VÀ TÍNH sh (x = 4.8)
+    % =========================================================================
+    \node[block, minimum width=2.8cm, minimum height=1.3cm] (prio) at (4.8, 1.8) {
+        \textbf{Priority Encoder}\\[2pt]
+        $\text{len} = \text{bitlen}(R_0)$\\[1pt]
         $\text{sh} = \max(0, \text{len} - 26)$
     };
 
-    \node[block, minimum width=2.7cm] (r0n_shift) at (3.5, 2.2) {
+    \node[block, minimum width=2.8cm, minimum height=1.3cm] (r0n_shift) at (4.8, -1.8) {
         \textbf{Bộ dịch $R_0$}\\[2pt]
-        $R_{0n} = R_0 \gg \text{sh}$\\
+        $R_{0n} = R_0 \gg \text{sh}$\\[1pt]
         ($26\text{ bit}$ không dấu)
     };
 
-    % Thanh ghi chốt sh_reg và r0n_reg
-    \node[regblk] (reg_sh) at (5.7, 3.8) {\rotatebox{90}{\textbf{sh\_reg}}};
-    \node[regblk] (reg_r0n) at (5.7, 2.2) {\rotatebox{90}{\textbf{r0n\_reg}}};
+    % Thanh ghi chốt Tầng 0 (x = 6.9)
+    \node[regblk, minimum height=1.3cm] (reg_sh) at (6.9, 1.8) {\rotatebox{90}{\textbf{sh\_reg}}};
+    \node[regblk, minimum height=1.3cm] (reg_r0n) at (6.9, -1.8) {\rotatebox{90}{\textbf{r0n\_reg}}};
 
-    % Nhánh xử lý lag tau (tau in [26, 214])
-    \node[block, minimum width=2.7cm] (rn_shift) at (3.5, 0.4) {
-        \textbf{Bộ dịch số học $R[\tau]$}\\[2pt]
-        $R_n[\tau] = R[\tau] \ggg \text{sh}$\\
-        ($27\text{ bit}$ có dấu)
-    };
-
-    \node[block, minimum width=2.7cm] (addr_gen) at (3.5, -1.2) {
-        \textbf{Địa chỉ tổ hợp ROM}\\[2pt]
-        $\text{addr} = \tau - 26$\\
-        ($\tau \in [26, 214]$, $8\text{ bit}$)
-    };
-
-    % Vách ngăn TẦNG 1 (Chu kỳ 1 / Edge 1)
-    \draw[pipeline] (7.2, 4.7) -- (7.2, -2.0);
-    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (7.2, 4.5) 
-        {TẦNG 1 (Chu kỳ 1 / Edge 1)};
-
-    % Tầng 1: Thanh ghi rn_pipe1 và Khối ROM M10K
-    \node[regblk] (reg_rn1) at (8.3, 0.4) {\rotatebox{90}{\textbf{rn\_pipe1}}};
-    \node[regblk] (reg_r0n1) at (8.3, 2.2) {\rotatebox{90}{\textbf{r0n\_pipe1}}};
-
-    \node[romblk, minimum width=3.4cm] (rom_ck) at (11.0, -1.2) {
-        \textbf{ROM: 1-PORT}\\[1pt]
-        \textbf{ch08\_ck\_rom (1 M10K)}\\
-        $256 \times 32\text{-bit}$ (Trễ 1 nhịp đọc)\\
-        $[31:16] = C[\tau] \text{ (Q2.14)}$\\
-        $[15:0]  = K[\tau] \text{ (Signed 16)}$
-    };
-
-    % Nối dây Hàng 1 (phân nhánh rõ ràng, không đè chữ)
-    \draw[line] (in_box.east) -- ++(0.4,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$\tau = 0$} (prio.west);
-    \draw[line] (in_box.east) -- ++(0.4,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$\tau = 0$} (r0n_shift.west);
+    % Nối dây Cột 0 sang Cột 1
+    \draw[line] (in_box.east) -- ++(0.5,0) |- node[above, font=\scriptsize, fill=white, inner sep=1.5pt, pos=0.7] {$\tau = 0$} (prio.west);
+    \draw[line] (in_box.east) -- ++(0.5,0) |- node[below, font=\scriptsize, fill=white, inner sep=1.5pt, pos=0.7] {$\tau = 0$} (r0n_shift.west);
     \draw[line] (prio.east) -- node[above, font=\scriptsize] {$\text{sh}$} (reg_sh.west);
     \draw[line] (r0n_shift.east) -- node[above, font=\scriptsize] {$R_{0n}$} (reg_r0n.west);
 
-    \draw[line] (in_box.east) -- ++(0.4,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$\tau \ge 26$} (rn_shift.west);
-    \draw[line] (in_box.east) -- ++(0.4,0) |- node[below, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$\tau \ge 26$} (addr_gen.west);
+    % Tuyến tín hiệu tau >= 26 đi dọc trục y = 0 vượt qua Cột 1 và Cột 2 đến x = 8.0
+    \draw[line] (in_box.east) -- node[above, font=\scriptsize, fill=white, inner sep=1.5pt, pos=0.35] {$\tau \ge 26$} ++(6.8,0) coordinate (split_tau);
 
-    % sh đưa xuống bộ dịch Rn: đi vòng qua phía đông reg_sh tại x=6.5 hoàn toàn tránh r0n_reg
-    \draw[line] (reg_sh.east) -- ++(0.6,0) |- node[right, font=\scriptsize, pos=0.25] {$\text{sh}$} (rn_shift.east);
+    % =========================================================================
+    % VÁCH NGĂN TẦNG 1 (x = 7.6)
+    % =========================================================================
+    \draw[pipeline] (7.6, 3.0) -- (7.6, -3.0);
+    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (7.6, 2.8) 
+        {TẦNG 1 (Chu kỳ 1 / Edge 1)};
+
+    % =========================================================================
+    % CỘT 2: TẦNG 1 - TRA CỨU ROM VÀ DỊCH Rn[tau] (x = 9.4 .. 15.2)
+    % =========================================================================
+    % Làn trên: Bộ dịch số học Rn[tau] và thanh ghi rn_pipe1
+    \node[block, minimum width=2.8cm, minimum height=1.3cm] (rn_shift) at (10.2, 1.8) {
+        \textbf{Bộ dịch số học $R[\tau]$}\\[2pt]
+        $R_n[\tau] = R[\tau] \ggg \text{sh}$\\[1pt]
+        ($27\text{ bit}$ có dấu)
+    };
+    \node[regblk, minimum height=1.3cm] (reg_rn1) at (15.2, 1.8) {\rotatebox{90}{\textbf{rn\_pipe1}}};
+
+    % Làn giữa: Địa chỉ tổ hợp và ROM ch08_ck_rom
+    \node[block, minimum width=2.4cm, minimum height=1.3cm] (addr_gen) at (9.4, 0.0) {
+        \textbf{Địa chỉ tổ hợp}\\[2pt]
+        $\text{addr} = \tau - 26$\\[1pt]
+        ($\tau \in [26, 214]$)
+    };
+
+    \node[romblk, minimum width=4.0cm, minimum height=1.5cm] (rom_ck) at (13.5, 0.0) {
+        \textbf{ROM: 1-PORT ch08\_ck\_rom}\\[1pt]
+        $256 \times 32\text{-bit}$ (Trễ 1 nhịp đọc)\\[1pt]
+        $[31:16] = C[\tau] \text{ (Q2.14)}$\\[1pt]
+        $[15:0]  = K[\tau] \text{ (Signed 16)}$
+    };
+
+    % Làn dưới: Chốt trễ r0n_pipe1
+    \node[regblk, minimum height=1.3cm] (reg_r0n1) at (15.2, -1.8) {\rotatebox{90}{\textbf{r0n\_pipe1}}};
+
+    % Nối dây Tầng 1:
+    % R[tau] rẽ lên từ x = 8.0 đi thẳng vào rn_shift.west;
+    % sh đi từ reg_sh.north uốn qua đỉnh ở y = 2.6 vào rn_shift.north (không cắt nhau)
+    \draw[line] (split_tau) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$R[\tau]$} (rn_shift.west);
+    \draw[line] (split_tau) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {$\tau$} (addr_gen.west);
+    \draw[line] (reg_sh.north) |- ++(1.2, 0.7) -| node[above, font=\scriptsize, pos=0.25] {$\text{sh}$} (rn_shift.north);
     \draw[line] (rn_shift.east) -- node[above, font=\scriptsize] {$R_n$} (reg_rn1.west);
-    \draw[line] (reg_r0n.east) -- (reg_r0n1.west);
-    \draw[line] (addr_gen.east) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {$\text{addr}$} (rom_ck.west);
+    \draw[line] (addr_gen.east) -- node[above, font=\scriptsize, fill=white, inner sep=1.5pt] {$\text{addr}$} (rom_ck.west);
+    \draw[line] (reg_r0n.east) -- node[above, font=\scriptsize] {$R_{0n}$} (reg_r0n1.west);
 
     % =========================================================================
-    % CHUYỂN TIẾP TỪ HÀNG 1 XUỐNG HÀNG 2
+    % VÁCH NGĂN TẦNG 2 (x = 16.3)
     % =========================================================================
-    \draw[bus] (reg_rn1.east) -- ++(0.5,0) |- (0.5, -3.5);
-    \draw[bus] (rom_ck.east) -- ++(0.4,0) |- (0.5, -4.4);
-    \draw[bus] (reg_r0n1.east) -- ++(0.7,0) |- (0.5, -5.9);
+    \draw[pipeline] (16.3, 3.0) -- (16.3, -3.0);
+    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (16.3, 2.8) 
+        {TẦNG 2 (Chu kỳ 2 / Edge 2)};
 
     % =========================================================================
-    % HÀNG 2: TẦNG 2 (BỘ NHÂN DSP KÉP) VÀ TẦNG 3 (LÀM TRÒN, TRỪ OCTAVE, NGÕ RA)
+    % CỘT 3: TẦNG 2 - BỘ NHÂN DSP KÉP (x = 18.6 .. 20.8)
     % =========================================================================
-
-    % Khối nhân DSP kép (Tầng 2)
-    \node[dspblk, minimum width=3.4cm] (mult_c) at (4.0, -3.8) {
-        \textbf{Bộ nhân DSP 1: } $R_n[\tau] \times C[\tau]$\\
-        $27\text{s} \times 17\text{s} \to 44\text{s}$\\
+    \node[dspblk, minimum width=3.2cm, minimum height=1.3cm] (mult_c) at (18.6, 1.8) {
+        \textbf{Bộ nhân DSP 1: } $R_n \times C$\\[2pt]
+        $27\text{s} \times 17\text{s} \to 44\text{s}$\\[1pt]
         (1 Variable Precision DSP)
     };
+    \node[regblk, minimum height=1.3cm] (reg_pc) at (20.8, 1.8) {\rotatebox{90}{\textbf{prod\_c\_pipe2}}};
 
-    \node[dspblk, minimum width=3.4cm] (mult_k) at (4.0, -5.6) {
-        \textbf{Bộ nhân DSP 2: } $R_{0n} \times K[\tau]$\\
-        $27\text{s} \times 16\text{s} \to 43\text{s}$\\
+    \node[dspblk, minimum width=3.2cm, minimum height=1.3cm] (mult_k) at (18.6, -1.8) {
+        \textbf{Bộ nhân DSP 2: } $R_{0n} \times K$\\[2pt]
+        $27\text{s} \times 16\text{s} \to 43\text{s}$\\[1pt]
         (1 Variable Precision DSP)
     };
+    \node[regblk, minimum height=1.3cm] (reg_pk) at (20.8, -1.8) {\rotatebox{90}{\textbf{prod\_k\_pipe2}}};
 
-    \draw[line] (0.5, -3.5) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {$R_n[\tau]$} (mult_c.160);
-    \draw[line] (0.5, -4.4) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.75] {$C[\tau]$} (mult_c.200);
-    \draw[line] (0.5, -4.4) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.75] {$K[\tau]$} (mult_k.160);
-    \draw[line] (0.5, -5.9) -- node[below, font=\scriptsize, fill=white, inner sep=1pt] {$R_{0n}$} (mult_k.200);
-
-    % Thanh ghi Tầng 2
-    \node[regblk] (reg_pc) at (6.8, -3.8) {\rotatebox{90}{\textbf{prod\_c\_pipe2}}};
-    \node[regblk] (reg_pk) at (6.8, -5.6) {\rotatebox{90}{\textbf{prod\_k\_pipe2}}};
-
+    % Nối dây Tầng 2: rẽ nhánh C[tau] và K[tau] tại x = 15.8 (trước vách ngăn x = 16.3)
+    \draw[line] (reg_rn1.east) -- node[above, font=\scriptsize] {$R_n[\tau]$} (mult_c.160);
+    \draw[line] (rom_ck.east) -- ++(0.3,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.85] {$C[\tau]$} (mult_c.200);
+    \draw[line] (rom_ck.east) -- ++(0.3,0) |- node[below, font=\scriptsize, fill=white, inner sep=1pt, pos=0.85] {$K[\tau]$} (mult_k.160);
+    \draw[line] (reg_r0n1.east) -- node[below, font=\scriptsize] {$R_{0n}$} (mult_k.200);
     \draw[line] (mult_c.east) -- (reg_pc.west);
     \draw[line] (mult_k.east) -- (reg_pk.west);
 
-    % Vách ngăn TẦNG 2 (Chu kỳ 2 / Edge 2)
-    \draw[pipeline] (7.6, -2.9) -- (7.6, -6.5);
-    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (7.6, -2.9) 
-        {TẦNG 2 (Chu kỳ 2 / Edge 2)};
+    % =========================================================================
+    % VÁCH NGĂN TẦNG 3 (x = 21.7)
+    % =========================================================================
+    \draw[pipeline] (21.7, 3.0) -- (21.7, -3.0);
+    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (21.7, 2.8) 
+        {TẦNG 3 (Chu kỳ 3 / Edge 3)};
 
-    % Tầng 3: Làm tròn và dịch bit
-    \node[roundblk, minimum width=2.9cm] (round_u) at (9.4, -3.8) {
-        \textbf{Làm tròn \& Dịch $U[\tau]$}\\[1pt]
-        $(P_C + 8192) \ggg 14$\\
+    % =========================================================================
+    % CỘT 4: TẦNG 3 - LÀM TRÒN, DỊCH VÀ BỘ TRỪ OCTAVE (x = 23.4 .. 26.6)
+    % =========================================================================
+    \node[roundblk, minimum width=2.6cm, minimum height=1.3cm] (round_u) at (23.4, 1.8) {
+        \textbf{Làm tròn \& Dịch $U[\tau]$}\\[2pt]
+        $(P_C + 8192) \ggg 14$\\[1pt]
         $\to U[\tau]$ ($28\text{ bit}$ có dấu)
     };
 
-    \node[roundblk, minimum width=2.9cm] (round_k) at (9.4, -5.6) {
-        \textbf{Làm tròn \& Dịch $K[\tau]$}\\[1pt]
-        $(P_K + 524288) \ggg 20$\\
+    \node[roundblk, minimum width=2.6cm, minimum height=1.3cm] (round_k) at (23.4, -1.8) {
+        \textbf{Làm tròn \& Dịch $K[\tau]$}\\[2pt]
+        $(P_K + 524288) \ggg 20$\\[1pt]
         $\to \text{term}_K$ ($23\text{ bit}$ có dấu)
     };
 
-    \draw[line] (reg_pc.east) -- (round_u.west);
-    \draw[line] (reg_pk.east) -- (round_k.west);
-
-    % Bộ trừ Octave Cost
-    \node[block, draw=red!70!black, fill=red!5, minimum width=2.7cm] (sub_sc) at (12.4, -4.7) {
-        \textbf{Bộ trừ Octave Cost}\\[1pt]
-        $S_c[\tau] = U[\tau] - \text{term}_K$\\
+    \node[block, draw=red!70!black, fill=red!5, minimum width=2.6cm, minimum height=1.3cm] (sub_sc) at (26.6, 0.0) {
+        \textbf{Bộ trừ Octave Cost}\\[2pt]
+        $S_c[\tau] = U[\tau] - \text{term}_K$\\[1pt]
         ($28\text{ bit}$ có dấu)
     };
 
-    \draw[line] (round_u.east) -- ++(0.3,0) |- (sub_sc.160);
-    \draw[line] (round_k.east) -- ++(0.3,0) |- (sub_sc.200);
+    % Nối dây Tầng 3
+    \draw[line] (reg_pc.east) -- (round_u.west);
+    \draw[line] (reg_pk.east) -- (round_k.west);
+    \draw[line] (round_u.east) -- ++(0.5,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$U[\tau]$} (sub_sc.160);
+    \draw[line] (round_k.east) -- ++(0.5,0) |- node[below, font=\scriptsize, fill=white, inner sep=1pt, pos=0.8] {$\text{term}_K$} (sub_sc.200);
 
-    % Vách ngăn TẦNG 3 (Chu kỳ 3 / Edge 3)
-    \draw[pipeline] (14.2, -2.9) -- (14.2, -6.5);
-    \node[purple!80!black, font=\scriptsize\bfseries, fill=white, inner sep=2pt, rounded corners=1pt] at (14.2, -2.9) 
-        {TẦNG 3 (Chu kỳ 3 / Edge 3)};
-
-    % Khối ngõ ra hoàn tất
-    \node[block, draw=green!70!black, fill=green!5, minimum width=2.8cm] (out_box) at (16.2, -4.7) {
-        \textbf{Thanh ghi ngõ ra}\\[2pt]
+    % =========================================================================
+    % CỘT 5: NGÕ RA HOÀN TẤT (x = 30.0)
+    % =========================================================================
+    \node[block, draw=green!70!black, fill=green!5, minimum width=2.6cm, minimum height=2.4cm] (out_box) at (30.0, 0.0) {
+        \textbf{Thanh ghi ngõ ra}\\[3pt]
         \texttt{out\_valid}, \texttt{out\_last}\\
         \texttt{out\_tau [7:0]}\\
         \texttt{out\_U [27:0]}\\
@@ -174,7 +180,8 @@
         \texttt{out\_R0n}, \texttt{out\_sh}
     };
 
-    \draw[line] (sub_sc.east) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {$S_c$} (out_box.west);
-    \draw[line] (round_u.east) -- ++(0.6,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.85] {$U$} (out_box.150);
+    % Nối dây vào ngõ ra: khoảng cách x = 27.9 đến 28.7 thoáng rộng
+    \draw[line] (sub_sc.east) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {$S_c[\tau]$} (out_box.west);
+    \draw[line] (round_u.east) -- ++(3.8,0) |- node[above, font=\scriptsize, fill=white, inner sep=1pt, pos=0.85] {$U[\tau]$} (out_box.150);
 
 \end{tikzpicture}
