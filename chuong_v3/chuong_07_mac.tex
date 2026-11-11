@@ -768,3 +768,123 @@ altera_mult_add #(
 \end{lstlisting}
 
 \textit{Tóm lại: Khối IP chuẩn trên Cyclone V là \texttt{ALTERA\_MULT\_ADD}; cấu hình toán hạng có dấu $17\text{-bit}$, ngõ ra $48\text{-bit}$, bật thanh ghi vào \texttt{CLOCK0} và cờ nạp đè \texttt{accum\_sload} giúp ánh xạ trọn vẹn thuật toán vào 1 khối DSP Variable Precision cứng (0 ALM) với độ trễ đúng 2 chu kỳ.}
+
+
+\subsection*{7.8. Tuyến (B): Thiết kế Verilog HDL, mô hình song sinh Python và kiểm chứng}
+\addcontentsline{toc}{subsection}{7.8. Tuyến (B): Thiết kế Verilog HDL, mô hình song sinh Python và kiểm chứng}
+
+\subsubsection*{Kiến trúc phân tầng và vai trò của các module phần cứng}
+Hệ thống tự tương quan tuyến (B) được thiết kế theo cấu trúc phân tầng rõ ràng, độc lập hoàn toàn với các thư viện đóng gói độc quyền của nhà sản xuất, giúp mã nguồn có thể mô phỏng và kiểm chứng trên mọi công cụ chuẩn như Icarus Verilog hay Verilator. Hệ thống gồm 3 module chính:
+\begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{\texttt{rtl/v3/ch07\_mac\_engine.v}:}
+    Là bộ điều khiển mức đỉnh (Top Engine) của toàn bộ khối tự tương quan. Module chứa máy trạng thái FSM điều khiển quá trình phát địa chỉ đọc $(n, n+\tau)$ từ RAM, phát cờ nạp đè \texttt{in\_sload} ở đầu mỗi lag và cờ \texttt{in\_last} ở cuối mỗi lag. Ngoài ra, module quản lý các tầng trễ đồng bộ để giữ nhịp cho các cờ điều khiển đi song hành cùng dữ liệu đọc từ RAM.
+    
+    \item \textbf{\texttt{rtl/v3/ch07\_xw\_ram.v}:}
+    Bộ nhớ đệm mẫu tín hiệu cửa sổ True Dual-Port RAM dung lượng 638 từ $\times 17\text{ bit}$. Bộ nhớ này được viết theo chuẩn mã suy diễn (RAM inference template), cho phép Quartus Prime tự động ánh xạ vào 2 khối M10K cứng với cấu hình $512 \times 20$, hỗ trợ 2 cổng đọc độc lập và trả kết quả sau đúng 1 chu kỳ xung nhịp.
+    
+    \item \textbf{\texttt{rtl/v3/ch07\_mac\_unit.v}:}
+    Lõi tính toán nhân-tích lũy $17 \times 17\text{-bit}$ có dấu. Module hiện thực hóa trọn vẹn Phương án 2 (thanh ghi ngõ vào + thanh ghi tích lũy ngõ ra), đạt độ trễ đúng 2 chu kỳ và tự động suy diễn hoàn hảo vào 1 khối Variable Precision DSP của Cyclone V.
+\end{enumerate}
+
+Sơ đồ ghép nối chi tiết và các tầng trễ đường ống được mô tả trên Hình~\ref{fig:ch07_mac_arch}.
+
+\begin{figure}[htbp]
+    \centering
+    \input{chuong_v3/fig_ch07_mac_arch.tex}
+    \caption{Sơ đồ kiến trúc vi mô phần cứng của module tự tương quan MAC (\texttt{ch07\_mac\_engine.v}).}
+    \label{fig:ch07_mac_arch}
+\end{figure}
+
+\subsubsection*{Đọc hình: Luồng dữ liệu và sự phối hợp nhịp nhàng trong đường ống 3 tầng}
+Quan sát Hình~\ref{fig:ch07_mac_arch}, luồng dữ liệu của bộ tự tương quan vận hành tuần tự qua 3 nhịp xung nhịp:
+\begin{itemize}[leftmargin=1.5em, itemsep=3pt]
+    \item \textbf{Nhịp $t$ (Phát địa chỉ tại FSM):} Máy trạng thái \texttt{ch07\_mac\_engine} phát địa chỉ \texttt{addr\_a} = $n$ và \texttt{addr\_b} = $n+\tau$ tới hai cổng của bộ nhớ RAM, đồng thời phát các cờ điều khiển \texttt{sload} (bằng 1 nếu $n=0$) và \texttt{last} (bằng 1 nếu $n = 637-\tau$).
+    \item \textbf{Nhịp $t+1$ (Cân bằng nhịp RAM):} Bộ nhớ M10K chốt địa chỉ ở cạnh lên xung nhịp và xuất hai mẫu dữ liệu $x_w[n]$ và $x_w[n+\tau]$ ở ngõ ra \texttt{ram\_qa} và \texttt{ram\_qb}. Cùng lúc đó, các cờ điều khiển đi qua tầng thanh ghi \texttt{pipe1} để tạo thành \texttt{ram\_sload\_r} và \texttt{ram\_last\_r}, đảm bảo dữ liệu và cờ điều khiển xuất hiện đồng thời tại ngõ vào khối MAC.
+    \item \textbf{Nhịp $t+2$ (Tầng thanh ghi đầu vào DSP):} Khối \texttt{ch07\_mac\_unit} chốt hai mẫu âm thanh vào thanh ghi \texttt{a\_r} và \texttt{b\_r}, chốt cờ điều khiển vào \texttt{sload\_r} và \texttt{last\_r}. Phép nhân $17 \times 17\text{-bit}$ được thực hiện tổ hợp trong khối DSP cứng để sinh tích số $34\text{ bit}$ $p$.
+    \item \textbf{Nhịp $t+3$ (Cập nhật tích lũy và xuất kết quả):} Bộ cộng tích lũy 48-bit chốt giá trị tổng mới vào thanh ghi \texttt{acc}. Nếu \texttt{sload\_r} = 1, thanh ghi nạp trực tiếp giá trị $p$ (đã mở rộng dấu); nếu \texttt{sload\_r} = 0, thanh ghi cộng dồn $p$ vào \texttt{acc}. Khi mẫu cuối cùng của lag tới đích (\texttt{last\_r} = 1), tín hiệu \texttt{out\_valid} bật lên mức cao đúng 1 chu kỳ, báo hiệu kết quả $R[\tau]$ đã sẵn sàng.
+\end{itemize}
+
+Nhờ cơ chế điều khiển nạp đè \texttt{sload}, FSM có thể phát địa chỉ của lag kế tiếp ngay tại chu kỳ tiếp theo mà không cần chèn bất kỳ chu kỳ trống (bubble cycle) nào.
+
+\subsubsection*{Phân tích đoạn mã Verilog khối tính toán MAC lõi}
+Dưới đây là đoạn mã nguồn hiện thực khối MAC lõi trong tệp \texttt{rtl/v3/ch07\_mac\_unit.v} (các dòng từ 33 đến 71):
+
+\lstinputlisting[language=Verilog, firstline=33, lastline=71, firstnumber=33, caption={Đoạn mã Verilog của khối tính toán MAC lõi (rtl/v3/ch07\_mac\_unit.v).}]{\detokenize{rtl/v3/ch07_mac_unit.v}}
+
+Giải thích chi tiết từng dòng mã nguồn của khối MAC lõi:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 33--35:} Khai báo các thanh ghi thuộc Tầng 1 (Input Register Bank): hai thanh ghi toán hạng có dấu 17-bit \texttt{a\_r}, \texttt{b\_r} và các cờ trạng thái \texttt{v\_r}, \texttt{sload\_r}, \texttt{last\_r}.
+    \item \textbf{Dòng 37--44:} Khối \texttt{always} nhạy với cạnh lên xung nhịp và cạnh xuống của tín hiệu reset tích cực mức thấp \texttt{rst\_n}. Khi \texttt{rst\_n = 0}, toàn bộ thanh ghi đầu vào được xóa đồng bộ về 0.
+    \item \textbf{Dòng 45--50:} Ở chế độ hoạt động bình thường, các ngõ vào được chốt trực tiếp vào thanh ghi tại cạnh lên xung nhịp, giúp cách ly hoàn toàn đường trễ từ bus RAM tới bộ nhân silicon.
+    \item \textbf{Dòng 54:} Khai báo dây tích số \texttt{p} rộng 34 bit có dấu. Phép nhân \texttt{a\_r * b\_r} là logic tổ hợp thuần túy bên trong khối silicon DSP cứng.
+    \item \textbf{Dòng 57--58:} Khai báo hằng số \texttt{EXT\_W = 14} và thực hiện mở rộng dấu tường minh (explicit sign-extension) từ tích số 34 bit sang 48 bit (\texttt{p\_ext}), đảm bảo khi cộng dồn vào bộ tích lũy 48-bit giá trị âm luôn được giữ đúng dấu số học.
+    \item \textbf{Dòng 61--65:} Khối \texttt{always} của Tầng 2 quản lý thanh ghi tích lũy \texttt{acc} và cờ hợp lệ ngõ ra \texttt{out\_valid}. Khi reset, các thanh ghi này được đưa về 0.
+    \item \textbf{Dòng 66--68:} Khi cờ hợp lệ \texttt{v\_r = 1}, thanh ghi tích lũy được cập nhật. Nếu \texttt{sload\_r = 1} (mẫu đầu tiên của lag mới), bộ tích lũy nạp đè giá trị \texttt{p\_ext} (zero-bubble reset); ngược lại, nó cộng dồn \texttt{acc <= acc + p\_ext}.
+    \item \textbf{Dòng 69:} Cờ \texttt{out\_valid} được gán bằng \texttt{v\_r \& last\_r}, đảm bảo chỉ tích cực mức cao đúng 1 chu kỳ tại thời điểm thanh ghi \texttt{acc} chứa tổng hoàn chỉnh của toàn bộ $638-\tau$ tích số.
+\end{itemize}
+
+\subsubsection*{Mô hình song sinh Python chu-kỳ-đối-chu-kỳ (Cycle-Accurate Twin)}
+Để phục vụ việc tự động sinh vector kiểm chứng cho testbench mà không phụ thuộc vào các hàm ngẫu nhiên hay giả định chủ quan, mô hình song sinh phần mềm \texttt{verify\_v3/ch07\_mac\_twin.py} được xây dựng với hành vi chính xác tới từng chu kỳ và từng bit dữ liệu. Hàm cập nhật trạng thái \texttt{step()} của lớp \texttt{MacUnitTwin} được thể hiện trong Listing sau:
+
+\lstinputlisting[language=Python, firstline=50, lastline=98, firstnumber=50, caption={Hàm cập nhật chu kỳ từng nhịp của mô hình song sinh Python (verify/v3/ch07\_mac\_twin.py).}]{\detokenize{verify_v3/ch07_mac_twin.py}}
+
+Giải thích chi tiết các bước thực thi trong hàm \texttt{step()}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 50--57:} Định nghĩa hàm \texttt{step()} nhận các tín hiệu điều khiển ngõ vào và hai toán hạng $a$, $b$. Quy ước thời gian được tuân thủ nghiêm ngặt: đầu vào được cấp trước cạnh lên xung nhịp, ngõ ra thanh ghi được đọc ra, sau đó trạng thái nội bộ mới cập nhật.
+    \item \textbf{Dòng 58--63:} Xử lý reset tích cực mức thấp. Nếu \texttt{rst\_n = 0}, hàm gọi \texttt{self.reset()} và trả về các giá trị ngõ ra bằng 0.
+    \item \textbf{Dòng 65--76:} Tính toán logic tổ hợp của Tầng 2 dựa trên trạng thái hiện tại của thanh ghi Tầng 1 (\texttt{v\_r}, \texttt{sload\_r}, \texttt{last\_r}, \texttt{a\_r}, \texttt{b\_r}). Phép nhân số nguyên có dấu $34\text{ bit}$ được thực hiện, sau đó kiểm tra điều kiện nạp đè \texttt{sload\_r} hoặc cộng dồn. Hàm \texttt{to\_signed(next\_acc, 48)} bảo đảm kết quả luôn được cuộn đúng theo chuẩn số nguyên bù hai 48-bit.
+    \item \textbf{Dòng 78--84:} Tính toán các giá trị trạng thái tiếp theo cho tầng thanh ghi ngõ vào Tầng 1, mô phỏng việc chốt dữ liệu ở cạnh lên xung nhịp.
+    \item \textbf{Dòng 86--93:} Chốt đồng thời tất cả các thanh ghi nội bộ sang trạng thái mới, tương đương với hành vi của các flip-flop vật lý trên FPGA.
+    \item \textbf{Dòng 95--98:} Trả về từ điển trạng thái ngõ ra \texttt{out\_valid} và \texttt{acc} tương ứng với chu kỳ xung nhịp hiện tại.
+\end{itemize}
+
+\subsubsection*{Bảng đối chiếu dòng mã nguồn giữa Python Twin và Verilog HDL}
+Bảng~\ref{tab:ch07_twin_vs_hdl} đối chiếu chi tiết giữa từng khối lệnh trong mô hình song sinh Python và khối mã Verilog HDL tương ứng, minh chứng tính tương đương cấu trúc tuyệt đối giữa phần mềm mô phỏng và phần cứng.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Đối chiếu chi tiết giữa mô hình song sinh Python Twin và mã nguồn Verilog HDL.}
+\label{tab:ch07_twin_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.2cm} p{3.2cm} X}
+\toprule
+\textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa kỹ thuật và cơ chế hoạt động} \\
+\midrule
+Dòng 58--63 & Dòng 38--44, 62--64 & Khởi tạo và reset tích cực mức thấp, xóa toàn bộ thanh ghi Tầng 1 và Tầng 2 về 0. \\
+\addlinespace[3pt]
+Dòng 66, 93 & Dòng 69 & Tạo cờ ngõ ra \texttt{out\_valid = v\_r \& last\_r}, tích cực mức cao đúng nhịp mẫu cuối cùng. \\
+\addlinespace[3pt]
+Dòng 69--70 & Dòng 54 & Thực hiện nhân tổ hợp có dấu $17 \times 17\text{-bit}$ tạo tích số $34\text{ bit}$ bù hai ($p = a \times b$). \\
+\addlinespace[3pt]
+Dòng 71--74 & Dòng 58, 67 & Nạp đè tích mới khi \texttt{sload\_r = 1} (khởi tạo lag mới) hoặc cộng dồn vào tổng cũ khi \texttt{sload\_r = 0}. \\
+\addlinespace[3pt]
+Dòng 76 & Dòng 20, 29, 60 & Ràng buộc dải động thanh ghi tích lũy $48\text{ bit}$ có dấu bù hai, chống tràn số học. \\
+\addlinespace[3pt]
+Dòng 78--90 & Dòng 45--50 & Chốt các toán hạng và cờ điều khiển vào Tầng thanh ghi đầu vào ở cạnh lên xung nhịp. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Kết quả kiểm chứng bit-đối-bit và chu-kỳ-đối-chu-kỳ}
+Quy trình kiểm chứng tự tương quan được thực thi trên tập dữ liệu chuẩn tắc gồm 16 khung âm thanh trích xuất từ kho lưu trữ kiểm chuẩn \texttt{golden\_v2/hdl\_check/}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{14 khung âm thanh tiếng nói:} Lấy từ các đoạn tín hiệu ngữ âm thực tế có chứa nhiễu nền ở các mức SNR khác nhau, phản ánh đặc tính dải động và hình thái phổ đa dạng của giọng nói con người.
+    \item \textbf{2 khung kiểm thử áp lực (Stress Frames):} Khung tín hiệu nhân tạo có biên độ cực đại đạt xấp xỉ full-scale ($|x_w| = 59.379$), nhằm kiểm tra khả năng chịu tải và chống tràn bit của bộ tích lũy trong điều kiện khắc nghiệt nhất.
+\end{itemize}
+
+Mỗi khung âm thanh thực hiện quét đủ 190 giá trị lag (bao gồm lag $\tau = 0$ và 189 lag $\tau = 26..214$). Tổng số kết quả tự tương quan được đối chiếu là:
+\begin{equation}
+16\text{ khung} \times 190\text{ giá trị lag/khung} = \mathbf{3.040\text{ kết quả kiểm chứng}}
+\end{equation}
+
+Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đối chiếu trực tiếp từng giá trị trong số $3.040$ kết quả phần cứng với tệp kết quả mẫu chuẩn \texttt{golden\_v2/hdl\_check/exp.hex}. Kết quả ghi nhận:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Tỷ lệ khớp bit: \textbf{3.040 / 3.040 kết quả} đạt độ chính xác tuyệt đối ($100\%$, 0 sai lệch).
+    \item Số chu kỳ thực thi cho mỗi khung: đúng \textbf{98.543 chu kỳ xung nhịp} ($98.540$ chu kỳ phát địa chỉ $+ 3$ chu kỳ trễ đường ống).
+\end{itemize}
+
+Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi tiết (bao gồm cả các kiểm thử biên reset, kích hoạt cờ \texttt{sload} ngẫu nhiên và dồn mẫu liên tục) lưu tại \texttt{verify\_v3/tb\_ch07\_mac\_stim.txt} và \texttt{verify\_v3/tb\_ch07\_mac\_expected.txt}. Testbench \texttt{tb/v3/tb\_ch07\_mac.v} được thiết kế để đọc và so sánh toàn bộ các vector này trên môi trường mô phỏng Icarus Verilog.
+
+\todo[inline]{box: Kết quả chạy iverilog trên Linux: 7.460 vector kiểm chứng chu-kỳ-đối-chu-kỳ, 3.040 kết quả tự tương quan qua 16 khung khớp bit 100\% với golden\_v2/hdl\_check/exp.hex, 0 lỗi sai lệch.}
+
+\textit{Tóm lại: Khối MAC HDL tự viết tái lập hoàn hảo cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ; toàn bộ 3.040 kết quả tự tương quan trên 16 khung thử nghiệm đạt độ khớp bit tuyệt đối $100\%$ với chuẩn golden.}
