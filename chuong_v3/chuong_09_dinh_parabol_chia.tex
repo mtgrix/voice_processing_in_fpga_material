@@ -407,4 +407,83 @@ Cả hai toán hạng đưa vào bộ chia đều là số nguyên dương khôn
 
 \textit{Tóm lại: Đỉnh liên tục tau* = tau_p + delta được gộp với phép chia cao độ thành đúng một phép chia số nguyên duy nhất F0_Q12.4 = round(512000*den / (2*den*tau_p + num)); cơ chế chuẩn hóa động s2 khống chế toán hạng vừa khít trong LPM_WIDTHN = 44 bit và LPM_WIDTHD = 34 bit không dấu.}
 
+\subsection*{9.4. Các phương án thiết kế bộ chia phần cứng, sự đánh đổi và lựa chọn}
+\addcontentsline{toc}{subsection}{9.4. Các phương án thiết kế bộ chia phần cứng, sự đánh đổi và lựa chọn}
+
+\subsubsection*{Vấn đề thực tế: Bài toán chia số nguyên không có silicon chuyên dụng}
+Trong thiết kế vi mạch FPGA, phép chia số nguyên (ở đây là $44\text{ bit}$ chia cho $34\text{ bit}$) luôn là phép toán có chi phí đắt đỏ nhất. Khác với phép nhân và cộng dồn được silicon ưu ái đúc sẵn hàng trăm khối phần cứng Variable Precision DSP chuyên dụng (như ta đã khai thác triệt để ở Chương 7 và 8), dòng chip Cyclone V \textbf{hoàn toàn không có khối chia cứng} (no dedicated hardware divider blocks). Mọi phép chia dù lớn hay nhỏ đều bắt buộc phải được xây dựng từ các phần tử logic vạn năng ALM và các thanh ghi flip-flop.
+
+Một chuỗi phép chia $44\text{ bit}$ đòi hỏi 44 phép trừ và dịch bit liên tiếp. Nếu một kỹ sư không tính toán kỹ lưỡng mối quan hệ giữa thông lượng, độ trễ và ngân sách thời gian thực, hệ thống sẽ rơi vào một trong hai cái bẫy: hoặc bị vi phạm định thời xung nhịp $50\text{ MHz}$, hoặc bị lãng phí diện tích ALM một cách vô nghĩa.
+
+\begin{figure}[H]
+\centering
+\input{chuong_v3/fig_ch09_divider_arch.tex}
+\caption{So sánh toàn diện ba phương án kiến trúc bộ chia phần cứng trên FPGA Cyclone V.}
+\label{fig:ch09_divider_arch}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch09_divider_arch} đặt ba kiến trúc bộ chia cạnh nhau để so sánh trực diện. Phương án (a) mắc nối tiếp 44 tầng trừ tổ hợp thuần túy, tạo ra đường tới hạn kéo dài hơn $25\text{ ns}$, không thể chạy ở xung nhịp $50\text{ MHz}$. Phương án (b) sử dụng lõi IP \texttt{LPM\_DIVIDE} của Intel chèn thanh ghi vào cả 44 tầng, đạt thông lượng tối đa $1\text{ kết quả/chu kỳ}$ nhưng tiêu tốn tới $500\text{ ALM}$ và bị lãng phí tới $99{,}99\%$ chu kỳ chạy rỗng. Phương án (c) là bộ chia tuần tự Radix-2 được tài liệu này lựa chọn: chỉ dùng đúng 1 bộ trừ tái sử dụng trong 44 nhịp, tiêu tốn chưa tới $100\text{ ALM}$ và chiếm vỏn vẹn $0{,}009\%$ ngân sách thời gian của khung.
+
+\subsubsection*{Ba phương án kiến trúc phần cứng}
+Ta tiến hành phân tích chi tiết ba phương án thiết kế bộ chia $44/34\text{ bit}$ trên nền tảng Cyclone V:
+
+\begin{enumerate}[leftmargin=1.5em, itemsep=4pt]
+    \item \textbf{Phương án 1: Bộ chia tổ hợp thuần (Combinational Array Divider).}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Nguyên lý:} Kết nối liên hoàn 44 tầng ô trừ mượn bit (subtractor-multiplexer cell) hoàn toàn bằng các cổng logic tổ hợp mà không đặt bất kỳ thanh ghi chốt nào ở giữa.
+        \item \emph{Độ trễ và thông lượng:} Độ trễ bằng 0 chu kỳ đồng hồ (kết quả xuất hiện ngay trong cùng chu kỳ nạp toán hạng). Thông lượng đạt 1 phép chia/chu kỳ.
+        \item \emph{Đường tới hạn (Critical Path):} Tín hiệu phải truyền qua 44 bộ cộng trừ có nhớ lan truyền (carry ripple) liên tiếp. Trên công nghệ bán dẫn $28\text{ nm}$ của Cyclone V, thời gian trễ lan truyền của chuỗi logic này vượt quá \textbf{$25\text{ ns}$} (thậm chí lên tới $30\text{ ns}$ tùy thuộc vào việc đặt vị trí của Fitter).
+        \item \emph{Hậu quả:} Tần số hoạt động tối đa $F_{\max} < 40\text{ MHz}$ (phải đo). Ở xung nhịp chuẩn hệ thống $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$), đường truyền này \textbf{vi phạm thời gian định thời thiết lập (setup timing violation)} nghiêm trọng, gây lỗi sai số cao độ ngẫu nhiên.
+    \end{itemize}
+
+    \item \textbf{Phương án 2: Bộ chia đường ống hoàn toàn LPM\_DIVIDE (Intel IP Core).}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Nguyên lý:} Sử dụng lõi IP \texttt{LPM\_DIVIDE} của Intel được cấu hình với độ sâu đường ống tối đa $\texttt{LPM\_PIPELINE} = 44$. Mỗi tầng logic trừ được chốt lại bởi một hàng thanh ghi flip-flop.
+        \item \emph{Độ trễ và thông lượng:} Độ trễ (latency) là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ tại $50\text{ MHz}$). Thông lượng (throughput) đạt đỉnh cao: \textbf{1 kết quả mỗi chu kỳ đồng hồ}.
+        \item \emph{Tần số và tài nguyên:} Tần số hoạt động đạt $F_{\max} > 150\text{ MHz}$ (dư dả ở $50\text{ MHz}$). Tuy nhiên, để duy trì đường ống dẫn 44 tầng cho các toán hạng rộng 44 bit và 34 bit, Quartus phải tiêu tốn khoảng \textbf{$450$ đến $600\text{ ALM}$} và hàng trăm thanh ghi flip-flop (phải đo).
+        \item \emph{Nghịch lý lãng phí thông lượng:} Ở hệ thống xử lý âm thanh thời gian thực với bước nhảy khung $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$), mỗi khung tương ứng với $500.000\text{ chu kỳ}$ ở $50\text{ MHz}$. Trong suốt $500.000\text{ chu kỳ}$ đó, khối F0 chỉ cần thực hiện \textbf{đúng một phép chia duy nhất} sau khi bộ dò đỉnh tìm ra $\tau_p$. Bộ chia đường ống có khả năng tính 500.000 phép chia mỗi khung, nhưng ta chỉ dùng đúng 1 phép chia và để mạch đứng chơi (idle) trong $499.956\text{ chu kỳ}$ còn lại ($99{,}991\%$ thời gian)!
+    \end{itemize}
+
+    \item \textbf{Phương án 3: Bộ chia tuần tự Radix-2 (Sequential Restoring Divider) --- Lựa chọn chốt.}
+    \begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+        \item \emph{Nguyên lý:} Thu gọn toàn bộ 44 tầng trừ thành \textbf{đúng một bộ trừ $44\text{ bit}$ duy nhất}. Mạch sử dụng một thanh ghi dịch kết hợp số dư--thương số rộng $88\text{ bit}$ và một bộ đếm bước $6\text{ bit}$. Trong mỗi nhịp đồng hồ, mạch thực hiện một thao tác dịch trái, trừ thử và khôi phục (restoring division step) để xác định đúng 1 bit thương số.
+        \item \emph{Độ trễ và thông lượng:} Độ trễ là đúng \textbf{44 chu kỳ đồng hồ} ($880\text{ ns}$ ở $50\text{ MHz}$), hoàn toàn bằng với độ trễ của bộ chia đường ống ở Phương án 2. Thông lượng là 1 phép chia mỗi 45 chu kỳ (cần 1 nhịp nạp lệnh).
+        \item \emph{Tần số và tài nguyên:} Vì mỗi nhịp chỉ thực hiện duy nhất một phép trừ và chọn bit đơn giản, đường tới hạn cực ngắn, đạt $F_{\max} > 150\text{ MHz}$. Đặc biệt, tài nguyên tiêu tốn chỉ vỏn vẹn khoảng \textbf{$80$ đến $120\text{ ALM}$} (phải đo), \textbf{0 khối DSP, 0 khối M10K}.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Phân tích ngân sách chu kỳ: 44 nhịp trên nửa triệu chu kỳ}
+Hãy đặt độ trễ $44\text{ chu kỳ}$ của bộ chia tuần tự vào bức tranh toàn cảnh ngân sách thời gian thực của hệ thống trên FPGA DE10-Standard (xung nhịp $50\text{ MHz}$):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Thời gian khả dụng cho mỗi khung:} Tại $f_s = 16.000\text{ Hz}$, mỗi bước nhảy khung $10\text{ ms}$ chứa đúng 160 mẫu âm thanh mới. Số chu kỳ đồng hồ FPGA khả dụng trong một bước nhảy là:
+    \begin{equation}
+    T_{\text{khung}} = 160 \times \frac{50.000.000}{16.000} = 160 \times 3125 = \mathbf{500.000\text{ chu kỳ}}
+    \end{equation}
+    \item \textbf{Thời gian chạy của khối MAC (Chương 7):} $98.543\text{ chu kỳ}$ ($R[0]$ cộng 189 lag $\tau = 26..214$).
+    \item \textbf{Thời gian chuẩn hóa và dò đỉnh (Chương 8 và 9):} Chạy gối đầu (pipelined overlap) song song trực tiếp với luồng ra của MAC, chỉ tốn thêm 1 nhịp sau khi lag cuối $\tau = 214$ kết thúc.
+    \item \textbf{Thời gian chạy của bộ chia tuần tự:} Đúng \textbf{44 chu kỳ đồng hồ}.
+\end{itemize}
+
+Tỷ lệ thời gian mà bộ chia tuần tự chiếm dụng trong ngân sách khung là:
+\begin{equation}
+\text{Tỷ lệ chu kỳ} = \frac{44}{500.000} = 0{,}000088 = \mathbf{0{,}0088\%}
+\end{equation}
+
+Con số $0{,}0088\%$ này nhỏ đến mức gần như vô hình. Việc đánh đổi một bộ chia đường ống cồng kềnh (tốn hơn $500\text{ ALM}$) để lấy thông lượng 1 kết quả/chu kỳ không dùng đến là một thiết kế kém cỏi. Bộ chia tuần tự Radix-2 mang lại hiệu năng định thời hoàn hảo ở $50\text{ MHz}$, bảo tồn diện tích chip và đáp ứng dư dả yêu cầu thời gian thực.
+
+\subsubsection*{Quyết định thiết kế và quy ước khớp chu kỳ}
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Tuyến (B) --- HDL tự viết (Chốt chính thức):} Triển khai module bộ chia tuần tự khôi phục \texttt{ch09\_radix2\_div.v} với tham số $\texttt{WIDTHN} = 44$ và $\texttt{WIDTHD} = 34$, hoàn tất phép tính sau đúng $44\text{ chu kỳ}$.
+    \item \textbf{Tuyến (A) --- Intel IP Catalog:} Sử dụng module \texttt{lpm\_divide} với cấu hình $\texttt{LPM\_PIPELINE} = 44$. 
+\end{enumerate}
+
+\begin{thoughtqa}{Khớp chu kỳ (Cycle-matching) ở đây có ý nghĩa gì?}
+Khớp chu kỳ giữa Tuyến A và Tuyến B trong chương này không có nghĩa là bắt hai bộ chia phải có cùng thông lượng qua từng nhịp (bộ chia tuần tự không thể nhận dữ liệu mới mỗi nhịp như bộ chia đường ống). 
+
+\textbf{Khớp chu kỳ có nghĩa là cùng độ trễ (latency):} Từ thời điểm cờ khởi động \texttt{start} được phát ra, cả hai tuyến đều mất đúng \textbf{44 chu kỳ đồng hồ} để đưa cờ hoàn tất \texttt{done} và giá trị thương số hợp lệ ra thanh ghi ngõ ra. Nhờ sự đồng nhất tuyệt đối về độ trễ này, máy trạng thái FSM điều phối của lõi FPGA ở Chương 12 có thể hoán đổi linh hoạt giữa module IP Intel và module HDL tự viết mà không cần thay đổi bất kỳ một dòng mã điều khiển nào!
+\end{thoughtqa}
+
+\textit{Tóm lại: Trong ngân sách 500.000 chu kỳ của mỗi khung âm thanh 10 ms, bộ chia tuần tự Radix-2 chỉ mất đúng 44 chu kỳ (0,0088% thời gian) nhưng tiết kiệm hơn 80% diện tích logic ALM so với bộ chia đường ống LPM_DIVIDE; hai tuyến được thiết kế cùng độ trễ 44 nhịp để có thể thay thế tương đương trong hệ thống.}
+
+
 
