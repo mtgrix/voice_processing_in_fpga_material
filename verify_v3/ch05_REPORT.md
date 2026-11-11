@@ -96,3 +96,4 @@ Toàn bộ tiến trình phát triển và kiểm chứng Chương 5 được l�
 - `6cbe36e`: `v3: ch05 done` (Hoàn thành triển khai đợt 1 Chương 5).
 - `593682f`: `v3: ch05 r1 twin-hdl protocol and math audit` (Revision Round 1: Chuẩn hóa giao thức mean_valid 1 chu kỳ xung nhịp trong rtl/v3/ch05_local_mean.v và twin; tái sinh vector kiểm thử LF; kiểm định chính xác sai số Argon 10.485.605 vs 10.485.595 của agenda; dọn dẹp các phát biểu kết quả mô phỏng chưa đo sang todo{box}).
 - `38e040d`: `v3: ch05 r1 figures 9 10 11 visual fixes` (Revision Round 1: Thiết kế lại và căn chỉnh Hình 9, Hình 10, Hình 11 TikZ; loại bỏ hoàn toàn đè chữ, cắt đường và cảnh báo Overfull hbox).
+- `c07f023`: `v3: ch05 r1 tone and report` (Revision Round 1: Rà soát và chuẩn hóa văn phong học thuật trung tính, làm sạch các từ ngữ cường điệu, giữ nguyên kết quả đo 100% N/N, đồng bộ báo cáo nghiệm thu).
