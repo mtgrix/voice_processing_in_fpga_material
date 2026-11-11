@@ -1,0 +1,113 @@
+% chuong_v3/fig_ch07_pipeline_options.tex
+% So sánh ba phương án chốt thanh ghi đường ống trong khối MAC
+
+\begin{tikzpicture}[
+    >=latex,
+    font=\small,
+    box/.style={draw=black!80, rounded corners=3pt, line width=0.8pt, fill=white, align=center, inner sep=4pt},
+    dspbox/.style={draw=blue!80!black, rounded corners=3pt, line width=0.8pt, fill=blue!5, align=center, inner sep=4pt},
+    regbox/.style={draw=red!80!black, rounded corners=2pt, line width=0.9pt, fill=red!10, align=center, inner sep=3pt},
+    critline/.style={->, line width=1.1pt, red!80!black, dashed},
+    lbl/.style={font=\scriptsize, text=black!85, fill=white, inner sep=1.5pt},
+    optlbl/.style={font=\bfseries\small, text=black!90, anchor=west}
+]
+
+    % =========================================================================
+    % Phương án 1: Không chốt toán hạng (Đường tới hạn dài)
+    % =========================================================================
+    \node[optlbl] at (-0.5, 5.0) {\textbf{Phương án 1: Không chốt toán hạng (Trễ 2 chu kỳ, đường tới hạn dài)}};
+
+    \node[box, minimum width=1.8cm, minimum height=1.0cm] (m10k_1) at (0.8, 3.8) {
+        \scriptsize M10K RAM\\
+        \scriptsize (Đọc 1 nhịp)
+    };
+
+    \node[dspbox, minimum width=1.8cm, minimum height=1.0cm] (mult_1) at (3.8, 3.8) {
+        \scriptsize Bộ nhân\\
+        \scriptsize $17\times 17$ bit
+    };
+
+    \node[dspbox, minimum width=1.8cm, minimum height=1.0cm] (add_1) at (6.8, 3.8) {
+        \scriptsize Bộ cộng\\
+        \scriptsize dồn 48-bit
+    };
+
+    \node[regbox, minimum width=1.8cm, minimum height=1.0cm] (acc_1) at (9.8, 3.8) {
+        \scriptsize Thanh ghi\\
+        \scriptsize tổng \texttt{acc}
+    };
+
+    \draw[->, line width=0.9pt] (m10k_1.east) -- (mult_1.west) node[midway, above, lbl] {$x_w$};
+    \draw[->, line width=0.9pt] (mult_1.east) -- (add_1.west) node[midway, above, lbl] {$p$};
+    \draw[->, line width=0.9pt] (add_1.east) -- (acc_1.west);
+    \draw[->, line width=0.8pt] (acc_1.south) -- ++(0,-0.4) -| (add_1.south);
+
+    \draw[critline] (0.8, 3.1) -- (9.8, 3.1)
+        node[midway, below, font=\scriptsize, text=red!80!black] {Đường tới hạn dài: $T_{\text{co}}(\text{M10K}) + T_{\text{wire}} + T_{\text{mult}} + T_{\text{add}} + T_{\text{su}}$};
+
+    % =========================================================================
+    % Phương án 2: Chốt toán hạng ở cửa DSP (Phương án chọn)
+    % =========================================================================
+    \node[optlbl] at (-0.5, 2.3) {\textbf{Phương án 2 (ĐÃ CHỌN): Chốt toán hạng ở cửa DSP (Trễ 3 chu kỳ, chặng cân bằng)}};
+
+    \node[box, minimum width=1.8cm, minimum height=1.0cm] (m10k_2) at (0.8, 1.1) {
+        \scriptsize M10K RAM\\
+        \scriptsize (Đọc 1 nhịp)
+    };
+
+    \node[regbox, minimum width=1.6cm, minimum height=1.0cm] (inreg_2) at (3.2, 1.1) {
+        \scriptsize Thanh ghi vào\\
+        \scriptsize \texttt{a\_r, b\_r} (DSP)
+    };
+
+    \node[dspbox, minimum width=1.8cm, minimum height=1.0cm] (mult_2) at (5.7, 1.1) {
+        \scriptsize Bộ nhân\\
+        \scriptsize $17\times 17$ bit
+    };
+
+    \node[dspbox, minimum width=1.8cm, minimum height=1.0cm] (add_2) at (8.1, 1.1) {
+        \scriptsize Bộ cộng\\
+        \scriptsize dồn 48-bit
+    };
+
+    \node[regbox, minimum width=1.6cm, minimum height=1.0cm] (acc_2) at (10.5, 1.1) {
+        \scriptsize Thanh ghi\\
+        \scriptsize tổng \texttt{acc}
+    };
+
+    \draw[->, line width=0.9pt] (m10k_2.east) -- (inreg_2.west) node[midway, above, lbl] {$x_w$};
+    \draw[->, line width=0.9pt] (inreg_2.east) -- (mult_2.west);
+    \draw[->, line width=0.9pt] (mult_2.east) -- (add_2.west) node[midway, above, lbl] {$p$};
+    \draw[->, line width=0.9pt] (add_2.east) -- (acc_2.west);
+    \draw[->, line width=0.8pt] (acc_2.south) -- ++(0,-0.35) -| (add_2.south);
+
+    \node[draw=blue!70!black, fill=blue!5, rounded corners=2pt, inner sep=3pt, anchor=west] at (0.0, -0.1) {
+        \scriptsize $\checkmark$ \textbf{Ưu điểm cốt lõi:} Dùng thanh ghi cứng có sẵn trong silicon DSP (0 ALM); chia đôi đường tới hạn; trễ 3 nhịp chỉ chiếm 0,001\% thời gian.
+    };
+
+    % =========================================================================
+    % Phương án 3: Chốt thêm cả tích số (Tốn ALM ngoài)
+    % =========================================================================
+    \node[optlbl] at (-0.5, -1.1) {\textbf{Phương án 3: Chốt thêm cả tích số giữa bộ nhân và bộ cộng (Trễ 4 chu kỳ)}};
+
+    \node[box, minimum width=1.6cm, minimum height=0.9cm] (m10k_3) at (0.8, -2.1) {\scriptsize M10K RAM};
+    \node[regbox, minimum width=1.4cm, minimum height=0.9cm] (inreg_3) at (2.8, -2.1) {\scriptsize \texttt{a\_r, b\_r}};
+    \node[dspbox, minimum width=1.6cm, minimum height=0.9cm] (mult_3) at (5.0, -2.1) {\scriptsize Bộ nhân};
+    \node[regbox, draw=red!90!black, fill=red!20, minimum width=1.5cm, minimum height=0.9cm] (preg_3) at (7.2, -2.1) {
+        \scriptsize Thanh ghi tích\\
+        \scriptsize $\approx 32\text{ FF ngoài}$
+    };
+    \node[dspbox, minimum width=1.6cm, minimum height=0.9cm] (add_3) at (9.4, -2.1) {\scriptsize Bộ cộng};
+    \node[regbox, minimum width=1.4cm, minimum height=0.9cm] (acc_3) at (11.4, -2.1) {\scriptsize \texttt{acc}};
+
+    \draw[->, line width=0.8pt] (m10k_3.east) -- (inreg_3.west);
+    \draw[->, line width=0.8pt] (inreg_3.east) -- (mult_3.west);
+    \draw[->, line width=0.8pt] (mult_3.east) -- (preg_3.west);
+    \draw[->, line width=0.8pt] (preg_3.east) -- (add_3.west);
+    \draw[->, line width=0.8pt] (add_3.east) -- (acc_3.west);
+
+    \node[anchor=west, font=\scriptsize, text=red!80!black] at (0.0, -2.9) {
+        $\times$ \textbf{Nhược điểm:} Cyclone V không có thanh ghi cứng giữa nhân và cộng (phải lấy FF từ ALM); dư thừa ở 50 MHz.
+    };
+
+\end{tikzpicture}

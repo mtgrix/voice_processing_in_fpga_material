@@ -1,0 +1,96 @@
+% chuong_v3/fig_ch07_direct_mac_vs_fft.tex
+% So sánh đường ống tính tự tương quan: MAC trực tiếp trên FPGA vs FFT 1024 điểm trong Praat
+
+\begin{tikzpicture}[
+    >=latex,
+    font=\small,
+    box/.style={draw=black!80, rounded corners=3pt, line width=0.8pt, fill=white, align=center, inner sep=6pt},
+    databox/.style={draw=blue!70!black, rounded corners=3pt, line width=0.9pt, fill=blue!5, align=center, inner sep=5pt},
+    fftbox/.style={draw=orange!80!black, rounded corners=3pt, line width=0.9pt, fill=orange!5, align=center, inner sep=5pt},
+    lbl/.style={font=\scriptsize, text=black!80, fill=white, inner sep=1.5pt},
+    titlelbl/.style={font=\bfseries\small, text=black!90}
+]
+
+    % =========================================================================
+    % Phần trên: Tuyến (A) MAC trực tiếp trên FPGA (Đơn giản, 1 DSP, 20% budget)
+    % =========================================================================
+    \node[titlelbl, anchor=west] at (-0.5, 3.8) {\textbf{(a) Tuyến FPGA: Tự tương quan bằng MAC trực tiếp (Lựa chọn tối ưu)}};
+
+    \node[databox, minimum width=2.6cm, minimum height=1.3cm] (ram) at (1.2, 2.5) {
+        \textbf{Bộ đệm $x_w$}\\[2pt]
+        \scriptsize 638 mẫu $\times$ 17-bit\\
+        \scriptsize (2 khối M10K)
+    };
+
+    \node[databox, minimum width=2.4cm, minimum height=1.3cm] (addr) at (4.6, 2.5) {
+        \textbf{Phát địa chỉ}\\[2pt]
+        \scriptsize Quét $(n, n+\tau)$\\
+        \scriptsize 98.540 cặp liền mạch
+    };
+
+    \node[databox, minimum width=3.0cm, minimum height=1.3cm] (dsp) at (8.5, 2.5) {
+        \textbf{Khối MAC DSP}\\[2pt]
+        \scriptsize 17$\times$17-bit $\to$ Tích lũy 48-bit\\
+        \scriptsize 1 chu kỳ/MAC (1 DSP cứng)
+    };
+
+    \node[databox, minimum width=2.4cm, minimum height=1.3cm] (out_r) at (12.4, 2.5) {
+        \textbf{Chuỗi $R[\tau]$}\\[2pt]
+        \scriptsize 190 giá trị\\
+        \scriptsize $98.543\text{ chu kỳ (RTF } 0{,}197\text{)}$
+    };
+
+    \draw[->, line width=1.0pt, blue!70!black] (ram.east) -- (addr.west) 
+        node[midway, above, lbl] {$2\text{ mẫu/nhịp}$};
+    \draw[->, line width=1.0pt, blue!70!black] (addr.east) -- (dsp.west) 
+        node[midway, above, lbl] {$(a_r, b_r)$};
+    \draw[->, line width=1.0pt, blue!70!black] (dsp.east) -- (out_r.west) 
+        node[midway, above, lbl] {$R[0], R[\tau]$};
+
+    % =========================================================================
+    % Phần dưới: Tuyến (B) FFT 1024 điểm của Praat (Phức tạp, datapath lớn)
+    % =========================================================================
+    \node[titlelbl, anchor=west] at (-0.5, 1.0) {\textbf{(b) Tuyến Praat: Tự tương quan qua cặp biến đổi FFT 1024 điểm}};
+
+    \node[fftbox, minimum width=2.2cm, minimum height=1.3cm] (pad) at (1.0, -0.4) {
+        \textbf{Đệm số 0}\\[2pt]
+        \scriptsize $638 \to 1024\text{ mẫu}$\\
+        \scriptsize Chống cuộn vòng
+    };
+
+    \node[fftbox, minimum width=2.5cm, minimum height=1.3cm] (fft1) at (3.9, -0.4) {
+        \textbf{FFT 1024 điểm}\\[2pt]
+        \scriptsize Bướm Radix-2/4\\
+        \scriptsize Bảng twiddle ROM
+    };
+
+    \node[fftbox, minimum width=2.6cm, minimum height=1.3cm] (psd) at (7.1, -0.4) {
+        \textbf{Phổ công suất}\\[2pt]
+        \scriptsize $P[k] = |X[k]|^2$\\
+        \scriptsize Quản lý tăng bit
+    };
+
+    \node[fftbox, minimum width=2.5cm, minimum height=1.3cm] (ifft) at (10.3, -0.4) {
+        \textbf{IFFT 1024 điểm}\\[2pt]
+        \scriptsize Biến đổi ngược\\
+        \scriptsize Ra $ac[\tau]$ vòng
+    };
+
+    \node[fftbox, minimum width=2.0cm, minimum height=1.3cm] (cut) at (13.0, -0.4) {
+        \textbf{Trích dải}\\[2pt]
+        \scriptsize $\tau \le 214$\\
+        \scriptsize Chia $R_w[\tau]$
+    };
+
+    \draw[->, line width=0.9pt, orange!80!black] (pad.east) -- (fft1.west);
+    \draw[->, line width=0.9pt, orange!80!black] (fft1.east) -- (psd.west);
+    \draw[->, line width=0.9pt, orange!80!black] (psd.east) -- (ifft.west);
+    \draw[->, line width=0.9pt, orange!80!black] (ifft.east) -- (cut.west);
+
+    % Nhãn so sánh dưới chân
+    \node[draw=black!30, dashed, fill=black!2, rounded corners=3pt, inner sep=4pt, anchor=north] 
+        at (6.8, -1.4) {
+        \scriptsize\textbf{Kết luận kiến trúc:} Tại 50 MHz, MAC chỉ tiêu tốn 1 DSP và chiếm 19,7\% ngân sách ($98.543/500.000\text{ nhịp}$), loại bỏ hoàn toàn độ phức tạp phần cứng của FFT.
+    };
+
+\end{tikzpicture}

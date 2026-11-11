@@ -1,0 +1,157 @@
+\providecommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\clearpage
+\phantomsection
+\section*{Chương 7. Tự tương quan bằng MAC}
+\addcontentsline{toc}{section}{Chương 7. Tự tương quan bằng MAC}
+
+\begin{learningobj}
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Thấu hiểu bản chất toán học và cơ chế vật lý của hàm tự tương quan thời gian thực $R[\tau] = \sum_{n=0}^{N-1-\tau} x_w[n] \cdot x_w[n+\tau]$; dẫn xuất chính xác phép đếm số lượng phép tính nhân-cộng: $\sum_{\tau=26}^{214} (638 - \tau) = 97.902\text{ MAC}$ cho dải quét và $98.540\text{ MAC}$ khi tính kèm $R[0]$.
+    \item Khảo sát mã nguồn Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 79--80, 144--164, 344--345, 401--403); giải mã định lý đệm số $0$ từ $638$ lên $1024\text{ điểm}$ FFT của Paul Boersma và chứng minh bằng giải tích rằng giới hạn không cuộn vòng (no circular wrap-around) đạt tới $\tau \le 386\text{ mẫu}$, bảo đảm tự tương quan vòng qua FFT đồng nhất tuyệt đối với tự tương quan tuyến tính qua MAC trực tiếp (sai số dấu phẩy động $\sim 10^{-16}$).
+    \item Phân tích toàn diện sự đánh đổi giữa thuật toán FFT và kiến trúc MAC trực tiếp trên FPGA; chứng minh rằng với ngân sách $500.000\text{ chu kỳ/khung}$ ($10\text{ ms}$ tại $50\text{ MHz}$), một bộ MAC đơn lẻ trên 1 khối DSP chỉ chiếm $19{,}7\%$ thời gian thực ($\text{RTF} \approx 0{,}197$), loại bỏ hoàn toàn sự phức tạp của bộ đệm ping-pong, bộ quay pha twiddle ROM và mạch quản lý tăng trưởng bit.
+    \item Khảo sát sâu sắc ba phương án chốt thanh ghi đường ống trong khối DSP Cyclone V: phân tích sự thật không thể bỏ thanh ghi tích lũy, so sánh giữa không chốt toán hạng (trễ 2 nhịp) và chốt toán hạng tại cửa khối DSP (trễ 3 nhịp, tận dụng thanh ghi cứng có sẵn 0 ALM); làm rõ sự khác biệt giữa độ trễ (latency) và thông lượng (throughput), chứng minh độ trễ 3 chu kỳ chỉ làm sai khác $0{,}001\%$ thời gian thực trên $98.543\text{ chu kỳ}$.
+    \item Dẫn xuất độ rộng từ bit toán hạng $17\text{-bit}$ có dấu và chứng minh bằng toán học cận trên $43\text{-bit}$ của bộ cộng tích lũy, đính chính nhận định "48 bit tự nhiên" của Argon bằng việc chỉ rõ bộ tích lũy phần cứng Cyclone V rộng tới $64\text{ bit}$ (CV-52003 Chương 5).
+    \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng: Tuyến (A) cấu hình khối IP Intel \texttt{ALTERA\_MULT\_ADD} (UG-01069) cùng cờ nạp đè đồng bộ \texttt{accum\_sload} để chuyển tiếp lag zero-bubble; Tuyến (B) module HDL tự viết \texttt{ch07\_mac\_unit.v}, bộ đệm khung True Dual-Port RAM 2 khối M10K \texttt{ch07\_xw\_ram.v} và khối điều khiển phát địa chỉ liên tục \texttt{ch07\_mac\_engine.v}.
+    \item Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ giữa mô hình song sinh Python (\texttt{ch07\_mac\_twin.py}) và mô phỏng Verilog trên $7.460\text{ vector}$, tái hiện toàn bộ $3.040\text{ kết quả}$ đường chuẩn từ \texttt{golden\_v2/hdl\_check/} trên 16 khung tín hiệu bao gồm 2 khung stress biên cực hạn ($|x_w| = 59.379$).
+\end{itemize}
+\end{learningobj}
+
+\subsection*{7.1. Bản chất của hàm tự tương quan và phép đếm số lượng phép tính MAC}
+\addcontentsline{toc}{subsection}{7.1. Bản chất của hàm tự tương quan và phép đếm số lượng phép tính MAC}
+
+\subsubsection*{Vấn đề thực tế: Sự lừa dối của miền thời gian và sự cần thiết của hàm tự tương quan}
+Hãy xem xét bài toán cốt lõi mà kỹ sư xử lý tín hiệu phải đối mặt khi ước lượng cao độ giọng nói: ta cần tìm khoảng thời gian lặp lại cơ bản $T_0$ (tính theo số mẫu rời rạc) của dây thanh âm trong một đoạn tín hiệu hữu hạn dài $N = 638\text{ mẫu}$. Giả sử tín hiệu âm thanh thu được là nguyên âm /a/ có tần số cơ bản $F_0 = 150\text{ Hz}$ tại tần số lấy mẫu $f_s = 16.000\text{ Hz}$, tương ứng với chu kỳ danh định $\tau_0 = 16.000 / 150 \approx 106{,}67\text{ mẫu}$.
+
+Nếu người thiết kế ngây thơ tìm kiếm chu kỳ bằng cách dò khoảng cách giữa các điểm giao cắt mức không (zero-crossing) hoặc khoảng cách giữa các đỉnh biên độ tức thời, thuật toán sẽ sụp đổ ngay lập tức. Dây thanh âm không phát ra sóng sin thuần khiết; nó phát ra một chuỗi xung tam giác giàu họa ba, kích thích các khoang cộng hưởng của thanh quản và vòm họng (formants). Các họa ba bậc hai ($300\text{ Hz}$), bậc ba ($450\text{ Hz}$) và bậc bốn ($600\text{ Hz}$) giao thoa sóng với nhau, tạo ra vô số đỉnh nhọn cục bộ và các điểm cắt qua số $0$ giả mạo bên trong một chu kỳ đơn lẻ. Tệ hơn nữa, sự dịch pha do bộ lọc âm học làm thay đổi hoàn toàn hình dáng trực quan của sóng âm trong miền thời gian: hai chu kỳ liên tiếp có cùng chu kỳ lặp lại nhưng đỉnh biên độ tức thời có thể lệch nhau hàng chục mẫu.
+
+Làm thế nào để đo lường chu kỳ lặp lại của một dạng sóng phức tạp mà không bị đánh lừa bởi hình dáng cục bộ? Câu trả lời kinh điển của lý thuyết truyền thông là: \textbf{So sánh dạng sóng với chính bản sao bị dịch thời gian của nó}. Nếu ta dịch tín hiệu đi đúng một khoảng trễ $\tau$, tại $\tau = \tau_0$, toàn bộ cấu trúc họa ba và xung đỉnh của tín hiệu sẽ chồng khít lên bản sao gốc. Tích vô hướng giữa hai dạng sóng sẽ đạt cực đại toàn cục. Phép toán toán học thực hiện sự so khớp toàn diện này chính là \textbf{Hàm tự tương quan} (Autocorrelation Function).
+
+\subsubsection*{Dẫn xuất từ nguyên lý gốc: Công thức tự tương quan hữu hạn}
+Với một khung âm thanh đã nhân cửa sổ Hanning $x_w[n]$ có chiều dài hữu hạn $N = 638\text{ mẫu}$ ($n = 0, 1, \dots, N-1$), hàm tự tương quan ngắn hạn không chuẩn hóa tại độ trễ $\tau$ được định nghĩa theo nguyên lý tích chập năng lượng:
+\begin{equation}
+R[\tau] = \sum_{n=0}^{N-1-\tau} x_w[n] \cdot x_w[n+\tau]
+\label{eq:ch07_autocorr_def}
+\end{equation}
+
+Mỗi giá trị $R[\tau]$ trong phương trình~(\ref{eq:ch07_autocorr_def}) là tổng của các tích giữa mẫu $x_w[n]$ tại thời điểm hiện tại và mẫu $x_w[n+\tau]$ tại thời điểm tương lai dịch đi $\tau$ bước. Hãy quan sát cận trên của tổng tích lũy:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item Khi $\tau = 0$: Mẫu dịch chuyển trùng khít với mẫu gốc. Ta có tổng $N = 638\text{ tích}$:
+    \begin{equation}
+    R[0] = \sum_{n=0}^{637} x_w^2[n]
+    \end{equation}
+    Đại lượng $R[0]$ chính là năng lượng tổng cộng của khung âm thanh sau cửa sổ hóa, đóng vai trò mốc chuẩn hóa biên độ và kiểm tra điều kiện im lặng ở các chương sau.
+    \item Khi $\tau > 0$: Cửa sổ quan sát bị co ngắn lại vì phần đuôi $n+\tau \ge N$ vượt ra ngoài phạm vi dữ liệu của khung. Số lượng cặp mẫu chồng lấn giảm tuyến tính xuống còn đúng $N - \tau = 638 - \tau\text{ cặp}$.
+\end{itemize}
+
+\subsubsection*{Phép đếm số lượng phép tính MAC từ dãy số học}
+Để xác định cao độ trong dải giọng nói của con người từ $F_{\text{floor}} = 75\text{ Hz}$ đến $F_{\text{ceiling}} = 600\text{ Hz}$, thuật toán Praat định nghĩa dải quét trễ (lag scan range) là $\tau \in [\tau_{\min}, \tau_{\max}] = [26, 214]$. Số lượng giá trị lag cần khảo sát là:
+\begin{equation}
+N_{\text{lags}} = \tau_{\max} - \tau_{\min} + 1 = 214 - 26 + 1 = 189\text{ độ trễ}
+\end{equation}
+
+Tại mỗi độ trễ $\tau \in [26, 214]$, phần cứng cần thực hiện đúng $638 - \tau$ phép nhân và tích lũy (Multiply-Accumulate -- MAC). Tổng số phép tính MAC cần thiết để quét qua toàn bộ 189 độ trễ là tổng của một cấp số cộng:
+\begin{align}
+\sum_{\tau=26}^{214} (638 - \tau) &= (638 - 26) + (638 - 27) + \dots + (638 - 214) \nonumber \\
+&= 612 + 611 + \dots + 424
+\end{align}
+Áp dụng công thức tính tổng cấp số cộng với số số hạng $n = 189$, số hạng đầu $u_1 = 612$ và số hạng cuối $u_n = 424$:
+\begin{equation}
+S_{\text{scan}} = \frac{189 \times (612 + 424)}{2} = \frac{189 \times 1.036}{2} = 189 \times 518 = \mathbf{97.902\text{ phép MAC}}
+\end{equation}
+
+Khi cộng thêm giá trị $R[0]$ ($\tau = 0$ với $638 - 0 = 638\text{ phép MAC}$), tổng số phép nhân-cộng mà lõi phần cứng phải thực thi trên mỗi khung âm thanh là:
+\begin{equation}
+N_{\text{MAC, total}} = S_{\text{scan}} + (638 - 0) = 97.902 + 638 = \mathbf{98.540\text{ phép MAC}}
+\end{equation}
+(Con số $98.540$ này đã được kiểm chứng số học độc lập trong nhật ký \path{verify_v3/ch07_mac_math.log}).
+
+\begin{thoughtqa}
+\textbf{Câu hỏi đối chiếu:} Ở các tài liệu phiên bản v1 trước đây, người ta thường nhắc đến các con số $98.280$ và $98.920\text{ MAC}$. Các con số đó từ đâu ra?
+\par\noindent\textbf{Trả lời:} Trong phiên bản cũ v1, chiều dài cửa sổ được lấy tròn ngây thơ là $N = 640\text{ mẫu}$ ($40\text{ ms} \times 16\text{ kHz}$). Khi đó:
+\begin{equation}
+\sum_{\tau=26}^{214} (640 - \tau) = \frac{189 \times (614 + 426)}{2} = \frac{189 \times 1.040}{2} = \mathbf{98.280\text{ phép MAC}}
+\end{equation}
+Cộng thêm $R[0]$ gồm $640\text{ phép MAC}$ sẽ cho ra đúng $98.280 + 640 = \mathbf{98.920\text{ phép MAC}}$. Sự chênh lệch giữa v1 và v2 là $98.920 - 98.540 = 380\text{ phép MAC}$, xuất phát từ quyết định sửa đúng độ dài cửa sổ $N = 638\text{ mẫu}$ theo chuẩn Praat 7.0.03 (được quy định tại \path{fon/Sound_to_Pitch.cpp}, dòng 334--339). Tài liệu này sử dụng triệt để con số chuẩn tắc $98.540\text{ phép MAC}$.
+\end{thoughtqa}
+
+\subsubsection*{Tương đương toán học giữa MAC trực tiếp và FFT 1024 điểm của Praat}
+Trong phần mềm Praat của Paul Boersma (\path{fon/Sound_to_Pitch.cpp}), hàm tự tương quan không được tính bằng cách chạy hai vòng lặp lồng nhau trong miền thời gian, mà được tính thông qua cặp biến đổi Fourier nhanh (FFT) độ dài $1024\text{ điểm}$. Các dòng mã nguồn được kiểm chứng xác thực tại phiên bản Praat 7.0.03 gồm:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 344:} Xác định độ trễ quét tối thiểu:
+    \begin{lstlisting}[language=C++, numbers=none]
+minimumLag = max (2, Melder_ifloor (1.0 / my dx / pitchCeiling));
+    \end{lstlisting}
+    Tại $f_s = 16.000\text{ Hz}$ và $F_{\text{ceiling}} = 600\text{ Hz}$, $1 / (dx \cdot 600) = 16.000 / 600 \approx 26{,}67$, hàm sàn nguyên trả về $\mathbf{\tau_{\min} = 26\text{ mẫu}}$.
+    \item \textbf{Dòng 345:} Xác định độ trễ quét tối đa:
+    \begin{lstlisting}[language=C++, numbers=none]
+maximumLag = min (Melder_ifloor (nsamp_window / periodsPerWindow) + 2, nsamp_window);
+    \end{lstlisting}
+    Tại $N = 638$ và $\text{periodsPerWindow} = 3$, $638 / 3 \approx 212{,}67$, hàm sàn cho $212$, cộng thêm $2$ biên an toàn cho ra đúng $\mathbf{\tau_{\max} = 214\text{ mẫu}}$.
+    \item \textbf{Dòng 401--403:} Tính kích thước biến đổi FFT:
+    \begin{lstlisting}[language=C++, numbers=none]
+nsampFFT = 1;
+while (nsampFFT < nsamp_window * (1.0 + interpolation_depth))
+    nsampFFT *= 2;
+    \end{lstlisting}
+    Với chiều sâu nội suy $\text{interpolation\_depth} = 0{,}5$, ta có $638 \times 1{,}5 = 957\text{ mẫu}$. Lũy thừa nguyên bậc hai nhỏ nhất lớn hơn hoặc bằng $957$ là $\mathbf{N_{\text{FFT}} = 1024\text{ điểm}}$.
+    \item \textbf{Dòng 79--80:} Đệm thêm các mẫu $0$ vào đuôi khung âm thanh:
+    \begin{lstlisting}[language=C++, numbers=none]
+for (integer j = nsamp_window + 1; j <= nsampFFT; j ++)
+    frame [j] = 0.0;
+    \end{lstlisting}
+    Vùng từ mẫu số $639$ đến $1024$ ($386\text{ mẫu}$) được gán bằng $0{,}0$.
+    \item \textbf{Dòng 144--156:} Thực hiện tự tương quan qua miền tần số với đoạn chú thích nổi tiếng của Boersma:
+    \begin{lstlisting}[language=C++, numbers=none]
+/* The FFT of the autocorrelation is the power spectrum. */
+NUMfft_forward (frame.asSlice ());
+// Tinh pho cong suat ac[i] = re^2 + im^2 tai moi tan so
+NUMfft_backward (frame.asSlice ());
+    \end{lstlisting}
+    Phép biến đổi FFT thuận đưa tín hiệu sang miền tần số $X[k]$; bình phương độ lớn tạo ra mật độ phổ công suất $P[k] = |X[k]|^2$; và phép biến đổi FFT nghịch (IFFT) chuyển phổ công suất trở lại miền thời gian để thu được hàm tự tương quan $ac[\tau]$.
+    \item \textbf{Dòng 158--164:} Chuẩn hóa hàm tự tương quan:
+    \begin{lstlisting}[language=C++, numbers=none]
+r [0] = 1.0;
+for (integer i = 1; i <= brent_ixmax; i ++)
+    r [i] = ac [i + 1] / (ac [1] * windowR [i + 1]);
+    \end{lstlisting}
+    Chia giá trị tự tương quan thô cho tích giữa năng lượng khung $ac[1]$ ($R[0]$) và tự tương quan của chính cửa sổ $windowR[i+1]$ ($R_w[\tau]$).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{\input{chuong_v3/fig_ch07_direct_mac_vs_fft.tex}}
+\caption{So sánh quy trình tính toán tự tương quan: Tuyến FPGA dùng MAC trực tiếp và Tuyến Praat dùng cặp biến đổi FFT 1024 điểm.}
+\label{fig:ch07_direct_mac_vs_fft}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch07_direct_mac_vs_fft} đặt cạnh nhau hai triết lý hiện thực hóa. Tuyến (a) trên FPGA triển khai luồng xử lý thẳng: các cặp mẫu được đọc trực tiếp từ bộ nhớ đệm M10K đưa vào bộ nhân-cộng DSP duy nhất, kết quả $R[\tau]$ được tích lũy tuần tự qua $98.543\text{ chu kỳ}$, hoàn toàn không cần bộ nhớ trung gian hay quản lý phức tạp. Ngược lại, Tuyến (b) của Praat trên máy tính sử dụng FFT 1024 điểm: tín hiệu buộc phải đệm số 0 lên 1024 mẫu, chuyển qua tầng bướm FFT phức, tính phổ công suất rồi IFFT ngược trở lại. Mặc dù hai cách đi khác nhau, chúng quy tụ về cùng một đáp số chính xác.
+
+\begin{equationcard}
+\textbf{Định lý triệt tiêu cuộn vòng thời gian (Zero Time-Domain Wrap-Around).}
+\par\noindent Trong xử lý tín hiệu số, phép nhân trong miền tần số $P[k] = X[k] \cdot X^*[k]$ tương đương với \textbf{tự tương quan vòng} (Circular Autocorrelation) trong miền thời gian có chu kỳ lặp lại đúng bằng kích thước biến đổi $N_{\text{FFT}} = 1024$:
+\begin{equation}
+ac_{\text{circ}}[\tau] = \sum_{n=0}^{N_{\text{FFT}}-1} z[n] \cdot z[(n+\tau) \bmod N_{\text{FFT}}]
+\end{equation}
+trong đó $z[n]$ là chuỗi $x_w[n]$ được đệm số $0$: $z[n] = x_w[n]$ khi $0 \le n < N$, và $z[n] = 0$ khi $N \le n < N_{\text{FFT}}$.
+\par\noindent Biểu thức $(n+\tau) \bmod N_{\text{FFT}}$ chỉ bị cuộn vòng vượt quá $1024$ khi $n + \tau \ge N_{\text{FFT}}$. Do $z[n] = 0$ với mọi $n \ge N = 638$, tích $z[n] \cdot z[n+\tau]$ chỉ khác $0$ khi $n \le 637$. Giá trị lớn nhất mà $n+\tau$ có thể đạt tới là:
+\begin{equation}
+(n+\tau)_{\max} = (N - 1) + \tau = 637 + \tau
+\end{equation}
+Để không xảy ra hiện tượng cuộn vòng ($n+\tau < N_{\text{FFT}}$), điều kiện cần và đủ là:
+\begin{equation}
+637 + \tau < 1024 \quad \Longleftrightarrow \quad \tau \le 1024 - 638 = \mathbf{386\text{ mẫu}}
+\end{equation}
+Vì thuật toán Praat chỉ quét lag tối đa đến $\tau_{\max} = 214\text{ mẫu}$, và $214 \le 386$ (vẫn còn dư biên an toàn $386 - 214 = 172\text{ mẫu}$), \textbf{hoàn toàn không có bất kỳ mẫu nào bị cuộn vòng đè lên nhau!}
+\par\noindent Do đó, tự tương quan vòng của Praat đồng nhất $100\%$ với tự tương quan tuyến tính của bộ MAC trực tiếp:
+\begin{equation}
+ac[\tau+1]_{\text{Praat FFT}} \equiv R[\tau]_{\text{FPGA Direct MAC}}, \quad \forall \tau \in [0, 214]
+\end{equation}
+\end{equationcard}
+
+Kết quả kiểm nghiệm độc lập trong kịch bản \path{verify_v3/ch07_fft_vs_mac.py} trên 5 khung tín hiệu chuẩn (sóng sin $150\text{ Hz}$, khung giọng nói sạch, khung giọng nói nhiễu $\text{SNR} = 5\text{ dB}$, và hai khung stress cực hạn) cho thấy sai số tương đối cực đại giữa FFT 1024 điểm và MAC trực tiếp chỉ đạt mức:
+\begin{equation}
+\frac{\max |ac[\tau+1] - R[\tau]|}{|R[0]|} \le 3{,}23 \times 10^{-16}
+\end{equation}
+Con số này xấp xỉ mức sai số làm tròn máy hữu hạn của kiểu dấu phẩy động 64-bit (\texttt{double}), chứng minh tuyệt đối sự tương đương toán học giữa hai phương pháp.
+
+\textit{Tóm lại: Bản chất của tự tương quan là đếm số cặp mẫu trùng lặp qua độ trễ $\tau$. Dải quét 189 lag cùng $R[0]$ đòi hỏi chính xác $98.540\text{ phép MAC}$; phép đệm 386 số 0 trong FFT 1024 điểm của Praat đảm bảo tự tương quan vòng không bị cuộn chồng và đồng nhất hoàn toàn với tích vô hướng tuyến tính của MAC trực tiếp.}
