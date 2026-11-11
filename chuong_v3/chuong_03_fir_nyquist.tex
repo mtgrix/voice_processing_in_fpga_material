@@ -7,8 +7,8 @@
 \begin{learningobj}
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item Thấu hiểu bản chất vật lý và toán học của hiện tượng tràn búp phổ qua tần số Nyquist khi nhân tín hiệu thoại với cửa sổ thời gian hữu hạn, giải mã nguồn gốc dao động đổi dấu luân phiên $(-1)^\tau$ phá hủy đỉnh hàm tự tương quan $r(\tau)$.
-    \item Nắm vững lịch sử thuật toán: đối chiếu giải pháp ``làm mềm phổ mép Nyquist'' (soft upsampling) trong bài báo Boersma (1993) với mã nguồn thực tế của Praat 7.0.03; làm rõ sự thật phũ phàng rằng Praat hiện hành không thực hiện bước lọc này trong đường tự tương quan thô (\texttt{raw autocorrelation}).
-    \item Khảo sát định lượng 4 phương án thiết kế bộ lọc FIR (Bypass, 31 tap, 63 tap, 127 tap) qua thuật toán bình phương tối thiểu \texttt{firls}; vạch trần sai lầm phổ biến khi nhầm lẫn giữa độ phân giải lượng tử hóa hệ số (16 bit $\approx 96\text{ dB}$) và độ suy hao dải chặn bị khống chế bởi công thức Kaiser.
+    \item Nắm vững lịch sử thuật toán: đối chiếu giải pháp ``làm mềm phổ mép Nyquist'' (soft upsampling) trong bài báo Boersma (1993) với mã nguồn thực tế của Praat 7.0.03; làm rõ hiện trạng kỹ thuật rằng Praat hiện hành không thực hiện bước lọc này trong đường tự tương quan thô (\texttt{raw autocorrelation}).
+    \item Khảo sát định lượng 4 phương án thiết kế bộ lọc FIR (Bypass, 31 tap, 63 tap, 127 tap) qua thuật toán bình phương tối thiểu \texttt{firls}; phân tích cạm bẫy kỹ thuật phổ biến khi nhầm lẫn giữa độ phân giải lượng tử hóa hệ số (16 bit $\approx 96\text{ dB}$) và độ suy hao dải chặn bị khống chế bởi công thức Kaiser.
     \item Phân tích cặn kẽ khái niệm trễ nhóm (group delay) $\tau_g = (N-1)/2$ của bộ lọc FIR đối xứng Type I và quy tắc bắt buộc phải dời lưới khung phân tích 15 mẫu khi kích hoạt bộ lọc.
     \item Khảo cứu toàn diện các tham số của khối IP Intel FIR Compiler II theo tài liệu chuẩn \emph{Intel FIR Compiler II User Guide} (UG-01072); nhận diện cạm bẫy thiết lập tốc độ mẫu \texttt{Input Sample Rate} trong hệ thống đọc tệp.
     \item Thiết kế và hiện thực hóa khối FIR 31 tap gấp thời gian (folded FIR) bằng Verilog-2001, tích hợp bộ tiền cộng (pre-adder) 17 bit và 1 bộ nhân DSP duy nhất chạy 16 chu kỳ/mẫu, tích hợp công tắc chuyển mạch \texttt{bypass} thời gian thực.
@@ -74,18 +74,18 @@ Khi thuật toán parabol interpolation ở Chương 9 khớp đường cong b�
 \end{equation}
 Nếu $R[\tau]$ rơi vào lag chẵn, nó bị đội lên một lượng $+A^2$; trong khi hai điểm bên cạnh $\tau \pm 1$ là lag lẻ nên bị kéo tụt xuống một lượng $-A^2$. Mẫu số parabol bị phóng đại nhân tạo, làm đỉnh bị bóp nhọn bất thường. Ngược lại, nếu đỉnh thật rơi vào một lag lẻ, giá trị $R[\tau]$ bị triệt tiêu âm, biến đỉnh cực đại thành một điểm uốn hoặc một thung lũng cục bộ, khiến thuật toán bỏ sót hoàn toàn ứng viên cao độ!
 
-\subsubsection*{Đề xuất của Boersma (1993) và sự thật phũ phàng trong mã nguồn Praat hiện hành}
+\subsubsection*{Đề xuất của Boersma (1993) và hiện trạng trong mã nguồn Praat hiện hành}
 Để khắc phục hiện tượng răng cưa mép Nyquist nói trên, Paul Boersma trong công trình nền tảng năm 1993 (\emph{Accurate short-term analysis of the fundamental frequency and the harmonics-to-noise ratio of a sampled sound}, Proceedings of the Institute of Phonetic Sciences, Amsterdam, Tập 17, Mục 3.1) đã đề xuất quy trình mang tên ``làm mềm phổ'' (soft upsampling / spectral smoothing):
 \begin{quote}
 ``Trước khi phân tích tự tương quan, phổ của tín hiệu âm thanh được làm mềm tuyến tính từ mức $1{,}0$ tại $95\%$ tần số Nyquist ($7{,}6\text{ kHz}$) dốc đều về $0$ tại $100\%$ tần số Nyquist ($8{,}0\text{ kHz}$) thông qua biến đổi Fourier nhanh FFT.''
 \end{quote}
-Mục tiêu của hàm dốc $5\%$ dải tần này là triệt tiêu hoàn toàn năng lượng ở sát biên $8\text{ kHz}$ trước khi thực hiện tích chập với cửa sổ Hanning, từ đó ngăn chặn tận gốc hiện tượng tràn phổ và dập tắt sóng đổi dấu $(-1)^\tau$.
+Mục tiêu của hàm dốc $5\%$ dải tần này là làm suy giảm năng lượng ở sát biên $8\text{ kHz}$ trước khi thực hiện tích chập với cửa sổ Hanning, từ đó hạn chế hiện tượng tràn phổ và làm dịu sóng đổi dấu $(-1)^\tau$.
 
-\textbf{Sự thật phũ phàng (Sự thật cần nói thẳng):} Khi tiến hành rà soát từng dòng mã nguồn chính thức của Praat các phiên bản 6.4.12 và 7.0.03 (tệp \texttt{fon/Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE), chúng ta phát hiện một sự thật kỹ thuật mang tính quyết định:
+\textbf{Hiện trạng trong mã nguồn Praat thực tế:} Khi tiến hành rà soát từng dòng mã nguồn chính thức của Praat các phiên bản 6.4.12 và 7.0.03 (tệp \texttt{fon/Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE), một sự kiện kỹ thuật được ghi nhận:
 \begin{center}
-\textbf{Praat 7.0.03 hoàn toàn KHÔNG thực hiện bất kỳ bước upsampling, resample hay lọc trước làm mềm phổ nào trong luồng xử lý tự tương quan thô (\texttt{To Pitch (raw autocorrelation)...})!}
+\textbf{Praat 7.0.03 không thực hiện bất kỳ bước upsampling, resample hay lọc trước làm mềm phổ nào trong luồng xử lý tự tương quan thô (\texttt{To Pitch (raw autocorrelation)...})!}
 \end{center}
-Boersma đã loại bỏ bước tiền xử lý này trong các bản phát hành chính thức của Praat từ nhiều năm qua. Lý do là vì ở khâu xác định đỉnh tinh xảo, Praat sử dụng thuật toán nội suy \texttt{sinc70} kết hợp tìm kiếm cực trị Brent (\texttt{Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE). Thuật toán nội suy sinc tái tạo lại hàm tương quan liên tục trong miền thời gian thực, vốn đã có khả năng triệt tiêu các sai số rời rạc hóa mà không cần phải can thiệp làm méo dải tần số cao của tín hiệu gốc.
+Bước tiền xử lý làm mềm phổ từng được mô tả trong bài báo Boersma (1993) không xuất hiện trong luồng xử lý tự tương quan thô của mã nguồn Praat hiện hành (\texttt{fon/Sound\_to\_Pitch.cpp}, dòng TODO-PRAAT-LINE). Cần lưu ý rằng lý do vì sao bước xử lý này không có mặt trong mã nguồn không được ghi chép trong tài liệu kỹ thuật hay chú thích mã nguồn của Praat. Chúng tôi ghi nhận sự thật đối soát này mà không đưa ra các giả định chưa có căn cứ.
 
 \subsubsection*{Hệ quả đối soát và quyết định thiết kế trên FPGA}
 Sự sai khác giữa bài báo lý thuyết năm 1993 và mã nguồn thực tế dẫn đến một hệ quả kỹ thuật trực tiếp:
@@ -139,12 +139,12 @@ Phương án & Số tap ($N$) & Trễ $\tau_g$ & Tại $7{,}4\text{ kHz}$ & Tạ
 
 \textbf{Đọc hình.} Hình~\ref{fig:ch03_freq_response} trực quan hóa sự đánh đổi giữa bậc lọc $N$ và độ suy hao tại tần số Nyquist. Đường màu xanh đậm biểu diễn phương án (b) 31 tap: trong toàn bộ dải thoại hữu ích từ $0$ đến $7{,}4\text{ kHz}$, độ gợn biên độ được khống chế chặt chẽ trong khoảng $[-0{,}25\text{ dB}, +0{,}25\text{ dB}]$ (tại $0\text{ kHz}$ gợn $+0{,}13\text{ dB}$, tại $7{,}4\text{ kHz}$ gợn $+0{,}19\text{ dB}$), hầu như không làm biến dạng năng lượng của các formant giọng nói. Khi bước vào dải chuyển tiếp $[7{,}6\text{ kHz}, 8{,}0\text{ kHz}]$ (vùng tô màu cam rộng $400\text{ Hz}$), đáp ứng bắt đầu rơi dốc: đạt $-2{,}29\text{ dB}$ tại $7{,}6\text{ kHz}$ và cán mốc suy hao $-9{,}41\text{ dB}$ tại đúng tần số Nyquist $8{,}0\text{ kHz}$. Đường nét đứt màu xanh ngọc (63 tap) và nét chấm gạch màu tím (127 tap) giúp tăng độ suy hao biên lên lần lượt $-19{,}5\text{ dB}$ và $-24{,}2\text{ dB}$, nhưng đòi hỏi chiều dài thanh ghi dịch và độ trễ tăng vọt.
 
-\subsubsection*{Vạch trần cạm bẫy kỹ thuật: Sai lầm ``31 tap, hệ số 16 bit, suy hao > 60 dB''}
-Trong một số tài liệu thiết kế trước đây (điển hình là bản thảo của Argon), người ta thường bắt gặp khẳng định:
+\subsubsection*{Bẫy thường gặp: Nhầm lẫn giữa độ rộng bit hệ số và độ suy hao dải chặn}
+Trong quá trình thiết kế bộ lọc số, một ngộ nhận thường gặp là:
 \begin{quote}
 \emph{``Thiết kế bộ lọc FIR 31 tap với hệ số lượng tử 16 bit cho phép đạt độ suy hao dải chặn lớn hơn 60 dB.''}
 \end{quote}
-Đây là một khẳng định hoàn toàn sai lầm về mặt lý thuyết xử lý tín hiệu số, xuất phát từ sự nhầm lẫn tai hại giữa hai khái niệm hoàn toàn độc lập:
+Quan niệm này không chính xác về mặt lý thuyết xử lý tín hiệu số, xuất phát từ sự nhầm lẫn giữa hai khái niệm hoàn toàn độc lập:
 \begin{enumerate}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{Độ rộng bit lượng tử hóa hệ số ($B = 16\text{ bit}$):} Tham số này chỉ quyết định \emph{sàn nhiễu lượng tử hóa (quantization noise floor)} do sai số làm tròn số học gây ra. Theo quy tắc xấp xỉ $6{,}02\text{ dB/bit}$, lượng tử hóa 16 bit có dấu cho tỷ số tín hiệu trên nhiễu lượng tử (SQNR) lý thuyết là:
     \begin{equation}
@@ -232,7 +232,7 @@ Tần số xung nhịp đồng hồ chủ cấp cho khối IP, lấy trực ti�
     \begin{equation}
     N_{\text{cycles/sample}} = \frac{f_{\text{clk}}}{f_{\text{sample}}} = \frac{50.000.000\text{ Hz}}{16.000\text{ Hz}} = 3125\text{ chu kỳ/mẫu}
     \end{equation}
-    Dựa trên con số 3125 chu kỳ này, bộ sinh IP sẽ thiết kế một bộ ghép kênh thời gian cực đoan (time-multiplexed architecture) với tốc độ tiếp nhận cực kỳ chậm chạp. Khi dòng dữ liệu từ FIFO tuôn vào với tốc độ cao, hàng đợi đầu vào của IP sẽ bị tràn lập tức, gây mất mát mẫu âm thanh mà không phát sinh tín hiệu cảnh báo nào!
+    Dựa trên con số 3125 chu kỳ này, bộ sinh IP sẽ cấu hình một kiến trúc dồn kênh thời gian (time-multiplexed architecture) với tốc độ tiếp nhận chu kỳ dài. Khi dòng dữ liệu từ FIFO tuôn vào với tốc độ cao, hàng đợi đầu vào của IP sẽ bị tràn lập tức, gây mất mát mẫu âm thanh mà không phát sinh tín hiệu cảnh báo nào!
     \item \emph{Giải pháp đúng đắn:} Thiết lập \texttt{Input Sample Rate} bằng tốc độ tiếp nhận tối đa thực tế của hệ thống, ví dụ chọn $0{,}5\text{ MSPS}$ (tương ứng với $50\text{ MHz} / 0{,}5\text{ MSPS} = 100\text{ chu kỳ/mẫu}$) hoặc $1{,}0\text{ MSPS}$ ($50\text{ chu kỳ/mẫu}$). Cấu hình này ép buộc IP phải bố trí đủ phần cứng để có thể hoàn tất việc tiếp nhận và xử lý một mẫu mới trong vòng 100 chu kỳ xung nhịp, hoàn toàn đáp ứng thông lượng dòng dữ liệu và tương thích với nhịp độ xử lý của khối MAC phía sau ($\approx 616\text{ chu kỳ/mẫu}$).
 \end{itemize}
 
@@ -299,7 +299,7 @@ Nếu hiện thực theo kiến trúc song song trực tiếp (Fully Parallel Di
 
 Tuy nhiên, trong hệ thống ước lượng cao độ $F_0$, tốc độ dòng âm thanh thực tế chỉ là $16\text{ kHz}$ (tương đương với $3125$ chu kỳ xung nhịp 50 MHz cho mỗi mẫu), và ngay cả ở chế độ xử lý tệp nhanh nhất, khối tự tương quan MAC ở Chương 7 cũng cần tới $\approx 616\text{ chu kỳ}$ để xử lý một mẫu âm thanh. Việc sử dụng tới 16 bộ nhân DSP để tính một bộ lọc chỉ cần chạy 1 lần trong hàng trăm chu kỳ là một sự lãng phí tài nguyên silicon cực kỳ lớn!
 
-Để giải quyết mâu thuẫn này, chúng tôi áp dụng kiến trúc **gấp thời gian (Time-Multiplexed / Folded FIR Architecture)** kết hợp với **bộ tiền cộng đối xứng (Symmetric Pre-adder)**:
+Để giải quyết mâu thuẫn này, chúng tôi áp dụng kiến trúc \textbf{gấp thời gian (Time-Multiplexed / Folded FIR Architecture)} kết hợp với \textbf{bộ tiền cộng đối xứng (Symmetric Pre-adder)}:
 \begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
     \item Do đáp ứng xung đối xứng chẵn qua tâm $h[i] = h[30 - i]$, ta nhóm các tích có chung hệ số lại với nhau:
     \begin{equation}
@@ -307,7 +307,7 @@ Tuy nhiên, trong hệ thống ước lượng cao độ $F_0$, tốc độ dòn
     \end{equation}
     Tổng cộng chỉ còn đúng 16 số hạng cần nhân.
     \item Phép cộng hai mẫu âm thanh $x[n-k] + x[n-(30-k)]$ được thực hiện trước bằng một bộ cộng tổ hợp 17-bit mang tên \textbf{Pre-adder}. Vì mỗi mẫu âm thanh là số có dấu 16-bit (khoảng $[-32768, 32767]$), tổng của hai mẫu cần đúng 17-bit có dấu (khoảng $[-65536, 65534]$) để không bao giờ bị tràn số.
-    \item Thay vì dùng 16 bộ nhân phần cứng riêng biệt, ta sử dụng **đúng 1 bộ nhân DSP duy nhất** và cho nó chạy tuần tự qua 16 bước xung nhịp ($k = 0..15$). Tại mỗi bước xung nhịp, bộ nhân tính một tích 33-bit và cộng dồn kết quả vào một thanh ghi tích lũy 40-bit.
+    \item Thay vì dùng 16 bộ nhân phần hardware riêng biệt, ta sử dụng \textbf{đúng 1 bộ nhân DSP duy nhất} và cho nó chạy tuần tự qua 16 bước xung nhịp ($k = 0..15$). Tại mỗi bước xung nhịp, bộ nhân tính một tích 33-bit và cộng dồn kết quả vào một thanh ghi tích lũy 40-bit.
 \end{enumerate}
 
 Sau đúng 16 chu kỳ tính toán, kết quả tích lũy hoàn chỉnh được đưa qua khâu làm tròn bán phần (+16384) và bão hòa 16-bit để xuất ra ngõ ra. Toàn bộ kiến trúc phần cứng này được minh họa chi tiết trên Hình~\ref{fig:ch03_folded_arch}.
@@ -331,7 +331,7 @@ Sau đúng 16 chu kỳ tính toán, kết quả tích lũy hoàn chỉnh đượ
 Để phần cứng tự viết khớp từng bit với khối IP công nghiệp và mô hình toán học, lập trình viên phải giải quyết hai cạm bẫy số học tinh vi:
 \begin{itemize}[leftmargin=1.5em, itemsep=3pt]
     \item \textbf{Cạm bẫy độ rộng bộ tích lũy (Accumulator Width):} 
-    Tích sau bộ nhân có độ rộng 33 bit có dấu. Khi cộng dồn 16 tích số có độ lớn cực đại (trường hợp tín hiệu xoay chiều biên độ tối đa), giá trị tổng cần thêm $\lceil \log_2(16) \rceil = 4\text{ bit}$ mở rộng dấu, nâng độ rộng tối thiểu lên $33 + 4 = 37\text{ bit}$. Nếu lập trình viên chỉ khai báo thanh ghi 32-bit hoặc 36-bit, bộ tích lũy sẽ bị tràn số bit cao trong các đoạn âm thanh hô lớn hoặc tiếng thở mạnh. Trong thiết kế này, chúng tôi chọn độ rộng bộ tích lũy là **40-bit signed** (\texttt{reg signed [39:0] acc}), đảm bảo một khoảng dự trữ an toàn 3 bit chống tràn trong mọi tình huống cực đoan.
+    Tích sau bộ nhân có độ rộng 33 bit có dấu. Khi cộng dồn 16 tích số có độ lớn cực đại (trường hợp tín hiệu xoay chiều biên độ tối đa), giá trị tổng cần thêm $\lceil \log_2(16) \rceil = 4\text{ bit}$ mở rộng dấu, nâng độ rộng tối thiểu lên $33 + 4 = 37\text{ bit}$. Nếu lập trình viên chỉ khai báo thanh ghi 32-bit hoặc 36-bit, bộ tích lũy sẽ bị tràn số bit cao trong các đoạn âm thanh hô lớn hoặc tiếng thở mạnh. Trong thiết kế này, chúng tôi chọn độ rộng bộ tích lũy là \textbf{40-bit signed} (\texttt{reg signed [39:0] acc}), đảm bảo một khoảng dự trữ an toàn 3 bit chống tràn trong mọi tình huống biên độ tín hiệu lớn nhất.
     \item \textbf{Cạm bẫy làm tròn đối xứng (Symmetric Round-to-Nearest):}
     Vì các hệ số lọc được định dạng ở chuẩn Q1.15 (nhân với $2^{15} = 32768$), giá trị tích lũy nội bộ bị phóng đại $2^{15}$ lần. Để đưa dữ liệu trở về chuẩn số nguyên 16-bit ban đầu, ta phải thực hiện phép chia cho $2^{15}$ (tức dịch phải số học 15 bit, ký hiệu \texttt{>>> 15}).
     Nếu thực hiện dịch phải trực tiếp, phép toán tương đương với làm tròn hướng về âm vô cùng (floor), tạo ra sai số thiên lệch âm trung bình $-0{,}5\text{ LSB}$. Để làm tròn về số nguyên gần nhất (Round-to-Nearest), ta bắt buộc phải cộng thêm nửa trọng số của bit LSB bị cắt bỏ, tức cộng thêm hằng số $2^{14} = 16384$:
@@ -357,7 +357,7 @@ Dưới đây là toàn bộ mã nguồn phần cứng của khối lọc FIR 31
 \lstinputlisting[language=Verilog, firstline=22, lastline=195, caption={Mã nguồn Verilog hoàn chỉnh của khối FIR 31 tap gấp thời gian (rtl/v3/ch03\_fir\_filter.v)}]{rtl/v3/ch03_fir_filter.v}
 
 \subsubsection*{Giải thích mã nguồn dòng-từng-dòng}
-Để bạn đọc nắm bắt tường tận cơ chế vận hành của mạch, chúng tôi thuyết minh chi tiết từng khối mã trong tệp \texttt{rtl/v3/ch03\_fir\_filter.v}:
+Để làm rõ cơ chế vận hành của mạch, chúng tôi thuyết minh chi tiết từng khối mã trong tệp \texttt{rtl/v3/ch03\_fir\_filter.v}:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
     \item \textbf{Dòng 22--40:} Khai báo module \texttt{ch03\_fir\_filter} với 3 tham số generic: độ rộng dữ liệu âm thanh \texttt{DATA\_WIDTH = 16}, độ rộng hệ số lọc \texttt{COEFF\_WIDTH = 16}, và độ rộng thanh ghi tích lũy \texttt{ACC\_WIDTH = 40}. Các cổng giao tiếp gồm xung nhịp \texttt{clk}, xóa \texttt{rst\_n}, cờ cấu hình chuyển mạch \texttt{bypass}, kèm theo cặp giao tiếp Avalon-ST Sink (ngõ vào) và Source (ngõ ra).
     \item \textbf{Dòng 43--49:} Định nghĩa 3 trạng thái của FSM: \texttt{S\_IDLE} (chờ mẫu âm thanh mới), \texttt{S\_CALC} (thực hiện 16 bước nhân tích lũy gấp thời gian), và \texttt{S\_WAIT\_OUT} (giữ mẫu đầu ra chờ hạ nguồn tiếp nhận khi có phản áp). Khai báo thanh ghi bước \texttt{step} 4-bit ($0..15$).
