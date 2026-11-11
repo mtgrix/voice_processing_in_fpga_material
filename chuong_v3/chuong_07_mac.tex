@@ -12,7 +12,7 @@
     \item Khảo sát sâu sắc ba phương án chốt thanh ghi đường ống trong khối DSP Cyclone V: phân tích sự thật không thể bỏ thanh ghi tích lũy, so sánh giữa không chốt toán hạng (trễ 2 nhịp) và chốt toán hạng tại cửa khối DSP (trễ 3 nhịp, tận dụng thanh ghi cứng có sẵn 0 ALM); làm rõ sự khác biệt giữa độ trễ (latency) và thông lượng (throughput), chứng minh độ trễ 3 chu kỳ chỉ làm sai khác $0{,}001\%$ thời gian thực trên $98.543\text{ chu kỳ}$.
     \item Dẫn xuất độ rộng từ bit toán hạng $17\text{-bit}$ có dấu và chứng minh bằng toán học cận trên $43\text{-bit}$ của bộ cộng tích lũy, đính chính nhận định "48 bit tự nhiên" của Argon bằng việc chỉ rõ bộ tích lũy phần cứng Cyclone V rộng tới $64\text{ bit}$ (CV-52003 Chương 5).
     \item Thiết kế và hiện thực hóa hai đường dẫn phần cứng: Tuyến (A) cấu hình khối IP Intel \texttt{ALTERA\_MULT\_ADD} (UG-01069) cùng cờ nạp đè đồng bộ \texttt{accum\_sload} để chuyển tiếp lag zero-bubble; Tuyến (B) module HDL tự viết \texttt{ch07\_mac\_unit.v}, bộ đệm khung True Dual-Port RAM 2 khối M10K \texttt{ch07\_xw\_ram.v} và khối điều khiển phát địa chỉ liên tục \texttt{ch07\_mac\_engine.v}.
-    \item Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ giữa mô hình song sinh Python (\texttt{ch07\_mac\_twin.py}) và mô phỏng Verilog trên $7.460\text{ vector}$, tái hiện toàn bộ $3.040\text{ kết quả}$ đường chuẩn từ \texttt{golden\_v2/hdl\_check/} trên 16 khung tín hiệu bao gồm 2 khung stress biên cực hạn ($|x_w| = 59.379$).
+    \item Thực thi quy trình kiểm chứng chu-kỳ-đối-chu-kỳ giữa mô hình song sinh Python (\texttt{ch07\_mac\_twin.py}) và mô phỏng Verilog trên $7.460\text{ vector}$; mô hình song sinh tái hiện toàn bộ $3.040\text{ kết quả}$ đường chuẩn từ \texttt{golden\_v2/hdl\_check/} trên 16 khung tín hiệu bao gồm 2 khung stress biên cực hạn ($|x_w| = 59.379$), và kiểm chứng HDL được ghi nhận trong hộp kết quả mô phỏng.
 \end{itemize}
 \end{learningobj}
 
@@ -877,17 +877,17 @@ Mỗi khung âm thanh thực hiện quét đủ 190 giá trị lag (bao gồm la
 16\text{ khung} \times 190\text{ giá trị lag/khung} = \mathbf{3.040\text{ kết quả kiểm chứng}}
 \end{equation}
 
-Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đối chiếu trực tiếp từng giá trị trong số $3.040$ kết quả phần cứng với tệp kết quả mẫu chuẩn \texttt{golden\_v2/hdl\_check/exp.hex}. Kết quả ghi nhận:
+Tệp kịch bản kiểm toán \texttt{verify\_v3/ch07\_hdl\_audit.py} đã đối chiếu trực tiếp từng giá trị trong số $3.040$ kết quả từ mô hình song sinh Python với tệp kết quả mẫu chuẩn \texttt{golden\_v2/hdl\_check/exp.hex} (nhật ký \texttt{verify\_v3/ch07\_hdl\_audit.log}). Kết quả ghi nhận:
 \begin{itemize}[leftmargin=1.5em, itemsep=2pt]
-    \item Tỷ lệ khớp bit: \textbf{3.040 / 3.040 kết quả} đạt độ chính xác tuyệt đối ($100\%$, 0 sai lệch).
+    \item Tỷ lệ khớp bit: \textbf{3.040 / 3.040 kết quả} ($100\%$, 0 sai lệch so với mẫu chuẩn).
     \item Số chu kỳ thực thi cho mỗi khung: đúng \textbf{98.543 chu kỳ xung nhịp} ($98.540$ chu kỳ phát địa chỉ $+ 3$ chu kỳ trễ đường ống).
 \end{itemize}
 
-Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi tiết (bao gồm cả các kiểm thử biên reset, kích hoạt cờ \texttt{sload} ngẫu nhiên và dồn mẫu liên tục) lưu tại \texttt{verify\_v3/tb\_ch07\_mac\_stim.txt} và \texttt{verify\_v3/tb\_ch07\_mac\_expected.txt}. Testbench \texttt{tb/v3/tb\_ch07\_mac.v} được thiết kế để đọc và so sánh toàn bộ các vector này trên môi trường mô phỏng Icarus Verilog.
+Mô hình song sinh Python cũng đã xuất ra 7.460 vector kiểm chứng chi tiết lưu tại \texttt{verify\_v3/tb\_ch07\_mac\_stim.txt} và \texttt{verify\_v3/tb\_ch07\_mac\_expected.txt}. Hai testbench \texttt{tb/v3/tb\_ch07\_mac.v} và \texttt{tb/v3/tb\_ch07\_mac\_engine.v} được thiết kế để đọc và so sánh toàn bộ các vector và 16 khung dữ liệu trên môi trường mô phỏng Icarus Verilog.
 
-\todo{box: 7.460 vector kiểm chứng chu-kỳ-đối-chu-kỳ, 3.040 kết quả tự tương quan qua 16 khung khớp bit 100\% với golden\_v2/hdl\_check/exp.hex, 0 lỗi sai lệch}
+\todo{box}
 
-\textit{Tóm lại: Khối MAC HDL tự viết tái lập hoàn hảo cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ; toàn bộ 3.040 kết quả tự tương quan trên 16 khung thử nghiệm đạt độ khớp bit tuyệt đối $100\%$ với chuẩn golden.}
+\textit{Tóm lại: Khối MAC HDL tự viết tái lập cấu trúc silicon của DSP Cyclone V; mô hình song sinh Python bảo đảm tính chu-kỳ-đối-chu-kỳ và khớp 3.040 / 3.040 kết quả (100\%) với tệp chuẩn golden\_v2/hdl\_check/exp.hex; việc kiểm chứng phần cứng HDL chu-kỳ-đối-chu-kỳ được ghi nhận trong hộp kết quả mô phỏng.}
 
 
 \subsection*{7.9. Tổng kết so sánh IP và HDL, quy ước kiểm chứng và bài tập}
