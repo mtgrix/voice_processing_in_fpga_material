@@ -535,3 +535,112 @@ lpm_mult #(
 \end{lstlisting}
 
 \textit{Tóm lại: Tuyến thiết kế IP tận dụng đúng 1 khối nhớ M10K (cấu hình $256 \times 32$) và đúng 2 khối Variable Precision DSP ở chế độ $27 \times 27$ nhờ bước chuẩn hóa động $\text{sh}$; việc mở rộng bit dấu $0$ cho hệ số $C[\tau]$ lên 17-bit là bắt buộc để tránh lỗi tràn số bù hai trong khối nhân có dấu của Intel.}
+
+
+\subsection*{8.5. Tuyến thiết kế (B): Module HDL tự viết khớp bit và khớp chu kỳ}
+\addcontentsline{toc}{subsection}{8.5. Tuyến thiết kế (B): Module HDL tự viết khớp bit và khớp chu kỳ}
+
+\subsubsection*{Kiến trúc vi mô và sơ đồ khối phần cứng}
+Tuyến thiết kế (B) hiện thực hóa toàn bộ quá trình chuẩn hóa cửa sổ và tính điểm quãng tám bằng mã Verilog-2001 khả tổng hợp thuần túy, không phụ thuộc vào các megamodule độc quyền của Intel nhưng tái lập chính xác $100\%$ cấu trúc đường ống và thời gian trễ của Tuyến (A). Thiết kế bao gồm hai module phối hợp chặt chẽ:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \texttt{ch08\_ck\_rom.v}: Module ROM đồng bộ $256 \times 32\text{-bit}$ suy diễn trực tiếp cấu trúc M10K phần cứng.
+    \item \texttt{ch08\_norm\_score.v}: Khối điều phối tính toán đường ống 3 tầng, tích hợp bộ dò chiều dài bit $R_0$, bộ dịch số học động, và hai bộ nhân tích lũy DSP.
+\end{enumerate}
+
+Sơ đồ kiến trúc vi mô toàn diện của module \texttt{ch08\_norm\_score.v} được mô tả chi tiết trong Hình~\ref{fig:ch08_norm_arch}.
+
+\begin{figure}[htbp]
+\centering
+\resizebox{0.98\textwidth}{!}{\input{chuong_v3/fig_ch08_norm_arch.tex}}
+\caption{Sơ đồ kiến trúc vi mô phần cứng của module \texttt{ch08\_norm\_score.v}, minh họa ba tầng đường ống: Lập chuẩn số mũ $\text{sh}$ và tra cứu ROM, Khối nhân kép DSP $27 \times 27$, và Tầng làm tròn hiệu số Octave Cost.}
+\label{fig:ch08_norm_arch}
+\end{figure}
+
+\textbf{Đọc hình.} Hình~\ref{fig:ch08_norm_arch} phân định rõ luồng xử lý dữ liệu trải qua ba tầng đường ống (ngăn cách bởi các đường nét đứt màu tím):
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \emph{Tầng 0 (Nhận $R_0$):} Khi tín hiệu từ khối MAC ở Chương 7 phát ra giá trị đầu tiên tại $\tau = 0$ (\texttt{in\_tau = 0}), bộ giải mã ưu tiên \texttt{Priority Encoder} đo chiều dài bit $\text{len} = \text{bitlen}(R_0)$ và tính hệ số dịch $\text{sh} = \max(0, \text{len} - 26)$. Giá trị $\text{sh}$ và $R_{0n} = R_0 \gg \text{sh}$ được chốt vào các thanh ghi \texttt{sh\_reg} và \texttt{r0n\_reg} tại cạnh lên xung nhịp kế tiếp.
+    \item \emph{Tầng 1 (Tra cứu ROM và dịch số học):} Khi luồng độ trễ $\tau \in [26, 214]$ bắt đầu đi vào, bộ sinh địa chỉ phát $\text{addr} = \tau - 26$ vào khối \texttt{ch08\_ck\_rom}, đồng thời bộ dịch số học thực hiện $R_n[\tau] = R[\tau] \ggg \text{sh}$. Các giá trị được chốt vào thanh ghi \texttt{rn\_pipe1} sau 1 chu kỳ.
+    \item \emph{Tầng 2 (Nhân DSP):} Sau 1 chu kỳ đọc ROM, từ dữ liệu 32-bit được giải mã thành $C[\tau] = \text{rom\_data}[31:16]$ và $K[\tau] = \text{rom\_data}[15:0]$. Hai bộ nhân DSP tính toán song song: $P_C = R_n \times C$ ($27\text{s} \times 17\text{s} \to 44\text{s}$) và $P_K = R_{0n} \times K$ ($27\text{s} \times 16\text{s} \to 43\text{s}$). Kết quả tích được chốt vào \texttt{prod\_c\_pipe2} và \texttt{prod\_k\_pipe2}.
+    \item \emph{Tầng 3 (Làm tròn và hiệu số):} Tích $P_C$ được cộng làm tròn $+ 8192$ rồi dịch phải 14 bit để tạo ra đại lượng tương quan chuẩn hóa $U[\tau]$. Tích $P_K$ được cộng làm tròn $+ 524288$ rồi dịch phải 20 bit tạo ra lượng phạt $\text{term}_K$. Bộ trừ tính $S_c[\tau] = U[\tau] - \text{term}_K$. Tất cả kết quả được chốt vào thanh ghi ngõ ra \texttt{out\_U}, \texttt{out\_Sc}, \texttt{out\_valid} và \texttt{out\_last}.
+\end{itemize}
+
+\subsubsection*{Mã nguồn Verilog của module ROM tích hợp \texttt{ch08\_ck\_rom.v}}
+Listing~\ref{lst:ch08_ck_rom} trình bày toàn bộ module bộ nhớ ROM một cổng đồng bộ \texttt{ch08\_ck\_rom.v}. Module tuân thủ chặt chẽ mẫu suy diễn bộ nhớ nhúng (RAM/ROM Inference Template) của Quartus Prime.
+
+\lstinputlisting[language=Verilog, firstline=12, lastline=35, firstnumber=12, caption={Mã nguồn Verilog module ROM tích hợp 256x32-bit (rtl/v3/ch08\_ck\_rom.v).}, label={lst:ch08_ck_rom}]{\detokenize{rtl/v3/ch08_ck_rom.v}}
+
+Giải thích chi tiết từng dòng mã nguồn của module \texttt{ch08\_ck\_rom.v}:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 12--21:} Khai báo tham số độ rộng địa chỉ \texttt{ADDR\_W = 8} ($2^8 = 256\text{ từ}$), độ rộng dữ liệu \texttt{DATA\_W = 32}, độ sâu \texttt{DEPTH = 256} và đường dẫn tệp khởi tạo \texttt{INIT\_FILE}.
+    \item \textbf{Dòng 24:} Khai báo mảng bộ nhớ hai chiều \texttt{reg [DATA\_W-1:0] rom [0:DEPTH-1]}. Quartus tự động nhận dạng khai báo này và ánh xạ vào cấu hình $256 \times 40$ của một khối M10K vật lý.
+    \item \textbf{Dòng 26--28:} Khối \texttt{initial} sử dụng hàm hệ thống \texttt{\$readmemh} để nạp 256 từ mã hex từ tệp \path{golden_v2/rom/ck_rom.hex}. Trong quy trình tổng hợp FPGA thật trên Quartus, chỉ thị này được trình biên dịch chuyển thành dữ liệu nhị phân khởi tạo bitstream cấu hình cho khối M10K.
+    \item \textbf{Dòng 31--33:} Khối \texttt{always @(posedge clk)} chốt dữ liệu đọc \texttt{q <= rom[addr]} ở cạnh lên xung nhịp, tạo ra độ trễ đúng 1 chu kỳ xung nhịp và bảo đảm suy diễn thành thanh ghi ngõ ra có sẵn của M10K.
+\end{itemize}
+
+\subsubsection*{Mã nguồn Verilog của module tính toán \texttt{ch08\_norm\_score.v}}
+Quá trình tính toán đường ống của khối chuẩn hóa và tính điểm được phân tách thành hai giai đoạn mã nguồn: Giai đoạn 1--2 (Dịch số học và Nhân DSP) trong Listing~\ref{lst:ch08_norm_pipe12}, và Giai đoạn 3 (Làm tròn và Hiệu số ngõ ra) trong Listing~\ref{lst:ch08_norm_pipe3}.
+
+\lstinputlisting[language=Verilog, firstline=119, lastline=169, firstnumber=119, caption={Đoạn mã Verilog Tầng 1 và Tầng 2: Dịch số học, tra cứu ROM và Khối nhân DSP kép (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe12}]{\detokenize{rtl/v3/ch08_norm_score.v}}
+
+Giải thích chi tiết các bước xử lý trong Tầng 1 và Tầng 2:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 117:} Tín hiệu \texttt{r\_shifted = in\_R >>> sh\_reg} thực hiện phép dịch phải số học (arithmetic right shift) giữ nguyên bit dấu của giá trị tự tương quan 48-bit có dấu. Phép toán \texttt{>>>} bảo đảm nếu $R[\tau] < 0$, các bit chèn vào phía MSB luôn là bit 1.
+    \item \textbf{Dòng 127--133:} Khi cờ \texttt{in\_valid = 1} và độ trễ nằm trong dải quét $\tau \in [26, 214]$, Tầng 1 sinh địa chỉ ROM $\text{addr} = \tau - 26$, chốt $27\text{ bit}$ thấp của $R_n[\tau]$ vào \texttt{rn\_pipe1}, chốt giá trị $R_{0n}$ vào \texttt{r0n\_pipe1} và nâng cờ hợp lệ \texttt{v\_pipe1 = 1}.
+    \item \textbf{Dòng 152--153:} Tách từ nhớ 32-bit của ROM thành hai hệ số: \texttt{c\_coeff} ($16\text{ bit}$ cao không dấu) và \texttt{k\_coeff} ($16\text{ bit}$ thấp có dấu).
+    \item \textbf{Dòng 166:} Phép nhân thứ nhất thực hiện \texttt{rn\_pipe1 * \$signed(\{1'b0, c\_coeff\})}. Việc ghép thêm bit 0 vào MSB của \texttt{c\_coeff} giúp mở rộng an toàn hệ số không âm $C[\tau]$ thành số có dấu $17\text{ bit}$, ngăn chặn triệt để hiện tượng tràn số âm khi $C[\tau] \ge 32768$. Tích \texttt{prod\_c\_pipe2} là số có dấu $44\text{ bit}$.
+    \item \textbf{Dòng 167:} Phép nhân thứ hai thực hiện \texttt{\$signed(\{1'b0, r0n\_pipe1\}) * k\_coeff}. Năng lượng $R_{0n}$ ($26\text{ bit}$ dương) được mở rộng thành $27\text{ bit}$ có dấu và nhân với $K[\tau]$ ($16\text{ bit}$ có dấu). Tích \texttt{prod\_k\_pipe2} là số có dấu $43\text{ bit}$. Cả hai phép nhân được chốt đồng thời vào thanh ghi Tầng 2 ở cạnh lên xung nhịp kế tiếp.
+\end{itemize}
+
+\lstinputlisting[language=Verilog, firstline=174, lastline=201, firstnumber=174, caption={Đoạn mã Verilog Tầng 3: Làm tròn số học, dịch phân số và trừ Octave Cost (rtl/v3/ch08\_norm\_score.v).}, label={lst:ch08_norm_pipe3}]{\detokenize{rtl/v3/ch08_norm_pipe3}}
+
+Giải thích chi tiết các bước xử lý trong Tầng 3:
+\begin{itemize}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Dòng 174--175:} Phép cộng hằng số làm tròn $+ 8192$ (tương ứng $+ 2^{13}$, nửa LSB của định dạng phân số $14\text{ bit}$) và phép dịch phải số học \texttt{>>> 14} thực hiện phép chia nguyên làm tròn chuẩn xác cho $2^{14}$, tạo ra đại lượng tương quan chuẩn hóa $U[\tau]$ ($28\text{ bit}$ có dấu).
+    \item \textbf{Dòng 177--178:} Phép cộng hằng số làm tròn $+ 524288$ (tương ứng $+ 2^{19}$, nửa LSB của định dạng phân số $20\text{ bit}$) và phép dịch phải số học \texttt{>>> 20} tạo ra lượng phạt chi phí quãng tám $\text{term}_K$ ($23\text{ bit}$ có dấu).
+    \item \textbf{Dòng 180:} Bộ trừ thực hiện phép trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$. Biểu thức \texttt{\{\{7\{k\_div[22]\}\}, k\_div\}} thực hiện mở rộng bit dấu tường minh từ 23 bit lên 30 bit có dấu trước khi trừ, bảo đảm tính đúng đắn khi $\text{term}_K$ âm (tại $\tau = 26$).
+    \item \textbf{Dòng 182--201:} Khối \texttt{always} chốt toàn bộ các kết quả ngõ ra vào thanh ghi: cờ \texttt{out\_valid}, chỉ số trễ \texttt{out\_tau}, các giá trị $U[\tau]$, $S_c[\tau]$, $R_{0n}$, $\text{sh}$ và cờ báo hoàn tất lag cuối cùng \texttt{out\_last = (tau == 214)}.
+\end{itemize}
+
+\subsubsection*{Vì sao khối HDL tự viết khớp bit và khớp chu kỳ với Tuyến IP}
+Sự tương đương toán học và định thời giữa module HDL tự viết và cấu hình Intel IP được bảo đảm bởi ba yếu tố kiến trúc:
+\begin{enumerate}[leftmargin=1.5em, itemsep=2pt]
+    \item \textbf{Độ trễ đường ống (Latency):} Module IP \texttt{altsyncram} có độ trễ 1 chu kỳ, và khối IP \texttt{LPM\_MULT} có độ trễ 1 chu kỳ (\texttt{LPM\_PIPELINE = 1}). Module HDL tự viết bố trí đúng 1 chu kỳ đọc ROM (\texttt{addr} $\to$ \texttt{rom\_data}) và đúng 1 chu kỳ chốt tích nhân (\texttt{rn\_pipe1} $\to$ \texttt{prod\_c\_pipe2}), cộng thêm 1 chu kỳ chốt ngõ ra làm tròn. Tổng độ trễ từ ngõ vào $R[\tau]$ đến ngõ ra $U[\tau]$ và $S_c[\tau]$ của cả hai tuyến đều bằng \textbf{đúng 3 chu kỳ xung nhịp}.
+    \item \textbf{Thông lượng liên tục (Throughput):} Cả hai tuyến đều có thông lượng đạt $1\text{ kết quả/chu kỳ}$ (zero-bubble streaming pipeline). Khi 189 độ trễ được phát liên tục, 189 kết quả hợp lệ nối đuôi nhau xuất hiện ở ngõ ra sau 3 nhịp trễ ban đầu.
+    \item \textbf{Khớp bit làm tròn:} Cả hai tuyến đều áp dụng chung công thức cộng nửa LSB dương ($+ 2^{13}$ và $+ 2^{19}$) trước khi dịch phải số học bù hai, triệt tiêu mọi sai số cắt cụt (truncation bias).
+\end{enumerate}
+
+\subsubsection*{Bảng đối chiếu dòng mã nguồn giữa Python Twin và Verilog HDL}
+Bảng~\ref{tab:ch08_twin_vs_hdl} đối chiếu chi tiết từng dòng lệnh giữa hàm cập nhật \texttt{step()} của mô hình song sinh Python (\path{verify_v3/ch08_twin.py}) và mã nguồn phần cứng Verilog (\path{rtl/v3/ch08_norm_score.v}).
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Đối chiếu chi tiết giữa mô hình song sinh Python Twin và mã nguồn Verilog HDL.}
+\label{tab:ch08_twin_vs_hdl}
+\begin{tabularx}{\textwidth}{p{3.0cm} p{3.2cm} X}
+\toprule
+\textbf{Dòng Python Twin} & \textbf{Dòng Verilog HDL} & \textbf{Ý nghĩa kỹ thuật và cơ chế hoạt động} \\
+\midrule
+Dòng 88--93 & Dòng 80--84, 120--126 & Khởi tạo và reset tích cực mức thấp, xóa toàn bộ các thanh ghi trạng thái đường ống về 0. \\
+\addlinespace[3pt]
+Dòng 170--175 & Dòng 85--88 & Bắt cờ $\tau = 0$, tính chiều dài bit $\text{bitlen}(R_0)$ và chốt hệ số dịch $\text{sh}$ cùng $R_{0n} = R_0 \gg \text{sh}$. \\
+\addlinespace[3pt]
+Dòng 156--161 & Dòng 127--133 & Tầng 1: Sinh địa chỉ $\text{addr} = \tau - 26$, thực hiện dịch số học $R_n[\tau] = R[\tau] \ggg \text{sh}$ vào thanh ghi \texttt{rn\_pipe1}. \\
+\addlinespace[3pt]
+Dòng 137--145 & Dòng 155--168 & Tầng 2: Nhân song song hai tích $P_C = R_n \times C[\tau]$ ($27\text{s} \times 17\text{s}$) và $P_K = R_{0n} \times K[\tau]$ ($27\text{s} \times 16\text{s}$). \\
+\addlinespace[3pt]
+Dòng 117 & Dòng 174--175 & Tầng 3: Làm tròn cộng $2^{13}$ và dịch phải 14 bit tạo đại lượng tương quan chuẩn hóa $U[\tau]$. \\
+\addlinespace[3pt]
+Dòng 118 & Dòng 177--178 & Tầng 3: Làm tròn cộng $2^{19}$ và dịch phải 20 bit tạo lượng phạt Octave Cost $\text{term}_K$. \\
+\addlinespace[3pt]
+Dòng 119 & Dòng 180 & Tầng 3: Trừ đại số $S_c[\tau] = U[\tau] - \text{term}_K$ tạo điểm chi phí toàn cục cho xếp hạng ứng viên. \\
+\addlinespace[3pt]
+Dòng 180--200 & Dòng 182--201 & Cạnh lên xung nhịp: Chốt đồng thời ngõ ra \texttt{out\_valid}, \texttt{out\_U}, \texttt{out\_Sc}, \texttt{out\_last} vào flip-flop. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Đổi lựa chọn thì sao?}
+Nếu người thiết kế quyết định xóa bỏ thanh ghi Tầng 2 và đưa tích số $P_C, P_K$ thẳng vào bộ cộng làm tròn Tầng 3 trong cùng một chu kỳ (giảm độ trễ từ 3 xuống 2 nhịp): đường tới hạn sẽ kéo dài từ ngõ ra của khối M10K, đi qua bộ nhân DSP $27 \times 27$, đi tiếp qua bộ cộng $44\text{-bit}$ rồi mới tới thanh ghi ngõ ra. Trên chip Cyclone V tốc độ chậm (speed grade -6), quãng đường điện dài này sẽ làm tụt tần số hoạt động tối đa $F_{\max}$ xuống dưới $50\text{ MHz}$ (phải đo). Việc giữ nguyên cấu trúc 3 nhịp là lựa chọn tối ưu, vừa bảo đảm $F_{\max} > 100\text{ MHz}$, vừa khớp hoàn toàn với kiến trúc IP.
+
+\textit{Tóm lại: Module HDL tự viết mô phỏng trung thực kiến trúc silicon M10K và DSP của Cyclone V; thiết kế đường ống 3 tầng giúp phân tách quãng đường điện, bảo đảm thông lượng 1 kết quả/chu kỳ và khớp hoàn toàn từng bit lẫn từng chu kỳ với mô hình song sinh Python.}

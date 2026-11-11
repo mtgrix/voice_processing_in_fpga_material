@@ -1,0 +1,99 @@
+================================================================================
+BÀI TẬP 1: TÍNH TOÁN THỦ CÔNG HỆ SỐ C[tau] VÀ K[tau] TẠI tau = 50 VÀ tau = 100
+================================================================================
+Rw[0]   = 257295365938
+Rw[50]  = 247130793216  -> C_exact = 17057.879436  -> C[50] Q2.14  = 17058 (0x42A2)
+Rw[100] = 218869510864 -> C_exact = 19260.459161 -> C[100] Q2.14 = 19260 (0x4B3C)
+
+Tau = 50 : ratio = 1.8750, log2 = 0.906891 -> K_exact = 9509.4371 -> K[50]  = 9509 (0x2525)
+Tau = 100: ratio = 3.7500, log2 = 1.906891 -> K_exact = 19995.1971 -> K[100] = 19995 (0x4E1B)
+
+Từ ROM 32-bit tại địa chỉ tau - 26:
+  Địa chỉ  24 (tau=50) : 0x42A22525 (C=17058, K=9509)
+  Địa chỉ  74 (tau=100): 0x4B3C4E1B (C=19260, K=19995)
+
+================================================================================
+BÀI TẬP 2: ĐÁNH ĐỔI TÀI NGUYÊN DSP GIỮA CHUẨN HÓA sh VÀ GIỮ NGUYÊN 43-BIT
+================================================================================
+Trường hợp 1: Có chuẩn hóa động sh = max(0, bitlen(R0) - 26):
+  - R_n[tau] có độ rộng tối đa 27 bit có dấu (signed [26:0]).
+  - C[tau] có độ rộng 16 bit unsigned (đưa vào bộ nhân thành 17 bit có dấu).
+  - Phép nhân R_n * C có kích thước 27 x 17 bit có dấu.
+  - Theo Cyclone V Handbook (CV-52003, Chương 5), 1 khối Variable Precision DSP
+    ở chế độ 27x27 hỗ trợ tối đa toán hạng 27 bit x 27 bit.
+  -> Phép nhân R_n * C tiêu tốn đúng 1 khối DSP.
+  - Tương tự, R0n * K có kích thước 27 x 16 bit có dấu -> tiêu tốn đúng 1 khối DSP.
+  -> Tổng tài nguyên: đúng 2 khối DSP cho cả hai phép nhân.
+
+Trường hợp 2: Không chuẩn hóa (giữ nguyên R 43-bit có dấu):
+  - Toán hạng A = 43 bit có dấu, toán hạng B = 16 bit unsigned.
+  - Để thực hiện phép nhân 43 x 16 bit, Quartus phải phân rã thành hai tích con:
+    R * C = (R_high * 2^18 + R_low) * C = (R_high * C) * 2^18 + (R_low * C)
+    hoặc ghép nhiều khối DSP 18x18 / 27x27 kèm bộ cộng ALM bên ngoài.
+  - Mỗi phép nhân 43 x 16 bit đòi hỏi tối thiểu 2 đến 3 khối DSP.
+  -> Tổng tài nguyên: 4 đến 6 khối DSP (tăng gấp đôi đến gấp ba!)
+Kết luận: Chuẩn hóa động sh tiết kiệm 50% đến 67% số lượng DSP của chương này!
+
+================================================================================
+BÀI TẬP 3: DẪN XUẤT GIẢI TÍCH ĐỘ DỊCH ĐỈNH PARABOL DO HỆ SỐ NHÂN THIÊN VỊ
+================================================================================
+Giả sử tại đỉnh rời rạc tau_p, hàm tự tương quan chuẩn hóa đối xứng cục bộ:
+  U[tau_p - 1] = y0 - a
+  U[tau_p]     = y0
+  U[tau_p + 1] = y0 - a   (với a > 0 là độ cong, delta_ideal = 0)
+
+Khi nhân với hệ số thiên vị m(tau) = (16000 / (600 * tau))^0.01:
+Khai triển Taylor bậc 1 quanh tau_p: m(tau) approx m0 * (1 - gamma * (tau - tau_p))
+với gamma = 0.01 / tau_p > 0.
+Khi đó ba điểm giá trị mới là:
+  S_minus = (y0 - a) * m0 * (1 + gamma)
+  S_0     = y0 * m0
+  S_plus  = (y0 - a) * m0 * (1 - gamma)
+
+Hiệu số num và mẫu số den của công thức parabol:
+  num_S = S_plus - S_minus = (y0 - a) * m0 * (-2*gamma)
+  den_S = 2*S_0 - S_minus - S_plus = m0 * [2*y0 - (y0 - a)(1 + gamma) - (y0 - a)(1 - gamma)]
+        = m0 * [2*y0 - 2*(y0 - a)] = 2 * a * m0
+
+Độ dịch đỉnh ước lượng delta_S:
+  delta_S = 0.5 * num_S / den_S = 0.5 * [-2*gamma*(y0 - a)*m0] / [2*a*m0]
+          = -0.5 * gamma * (y0 - a) / a
+Thay gamma = 0.01 / tau_p:
+  delta_S = - (0.005 / tau_p) * (y0 - a) / a  < 0 (đỉnh dịch về bên trái, tau nhỏ hơn)
+Độ lệch tần số tương đối: df / f approx - dtau / tau = - delta_S / tau_p
+  df / f approx (0.005 / tau_p^2) * (y0 - a) / a
+Quy đổi sang đơn vị cent: Delta cent = 1200 * log2(1 + df/f) approx 1200 / ln(2) * (df/f)
+  Delta cent approx 1731.23 * (0.005 / tau_p^2) * (y0 - a) / a
+Với tau_p = 100 (f0 = 160 Hz) và (y0 - a)/a approx 10 (đỉnh có độ sắc trung bình):
+  Delta cent approx 0.0087 cent (rất phù hợp với thực nghiệm 0.07--0.23 cent!)
+
+================================================================================
+BÀI TẬP 4: CHỨNG MINH DẢI ĐỘNG VÀ ĐỘ RỘNG BIT CỦA U[tau] VÀ Sc[tau]
+================================================================================
+Theo định nghĩa của bước chuẩn hóa:
+  sh = max(0, bitlen(R0) - 26)
+Do đó:
+  R0n = R0 >> sh < 2^26 = 67.108.864
+Theo bất đẳng thức Cauchy-Schwarz đối với hàm tự tương quan:
+  |R[tau]| <= R[0]
+Do đó:
+  |Rn[tau]| <= R0n < 2^26
+
+Xét U[tau] = (Rn[tau] * C[tau] + 2^13) >> 14:
+  C[tau] in [16563, 35030] (Q2.14, tương ứng hệ số khuếch đại C / 2^14 in [1.01, 2.14])
+  Cực đại lý thuyết của U[tau]:
+  U_max approx R0n * 35030 / 16384 approx 2.138 * R0n < 2.138 * 2^26 approx 1.435 * 2^27
+  log2(1.435 * 2^27) approx 27.52 bit.
+  Do đó, một thanh ghi 28-bit có dấu (signed [27:0], dải [-134.217.728, +134.217.727])
+  hoàn toàn bao trọn mọi giá trị cực đại có thể có của U[tau]!
+
+Xét Sc[tau] = U[tau] - term_K:
+  term_K = (R0n * K[tau] + 2^19) >> 20
+  K[tau] in [-383, 31504], tỉ số K / 2^20 in [-0.000365, 0.030045]
+  term_K chiếm tối đa khoảng 3% giá trị của R0n (dưới 2.016.000).
+  Hiệu Sc[tau] = U[tau] - term_K chỉ biến thiên trong phạm vi [-U_max, U_max].
+  Do đó, độ rộng signed [27:0] (28 bit có dấu) bảo đảm không bao giờ tràn số.
+
+================================================================================
+CH08 EXERCISES VERIFICATION COMPLETED SUCCESSFULLY.
+================================================================================

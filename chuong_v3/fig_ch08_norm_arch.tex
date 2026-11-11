@@ -1,0 +1,150 @@
+% chuong_v3/fig_ch08_norm_arch.tex
+% Sơ đồ kiến trúc vi mô phần cứng của module ch08_norm_score.v
+% Minh họa chi tiết 3 tầng đường ống: Chuẩn hóa động sh, Bảng tra ROM M10K,
+% Khối nhân kép DSP 27x27 và tầng làm tròn / hiệu số Octave Cost.
+\begin{tikzpicture}[
+    >=Stealth, node distance=1.2cm and 1.2cm,
+    block/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=2pt,
+                  align=center, font=\scriptsize, inner sep=4pt, minimum height=0.8cm},
+    romblk/.style={rectangle, draw=orange!80!black, fill=orange!10, thick, rounded corners=2pt,
+                   align=center, font=\scriptsize, inner sep=4pt, minimum height=1.1cm},
+    dspblk/.style={rectangle, draw=red!75!black, fill=red!8, thick, rounded corners=2pt,
+                   align=center, font=\scriptsize, inner sep=4pt, minimum height=0.9cm},
+    regblk/.style={rectangle, draw=gray!80!black, fill=gray!15, thick,
+                   align=center, font=\tiny\bfseries, inner sep=2pt, minimum width=0.45cm, minimum height=1.2cm},
+    roundblk/.style={rectangle, draw=green!60!black, fill=green!8, thick, rounded corners=2pt,
+                     align=center, font=\scriptsize, inner sep=4pt},
+    line/.style={draw, thick, ->, shorten >=1pt},
+    pipeline/.style={draw=purple!60!black, dashed, thick}
+]
+
+    % Tọa độ gốc cho các tầng
+    % Tầng 0: Khối Latch R0 và tính sh
+    \node (in_sig) at (-1.5, 3.2) [align=center, font=\scriptsize] {
+        \textbf{Từ MAC Engine:}\\
+        \texttt{in\_valid}\\
+        \texttt{in\_tau [7:0]}\\
+        \texttt{in\_R [47:0]}
+    };
+
+    \node[block, minimum width=2.4cm] (prio) at (2.2, 4.4) {
+        \textbf{Priority Encoder}\\
+        $\text{len} = \text{bitlen}(R_0)$\\
+        $\text{sh} = \max(0, \text{len} - 26)$
+    };
+
+    \node[block, minimum width=2.4cm] (r0n_shift) at (2.2, 2.0) {
+        \textbf{Bộ dịch phải $R_0$}\\
+        $R_{0n} = R_0 \gg \text{sh}$\\
+        ($26\text{ bit}$ không dấu)
+    };
+
+    % Thanh ghi chốt R0n và sh
+    \node[regblk] (reg_sh) at (4.5, 4.4) {\rotatebox{90}{\textbf{sh\_reg}}};
+    \node[regblk] (reg_r0n) at (4.5, 2.0) {\rotatebox{90}{\textbf{r0n\_reg}}};
+
+    % Đường ống Tầng 1: Lấy mẫu R[tau] và Tra cứu ROM
+    \node[block, minimum width=2.4cm] (rn_shift) at (2.2, 0.4) {
+        \textbf{Bộ dịch số học $R[\tau]$}\\
+        $R_n[\tau] = R[\tau] \ggg \text{sh}$\\
+        ($27\text{ bit}$ có dấu)
+    };
+
+    \node[block, minimum width=2.4cm] (addr_gen) at (2.2, -1.2) {
+        \textbf{Bộ sinh địa chỉ ROM}\\
+        $\text{addr} = \tau - 26$\\
+        ($\tau \in [26, 214]$, $8\text{ bit}$)
+    };
+
+    % Vách ngăn Tầng 1
+    \draw[pipeline] (5.4, 5.2) -- (5.4, -2.2);
+    \node[purple!70!black, font=\tiny\bfseries, fill=white, inner sep=1pt] at (5.4, 5.0) {TẦNG 1};
+
+    \node[regblk] (reg_rn1) at (6.2, 0.4) {\rotatebox{90}{\textbf{rn\_pipe1}}};
+    \node[romblk, minimum width=2.6cm] (rom_ck) at (7.6, -1.2) {
+        \textbf{ROM: 1-PORT}\\
+        \textbf{ch08\_ck\_rom (1 M10K)}\\
+        $256 \times 32\text{-bit}$ (Trễ 1 nhịp)\\
+        $[31:16] = C[\tau] \text{ (Q2.14)}$\\
+        $[15:0]  = K[\tau] \text{ (Signed)}$
+    };
+
+    % Vách ngăn Tầng 2
+    \draw[pipeline] (9.4, 5.2) -- (9.4, -2.2);
+    \node[purple!70!black, font=\tiny\bfseries, fill=white, inner sep=1pt] at (9.4, 5.0) {TẦNG 2};
+
+    % Tầng 2: Khối nhân kép DSP
+    \node[dspblk, minimum width=2.8cm] (mult_c) at (11.0, 0.4) {
+        \textbf{DSP Multiplier 1}\\
+        $R_n[\tau] \times C[\tau]$\\
+        ($27\text{s} \times 17\text{s} \to 44\text{s}$)
+    };
+
+    \node[dspblk, minimum width=2.8cm] (mult_k) at (11.0, -1.2) {
+        \textbf{DSP Multiplier 2}\\
+        $R_{0n} \times K[\tau]$\\
+        ($27\text{s} \times 16\text{s} \to 43\text{s}$)
+    };
+
+    % Vách ngăn Tầng 3
+    \draw[pipeline] (13.0, 5.2) -- (13.0, -2.2);
+    \node[purple!70!black, font=\tiny\bfseries, fill=white, inner sep=1pt] at (13.0, 5.0) {TẦNG 3};
+
+    % Tầng 3: Làm tròn, dịch phải và trừ
+    \node[roundblk, minimum width=2.6cm] (round_u) at (14.6, 0.4) {
+        \textbf{Làm tròn \& Dịch $U$}\\
+        $(P_C + 2^{13}) \ggg 14$\\
+        $\to U[\tau]$ ($28\text{s}$)
+    };
+
+    \node[roundblk, minimum width=2.6cm] (round_k) at (14.6, -1.2) {
+        \textbf{Làm tròn \& Dịch $K$}\\
+        $(P_K + 2^{19}) \ggg 20$\\
+        $\to \text{term}_K$ ($23\text{s}$)
+    };
+
+    \node[block, draw=red!70!black, fill=red!5, minimum width=2.2cm] (sub_sc) at (17.5, -0.4) {
+        \textbf{Bộ trừ Octave Cost}\\
+        $S_c[\tau] = U[\tau] - \text{term}_K$\\
+        ($28\text{ bit}$ có dấu)
+    };
+
+    % Đầu ra
+    \node (out_sig) at (20.5, 0.0) [align=left, font=\scriptsize] {
+        \textbf{Ngõ ra hoàn tất:}\\
+        $\bullet$ \texttt{out\_valid}, \texttt{out\_last}\\
+        $\bullet$ \texttt{out\_tau [7:0]}\\
+        $\bullet$ \texttt{out\_U [27:0]}\\
+        $\bullet$ \texttt{out\_Sc [27:0]}\\
+        $\bullet$ \texttt{out\_R0n [25:0]}, \texttt{out\_sh [4:0]}
+    };
+
+    % Các đường nối tín hiệu
+    \draw[line] (in_sig) |- node[above, font=\tiny, near start] {$\tau = 0$ ($R_0$)} (prio);
+    \draw[line] (in_sig) |- node[above, font=\tiny, near start] {$\tau = 0$ ($R_0$)} (r0n_shift);
+    \draw[line] (prio) -- node[above, font=\tiny] {$\text{sh}$} (reg_sh);
+    \draw[line] (r0n_shift) -- node[above, font=\tiny] {$R_{0n}$} (reg_r0n);
+
+    \draw[line] (in_sig) |- node[above, font=\tiny, near start] {$\tau \ge 26$ ($R[\tau]$)} (rn_shift);
+    \draw[line] (in_sig) |- node[above, font=\tiny, near start] {$\tau \ge 26$} (addr_gen);
+
+    \draw[line] (reg_sh) |- (rn_shift);
+    \draw[line] (rn_shift) -- (reg_rn1);
+    \draw[line] (addr_gen) -- (rom_ck);
+
+    \draw[line] (reg_rn1) -- (mult_c);
+    \draw[line] (rom_ck.east) -- ++(0.3,0) |- node[above, font=\tiny, near end] {$C[\tau]$} (mult_c.south west);
+    \draw[line] (rom_ck.east) -- node[above, font=\tiny] {$K[\tau]$} (mult_k.west);
+
+    \draw[line] (reg_r0n.east) -- ++(0.8,0) |- node[above, font=\tiny, near end] {$R_{0n}$} (mult_k.north west);
+
+    \draw[line] (mult_c) -- node[above, font=\tiny] {$P_C$} (round_u);
+    \draw[line] (mult_k) -- node[above, font=\tiny] {$P_K$} (round_k);
+
+    \draw[line] (round_u.east) -- ++(0.6,0) |- node[above, font=\tiny, near end] {$U[\tau]$} (sub_sc.north west);
+    \draw[line] (round_k.east) -- ++(0.6,0) |- node[above, font=\tiny, near end] {$\text{term}_K$} (sub_sc.south west);
+
+    \draw[line] (round_u.east) -- ++(0.6,0) |- (out_sig);
+    \draw[line] (sub_sc.east) -- (out_sig);
+
+\end{tikzpicture}
