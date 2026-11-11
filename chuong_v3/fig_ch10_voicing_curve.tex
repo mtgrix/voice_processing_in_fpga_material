@@ -1,0 +1,94 @@
+% chuong_v3/fig_ch10_voicing_curve.tex
+% Đồ thị hàm ngưỡng độ mạnh ứng viên vô thanh R_unvoiced(I) của Praat
+% Thể hiện 3 phân vùng: Im lặng tuyệt đối (I < 0.03), Dốc chuyển tiếp (0.03 <= I < 0.0414),
+% và Tiếng nói tích cực (I >= 0.0414).
+\begin{tikzpicture}[
+    >=Stealth,
+    scale=1.0,
+    axis/.style={draw=black!80, thick, ->},
+    gridline/.style={draw=gray!40, dashed, thin},
+    threshold/.style={draw=red!80!black, very thick},
+    zone_silence/.style={fill=red!8, draw=none},
+    zone_ramp/.style={fill=orange!10, draw=none},
+    zone_active/.style={fill=green!8, draw=none},
+    pt_voiced/.style={circle, fill=green!60!black, inner sep=2.5pt},
+    pt_unvoiced/.style={circle, fill=red!70!black, inner sep=2.5pt}
+]
+
+    % Kích thước vẽ: Trục hoành I từ 0 đến 0.07 (x scale: 0.01 = 1.6 cm -> 0.07 = 11.2 cm)
+    % Trục tung R_unvoiced từ 0 đến 1.5 (y scale: 0.2 = 0.7 cm -> 1.5 = 5.25 cm)
+
+    % Tô màu các phân vùng nền
+    % Vùng 1: I in [0, 0.03] -> x in [0, 4.8]
+    \fill[zone_silence] (0, 0) rectangle (4.8, 5.0);
+    % Vùng 2: I in [0.03, 0.04138] -> x in [4.8, 6.62]
+    \fill[zone_ramp] (4.8, 0) rectangle (6.62, 5.0);
+    % Vùng 3: I in [0.04138, 0.07] -> x in [6.62, 10.5]
+    \fill[zone_active] (6.62, 0) rectangle (10.5, 5.0);
+
+    % Hệ trục tọa độ
+    \draw[axis] (-0.3, 0) -- (11.0, 0) node[right, font=\small] {$I = \frac{\text{LP}}{\text{GP}}$};
+    \draw[axis] (0, -0.3) -- (0, 5.4) node[above, font=\small] {Độ mạnh ngưỡng $R_{\text{unvoiced}}(I)$};
+
+    % Đường dóng thẳng đứng phân vùng
+    \draw[gridline] (4.8, 0) -- (4.8, 5.0);
+    \draw[gridline] (6.62, 0) -- (6.62, 5.0);
+
+    % Đường dóng ngang các mức độ mạnh đặc trưng
+    % 0.45 -> y = 0.45 * 3.5 = 1.575 cm
+    % 1.00 -> y = 1.00 * 3.5 = 3.500 cm
+    \draw[gridline] (0, 1.575) -- (10.5, 1.575);
+    \draw[gridline] (0, 3.500) -- (4.8, 3.500);
+
+    % Đường cong ngưỡng Praat:
+    % Đoạn 1: I in [0, 0.03] (x in [0, 4.8]): dốc từ 2.45 (y=8.57, ngoài khung) xuống 1.0 (y=3.5)
+    % Vẽ từ I = 0.02 (x = 3.2, y = (0.45 + 2 - 0.02*145/3)*3.5 = (0.45 + 1.033)*3.5 = 5.19 cm)
+    \draw[threshold, domain=3.2:4.8] plot (\x, {(0.45 + 2.0 - (\x/160.0)*48.3333)*3.5});
+    % Đoạn 2: Vùng dốc I in [0.03, 0.041379] (x in [4.8, 6.62]): từ y = 3.500 xuống y = 1.575
+    \draw[threshold] (4.8, 3.500) -- (6.62, 1.575);
+    % Đoạn 3: Vùng phẳng I >= 0.041379 (x in [6.62, 10.5]): nằm ngang tại y = 1.575 (0.45)
+    \draw[threshold] (6.62, 1.575) -- (10.5, 1.575);
+
+    % Nhãn các mức trên trục tung
+    \node[left, font=\scriptsize] at (0, 1.575) {$0{,}45$};
+    \node[left, font=\scriptsize\bfseries] at (0, 3.500) {$1{,}00$};
+
+    % Nhãn các mốc trên trục hoành
+    \node[below, font=\scriptsize\bfseries, fill=white, inner sep=1pt] at (4.8, -0.1) {$0{,}03$};
+    \node[below, font=\scriptsize\bfseries, fill=white, inner sep=1pt] at (6.62, -0.1) {$0{,}0414$};
+    \node[below, font=\scriptsize, fill=white, inner sep=1pt] at (9.6, -0.1) {$0{,}06$};
+
+    % Tiêu đề các phân vùng
+    \node[above, font=\scriptsize\bfseries, text=red!80!black, align=center, fill=white, inner sep=1.5pt] at (2.4, 4.3)
+        {Vùng im lặng\\($I < 0{,}03$)};
+    \node[above, font=\scriptsize\bfseries, text=orange!80!black, align=center, fill=white, inner sep=1.5pt] at (5.7, 4.3)
+        {Vùng dốc\\($0{,}03 \le I < 0{,}0414$)};
+    \node[above, font=\scriptsize\bfseries, text=green!60!black, align=center, fill=white, inner sep=1.5pt] at (8.6, 4.3)
+        {Vùng tiếng nói tích cực\\($I \ge 0{,}0414$)};
+
+    % Chú thích bản chất vùng im lặng
+    \node[font=\tiny, text=red!70!black, align=center, fill=white, inner sep=1pt] at (2.4, 2.0)
+        {$R_{\text{unvoiced}} > 1{,}00$\\(Vô thanh vô điều kiện)};
+
+    % Điểm mẫu thử nghiệm
+    % Điểm A: Voiced trong vùng tích cực (I = 0.055 -> x = 8.8, Sc/R0n = 0.75 -> y = 0.75*3.5 = 2.625)
+    \node[pt_voiced] (ptA) at (8.8, 2.625) {};
+    \node[above right, font=\scriptsize, fill=white, inner sep=1pt] at (ptA)
+        {Ứng viên hữu thanh ($S_c/R_{0n} = 0{,}75 > 0{,}45$)};
+
+    % Điểm B: Unvoiced trong vùng tích cực (I = 0.055 -> x = 8.8, Sc/R0n = 0.30 -> y = 0.30*3.5 = 1.05)
+    \node[pt_unvoiced] (ptB) at (8.8, 1.05) {};
+    \node[below right, font=\scriptsize, fill=white, inner sep=1pt] at (ptB)
+        {Ứng viên vô thanh ($S_c/R_{0n} = 0{,}30 \le 0{,}45$)};
+
+    % Điểm C: Ứng viên trong vùng im lặng có tương quan cao (I = 0.015 -> x = 2.4, Sc/R0n = 0.80 -> y = 2.80)
+    \node[pt_unvoiced] (ptC) at (2.4, 2.80) {};
+    \node[right, font=\tiny, align=left, fill=white, inner sep=1pt] at (2.55, 3.0)
+        {Nhiễu/ù có tính chu kỳ ($S_c/R_{0n} = 0{,}80$)\\nhưng $I < 0{,}03 \implies$ Vô thanh};
+
+    % Mũi tên chỉ thị đường ngưỡng
+    \draw[->, thick, red!80!black] (7.8, 2.1) -- (7.5, 1.65);
+    \node[above, font=\scriptsize\bfseries, text=red!80!black, fill=white, inner sep=1pt] at (7.8, 2.15)
+        {Ngưỡng phẳng $0{,}45$};
+
+\end{tikzpicture}

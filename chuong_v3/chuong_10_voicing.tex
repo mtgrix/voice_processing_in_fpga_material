@@ -1,0 +1,172 @@
+\clearpage
+\phantomsection
+\section*{Chương 10. Quyết định im lặng, vô thanh và hữu thanh}
+\addcontentsline{toc}{section}{Chương 10. Quyết định im lặng, vô thanh và hữu thanh}
+
+\begin{learningobj}
+\begin{itemize}
+    \item Thấu hiểu bản chất vật lý của ranh giới vô thanh / hữu thanh: vì sao việc tìm cực đại tự tương quan thuần túy luôn sinh ra tần số giả trong các đoạn im lặng và phụ âm xát vô thanh.
+    \item Nắm vững cơ chế đánh giá độ mạnh của ứng viên vô thanh trong mã nguồn Praat 7.0.03: từ tỉ số biên độ đỉnh tương đối $I = LP / GP$ đến hàm phạt tuyến tính vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$.
+    \item Phân tích tường minh nguyên nhân loại bỏ mô hình ngưỡng năng lượng toàn cục $E_{\text{ref}}$ (golden v1) và dẫn xuất bất đẳng thức nhân chéo số nguyên 54-bit bám sát tuyệt đối Praat (golden v2).
+    \item Nắm vững vi kiến trúc đường ống 3 tầng của module HDL tự viết \texttt{ch10\_voicing.v}: tối ưu hóa hằng số bằng phép dịch-cộng không tốn DSP, loại bỏ hoàn toàn bộ chia dấu phẩy động và triệt tiêu bẫy im lặng.
+    \item Kiểm chứng tính tương đương chu kỳ-đối-chu kỳ giữa mô hình song sinh Python Twin và phần cứng Verilog trên hơn 600 bộ vectơ thử nghiệm góc, xác nhận chỉ số lỗi quyết định vô thanh $\text{VDE} = 0 / 277$ khung trên hai tệp âm thanh chuẩn.
+\end{itemize}
+\end{learningobj}
+
+% ============================================================================
+% 10.1. THUẬT TOÁN CỦA PRAAT 7.0.03
+% ============================================================================
+\subsection*{10.1. Thuật toán của Praat 7.0.03: Bản chất ứng viên vô thanh, cường độ tương đối và vùng dốc ngưỡng}
+\addcontentsline{toc}{subsection}{10.1. Thuật toán của Praat 7.0.03: Bản chất ứng viên vô thanh, cường độ tương đối và vùng dốc ngưỡng}
+
+\subsubsection*{Vấn đề thực tế: Bẫy tần số ma trong các khoảng lặng và tiếng ù xoay chiều}
+Giả sử hệ thống xử lý tín hiệu hoàn tất việc tìm đỉnh cực đại của hàm tự tương quan $S_c[\tau]$ trên dải độ trễ $\tau \in [27, 213]$ như đã thiết kế ở Chương 9. Câu hỏi đặt ra là: nếu một khung âm thanh là khoảng lặng hoàn toàn giữa hai từ, hoặc là phụ âm xát vô thanh như âm /s/, /f/, /t/ (tiếng ồn trắng ngẫu nhiên của luồng khí qua khe hẹp thanh môn không có dao động dây thanh), chuyện gì sẽ xảy ra nếu ta xuất ngay tần số nội suy $F_0 = f_s / \tau^*$ ra ngõ ra?
+
+Thực tế phũ phàng là: \emph{hàm tự tương quan luôn luôn tìm được một cực đại toán học}. Ngay cả trong tín hiệu nhiễu trắng thuần túy không hề có tính chu kỳ, các dao động ngẫu nhiên của nhiễu vẫn tạo ra một đỉnh lồi cục bộ nào đó trong dải quét. Nếu không có bộ kiểm duyệt độ tin cậy của tính tuần hoàn, mạch phần cứng sẽ phát ra một giá trị $F_0$ nhảy nhót hỗn loạn (ví dụ $120\text{ Hz}$, $480\text{ Hz}$) giữa các khoảng lặng. Người nghe hoặc hệ thống nhận dạng tiếng nói phía sau sẽ nhận được một cao độ hoàn toàn vô nghĩa.
+
+Nguy hiểm hơn nữa là hiện tượng can nhiễu từ nguồn điện lưới xoay chiều $50\text{ Hz}$ trong môi trường ghi âm thực tế. Bản thân tần số cơ bản $50\text{ Hz}$ có chu kỳ mẫu $\tau = 16000 / 50 = 320\text{ mẫu}$, nằm ngoài dải quét phần cứng $[26, 214]$ nên không thể lọt vào bộ tìm đỉnh. Tuy nhiên, các sóng hài bậc cao của nguồn điện lưới do hiện tượng méo phi tuyến của bộ tiền khuếch đại micro lại nằm trọn vẹn trong dải tìm kiếm:
+\begin{itemize}
+    \item Hài bậc hai $100\text{ Hz}$ tương ứng với độ trễ $\tau = 16000 / 100 = 160\text{ mẫu} \in [27, 213]$.
+    \item Hài bậc ba $150\text{ Hz}$ tương ứng với độ trễ $\tau = 16000 / 150 \approx 107\text{ mẫu} \in [27, 213]$.
+    \item Hài bậc bốn $200\text{ Hz}$ tương ứng với độ trễ $\tau = 16000 / 200 = 80\text{ mẫu} \in [27, 213]$.
+\end{itemize}
+Khi người nói ngừng lời (khoảng lặng), năng lượng tiếng nói biến mất, nhưng tiếng ù xoay chiều $100\text{ Hz}$ biên độ nhỏ vẫn tồn tại đều đặn dưới nền. Khi đó, hàm tự tương quan sẽ khóa vào đỉnh chu kỳ của hài $100\text{ Hz}$ với hệ số tương quan rất cao ($r \approx 0{,}8$). Nếu chỉ nhìn vào độ nhọn tương quan, hệ thống sẽ kết luận nhầm rằng khoảng lặng đó là giọng nói trầm $100\text{ Hz}$! Đó chính là lý do vì sao một thuật toán ước lượng cao độ chuẩn xác bắt buộc phải có cơ chế phối hợp giữa độ mạnh tuần hoàn và biên độ tín hiệu thực tế.
+
+\subsubsection*{Cơ chế ứng viên vô thanh và cường độ tương đối trong Praat 7.0.03}
+Trong phần mềm Praat của Paul Boersma, bài toán phân loại vô thanh / hữu thanh không được giải quyết bằng một phép so sánh ngưỡng cứng tách rời, mà được tích hợp trực tiếp vào danh sách các ứng viên cạnh tranh cao độ của từng khung.
+
+Cụ thể, trong tệp mã nguồn \texttt{fon/Sound\_to\_Pitch.cpp} tại các dòng 170--179, Praat luôn luôn khởi tạo ứng viên đầu tiên trong danh sách (ứng viên số 1) là \textbf{ứng viên vô thanh} (\emph{unvoiced candidate}):
+\begin{quote}
+\small
+\texttt{/* Candidate 1 is the unvoiced candidate */}\\
+\texttt{candidates [1]. frequency = 0.0;}\\
+\texttt{candidates [1]. strength = 0.0;}\\
+\texttt{/* Absolute silence is always voiceless */}\\
+\texttt{if (localPeak == 0.0) return;}
+\end{quote}
+Tần số của ứng viên vô thanh được gán cố định bằng $0{,}0\text{ Hz}$. Các ứng viên tiếp theo (từ ứng viên số 2 trở đi) là các đỉnh tự tương quan hữu thanh tìm được trên dải trễ $\tau$. Một khung âm thanh chỉ được tuyên bố là hữu thanh khi và chỉ khi độ mạnh (\emph{strength}) của ứng viên hữu thanh tốt nhất vượt qua độ mạnh của ứng viên vô thanh.
+
+Độ mạnh của ứng viên vô thanh được Praat tính toán dựa trên hai đại lượng biên độ đỉnh:
+\begin{enumerate}
+    \item \textbf{Đỉnh biên độ toàn cục (\texttt{globalPeak} -- ký hiệu $GP$):} Được tính toán một lần duy nhất trên toàn bộ tệp âm thanh WAV tại \texttt{fon/Sound\_to\_Pitch.cpp} các dòng 372--385:
+    \begin{equation}
+        GP = \max_{1 \le i \le N_{\text{samples}}} |x[i] - \bar{x}|
+    \end{equation}
+    trong đó $\bar{x}$ là giá trị trung bình cộng của toàn bộ tệp âm thanh. Trong hệ thống nhúng của ta, đại lượng này được bộ xử lý HPS tính toán sẵn trong bước đọc tệp WAV bằng công thức số nguyên chuẩn tắc:
+    \begin{equation}
+        GP = \left\lfloor \frac{\max\limits_{v \in \{\min x, \max x\}} |n \cdot v - \sum x| + \lfloor n/2 \rfloor}{n} \right\rfloor
+    \end{equation}
+    giá trị này được nạp trực tiếp vào thanh ghi điều khiển CSR của FPGA trước khi xử lý khung (ví dụ $GP = 22.946$ cho tệp sạch và $22.937$ cho tệp có nhiễu trong bộ dữ liệu kiểm chứng). Nếu $GP = 0$, toàn bộ tệp âm thanh là một đường thẳng nằm ngang (im lặng tuyệt đối), Praat lập tức trả về đối tượng Pitch rỗng (dòng 383).
+
+    \item \textbf{Đỉnh biên độ cục bộ (\texttt{localPeak} -- ký hiệu $LP$):} Được tính toán riêng cho từng khung phân tích tại \texttt{fon/Sound\_to\_Pitch.cpp} các dòng 87--102:
+    \begin{quote}
+    \small
+    \texttt{/* Compute the local peak; look half a longest period to both sides. */}\\
+    \texttt{integer startSample = halfnsamp\_window + 1 - halfnsamp\_period;}\\
+    \texttt{integer endSample = halfnsamp\_window + halfnsamp\_period;}\\
+    \texttt{if (startSample < 1) startSample = 1;}\\
+    \texttt{if (endSample > nsamp\_window) endSample = nsamp\_window;}\\
+    \texttt{double localPeak = 0.0;}\\
+    \texttt{for (integer j = startSample; j <= endSample; j ++) \{}\\
+    \texttt{\ \ \ \ double value = fabs (frame [j]);}\\
+    \texttt{\ \ \ \ if (value > localPeak) localPeak = value;}\\
+    \texttt{\}}\\
+    \texttt{double intensity = ( localPeak > globalPeak ? 1.0 : localPeak / globalPeak );}
+    \end{quote}
+\end{enumerate}
+
+\subsubsection*{Dẫn xuất khoảng chỉ số mẫu của LocalPeak trên lưới khung 638 mẫu}
+Hãy tính toán chính xác dải chỉ số mẫu của $LP$ theo các tham số chuẩn hóa của hệ thống: tần số lấy mẫu $f_s = 16.000\text{ Hz}$, độ trễ cực đại của chu kỳ dài nhất ứng với $\text{pitchFloor} = 75\text{ Hz}$:
+\begin{align}
+    \text{nsamp\_period} &= \left\lfloor \frac{f_s}{\text{pitchFloor}} \right\rfloor = \left\lfloor \frac{16000}{75} \right\rfloor = 213\text{ mẫu}, \\
+    \text{halfnsamp\_period} &= \left\lfloor \frac{\text{nsamp\_period}}{2} \right\rfloor + 1 = 106 + 1 = 107\text{ mẫu}.
+\end{align}
+Độ dài cửa sổ Hanning đối xứng được chuẩn hóa theo Praat dòng 334--339 là $\text{nsamp\_window} = 638\text{ mẫu}$, với nửa cửa sổ là $\text{halfnsamp\_window} = 319\text{ mẫu}$.
+Theo quy ước chỉ số đếm từ 1 của Praat:
+\begin{align}
+    \text{startSample} &= \text{halfnsamp\_window} + 1 - \text{halfnsamp\_period} = 319 + 1 - 107 = 213, \\
+    \text{endSample}   &= \text{halfnsamp\_window} + \text{halfnsamp\_period} = 319 + 107 = 426.
+\end{align}
+Chuyển đổi sang quy ước chỉ số mảng đếm từ 0 trong ngôn ngữ C, Python và phần cứng Verilog:
+\begin{align}
+    j_{\text{start}} &= 213 - 1 = 212, \\
+    j_{\text{end}}   &= 426 - 1 = 425.
+\end{align}
+Tổng số mẫu nằm trong phạm vi quét đỉnh cục bộ là $425 - 212 + 1 = 214\text{ mẫu}$, nằm đối xứng hoàn hảo quanh tâm của khung phân tích 638 mẫu (mẫu tâm nằm tại $j = 318$ và $319$). Tín hiệu quét là các mẫu $x_w[j]$ \emph{đã nhân cửa sổ Hanning}. Cực đại biên độ cục bộ là:
+\begin{equation}
+    LP = \max_{j = 212..425} |x_w[j]|
+\end{equation}
+Giá trị này được module nhân cửa sổ Hanning \texttt{ch06\_hanning\_window.v} ghi nhận trực tiếp bằng một bộ so sánh cực đại biên độ trong đúng lượt quét cửa sổ, hoàn toàn không tốn thêm bất kỳ chu kỳ xung nhịp nào!
+
+Tỉ số cường độ biên độ tương đối $I$ được Praat định nghĩa là:
+\begin{equation}
+    I = \frac{LP}{GP} \quad (\text{bão hòa tại } 1{,}0 \text{ nếu } LP > GP)
+\end{equation}
+
+\subsubsection*{Hàm độ mạnh vô thanh và vùng dốc chuyển tiếp $[0{,}03;\, 0{,}0414]$}
+Tại tệp mã nguồn \texttt{fon/Pitch.cpp} các dòng 553--555, Praat thiết lập độ mạnh của ứng viên vô thanh (\texttt{unvoicedStrength}, ký hiệu $R_{\text{unvoiced}}$) theo công thức toán học:
+\begin{equation}
+    R_{\text{unvoiced}} = \text{voicingThreshold} + \max\left(0,\, 2 - \frac{I}{\frac{\text{silenceThreshold}}{1 + \text{voicingThreshold}}}\right)
+    \label{eq:praat_unvoiced_strength}
+\end{equation}
+Với các giá trị cấu hình mặc định chuẩn mực của Praat:
+\begin{itemize}
+    \item Ngưỡng vô thanh $\text{voicingThreshold} = 0{,}45$.
+    \item Ngưỡng im lặng $\text{silenceThreshold} = 0{,}03$ (tương ứng với biên độ đỉnh bằng $3\%$ biên độ đỉnh toàn tệp, tức suy giảm $-30{,}46\text{ dB}$).
+\end{itemize}
+Thay các giá trị số này vào mẫu số của phân thức:
+\begin{equation}
+    \frac{\text{silenceThreshold}}{1 + \text{voicingThreshold}} = \frac{0{,}03}{1 + 0{,}45} = \frac{0{,}03}{1{,}45} = \frac{3}{145} \approx 0{,}020689655
+\end{equation}
+Khi đó, biểu thức trong hàm cực đại trở thành:
+\begin{equation}
+    2 - \frac{I}{\frac{3}{145}} = 2 - I \cdot \frac{145}{3}
+\end{equation}
+Công thức độ mạnh ứng viên vô thanh \eqref{eq:praat_unvoiced_strength} được viết lại dưới dạng phân tích tường minh:
+\begin{equation}
+    R_{\text{unvoiced}}(I) = 0{,}45 + \max\left(0,\, 2 - I \cdot \frac{145}{3}\right)
+    \label{eq:praat_unvoiced_numeric}
+\end{equation}
+
+Hàm số $R_{\text{unvoiced}}(I)$ chia miền cường độ $I \in [0, 1]$ thành ba phân vùng vật lý rõ rệt:
+\begin{enumerate}
+    \item \textbf{Phân vùng 1: Im lặng tuyệt đối ($I < 0{,}03$).}
+    Khi cường độ tín hiệu nhỏ hơn $3\%$ đỉnh toàn cục ($I < 0{,}03$):
+    \begin{equation}
+        2 - I \cdot \frac{145}{3} > 2 - 0{,}03 \cdot \frac{145}{3} = 2 - 1{,}45 = 0{,}55
+    \end{equation}
+    Do đó, độ mạnh của ứng viên vô thanh thỏa mãn:
+    \begin{equation}
+        R_{\text{unvoiced}} > 0{,}45 + 0{,}55 = 1{,}00
+    \end{equation}
+    Mặt khác, theo định nghĩa của hàm tự tương quan chuẩn hóa chia cửa sổ, hệ số tương quan của bất kỳ đỉnh tuần hoàn nào luôn bị chặn trên bởi $r[\tau] \le 1{,}0$. Hơn nữa, do chi phí quãng tám $\text{octaveCost} > 0$, độ mạnh của ứng viên hữu thanh luôn nhỏ hơn $1{,}0$. Vì độ mạnh hữu thanh không bao giờ vượt quá $1{,}00$, trong khi độ mạnh vô thanh lại lớn hơn $1{,}00$, \textbf{mọi khung có $I < 0{,}03$ chắc chắn bị tuyên bố là vô thanh vô điều kiện}! Điều này bóp nghẹt hoàn toàn tiếng ù điện xoay chiều $50\text{ Hz}$ hay $100\text{ Hz}$ trong các khoảng dừng nói.
+
+    \item \textbf{Phân vùng 2: Vùng dốc chuyển tiếp ($0{,}03 \le I < \frac{6}{145} \approx 0{,}04138$).}
+    Khi $I$ tăng từ $0{,}03$ lên điểm mà tại đó biểu thức $2 - I \cdot \frac{145}{3} = 0$:
+    \begin{equation}
+        I_{\text{end}} = \frac{2}{\frac{145}{3}} = \frac{6}{145} \approx 0{,}0413793... \approx 0{,}0414
+    \end{equation}
+    Trong khoảng này, giá trị $2 - I \cdot \frac{145}{3}$ dương và giảm tuyến tính từ $0{,}55$ về $0$. Do đó, $R_{\text{unvoiced}}$ giảm mượt mà từ $1{,}00$ xuống $0{,}45$. Đây là một đặc điểm thiết kế tinh tế của Paul Boersma: thay vì áp đặt một bước nhảy bậc thang đột ngột (gây hiện tượng chớp tắt vô thanh / hữu thanh chập chờn khi tín hiệu mấp mé ngưỡng), Praat tạo ra một \emph{vùng đệm giảm xóc tuyến tính}. Tín hiệu càng yếu thì đòi hỏi tính tuần hoàn càng phải hoàn hảo mới được công nhận là hữu thanh.
+
+    \item \textbf{Phân vùng 3: Vùng tiếng nói tích cực ($I \ge 0{,}0414$).}
+    Khi $I \ge \frac{6}{145}$, ta có $2 - I \cdot \frac{145}{3} \le 0$, khiến hàm $\max(0, \dots) = 0$. Khi đó:
+    \begin{equation}
+        R_{\text{unvoiced}} = 0{,}45 = \text{voicingThreshold}
+    \end{equation}
+    Độ mạnh vô thanh giữ nguyên giá trị phẳng $0{,}45$. Một ứng viên hữu thanh chỉ cần có hệ số tự tương quan hiệu chỉnh $S_c / R_{0n} > 0{,}45$ là sẽ chiến thắng ứng viên vô thanh và được công nhận là nguyên âm / âm hữu thanh.
+\end{enumerate}
+
+\begin{figure}[htbp]
+    \centering
+    \input{chuong_v3/fig_ch10_voicing_curve.tex}
+    \caption{Đồ thị hàm độ mạnh ứng viên vô thanh $R_{\text{unvoiced}}(I)$ của Praat 7.0.03 theo tỉ số cường độ $I = LP / GP$. Ba phân vùng được phân định rõ ràng bởi hai mốc ngưỡng $I = 0{,}03$ và $I = 6/145 \approx 0{,}0414$.}
+    \label{fig:ch10_voicing_curve}
+\end{figure}
+
+\textbf{Đọc hình.} Hình \ref{fig:ch10_voicing_curve} trình bày trực quan quy luật phân định vô thanh / hữu thanh của Praat 7.0.03 trên mặt phẳng tọa độ $(I, R)$. Trục hoành biểu diễn tỉ số cường độ biên độ đỉnh $I = LP / GP$; trục tung biểu diễn độ mạnh ngưỡng $R$. Đường cong màu đỏ đậm thể hiện hàm số $R_{\text{unvoiced}}(I)$. Tại vùng im lặng màu đỏ nhạt ($I < 0{,}03$), đường ngưỡng vọt lên trên mức $1{,}00$, khiến mọi ứng viên (kể cả điểm C có tính chu kỳ cao $S_c/R_{0n} = 0{,}80$) đều bị đánh rớt xuống vô thanh. Tại vùng dốc màu cam ($0{,}03 \le I < 0{,}0414$), đường ngưỡng dốc thẳng đứng từ $1{,}00$ xuống $0{,}45$. Tại vùng tiếng nói tích cực màu xanh nhạt ($I \ge 0{,}0414$), đường ngưỡng nằm ngang cố định tại $0{,}45$. Điểm xanh A ($S_c/R_{0n} = 0{,}75$) nằm phía trên đường ngưỡng nên được công nhận là hữu thanh; trong khi điểm đỏ B ($S_c/R_{0n} = 0{,}30$) nằm phía dưới nên bị phân loại là vô thanh.
+
+\subsubsection*{Chỗ dễ vướng: Vì sao Praat dùng tỉ số biên độ thay vì tỉ số năng lượng RMS?}
+Nhiều kỹ sư khi thiết kế hệ thống phát hiện tiếng nói (VAD -- \emph{Voice Activity Detection}) thường có phản xạ tự nhiên là tính năng lượng trung bình bình phương (RMS energy hoặc $R[0] = \sum x^2$). Tuy nhiên, Paul Boersma đã chọn cực đại biên độ tuyệt đối $\max |x_w[j]|$. Lý do nằm ở đặc tính âm học của các âm thanh bật và phụ âm tắc:
+Một xung đóng mở dây thanh đột ngột (glottal pulse) ở đầu một âm tiết có thể tạo ra một đỉnh biên độ rất sắc nhọn nhưng thời gian tồn tại cực ngắn (chỉ vài mẫu). Nếu tính tổng bình phương $R[0]$ trên toàn bộ cửa sổ 638 mẫu, năng lượng trung bình sẽ bị san phẳng ra toàn khung, khiến tỉ số năng lượng rơi xuống rất thấp và có nguy cơ bị gạt nhầm vào khoảng lặng. Ngược lại, đại lượng $LP = \max |x_w[j]|$ giữ nguyên được biên độ đỉnh thực tế của luồng áp suất âm thanh, giúp bảo toàn tính hữu thanh của các phụ âm bật ngay tại thời điểm thanh môn vừa mở.
+
+\textit{Tóm lại: Praat quyết định vô thanh bằng cách so sánh ứng viên hữu thanh với một ứng viên vô thanh đối trọng mang độ mạnh $R_{\text{unvoiced}}(I) = 0{,}45 + \max(0, 2 - I \cdot 145/3)$; đường ngưỡng này tự động dâng lên trên $1{,}0$ để biến mọi khung có $I < 0{,}03$ thành vô thanh, triệt tiêu hoàn toàn tiếng ù và tạp âm khoảng lặng.}
