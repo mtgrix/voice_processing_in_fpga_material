@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13 clean
 
-all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12
+all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 ch13
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -204,5 +204,22 @@ ch12:
 	$(PYTHON) ch12_end_to_end_test.py > ch12_end_to_end_test.log
 	@echo "=== [ch12] All Chapter 12 verifications completed successfully ==="
 
+ch13:
+	@echo "=== [ch13] Running statistical metrics audit (Agenda Section 7) ==="
+	$(PYTHON) ch13_metrics_audit.py > ch13_metrics_audit.log
+	@echo "=== [ch13] Running miniature hand example (10 frames) ==="
+	$(PYTHON) ch13_hand_example.py > ch13_hand_example.log
+	@echo "=== [ch13] Running frame alignment audit (Praat C++ vs HPS C) ==="
+	$(PYTHON) ch13_frame_alignment.py > ch13_frame_alignment.log
+	@echo "=== [ch13] Running Praat 7.0.03 line citations audit ==="
+	$(PYTHON) ch13_praat_lines.py > ch13_praat_lines.log
+	@echo "=== [ch13] Running chapter exercises verification ==="
+	$(PYTHON) ch13_exercises.py > ch13_exercises.log
+	@echo "=== [ch13] Running HPS C high-resolution timer test ==="
+	gcc -Wall -Wextra -O2 -DSIM ../sw_v3/test_ch13_hps_timer.c ../sw_v3/ch13_hps_timer.c ../sw_v3/ch12_driver.c ../sw_v3/ch01_wav.c ../sw_v3/ch01_frames.c -I../sw_v3 -lm -lpthread -o test_ch13_hps_timer
+	./test_ch13_hps_timer
+	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch13_hps_timer.exe', 'test_ch13_hps_timer') if os.path.exists(f)]"
+	@echo "=== [ch13] All Chapter 13 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_* tb_ch11_median3_stim.txt tb_ch11_median3_expected.txt test_ch11_median3* sim_ch11_* tb_ch12_top_stim.txt tb_ch12_top_expected.txt pitch_f0_*.bin test_ch12_driver* sim_ch12_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_* tb_ch11_median3_stim.txt tb_ch11_median3_expected.txt test_ch11_median3* sim_ch11_* tb_ch12_top_stim.txt tb_ch12_top_expected.txt pitch_f0_*.bin test_ch12_driver* sim_ch12_* test_ch13_hps_timer* ch13_test_*

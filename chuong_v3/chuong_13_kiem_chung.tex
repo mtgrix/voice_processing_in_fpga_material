@@ -1,0 +1,110 @@
+\clearpage
+\phantomsection
+\section*{Chương 13. Kiểm chứng toàn diện hệ thống và đối chuẩn với Praat}
+\addcontentsline{toc}{section}{Chương 13. Kiểm chứng toàn diện hệ thống và đối chuẩn với Praat}
+
+\begin{learningobj}
+\begin{itemize}
+    \item Thấu hiểu bản chất và cấu trúc ba tầng kiểm chứng nghiêm ngặt của hệ thống ước lượng cao độ giọng nói: Tầng 1 (khớp từng bit và chu kỳ giữa mô hình phần mềm song sinh Python Twin, mã nguồn RTL tự viết và các khối IP của Intel), Tầng 2 (khớp từng byte nhị phân ngõ ra giữa mô phỏng phần cứng và bo mạch vật lý DE10-Standard qua cầu nối HPS-to-FPGA), và Tầng 3 (đối chuẩn âm học theo phương pháp thống kê giữa phần cứng và phần mềm chuẩn Praat 7.0.03).
+    \item Phân tích sâu sắc phương pháp luận đối chuẩn thông qua hai cấu hình Praat tham chiếu ($R_1$ mặc định và $R_2$ gỡ bỏ chi phí chuyển trạng thái); chứng minh về mặt giải thuật lý do $R_2$ quy về phép chọn cực đại cục bộ từng khung độc lập (Argmax), tạo cơ sở so sánh sòng phẳng (apples-to-apples) với luồng phần cứng FPGA trước bộ lọc trung vị Median-3.
+    \item Nắm vững phương pháp phân rã các nguồn sai số độc lập: tách biệt phần đóng góp của thuật toán quy hoạch động Viterbi ($\Delta(R_1 - R_2)$) khỏi các sai số phần cứng do phép nhân tích lũy MAC, nội suy đỉnh parabol, lượng tử hóa trên lưới lag nguyên và định dạng số cố định Q12.4 ($\Delta(R_2 - \text{FPGA})$), với sự hỗ trợ của bản chuyển đổi số thực tham chiếu \texttt{praat\_float\_ref.py} ($\le 1{,}5 \cdot 10^{-4}\text{ cent}$).
+    \item Làm chủ nguyên tắc căn chỉnh khung phân tích theo trục thời gian vật lý ($t_k = t_1 + k \cdot dt$) thay vì dựa vào chỉ số khung đơn thuần; nhận diện và hóa giải bẫy làm tròn mẫu trên các tệp có số lượng mẫu lẻ (odd-sample floor trap).
+    \item Định nghĩa tường minh bốn chỉ số đo lường chất lượng âm học theo tiêu chuẩn quốc tế: Tỷ lệ lỗi phân định âm tính (VDE), Tỷ lệ lỗi cao độ thô (GPE với ngưỡng $20\% \approx 315{,}64\text{ cent}$), Tỷ lệ lỗi toàn diện khung (FFE) và phân phối độ lệch cent mịn (Fine Cent Error); thực hành tính tay chi tiết trên tập mẫu 10 khung đại diện.
+    \item Thiết kế phương pháp đo lường thời gian thực thi và xác định hệ số thời gian thực (RTF) trên ba nền tảng: đo chu kỳ phần cứng trên FPGA qua thanh ghi CSR, đo thời gian ba giai đoạn trên vi xử lý HPS bằng hàm chuẩn POSIX \texttt{clock\_gettime(CLOCK\_MONOTONIC)}, và đo thời gian thuật toán thuần túy của Praat trên máy tính xách tay bằng kịch bản Praat script với đồng hồ bấm giờ nội bộ (\texttt{stopwatch}).
+    \item Tổng hợp và đánh giá bảng so sánh tài nguyên silicon giữa phương án sử dụng khối chức năng MegaCore IP của Intel và phương án HDL tự viết (ALM, thanh ghi, khối RAM M10K, khối xử lý số DSP và tần số xung nhịp cực đại $F_{\max}$).
+    \item Vận dụng kiến thức giải quyết 4 bài tập chuyên sâu cuối chương kèm lời giải số học chi tiết.
+\end{itemize}
+\end{learningobj}
+
+% ============================================================================
+% 13.1. BA TẦNG KIỂM CHỨNG HỆ THỐNG: TỪ MÔ HÌNH PHẦN MỀM ĐẾN SILICON THỰC TẾ
+% ============================================================================
+\subsection*{13.1. Ba tầng kiểm chứng hệ thống: Từ mô hình phần mềm đến silicon thực tế}
+\addcontentsline{toc}{subsection}{13.1. Ba tầng kiểm chứng hệ thống: Từ mô hình phần mềm đến silicon thực tế}
+
+\subsubsection*{Vấn đề thực tế: Nguy cơ ngụy biện trong kiểm thử hệ thống nhúng}
+Khi hiện thực một thuật toán xử lý tín hiệu âm thanh phức tạp như ước lượng cao độ giọng nói ($F_0$) từ phần mềm chuẩn (Praat) lên phần cứng bán dẫn FPGA, một sai lầm kinh điển mà người kỹ sư dễ mắc phải là: đưa tín hiệu âm thanh vào bo mạch phần cứng, thu được chuỗi tần số $F_0$, so sánh thấy kết quả ``khá giống'' với đồ thị của Praat rồi vội vã kết luận hệ thống đã hoạt động chính xác.
+
+Cách tiếp cận ngây thơ đó chứa đựng nguy cơ ngụy biện rất lớn:
+\begin{enumerate}
+    \item \emph{Che lấp lỗi triệt tiêu (Canceling Errors)}: Một lỗi lệch một mẫu ở bộ đệm vòng (Chương 4) có thể bị che lấp một phần bởi việc làm tròn sai hướng ở bộ chia Radix-2 (Chương 9). Khi chạy trên một tệp âm thanh sạch có tính tuần hoàn lý tưởng, kết quả ngõ ra vẫn có thể rơi vào dải tần số chấp nhận được, nhưng hệ thống sẽ lập tức sụp đổ khi gặp tín hiệu thực tế có ồn hoặc biên độ biến thiên nhanh.
+    \item \emph{Không thể truy nguyên nguồn gốc sai số}: Nếu kết quả đo giữa bo mạch và Praat xuất hiện một tỷ lệ khung bị sai lệch $5\%$, câu hỏi đặt ra là: $5\%$ đó bắt nguồn từ đâu? Do bộ lọc FIR làm dịch pha tín hiệu? Do thuật toán nhân tích lũy MAC 17-bit bị tràn? Do việc nội suy đỉnh 3 điểm bằng đường parabol không khớp với thuật toán sinc70 kết hợp tối ưu hóa Brent của Praat? Hay do FPGA không có bộ dò đường toàn cục Viterbi như Praat? Nếu không có một chiến lược kiểm thử phân tầng, người kỹ sư hoàn toàn bất lực trong việc định vị nguyên nhân cốt lõi.
+    \item \emph{Sự bất đồng bộ giữa mô phỏng và phần cứng vật lý}: Một thiết kế có thể mô phỏng đúng trên phần mềm mô phỏng (như Icarus Verilog hay ModelSim) nhưng lại chạy sai trên bo mạch thực tế do các vấn đề phần cứng: vi phạm thời gian thiết lập/giữ (setup/hold time violation), bất đồng bộ miền xung nhịp (clock domain crossing), sai lệch giao thức bắt tay qua cầu nối bus Avalon-MM, hoặc dữ liệu bị suy hao trên đường truyền bộ nhớ.
+\end{enumerate}
+
+Để vượt qua hoàn toàn các nguy cơ trên, quy trình kiểm chứng của đề tài được thiết lập theo cấu trúc \textbf{ba tầng độc lập và tăng dần mức độ trừu tượng}, được minh họa trực quan trong sơ đồ Hình \ref{fig:ch13_three_tiers}.
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch13_three_tiers.tex}
+\caption{Kiến trúc ba tầng kiểm chứng hệ thống: Tầng 1 (khớp từng bit mô phỏng), Tầng 2 (khớp từng byte phần cứng thực tế), và Tầng 3 (đối chuẩn thống kê âm học với Praat 7.0.03).}
+\label{fig:ch13_three_tiers}
+\end{figure}
+
+\textbf{Đọc hình.} Sơ đồ Hình \ref{fig:ch13_three_tiers} phân định ranh giới rõ ràng giữa ba miền đánh giá: Miền mô phỏng phần mềm ở trên cùng (Tầng 1) bảo đảm tính toàn vẹn số học tuyệt đối giữa mô hình Python Twin và các dòng mã RTL. Miền phần cứng nhúng ở giữa (Tầng 2) kiểm tra tính trung thực của việc thực thi vật lý trên chip bán dẫn Cyclone V SoC của bo mạch DE10-Standard. Miền đối chuẩn âm học ở dưới cùng (Tầng 3) so sánh sản phẩm phần cứng với phần mềm chuẩn khoa học Praat 7.0.03 thông qua phương pháp thống kê sai số cao độ.
+
+\subsubsection*{Tầng 1: Khớp từng bit giữa mô hình Python Twin, RTL và IP Intel}
+Tầng 1 là nền tảng toán học của toàn bộ dự án. Tại tầng này, tiêu chuẩn kiểm tra là \textbf{tính đồng nhất tuyệt đối từng bit (bit-exact equivalence)} và \textbf{tính đồng nhất chu kỳ (cycle-accurate)}:
+\begin{itemize}
+    \item Mô hình toán học số nguyên \texttt{golden\_v2/fixed\_twin.py} đóng vai trò là bản đặc tả định lượng (golden specification). Mọi phép toán số học trong mô hình này (phép cộng dồn 48-bit, phép dịch bit số học \texttt{>>>}, bảng tra ROM Hanning Q1.15, ROM hằng số $C[\tau]$ và $K[\tau]$, logic so sánh ngưỡng và thuật toán chia khôi phục Radix-2) đều được thiết kế để khớp chính xác với phần cứng số.
+    \item Mỗi module phần cứng từ Chương 1 đến Chương 12 đều được kiểm chứng độc lập bằng một testbench Verilog chạy trên trình mô phỏng Icarus Verilog (\texttt{iverilog -g2012 -Wall}). Testbench đọc tệp kích thích nhị phân (\texttt{\_stim.txt}) và tệp kết quả kỳ vọng (\texttt{\_expected.txt}) được sinh ra từ chính mô hình Python Twin, thực hiện so sánh song song ở từng chu kỳ xung nhịp và đếm tổng số lỗi so sánh (\texttt{Total comparison errors}).
+    \item Hai phương án kiến trúc độc lập gồm Đường (A) -- sử dụng các khối chức năng đóng gói sẵn Intel MegaCore IP (\texttt{altera\_avalon\_fifo}, \texttt{ALTERA\_MULT\_ADD}, \texttt{LPM\_DIVIDE}) và Đường (B) -- mã nguồn HDL tự viết chuẩn Verilog-2001 bắt buộc phải cho kết quả ngõ ra hoàn toàn giống nhau trên từng mẫu thử.
+\end{itemize}
+
+Nhìn lại toàn bộ kết quả kiểm chứng Tầng 1 đã được thực hiện và lưu vết trong các tệp nhật ký (log) từ Chương 1 đến Chương 12:
+\begin{itemize}
+    \item Hàng đợi FIFO Avalon-MM (\texttt{verify\_v3/ch01\_iverilog.log}): Khớp $2.107\text{ chu kỳ}$ ghi/đọc và $1.217\text{ chu kỳ}$ FIFO ngõ ra, $0\text{ lỗi}$.
+    \item Bộ đệm Skid Buffer và FSM (\texttt{verify\_v3/ch02\_iverilog.log}): Khớp $600\text{ chu kỳ}$ với áp lực cờ \texttt{ready} ngẫu nhiên và $500\text{ chu kỳ}$ so sánh giữa mã hóa One-Hot và Binary, $0\text{ lỗi}$.
+    \item Bộ lọc thông thấp FIR 31-tap (\texttt{verify\_v3/ch03\_iverilog.log}): Khớp $3.390\text{ chu kỳ}$ xử lý mẫu liên tục, $0\text{ lỗi}$.
+    \item Bộ đệm vòng mẫu âm thanh (\texttt{verify\_v3/ch04\_iverilog.log}): Khớp $1.400\text{ chu kỳ}$ kiểm thử truy xuất đồng thời hai cổng, $0\text{ lỗi}$.
+    \item Bộ tính trung bình trượt cục bộ (\texttt{verify\_v3/ch05\_iverilog.log}): Khớp $4.800\text{ chu kỳ}$ tính toán $\mu$ và bộ triệt DC, $0\text{ lỗi}$.
+    \item Bộ nhân cửa sổ Hanning (\texttt{verify\_v3/ch06\_iverilog.log}): Khớp $1.276\text{ chu kỳ}$ tính mẫu $x_w$ và công suất cục bộ $LP$, $0\text{ lỗi}$.
+    \item Động cơ tự tương quan MAC (\texttt{verify\_v3/ch07\_iverilog.log}): Tính toán đủ $190\text{ giá trị}$ tự tương quan mỗi khung ($R[0]$ và $189\text{ lag}$ từ $\tau = 26..214$) trên 16 khung âm thanh thực tế, đạt $3.040/3.040\text{ kết quả}$ chính xác tuyệt đối, đúng $98.543\text{ chu kỳ/khung}$, $0\text{ lỗi}$.
+    \item Bộ chuẩn hóa điểm số và chi phí quãng tám (\texttt{verify\_v3/ch08\_iverilog.log}): Khớp $378\text{ chu kỳ}$ nạp và nhân bảng tra ROM $C[\tau], K[\tau]$, $0\text{ lỗi}$.
+    \item Bộ chia Radix-2 và tính $F_0$ (\texttt{verify\_v3/ch09\_iverilog\_run.log}): Khớp $200\text{ bộ ba số liệu}$ nội suy parabol và $200\text{ vector}$ chia Radix-2 với mẫu số nhỏ và số bị chia âm, $0\text{ lỗi}$.
+    \item Cổng phân định âm tính (\texttt{verify\_v3/ch10\_voicing\_iverilog.log}): Khớp $1.408\text{ chu kỳ}$ so sánh ngưỡng phi tuyến, $0\text{ lỗi}$.
+    \item Bộ lọc trung vị Median-3 (\texttt{verify\_v3/ch11\_median3\_iverilog.log}): Khớp $1.065\text{ chu kỳ}$ xử lý trễ khung, lặp biên và xả dữ liệu, $0\text{ lỗi}$.
+    \item Tích hợp toàn tuyến Top-Level (\texttt{verify\_v3/ch12\_top\_iverilog.log}): Phần 1 khớp $276\text{ chu kỳ}$ vector nội vi; Phần 2 chạy toàn tuyến từ đầu đến cuối trên tệp âm thanh chuẩn $2{,}8\text{ s}$ ($44.800\text{ mẫu}$ âm thanh nạp vào FIFO\_IN), nhận đủ $277/277\text{ khung}$ F0 từ FIFO\_OUT, thanh ghi chu kỳ đo được đúng $27.608.945\text{ chu kỳ}$ (trung bình $99.671{,}3\text{ chu kỳ/khung}$), khớp $100\%$ không sai lệch một bit nào ($0\text{ lỗi}$).
+\end{itemize}
+
+Sự trùng khớp $100\%$ ở Tầng 1 khẳng định chắc chắn rằng: mã nguồn RTL không có bất kỳ sai sót nào so với đặc tả toán học của mô hình song sinh.
+
+\subsubsection*{Tầng 2: Khớp từng byte giữa mô phỏng RTL và bo mạch thực tế}
+Tầng 2 giải quyết ranh giới giữa mô phỏng phần mềm và phần cứng thực tế trên silicon. Khi thiết kế được tổng hợp và nạp lên chip FPGA Cyclone V SoC 5CSXFC6D6F31C6N của bo mạch Terasic DE10-Standard, bộ xử lý ARM Cortex-A9 (HPS) sẽ điều khiển toàn bộ quá trình thực thi:
+\begin{enumerate}
+    \item Trình điều khiển HPS C (\texttt{sw\_v3/ch12\_driver.c}) ánh xạ vùng nhớ thiết bị qua giao diện \texttt{/dev/mem} tại địa chỉ cầu nối nhẹ \texttt{0xFF200000} (Lightweight HPS-to-FPGA Bridge).
+    \item HPS đọc tệp âm thanh WAV, trích xuất thông số đỉnh toàn tệp $GP$, cấu hình các thanh ghi điều khiển CSR của lõi FPGA, rồi nạp luồng mẫu âm thanh đóng gói 32-bit (2 mẫu 16-bit/từ) vào hàng đợi FIFO ngõ vào.
+    \item Sau khi lõi FPGA hoàn tất tính toán và bật cờ \texttt{STATUS\_DONE}, HPS đọc toàn bộ các từ kết quả $F_0$ định dạng Q12.4 từ hàng đợi FIFO ngõ ra và lưu thành tệp nhị phân \texttt{pitch\_f0.bin}.
+\end{enumerate}
+
+Tiêu chuẩn nghiệm thu của Tầng 2 là: \textbf{Tệp nhị phân \texttt{pitch\_f0.bin} sinh ra trên bo mạch thực tế phải trùng khớp từng byte (byte-identical) với tệp kết quả sinh ra từ mô phỏng RTL toàn tuyến và mô hình Python Twin.}
+
+\begin{todo}{box: Đo đạc xác nhận tính đồng nhất Tầng 2 trên bo mạch vật lý DE10-Standard}
+Trong môi trường phát triển hiện tại, trình biên dịch Quartus Prime Fitter/Timing Analyzer và bo mạch vật lý DE10-Standard không khả dụng tại máy trạm cục bộ. Do đó, kết quả so sánh từng byte giữa tệp \texttt{pitch\_f0.bin} thực xuất từ bộ nhớ DDR3 của HPS và tệp mô phỏng RTL được đánh dấu là \textbf{(phải đo trên bo mạch thực tế)}. 
+
+Tuy nhiên, tính khả thi và độ chính xác của tầng này đã được bảo chứng thông qua chương trình kiểm thử trình điều khiển C Driver trên môi trường mô phỏng nhúng (\texttt{sw\_v3/test\_ch12\_driver.c}): tệp kết quả xuất ra đã được xác nhận khớp đúng $277/277\text{ khung}$ so với chuẩn \texttt{golden\_v2/out/fixed.tsv} với $0\text{ byte}$ sai lệch. Khi chạy trên bo mạch Linux nhúng thực tế, người thẩm định chỉ cần thực thi câu lệnh:
+\begin{lstlisting}[language=bash]
+cmp -l pitch_f0_board.bin pitch_f0_sim.bin
+\end{lstlisting}
+Lệnh so sánh nhị phân \texttt{cmp} không xuất ra bất kỳ dòng khác biệt nào sẽ chính thức xác lập tính toàn vẹn của Tầng 2.
+\end{todo}
+
+\subsubsection*{Tầng 3: So sánh đối chuẩn âm học với Praat 7.0.03 theo thống kê}
+Khác với Tầng 1 và Tầng 2 đòi hỏi sự đồng nhất tuyệt đối từng bit, Tầng 3 chấp nhận sự chênh lệch có chủ đích giữa phần cứng FPGA và phần mềm Praat. Như đã phân tích từ Chương 0 và Chương 1, FPGA không phải là một bản sao chép nguyên xi mã nguồn C++ của Praat sang Verilog. Để đạt được tốc độ xử lý thời gian thực với tài nguyên silicon tối thiểu trên chip FPGA tầm trung, chúng ta đã đưa ra các quyết định kiến trúc mang tính đánh đổi:
+\begin{itemize}
+    \item Tự tương quan trực tiếp bằng khối nhân MAC thay vì biến đổi Fourier nhanh FFT 1024 điểm;
+    \item Nội suy đỉnh 3 điểm bằng đường parabol thay cho việc tính nội suy sinc độ sâu 70 kết hợp giải thuật tìm kiếm tỉ lệ vàng Brent;
+    \item Quyết định hữu thanh và chọn ứng viên tốt nhất trên lưới lag nguyên thay vì lưu trữ 15 ứng viên có giá trị strength liên tục;
+    \item Sử dụng bộ lọc trung vị Median-3 thay cho bộ dò đường quy hoạch động Viterbi (Path Finder);
+    \item Biểu diễn dữ liệu bằng số nguyên cố định (Q-format) thay cho dấu phẩy động 64-bit (\texttt{double}).
+\end{itemize}
+
+Vì có những khác biệt giải thuật đó, kết quả $F_0$ của phần cứng và Praat sẽ không thể giống nhau từng bit. Tiêu chuẩn đánh giá của Tầng 3 là \textbf{đối chuẩn âm học theo phương pháp thống kê (Statistical Acoustic Benchmark)} dựa trên bốn chỉ số đo lường chuẩn quốc tế:
+\begin{enumerate}
+    \item Sai số phân định âm tính $VDE$ (Voicing Decision Error);
+    \item Sai số cao độ thô $GPE$ (Gross Pitch Error) với ngưỡng sai lệch $20\%$;
+    \item Sai số toàn diện khung $FFE$ (F0 Frame Error);
+    \item Phân phối độ lệch cao độ tính bằng đơn vị cent ($\Delta c$) trên các khung cùng hữu thanh không phạm lỗi thô.
+\end{enumerate}
+
+\textit{Tóm lại: Ba tầng kiểm chứng tạo nên một chu trình khép kín: Tầng 1 bảo đảm RTL không lỗi so với mô hình song sinh, Tầng 2 bảo đảm silicon chạy đúng như mô phỏng, và Tầng 3 định lượng chính xác khoảng cách âm học giữa phần cứng và phần mềm chuẩn Praat.}

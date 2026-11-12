@@ -1,0 +1,76 @@
+% chuong_v3/fig_ch13_error_decomp.tex
+% Sơ đồ phân rã các nguồn sai số giữa Praat và hệ thống FPGA
+
+\begin{tikzpicture}[
+    scale=0.92, transform shape,
+    pbox/.style={rectangle, draw=blue!80!black, fill=blue!8, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
+    gbox/.style={rectangle, draw=teal!80!black, fill=teal!8, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
+    fpgabox/.style={rectangle, draw=orange!80!black, fill=orange!8, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
+    labelbox/.style={font=\scriptsize, align=center, fill=white, inner sep=3pt, draw=gray!40, rounded corners=2pt},
+    arrow/.style={->, >=stealth, thick, line width=1.1pt}
+]
+
+% Top node: Praat R1
+\node[pbox, text width=5.5cm] (r1) at (0, 6.0) {
+    \textbf{Praat 7.0.03 Chuẩn R1}\\
+    \scriptsize Tham số mặc định: \texttt{octave\_jump}=0,35; \texttt{vuv}=0,14\\
+    \scriptsize Dò đường Viterbi toàn cục, nội suy sinc70 + Brent
+};
+
+% Second node: Praat R2
+\node[pbox, text width=5.5cm] (r2) at (0, 3.8) {
+    \textbf{Praat 7.0.03 Tham chiếu R2}\\
+    \scriptsize Tham số: \texttt{octave\_jump}=0; \texttt{vuv}=0\\
+    \scriptsize Chọn cực đại cục bộ từng khung (Argmax), sinc70 + Brent
+};
+
+% Intermediate float port node (side node)
+\node[gbox, text width=4.8cm] (float_ref) at (6.8, 3.8) {
+    \textbf{Bản chuyển đổi Float}\\
+    \texttt{golden\_v2/praat\_float\_ref.py}\\
+    \scriptsize Khớp Praat C++ tới sai số làm tròn\\
+    \scriptsize ($\le 1{,}5 \cdot 10^{-4}\text{ cent}$)
+};
+
+% Third node: FPGA Raw (before median)
+\node[fpgabox, text width=5.5cm] (fpga_raw) at (0, 1.3) {
+    \textbf{Lõi phần cứng FPGA thô (trước Median-3)}\\
+    \texttt{rtl/v3/ch12\_top.v} / \texttt{fixed\_twin.py}\\
+    \scriptsize Tự tương quan MAC, nội suy parabol, chia Radix-2\\
+    \scriptsize Xếp hạng đỉnh trên lưới nguyên, số nguyên Q12.4
+};
+
+% Fourth node: FPGA Final (after median-3)
+\node[fpgabox, text width=5.5cm] (fpga_med) at (0, -1.2) {
+    \textbf{Đầu ra toàn tuyến FPGA (sau Median-3)}\\
+    \texttt{pitch\_f0.bin}\\
+    \scriptsize Lọc trung vị 3 khung kế tiếp, gạt bỏ nhiễu gai đơn lẻ\\
+    \scriptsize Cơ chế lặp mẫu biên và nhịp xả flush beat
+};
+
+% Arrows and Delta annotations
+\draw[arrow] (r1) -- (r2)
+    node[midway, right=4pt, labelbox, text width=5.2cm] {
+        \textbf{$\Delta(\text{Viterbi Path Finder})$}\\
+        Khác biệt 19/207 khung trên tệp nhiễu (lỗi quãng tám); trùng $100\%$ trên tệp sạch.
+    };
+
+\draw[arrow, dashed, color=teal!80!black] (r2) -- (float_ref)
+    node[midway, above, labelbox] {
+        Sai số làm tròn $\le 1{,}5 \cdot 10^{-4}\text{ cent}$
+    };
+
+\draw[arrow] (r2) -- (fpga_raw)
+    node[midway, right=4pt, labelbox, text width=5.2cm] {
+        \textbf{$\Delta(\text{MAC, Parabol, Lưới, Q-format})$}\\
+        Tệp sạch: $\le 1{,}08\text{ cent}$ (trung bình $0{,}21\text{ cent}$).\\
+        Tệp nhiễu: $\le 32{,}9\text{ cent}$ (3/207 khung GPE do lưới).
+    };
+
+\draw[arrow] (fpga_raw) -- (fpga_med)
+    node[midway, right=4pt, labelbox, text width=5.2cm] {
+        \textbf{$\Delta(\text{Bộ lọc Median-3})$}\\
+        Sửa lỗi gai nhọn cục bộ: giảm GPE so với F0 thật từ 22 khung xuống 15 khung.
+    };
+
+\end{tikzpicture}

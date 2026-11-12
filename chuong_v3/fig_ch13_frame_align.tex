@@ -1,0 +1,72 @@
+% chuong_v3/fig_ch13_frame_align.tex
+% Sơ đồ căn chỉnh khung theo thời gian t_k = t_1 + k*dt so với chỉ số mẫu
+
+\begin{tikzpicture}[
+    scale=0.92, transform shape,
+    axis/.style={->, >=stealth, thick, line width=1.1pt},
+    tick/.style={thick},
+    frameline/.style={thick, dashed, color=blue!70!black},
+    winbar/.style={fill=blue!15, draw=blue!60!black, rounded corners=2pt},
+    annot/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
+]
+
+% Time axis (seconds)
+\draw[axis] (0, 0) -- (13.5, 0) node[right, font=\small] {Thời gian $t$ (giây)};
+
+% Sample index axis (samples)
+\draw[axis] (0, -2.2) -- (13.5, -2.2) node[right, font=\small] {Chỉ số mẫu $n$ (bước $1/f_s$)};
+
+% Tick marks on time axis
+\draw[tick] (1.5, 0.1) -- (1.5, -0.1) node[below, font=\scriptsize] {$t_0 = 0{,}010\text{ s}$};
+\draw[tick] (4.0, 0.1) -- (4.0, -0.1) node[below, font=\scriptsize] {$t_1 = 0{,}020\text{ s}$};
+\draw[tick] (6.5, 0.1) -- (6.5, -0.1) node[below, font=\scriptsize] {$t_2 = 0{,}030\text{ s}$};
+\draw[tick] (9.0, 0.1) -- (9.0, -0.1) node[below, font=\scriptsize] {$t_3 = 0{,}040\text{ s}$};
+\draw[tick] (11.5, 0.1) -- (11.5, -0.1) node[below, font=\scriptsize] {$t_4 = 0{,}050\text{ s}$};
+
+% Time step dt annotation
+\draw[<->, thick, color=red!70!black] (4.0, 0.6) -- (6.5, 0.6)
+    node[midway, above, font=\scriptsize, color=red!70!black] {Bước nhảy $dt = 10\text{ ms}$ ($160\text{ mẫu}$)};
+
+% Analysis windows (40 ms duration = 638 samples)
+% Frame 1 centered at t1 = 20 ms, span [-0 ms, 40 ms]
+\draw[winbar] (1.5, 1.4) rectangle (6.5, 2.0);
+\node[font=\scriptsize\bfseries, color=blue!80!black] at (4.0, 1.7) {Cửa sổ Khung 1 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
+\draw[frameline] (4.0, 1.4) -- (4.0, 0.1);
+\node[circle, fill=blue!70!black, inner sep=1.5pt] at (4.0, 1.7) {};
+
+% Frame 2 centered at t2 = 30 ms, span [10 ms, 50 ms]
+\draw[winbar, fill=teal!15, draw=teal!60!black] (4.0, 2.3) rectangle (9.0, 2.9);
+\node[font=\scriptsize\bfseries, color=teal!80!black] at (6.5, 2.6) {Cửa sổ Khung 2 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
+\draw[frameline, color=teal!70!black] (6.5, 2.3) -- (6.5, 0.1);
+\node[circle, fill=teal!70!black, inner sep=1.5pt] at (6.5, 2.6) {};
+
+% Frame 3 centered at t3 = 40 ms, span [20 ms, 60 ms]
+\draw[winbar, fill=purple!15, draw=purple!60!black] (6.5, 3.2) rectangle (11.5, 3.8);
+\node[font=\scriptsize\bfseries, color=purple!80!black] at (9.0, 3.5) {Cửa sổ Khung 3 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
+\draw[frameline, color=purple!70!black] (9.0, 3.2) -- (9.0, 0.1);
+\node[circle, fill=purple!70!black, inner sep=1.5pt] at (9.0, 3.5) {};
+
+% Sample index mapping below
+\draw[tick] (1.6, -2.1) -- (1.6, -2.3) node[below, font=\scriptsize] {$s_0 = 1$};
+\draw[tick] (4.1, -2.1) -- (4.1, -2.3) node[below, font=\scriptsize] {$s_1 = 161$};
+\draw[tick] (6.6, -2.1) -- (6.6, -2.3) node[below, font=\scriptsize] {$s_2 = 321$};
+\draw[tick] (9.1, -2.1) -- (9.1, -2.3) node[below, font=\scriptsize] {$s_3 = 481$};
+\draw[tick] (11.6, -2.1) -- (11.6, -2.3) node[below, font=\scriptsize] {$s_4 = 641$};
+
+\draw[<->, thick, color=red!70!black] (1.6, -1.6) -- (4.1, -1.6)
+    node[midway, above, font=\scriptsize, color=red!70!black] {$\text{hop} = 160\text{ mẫu}$};
+
+% Lead lines between time and samples
+\draw[dotted, thick, color=gray!60] (1.5, 0) -- (1.6, -2.2);
+\draw[dotted, thick, color=gray!60] (4.0, 0) -- (4.1, -2.2);
+\draw[dotted, thick, color=gray!60] (6.5, 0) -- (6.6, -2.2);
+\draw[dotted, thick, color=gray!60] (9.0, 0) -- (9.1, -2.2);
+
+% First sample offset note
+\draw[<-, thick, color=blue!80!black] (1.6, -2.5) -- (1.6, -3.1)
+    node[below, annot, text width=6.2cm] {
+        Mẫu bắt đầu khung đầu tiên $s_0 = \text{first\_win0} = 1$\\
+        (Khung không bắt đầu từ mẫu 0 do cơ chế định tâm đối xứng của Praat)
+    };
+
+\end{tikzpicture}
