@@ -2,7 +2,7 @@
 Verifies numerical calculations and step-by-step solutions for Chapter 13 exercises:
   - Exercise 1: Multi-tier error decomposition (R1 vs R2 vs FPGA, Median-3 correction).
   - Exercise 2: GPE threshold in percent vs cents asymmetry (+315.64 cent vs -386.31 cent).
-  - Exercise 3: Real-Time Factor (RTF) across 3 platforms: FPGA core, HPS end-to-end, Laptop Praat.
+  - Exercise 3: Real-Time Factor (RTF) across 3 platforms: FPGA core, HPS end-to-end, Praat on Linux box.
   - Exercise 4: Odd-length floor trap numerical analysis and sample misalignment.
 """
 import math
@@ -73,19 +73,19 @@ def exercise_3():
     t_hps_total = t_hps_read + t_hps_stream + t_hps_write
     rtf_hps = t_hps_total / t_audio
     
-    # Laptop Praat
-    t_praat_median = 0.215 # 215 ms
-    rtf_praat = t_praat_median / t_audio
+    # Praat on Linux Box (measured algorithmic RTF = 0.000395 from ch13_praat_bench_R1.log)
+    rtf_praat = 0.000395
+    t_praat = t_audio * rtf_praat # 0.001975 s = 1.975 ms
     
     speedup_fpga_vs_audio = 1.0 / rtf_fpga
     speedup_praat_vs_audio = 1.0 / rtf_praat
-    speedup_fpga_vs_praat = t_praat_median / t_fpga
+    speedup_fpga_vs_praat = t_fpga / t_praat
     
     print(f"  1. Số khung phân tích (5 s): {n_frames} khung ({n_samples} mẫu)")
     print(f"  2. FPGA Core: {total_fpga_cycles:,} chu kỳ -> {t_fpga*1000:.2f} ms -> RTF = {rtf_fpga:.4f} (nhanh gấp {speedup_fpga_vs_audio:.2f}x thời gian thực)")
     print(f"  3. HPS Toàn tuyến: {t_hps_total*1000:.2f} ms -> RTF = {rtf_hps:.4f}")
-    print(f"  4. Laptop Praat: {t_praat_median*1000:.2f} ms -> RTF = {rtf_praat:.4f} (nhanh gấp {speedup_praat_vs_audio:.2f}x thời gian thực)")
-    print(f"  5. Tỷ số tốc độ FPGA Core / Laptop Praat: {speedup_fpga_vs_praat:.2f}x")
+    print(f"  4. Praat Linux (box): {t_praat*1000:.3f} ms -> RTF = {rtf_praat:.6f} (nhanh gấp {speedup_praat_vs_audio:.2f}x thời gian thực)")
+    print(f"  5. Tỷ số thời gian thực thi FPGA Core / Praat Linux: {speedup_fpga_vs_praat:.2f}x")
 
 def exercise_4():
     print("\n--- BÀI TẬP 4: BẪY LÀM TRÒN MẪU TRÊN TỆP ĐỘ DÀI LẺ VÀ LỆCH PHA LƯỚI KHUNG ---")
