@@ -346,3 +346,235 @@ Dòng 249--280 (\texttt{path\_finder}) & \texttt{ch11\_median3.v} & Thay Viterbi
 
 \textit{Tóm lại: Cấu hình $R_2$ gỡ bỏ chi phí chuyển trạng thái quy Viterbi về phép chọn cực đại độc lập từng khung, tạo đối chuẩn sòng phẳng với lõi FPGA; phép phân rã sai số chứng minh mạch phần cứng bám sát Praat tới $0{,}21\text{ cent}$ trên tín hiệu sạch và việc dùng Median-3 thay Viterbi là sự đánh đổi hoàn toàn hợp lý trên FPGA.}
 
+% ============================================================================
+% 13.3. CĂN KHUNG THEO THỜI GIAN VÀ BỘ BỐN CHỈ SỐ ĐO LƯỜNG
+% ============================================================================
+\subsection*{13.3. Căn khung theo thời gian và bộ bốn chỉ số đo lường}
+\addcontentsline{toc}{subsection}{13.3. Căn khung theo thời gian và bộ bốn chỉ số đo lường}
+
+\subsubsection*{Vấn đề thực tế: Cái bẫy chết người khi so sánh F0 theo chỉ số khung đơn thuần}
+Khi so sánh hai chuỗi kết quả $F_0$ từ FPGA và Praat, một sai lầm rất phổ biến là ghép đôi trực tiếp phần tử thứ $k$ của mảng FPGA với phần tử thứ $k$ của Praat ($k = 0, 1, 2\dots$) mà không kiểm tra tọa độ thời gian vật lý của chúng.
+
+Cách so sánh ngây thơ này là một cái bẫy trí mạng bởi hai nguyên nhân cơ bản:
+\begin{enumerate}
+    \item \emph{Lưới phân tích của Praat không bắt đầu từ mẫu 0}: Theo mã nguồn chuẩn Praat 7.0.03 (\path{fon/Sampled.cpp}, dòng 71--81), tâm của khung phân tích đầu tiên $t_1$ được định vị đối xứng quanh trung điểm của tệp âm thanh. Mẫu bắt đầu của cửa sổ phân tích đầu tiên $s_0 = \text{first\_win0}$ (\path{fon/Sound_to_Pitch.cpp}, dòng 52, 72--73) phụ thuộc vào thời lượng tệp và hiếm khi bằng 0. Ví dụ, với tệp âm thanh chuẩn $2{,}8\text{ s}$, $s_0 = 1$; với tệp ví dụ $1{,}234\text{ s}$ ở Chương 1, $s_0 = 33$. Nếu hệ thống FPGA bắt đầu nạp mẫu và tính toán ngay từ mẫu $0$, toàn bộ cửa sổ 638 mẫu của mọi khung sẽ bị lệch pha 1 mẫu (hoặc 33 mẫu) so với Praat. Vì tín hiệu âm thanh biến thiên liên tục, độ lệch chỉ 1 mẫu cũng làm thay đổi giá trị của tích tự tương quan $R[\tau]$, dịch chuyển đỉnh cực đại và tạo ra sai số cao độ giả tạo ở mọi khung mà không hề có bất kỳ cảnh báo lỗi nào.
+    \item \emph{Trễ nhóm của bộ lọc tiền xử lý FIR}: Khi cấu hình hệ thống bật bộ lọc suy giảm thông thấp FIR 31-tap đối xứng (Chương 3), bộ lọc này tạo ra một độ trễ nhóm cố định chính xác bằng:
+    \begin{equation}
+        \tau_{\text{group}} = \frac{N_{\text{taps}} - 1}{2} = \frac{31 - 1}{2} = 15\text{ mẫu}
+    \end{equation}
+    Nếu không bù trừ độ trễ 15 mẫu này trên trục thời gian, chuỗi kết quả F0 sẽ bị lệch pha $0{,}9375\text{ ms}$ so với tín hiệu âm thanh gốc.
+\end{enumerate}
+
+Vì vậy, nguyên tắc bất biến của việc đối chuẩn là: **Phải căn chỉnh khung phân tích theo trục thời gian vật lý liên tục ($t$), tuyệt đối không căn theo chỉ số mảng thô.**
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch13_frame_align.tex}
+\caption{Nguyên lý căn chỉnh khung phân tích theo trục thời gian vật lý $t_k = t_1 + k \cdot dt$ so với chỉ số mẫu rời rạc $n$ tại tần số lấy mẫu $f_s = 16\text{ kHz}$.}
+\label{fig:ch13_frame_align}
+\end{figure}
+
+\textbf{Đọc hình.} Sơ đồ Hình \ref{fig:ch13_frame_align} minh họa mối liên hệ giữa trục thời gian liên tục $t$ (ở trên) và trục chỉ số mẫu rời rạc $n$ (ở dưới). Mỗi khung phân tích có tâm đối xứng nằm tại thời điểm $t_k = t_1 + k \cdot dt$. Cửa sổ phân tích Hanning có độ dài $40\text{ ms}$ ($638\text{ mẫu}$) mở rộng đối xứng hai bên tâm khung. Vị trí mẫu bắt đầu của khung đầu tiên là $s_0 = 1$, các khung kế tiếp dịch chuyển đều đặn với bước nhảy $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$).
+
+\subsubsection*{Dẫn xuất công thức căn khung theo thời gian và bẫy làm tròn mẫu trên tệp độ dài lẻ}
+Theo đặc tả giải thuật của đối tượng Pitch trong Praat (\path{fon/Sampled.cpp}, dòng 71--81), thời điểm tâm của khung thứ $k$ ($0 \le k < n_x$) được xác định bởi:
+\begin{equation}
+    t_k = t_1 + k \cdot dt
+\end{equation}
+trong đó bước thời gian $dt = 10\text{ ms}$ ($0{,}010\text{ s}$) và thời điểm tâm khung đầu tiên $t_1$ được dẫn xuất từ thời lượng tệp $T = \text{duration} = n_x \cdot dx$:
+\begin{align}
+    n_{\text{frames}} &= \left\lfloor \frac{T - \text{windowDuration}}{dt} \right\rfloor + 1 = \left\lfloor \frac{T - 0{,}040}{0{,}010} \right\rfloor + 1 \\
+    t_{\text{mid}} &= x_1 - 0{,}5 \cdot dx + 0{,}5 \cdot T \\
+    t_1 &= t_{\text{mid}} - 0{,}5 \cdot n_{\text{frames}} \cdot dt + 0{,}5 \cdot dt
+\end{align}
+với $x_1 = 0{,}5 \cdot dx = 0{,}5 / f_s$ là thời điểm của mẫu đầu tiên trong định nghĩa của Praat (\path{fon/Sound.cpp}).
+
+Từ thời điểm tâm khung $t_k$, Praat xác định chỉ số mẫu biên trái $leftSample$ thông qua hàm \texttt{Sampled\_xToLowIndex} (\path{fon/Sampled.h}, dòng 34):
+\begin{equation}
+    \text{leftSample} = \left\lfloor \frac{t_k - x_1}{dx} + 1{,}0 \right\rfloor
+\end{equation}
+Vị trí mẫu bắt đầu của cửa sổ 638 mẫu (chỉ số 0-based) là (\path{fon/Sound_to_Pitch.cpp}, dòng 72--73):
+\begin{equation}
+    s_k = (\text{leftSample} + 1) - \text{halfnsamp\_window} - 1 = \text{leftSample} - 319
+\end{equation}
+
+\textbf{Chỗ dễ vướng: Bẫy làm tròn số học trên tệp có độ dài lẻ (Odd-sample floor trap).} 
+Một kỹ sư có thể cố gắng đơn giản hóa biểu thức của Praat bằng đại số:
+\begin{equation}
+    \frac{t - x_1}{dx} + 1{,}0 = \frac{t - 0{,}5 \cdot dx}{dx} + 1{,}0 = t \cdot f_s - 0{,}5 + 1{,}0 = t \cdot f_s + 0{,}5
+\end{equation}
+rồi viết mã nguồn thành:
+\begin{equation}
+    \text{leftSample}_{\text{naive}} = \left\lfloor t \cdot f_s + 0{,}5 \right\rfloor
+\end{equation}
+Thoạt nhìn hai công thức hoàn toàn đồng nhất về mặt giải tích. Tuy nhiên, trên máy tính sử dụng số thực dấu phẩy động chuẩn IEEE-754 (64-bit \texttt{double}), phép toán $t \cdot f_s + 0{,}5$ sẽ tạo ra một bẫy làm tròn rất nguy hiểm khi tệp âm thanh có số lượng mẫu là số lẻ!
+
+Như đã được kiểm chứng bằng thực nghiệm trong kịch bản \texttt{verify\_v3/ch13\_frame\_alignment.py}: Với tệp âm thanh có $N = 44.801\text{ mẫu}$ tại $f_s = 16.000\text{ Hz}$ ($T = 2{,}8000625\text{ s}$), thời điểm tâm khung $t_1 = 0{,}02003125\text{ s}$. Tại khung thứ $k = 99$ ($t_{99} = 1{,}01003125\text{ s}$):
+\begin{itemize}
+    \item Công thức chuẩn của Praat tính:
+    \begin{equation}
+        \frac{t_{99} - x_1}{dx} + 1{,}0 = 16.161{,}000000000000 \implies \left\lfloor 16.161{,}0 \right\rfloor = 16.161
+    \end{equation}
+    \item Trong khi công thức ngây thơ tính:
+    \begin{equation}
+        t_{99} \cdot f_s + 0{,}5 = 16.160{,}999999999998 \implies \left\lfloor 16.160{,}999... \right\rfloor = 16.160
+    \end{equation}
+\end{itemize}
+Vì giá trị nhị phân ở bit thứ 53 bị hụt một lượng vô cùng nhỏ ($\epsilon \approx 1{,}8 \cdot 10^{-15}$), hàm sàn \texttt{floor} lập tức kéo kết quả tụt xuống $16.160$, làm lệch vị trí bắt đầu của khung đi đúng 1 mẫu! Hiện tượng này lặp lại ở 12 khung trong tệp $44.801\text{ mẫu}$.
+
+Để ngăn chặn triệt để lỗi lệch mẫu này, trình điều khiển C trên HPS (\texttt{sw\_v3/ch01\_frames.c}) và mô hình phần mềm \texttt{golden\_v2/frames.py} hiện thực chính xác từng phép tính theo đúng biểu thức dấu phẩy động gốc của Praat. Tệp siêu dữ liệu \texttt{pitch\_meta.txt} lưu lại tọa độ $t_1$ và $dt$ chính xác để các công cụ phân tích luôn căn khung theo thời gian thực.
+
+\subsubsection*{Bộ bốn chỉ số đo lường chất lượng âm học theo tiêu chuẩn quốc tế}
+Để đánh giá định lượng khoảng cách giữa kết quả ước lượng cao độ của phần cứng $f_k$ và kết quả tham chiếu của Praat $f_{\text{ref}, k}$, cộng đồng nghiên cứu xử lý tiếng nói quốc tế sử dụng bộ bốn chỉ số tiêu chuẩn:
+
+\begin{enumerate}
+    \item \textbf{VDE (Voicing Decision Error -- Tỷ lệ sai số phân định âm tính)}:
+    Là tỷ lệ phần trăm các khung phân tích mà quyết định hữu thanh (voiced, $f > 0$) hay vô thanh (unvoiced, $f = 0$) giữa hai hệ thống bị bất đồng:
+    \begin{equation}
+        \text{VDE} = \frac{1}{N_{\text{total}}} \sum_{k=0}^{N_{\text{total}}-1} \mathbb{I}\left( [f_k > 0] \ne [f_{\text{ref}, k} > 0] \right) = \frac{N_{\text{VDE}}}{N_{\text{total}}}
+        \label{eq:vde_def}
+    \end{equation}
+    trong đó $\mathbb{I}(\cdot)$ là hàm chỉ thị (bằng 1 nếu điều kiện đúng, bằng 0 nếu sai). Sai số VDE gồm hai trường hợp: âm thanh thực tế là hữu thanh nhưng mạch đoán vô thanh (bỏ sót), hoặc âm thanh vô thanh nhưng mạch đoán hữu thanh (báo động giả).
+
+    \item \textbf{GPE (Gross Pitch Error -- Tỷ lệ sai số cao độ thô)}:
+    Chỉ xét trên tập các khung mà cả hai bên cùng phân định là hữu thanh ($\mathcal{V}_{\text{both}} = \{k \mid f_k > 0 \text{ và } f_{\text{ref}, k} > 0\}$, với số lượng $N_{\text{both}} = |\mathcal{V}_{\text{both}}|$). GPE là tỷ lệ phần trăm các khung có tần số ước lượng sai lệch vượt quá $20\%$ so với tần số mẫu:
+    \begin{equation}
+        \text{GPE} = \frac{1}{N_{\text{both}}} \sum_{k \in \mathcal{V}_{\text{both}}} \mathbb{I}\left( \left| \frac{f_k}{f_{\text{ref}, k}} - 1 \right| > 0{,}20 \right) = \frac{N_{\text{GPE}}}{N_{\text{both}}}
+        \label{eq:gpe_def}
+    \end{equation}
+    
+    \emph{Ý nghĩa vật lý của ngưỡng $20\%$}: Tỷ số tần số $f / f_{\text{ref}} = 1{,}20$ tương ứng với độ lệch:
+    \begin{equation}
+        \Delta c = 1200 \cdot \log_2(1{,}20) \approx +315{,}64\text{ cent}
+    \end{equation}
+    tức là hơn 3 bán âm ($3{,}1564\text{ bán âm}$). Khi $f / f_{\text{ref}} = 0{,}80$ (tần số ước lượng thấp hơn mẫu $20\%$), độ lệch là:
+    \begin{equation}
+        \Delta c = 1200 \cdot \log_2(0{,}80) \approx -386{,}31\text{ cent}
+    \end{equation}
+    Ngưỡng $20\%$ được thiết lập nhằm phân tách dứt khoát giữa hai bản chất sai số:
+    \begin{itemize}
+        \item Sai số vi mô ($\le 20\%$): phát sinh từ nhiễu lượng tử hóa, sai số làm tròn số học hoặc xấp xỉ parabol;
+        \item Sai số thô ($> 20\%$): phát sinh từ lỗi nhận nhầm đỉnh hài bậc hai (lỗi nhảy quãng tám nhân đôi $f / f_{\text{ref}} \approx 2{,}0 \to +1200\text{ cent}$) hoặc lỗi chia đôi tần số ($f / f_{\text{ref}} \approx 0{,}5 \to -1200\text{ cent}$).
+    \end{itemize}
+
+    \item \textbf{FFE (F0 Frame Error -- Tỷ lệ sai số toàn diện khung)}:
+    Là chỉ số tổng hợp toàn diện nhất, đo lường tỷ lệ các khung mắc bất kỳ lỗi nào (hoặc sai phân định âm tính, hoặc sai cao độ thô) trên tổng số khung phân tích của toàn bộ tệp:
+    \begin{equation}
+        \text{FFE} = \frac{N_{\text{VDE}} + N_{\text{GPE}}}{N_{\text{total}}}
+        \label{eq:ffe_def}
+    \end{equation}
+    Một hệ thống F0 hoàn hảo sẽ có $\text{FFE} = 0$.
+
+    \item \textbf{Phân phối độ lệch cent mịn (Fine Pitch Error in Cents)}:
+    Đơn vị cent biểu diễn độ lệch cao độ trên thang logarith phù hợp với cảm nhận thính giác của con người:
+    \begin{equation}
+        \Delta c_k = 1200 \cdot \log_2\left( \frac{f_k}{f_{\text{ref}, k}} \right)
+        \label{eq:cent_def}
+    \end{equation}
+    
+    \emph{Vì sao bắt buộc phải loại bỏ các khung lỗi thô khi tính cent mịn?}:
+    Nếu tính trung bình độ lệch cent trên toàn bộ $N_{\text{both}}$ khung mà không loại bỏ các khung lỗi thô, một lỗi nhảy quãng tám đơn lẻ ($+1200\text{ cent}$) sẽ làm sai lệch hoàn toàn giá trị thống kê. Ví dụ, nếu 99 khung có sai số chỉ $1\text{ cent}$ nhưng có 1 khung bị lỗi quãng tám $1200\text{ cent}$, sai số trung bình cộng sẽ vọt lên:
+    \begin{equation}
+        \frac{99 \cdot 1 + 1 \cdot 1200}{100} = 12{,}99\text{ cent}
+    \end{equation}
+    Con số $12{,}99\text{ cent}$ này tạo ra cảm giác sai lệch rằng bộ nội suy parabol có độ chính xác rất kém, trong khi thực tế $99\%$ số khung bám sát Praat tới $1\text{ cent}$. 
+    
+    Do đó, theo chuẩn âm học quốc tế, các chỉ số thống kê cent mịn bao gồm: giá trị trung bình trị tuyệt đối ($\text{mean abs cents}$), phân vị thứ 95 ($p_{95}$) và giá trị cực đại ($\text{max cents}$) bắt buộc phải được tính toán trên tập các khung hữu thanh \textbf{phi thô} (non-gross voiced frames, thỏa mãn điều kiện $|\Delta c_k| < 1200 \log_2(1{,}2) \approx 315{,}64\text{ cent}$).
+\end{enumerate}
+
+\subsubsection*{Ví dụ tính tay chi tiết trên tập mẫu 10 khung phân tích}
+Để nắm vững tuyệt đối cách tính toán của bộ bốn chỉ số đo lường, chúng ta cùng thực hiện tính tay từng bước trên một tập dữ liệu giả định gồm $N = 10\text{ khung}$ phân tích. Tập dữ liệu này được thiết kế để bao hàm đầy đủ bốn tình huống vật lý trong thực tế:
+\begin{itemize}
+    \item Khung 0 đến 3: Cả hai cùng hữu thanh và tần số rất gần nhau (sai số vi mô);
+    \item Khung 4: Cả hai cùng hữu thanh nhưng tần số bị nhân đôi (lỗi nhảy quãng tám, GPE);
+    \item Khung 5: Khung mẫu là hữu thanh nhưng hệ thống đoán là vô thanh (VDE: H $\to$ V);
+    \item Khung 6: Khung mẫu là vô thanh nhưng hệ thống đoán là hữu thanh (VDE: V $\to$ H);
+    \item Khung 7 đến 9: Cả hai cùng xác định chính xác là vô thanh.
+\end{itemize}
+
+Bảng \ref{tab:ch13_hand_example} trình bày chi tiết chuỗi số liệu của ví dụ tính tay (được trích xuất từ kịch bản kiểm chứng \texttt{verify\_v3/ch13\_hand\_example.py}):
+
+\begin{table}[htbp]
+\centering
+\caption{Bảng tính tay chi tiết bộ bốn chỉ số đo lường âm học trên tập mẫu 10 khung phân tích.}
+\label{tab:ch13_hand_example}
+\small
+\begin{tabular}{cccccc}
+\toprule
+\textbf{Khung $k$} & \textbf{$F_{0,\text{ref}}$ (Hz)} & \textbf{$F_{0,\text{test}}$ (Hz)} & \textbf{Trạng thái phân loại} & \textbf{Tỷ số $f/f_{\text{ref}}$} & \textbf{Sai số cent ($\Delta c$)} \\
+\midrule
+0 & $120{,}0$ & $120{,}5$ & Cùng hữu thanh (Khớp vi mô) & $1{,}0042$ & $+7{,}20\text{ cent}$ \\
+1 & $125{,}0$ & $124{,}2$ & Cùng hữu thanh (Khớp vi mô) & $0{,}9936$ & $-11{,}12\text{ cent}$ \\
+2 & $130{,}0$ & $130{,}8$ & Cùng hữu thanh (Khớp vi mô) & $1{,}0062$ & $+10{,}62\text{ cent}$ \\
+3 & $135{,}0$ & $134{,}1$ & Cùng hữu thanh (Khớp vi mô) & $0{,}9933$ & $-11{,}58\text{ cent}$ \\
+4 & $140{,}0$ & $280{,}0$ & Cùng hữu thanh (\textbf{Lỗi thô GPE}) & $2{,}0000$ & $+1200{,}00\text{ cent}^*$ \\
+5 & $150{,}0$ & $0{,}0$ & \textbf{Lệch âm tính VDE} (H $\to$ V) & -- & -- \\
+6 & $0{,}0$ & $160{,}0$ & \textbf{Lệch âm tính VDE} (V $\to$ H) & -- & -- \\
+7 & $0{,}0$ & $0{,}0$ & Cùng vô thanh (Đúng) & -- & -- \\
+8 & $0{,}0$ & $0{,}0$ & Cùng vô thanh (Đúng) & -- & -- \\
+9 & $0{,}0$ & $0{,}0$ & Cùng vô thanh (Đúng) & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Các bước tính toán chi tiết từng chỉ số:}
+\begin{enumerate}
+    \item \textbf{Xác định tập hợp khung}:
+    \begin{itemize}
+        \item Tổng số khung phân tích: $N_{\text{total}} = 10$.
+        \item Số khung hữu thanh của hệ thống chuẩn: $N_{\text{ref}} = 6$ (khung $0, 1, 2, 3, 4, 5$).
+        \item Số khung hữu thanh của hệ thống thử nghiệm: $N_{\text{test}} = 6$ (khung $0, 1, 2, 3, 4, 6$).
+        \item Số khung cả hai bên cùng hữu thanh: $N_{\text{both}} = 5$ (khung $0, 1, 2, 3, 4$).
+    \end{itemize}
+
+    \item \textbf{Tính chỉ số VDE}:
+    Có đúng 2 khung bị lệch quyết định âm tính: khung 5 ($150{,}0\text{ Hz} \ne 0\text{ Hz}$) và khung 6 ($0\text{ Hz} \ne 160{,}0\text{ Hz}$).
+    \begin{equation}
+        \text{VDE} = \frac{N_{\text{VDE}}}{N_{\text{total}}} = \frac{2}{10} = 20{,}0\% = 0{,}2000
+    \end{equation}
+
+    \item \textbf{Tính chỉ số GPE}:
+    Trong số $N_{\text{both}} = 5$ khung cùng hữu thanh, ta xét tỷ số tần số:
+    \begin{itemize}
+        \item Khung 0: $|120{,}5 / 120{,}0 - 1| = |1{,}0042 - 1| = 0{,}0042 \le 0{,}20$ (không phạm lỗi thô).
+        \item Khung 1: $|124{,}2 / 125{,}0 - 1| = |0{,}9936 - 1| = 0{,}0064 \le 0{,}20$ (không phạm lỗi thô).
+        \item Khung 2: $|130{,}8 / 130{,}0 - 1| = |1{,}0062 - 1| = 0{,}0062 \le 0{,}20$ (không phạm lỗi thô).
+        \item Khung 3: $|134{,}1 / 135{,}0 - 1| = |0{,}9933 - 1| = 0{,}0067 \le 0{,}20$ (không phạm lỗi thô).
+        \item Khung 4: $|280{,}0 / 140{,}0 - 1| = |2{,}0000 - 1| = 1{,}0000 > 0{,}20$ (\textbf{Phạm lỗi cao độ thô GPE}).
+    \end{itemize}
+    Số khung mắc lỗi GPE là $N_{\text{GPE}} = 1$. Tỷ lệ lỗi GPE là:
+    \begin{equation}
+        \text{GPE} = \frac{N_{\text{GPE}}}{N_{\text{both}}} = \frac{1}{5} = 20{,}0\% = 0{,}2000
+    \end{equation}
+
+    \item \textbf{Tính chỉ số FFE}:
+    Tổng số khung mắc lỗi (VDE hoặc GPE) là $N_{\text{VDE}} + N_{\text{GPE}} = 2 + 1 = 3\text{ khung}$ (gồm khung 4, 5, 6):
+    \begin{equation}
+        \text{FFE} = \frac{N_{\text{VDE}} + N_{\text{GPE}}}{N_{\text{total}}} = \frac{2 + 1}{10} = \frac{3}{10} = 30{,}0\% = 0{,}3000
+    \end{equation}
+
+    \item \textbf{Tính toán sai số cent mịn (Fine Cent Errors)}:
+    \begin{itemize}
+        \item Tập hợp các khung cùng hữu thanh phi thô gồm 4 khung (khung 0, 1, 2, 3). Trị tuyệt đối sai số cent của 4 khung này là:
+        \begin{equation}
+            \{|\Delta c_k|\} = \{7{,}20;\, 11{,}12;\, 10{,}62;\, 11{,}58\}
+        \end{equation}
+        \item Sai số cent mịn trung bình không lỗi thô:
+        \begin{equation}
+            \overline{|\Delta c|}_{\text{fine}} = \frac{7{,}20 + 11{,}12 + 10{,}62 + 11{,}58}{4} = \frac{40{,}52}{4} = 10{,}13\text{ cent}
+        \end{equation}
+        \item Sai số cent mịn cực đại không lỗi thô:
+        \begin{equation}
+            \max |\Delta c|_{\text{fine}} = 11{,}58\text{ cent} \quad (\text{tại khung 3})
+        \end{equation}
+        \item \emph{So sánh với trường hợp tính gộp cả khung lỗi thô}: Nếu tính trung bình trên toàn bộ 5 khung hữu thanh (gồm cả khung 4 có $\Delta c_4 = +1200{,}00\text{ cent}$):
+        \begin{equation}
+            \overline{|\Delta c|}_{\text{all}} = \frac{40{,}52 + 1200{,}00}{5} = \frac{1240{,}52}{5} = 248{,}10\text{ cent}
+        \end{equation}
+        Con số $248{,}10\text{ cent}$ hoàn toàn bị bóp méo bởi duy nhất một khung lỗi quãng tám, chứng minh một cách sinh động vì sao phân tích thống kê bắt buộc phải tách biệt rạch ròi giữa sai số thô và sai số mịn.
+    \end{itemize}
+\end{enumerate}
+
+\textit{Tóm lại: Căn khung theo thời gian vật lý $t_k = t_1 + k \cdot dt$ loại bỏ hoàn toàn nguy cơ lệch pha do bẫy làm tròn mẫu; bộ bốn chỉ số VDE, GPE, FFE và cent mịn phi thô cung cấp hệ thống thước đo toàn diện và không bị bóp méo để đánh giá chất lượng phần cứng.}
+
+
