@@ -108,3 +108,241 @@ Vì có những khác biệt giải thuật đó, kết quả $F_0$ của phần
 \end{enumerate}
 
 \textit{Tóm lại: Ba tầng kiểm chứng tạo nên một chu trình khép kín: Tầng 1 bảo đảm RTL không lỗi so với mô hình song sinh, Tầng 2 bảo đảm silicon chạy đúng như mô phỏng, và Tầng 3 định lượng chính xác khoảng cách âm học giữa phần cứng và phần mềm chuẩn Praat.}
+
+% ============================================================================
+% 13.2. HAI MỐC PRAAT THAM CHIẾU VÀ PHÂN RÃ CÁC NGUỒN SAI SỐ
+% ============================================================================
+\subsection*{13.2. Hai mốc Praat tham chiếu và phân rã các nguồn sai số}
+\addcontentsline{toc}{subsection}{13.2. Hai mốc Praat tham chiếu và phân rã các nguồn sai số}
+
+\subsubsection*{Vấn đề thực tế: So sánh trực diện với Praat mặc định là một phép so sánh khập khiễng}
+Nếu đem chuỗi kết quả $F_0$ của mạch FPGA đối chiếu trực tiếp với kết quả mặc định của Praat trên một đoạn giọng nói có nhiễu nền, chúng ta sẽ thấy hai bên lệch nhau ở một số khung phân tích. Một người quan sát hời hợt có thể kết luận ngay rằng: ``phần cứng FPGA tính toán sai hoặc bị mất độ chính xác''.
+
+Tuy nhiên, kết luận đó hoàn toàn bất công và sai bản chất. Nguyên nhân sâu xa nằm ở cơ chế ra quyết định:
+\begin{itemize}
+    \item \emph{Praat mặc định ($R_1$) nhìn toàn cục tương lai và quá khứ}: Khi người dùng gọi lệnh \texttt{To Pitch (raw autocorrelation)...} với các tham số chuẩn, Praat luôn kích hoạt giải thuật quy hoạch động Viterbi (\path{fon/Sound_to_Pitch.cpp}, dòng 489--491 và \path{fon/Pitch.cpp}, dòng 524--652). Giải thuật này lưu toàn bộ ma trận trạng thái của cả tệp âm thanh vào bộ nhớ RAM (\path{fon/Pitch.cpp}, dòng 548--549: \texttt{delta} và \texttt{psi} có kích thước $n_x \times \text{maxnCandidates}$), sau đó thực hiện lần vết ngược (backtracking) từ khung cuối cùng về khung đầu tiên. Khi một khung bị nhiễu làm méo dạng sóng, Viterbi sẵn sàng hy sinh đỉnh cực đại cục bộ của khung đó để chọn một ứng viên thấp điểm hơn, miễn sao không tạo ra bước nhảy tần số đột ngột so với các khung lân cận.
+    \item \emph{FPGA là kiến trúc xử lý dòng (streaming pipeline) thời gian thực}: Khối xử lý trên FPGA là một mạch nhân quả thuần túy. Nó tiếp nhận các mẫu âm thanh mới theo từng bước nhảy $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$), tính toán và đẩy kết quả $F_0$ của khung hiện tại ra ngoài ngay lập tức để phục vụ các ứng dụng điều khiển phản hồi hoặc nén truyền thông. Phần cứng không thể trì hoãn hàng triệu chu kỳ và tốn hàng megabyte bộ nhớ ngoài B-RAM để chờ nạp hết toàn bộ tệp âm thanh rồi mới tính toán ngược từ tương lai.
+\end{itemize}
+
+Nếu so sánh một mạch xử lý dòng cục bộ từng khung với một phần mềm chạy quy hoạch động toàn cục đa khung, đó là một phép so sánh ``khập khiễng'' giữa hai bài toán giải thuật hoàn toàn khác nhau. Để thực hiện một phép đối chuẩn khoa học, công bằng và sòng phẳng (\emph{apples-to-apples}), chúng ta bắt buộc phải thiết lập hai cấu hình Praat tham chiếu ($R_1$ và $R_2$).
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch13_error_decomp.tex}
+\caption{Sơ đồ phân rã các nguồn sai số giữa chuẩn Praat $R_1$, tham chiếu $R_2$, bản chuyển đổi số thực \texttt{praat\_float\_ref.py} và các tầng phần cứng FPGA.}
+\label{fig:ch13_error_decomp}
+\end{figure}
+
+\textbf{Đọc hình.} Sơ đồ Hình \ref{fig:ch13_error_decomp} bóc tách chuỗi quan hệ giữa bốn mốc ước lượng. Nhánh chuyển tiếp từ Praat $R_1$ xuống Praat $R_2$ đại diện thuần túy cho phần đóng góp của bộ dò đường Viterbi $\Delta(\text{Path Finder})$. Nhánh từ Praat $R_2$ sang bản port float \texttt{praat\_float\_ref.py} xác nhận sai số làm tròn số thực. Nhánh từ $R_2$ xuống lõi FPGA thô $\Delta(\text{MAC, Parabol, Lưới, Q-format})$ phản ánh chính xác các sai lệch do kiến trúc phần cứng. Cuối cùng, nhánh từ FPGA thô sang FPGA ngõ ra thể hiện vai trò làm mịn gai nhiễu cục bộ của bộ lọc trung vị Median-3.
+
+\subsubsection*{Đặc tả giải thuật hai cấu hình tham chiếu: Praat $R_1$ và Praat $R_2$}
+Hai cấu hình tham chiếu được định nghĩa chính xác theo mã nguồn chuẩn Praat 7.0.03 như sau:
+
+\begin{enumerate}
+    \item \textbf{Cấu hình Praat $R_1$ (Praat Mặc định)}:
+    Sử dụng đầy đủ bộ tham số tiêu chuẩn của tác giả Paul Boersma cho phương pháp tự tương quan thô (\path{fon/Sound_to_Pitch.cpp}, dòng 296, 334--339, 489--491):
+    \begin{itemize}
+        \item Dải tìm kiếm cao độ: $\text{pitchFloor} = 75\text{ Hz}$, $\text{pitchCeiling} = 600\text{ Hz}$;
+        \item Cửa sổ phân tích: $\text{periodsPerWindow} = 3$ ($40\text{ ms}$, làm tròn thành 638 mẫu tại $16\text{ kHz}$);
+        \item Bước thời gian phân tích: $dt = 10\text{ ms}$ (bước nhảy hop 160 mẫu);
+        \item Số ứng viên cực đại lưu trữ mỗi khung: $\text{maxCandidates} = 15$;
+        \item Ngưỡng vô thanh: $\text{silenceThreshold} = 0{,}03$, $\text{voicingThreshold} = 0{,}45$;
+        \item Hệ số ưu tiên tần số cao: $\text{octaveCost} = 0{,}01$;
+        \item Chi phí phạt bước nhảy quãng tám: $\text{octaveJumpCost} = 0{,}35$;
+        \item Chi phí chuyển đổi trạng thái hữu thanh / vô thanh: $\text{voicedUnvoicedCost} = 0{,}14$.
+    \end{itemize}
+
+    \item \textbf{Cấu hình Praat $R_2$ (Praat Không ràng buộc đường dẫn)}:
+    Giữ nguyên toàn bộ 8 tham số đầu tiên giống hệt $R_1$, nhưng \textbf{thiết lập hai trọng số chi phí chuyển tiếp về $0$}:
+    \begin{equation}
+        \text{octaveJumpCost} = 0{,}0, \quad \text{voicedUnvoicedCost} = 0{,}0
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Dẫn xuất toán học: Tại sao Praat $R_2$ quy về phép chọn cực đại Argmax từng khung}
+Để hiểu vì sao $R_2$ chính là đối chuẩn sòng phẳng với lõi FPGA trước bộ lọc trung vị, chúng ta phân tích trực tiếp phương trình cập nhật quy hoạch động tiến trong hàm \texttt{Pitch\_pathFinder} (\path{fon/Pitch.cpp}, dòng 564--628).
+
+Tại mỗi khung thời gian $k$ ($1 \le k < n_x$), với mỗi ứng viên thứ $i_2$ của khung hiện tại, giải thuật Viterbi tìm giá trị tích lũy cực đại từ mọi ứng viên $i_1$ của khung trước $k-1$:
+\begin{equation}
+    \delta_k(i_2) = \max_{i_1} \left[ \delta_{k-1}(i_1) - \text{transitionCost}(i_1, i_2) \right] + \text{curDelta}_k(i_2)
+    \label{eq:viterbi_update}
+\end{equation}
+trong đó $\text{curDelta}_k(i_2)$ là điểm số cục bộ của ứng viên $i_2$ tại khung $k$ (\path{fon/Pitch.cpp}, dòng 553--561). Điểm số này bằng $\text{unvoicedStrength}$ nếu ứng viên là vô thanh, hoặc bằng:
+\begin{equation}
+    \text{strength} - \text{octaveCost} \cdot \log_2\left(\frac{\text{ceiling}}{\text{frequency}}\right)
+\end{equation}
+nếu ứng viên là hữu thanh.
+
+Chi phí chuyển trạng thái $\text{transitionCost}(i_1, i_2)$ được tính tại dòng 586, 590 và 606:
+\begin{equation}
+    \text{transitionCost}(i_1, i_2) = 
+    \begin{cases}
+        0, & \text{nếu cả } i_1 \text{ và } i_2 \text{ đều vô thanh}, \\
+        \text{vuv}, & \text{nếu chuyển đổi giữa hữu thanh và vô thanh}, \\
+        \text{ojc} \cdot \left| \log_2\left(\frac{f_1}{f_2}\right) \right|, & \text{nếu cả hai đều hữu thanh},
+    \end{cases}
+\end{equation}
+với $\text{tsc} = 0{,}01 / dt = 1{,}0$ tại $dt = 10\text{ ms}$, $\text{ojc} = \text{octaveJumpCost} \cdot \text{tsc}$ và $\text{vuv} = \text{voicedUnvoicedCost} \cdot \text{tsc}$ (\path{fon/Pitch.cpp}, dòng 543--545).
+
+Khi cấu hình theo $R_2$, ta có $\text{ojc} = 0{,}0$ và $\text{vuv} = 0{,}0$. Do đó, với mọi cặp ứng viên $(i_1, i_2)$:
+\begin{equation}
+    \text{transitionCost}(i_1, i_2) \equiv 0
+\end{equation}
+Thay $\text{transitionCost} = 0$ vào phương trình \eqref{eq:viterbi_update}:
+\begin{equation}
+    \delta_k(i_2) = \max_{i_1} \left[ \delta_{k-1}(i_1) \right] + \text{curDelta}_k(i_2)
+\end{equation}
+Vì thành phần $\max_{i_1} \left[ \delta_{k-1}(i_1) \right]$ là một hằng số cộng độc lập với chỉ số $i_2$, nên ứng viên $i_2^*$ làm cực đại hóa hàm $\delta_k(i_2)$ chính là ứng viên làm cực đại hóa điểm số cục bộ $\text{curDelta}_k(i_2)$:
+\begin{equation}
+    i_2^* = \arg\max_{i_2} \left[ \text{curDelta}_k(i_2) \right]
+\end{equation}
+Hơn nữa, con trỏ truy vết ngược $\text{psi}[k][i_2]$ (\path{fon/Pitch.cpp}, dòng 625) luôn trỏ về vị trí $\arg\max_{i_1} \delta_{k-1}(i_1)$ của khung trước. Do đó, việc giải ma trận Viterbi trên toàn bộ tệp âm thanh bị suy biến hoàn toàn thành phép **chọn ứng viên có điểm số cục bộ tốt nhất độc lập ở từng khung (Per-Frame Argmax)**.
+
+Đây chính xác là những gì phần cứng FPGA thực hiện: khối \texttt{ch08\_norm\_score.v} tính điểm số cục bộ $Sc[\tau]$, khối \texttt{ch09\_f0\_calc.v} chọn ứng viên cực đại $Sc$ tốt nhất, và khối \texttt{ch10\_voicing.v} so sánh điểm số đó với ngưỡng vô thanh cục bộ. Do đó, so sánh lõi FPGA thô với Praat $R_2$ là phép so sánh hoàn toàn tương đương về mặt cấu trúc toán học.
+
+\subsubsection*{Bản chuyển đổi số thực \texttt{praat\_float\_ref.py} và phân rã các nguồn sai số}
+Để phân rã định lượng từng thành phần sai số, hệ thống sử dụng bản chuyển đổi số thực \texttt{golden\_v2/praat\_float\_ref.py}. Bản chuyển đổi này hiện thực chuẩn xác từng dòng lệnh của Praat 7.0.03 bằng kiểu dữ liệu \texttt{double} trong Python, bao gồm cả nội suy sinc độ sâu 30, tinh chỉnh cực đại hai đợt bằng sinc độ sâu 70 kết hợp thuật toán Brent, và bộ dò đường Viterbi (hỗ trợ cả hai chế độ \texttt{path='R1'} và \texttt{path='R2'}).
+
+Nhờ sự hiện diện của \texttt{praat\_float\_ref.py}, toàn bộ khoảng cách giữa ngõ ra FPGA và Praat mặc định được phân tách thành một chuỗi các chặng độc lập, có thể đo đạc chính xác:
+
+\begin{equation}
+    \text{Sai số toàn phần} = \underbrace{(R_1 - R_2)}_{\text{Đóng góp Viterbi}} + \underbrace{(R_2 - \text{Port Float})}_{\text{Sai số làm tròn CPU}} + \underbrace{(\text{Port Float} - \text{FPGA Thô})}_{\text{Quyết định phần cứng}} + \underbrace{(\text{FPGA Thô} - \text{FPGA Med3})}_{\text{Bộ lọc Median-3}}
+\end{equation}
+
+\begin{enumerate}
+    \item \textbf{Chặng 1: $R_1 - R_2$ (Hiệu ứng dò đường Viterbi)}:
+    Phản ánh sự khác biệt giữa việc tối ưu hóa đường dẫn toàn cục đa khung và việc chọn cực đại cục bộ từng khung. Trên tín hiệu âm thanh sạch lý tưởng, chuỗi tuần hoàn rõ nét nên cực đại cục bộ luôn trùng với đường dẫn tối ưu toàn cục: $R_1$ và $R_2$ trùng nhau $100\%$ từng khung. Tuy nhiên, khi có tạp âm (như tệp SNR $5\text{ dB}$), nhiễu làm xuất hiện các đỉnh giả hoặc suy giảm đỉnh chính; lúc này Viterbi nắn chỉnh được $19/207\text{ khung}$ hữu thanh khỏi hiện tượng nhảy quãng tám (tỷ số tần số $f_1 / f_2 \approx 2{,}0$ hoặc $3{,}0$).
+    
+    \item \textbf{Chặng 2: $R_2 - \text{Port Float}$ (Sai số làm tròn số học)}:
+    Khẳng định tính đúng đắn của việc dịch mã giải thuật. Kết quả kiểm tra đối chuẩn giữa mã nguồn C++ của Praat và \texttt{praat\_float\_ref.py} cho thấy hai bên hoàn toàn không có sai số phân định âm tính ($\text{VDE} = 0$), không có sai số cao độ thô ($\text{GPE} = 0$), và độ lệch cao độ cực đại chỉ là $6{,}815 \cdot 10^{-5}\text{ cent}$ trên tệp sạch và $1{,}521 \cdot 10^{-4}\text{ cent}$ trên tệp nhiễu (kết quả đo đạc thực tế: $7{,}265 \cdot 10^{-5}\text{ cent}$ và $1{,}536 \cdot 10^{-4}\text{ cent}$). Sai số nhỏ hơn $2 \cdot 10^{-4}\text{ cent}$ chứng minh mô hình phần mềm đã mô phỏng trung thực $100\%$ từng chi tiết toán học của Praat 7.0.03.
+
+    \item \textbf{Chặng 3: $R_2 - \text{FPGA Thô}$ (Tác động của các quyết định phần cứng)}:
+    Quy tụ toàn bộ các sai lệch do kiến trúc số phần cứng gây ra so với chuẩn liên tục:
+    \begin{itemize}
+        \item \emph{Nội suy đỉnh 3 điểm bằng parabol thay cho sinc70 + Brent}: Trên tín hiệu sạch, đỉnh hàm tự tương quan có dạng parabol đối xứng rất mượt, sai số giữa parabol và sinc70 là không đáng kể (dưới $1{,}08\text{ cent}$). Nhưng trên tín hiệu nhiễu SNR $5\text{ dB}$, tạp âm làm biến dạng đỉnh, tạo ra hiện tượng tách đôi đỉnh cục bộ; lúc này nội suy parabol có thể lệch tới $32{,}9\text{ cent}$ so với cực trị sinc70 tối ưu bằng Brent.
+        \item \emph{Xếp hạng ứng viên trên lưới lag nguyên}: Praat tính giá trị độ mạnh $\text{strength}$ của từng ứng viên sau khi đã nội suy sinc liên tục, trong khi FPGA so sánh điểm số $Sc[\tau]$ trực tiếp tại các vị trí trễ nguyên $\tau \in [27, 213]$. Trên tệp nhiễu SNR $5\text{ dB}$, ở các khung mà hai ứng viên quãng tám có điểm số chênh lệch cực kỳ sít sao ($0{,}0005$ đến $0{,}007$), việc lượng tử hóa số nguyên khiến FPGA chọn ứng viên bậc hài khác với Praat R2 ở đúng $3/207\text{ khung}$ phân tích.
+        \item \emph{Lượng tử hóa định dạng số cố định Q12.4}: Độ phân giải $1/16\text{ Hz}$ tạo ra sai số lượng tử hóa lý thuyết khoảng $1{,}08\text{ cent}$ tại $100\text{ Hz}$ và $0{,}22\text{ cent}$ tại $500\text{ Hz}$, hoàn toàn nằm trong dải dung sai cho phép.
+    \end{itemize}
+
+    \item \textbf{Chặng 4: FPGA Thô đối chiếu với FPGA sau Median-3}:
+    Bộ lọc trung vị Median-3 nhân quả trễ 1 khung đóng vai trò thay thế cho bộ dò đường Viterbi. Trên tệp nhiễu, Median-3 lọc sạch các gai lỗi nhảy quãng tám đơn lẻ (single-frame spikes), giúp giảm tổng số khung lỗi cao độ thô so với cao độ chuẩn thực tế (Ground Truth) từ 22 khung xuống còn 15 khung.
+\end{enumerate}
+
+\subsubsection*{Bảng tổng hợp kết quả đối chuẩn trên tập tệp âm thanh mẫu}
+Bảng \ref{tab:ch13_benchmark_golden} tổng hợp toàn bộ các thông số đối chuẩn định lượng thu được từ kịch bản kiểm tra tự động \texttt{verify\_v3/ch13\_metrics\_audit.py} trên hai tệp âm thanh chuẩn $2{,}8\text{ s}$ ($277\text{ khung}$ phân tích, $t_1 = 0{,}020\text{ s}$, bước nhảy $\text{hop} = 160\text{ mẫu}$, đỉnh toàn tệp $GP = 22.946$ với tệp sạch và $GP = 22.937$ với tệp nhiễu):
+
+\begin{table}[htbp]
+\centering
+\caption{Bảng kết quả đối chuẩn đa tầng giữa Praat 7.0.03 ($R_1, R_2$), bản port float và lõi FPGA trên hai tệp âm thanh chuẩn (tệp sạch và tệp nhiễu SNR $5\text{ dB}$).}
+\label{tab:ch13_benchmark_golden}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Cặp so sánh đối chuẩn} & \textbf{Tệp sạch (Clean)} & \textbf{Tệp nhiễu (SNR 5 dB)} & \textbf{Bản chất giải thuật} \\
+\midrule
+Port Float $-$ Praat $R_2$ & VDE 0, GPE 0, max $7{,}3\cdot 10^{-5}\text{ c}$ & VDE 0, GPE 0, max $1{,}5\cdot 10^{-4}\text{ c}$ & Khớp mã C++ tới sai số làm tròn \\
+Port Float $-$ Praat $R_1$ & VDE 0, GPE 0, max $7{,}3\cdot 10^{-5}\text{ c}$ & VDE 0, GPE 0, max $1{,}5\cdot 10^{-4}\text{ c}$ & Kiểm chứng trọn vẹn bộ Viterbi \\
+Praat $R_1 -$ Praat $R_2$ & Khớp $100\%$ ($0/208\text{ khung}$) & Lệch $19/207\text{ khung}$ ($9{,}18\%$) & Phần đóng góp của Viterbi \\
+\midrule
+Twin Thô $-$ Praat $R_2$ & VDE 0, GPE $0/208$ ($0\%$) & VDE 0, GPE $3/207$ ($1{,}45\%$) & Lõi phần cứng vs Argmax cục bộ \\
+-- \emph{Cent mịn trung bình} & $0{,}21\text{ cent}$ & $3{,}1\text{ cent}$ (bỏ GPE; có GPE: $20{,}4\text{ c}$) & Sai số lượng tử MAC \& Parabol \\
+-- \emph{Phân vị 95 ($p_{95}$)} & $0{,}48\text{ cent}$ & $9{,}8\text{ cent}$ (bỏ GPE; có GPE: $10{,}6\text{ c}$) & Phân phối sai số cent tập trung \\
+-- \emph{Cent mịn cực đại} & $1{,}08\text{ cent}$ & $32{,}9\text{ cent}$ (phi thô) & Đỉnh tách đôi do nhiễu \\
+\midrule
+Twin + Median-3 $-$ Praat $R_1$ & VDE 0, GPE $0/208$ ($0\%$) & VDE 0, GPE $15/207$ ($7{,}25\%$) & Hệ thống toàn tuyến vs Praat chuẩn \\
+-- \emph{Cent mịn trung bình} & $0{,}37\text{ cent}$ & $5{,}6\text{ cent}$ (bỏ GPE; có GPE: $91{,}2\text{ c}$) & Ảnh hưởng làm mịn trễ 1 khung \\
+-- \emph{Phân vị 95 ($p_{95}$)} & $0{,}64\text{ cent}$ & $20{,}6\text{ cent}$ (bỏ GPE; có GPE: $1181\text{ c}$) & Bị nới rộng do lỗi quãng tám \\
+-- \emph{Cent mịn cực đại} & $13{,}0\text{ cent}$ & $48{,}4\text{ cent}$ (phi thô) & Đỉnh quá độ chuyển âm \\
+\midrule
+\textbf{GPE vs Cao độ thật (Truth)} & & & So sánh với tần số vật lý gốc \\
+-- Praat $R_1$ & $0/207$ ($0\%$) & $0/207$ ($0\%$) & Viterbi nắn hoàn hảo lỗi quãng tám \\
+-- Praat $R_2$ & $0/207$ ($0\%$) & $19/207$ ($9{,}18\%$) & Bị bẫy tại 19 khung nhiễu \\
+-- Twin Thô (trước Median) & $0/207$ ($0\%$) & $22/207$ ($10{,}63\%$) & 19 khung do argmax + 3 do lưới \\
+-- Twin + Median-3 & $0/207$ ($0\%$) & $15/207$ ($7{,}25\%$) & Median-3 sửa được 7 khung lỗi \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng.} Bảng \ref{tab:ch13_benchmark_golden} cung cấp bức tranh hoàn chỉnh về hiệu năng hệ thống:
+\begin{enumerate}
+    \item Trên tín hiệu sạch, lõi FPGA đạt độ chính xác gần như hoàn hảo: tỷ lệ lỗi thô $\text{GPE} = 0$, tỷ lệ lỗi phân định âm tính $\text{VDE} = 0$, và sai số cent mịn cực đại chỉ $1{,}08\text{ cent}$ (trung bình $0{,}21\text{ cent}$). Khi qua bộ lọc Median-3, kết quả so với Praat $R_1$ vẫn giữ nguyên $\text{GPE} = 0$ và sai số cực đại chỉ $13{,}0\text{ cent}$ ở vùng chuyển tiếp biên.
+    \item Trên tín hiệu có ồn SNR $5\text{ dB}$, bảng số liệu bóc tách rõ ràng: 19 khung lỗi của Praat $R_2$ bắt nguồn từ việc thiếu vắng bộ dò đường Viterbi. Lõi FPGA thô mắc 22 khung lỗi (gồm 19 khung lỗi chung với $R_2$ cộng thêm 3 khung do việc xếp hạng trên lưới lag nguyên). Bộ lọc Median-3 đã phát huy tác dụng rõ rệt khi sửa được 7 khung lỗi, hạ số khung GPE từ 22 xuống còn 15 khung mà hoàn toàn không cần đến độ phức tạp của quy hoạch động.
+\end{enumerate}
+
+\subsubsection*{Phân tích mã nguồn tham chiếu \texttt{golden\_v2/praat\_float\_ref.py}}
+Để hiểu rõ cơ chế nội suy sinc kết hợp tìm kiếm tỉ lệ vàng Brent và quy hoạch động Viterbi trong Praat chuẩn, chúng ta khảo sát đoạn mã nguồn then chốt trích từ tệp \texttt{golden\_v2/praat\_float\_ref.py}:
+
+\begin{lstlisting}[language=Python, caption={Thuật toán tìm ứng viên, nội suy parabol đợt 1 và tinh chỉnh sinc70 + Brent đợt 2 trong \texttt{praat\_float\_ref.py}.}, firstnumber=197]
+        i = 2
+        while i < K.MAXIMUM_LAG and i < K.BRENT_IXMAX:
+            if r[i] > 0.5 * self.voicing and r[i] > r[i - 1] and r[i] >= r[i + 1]:
+                place = 0
+                dr = 0.5 * (r[i + 1] - r[i - 1])
+                d2r = (r[i] - r[i - 1]) + (r[i] - r[i + 1])
+                fmax = 1.0 / K.DX / (i + dr / d2r)
+                smax = interpolate_sinc(rv, 1.0 / K.DX / fmax - offset, 30)
+                if smax > 1.0:
+                    smax = 1.0 / smax
+                if len(cands) < self.maxn:
+                    cands.append([0.0, 0.0]); imax.append(0)
+                    place = len(cands)
+                else:
+                    weakest = 2.0
+                    for iw in range(2, self.maxn + 1):
+                        c = cands[iw - 1]
+                        ls = c[1] - self.octave * math.log2(K.PITCH_FLOOR / c[0])
+                        if ls < weakest:
+                            weakest, place = ls, iw
+                    if smax - self.octave * math.log2(K.PITCH_FLOOR / fmax) <= weakest:
+                        place = 0
+                if place:
+                    cands[place - 1] = [fmax, smax]
+                    imax[place - 1] = i
+            i += 1
+        # second pass: refine with sinc70 + Brent
+        for ic in range(2, len(cands) + 1):
+            c = cands[ic - 1]
+            depth = 700 if c[0] > 0.3 / K.DX else 70
+            xmid, ymid = improve_maximum(rv, imax[ic - 1] - offset, depth)
+            xmid += offset
+            c[0] = 1.0 / K.DX / xmid
+            if ymid > 1.0:
+                ymid = 1.0 / ymid
+            c[1] = ymid
+\end{lstlisting}
+
+\textbf{Giải thích mã nguồn từng dòng:}
+\begin{itemize}
+    \item \textbf{Dòng 197--199}: Vòng lặp quét các độ trễ lag từ $i = 2$ đến $\text{maximumLag} = 214$ (\path{fon/Sound_to_Pitch.cpp}, dòng 345). Điều kiện xác định một đỉnh ứng viên hợp lệ là: giá trị tự tương quan chuẩn hóa $r[i]$ phải vượt ngưỡng vô thanh một nửa ($0{,}5 \cdot 0{,}45 = 0{,}225$), đồng thời lớn hơn mẫu trước $r[i-1]$ và lớn hơn hoặc bằng mẫu sau $r[i+1]$ (\path{fon/Sound_to_Pitch.cpp}, dòng 186--188).
+    \item \textbf{Dòng 201--203}: Đợt nội suy thứ nhất bằng đường parabol 3 điểm. Đại lượng $dr = 0{,}5(r[i+1] - r[i-1])$ là đạo hàm bậc một và $d2r = (r[i] - r[i-1]) + (r[i] - r[i+1])$ là đạo hàm bậc hai âm. Đỉnh parabol có vị trí dịch $\delta = dr / d2r$. Tần số ban đầu được tính là $f_{\max} = f_s / (i + \delta)$ (\path{fon/Sound_to_Pitch.cpp}, dòng 193--199).
+    \item \textbf{Dòng 204--206}: Độ mạnh sơ bộ của ứng viên $s_{\max}$ được tính bằng cách nội suy hàm sinc độ sâu 30 (\path{fon/Sound_to_Pitch.cpp}, dòng 202--204). Nếu giá trị nội suy vượt quá 1 (do sai số biên), nó được phản xạ nghịch đảo $s_{\max} = 1 / s_{\max}$ (\path{fon/Sound_to_Pitch.cpp}, dòng 209--210).
+    \item \textbf{Dòng 207--221}: Cơ chế duy trì tối đa 15 ứng viên mạnh nhất trong danh sách. Nếu danh sách đã đầy 15 ứng viên, ứng viên có điểm số trừ chi phí quãng tám thấp nhất sẽ bị thay thế nếu ứng viên mới có điểm số cao hơn (\path{fon/Sound_to_Pitch.cpp}, dòng 225--240).
+    \item \textbf{Dòng 223--233}: Đợt tinh chỉnh thứ hai (\emph{second pass}). Praat gọi hàm \texttt{improve\_maximum} sử dụng bộ lọc sinc đối xứng độ sâu 70 và giải thuật tìm kiếm điểm cực trị tỉ lệ vàng Brent (\path{fon/Sound_to_Pitch.cpp}, dòng 251--265). Nhờ đợt tinh chỉnh này, vị trí đỉnh thực sự $x_{\text{mid}}$ và độ mạnh $y_{\text{mid}}$ đạt độ chính xác xấp xỉ liên tục tuyệt đối trên miền số thực.
+\end{itemize}
+
+Bảng \ref{tab:ch13_float_vs_hdl_mapping} đối chiếu trực tiếp giữa các dòng lệnh của bản chuyển đổi số thực tham chiếu và các khối phần cứng RTL tương ứng trong kiến trúc FPGA.
+
+\begin{table}[htbp]
+\centering
+\caption{Bảng ánh xạ giải thuật giữa bản port float \texttt{praat\_float\_ref.py} và kiến trúc phần cứng RTL \texttt{ch12\_top.v}.}
+\label{tab:ch13_float_vs_hdl_mapping}
+\small
+\begin{tabular}{lll}
+\toprule
+\textbf{Dòng mã Float Ref} & \textbf{Khối phần cứng RTL} & \textbf{Ý nghĩa giải thuật và quyết định kiến trúc} \\
+\midrule
+Dòng 173--175 (\texttt{local\_mean}) & \texttt{ch05\_local\_mean.v} & Tính trung bình trượt 426 mẫu bằng bộ tích lũy và nhân nghịch đảo. \\
+Dòng 177 (\texttt{fr = (z - mean)*w}) & \texttt{ch06\_hanning\_window.v} & Trừ trung bình 17-bit, nhân ROM Hanning Q1.15, tính công suất $LP$. \\
+Dòng 186 (\texttt{lin\_autocorr}) & \texttt{ch07\_mac\_engine.v} & Tính tích lũy tự tương quan MAC 638 mẫu qua 189 độ trễ lag $\tau = 26..214$. \\
+Dòng 187 (\texttt{rpos = ac / wr}) & \texttt{ch08\_norm\_score.v} & Nhân ROM $C[\tau]$ (Q2.14) để chuẩn hóa năng lượng cửa sổ. \\
+Dòng 201--203 (Đợt 1: Parabol) & \texttt{ch09\_f0\_calc.v} & Tính sai phân $num, den$, chia Radix-2 số nguyên Q12.4 tìm $F_0$. \\
+Dòng 207--221 (15 ứng viên) & \texttt{ch09\_peak\_finder.v} & Chỉ chọn 1 ứng viên cực đại $Sc$ tốt nhất trên lưới lag nguyên. \\
+Dòng 223--233 (Đợt 2: sinc70+Brent) & \emph{Lược bỏ trên FPGA} & Giữ nguyên kết quả parabol; sai số đo đạc ở Bảng \ref{tab:ch13_benchmark_golden}. \\
+Dòng 244--248 (\texttt{unvoicedStrength}) & \texttt{ch10\_voicing.v} & Cổng phân định vô thanh phi tuyến phụ thuộc vào tỷ số $LP/GP$. \\
+Dòng 249--280 (\texttt{path\_finder}) & \texttt{ch11\_median3.v} & Thay Viterbi bằng bộ lọc trung vị Median-3 nhân quả trễ 1 khung. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textit{Tóm lại: Cấu hình $R_2$ gỡ bỏ chi phí chuyển trạng thái quy Viterbi về phép chọn cực đại độc lập từng khung, tạo đối chuẩn sòng phẳng với lõi FPGA; phép phân rã sai số chứng minh mạch phần cứng bám sát Praat tới $0{,}21\text{ cent}$ trên tín hiệu sạch và việc dùng Median-3 thay Viterbi là sự đánh đổi hoàn toàn hợp lý trên FPGA.}
+
