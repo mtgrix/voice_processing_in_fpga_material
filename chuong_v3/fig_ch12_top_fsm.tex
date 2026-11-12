@@ -1,0 +1,63 @@
+% chuong_v3/fig_ch12_top_fsm.tex
+% Sơ đồ chuyển trạng thái của FSM điều phối đỉnh (Top-Level FSM) trong ch12_top.v
+% Điều phối tuần tự các pha xử lý từng khung âm thanh và quản lý bộ đếm chu kỳ
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    state/.style={rectangle, draw=blue!80!black, fill=blue!8, rounded corners=3pt, minimum width=2.5cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    init_state/.style={rectangle, draw=green!60!black, fill=green!10, rounded corners=3pt, minimum width=2.5cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    done_state/.style={rectangle, draw=red!70!black, fill=red!10, rounded corners=3pt, minimum width=2.5cm, minimum height=1.1cm, align=center, font=\scriptsize\bfseries},
+    trans/.style={draw=black!80, thick, ->},
+    trans_loop/.style={draw=purple!80!black, thick, dashed, ->},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=2.0pt, rounded corners=1pt, align=center}
+]
+
+    % Hàng 1: IDLE -> DISCARD -> WAIT_FRAME -> MEAN
+    \node[init_state] (idle) at (0, 6.0) {FSM\_IDLE\\{\normalfont\tiny Chờ \texttt{start} từ CSR}};
+    \node[state] (discard) at (5.2, 6.0) {FSM\_DISCARD\\{\normalfont\tiny Bỏ $s_0$ mẫu đầu}};
+    \node[state] (wait_fr) at (10.4, 6.0) {FSM\_WAIT\_FRAME\\{\normalfont\tiny Chờ \texttt{frame\_ready}}};
+    \node[state] (mean) at (15.6, 6.0) {FSM\_MEAN (Pha 1)\\{\normalfont\tiny Tính mean (429 ck)}};
+
+    % Hàng 2: FLUSH_MEDIAN <- DIV_VOICE <- MAC <- WINDOW
+    \node[state] (window) at (15.6, 1.8) {FSM\_WINDOW (Pha 2)\\{\normalfont\tiny Trừ, Hanning, LP (641 ck)}};
+    \node[state] (mac) at (10.4, 1.8) {FSM\_MAC (Pha 3)\\{\normalfont\tiny Tự tương quan (98.543 ck)}};
+    \node[state] (div_voice) at (5.2, 1.8) {FSM\_DIV\_VOICE\\{\normalfont\tiny Chia \& Voicing (43 ck)}};
+    \node[state] (flush) at (0, 1.8) {FSM\_FLUSH\\\_MEDIAN\\{\normalfont\tiny Xả khung $N-1$}};
+
+    % Hàng 3: DONE
+    \node[done_state] (done) at (0, -1.6) {FSM\_DONE\\{\normalfont\tiny Cờ \texttt{STATUS\_DONE}}};
+
+    % Các đường chuyển tiếp
+    % IDLE -> DISCARD / WAIT_FRAME
+    \draw[trans] (idle) -- node[above, lbl] {\texttt{start} $\land\ s_0 > 0$} (discard);
+    \draw[trans] (idle.north) to[out=30, in=150] node[above, lbl] {\texttt{start} $\land\ s_0 = 0$} (wait_fr.north);
+
+    % DISCARD -> WAIT_FRAME
+    \draw[trans] (discard) -- node[above, lbl] {\texttt{cnt ==} $s_0$} (wait_fr);
+
+    % WAIT_FRAME -> MEAN
+    \draw[trans] (wait_fr) -- node[above, lbl] {\texttt{ready = 1}} (mean);
+
+    % MEAN -> WINDOW
+    \draw[trans] (mean) -- node[right, lbl] {\texttt{mean\_valid}} (window);
+
+    % WINDOW -> MAC
+    \draw[trans] (window) -- node[above, lbl] {\texttt{win\_done}} (mac);
+
+    % MAC -> DIV_VOICE
+    \draw[trans] (mac) -- node[above, lbl] {\texttt{mac\_done}} (div_voice);
+
+    % DIV_VOICE -> WAIT_FRAME (Vòng lặp khung tiếp theo: frame_step = 1)
+    \draw[trans_loop] (div_voice.north east) to[out=55, in=225] node[above left=3pt, lbl, text=purple!80!black] {\texttt{voice\_valid} $\land\ k < N-1$\\[1pt]\scriptsize(\texttt{frame\_step=1})} (wait_fr.south west);
+
+    % DIV_VOICE -> FLUSH_MEDIAN (Khung cuối cùng k == N-1)
+    \draw[trans] (div_voice) -- node[above, lbl] {\texttt{voice\_val} $\land$\\$k = N-1$} (flush);
+
+    % FLUSH_MEDIAN -> DONE
+    \draw[trans] (flush) -- node[left, lbl] {\texttt{med\_out\_last}} (done);
+
+    % DONE -> IDLE (Khởi động lại khi nhận start mới)
+    \draw[trans] (done.west) to[out=180, in=180] node[left=3pt, lbl] {\texttt{start\_pulse}} (idle.west);
+
+\end{tikzpicture}%
+}

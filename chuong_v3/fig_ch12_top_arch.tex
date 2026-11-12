@@ -1,0 +1,72 @@
+% chuong_v3/fig_ch12_top_arch.tex
+% Sơ đồ khối tích hợp toàn tuyến (Top-Level Architecture) của module ch12_top.v
+% Thể hiện sự phối ghép giữa cầu nối HPS Avalon-MM, các khối xử lý và FSM điều phối
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+    >=Stealth,
+    scale=0.92,
+    bus_box/.style={rectangle, draw=orange!80!black, fill=orange!10, rounded corners=2pt, minimum width=2.6cm, minimum height=1.0cm, align=center, font=\scriptsize\bfseries},
+    mem_box/.style={rectangle, draw=blue!80!black, fill=blue!10, rounded corners=2pt, minimum width=2.6cm, minimum height=1.0cm, align=center, font=\scriptsize\bfseries},
+    dsp_box/.style={rectangle, draw=green!60!black, fill=green!12, rounded corners=2pt, minimum width=2.6cm, minimum height=1.0cm, align=center, font=\scriptsize\bfseries},
+    fsm_box/.style={rectangle, draw=purple!80!black, fill=purple!10, rounded corners=3pt, minimum width=4.0cm, minimum height=1.3cm, align=center, font=\scriptsize\bfseries},
+    wire/.style={draw=black!80, thick, ->},
+    ctrl_wire/.style={draw=purple!80!black, thick, dashed, ->},
+    bus_lbl/.style={font=\scriptsize, fill=white, inner sep=1.8pt, align=center}
+]
+
+    % =========================================================================
+    % TẦNG GIAO DIỆN BUS HPS (AVALON-MM)
+    % =========================================================================
+    \node[bus_box] (fifo_in) at (0, 7.5) {FIFO Vào (Ch.1)\\$512 \times 16$-bit (1 M10K)};
+    \node[fsm_box] (csr) at (7.8, 7.5) {Thanh ghi CSR \& FSM Đỉnh (Ch.12)\\NFRAMES, FIRST\_WIN0, GP, CONFIG\\Bộ đếm \texttt{total\_cycles}, \texttt{frame\_cycles}};
+    \node[bus_box] (fifo_out) at (15.6, 7.5) {FIFO Ra (Ch.1)\\$512 \times 16$-bit (1 M10K)};
+
+    % Giao diện bus từ HPS
+    \draw[wire] (0, 8.8) -- node[left=2pt, bus_lbl] {Avalon-MM Ghi} (fifo_in.north);
+    \draw[wire] (fifo_out.north) -- node[right=2pt, bus_lbl] {Avalon-MM Đọc} (15.6, 8.8);
+
+    % =========================================================================
+    % TẦNG TIỀN XỬ LÝ ÂM THANH
+    % =========================================================================
+    \node[dsp_box] (fir) at (0, 4.5) {Bộ lọc FIR (Ch.3)\\31 tap (Bypass)\\(1 DSP)};
+    \node[mem_box] (ring) at (5.2, 4.5) {RAM Vòng (Ch.4)\\$1024 \times 16$-bit\\(2 M10K)};
+    \node[dsp_box] (mean) at (10.4, 4.5) {Trừ Mean (Ch.5)\\426 mẫu quanh tâm\\(1 DSP 25$\times$24)};
+    \node[dsp_box] (win) at (15.6, 4.5) {Cửa sổ Hanning (Ch.6)\\ROM $638 \times 16$ (2 M10K)\\(1 DSP 17$\times$17) + LP};
+
+    \draw[wire] (fir.east) -- node[above=1pt, bus_lbl] {mẫu hợp lệ} (ring.west);
+    \draw[wire] (fifo_in.south) -- node[left=2pt, bus_lbl] {16-bit PCM} (fir.north);
+    \draw[wire] (ring.east) -- node[above=1pt, bus_lbl] {P1: 426 mẫu} (mean.west);
+    \draw[wire] (mean.east) -- node[above=1pt, bus_lbl] {P2: $d=x-\mu$} (win.west);
+
+    % =========================================================================
+    % TẦNG TỰ TƯƠNG QUAN VÀ TÍNH TOÁN F0
+    % =========================================================================
+    \node[dsp_box] (voice) at (0, 1.5) {Voicing (Ch.10)\\So sánh nhân chéo\\Gating $F_0$ với LP, GP};
+    \node[mem_box] (f0_calc) at (5.2, 1.5) {Tìm Đỉnh \& F0 (Ch.9)\\Parabol + Radix-2 Div\\(34 chu kỳ chia)};
+    \node[dsp_box] (norm) at (10.4, 1.5) {Chuẩn hóa (Ch.8)\\ROM \{C,K\} (1 M10K)\\(2 DSP 27$\times$27)};
+    \node[mem_box] (mac) at (15.6, 1.5) {Động cơ MAC (Ch.7)\\\texttt{xw\_ram} (2 M10K)\\(1 DSP MAC 18$\times$18)};
+
+    % Đường nối luồng xử lý
+    \draw[wire] (win.south) -- node[right=2pt, bus_lbl] {$x_w$ [17], $LP$} (mac.north);
+    \draw[wire] (mac.west) -- node[above=1pt, bus_lbl] {$R[0], R[\tau]$} (norm.east);
+    \draw[wire] (norm.west) -- node[above=1pt, bus_lbl] {$U[\tau], Sc[\tau]$} (f0_calc.east);
+    \draw[wire] (f0_calc.west) -- node[above=1pt, bus_lbl] {$F_{0,\text{raw}}$} (voice.east);
+
+    % =========================================================================
+    % TẦNG HẬU XỬ LÝ (MEDIAN-3) VÀ ĐƯỜNG VỀ FIFO OUT
+    % =========================================================================
+    \node[bus_box] (med) at (0, -1.5) {Median-3 (Ch.11)\\Bộ lọc trung vị\\Lặp biên \& Nhịp xả};
+
+    \draw[wire] (voice.south) -- node[left=2pt, bus_lbl] {$F_{0,\text{gated}}$} (med.north);
+    
+    % Tuyến dẫn kết quả từ Median-3 vòng quanh sườn phải về FIFO Out
+    \draw[wire] (med.east) -- node[above=1pt, bus_lbl] {$F_0$ sau lọc} (17.6, -1.5) -- (17.6, 7.5) -- (fifo_out.east);
+
+    % =========================================================================
+    % ĐƯỜNG ĐIỀU KHIỂN FSM
+    % =========================================================================
+    \draw[ctrl_wire] (csr.south) -- ++(0, -1.6) -| (ring.north);
+    \draw[ctrl_wire] (csr.south) -- ++(0, -1.6) -| (mean.north);
+
+\end{tikzpicture}%
+}
