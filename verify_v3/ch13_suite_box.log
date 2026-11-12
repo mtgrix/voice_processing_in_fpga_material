@@ -1,0 +1,266 @@
+====================================================================
+STARTING CHAPTER 13 SYSTEM VERIFICATION SUITE
+====================================================================
+=== [1/5] Running Statistical Metrics Audit (Agenda Section 7) ===
+====================================================================================
+CH13 STATISTICAL AUDIT & REPRODUCTION OF AGENDA SECTION 7 NUMBERS
+====================================================================================
+
+[1] FILE SẠCH: synth_glide_vuv_16k.wav (2,8 s, 277 khung, 208 hữu thanh)
+------------------------------------------------------------------------------------
+(a) Port float - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  6.8e-05 cent  | Script = 7.265050037681057e-05 cent  | Diff = +4.6505e-06
+(b) Port float - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  6.8e-05 cent  | Script = 7.265050037681057e-05 cent  | Diff = +4.6505e-06
+(c) Praat R1 - Praat R2 (phần path finder):
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  Khung khác nhau                       : Agenda =        0       | Script =        0       | Diff =         +0
+(d) Twin (trước median) - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        0       | Script =        0       | Diff =         +0
+  Số khung cùng hữu thanh               : Agenda =      208       | Script =      208       | Diff =         +0
+  cent mịn trung bình                   : Agenda =     0.21 cent  | Script =     0.21 cent  | Diff =         +0
+  cent mịn p95                          : Agenda =     0.48 cent  | Script =     0.48 cent  | Diff =         +0
+  cent mịn max                          : Agenda =     1.08 cent  | Script =     1.08 cent  | Diff =         +0
+(e) Twin + median-3 - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        0       | Script =        0       | Diff =         +0
+  cent mịn trung bình                   : Agenda =     0.37 cent  | Script =     0.37 cent  | Diff =         +0
+  cent mịn p95                          : Agenda =     0.64 cent  | Script =     0.64 cent  | Diff =         +0
+  cent mịn max                          : Agenda =     13.0 cent  | Script =     13.0 cent  | Diff =         +0
+(f) GPE so với F0 thật (R1 / R2 / twin / twin+median-3):
+  GPE vs truth: Praat R1                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Praat R2                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Twin raw                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Twin + med3             : Agenda =        0       | Script =        0       | Diff =         +0
+
+[2] FILE NHIỄU: synth_glide_vuv_16k_snr5.wav (2,8 s, 277 khung, 207 hữu thanh, SNR 5 dB)
+------------------------------------------------------------------------------------
+(a) Port float - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  0.00015 cent  | Script = 0.00015359219111496126 cent  | Diff = +3.59219e-06
+(b) Port float - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  0.00015 cent  | Script = 0.00015359219111496126 cent  | Diff = +3.59219e-06
+(c) Praat R1 - Praat R2 (phần path finder):
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung (lỗi quãng tám)             : Agenda =       19       | Script =       19       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+(d) Twin (trước median) - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        3       | Script =        3       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+  cent mịn trung bình (bỏ GPE)          : Agenda =      3.1 cent  | Script =      3.1 cent  | Diff =         +0
+  cent mịn p95 (bỏ GPE)                 : Agenda =      9.8 cent  | Script =      9.8 cent  | Diff =         +0
+  cent mịn max (bỏ GPE)                 : Agenda =     32.9 cent  | Script =     32.9 cent  | Diff =         +0
+  cent toàn bộ mean abs (có GPE)        : Agenda =     20.4 cent  | Script =     20.4 cent  | Diff =         +0
+  cent toàn bộ p95 (có GPE)             : Agenda =     10.6 cent  | Script =     10.6 cent  | Diff =         +0
+(e) Twin + median-3 - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =       15       | Script =       15       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+  cent mịn trung bình (bỏ GPE)          : Agenda =      5.6 cent  | Script =      5.6 cent  | Diff =         +0
+  cent mịn p95 (bỏ GPE)                 : Agenda =     20.6 cent  | Script =     20.6 cent  | Diff =         +0
+  cent mịn max (bỏ GPE)                 : Agenda =     48.4 cent  | Script =     48.4 cent  | Diff =         +0
+  cent toàn bộ mean abs (có GPE)        : Agenda =     91.2 cent  | Script =     91.2 cent  | Diff =         +0
+  cent toàn bộ p95 (có GPE)             : Agenda =   1181.5 cent  | Script =   1181.5 cent  | Diff =         +0
+(f) GPE so với F0 thật (R1 / R2 / twin / twin+median-3):
+  GPE vs truth: Praat R1                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Praat R2                : Agenda =       19       | Script =       19       | Diff =         +0
+  GPE vs truth: Twin raw                : Agenda =       22       | Script =       22       | Diff =         +0
+  GPE vs truth: Twin + med3             : Agenda =       15       | Script =       15       | Diff =         +0
+
+====================================================================================
+ALL NUMBERS ARE 100% REPRODUCED AND EXPLAINED!
+====================================================================================
+=== [2/5] Running Miniature Hand Example (10 Frames) ===
+====================================================================================
+CH13 MINIATURE HAND CALCULATION: 10 FRAMES
+====================================================================================
+Khung F0_ref (Hz)   F0_test (Hz)  Trạng thái            Tỷ số f/fref    Sai số cent 
+------------------------------------------------------------------------------------
+0     120.0         120.5         Cùng hữu thanh (Khớp) 1.0042          +7.20       
+1     125.0         124.2         Cùng hữu thanh (Khớp) 0.9936          -11.12      
+2     130.0         130.8         Cùng hữu thanh (Khớp) 1.0062          +10.62      
+3     135.0         134.1         Cùng hữu thanh (Khớp) 0.9933          -11.58      
+4     140.0         280.0         Cùng hữu thanh (GPE)  2.0000 (> 1.20) +1200.00*   
+5     150.0         0.0           Lệch âm tính (VDE: H->V)-               -           
+6     0.0           160.0         Lệch âm tính (VDE: V->H)-               -           
+7     0.0           0.0           Cùng vô thanh         -               -           
+8     0.0           0.0           Cùng vô thanh         -               -           
+9     0.0           0.0           Cùng vô thanh         -               -           
+------------------------------------------------------------------------------------
+
+TỔNG KẾT CÁC CHỈ SỐ:
+  1. Tổng số khung phân tích (N)         : 10
+  2. Số khung hữu thanh mẫu (ref)        : 6
+  3. Số khung hữu thanh thử nghiệm (test): 6
+  4. Số khung cùng hữu thanh (both)      : 5
+  5. Số khung lệch âm tính (VDE)         : 2/10 (20.0%)
+  6. Số khung lỗi cao độ thô (GPE > 20%) : 1/5 (20.0%)
+  7. Tỷ lệ lỗi toàn diện khung (FFE)     : (2 + 1)/10 = 30.0%
+  8. Sai số cent mịn trung bình (bỏ GPE) : 10.13 cent
+  9. Sai số cent mịn cực đại (bỏ GPE)    : 11.58 cent
+ 10. Sai số cent trung bình có GPE       : 248.10 cent (bị chi phối bởi 1200 cent của khung 4!)
+====================================================================================
+=== [3/5] Running Frame Alignment Audit (Praat C++ vs HPS C) ===
+====================================================================================
+CH13 FRAME ALIGNMENT AUDIT: TIME-BASED GRID & START SAMPLE COMPARISON
+====================================================================================
+
+--- Kiểm tra: synth_glide_vuv_16k.wav (N = 44800 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020000 s, HPS C = 0.020000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 1, HPS C = 1
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: synth_glide_vuv_16k_snr5.wav (N = 44800 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020000 s, HPS C = 0.020000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 1, HPS C = 1
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu 1,234 s (Chương 1) (N = 19744 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 120, HPS C = 120
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.022000 s, HPS C = 0.022000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 33, HPS C = 33
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu độ dài lẻ 1 (44801 mẫu) (N = 44801 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020031 s, HPS C = 0.020031 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 2, HPS C = 2
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(159), np.int64(160), np.int64(161)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 1 mẫu
+    [CẢNH BÁO BẪY LÀM TRÒN] Công thức ngây thơ bị lệch 1 mẫu trên tệp độ dài lẻ!
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu độ dài lẻ 2 (19743 mẫu) (N = 19743 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 120, HPS C = 120
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.021969 s, HPS C = 0.021969 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 33, HPS C = 33
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 1 mẫu
+    [CẢNH BÁO BẪY LÀM TRÒN] Công thức ngây thơ bị lệch 1 mẫu trên tệp độ dài lẻ!
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+====================================================================================
+ALL TIME-BASED FRAME ALIGNMENT AUDITS PASSED!
+====================================================================================
+=== [4/5] Running Praat 7.0.03 Line Citations Audit ===
+====================================================================================
+CH13 PRAAT 7.0.03 LINE CITATIONS AUDIT
+====================================================================================
+
+Tệp nguồn: Sound_to_Pitch.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 52, 72-73    : Căn khung: leftSample = Sampled_xToLowIndex(me,t), rightSample = leftSample+1, startSample = rightSample - halfnsamp_window
+  [XÁC NHẬN] line 296           : Bước thời gian: dt = periodsPerWindow / pitchFloor / 4 = 10 ms
+  [XÁC NHẬN] lines 334-339      : Cửa sổ: dt_window = periodsPerWindow/pitchFloor, nsamp_window = 640 -> 319 -> 638 mẫu
+  [XÁC NHẬN] line 345           : Lag cực đại: maximumLag = min(Melder_ifloor(nsamp_window/periodsPerWindow)+2, nsamp_window) = 214
+  [XÁC NHẬN] line 354           : Sampled_shortTermAnalysis gọi với dt_window
+  [XÁC NHẬN] lines 158-164      : Chuẩn hóa tự tương quan: r[i] = ac[i+1] / (ac[1] * windowR[i+1])
+  [XÁC NHẬN] lines 186-188      : Điều kiện ứng viên: r[i] > 0.5*voicingThreshold, r[i] > r[i-1], r[i] >= r[i+1] (i <= 213)
+  [XÁC NHẬN] lines 193-199      : Nội suy parabol: dr = 0.5*(r[i+1]-r[i-1]), d2r = (r[i]-r[i-1])+(r[i]-r[i+1]), frequencyOfMaximum
+  [XÁC NHẬN] lines 202-204      : Strength tính qua NUM_interpolate_sinc độ sâu 30
+  [XÁC NHẬN] lines 251-265      : Tinh chỉnh cực đại đợt hai: NUMimproveMaximum với sinc70 + Brent
+  [XÁC NHẬN] lines 489-491      : Sound_to_Pitch luôn gọi Pitch_pathFinder với các trọng số chi phí
+
+Tệp nguồn: Sampled.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 71-81        : Sampled_shortTermAnalysis: numberOfFrames = floor((duration - windowDuration)/timeStep) + 1; ourMidTime; firstTime
+
+Tệp nguồn: Sampled.h
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] line 34            : Sampled_xToLowIndex = Melder_ifloor((x - x1)/dx + 1.0)
+
+Tệp nguồn: Pitch.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 524-525      : Chữ ký hàm Pitch_pathFinder
+  [XÁC NHẬN] lines 543-545      : timeStepCorrection = 0.01 / dx; nhân với octaveJumpCost và voicedUnvoicedCost
+  [XÁC NHẬN] lines 548-549      : Ma trận delta và psi kích thước nx x maxnCandidates: lưu toàn bộ tệp
+  [XÁC NHẬN] lines 553-555      : unvoicedStrength cho ứng viên vô thanh
+  [XÁC NHẬN] lines 556-561      : Chi phí cục bộ delta: unvoicedStrength cho vô thanh, strength - octaveCost*log2(ceiling/f) cho hữu thanh
+  [XÁC NHẬN] lines 564-628      : Quy hoạch động tiến: transitionCost = 0 (V-V), voicedUnvoicedCost (đổi V/UV), octaveJumpCost*|log2(f1/f2)|
+  [XÁC NHẬN] lines 591-604      : Nhánh Melder_debug == 30 chỉ dùng khi gỡ lỗi (mặc định tắt)
+  [XÁC NHẬN] lines 630-639      : Chọn nút kết thúc đường dẫn: place = 1, so sánh nghiêm ngặt '>'
+  [XÁC NHẬN] lines 641-652      : Truy vết ngược (backtracking) hoán vị ứng viên tối ưu vào vị trí 1 của mỗi khung
+
+====================================================================================
+TỔNG SỐ ĐOẠN TRÍCH DẪN PRAAT 7.0.03 HỢP LỆ TRONG CHƯƠNG 13: 22
+====================================================================================
+=== [5/5] Running Chapter 13 Exercises Verification ===
+====================================================================================
+CH13 EXERCISES NUMERICAL VERIFICATION
+====================================================================================
+--- BÀI TẬP 1: PHÂN RÃ SAI SỐ BA TẦNG VÀ HIỆU QUẢ CỦA MEDIAN-3 ---
+  1. GPE(R1, R2) = 20/400 = 5.00%, FFE = 4.00%
+  2. GPE(FPGA_raw, R2) = 4/400 = 1.00%, FFE = 0.80%
+  3. GPE sau Median-3 so với R1 = 10/400 = 2.50%, FFE = 2.00%
+
+--- BÀI TẬP 2: QUY ĐỔI NGƯỠNG GPE 20% VÀ TÍNH BẤT ĐỐI XỨNG CỦA THANG ĐO CENT ---
+  1. Tỷ số f/fref = 1,20 (+20%): +315.64 cent (+3.1564 bán âm)
+  2. Tỷ số f/fref = 0,80 (-20%): -386.31 cent (-3.8631 bán âm)
+  3. Độ chênh lệch biên độ cent: |-386.31| - |315.64| = 70.67 cent
+
+--- BÀI TẬP 3: TÍNH TOÁN NGÂN SÁCH CHU KỲ VÀ HỆ SỐ THỜI GIAN THỰC (RTF) ---
+  1. Số khung phân tích (5 s): 497 khung (80000 mẫu)
+  2. FPGA Core: 49,533,711 chu kỳ -> 990.67 ms -> RTF = 0.1981 (nhanh gấp 5.05x thời gian thực)
+  3. HPS Toàn tuyến: 994.50 ms -> RTF = 0.1989
+  4. Praat Linux (box): 1.975 ms -> RTF = 0.000395 (nhanh gấp 2531.65x thời gian thực)
+  5. Tỷ số thời gian thực thi FPGA Core / Praat Linux: 501.61x
+
+--- BÀI TẬP 4: BẪY LÀM TRÒN MẪU TRÊN TỆP ĐỘ DÀI LẺ VÀ LỆCH PHA LƯỚI KHUNG ---
+  nx = 44801, duration = 2.80006250 s, n_frames = 277
+  our_mid = 1.4000312500 s, t1 = 0.0200312500 s
+  Khung lệch đầu tiên k = 99:
+    t_99 = 1.010031250000 s
+    (t - x1)/dx + 1.0 = 16161.0000000000000000 -> floor = 16161
+    t * fs + 0.5      = 16160.9999999999981810 -> floor = 16160
+  Tổng số khung bị lệch giữa 2 công thức: 12/277
+
+====================================================================================
+ALL EXERCISES VERIFIED SUCCESSFULLY!
+====================================================================================
+====================================================================
+AUDITING COMMITTED IVERILOG LOGS ACROSS ALL CHAPTERS (CH01-CH12)
+====================================================================
+  [PASS] Log ch01_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch02_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch03_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch04_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch05_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch06_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch07_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch08_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch09_div_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch09_calc_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch10_voicing_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch11_median3_iverilog.log verified: 0 errors, no [FAIL] token.
+  [PASS] Log ch12_top_iverilog.log verified: 0 errors, no [FAIL] token.
+====================================================================
+[PASS] ALL CHAPTER 13 VERIFICATIONS AND LOG AUDITS PASSED (0 ERRORS)!
+====================================================================
