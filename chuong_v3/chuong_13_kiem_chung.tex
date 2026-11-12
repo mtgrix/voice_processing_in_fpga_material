@@ -61,7 +61,7 @@ Nhìn lại toàn bộ kết quả kiểm chứng Tầng 1 đã được thực 
     \item Bộ nhân cửa sổ Hanning (\texttt{verify\_v3/ch06\_iverilog.log}): Khớp $1.276\text{ chu kỳ}$ tính mẫu $x_w$ và công suất cục bộ $LP$, $0\text{ lỗi}$.
     \item Động cơ tự tương quan MAC (\texttt{verify\_v3/ch07\_iverilog.log}): Tính toán đủ $190\text{ giá trị}$ tự tương quan mỗi khung ($R[0]$ và $189\text{ lag}$ từ $\tau = 26 \dots 214$) trên 16 khung âm thanh thực tế, đạt $3.040/3.040\text{ kết quả}$ chính xác tuyệt đối, đúng $98.543\text{ chu kỳ/khung}$, $0\text{ lỗi}$.
     \item Bộ chuẩn hóa điểm số và chi phí quãng tám (\texttt{verify\_v3/ch08\_iverilog.log}): Khớp $378\text{ chu kỳ}$ nạp và nhân bảng tra ROM $C[\tau], K[\tau]$, $0\text{ lỗi}$.
-    \item Bộ chia Radix-2 và tính $F_0$ (\texttt{verify\_v3/}\allowbreak\texttt{ch09\_iverilog\_run.log}): Khớp $200\text{ bộ ba số liệu}$ nội suy parabol và $200\text{ vector}$ chia Radix-2 với mẫu số nhỏ và số bị chia âm, $0\text{ lỗi}$.
+    \item Bộ chia Radix-2 và tính $F_0$ (\texttt{verify\_v3/}\allowbreak\texttt{ch09\_calc\_}\allowbreak\texttt{iverilog.log}): Khớp $200$ bộ ba nội suy parabol và $200$ vector chia Radix-2 ($0\text{ lỗi}$).
     \item Cổng phân định âm tính (\texttt{verify\_v3/ch10\_voicing\_iverilog.log}): Khớp $1.408\text{ chu kỳ}$ so sánh ngưỡng phi tuyến, $0\text{ lỗi}$.
     \item Bộ lọc trung vị Median-3 (\texttt{verify\_v3/ch11\_median3\_iverilog.log}): Khớp $1.065\text{ chu kỳ}$ xử lý trễ khung, lặp biên và xả dữ liệu, $0\text{ lỗi}$.
     \item Tích hợp toàn tuyến Top-Level (\texttt{verify\_v3/ch12\_top\_iverilog.log}): Phần 1 khớp $276\text{ chu kỳ}$ vector nội vi; Phần 2 chạy toàn tuyến từ đầu đến cuối trên tệp âm thanh chuẩn $2{,}8\text{ s}$ ($44.800\text{ mẫu}$ âm thanh nạp vào FIFO\_IN), nhận đủ $277/277\text{ khung}$ F0 từ FIFO\_OUT, thanh ghi chu kỳ đo được đúng $27.608.945\text{ chu kỳ}$ (trung bình $99.671{,}3\text{ chu kỳ/khung}$), khớp $100\%$ không sai lệch một bit nào ($0\text{ lỗi}$).
@@ -229,14 +229,14 @@ Nhờ sự hiện diện của \texttt{praat\_float\_ref.py}, toàn bộ khoản
 \end{enumerate}
 
 \subsubsection*{Bảng tổng hợp kết quả đối chuẩn trên tập tệp âm thanh mẫu}
-Bảng \ref{tab:ch13_benchmark_golden} tổng hợp toàn bộ các thông số đối chuẩn định lượng thu được từ kịch bản kiểm tra tự động \texttt{verify\_v3/}\allowbreak\texttt{ch13\_metrics\_audit.py} trên hai tệp âm thanh chuẩn $2{,}8\text{ s}$ ($277\text{ khung}$ phân tích, $t_1 = 0{,}020\text{ s}$, bước nhảy $\text{hop} = 160\text{ mẫu}$, đỉnh toàn tệp $GP = 22.946$ với tệp sạch và $GP = 22.937$ với tệp nhiễu):
+Bảng \ref{tab:ch13_benchmark_golden} tổng hợp toàn bộ các thông số đối chuẩn định lượng thu được từ kịch bản kiểm thử tự động \texttt{verify\_v3/}\allowbreak\texttt{ch13\_metrics\_}\allowbreak\texttt{audit.py} trên hai tệp âm thanh chuẩn $2{,}8\text{ s}$ ($277\text{ khung}$ phân tích, $t_1 = 0{,}020\text{ s}$, bước nhảy $\text{hop} = 160\text{ mẫu}$, đỉnh $GP = 22.946$ với tệp sạch và $GP = 22.937$ với tệp nhiễu):
 
 \begin{table}[htbp]
 \centering
 \caption{Bảng kết quả đối chuẩn đa tầng giữa Praat 7.0.03 ($R_1, R_2$), bản port float và lõi FPGA trên hai tệp âm thanh chuẩn (tệp sạch và tệp nhiễu SNR $5\text{ dB}$).}
 \label{tab:ch13_benchmark_golden}
 \footnotesize
-\begin{tabularx}{\linewidth}{p{4.0cm}p{3.2cm}p{3.5cm}X}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.8cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.5cm}>{\raggedright\arraybackslash}X}
 \toprule
 \textbf{Cặp so sánh đối chuẩn} & \textbf{Tệp sạch (Clean)} & \textbf{Tệp nhiễu (SNR 5 dB)} & \textbf{Bản chất giải thuật} \\
 \midrule
@@ -326,22 +326,22 @@ Bảng \ref{tab:ch13_float_vs_hdl_mapping} đối chiếu trực tiếp giữa c
 \centering
 \caption{Bảng ánh xạ giải thuật giữa bản port float \texttt{praat\_float\_ref.py} và kiến trúc phần cứng RTL \texttt{ch12\_top.v}.}
 \label{tab:ch13_float_vs_hdl_mapping}
-\small
-\begin{tabular}{lll}
+\footnotesize
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}X}
 \toprule
 \textbf{Dòng mã Float Ref} & \textbf{Khối phần cứng RTL} & \textbf{Ý nghĩa giải thuật và quyết định kiến trúc} \\
 \midrule
-Dòng 173--175 (\texttt{local\_mean}) & \texttt{ch05\_local\_mean.v} & Tính trung bình trượt 426 mẫu bằng bộ tích lũy và nhân nghịch đảo. \\
-Dòng 177 (\texttt{fr = (z - mean)*w}) & \texttt{ch06\_hanning\_window.v} & Trừ trung bình 17-bit, nhân ROM Hanning Q1.15, tính công suất $LP$. \\
-Dòng 186 (\texttt{lin\_autocorr}) & \texttt{ch07\_mac\_engine.v} & Tính tích lũy tự tương quan MAC 638 mẫu qua 189 độ trễ lag $\tau = 26..214$. \\
-Dòng 187 (\texttt{rpos = ac / wr}) & \texttt{ch08\_norm\_score.v} & Nhân ROM $C[\tau]$ (Q2.14) để chuẩn hóa năng lượng cửa sổ. \\
-Dòng 201--203 (Đợt 1: Parabol) & \texttt{ch09\_f0\_calc.v} & Tính sai phân $num, den$, chia Radix-2 số nguyên Q12.4 tìm $F_0$. \\
-Dòng 207--221 (15 ứng viên) & \texttt{ch09\_peak\_finder.v} & Chỉ chọn 1 ứng viên cực đại $Sc$ tốt nhất trên lưới lag nguyên. \\
+Dòng 173--175 (\texttt{local\_mean}) & \texttt{ch05\_}\allowbreak\texttt{local\_mean.v} & Tính trung bình trượt 426 mẫu bằng bộ tích lũy và nhân nghịch đảo. \\
+Dòng 177 (\texttt{fr = (z - mean)*w}) & \texttt{ch06\_}\allowbreak\texttt{hanning\_}\allowbreak\texttt{window.v} & Trừ trung bình 17-bit, nhân ROM Hanning Q1.15, tính công suất $LP$. \\
+Dòng 186 (\texttt{lin\_autocorr}) & \texttt{ch07\_}\allowbreak\texttt{mac\_engine.v} & Tính tích lũy tự tương quan MAC 638 mẫu qua 189 độ trễ lag $\tau = 26..214$. \\
+Dòng 187 (\texttt{rpos = ac / wr}) & \texttt{ch08\_}\allowbreak\texttt{norm\_score.v} & Nhân ROM $C[\tau]$ (Q2.14) để chuẩn hóa năng lượng cửa sổ. \\
+Dòng 201--203 (Đợt 1: Parabol) & \texttt{ch09\_}\allowbreak\texttt{f0\_calc.v} & Tính sai phân $num, den$, chia Radix-2 số nguyên Q12.4 tìm $F_0$. \\
+Dòng 207--221 (15 ứng viên) & \texttt{ch09\_}\allowbreak\texttt{peak\_finder.v} & Chỉ chọn 1 ứng viên cực đại $Sc$ tốt nhất trên lưới lag nguyên. \\
 Dòng 223--233 (Đợt 2: sinc70+Brent) & \emph{Lược bỏ trên FPGA} & Giữ nguyên kết quả parabol; sai số đo đạc ở Bảng \ref{tab:ch13_benchmark_golden}. \\
-Dòng 244--248 (\texttt{unvoicedStrength}) & \texttt{ch10\_voicing.v} & Cổng phân định vô thanh phi tuyến phụ thuộc vào tỷ số $LP/GP$. \\
-Dòng 249--280 (\texttt{path\_finder}) & \texttt{ch11\_median3.v} & Thay Viterbi bằng bộ lọc trung vị Median-3 nhân quả trễ 1 khung. \\
+Dòng 244--248 (\texttt{unvoicedStrength}) & \texttt{ch10\_}\allowbreak\texttt{voicing.v} & Cổng phân định vô thanh phi tuyến phụ thuộc vào tỷ số $LP/GP$. \\
+Dòng 249--280 (\texttt{path\_finder}) & \texttt{ch11\_}\allowbreak\texttt{median3.v} & Thay Viterbi bằng bộ lọc trung vị Median-3 nhân quả trễ 1 khung. \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textit{Tóm lại: Cấu hình $R_2$ gỡ bỏ chi phí chuyển trạng thái quy Viterbi về phép chọn cực đại độc lập từng khung, tạo đối chuẩn sòng phẳng với lõi FPGA; phép phân rã sai số chứng minh mạch phần cứng bám sát Praat tới $0{,}21\text{ cent}$ trên tín hiệu sạch và việc dùng Median-3 thay Viterbi là sự đánh đổi hoàn toàn hợp lý trên FPGA.}
@@ -365,7 +365,7 @@ Cách so sánh ngây thơ này là một cái bẫy trí mạng bởi hai nguyê
     Nếu không bù trừ độ trễ 15 mẫu này trên trục thời gian, chuỗi kết quả F0 sẽ bị lệch pha $0{,}9375\text{ ms}$ so với tín hiệu âm thanh gốc.
 \end{enumerate}
 
-Vì vậy, nguyên tắc bất biến của việc đối chuẩn là: **Phải căn chỉnh khung phân tích theo trục thời gian vật lý liên tục ($t$), tuyệt đối không căn theo chỉ số mảng thô.**
+Vì vậy, nguyên tắc bất biến của việc đối chuẩn là: \textbf{Phải căn chỉnh khung phân tích theo trục thời gian vật lý liên tục ($t$), tuyệt đối không căn theo chỉ số mảng thô.}
 
 \begin{figure}[htbp]
 \centering
@@ -422,7 +422,7 @@ Như đã được kiểm chứng bằng thực nghiệm trong kịch bản \tex
 \end{itemize}
 Vì giá trị nhị phân ở bit thứ 53 bị hụt một lượng vô cùng nhỏ ($\epsilon \approx 1{,}8 \cdot 10^{-15}$), hàm sàn \texttt{floor} lập tức kéo kết quả tụt xuống $16.160$, làm lệch vị trí bắt đầu của khung đi đúng 1 mẫu! Hiện tượng này lặp lại ở 12 khung trong tệp $44.801\text{ mẫu}$.
 
-Để ngăn chặn triệt để lỗi lệch mẫu này, trình điều khiển C trên HPS (\texttt{sw\_v3/ch01\_frames.c}) và mô hình phần mềm \texttt{golden\_v2/frames.py} hiện thực chính xác từng phép tính theo đúng biểu thức dấu phẩy động gốc của Praat. Tệp siêu dữ liệu \texttt{pitch\_meta.txt} lưu lại tọa độ $t_1$ và $dt$ chính xác để các công cụ phân tích luôn căn khung theo thời gian thực.
+Để loại trừ triệt để lỗi lệch mẫu, trình điều khiển C trên HPS (\texttt{sw\_v3/}\allowbreak\texttt{ch01\_}\allowbreak\texttt{frames.c}) và mô hình phần mềm \texttt{golden\_v2/}\allowbreak\texttt{frames.py} hiện thực chính xác từng phép tính theo biểu thức dấu phẩy động gốc của Praat. Tệp siêu dữ liệu \texttt{pitch\_meta.txt} lưu lại tọa độ $t_1$ và $dt$ để các công cụ phân tích luôn căn khung theo thời gian thực.
 
 \subsubsection*{Bộ bốn chỉ số đo lường chất lượng âm học theo tiêu chuẩn quốc tế}
 Để đánh giá định lượng khoảng cách giữa kết quả ước lượng cao độ của phần cứng $f_k$ và kết quả tham chiếu của Praat $f_{\text{ref}, k}$, cộng đồng nghiên cứu xử lý tiếng nói quốc tế sử dụng bộ bốn chỉ số tiêu chuẩn:
@@ -492,7 +492,7 @@ Vì giá trị nhị phân ở bit thứ 53 bị hụt một lượng vô cùng 
     \item Khung 7 đến 9: Cả hai cùng xác định chính xác là vô thanh.
 \end{itemize}
 
-Bảng \ref{tab:ch13_hand_example} trình bày chi tiết chuỗi số liệu của ví dụ tính tay (được trích xuất từ kịch bản kiểm chứng \texttt{verify\_v3/ch13\_hand\_example.py}):
+Bảng \ref{tab:ch13_hand_example} trình bày chi tiết chuỗi số liệu của ví dụ tính tay (được trích xuất từ kịch bản kiểm chứng \texttt{verify\_v3/}\allowbreak\texttt{ch13\_hand\_}\allowbreak\texttt{example.py}):
 
 \begin{table}[htbp]
 \centering
@@ -596,12 +596,12 @@ Tương tự, về phía phần cứng, nếu chúng ta chỉ đếm số chu k�
 
 Để thiết lập một chuẩn mực so sánh khoa học và công bằng tuyệt đối, chúng ta cần:
 \begin{enumerate}
-    \item Sử dụng chỉ số chuẩn hóa quốc tế: **Hệ số thời gian thực (Real-Time Factor -- RTF)**;
+    \item Sử dụng chỉ số chuẩn hóa quốc tế: \textbf{Hệ số thời gian thực (Real-Time Factor -- RTF)};
     \item Thiết lập ba cơ chế đo đạc chuyên biệt, cô lập chính xác thời gian tính toán thuật toán trên từng nền tảng:
     \begin{itemize}
-        \item Đo trực tiếp trên FPGA bằng **bộ đếm chu kỳ phần cứng (Cycle Counter)** ở tần số $50\text{ MHz}$;
-        \item Đo toàn tuyến trên HPS bằng hàm chuẩn POSIX **\texttt{clock\_gettime(CLOCK\_MONOTONIC)}** bóc tách thành ba giai đoạn độc lập;
-        \item Đo trên máy tính xách tay bằng **kịch bản Praat Script với đồng hồ bấm giờ nội bộ (\texttt{stopwatch})**, lặp $N = 20\text{ lần}$ và lấy giá trị trung vị (median).
+        \item Đo trực tiếp trên FPGA bằng \textbf{bộ đếm chu kỳ phần cứng (Cycle Counter)} ở tần số $50\text{ MHz}$;
+        \item Đo toàn tuyến trên HPS bằng hàm chuẩn POSIX \textbf{\texttt{clock\_gettime(CLOCK\_MONOTONIC)}} bóc tách thành ba giai đoạn độc lập;
+        \item Đo trên máy tính xách tay bằng \textbf{kịch bản Praat Script với đồng hồ bấm giờ nội bộ (\texttt{stopwatch})}, lặp $N = 20\text{ lần}$ và lấy giá trị trung vị (median).
     \end{itemize}
 \end{enumerate}
 
@@ -757,7 +757,7 @@ Bảng \ref{tab:ch13_timing_comparison} so sánh tổng thể các chỉ tiêu h
 \caption{Bảng so sánh hiệu năng thời gian và hệ số thời gian thực (RTF) trên tệp âm thanh chuẩn $2{,}8\text{ s}$ ($277\text{ khung}$) giữa FPGA, HPS và Laptop Praat.}
 \label{tab:ch13_timing_comparison}
 \small
-\begin{tabular}{lcccc}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{4.0cm}>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}X}
 \toprule
 \textbf{Chỉ tiêu hiệu năng} & \textbf{Lõi FPGA (DE10-Std)} & \textbf{Toàn tuyến HPS nhúng} & \textbf{Praat trên Laptop} \\
 \midrule
@@ -771,7 +771,7 @@ Phương pháp đo & Cycle Counter CSR & \texttt{clock\_gettime} & \texttt{stopw
 \textbf{Hệ số thời gian thực (RTF)} & $\mathbf{0{,}1972 \approx 0{,}199}$ & \textbf{\todo{box: ~0,202}} & \textbf{\todo{box: ~0,009}} \\
 \textbf{Tốc độ so với thời gian thực} & \textbf{Nhanh gấp 5,07 lần} & \textbf{\todo{box: Nhanh ~4,9 lần}} & \textbf{\todo{box: Nhanh ~110 lần}} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Đọc bảng và phân tích kinh tế kỹ thuật:}
@@ -815,55 +815,56 @@ Theo tài liệu chính thức \emph{Cyclone V Device Handbook} (Volume 1: Devic
 \centering
 \caption{Bảng tổng hợp tài nguyên phần cứng silicon giữa Đường (A) Intel IP và Đường (B) HDL tự viết trên chip Altera Cyclone V SoC 5CSXFC6D6F31C6N (DE10-Standard).}
 \label{tab:ch13_ip_vs_hdl_resources}
-\small
-\begin{tabular}{lcccccc}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.2cm}>{\centering\arraybackslash}c>{\centering\arraybackslash}c>{\centering\arraybackslash}c>{\centering\arraybackslash}c>{\centering\arraybackslash}X}
 \toprule
 \textbf{Khối chức năng} & \textbf{Phương án} & \textbf{M10K} & \textbf{DSP} & \textbf{ALM} & \textbf{Thanh ghi} & \textbf{$F_{\max}$ (MHz)} \\
 \midrule
-FIFO ngõ vào ($512 \times 16$) & (A) \texttt{altera\_avalon\_fifo} & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch01\_avalon\_fifo.v}) & (B) HDL tự viết (B-RAM) & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+FIFO ngõ vào ($512 \times 16$) & (A) \texttt{altera\_}\allowbreak\texttt{avalon\_fifo} & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch01\_}\allowbreak\texttt{avalon\_fifo.v}) & (B) HDL tự viết (B-RAM) & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Bộ đệm vòng ($1024 \times 16$) & (A) RAM 2-PORT IP & 2 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch04\_ring\_buffer.v}) & (B) HDL tự viết (B-RAM) & 2 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch04\_}\allowbreak\texttt{ring\_buffer.v}) & (B) HDL tự viết (B-RAM) & 2 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Trung bình trượt ($M_{\text{mean}}$) & (A) \texttt{LPM\_MULT} ($25 \times 24$) & 0 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch05\_local\_mean.v}) & (B) HDL tự viết (\texttt{*}) & 0 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch05\_}\allowbreak\texttt{local\_mean.v}) & (B) HDL tự viết (\texttt{*}) & 0 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Cửa sổ Hanning \& $LP$ & (A) ROM 1-PORT + \texttt{MULT} & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch06\_hanning\_window.v}) & (B) HDL tự viết (ROM+DSP) & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch06\_}\allowbreak\texttt{hanning\_}\allowbreak\texttt{window.v}) & (B) HDL tự viết (ROM+DSP) & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
-Động cơ tự tương quan MAC & (A) \texttt{ALTERA\_MULT\_ADD} & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch07\_mac\_engine.v}) & (B) HDL tự viết (\texttt{mac\_unit}) & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+Động cơ tự tương quan MAC & (A) \texttt{ALTERA\_}\allowbreak\texttt{MULT\_ADD} & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch07\_}\allowbreak\texttt{mac\_engine.v}) & (B) HDL tự viết (\texttt{mac\_unit}) & 1 & 1 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Chuẩn hóa điểm số ($C, K$) & (A) ROM 1-PORT + \texttt{MULT} & 1 & 2 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch08\_norm\_score.v}) & (B) HDL tự viết (ROM+DSP) & 1 & 2 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch08\_}\allowbreak\texttt{norm\_score.v}) & (B) HDL tự viết (ROM+DSP) & 1 & 2 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Bộ chia \& Tính $F_0$ & (A) \texttt{LPM\_DIVIDE} (Pipelined) & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch09\_f0\_calc.v}) & (B) HDL chia Radix-2 tuần tự & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch09\_}\allowbreak\texttt{f0\_calc.v}) & (B) HDL chia Radix-2 tuần tự & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Cổng phân định âm tính & (A) Không có IP phù hợp & -- & -- & -- & -- & -- \\
-(\texttt{ch10\_voicing.v}) & (B) HDL logic tổ hợp & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch10\_}\allowbreak\texttt{voicing.v}) & (B) HDL logic tổ hợp & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Bộ lọc trung vị Median-3 & (A) Không có IP phù hợp & -- & -- & -- & -- & -- \\
-(\texttt{ch11\_median3.v}) & (B) HDL trễ 1 khung & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch11\_}\allowbreak\texttt{median3.v}) & (B) HDL trễ 1 khung & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
-FIFO ngõ ra ($512 \times 16$) & (A) \texttt{altera\_avalon\_fifo} & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
-(\texttt{ch01\_fifo\_out.v}) & (B) HDL tự viết (B-RAM) & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+FIFO ngõ ra ($512 \times 16$) & (A) \texttt{altera\_}\allowbreak\texttt{avalon\_fifo} & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch01\_}\allowbreak\texttt{fifo\_out.v}) & (B) HDL tự viết (B-RAM) & 1 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 Bộ điều phối FSM đỉnh & (A) Không có IP phù hợp & -- & -- & -- & -- & -- \\
-(\texttt{ch12\_top.v}) & (B) FSM 9 trạng thái & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
+(\texttt{ch12\_}\allowbreak\texttt{top.v}) & (B) FSM 9 trạng thái & 0 & 0 & \emph{phải đo} & \emph{phải đo} & \emph{phải đo} \\
 \midrule
 \textbf{TỔNG TOÀN TUYẾN} & \textbf{Cả hai phương án} & \textbf{9} & \textbf{5--6} & \textbf{\emph{phải đo}} & \textbf{\emph{phải đo}} & \textbf{\emph{phải đo}} \\
 \emph{Mẫu số chip DE10-Std} & \emph{41.910 ALM, 166.036 thanh ghi} & \emph{553--557} & \emph{112} & \emph{41.910} & \emph{166.036} & \emph{> 50 MHz} \\
 \textbf{Tỷ lệ chiếm dụng (\%)} & & $\mathbf{1{,}63\%}$ & $\mathbf{4{,}46\% - 5{,}36\%}$ & \textbf{\emph{phải đo}} & \textbf{\emph{phải đo}} & \textbf{\emph{Đạt chuẩn}} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \begin{todo}{box: Đo đạc tài nguyên ALM, Thanh ghi và Fmax sau khi Fitter/Timing Analyzer biên dịch}
 Các giá trị ALM, số lượng thanh ghi Flip-Flop, đường tới hạn và tần số xung nhịp cực đại $F_{\max}$ phụ thuộc trực tiếp vào thuật toán phân bổ và định tuyến (Place and Route) của trình biên dịch Quartus Prime Fitter trên tệp dự án hoàn chỉnh. Do máy trạm cục bộ không cài đặt Quartus, các ô tài nguyên trên bảng được ghi chú là \textbf{\emph{phải đo}} theo đúng quy chuẩn khoa học. 
 
-Người thẩm định khi biên dịch tệp dự án trên Quartus Prime 18.1/20.1 sẽ mở tệp báo cáo tổng kết \texttt{fitter.summary} và \texttt{timing\_analyzer.summary} để điền các giá trị thực nghiệm vào bảng. Tuy nhiên, về mặt số lượng khối cứng M10K và DSP, các con số 9 khối M10K ($1{,}63\%$) và 5--6 khối DSP ($4{,}46\%$) là hoàn toàn xác định từ đặc tả kiến trúc mạch.
+Người thẩm định khi biên dịch tệp dự án trên Quartus Prime 18.1/20.1 sẽ mở tệp báo cáo tổng kết \texttt{fitter.summary} và \texttt{timing\_}\allowbreak\texttt{analyzer.summary} để điền các giá trị thực nghiệm vào bảng. Tuy nhiên, về mặt số lượng khối cứng M10K và DSP, các con số 9 khối M10K ($1{,}63\%$) và 5--6 khối DSP ($4{,}46\%$) là hoàn toàn xác định từ đặc tả kiến trúc mạch.
 \end{todo}
 
 \subsubsection*{Phân tích sâu sắc sự đánh đổi và luận chứng kiến trúc}

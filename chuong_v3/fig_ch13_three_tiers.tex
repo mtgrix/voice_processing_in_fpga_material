@@ -2,68 +2,78 @@
 % Sơ đồ ba tầng kiểm chứng hệ thống: Từ mô hình phần mềm đến silicon thực tế
 
 \begin{tikzpicture}[
-    scale=0.92, transform shape,
-    box/.style={rectangle, draw=blue!70!black, fill=blue!5, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
-    hwbox/.style={rectangle, draw=red!70!black, fill=red!5, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
-    refbox/.style={rectangle, draw=teal!70!black, fill=teal!5, rounded corners=3pt, thick, align=center, inner sep=6pt, font=\small},
-    tierlabel/.style={font=\bfseries\small, text=blue!80!black, anchor=west},
-    annot/.style={font=\scriptsize, text=gray!80!black, fill=white, inner sep=2pt},
+    scale=0.90, transform shape,
+    box/.style={rectangle, draw=blue!70!black, fill=blue!5, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
+    hwbox/.style={rectangle, draw=red!70!black, fill=red!5, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
+    refbox/.style={rectangle, draw=teal!70!black, fill=teal!5, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
+    tierlabel/.style={font=\small, align=center},
+    annot/.style={font=\scriptsize, text=gray!90!black, fill=white, draw=gray!30, rounded corners=2pt, inner sep=2pt},
     arrow/.style={->, >=stealth, thick, line width=1.1pt}
 ]
 
 % Background tier boxes
-\draw[dashed, fill=blue!2, draw=blue!30, rounded corners=6pt] (-0.5, 4.3) rectangle (14.2, 7.2);
-\node[tierlabel] at (-0.3, 6.8) {TẦNG 1: Kiểm chứng mô hình số học và mô phỏng RTL (Bit-Exact Tier)};
+\draw[dashed, fill=blue!2, draw=blue!30, rounded corners=6pt] (-0.6, 5.0) rectangle (14.2, 8.4);
+\node[tierlabel, text=blue!80!black, fill=blue!10, draw=blue!40, rounded corners=2pt, inner sep=3pt, anchor=west] at (-0.3, 8.0) {\textbf{TẦNG 1}: Kiểm chứng mô hình số học và mô phỏng RTL (Bit-Exact Tier)};
 
-\draw[dashed, fill=red!2, draw=red!30, rounded corners=6pt] (-0.5, 1.2) rectangle (14.2, 3.8);
-\node[tierlabel, text=red!80!black] at (-0.3, 3.4) {TẦNG 2: Kiểm chứng hiện thực trên bo mạch vật lý DE10-Standard (Bit-Exact Hardware Tier)};
+\draw[dashed, fill=red!2, draw=red!30, rounded corners=6pt] (-0.6, 1.2) rectangle (14.2, 4.6);
+\node[tierlabel, text=red!80!black, fill=red!10, draw=red!40, rounded corners=3pt, inner sep=5pt, text width=2.8cm] at (1.5, 2.6) {
+    \textbf{TẦNG 2}\\
+    \scriptsize Hiện thực bo mạch\\
+    \scriptsize DE10-Standard\\
+    \scriptsize (Bit-Exact HW)
+};
 
-\draw[dashed, fill=teal!2, draw=teal!30, rounded corners=6pt] (-0.5, -2.2) rectangle (14.2, 0.7);
-\node[tierlabel, text=teal!80!black] at (-0.3, 0.3) {TẦNG 3: So sánh đối chuẩn âm học với phần mềm Praat 7.0.03 (Statistical Acoustic Tier)};
+\draw[dashed, fill=teal!2, draw=teal!30, rounded corners=6pt] (-0.6, -2.6) rectangle (14.2, 0.8);
+\node[tierlabel, text=teal!80!black, fill=teal!10, draw=teal!40, rounded corners=3pt, inner sep=5pt, text width=2.8cm] at (1.5, -1.2) {
+    \textbf{TẦNG 3}\\
+    \scriptsize Đối chuẩn âm học\\
+    \scriptsize với Praat 7.0.03\\
+    \scriptsize (Statistical)
+};
 
 % Nodes in Tier 1
-\node[box, text width=3.3cm] (twin) at (2.0, 5.4) {
+\node[box, text width=3.2cm] (twin) at (2.0, 6.4) {
     \textbf{Mô hình Python Twin}\\
     \scriptsize\texttt{golden\_v2/}\allowbreak\texttt{fixed\_twin.py}\\
-    \scriptsize Định dạng số nguyên Q-format
+    \scriptsize Số nguyên Q-format
 };
 
-\node[box, text width=3.6cm] (rtl) at (7.0, 5.4) {
-    \textbf{Mô phỏng RTL (Icarus)}\\
+\node[box, text width=3.4cm] (rtl) at (7.0, 6.4) {
+    \textbf{Mô phỏng RTL}\\
     \scriptsize\texttt{rtl/v3/ch12\_top.v}\\
-    \scriptsize Verilog-2001 (khối tự viết)
+    \scriptsize Verilog-2001 tự viết
 };
 
-\node[box, text width=3.2cm] (ip) at (12.0, 5.4) {
+\node[box, text width=3.2cm] (ip) at (12.0, 6.4) {
     \textbf{Mô phỏng IP Intel}\\
     \scriptsize\texttt{ALTERA\_MULT\_ADD}\\
     \scriptsize\texttt{LPM\_DIVIDE, FIFO}
 };
 
-% Nodes in Tier 2
-\node[hwbox, text width=3.8cm] (board) at (4.5, 2.3) {
+% Nodes in Tier 2 (shifted right to clear the left tier badge)
+\node[hwbox, text width=3.6cm] (board) at (6.2, 2.6) {
     \textbf{Bo mạch DE10-Standard}\\
     \scriptsize FPGA Cyclone V SoC\\
-    \scriptsize Lõi phần cứng chạy ở $50\text{ MHz}$
+    \scriptsize Lõi phần cứng $50\text{ MHz}$
 };
 
-\node[hwbox, text width=3.8cm] (hps) at (10.0, 2.3) {
+\node[hwbox, text width=3.6cm] (hps) at (11.4, 2.6) {
     \textbf{Trình điều khiển HPS C}\\
     \scriptsize\texttt{sw\_v3/}\allowbreak\texttt{ch12\_driver.c}\\
-    \scriptsize Xuất tệp \texttt{pitch\_f0.bin}
+    \scriptsize Xuất \texttt{pitch\_f0.bin}
 };
 
-% Nodes in Tier 3
-\node[refbox, text width=3.8cm] (praat_r2) at (3.0, -1.0) {
-    \textbf{Praat 7.0.03 Tham chiếu R2}\\
-    \scriptsize Chi phí quãng tám = 0\\
-    \scriptsize V/UV cost = 0 (Argmax từng khung)
+% Nodes in Tier 3 (aligned with Tier 2)
+\node[refbox, text width=3.6cm] (praat_r2) at (6.2, -1.2) {
+    \textbf{Praat 7.0.03 (R2)}\\
+    \scriptsize Quãng tám \& V/UV = 0\\
+    \scriptsize Argmax từng khung
 };
 
-\node[refbox, text width=3.8cm] (praat_r1) at (8.5, -1.0) {
-    \textbf{Praat 7.0.03 Tham chiếu R1}\\
+\node[refbox, text width=3.6cm] (praat_r1) at (11.4, -1.2) {
+    \textbf{Praat 7.0.03 (R1)}\\
     \scriptsize Cấu hình mặc định\\
-    \scriptsize Dò đường toàn cục Viterbi
+    \scriptsize Dò đường Viterbi
 };
 
 % Connections within Tier 1
@@ -71,12 +81,12 @@
 \draw[arrow, <->] (rtl) -- node[above, annot] {Khớp chu kỳ \& bit} (ip);
 
 % Connections between Tier 1 and Tier 2
-\draw[arrow, <->] (rtl) -- node[right, annot] {Khớp từng byte kết quả} (board);
+\draw[arrow, <->] (rtl.south) -- ++(0,-0.4) -| node[pos=0.25, annot] {Khớp từng byte kết quả} (board.north);
 \draw[arrow, <->] (board) -- node[above, annot] {Cầu Lightweight HPS} (hps);
 
 % Connections to Tier 3
-\draw[arrow, ->] (board) -- node[left, annot] {Đối chuẩn trực tiếp (trước Median)} (praat_r2);
-\draw[arrow, ->] (hps) -- node[right, annot] {So sánh âm học (sau Median-3)} (praat_r1);
-\draw[arrow, <->, dashed, color=teal!80!black] (praat_r2) -- node[above, annot] {Phân rã hiệu ứng Viterbi} (praat_r1);
+\draw[arrow, ->] (board.south) -- node[right, annot] {Đối chuẩn trực tiếp (trước Median)} (praat_r2.north);
+\draw[arrow, ->] (hps.south) -- node[right, annot] {So sánh âm học (sau Median-3)} (praat_r1.north);
+\draw[arrow, <->, dashed, color=teal!80!black] (praat_r2) -- node[above, annot] {Phân rã Viterbi} (praat_r1);
 
 \end{tikzpicture}
