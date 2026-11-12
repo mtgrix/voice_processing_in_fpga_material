@@ -1,0 +1,32 @@
+====================================================================================
+CH13 EXERCISES NUMERICAL VERIFICATION
+====================================================================================
+--- BÀI TẬP 1: PHÂN RÃ SAI SỐ BA TẦNG VÀ HIỆU QUẢ CỦA MEDIAN-3 ---
+  1. GPE(R1, R2) = 20/400 = 5.00%, FFE = 4.00%
+  2. GPE(FPGA_raw, R2) = 4/400 = 1.00%, FFE = 0.80%
+  3. GPE sau Median-3 so với R1 = 10/400 = 2.50%, FFE = 2.00%
+
+--- BÀI TẬP 2: QUY ĐỔI NGƯỠNG GPE 20% VÀ TÍNH BẤT ĐỐI XỨNG CỦA THANG ĐO CENT ---
+  1. Tỷ số f/fref = 1,20 (+20%): +315.64 cent (+3.1564 bán âm)
+  2. Tỷ số f/fref = 0,80 (-20%): -386.31 cent (-3.8631 bán âm)
+  3. Độ chênh lệch biên độ cent: |-386.31| - |315.64| = 70.67 cent
+
+--- BÀI TẬP 3: TÍNH TOÁN NGÂN SÁCH CHU KỲ VÀ HỆ SỐ THỜI GIAN THỰC (RTF) ---
+  1. Số khung phân tích (5 s): 497 khung (80000 mẫu)
+  2. FPGA Core: 49,533,711 chu kỳ -> 990.67 ms -> RTF = 0.1981 (nhanh gấp 5.05x thời gian thực)
+  3. HPS Toàn tuyến: 994.50 ms -> RTF = 0.1989
+  4. Laptop Praat: 215.00 ms -> RTF = 0.0430 (nhanh gấp 23.26x thời gian thực)
+  5. Tỷ số tốc độ FPGA Core / Laptop Praat: 0.22x
+
+--- BÀI TẬP 4: BẪY LÀM TRÒN MẪU TRÊN TỆP ĐỘ DÀI LẺ VÀ LỆCH PHA LƯỚI KHUNG ---
+  nx = 44801, duration = 2.80006250 s, n_frames = 277
+  our_mid = 1.4000312500 s, t1 = 0.0200312500 s
+  Khung lệch đầu tiên k = 99:
+    t_99 = 1.010031250000 s
+    (t - x1)/dx + 1.0 = 16161.0000000000000000 -> floor = 16161
+    t * fs + 0.5      = 16160.9999999999981810 -> floor = 16160
+  Tổng số khung bị lệch giữa 2 công thức: 12/277
+
+====================================================================================
+ALL EXERCISES VERIFIED SUCCESSFULLY!
+====================================================================================

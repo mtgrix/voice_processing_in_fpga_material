@@ -1,0 +1,29 @@
+====================================================================================
+CH13 MINIATURE HAND CALCULATION: 10 FRAMES
+====================================================================================
+Khung F0_ref (Hz)   F0_test (Hz)  Trạng thái            Tỷ số f/fref    Sai số cent 
+------------------------------------------------------------------------------------
+0     120.0         120.5         Cùng hữu thanh (Khớp) 1.0042          +7.20       
+1     125.0         124.2         Cùng hữu thanh (Khớp) 0.9936          -11.12      
+2     130.0         130.8         Cùng hữu thanh (Khớp) 1.0062          +10.62      
+3     135.0         134.1         Cùng hữu thanh (Khớp) 0.9933          -11.58      
+4     140.0         280.0         Cùng hữu thanh (GPE)  2.0000 (> 1.20) +1200.00*   
+5     150.0         0.0           Lệch âm tính (VDE: H->V)-               -           
+6     0.0           160.0         Lệch âm tính (VDE: V->H)-               -           
+7     0.0           0.0           Cùng vô thanh         -               -           
+8     0.0           0.0           Cùng vô thanh         -               -           
+9     0.0           0.0           Cùng vô thanh         -               -           
+------------------------------------------------------------------------------------
+
+TỔNG KẾT CÁC CHỈ SỐ:
+  1. Tổng số khung phân tích (N)         : 10
+  2. Số khung hữu thanh mẫu (ref)        : 6
+  3. Số khung hữu thanh thử nghiệm (test): 6
+  4. Số khung cùng hữu thanh (both)      : 5
+  5. Số khung lệch âm tính (VDE)         : 2/10 (20.0%)
+  6. Số khung lỗi cao độ thô (GPE > 20%) : 1/5 (20.0%)
+  7. Tỷ lệ lỗi toàn diện khung (FFE)     : (2 + 1)/10 = 30.0%
+  8. Sai số cent mịn trung bình (bỏ GPE) : 10.13 cent
+  9. Sai số cent mịn cực đại (bỏ GPE)    : 11.58 cent
+ 10. Sai số cent trung bình có GPE       : 248.10 cent (bị chi phối bởi 1200 cent của khung 4!)
+====================================================================================

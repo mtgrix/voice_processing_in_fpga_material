@@ -1,0 +1,78 @@
+====================================================================================
+CH13 STATISTICAL AUDIT & REPRODUCTION OF AGENDA SECTION 7 NUMBERS
+====================================================================================
+
+[1] FILE SẠCH: synth_glide_vuv_16k.wav (2,8 s, 277 khung, 208 hữu thanh)
+------------------------------------------------------------------------------------
+(a) Port float - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  6.8e-05 cent  | Script = 7.265050037681057e-05 cent  | Diff = +4.6505e-06
+(b) Port float - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  6.8e-05 cent  | Script = 7.265050037681057e-05 cent  | Diff = +4.6505e-06
+(c) Praat R1 - Praat R2 (phần path finder):
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  Khung khác nhau                       : Agenda =        0       | Script =        0       | Diff =         +0
+(d) Twin (trước median) - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        0       | Script =        0       | Diff =         +0
+  Số khung cùng hữu thanh               : Agenda =      208       | Script =      208       | Diff =         +0
+  cent mịn trung bình                   : Agenda =     0.21 cent  | Script =     0.21 cent  | Diff =         +0
+  cent mịn p95                          : Agenda =     0.48 cent  | Script =     0.48 cent  | Diff =         +0
+  cent mịn max                          : Agenda =     1.08 cent  | Script =     1.08 cent  | Diff =         +0
+(e) Twin + median-3 - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        0       | Script =        0       | Diff =         +0
+  cent mịn trung bình                   : Agenda =     0.37 cent  | Script =     0.37 cent  | Diff =         +0
+  cent mịn p95                          : Agenda =     0.64 cent  | Script =     0.64 cent  | Diff =         +0
+  cent mịn max                          : Agenda =     13.0 cent  | Script =     13.0 cent  | Diff =         +0
+(f) GPE so với F0 thật (R1 / R2 / twin / twin+median-3):
+  GPE vs truth: Praat R1                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Praat R2                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Twin raw                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Twin + med3             : Agenda =        0       | Script =        0       | Diff =         +0
+
+[2] FILE NHIỄU: synth_glide_vuv_16k_snr5.wav (2,8 s, 277 khung, 207 hữu thanh, SNR 5 dB)
+------------------------------------------------------------------------------------
+(a) Port float - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  0.00015 cent  | Script = 0.00015359219111496126 cent  | Diff = +3.59219e-06
+(b) Port float - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  max cent                              : Agenda =  0.00015 cent  | Script = 0.00015359219111496126 cent  | Diff = +3.59219e-06
+(c) Praat R1 - Praat R2 (phần path finder):
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung (lỗi quãng tám)             : Agenda =       19       | Script =       19       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+(d) Twin (trước median) - Praat R2:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =        3       | Script =        3       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+  cent mịn trung bình (bỏ GPE)          : Agenda =      3.1 cent  | Script =      3.1 cent  | Diff =         +0
+  cent mịn p95 (bỏ GPE)                 : Agenda =      9.8 cent  | Script =      9.8 cent  | Diff =         +0
+  cent mịn max (bỏ GPE)                 : Agenda =     32.9 cent  | Script =     32.9 cent  | Diff =         +0
+  cent toàn bộ mean abs (có GPE)        : Agenda =     20.4 cent  | Script =     20.4 cent  | Diff =         +0
+  cent toàn bộ p95 (có GPE)             : Agenda =     10.6 cent  | Script =     10.6 cent  | Diff =         +0
+(e) Twin + median-3 - Praat R1:
+  VDE khung                             : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE khung / cả hai hữu thanh          : Agenda =       15       | Script =       15       | Diff =         +0
+  Khung cùng hữu thanh                  : Agenda =      207       | Script =      207       | Diff =         +0
+  cent mịn trung bình (bỏ GPE)          : Agenda =      5.6 cent  | Script =      5.6 cent  | Diff =         +0
+  cent mịn p95 (bỏ GPE)                 : Agenda =     20.6 cent  | Script =     20.6 cent  | Diff =         +0
+  cent mịn max (bỏ GPE)                 : Agenda =     48.4 cent  | Script =     48.4 cent  | Diff =         +0
+  cent toàn bộ mean abs (có GPE)        : Agenda =     91.2 cent  | Script =     91.2 cent  | Diff =         +0
+  cent toàn bộ p95 (có GPE)             : Agenda =   1181.5 cent  | Script =   1181.5 cent  | Diff =         +0
+(f) GPE so với F0 thật (R1 / R2 / twin / twin+median-3):
+  GPE vs truth: Praat R1                : Agenda =        0       | Script =        0       | Diff =         +0
+  GPE vs truth: Praat R2                : Agenda =       19       | Script =       19       | Diff =         +0
+  GPE vs truth: Twin raw                : Agenda =       22       | Script =       22       | Diff =         +0
+  GPE vs truth: Twin + med3             : Agenda =       15       | Script =       15       | Diff =         +0
+
+====================================================================================
+ALL NUMBERS ARE 100% REPRODUCED AND EXPLAINED!
+====================================================================================

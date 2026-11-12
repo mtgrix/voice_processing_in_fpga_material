@@ -1,0 +1,41 @@
+====================================================================================
+CH13 PRAAT 7.0.03 LINE CITATIONS AUDIT
+====================================================================================
+
+Tệp nguồn: Sound_to_Pitch.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 52, 72-73    : Căn khung: leftSample = Sampled_xToLowIndex(me,t), rightSample = leftSample+1, startSample = rightSample - halfnsamp_window
+  [XÁC NHẬN] line 296           : Bước thời gian: dt = periodsPerWindow / pitchFloor / 4 = 10 ms
+  [XÁC NHẬN] lines 334-339      : Cửa sổ: dt_window = periodsPerWindow/pitchFloor, nsamp_window = 640 -> 319 -> 638 mẫu
+  [XÁC NHẬN] line 345           : Lag cực đại: maximumLag = min(Melder_ifloor(nsamp_window/periodsPerWindow)+2, nsamp_window) = 214
+  [XÁC NHẬN] line 354           : Sampled_shortTermAnalysis gọi với dt_window
+  [XÁC NHẬN] lines 158-164      : Chuẩn hóa tự tương quan: r[i] = ac[i+1] / (ac[1] * windowR[i+1])
+  [XÁC NHẬN] lines 186-188      : Điều kiện ứng viên: r[i] > 0.5*voicingThreshold, r[i] > r[i-1], r[i] >= r[i+1] (i <= 213)
+  [XÁC NHẬN] lines 193-199      : Nội suy parabol: dr = 0.5*(r[i+1]-r[i-1]), d2r = (r[i]-r[i-1])+(r[i]-r[i+1]), frequencyOfMaximum
+  [XÁC NHẬN] lines 202-204      : Strength tính qua NUM_interpolate_sinc độ sâu 30
+  [XÁC NHẬN] lines 251-265      : Tinh chỉnh cực đại đợt hai: NUMimproveMaximum với sinc70 + Brent
+  [XÁC NHẬN] lines 489-491      : Sound_to_Pitch luôn gọi Pitch_pathFinder với các trọng số chi phí
+
+Tệp nguồn: Sampled.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 71-81        : Sampled_shortTermAnalysis: numberOfFrames = floor((duration - windowDuration)/timeStep) + 1; ourMidTime; firstTime
+
+Tệp nguồn: Sampled.h
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] line 34            : Sampled_xToLowIndex = Melder_ifloor((x - x1)/dx + 1.0)
+
+Tệp nguồn: Pitch.cpp
+------------------------------------------------------------------------------------
+  [XÁC NHẬN] lines 524-525      : Chữ ký hàm Pitch_pathFinder
+  [XÁC NHẬN] lines 543-545      : timeStepCorrection = 0.01 / dx; nhân với octaveJumpCost và voicedUnvoicedCost
+  [XÁC NHẬN] lines 548-549      : Ma trận delta và psi kích thước nx x maxnCandidates: lưu toàn bộ tệp
+  [XÁC NHẬN] lines 553-555      : unvoicedStrength cho ứng viên vô thanh
+  [XÁC NHẬN] lines 556-561      : Chi phí cục bộ delta: unvoicedStrength cho vô thanh, strength - octaveCost*log2(ceiling/f) cho hữu thanh
+  [XÁC NHẬN] lines 564-628      : Quy hoạch động tiến: transitionCost = 0 (V-V), voicedUnvoicedCost (đổi V/UV), octaveJumpCost*|log2(f1/f2)|
+  [XÁC NHẬN] lines 591-604      : Nhánh Melder_debug == 30 chỉ dùng khi gỡ lỗi (mặc định tắt)
+  [XÁC NHẬN] lines 630-639      : Chọn nút kết thúc đường dẫn: place = 1, so sánh nghiêm ngặt '>'
+  [XÁC NHẬN] lines 641-652      : Truy vết ngược (backtracking) hoán vị ứng viên tối ưu vào vị trí 1 của mỗi khung
+
+====================================================================================
+TỔNG SỐ ĐOẠN TRÍCH DẪN PRAAT 7.0.03 HỢP LỆ TRONG CHƯƠNG 13: 22
+====================================================================================

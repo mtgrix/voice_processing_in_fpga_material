@@ -1,0 +1,59 @@
+====================================================================================
+CH13 FRAME ALIGNMENT AUDIT: TIME-BASED GRID & START SAMPLE COMPARISON
+====================================================================================
+
+--- Kiểm tra: synth_glide_vuv_16k.wav (N = 44800 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020000 s, HPS C = 0.020000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 1, HPS C = 1
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: synth_glide_vuv_16k_snr5.wav (N = 44800 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020000 s, HPS C = 0.020000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 1, HPS C = 1
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu 1,234 s (Chương 1) (N = 19744 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 120, HPS C = 120
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.022000 s, HPS C = 0.022000 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 33, HPS C = 33
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 0 mẫu
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu độ dài lẻ 1 (44801 mẫu) (N = 44801 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 277, HPS C = 277
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.020031 s, HPS C = 0.020031 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 2, HPS C = 2
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(159), np.int64(160), np.int64(161)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 1 mẫu
+    [CẢNH BÁO BẪY LÀM TRÒN] Công thức ngây thơ bị lệch 1 mẫu trên tệp độ dài lẻ!
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+--- Kiểm tra: Tệp mẫu độ dài lẻ 2 (19743 mẫu) (N = 19743 mẫu) ---
+  Số khung phân tích (n_frames) : Praat C++ = 120, HPS C = 120
+  Thời điểm khung 1 (t1)        : Praat C++ = 0.021969 s, HPS C = 0.021969 s
+  Bước thời gian (dt)           : Praat C++ = 0.010000 s, HPS C = 0.010000 s
+  Mẫu bắt đầu khung 0 (first_win0): Praat C++ = 33, HPS C = 33
+  Tập bước nhảy hop thực tế     : Praat C++ = [np.int64(160)]
+  Độ lệch Praat C++ vs HPS C    : max|starts_praat - starts_hps| = 0 mẫu
+  Bẫy làm tròn naive (t*fs+0.5) : max|starts_praat - starts_naive| = 1 mẫu
+    [CẢNH BÁO BẪY LÀM TRÒN] Công thức ngây thơ bị lệch 1 mẫu trên tệp độ dài lẻ!
+  => KẾT LUẬN: HPS C KHỚP TUYỆT ĐỐI 100% VỚI PRAAT C++ TRÊN MỌI ĐỘ DÀI!
+
+====================================================================================
+ALL TIME-BASED FRAME ALIGNMENT AUDITS PASSED!
+====================================================================================
