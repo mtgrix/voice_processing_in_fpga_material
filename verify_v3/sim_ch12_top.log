@@ -1,0 +1,48 @@
+=== [ch12] Compiling tb_ch12_top with iverilog -g2012 -Wall ===
+=== [ch12] Running simulation vvp sim_ch12_top ===
+==================================================================
+STARTING CH12 TOP-LEVEL INTEGRATION TESTBENCH
+==================================================================
+=== [Part 1] Running 276 cycle-accurate vectors ===
+[FAIL] Cycle 19: csr_in_readdata mismatch DUT=0x00000002 EXP=0x00000000
+[FAIL] Cycle 29: csr_in_readdata mismatch DUT=0x00000010 EXP=0x00000014
+[FAIL] Cycle 34: csr_in_readdata mismatch DUT=0x00000017 EXP=0x0000001e
+[FAIL] Cycle 39: csr_in_readdata mismatch DUT=0x0000001e EXP=0x00000028
+[FAIL] Cycle 44: csr_in_readdata mismatch DUT=0x00000024 EXP=0x00000032
+[FAIL] Cycle 49: csr_in_readdata mismatch DUT=0x0000002b EXP=0x0000003c
+[FAIL] Cycle 54: csr_in_readdata mismatch DUT=0x00000032 EXP=0x00000046
+[FAIL] Cycle 59: csr_in_readdata mismatch DUT=0x00000038 EXP=0x00000050
+[FAIL] Cycle 64: csr_in_readdata mismatch DUT=0x0000003f EXP=0x0000005a
+[FAIL] Cycle 69: csr_in_readdata mismatch DUT=0x00000046 EXP=0x00000064
+[FAIL] Cycle 74: csr_in_readdata mismatch DUT=0x0000004c EXP=0x0000006e
+[FAIL] Cycle 79: csr_in_readdata mismatch DUT=0x00000053 EXP=0x00000078
+[FAIL] Cycle 84: csr_in_readdata mismatch DUT=0x0000005a EXP=0x00000082
+[FAIL] Cycle 89: csr_in_readdata mismatch DUT=0x00000060 EXP=0x0000008c
+[FAIL] Cycle 94: csr_in_readdata mismatch DUT=0x00000067 EXP=0x00000096
+[FAIL] Cycle 99: csr_in_readdata mismatch DUT=0x0000006e EXP=0x000000a0
+[FAIL] Cycle 104: csr_in_readdata mismatch DUT=0x00000074 EXP=0x000000aa
+[FAIL] Cycle 109: csr_in_readdata mismatch DUT=0x0000007b EXP=0x000000b4
+[FAIL] Cycle 114: csr_in_readdata mismatch DUT=0x00000082 EXP=0x000000be
+[FAIL] Cycle 119: csr_in_readdata mismatch DUT=0x00000088 EXP=0x000000c8
+[FAIL] Cycle 124: csr_in_readdata mismatch DUT=0x0000008f EXP=0x000000d2
+[FAIL] Cycle 129: csr_in_readdata mismatch DUT=0x00000096 EXP=0x000000dc
+[FAIL] Cycle 134: csr_in_readdata mismatch DUT=0x0000009c EXP=0x000000e6
+[FAIL] Cycle 139: csr_in_readdata mismatch DUT=0x000000a1 EXP=0x000000f0
+[FAIL] Cycle 140: csr_in_readdata mismatch DUT=0x000000a0 EXP=0x000000f0
+[FAIL] Cycle 141: csr_in_readdata mismatch DUT=0x000000a0 EXP=0x000000f0
+[FAIL] Cycle 142: csr_in_readdata mismatch DUT=0x0000009f EXP=0x000000f0
+[FAIL] Cycle 143: csr_in_readdata mismatch DUT=0x0000009e EXP=0x000000f0
+[FAIL] Cycle 244: csr_in_readdata mismatch DUT=0x00000123 EXP=0x000001b8
+[PASS] All 276 cycles matched bit-for-bit with Python twin!
+
+=== [Part 2] End-to-End Verification on Golden WAV Data ===
+CSR configured: NFRAMES=277, FIRST_WIN0=1, GP=22946, CONFIG=1
+Core START asserted. Streaming audio samples...
+Streaming complete (first 2,000 samples loaded).
+
+==================================================================
+Total comparison errors: 29
+[FAIL] CHAPTER 12 TESTBENCH DETECTED 29 MISMATCHES!
+==================================================================
+tb/v3/tb_ch12_top.v:285: $finish called at 6007120000 (1ps)
+=== [ch12] ERROR: Simulation tb_ch12_top detected [FAIL] conditions! ===

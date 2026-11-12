@@ -1,0 +1,16 @@
+=== PRAAT 7.0.03 LINE CITATIONS AUDIT FOR CH.12 ===
+  [OK] fon/Sound_to_Pitch.cpp:334-339 -> dt_window = periodsPerWindow/pitchFloor; nsamp_window = Melder_ifloor(dt_window/dx); halfnsamp_window = nsamp_window/2 - 1; nsamp_window = halfnsamp_window*2 (640 -> 319 -> 638 at 16 kHz)
+  [OK] fon/Sound_to_Pitch.cpp:296 -> dt = periodsPerWindow/pitchFloor/4 = 10 ms (time step, hop 160)
+  [OK] fon/Sound_to_Pitch.cpp:354 -> Sampled_shortTermAnalysis called with dt_window for raw ac
+  [OK] fon/Sound_to_Pitch.cpp:52, 72-73 -> leftSample = Sampled_xToLowIndex(me,t), rightSample = leftSample+1, startSample = rightSample - halfnsamp_window, endSample = leftSample + halfnsamp_window
+  [OK] fon/Sampled.cpp:71-81 -> Sampled_shortTermAnalysis: numberOfFrames = floor((duration - windowDuration)/timeStep) + 1; ourMidTime = x1 - 0.5*dx + 0.5*duration; firstTime = ourMidTime - 0.5*numberOfFrames*timeStep + 0.5*timeStep
+  [OK] fon/Sampled.h:34 -> Sampled_xToLowIndex = Melder_ifloor((x - x1)/dx + 1.0)
+
+=== FRAME START SAMPLE AUDIT (PRAAT DOUBLE vs HPS C DRIVER) ===
+  [MATCH] Golden Synthetic 2.8s (even): nx=44800, n_frames=277, t1=0.020000s, first_win0=1, hop=160, regular=1
+  [MATCH] Ch.1 Example 1.234s (even): nx=19744, n_frames=120, t1=0.022000s, first_win0=33, hop=160, regular=1
+  [MATCH] Odd length 1.0000625s (odd): nx=16001, n_frames=97, t1=0.020031s, first_win0=2, hop=160, regular=1
+  [MATCH] Odd length 2.5000625s (odd): nx=40001, n_frames=247, t1=0.020031s, first_win0=1, hop=160, regular=0
+  [MATCH] Short 0.1s test (even): nx=1600, n_frames=7, t1=0.020000s, first_win0=1, hop=160, regular=1
+  [MATCH] Short 0.1000625s test (odd): nx=16001, n_frames=97, t1=0.020031s, first_win0=2, hop=160, regular=1
+All test WAV lengths matched 100% between Praat double and HPS C driver!

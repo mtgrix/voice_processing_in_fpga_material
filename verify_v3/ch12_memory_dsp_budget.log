@@ -1,0 +1,40 @@
+=== CH12 MEMORY (M10K) AND DSP BUDGET DERIVATION ===
+Target Device: Intel Cyclone V SoC 5CSXFC6D6F31C6N
+Document citations:
+  - Embedded Memory Blocks in Cyclone V Devices (Intel doc ID: CV-51003)
+  - Variable Precision DSP Blocks in Cyclone V Devices (Intel doc ID: CV-51004)
+  - Cyclone V Device Overview (Intel doc ID: CV-51001)
+
+--- 1. M10K Embedded Memory Budget ---
+Khối chức năng                 | Kích thước | M10K   | Giải thích cấu hình M10K
+------------------------------------------------------------------------------------------
+FIFO vào (On-Chip FIFO)        | 512x16     | 1      | Cấu hình 512x20 (độ sâu <= 512, rộng <= 20 bit) -> đúng 1 M10K
+RAM vòng mẫu (Ring Buffer)     | 1024x16    | 2      | Độ sâu 1024 > 512 -> cấu hình 1024x10. Cần 16 bit -> 2 khối M10K (rộng 20 bit)
+ROM Hanning (Full N=638)       | 638x16     | 2      | Độ sâu 638 > 512 -> cấu hình 1024x10 -> 2 khối M10K (nửa ROM 319x16 cần 1 M10K)
+xw_ram (true dual-port)        | 638x17     | 2      | Độ sâu 638 > 512, rộng 17 bit -> cấu hình 1024x10 -> 2 khối M10K (đệm đôi: 4 M10K)
+ROM {C, K} (189 từ dùng)       | 256x32     | 1      | Độ sâu 256 <= 256, rộng 32 <= 40 bit -> cấu hình 256x40 -> đúng 1 M10K
+FIFO ra F0 (pitch_f0)          | 512x16     | 1      | Cấu hình 512x20 (độ sâu <= 512, rộng <= 20 bit) -> đúng 1 M10K
+------------------------------------------------------------------------------------------
+Tổng baseline (tuần tự)        |            | 9      | Chiếm 9/553 = 1.63% tổng tài nguyên M10K
+Tổng đệm đôi (chồng lấp)       |            | 11     | Chiếm 11/553 = 1.99% tổng tài nguyên M10K
+Tổng tài nguyên của chip Cyclone V 5CSXFC6D6F31C6N: 553-557 khối M10K (phải kiểm trong datasheet/Quartus).
+
+--- 2. Variable Precision DSP Block Budget ---
+Khối chức năng                      | Toán tử        | DSP   | Ghi chú kiến trúc
+------------------------------------------------------------------------------------------
+Trừ trung bình (ch05_local_mean)    | 25x24          | 1     | Phép nhân nghịch đảo acc * M_MEAN (chế độ 27x27)
+Cửa sổ Hanning (ch06_hanning_window) | 17x17          | 1     | Nhân mẫu d * w (chế độ 18x18)
+Động cơ MAC (ch07_mac_unit)         | 17x17+acc      | 1     | Nhân dập xw * xw và tích lũy 48-bit (chế độ 18x18 MAC)
+Chuẩn hóa Rn*C (ch08_norm_score)    | 27x17          | 1     | Nhân Rn * C[tau] (chế độ 27x27)
+Chi phí quãng tám R0n*K (ch08_norm_score) | 27x16          | 1     | Nhân R0n * K[tau] (chế độ 27x27)
+Quyết định âm tính (ch10_voicing)   | Hằng số+LHS/RHS | 0     | Nhân hằng số bằng shift-add; tích 54-bit dùng chung logic/DSP (phải đo)
+Bộ lọc FIR 31 tap (ch03_fir_filter, tùy chọn) | 16x16          | 1     | Gấp tap đối xứng, chỉ dùng khi bật (mặc định bypass)
+------------------------------------------------------------------------------------------
+Tổng lõi baseline (FIR bypass)      |                | 5     | Chiếm 5/112 = 4.46% tổng DSP
+Tổng khi bật FIR 31-tap             |                | 6     | Chiếm 6/112 = 5.36% tổng DSP
+Tổng tài nguyên DSP trên chip: 112 khối (phải đo số thực trong Quartus/Fitter).
+
+Summary:
+  - M10K budget derived from RTL: 9 blocks (baseline) / 11 blocks (overlap) on 553-557 M10K.
+  - DSP budget derived from RTL: 5 blocks (baseline) / 6 blocks (with FIR) on 112 DSPs.
+  - Real post-fitting counts (ALM, FF, M10K, DSP, Fmax): 'phải đo trong Quartus/Fitter'.

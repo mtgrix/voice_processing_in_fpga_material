@@ -1,0 +1,25 @@
+=== CH12 EXERCISES NUMERICAL VERIFICATION ===
+
+--- Exercise 1: RTF vs Clock Frequency (Hop 160, 10 ms deadline) ---
+  f_clk =  25.0 MHz: Available =  250000 ck | Frame time = 3.987 ms | RTF = 0.3987 (Margin = 2.51x)
+  f_clk =  50.0 MHz: Available =  500000 ck | Frame time = 1.993 ms | RTF = 0.1993 (Margin = 5.02x)
+  f_clk = 100.0 MHz: Available = 1000000 ck | Frame time = 0.997 ms | RTF = 0.0997 (Margin = 10.03x)
+
+--- Exercise 2: Double-buffering Savings vs Hop Size at 50 MHz ---
+  Hop 160 (10.0 ms, 500000 ck): RTF non-overlap = 0.1993 | RTF overlap = 0.1972 | Speedup = 1.08%
+  Hop  80 (5.0 ms, 250000 ck): RTF non-overlap = 0.3987 | RTF overlap = 0.3944 | Speedup = 1.08%
+  Hop  40 (2.5 ms, 125000 ck): RTF non-overlap = 0.7973 | RTF overlap = 0.7887 | Speedup = 1.08%
+
+--- Exercise 3: M10K Bit Utilization Efficiency ---
+  FIFO Vào (512x16)        : Used  8192 bits / Allocated 10240 bits (1 M10K) ->  80.0%
+  RAM Vòng (1024x16)       : Used 16384 bits / Allocated 20480 bits (2 M10K) ->  80.0%
+  ROM Hanning (638x16)     : Used 10208 bits / Allocated 20480 bits (2 M10K) ->  49.8%
+  xw_ram (638x17)          : Used 10846 bits / Allocated 20480 bits (2 M10K) ->  53.0%
+  ROM {C,K} (189x32)       : Used  6048 bits / Allocated 10240 bits (1 M10K) ->  59.1%
+  FIFO Ra (512x16)         : Used  8192 bits / Allocated 10240 bits (1 M10K) ->  80.0%
+  Total system: Used 59870 bits / Allocated 92160 bits (9 M10K) -> 64.96%
+
+--- Exercise 4: 32-bit Cycle Counter Rollover at 50 MHz ---
+  Max count = 2^32 - 1 = 4294967295 cycles
+  Rollover duration: 4294967295 / 50000000 = 85.899 seconds (1.43 minutes)
+  Audio duration at RTF 0.199: 430.9 seconds (7.18 minutes of speech)

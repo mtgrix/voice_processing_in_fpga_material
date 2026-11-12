@@ -1,0 +1,16 @@
+=== [ch12_top_twin] Processing Golden WAV Files ===
+Clean WAV: 44800 samples, 277 frames, GP=22946
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/data/clean_wav_samples.hex
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/data/clean_f0_expected.hex
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_f0_clean_golden.bin (554 bytes)
+Noisy WAV: 44800 samples, 277 frames, GP=22937
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/data/noisy_wav_samples.hex
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/data/noisy_f0_expected.hex
+  -> Saved /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/pitch_f0_noisy_golden.bin (554 bytes)
+
+=== [ch12_top_twin] Generating Cycle-Accurate Stimulus and Expected Vectors ===
+Generated 276 vector cycles in /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch12_top_stim.txt and /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/tb_ch12_top_expected.txt
+
+=== [ch12_top_twin] Verifying Byte-Identical Matching Against Golden TSVs ===
+  [PASS] Clean WAV pitch_f0.bin matches golden fixed.tsv byte-for-byte (554 bytes, 277 frames)!
+  [PASS] Noisy WAV pitch_f0.bin matches golden fixed_snr5.tsv byte-for-byte (554 bytes, 277 frames)!

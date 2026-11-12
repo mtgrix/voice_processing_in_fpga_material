@@ -1,0 +1,43 @@
+======================================================================
+CH12 END-TO-END PIPELINE VERIFICATION: C DRIVER vs PYTHON TWIN vs GOLDEN
+======================================================================
+
+Compiling C driver test: gcc -Wall -Wextra -O2 -DSIM /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/test_ch12_driver.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch12_driver.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_wav.c /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3/ch01_frames.c -I /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/sw_v3 -lm -o /workspace/writing_material/uoc_luong_f0_praat_fpga_quartus/verify_v3/test_ch12_driver
+Compilation successful.
+
+Running C driver test...
+======================================================================
+TEST RUNNER: CH12 HPS C DRIVER END-TO-END PIPELINE (-DSIM)
+======================================================================
+
+[Test 1] Running pipeline on Clean WAV: ../golden_v2/synth_glide_vuv_16k.wav
+  Execution successful:
+    Frames:       277
+    t1:           0.020000 s
+    dt:           0.010000 s
+    first_win0:   1
+    global_peak:  22946
+    total_cycles: 27606651
+    frame_cycles: 99663
+Verifying generated pitch_f0.bin against ../golden_v2/out/fixed.tsv...
+  => Clean WAV pitch_f0.bin is 100% byte-identical to golden_v2 fixed.tsv!
+
+[Test 2] Running pipeline on Noisy WAV (SNR 5 dB): ../golden_v2/synth_glide_vuv_16k_snr5.wav
+  Execution successful:
+    Frames:       277
+    t1:           0.020000 s
+    dt:           0.010000 s
+    first_win0:   1
+    global_peak:  22937
+    total_cycles: 27606651
+Verifying generated pitch_f0.bin against ../golden_v2/out/fixed_snr5.tsv...
+  => Noisy WAV pitch_f0.bin is 100% byte-identical to golden_v2 fixed_snr5.tsv!
+
+======================================================================
+ALL CHAPTER 12 C DRIVER TESTS PASSED (100% BIT-EXACT MATCH)
+======================================================================
+
+=== SUMMARY: ALL END-TO-END VERIFICATION CHECKS PASSED ===
+  - Clean WAV: 277 frames, byte-identical pitch_f0.bin (554 bytes)
+  - Noisy WAV: 277 frames, byte-identical pitch_f0.bin (554 bytes)
+  - Metadata: t1=0.020000 s, dt=0.010000 s, first_win0=1, GP=22946/22937
