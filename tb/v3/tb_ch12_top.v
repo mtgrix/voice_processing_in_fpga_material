@@ -93,6 +93,13 @@ module tb_ch12_top;
 
     // Testbench tracking variables
     integer errors = 0;
+    integer part1_errors = 0;
+    integer part2_errors = 0;
+    integer frames_received = 0;
+    integer watchdog_cycles = 0;
+    integer last_output_cycle = 0;
+    reg [31:0] hdl_frame_cycles = 0;
+    reg [31:0] hdl_total_cycles = 0;
     integer cycle_idx = 0;
     integer stim_fd;
     integer exp_fd;
@@ -195,6 +202,7 @@ module tb_ch12_top;
                 $display("[FAIL] Cycle %0d: mm_in_waitrequest mismatch DUT=%b EXP=%b",
                          cycle_idx, mm_in_waitrequest, (exp_in_wait != 0));
                 errors = errors + 1;
+                part1_errors = part1_errors + 1;
             end
 
             // 3. Clock edge + #1: check registered responses
@@ -205,12 +213,14 @@ module tb_ch12_top;
                 $display("[FAIL] Cycle %0d: csr_in_readdata mismatch DUT=0x%08h EXP=0x%08h",
                          cycle_idx, csr_in_readdata, exp_in_csrrdata);
                 errors = errors + 1;
+                part1_errors = part1_errors + 1;
             end
 
             if (ctrl_read && (ctrl_readdata !== exp_c_rdata)) begin
                 $display("[FAIL] Cycle %0d: ctrl_readdata mismatch DUT=0x%08h EXP=0x%08h (addr=%0d)",
                          cycle_idx, ctrl_readdata, exp_c_rdata, ctrl_address);
                 errors = errors + 1;
+                part1_errors = part1_errors + 1;
             end
 
             cycle_idx = cycle_idx + 1;
@@ -223,8 +233,13 @@ module tb_ch12_top;
         if (cycle_idx != EXPECTED_CYCLES_PART1) begin
             $display("[FAIL] Expected %0d cycles, executed only %0d!", EXPECTED_CYCLES_PART1, cycle_idx);
             errors = errors + 1;
-        end else begin
+            part1_errors = part1_errors + 1;
+        end
+
+        if (part1_errors == 0) begin
             $display("[PASS] All %0d cycles matched bit-for-bit with Python twin!", cycle_idx);
+        end else begin
+            $display("[FAIL] Part 1: %0d mismatches detected!", part1_errors);
         end
 
         // --------------------------------------------------------------------
@@ -257,21 +272,90 @@ module tb_ch12_top;
         ctrl_write = 1; ctrl_address = 3'd0; ctrl_writedata = 32'd1; @(negedge clk);
         ctrl_write = 0;
 
-        $display("Core START asserted. Streaming audio samples...");
+        $display("Core START asserted. Streaming audio samples and receiving F0 frames...");
 
-        // Stream first 2,000 samples (enough to verify initial frames in simulation)
-        begin : stream_samples
-            integer s_idx;
-            for (s_idx = 0; s_idx < 2000; s_idx = s_idx + 2) begin
-                while (mm_in_waitrequest) @(negedge clk);
-                mm_in_write     = 1;
-                mm_in_writedata = {wav_mem[s_idx + 1], wav_mem[s_idx]};
-                @(negedge clk);
-                mm_in_write     = 0;
+        watchdog_cycles = 0;
+        last_output_cycle = 0;
+        frames_received = 0;
+        part2_errors = 0;
+
+        fork
+            // Thread 1: Stream ALL 44,800 audio samples into FIFO_IN (honour mm_in_waitrequest)
+            begin : th_stream
+                integer s_idx;
+                for (s_idx = 0; s_idx < CLEAN_NSAMPLES; s_idx = s_idx + 2) begin
+                    while (mm_in_waitrequest) @(negedge clk);
+                    mm_in_write     = 1;
+                    mm_in_writedata = {wav_mem[s_idx + 1], wav_mem[s_idx]};
+                    @(negedge clk);
+                    mm_in_write     = 0;
+                end
+                $display("Streaming complete: all %0d audio samples loaded into FIFO_IN.", CLEAN_NSAMPLES);
             end
+
+            // Thread 2: Read every F0 word from FIFO_OUT and compare with clean_f0_expected.hex
+            begin : th_receive
+                reg [15:0] exp_val;
+                reg [15:0] act_val;
+                while (frames_received < CLEAN_NFRAMES) begin
+                    while (dut.u_fifo_out.words_used == 0) begin
+                        @(negedge clk);
+                    end
+                    mm_out_read = 1;
+                    @(posedge clk);
+                    #1;
+                    act_val = mm_out_readdata[15:0];
+                    exp_val = exp_f0_mem[frames_received];
+                    if (act_val !== exp_val) begin
+                        $display("[FAIL] Frame %0d F0 mismatch: DUT=0x%04h (%0d) EXP=0x%04h (%0d)",
+                                 frames_received, act_val, act_val, exp_val, exp_val);
+                        errors = errors + 1;
+                        part2_errors = part2_errors + 1;
+                    end
+                    frames_received = frames_received + 1;
+                    last_output_cycle = watchdog_cycles;
+                    @(negedge clk);
+                    mm_out_read = 0;
+                end
+                $display("All %0d frames successfully received from FIFO_OUT (Part 2 errors: %0d).",
+                         frames_received, part2_errors);
+            end
+
+            // Thread 3: Timeout Watchdog (2,000,000 cycles without frame output)
+            begin : th_watchdog
+                while (frames_received < CLEAN_NFRAMES) begin
+                    @(posedge clk);
+                    watchdog_cycles = watchdog_cycles + 1;
+                    if ((watchdog_cycles - last_output_cycle) > 2000000) begin
+                        $display("\n[FAIL] WATCHDOG TIMEOUT: No output from core for 2,000,000 cycles at frame %0d!",
+                                 frames_received);
+                        errors = errors + 1;
+                        $finish;
+                    end
+                end
+            end
+        join
+
+        // Wait for FSM to reach DONE state
+        while (!dut.done_reg) @(negedge clk);
+
+        // Verify total frame count
+        if (frames_received != CLEAN_NFRAMES) begin
+            $display("[FAIL] Expected %0d frames, received %0d!", CLEAN_NFRAMES, frames_received);
+            errors = errors + 1;
+        end else begin
+            $display("[PASS] Exactly %0d frames verified against golden reference.", frames_received);
         end
 
-        $display("Streaming complete (first 2,000 samples loaded).");
+        // Read CSR cycle counter values from hardware
+        ctrl_read = 1; ctrl_address = 3'd7; @(posedge clk); #1;
+        hdl_frame_cycles = ctrl_readdata;
+        ctrl_read = 1; ctrl_address = 3'd6; @(posedge clk); #1;
+        hdl_total_cycles = ctrl_readdata;
+        ctrl_read = 0;
+
+        $display("HDL CSR REG_CTRL_FRAME_CYCLES = %0d", hdl_frame_cycles);
+        $display("HDL CSR REG_CTRL_TOTAL_CYCLES = %0d", hdl_total_cycles);
 
         // Report final results
         $display("\n==================================================================");
