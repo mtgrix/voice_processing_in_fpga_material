@@ -41,13 +41,13 @@ def generate_golden_data_files():
     
     # Save clean samples hex (int16 hex)
     clean_hex_path = os.path.join(data_dir, "clean_wav_samples.hex")
-    with open(clean_hex_path, "w") as f:
+    with open(clean_hex_path, "w", newline="\n") as f:
         for s in clean_samples:
             f.write(f"{(int(s) & 0xFFFF):04x}\n")
             
     # Save clean expected F0 hex
     clean_exp_hex = os.path.join(data_dir, "clean_f0_expected.hex")
-    with open(clean_exp_hex, "w") as f:
+    with open(clean_exp_hex, "w", newline="\n") as f:
         for val in f0_clean:
             f.write(f"{val:04x}\n")
             
@@ -68,12 +68,12 @@ def generate_golden_data_files():
     gp_noisy = res_noisy['gp']
     
     noisy_hex_path = os.path.join(data_dir, "noisy_wav_samples.hex")
-    with open(noisy_hex_path, "w") as f:
+    with open(noisy_hex_path, "w", newline="\n") as f:
         for s in noisy_samples:
             f.write(f"{(int(s) & 0xFFFF):04x}\n")
             
     noisy_exp_hex = os.path.join(data_dir, "noisy_f0_expected.hex")
-    with open(noisy_exp_hex, "w") as f:
+    with open(noisy_exp_hex, "w", newline="\n") as f:
         for val in f0_noisy:
             f.write(f"{val:04x}\n")
             
@@ -115,21 +115,86 @@ def generate_stim_expected_vectors():
     stim_lines = []
     exp_lines = []
     
-    # Internal model state
-    fifo_in_words = 0
-    fifo_out_words = 0
+    # Internal model state (Cycle-accurate model of ch01_avalon_fifo + ch12_top)
+    ADDR_W = 8
+    DEPTH_WORDS = 256
+    PTR_MASK = (1 << (ADDR_W + 1)) - 1 # 9 bits: 0..511
+
+    wr_ptr = 0
+    rd_ptr = 0
+    st_state = 0 # 0: ST_IDLE, 1: ST_FETCH, 2: ST_UNPACK0, 3: ST_UNPACK1
+    discard_cnt = 0
+    reg_first_win0 = 0
+
     ctrl_regs = [0] * 8
     ctrl_regs[4] = 0x00000001 # Default config fir_bypass = 1
+    fifo_out_words = 0
     
     def step(in_wr=0, in_wdata=0, in_csrr=0, in_csraddr=0,
              c_wr=0, c_rd=0, c_addr=0, c_wdata=0,
              out_rd=0, out_csrr=0, out_csraddr=0):
-        nonlocal fifo_in_words, fifo_out_words, ctrl_regs
+        nonlocal wr_ptr, rd_ptr, st_state, discard_cnt, reg_first_win0
+        nonlocal fifo_out_words, ctrl_regs
         
-        # Combinational / registered response modeling
-        in_wait = 1 if fifo_in_words >= 256 else 0
-        in_csr_val = fifo_in_words * 2
+        # 1. Combinational state before posedge clk (evaluated at negedge clk / check point)
+        fifo_empty = (wr_ptr == rd_ptr)
+        fifo_full = ((wr_ptr >> ADDR_W) != (rd_ptr >> ADDR_W)) and \
+                    ((wr_ptr & (DEPTH_WORDS - 1)) == (rd_ptr & (DEPTH_WORDS - 1)))
         
+        in_wait = 1 if fifo_full else 0
+        st_ready = 1 # Ring buffer has room and FIR bypass = 1
+
+        # 2. Clock edge register transitions (posedge clk)
+        next_wr_ptr = wr_ptr
+        if in_wr and not fifo_full:
+            next_wr_ptr = (wr_ptr + 1) & PTR_MASK
+
+        next_st_state = st_state
+        next_rd_ptr = rd_ptr
+        if st_state == 0: # ST_IDLE
+            if not fifo_empty:
+                next_st_state = 1 # ST_FETCH
+                next_rd_ptr = (rd_ptr + 1) & PTR_MASK
+        elif st_state == 1: # ST_FETCH
+            next_st_state = 2 # ST_UNPACK0
+        elif st_state == 2: # ST_UNPACK0
+            if st_ready:
+                next_st_state = 3 # ST_UNPACK1
+        elif st_state == 3: # ST_UNPACK1
+            if st_ready:
+                if not fifo_empty:
+                    next_st_state = 1 # ST_FETCH
+                    next_rd_ptr = (rd_ptr + 1) & PTR_MASK
+                else:
+                    next_st_state = 0 # ST_IDLE
+
+        if c_wr:
+            if c_addr == 0:
+                if c_wdata & 1:
+                    ctrl_regs[5] |= 0x01 # busy
+            elif c_addr == 2:
+                reg_first_win0 = c_wdata & 0xFFFF
+                ctrl_regs[c_addr] = c_wdata
+            elif c_addr < 5:
+                ctrl_regs[c_addr] = c_wdata
+
+        # Advance registers across clock edge
+        wr_ptr = next_wr_ptr
+        rd_ptr = next_rd_ptr
+        st_state = next_st_state
+
+        # 3. Post-clock combinational & registered read outputs (@(posedge clk); #1)
+        words_used_now = (wr_ptr - rd_ptr) & PTR_MASK
+        unpacker_samples = 2 if st_state in (1, 2) else (1 if st_state == 3 else 0)
+        total_samples_used = words_used_now * 2 + unpacker_samples
+
+        if in_csraddr == 0:
+            in_csr_val = total_samples_used
+        elif in_csraddr == 3:
+            in_csr_val = words_used_now
+        else:
+            in_csr_val = 0
+
         c_read_val = ctrl_regs[c_addr] if c_rd else 0
         
         out_wait = 1 if fifo_out_words == 0 else 0
@@ -141,18 +206,6 @@ def generate_stim_expected_vectors():
         
         stim_lines.append(stim_str)
         exp_lines.append(exp_str)
-        
-        # State update on clock edge
-        if in_wr and not in_wait:
-            fifo_in_words += 1
-            
-        if c_wr:
-            if c_addr == 0:
-                # Start pulse
-                if c_wdata & 1:
-                    ctrl_regs[5] |= 0x01 # busy
-            elif c_addr < 5:
-                ctrl_regs[c_addr] = c_wdata
 
     # Generate test transaction sequence (total >= 250 cycles)
     # 1. Idle cycles (10 cycles)
