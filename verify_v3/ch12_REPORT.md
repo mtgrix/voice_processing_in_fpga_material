@@ -57,4 +57,10 @@ Do môi trường làm việc trên máy trạm Windows hiện tại không cài
 - `c38d396`: `v3: ch12 12.3 HPS C driver and binary pitch format`
 - `150e4a2`: `v3: ch12 12.4 end-to-end testbench and verification suite`
 - `80fcfa7`: `v3: ch12 monograph text and compilation`
-- `886a29a`: `v3: ch12 done` (Commit hoàn tất nghiệm thu toàn bộ Chương 12)
+- `7ee1f7f`: `v3: ch12 done` (Commit hoàn tất nghiệm thu toàn bộ Chương 12 đợt đầu)
+- `407b470`: `v3: ch12 box review r1 logs (iverilog 29 fails, python/C pass)`
+- `0a11460`: `v3: ch12 fix twin fifo fill level and hex lf line endings`
+- `7379fc2`: `v3: ch12 fix tb_ch12_top end-to-end stream and error reporting`
+- `888ca5d`: `v3: ch12 fix memory dsp budget numbers and citations`
+- `9884da9`: `v3: ch12 clarify cycle model terminology and saving breakdown`
+- `3da976a`: `v3: ch12 fix cycle timeline figure spacing and clearances`
