@@ -656,7 +656,7 @@ Kịch bản thực thi tự động \texttt{verify\_v3/run\_ch11\_iverilog.sh} 
 \texttt{vvp verify\_v3/sim\_ch11\_median3}
 \end{quote}
 
-\todo{box: Kết quả chạy iverilog tb\_ch11\_median3 trên Linux do người phản biện cung cấp và điền vào đây.}
+Kết quả chạy thật trên Linux bằng Icarus Verilog 12 (nhật ký\\ \path{verify_v3/ch11_median3_iverilog.log}): \texttt{tb\_ch11\_median3} so khớp $1\,065/1\,065$ chu kỳ ($609$ đầu ra hợp lệ) với mô hình song sinh, 0 lỗi so sánh; mã C tham chiếu \texttt{test\_ch11\_median3.c} chạy qua toàn bộ ca, 0 lỗi.
 
 \subsubsection*{Kiểm chứng mã tham chiếu C trên bộ xử lý HPS}
 Để phục vụ việc kiểm thử phần mềm trên bộ xử lý ARM Cortex-A9 của HPS, tệp mã nguồn C \texttt{sw\_v3/ch11\_median3.c} và chương trình kiểm thử \texttt{sw\_v3/test\_ch11\_median3.c} đã được biên dịch bằng GCC:
