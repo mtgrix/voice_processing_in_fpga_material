@@ -79,11 +79,11 @@ def derive_cycle_table():
     print(f"Phase 3 (Autocorrelation MAC Engine):          {p3_cycles:6d} cycles  (98,540 issue + 3 drain)")
     print(f"Phase 4-5 (Divider tail + Voicing gate):         {p4_5_tail:6d} cycles  (3 tail + 2 prep + 34 div + 1 rnd + 3 voice)")
     print(f"Phase 6-7 (Median-3 + FSM handshakes):           {p6_7_cycles:6d} cycles")
-    print(f"Total per-frame cycles (Measured):             {measured_total:6d} cycles")
-    print(f"Measured core RTF:                             {measured_rtf:.6f} (approx {measured_rtf:.3f})")
+    print(f"Total per-frame cycles (Model):                {measured_total:6d} cycles")
+    print(f"Model core RTF:                                {measured_rtf:.6f} (approx {measured_rtf:.3f})")
     print(f"Agenda estimated total:                        {agenda_total:6d} cycles")
     print(f"Agenda estimated RTF:                          {agenda_rtf:.4f} (approx 0.199)")
-    print(f"Difference (Agenda - Measured):                {agenda_total - measured_total:+6d} cycles ({((agenda_total - measured_total)/agenda_total)*100:+.2f}%)\n")
+    print(f"Difference (Agenda - Model):                   {agenda_total - measured_total:+6d} cycles ({((agenda_total - measured_total)/agenda_total)*100:+.2f}%)\n")
     
     # Double-buffering overlap architecture
     # Phase 1 + Phase 2 of frame k+1 (429 + 641 = 1,070 cycles) run concurrently with Phase 3 (98,543 cycles) of frame k.
@@ -96,11 +96,11 @@ def derive_cycle_table():
     
     print("--- Double-Buffered Overlap Architecture ---")
     print(f"Hidden pre-processing cycles (P1 + P2):        {overlap_hidden:6d} cycles  (< 98,543 cycles)")
-    print(f"Overlap execution cycles (Measured):           {overlap_total:6d} cycles")
-    print(f"Overlap measured core RTF:                     {overlap_rtf:.6f} (approx {overlap_rtf:.3f})")
+    print(f"Overlap execution cycles (Model):              {overlap_total:6d} cycles")
+    print(f"Overlap model core RTF:                        {overlap_rtf:.6f} (approx {overlap_rtf:.3f})")
     print(f"Agenda estimated overlap total:                {agenda_overlap:6d} cycles")
     print(f"Agenda estimated overlap RTF:                  {agenda_overlap_rtf:.4f} (approx 0.197)")
-    print(f"Difference (Agenda - Measured overlap):        {agenda_overlap - overlap_total:+6d} cycles\n")
+    print(f"Difference (Agenda - Overlap model):           {agenda_overlap - overlap_total:+6d} cycles\n")
     
     # Trade-off analysis
     speedup_cycles = measured_total - overlap_total

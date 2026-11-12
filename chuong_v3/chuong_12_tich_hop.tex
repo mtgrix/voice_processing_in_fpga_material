@@ -244,13 +244,13 @@ Dựa trên mã nguồn phần cứng \texttt{ch12\_top.v} và kết quả đo �
     Tiêu tốn tổng cộng $7\text{ chu kỳ}$ bắt tay và ghi dữ liệu.
 \end{enumerate}
 
-Tổng số chu kỳ thực tế đo được cho mỗi khung trong kiến trúc cơ sở tuần tự là:
+Tổng số chu kỳ tính toán theo mô hình chu kỳ (\texttt{ch12\_cycle\_table.py}) cho mỗi khung trong kiến trúc cơ sở tuần tự là:
 \begin{equation}
-    N_{\text{total, measured}} = 429 + 641 + 98.543 + 43 + 7 = \mathbf{99.663\text{ chu kỳ}}.
+    N_{\text{total, model}} = 429 + 641 + 98.543 + 43 + 7 = \mathbf{99.663\text{ chu kỳ}}.
 \end{equation}
-Hệ số thời gian thực thực tế đo được là:
+Hệ số thời gian thực theo mô hình chu kỳ là:
 \begin{equation}
-    \text{RTF}_{\text{measured}} = \frac{99.663}{500.000} = \mathbf{0{,}199326} \approx 0{,}199.
+    \text{RTF}_{\text{model}} = \frac{99.663}{500.000} = \mathbf{0{,}199326} \approx 0{,}199.
 \end{equation}
 
 \paragraph{Đối chiếu với con số ước tính trong kế hoạch Agenda.}
@@ -260,10 +260,11 @@ Trong tài liệu kế hoạch \path{agenda_chot_v2_2026-11-10.md}, số chu k�
 \end{equation}
 So sánh hai kết quả:
 \begin{align}
-    \Delta N_{\text{cycles}} &= N_{\text{agenda}} - N_{\text{measured}} = 99.700 - 99.663 = \mathbf{+37\text{ chu kỳ}}, \\
+    \Delta N_{\text{cycles}} &= N_{\text{agenda}} - N_{\text{model}} = 99.700 - 99.663 = \mathbf{+37\text{ chu kỳ}}, \\
     \text{Tỉ lệ sai lệch} &= \frac{+37}{99.663} \times 100\% = +0{,}037\%.
 \end{align}
-Sự chênh lệch $+37\text{ chu kỳ}$ này xuất phát từ việc thiết kế FSM đỉnh thực tế trong \texttt{ch12\_top.v} đã tối ưu hóa các nhịp bắt tay chuyển giao giữa Pha 1 và Pha 2 (phát xung kích hoạt ngay ở chu kỳ cờ hợp lệ xuất hiện thay vì chờ thêm các trạng thái đệm trung gian). Đây là minh chứng rõ ràng cho việc bám sát số liệu đo đạc thực tế từ công cụ mô phỏng.
+Sự chênh lệch $+37\text{ chu kỳ}$ này xuất phát từ việc thiết kế FSM đỉnh thực tế trong \texttt{ch12\_top.v} đã tối ưu hóa các nhịp bắt tay chuyển giao giữa Pha 1 và Pha 2 (phát xung kích hoạt ngay ở chu kỳ cờ hợp lệ xuất hiện thay vì chờ thêm các trạng thái đệm trung gian).
+\todo{box: Số chu kỳ khung thực tế (frame\_cycles) đo từ mô phỏng Iverilog/VVP của testbench tb\_ch12\_top trên máy chủ Linux của người bình duyệt: }
 
 \begin{figure}[htbp]
 \centering
@@ -289,19 +290,21 @@ Thời gian cần thiết để hoàn tất toàn bộ Pha 1 và Pha 2 của khu
 Vì $1.070\text{ chu kỳ} \ll 98.543\text{ chu kỳ}$, toàn bộ thời gian tiền xử lý $1.070\text{ chu kỳ}$ của khung $k+1$ được \textbf{che giấu hoàn toàn} dưới bóng thời gian của động cơ MAC khung $k$!
 
 Khi động cơ MAC tính xong khung $k$, Bank B đã có sẵn đầy đủ 638 mẫu cửa sổ của khung $k+1$. Hệ thống chỉ cần mất $43\text{ chu kỳ}$ để hoàn tất đuôi bộ chia và phân định âm tính của khung $k$, cộng với $3\text{ chu kỳ}$ hoán đổi con trỏ Bank A/B, là có thể lập tức tái khởi động động cơ MAC cho khung $k+1$.
-Tổng số chu kỳ thực tế đo được cho mỗi khung trong kiến trúc đệm đôi là:
+Tổng số chu kỳ tính toán theo mô hình chu kỳ (\texttt{ch12\_cycle\_table.py}) cho mỗi khung trong kiến trúc đệm đôi là:
 \begin{equation}
-    N_{\text{overlap, measured}} = 98.543 + 43 + 3 = \mathbf{98.589\text{ chu kỳ}}.
+    N_{\text{overlap, model}} = 98.543 + 43 + 3 = \mathbf{98.589\text{ chu kỳ}}.
 \end{equation}
-Hệ số thời gian thực của kiến trúc đệm đôi:
+Hệ số thời gian thực theo mô hình chu kỳ của kiến trúc đệm đôi:
 \begin{equation}
-    \text{RTF}_{\text{overlap, measured}} = \frac{98.589}{500.000} = \mathbf{0{,}197178} \approx 0{,}197.
+    \text{RTF}_{\text{overlap, model}} = \frac{98.589}{500.000} = \mathbf{0{,}197178} \approx 0{,}197.
 \end{equation}
 
 So với con số ước tính trong Agenda ($98.600\text{ chu kỳ}$, $\text{RTF} = 0{,}1972$):
 \begin{equation}
     \Delta N_{\text{overlap}} = 98.600 - 98.589 = \mathbf{+11\text{ chu kỳ}}.
 \end{equation}
+
+Cần lưu ý sự khác biệt giữa hai con số tiết kiệm chu kỳ: mức tiết kiệm của hai pha tiền xử lý thuần túy là $1.070\text{ chu kỳ}$ ($T_{\text{pre-proc}} = T_{\text{Pha 1}} + T_{\text{Pha 2}} = 429 + 641$), trong khi tổng số chu kỳ tiết kiệm được trên toàn khung là $1.074\text{ chu kỳ}$ ($99.663 - 98.589 = 1.074$) do kiến trúc đệm đôi đồng thời giảm chi phí bắt tay và chuyển trạng thái FSM từ $+7\text{ chu kỳ}$ (Pha 7 và chuyển khung tuần tự) xuống $+3\text{ chu kỳ}$ hoán đổi con trỏ Bank A/B (tiết kiệm thêm $7 - 3 = 4\text{ chu kỳ}$, vì $1.070 + 4 = 1.074\text{ chu kỳ}$).
 
 \subsubsection*{Phân tích Lựa chọn -- Đánh đổi -- Quyết định kiến trúc (Options, Trade-offs, Choice)}
 Bảng \ref{tab:ch12_overlap_tradeoff} tổng hợp toàn bộ các chỉ số so sánh định lượng giữa hai phương án kiến trúc.
@@ -315,7 +318,7 @@ Bảng \ref{tab:ch12_overlap_tradeoff} tổng hợp toàn bộ các chỉ số s
 \hline
 \textbf{Tiêu chí đánh giá} & \textbf{Kiến trúc tuần tự} & \textbf{Chồng lấp đệm đôi} & \textbf{Chênh lệch / Đánh đổi} \\
 \hline
-Chu kỳ mỗi khung đo thực tế & $99.663\text{ chu kỳ}$ & $98.589\text{ chu kỳ}$ & Tiết kiệm $1.074\text{ chu kỳ}$ \\
+Chu kỳ mỗi khung (theo mô hình) & $99.663\text{ chu kỳ}$ & $98.589\text{ chu kỳ}$ & Tiết kiệm $1.074\text{ chu kỳ}$ \\
 Thời gian xử lý ở $50\text{ MHz}$ & $1{,}993\text{ ms}$ & $1{,}972\text{ ms}$ & Nhanh hơn $21{,}4\,\mu\text{s}$ \\
 Hệ số thời gian thực (RTF) & $0{,}1993$ & $0{,}1972$ & Cải thiện $0{,}0021$ \\
 Mức tăng tốc hiệu năng & Chuẩn quy chiếu ($1{,}0\times$) & $+1{,}08\%$ & Không đáng kể \\
@@ -329,7 +332,7 @@ Biên độ an toàn thời gian thực & $5{,}02\times$ nhanh hơn deadline & $
 \paragraph{Luận chứng lựa chọn kiến trúc.}
 Dựa trên các con số định lượng chính xác ở trên, quyết định kiến trúc được xác lập dứt khoát như sau:
 \begin{enumerate}
-    \item \textbf{Mức tăng tốc không đáng kể ($1{,}08\%$)}: Việc chuyển sang đệm đôi chỉ giúp tiết kiệm được $1.074\text{ chu kỳ}$ trên tổng số gần $100.000\text{ chu kỳ}$. Nguyên nhân là vì Pha 3 (MAC) chiếm tới gần $99\%$ tổng thời gian, nên việc tối ưu hai pha tiền xử lý chỉ tác động vào phần thiểu số còn lại (theo định luật Amdahl).
+    \item \textbf{Mức tăng tốc không đáng kể ($1{,}08\%$)}: Việc chuyển sang đệm đôi chỉ giúp tiết kiệm được $1.074\text{ chu kỳ}$ trên tổng số gần $100.000\text{ chu kỳ}$ (gồm $1.070\text{ chu kỳ}$ tiền xử lý ẩn dưới MAC và $4\text{ chu kỳ}$ giảm bắt tay FSM). Nguyên nhân là vì Pha 3 (MAC) chiếm tới gần $99\%$ tổng thời gian, nên việc tối ưu hai pha tiền xử lý chỉ tác động vào phần thiểu số còn lại (theo định luật Amdahl).
     \item \textbf{Chi phí tài nguyên silicon đắt đỏ}: Bộ nhớ \texttt{xw\_ram} đòi hỏi độ sâu 638 từ và độ rộng 17-bit. Do cấu trúc của khối Intel M10K chỉ hỗ trợ tối đa độ rộng 10-bit khi độ sâu là 1024 từ (xem chi tiết mục 12.2b), việc đệm đôi đòi hỏi phải cấp phát thêm \textbf{2 khối M10K vật lý} (từ 2 khối lên 4 khối M10K).
     \item \textbf{Biên độ thời gian thực hiện có đã quá dư dả}: Ngay ở cấu hình tuần tự cơ sở, hệ thống chỉ mất $1{,}993\text{ ms}$ để giải quyết một khung $10\text{ ms}$. Hệ thống chạy nhanh gấp \textbf{5,02 lần} so với yêu cầu thời gian thực! Thậm chí nếu hạ tần số xung nhịp xuống còn $25\text{ MHz}$, hệ thống vẫn chỉ mất $3{,}99\text{ ms}$ ($\text{RTF} = 0{,}3987$, vẫn nhanh hơn thời gian thực $2{,}51\text{ lần}$).
     \item \textbf{Độ tin cậy và kiểm chứng phần cứng}: Kiến trúc tuần tự loại bỏ hoàn toàn các nguy cơ xung đột dữ liệu (data hazards) trên bộ đệm vòng khi dòng mẫu âm thanh từ FIFO vào bị biến động tốc độ truyền, giữ cho FSM điều phối đơn giản, sáng sủa và bảo đảm tính đồng nhất bit-exact tuyệt đối với mô hình toán học.

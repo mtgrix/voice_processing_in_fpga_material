@@ -10,19 +10,19 @@ Phase 2 (Sub Mean, Hanning, LP, 638 samples):      641 cycles  (638 issue + 3 pi
 Phase 3 (Autocorrelation MAC Engine):           98543 cycles  (98,540 issue + 3 drain)
 Phase 4-5 (Divider tail + Voicing gate):             43 cycles  (3 tail + 2 prep + 34 div + 1 rnd + 3 voice)
 Phase 6-7 (Median-3 + FSM handshakes):                7 cycles
-Total per-frame cycles (Measured):              99663 cycles
-Measured core RTF:                             0.199326 (approx 0.199)
+Total per-frame cycles (Model):                 99663 cycles
+Model core RTF:                                0.199326 (approx 0.199)
 Agenda estimated total:                         99700 cycles
 Agenda estimated RTF:                          0.1994 (approx 0.199)
-Difference (Agenda - Measured):                   +37 cycles (+0.04%)
+Difference (Agenda - Model):                      +37 cycles (+0.04%)
 
 --- Double-Buffered Overlap Architecture ---
 Hidden pre-processing cycles (P1 + P2):          1070 cycles  (< 98,543 cycles)
-Overlap execution cycles (Measured):            98589 cycles
-Overlap measured core RTF:                     0.197178 (approx 0.197)
+Overlap execution cycles (Model):               98589 cycles
+Overlap model core RTF:                        0.197178 (approx 0.197)
 Agenda estimated overlap total:                 98600 cycles
 Agenda estimated overlap RTF:                  0.1972 (approx 0.197)
-Difference (Agenda - Measured overlap):           +11 cycles
+Difference (Agenda - Overlap model):              +11 cycles
 
 --- Options, Trade-offs, and Architectural Choice ---
 Speedup from double-buffering:                 1074 cycles (1.08%)
