@@ -17,8 +17,8 @@
     % KHỐI ĐIỀU KHIỂN FSM
     % -------------------------------------------------------------------------
     \node[fsm_box] (fsm) at (2.0, 4.2) {Khối FSM điều khiển\\(IDLE / STREAM / FLUSH)};
-    \draw[wire] (-1.2, 4.6) -- node[above=2pt, bus_lbl] {\texttt{in\_valid}, \texttt{in\_first}} (fsm.170);
-    \draw[wire] (-1.2, 3.8) -- node[below=2pt, bus_lbl] {\texttt{in\_last}} (fsm.190);
+    \draw[wire] (-2.8, 4.6) -- node[above=3pt, bus_lbl] {\texttt{in\_valid}, \texttt{in\_first}} (0.6, 4.6);
+    \draw[wire] (-2.8, 3.8) -- node[below=3pt, bus_lbl] {\texttt{in\_last}} (0.6, 3.8);
 
     % -------------------------------------------------------------------------
     % ĐƯỜNG DỮ LIỆU: CHUỖI THANH GHI TRỄ
@@ -28,7 +28,7 @@
     \node[reg_box] (rz2) at (8.2, 1.8) {Thanh ghi\\$\texttt{f0\_z2}$\\(16-bit)};
 
     % Đường nạp ngõ vào in_f0
-    \draw[wire] (-1.2, 1.8) -- node[above=2pt, bus_lbl] {\texttt{in\_f0} [16]} (rz0.west);
+    \draw[wire] (-2.8, 1.8) -- node[above=2pt, bus_lbl] {\texttt{in\_f0} [16]} (rz0.west);
     \draw[wire] (rz0.east) -- node[above=4pt, font=\scriptsize\bfseries, fill=white, inner sep=1.5pt] {shift} (rz1.west);
     \draw[wire] (rz1.east) -- node[above=4pt, font=\scriptsize\bfseries, fill=white, inner sep=1.5pt] {shift} (rz2.west);
 
@@ -39,29 +39,29 @@
     % MẠNG 3 BỘ SO SÁNH VÀ GHÉP KÊNH TRUNG VỊ
     % -------------------------------------------------------------------------
     \node[block] (cmp_net) at (11.2, 1.8) {Mạng 3 bộ so sánh:\\$a \le b,\ b \le c,\ a \le c$\\($a=z_2, b=z_1, c=z_0$)};
-    \node[block] (mux_med) at (16.0, 1.8) {Bộ ghép kênh MUX\\chọn Trung vị 16-bit};
+    \node[block] (mux_med) at (16.8, 1.8) {Bộ ghép kênh MUX\\chọn Trung vị 16-bit};
 
     % Đường nối từ thanh ghi vào mạng so sánh (chạy bên dưới thanh ghi, khoảng cách >= 3 mm)
     \draw[wire] (rz2.east) -- (cmp_net.west);
-    \draw[wire] (rz1.south) -- ++(0, -0.65) -- (9.9, 0.60) |- (cmp_net.205);
-    \draw[wire] (rz0.south) -- ++(0, -1.05) -- (9.6, 0.20) |- (cmp_net.220);
+    \draw[wire] (rz1.south) -- ++(0, -0.65) -- (11.5, 0.60) -- (cmp_net.south -| 11.5, 0);
+    \draw[wire] (rz0.south) -- ++(0, -1.05) -- (10.9, 0.20) -- (cmp_net.south -| 10.9, 0);
 
-    \draw[wire] (cmp_net.east) -- node[above=5pt, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt] {3 cờ so sánh} (mux_med.west);
+    \draw[wire] (cmp_net.east) -- node[above=4pt, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=1pt] {3 cờ so sánh} (mux_med.west);
 
     % -------------------------------------------------------------------------
     % THANH GHI CHỐT NGÕ RA f0_med
     % -------------------------------------------------------------------------
-    \node[reg_box] (rmed) at (19.6, 1.8) {Thanh ghi\\$\texttt{f0\_med}$\\(16-bit)};
+    \node[reg_box] (rmed) at (20.2, 1.8) {Thanh ghi\\$\texttt{f0\_med}$\\(16-bit)};
     \draw[wire] (mux_med.east) -- (rmed.west);
-    \draw[wire] (rmed.east) -- node[above=2pt, bus_lbl] {\texttt{out\_f0} [16]} (22.2, 1.8);
+    \draw[wire] (rmed.east) -- node[above=2pt, bus_lbl] {\texttt{out\_f0} [16]} (22.6, 1.8);
 
     % Tín hiệu out_valid và out_last từ FSM
-    \draw[ctrl_wire] (fsm.east) -- ++(14.2, 0) -- node[above=2pt, bus_lbl] {\texttt{out\_valid}, \texttt{out\_last}} (22.2, 4.2);
+    \draw[ctrl_wire] (fsm.east) -- ++(14.6, 0) -- node[above=2pt, bus_lbl] {\texttt{out\_valid}, \texttt{out\_last}} (22.6, 4.2);
 
     % -------------------------------------------------------------------------
     % KHUNG BAO VÀ CHÚ THÍCH
     % -------------------------------------------------------------------------
-    \draw[draw=black!40, dashed, rounded corners=3pt] (0.8, -0.15) rectangle (20.8, 2.7);
+    \draw[draw=black!40, dashed, rounded corners=3pt] (0.8, -0.05) rectangle (21.4, 2.7);
     \node[above=2pt, font=\scriptsize\bfseries, text=black!60] at (11.0, 2.7) {Đường truyền dữ liệu Median-3 (1 chu kỳ xung nhịp)};
 
 \end{tikzpicture}%
