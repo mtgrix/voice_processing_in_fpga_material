@@ -3,9 +3,9 @@
 
 PYTHON ?= python
 
-.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 clean
+.PHONY: all ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12 clean
 
-all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11
+all: ch00 ch01 ch02 ch03 ch04 ch05 ch06 ch07 ch08 ch09 ch10 ch11 ch12
 
 ch00:
 	@echo "=== [ch00] Running naive methods verification ==="
@@ -189,5 +189,20 @@ ch11:
 	$(PYTHON) -c "import os; [os.remove(f) for f in ('test_ch11_median3.exe', 'test_ch11_median3') if os.path.exists(f)]"
 	@echo "=== [ch11] All Chapter 11 verifications completed successfully ==="
 
+ch12:
+	@echo "=== [ch12] Running Praat citations and frame start audit ==="
+	$(PYTHON) ch12_praat_lines.py > ch12_praat_lines.log
+	@echo "=== [ch12] Running per-frame cycle table derivation and audit ==="
+	$(PYTHON) ch12_cycle_table.py > ch12_cycle_table.log
+	@echo "=== [ch12] Running memory (M10K) and DSP budget derivation ==="
+	$(PYTHON) ch12_memory_dsp_budget.py > ch12_memory_dsp_budget.log
+	@echo "=== [ch12] Running chapter exercises verification ==="
+	$(PYTHON) ch12_exercises.py > ch12_exercises.log
+	@echo "=== [ch12] Running top-level twin and vector generation ==="
+	$(PYTHON) ch12_top_twin.py > ch12_top_twin.log
+	@echo "=== [ch12] Running HPS C driver end-to-end simulation test ==="
+	$(PYTHON) ch12_end_to_end_test.py > ch12_end_to_end_test.log
+	@echo "=== [ch12] All Chapter 12 verifications completed successfully ==="
+
 clean:
-	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_* tb_ch11_median3_stim.txt tb_ch11_median3_expected.txt test_ch11_median3* sim_ch11_*
+	rm -f *.log sim_ch00_* tb_ch00_configs.txt tb_ch00_dump_small.txt test_ch01_* ch01_driver_sim* pitch_f0.bin pitch_meta.txt tb_ch01_fifo_stim.txt tb_ch01_fifo_expected.txt tb_ch01_fifo_out_stim.txt tb_ch01_fifo_out_expected.txt tb_ch02_skid_stim.txt tb_ch02_skid_expected.txt tb_ch02_fsm_stim.txt tb_ch02_fsm_expected.txt sim_ch02_* tb_ch03_fir_stim.txt tb_ch03_fir_expected.txt sim_ch03_* tb_ch04_ring_buffer_stim.txt tb_ch04_ring_buffer_expected.txt sim_ch04_* tb_ch05_mean_stim.txt tb_ch05_mean_expected.txt tb_ch05_dc_blocker_stim.txt tb_ch05_dc_blocker_expected.txt sim_ch05_* tb_ch06_hanning_stim.txt tb_ch06_hanning_expected.txt sim_ch06_* tb_ch07_mac_stim.txt tb_ch07_mac_expected.txt test_ch07_mac* sim_ch07_* tb_ch08_norm_stim.txt tb_ch08_norm_expected.txt test_ch08_norm* sim_ch08_* tb_ch09_div_stim.txt tb_ch09_div_expected.txt tb_ch09_calc_stim.txt tb_ch09_calc_expected.txt test_ch09_f0* sim_ch09_* tb_ch10_voicing_stim.txt tb_ch10_voicing_expected.txt test_ch10_voicing* sim_ch10_* tb_ch11_median3_stim.txt tb_ch11_median3_expected.txt test_ch11_median3* sim_ch11_* tb_ch12_top_stim.txt tb_ch12_top_expected.txt pitch_f0_*.bin test_ch12_driver* sim_ch12_*

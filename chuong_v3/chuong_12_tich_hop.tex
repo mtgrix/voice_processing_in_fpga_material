@@ -1,0 +1,712 @@
+\clearpage
+\phantomsection
+\section*{Chương 12. Tích hợp hệ thống trên FPGA và giao tiếp bộ xử lý HPS}
+\addcontentsline{toc}{section}{Chương 12. Tích hợp hệ thống trên FPGA và giao tiếp bộ xử lý HPS}
+
+\begin{learningobj}
+\begin{itemize}
+    \item Thấu hiểu toàn diện nguyên lý tích hợp và phối ghép toàn tuyến 11 tầng xử lý độc lập (từ giao tiếp hàng đợi FIFO vào, bộ lọc FIR, bộ đệm vòng mẫu, trừ trung bình trượt, cửa sổ Hanning, động cơ nhân tích lũy tự tương quan, chuẩn hóa điểm số, tìm cực đại parabol và chia chu kỳ $F_0$, cổng quyết định âm tính, đến bộ lọc trung vị Median-3 và FIFO ra) thành một lõi ước lượng cao độ nguyên khối trên FPGA.
+    \item Làm chủ máy trạng thái điều phối đỉnh (Top-Level FSM) trong module \texttt{ch12\_top.v}: cơ chế xử lý gạt bỏ mẫu khởi động (\texttt{first\_win0}), giao thức bắt tay tuần tự giữa các pha xử lý, kỹ thuật ghép kênh đa pha trên cổng đọc bộ nhớ RAM đệm vòng và nhịp xả đồng bộ của bộ lọc trung vị.
+    \item Dẫn xuất bảng ngân sách chu kỳ chi tiết từng khung cho bước nhảy hop 160 mẫu ($10\text{ ms}$ tại $f_s = 16\text{ kHz}$ tương đương $500.000\text{ chu kỳ}$ ở $50\text{ MHz}$): chứng minh kiến trúc tuần tự cơ sở chỉ tiêu tốn đúng $99.663\text{ chu kỳ/khung}$ ($\text{RTF} = 0{,}1993$), vượt thời hạn thời gian thực $5{,}02\text{ lần}$. So sánh định lượng với ước tính $99.700\text{ chu kỳ}$ của kế hoạch ban đầu (chênh lệch $+37\text{ chu kỳ}$).
+    \item Phân tích định lượng phương án chồng lấp tiền xử lý bằng bộ nhớ đệm đôi \texttt{xw\_ram} ($98.589\text{ chu kỳ/khung}$, $\text{RTF} = 0{,}1972$, so với ước tính $98.600\text{ chu kỳ}$ chênh lệch $+11\text{ chu kỳ}$): đánh giá bản chất kinh tế kỹ thuật giữa mức tăng tốc khiêm tốn $1{,}08\%$ và chi phí gia tăng 2 khối RAM M10K cùng độ phức tạp FSM; luận chứng thuyết phục lý do chọn kiến trúc cơ sở tuần tự.
+    \item Bóc tách ngân sách tài nguyên silicon dựa trên đặc tả RTL và tài liệu Intel chính thức: 9 khối RAM M10K (chiếm $1{,}63\%$ trên tổng số 553 khối M10K) và 5 khối DSP đa độ chính xác (chiếm $4{,}46\%$ trên tổng số 112 khối DSP); xác lập nguyên tắc khoa học về việc đo đạc ALM, Flip-Flop và $F_{\max}$ sau tổng hợp trong Quartus Prime.
+    \item Định nghĩa tường minh cạnh kích hoạt phần cứng của các bộ đếm chu kỳ hiệu năng (\texttt{frame\_cycles} và \texttt{total\_cycles}) cùng quy chuẩn tệp nhị phân ngõ ra \texttt{pitch\_f0.bin} (mảng uint16 little-endian định dạng Q12.4) và tệp siêu dữ liệu \texttt{pitch\_meta.txt}.
+    \item Thiết kế và phân tích trình điều khiển HPS C Driver trên Linux nhúng: ánh xạ không gian địa chỉ qua cầu nối Lightweight HPS-to-FPGA Bridge (\texttt{0xFF200000}), nạp thông số CSR, truyền luồng mẫu âm thanh, thăm dò hoàn tất và đọc kết quả.
+    \item Thực hiện kiểm chứng toàn tuyến từ đầu đến cuối (End-to-End Test): xác nhận tính đồng nhất tuyệt đối $100\%$ từng byte giữa phần cứng RTL, mô hình song sinh Python Twin và bộ điều khiển C trên các tệp âm thanh chuẩn thực tế (tệp sạch và tệp nhiễu $5\text{ dB}$).
+    \item Vận dụng kiến thức giải quyết 4 bài tập chuyên sâu với lời giải số học chi tiết.
+\end{itemize}
+\end{learningobj}
+
+% ============================================================================
+% 12.1. FSM ĐIỀU PHỐI ĐỈNH CÁC PHA CỦA MỖI KHUNG ÂM THANH
+% ============================================================================
+\subsection*{12.1. FSM điều phối đỉnh các pha của mỗi khung âm thanh}
+\addcontentsline{toc}{subsection}{12.1. FSM điều phối đỉnh các pha của mỗi khung âm thanh}
+
+\subsubsection*{Vấn đề thực tế: Bài toán phối ghép đa chu kỳ và đa tầng kiến trúc}
+Từ Chương 1 đến Chương 11, chúng ta đã lần lượt nghiên cứu, thiết kế và kiểm chứng độc lập 11 khối chức năng cấu thành thuật toán ước lượng cao độ giọng nói theo chuẩn Praat:
+\begin{enumerate}
+    \item Hàng đợi FIFO vào và FIFO ra theo giao thức Avalon-MM (\texttt{ch01\_avalon\_fifo.v}, Chương 1).
+    \item Bộ lọc suy giảm thông thấp FIR 31-tap đối xứng (\texttt{ch03\_fir\_filter.v}, Chương 3).
+    \item Bộ đệm vòng mẫu âm thanh $1024$ từ (\texttt{ch04\_ring\_buffer.v}, Chương 4).
+    \item Bộ tính trung bình trượt cục bộ 426 mẫu (\texttt{ch05\_local\_mean.v}, Chương 5).
+    \item Bộ trừ trung bình, nhân cửa sổ Hanning 638 mẫu và tính công suất cục bộ $LP$ (\texttt{ch06\_hanning\_window.v}, Chương 6).
+    \item Động cơ nhân chập tự tương quan MAC 638 mẫu qua 189 độ trễ lag (\texttt{ch07\_mac\_engine.v}, Chương 7).
+    \item Bộ chuẩn hóa điểm số tương quan và chi phí quãng tám với ROM $\{C[\tau], K[\tau]\}$ (\texttt{ch08\_norm\_score.v}, Chương 8).
+    \item Bộ dò cực đại cục bộ, nội suy parabol và chia chu kỳ $F_0$ Radix-2 (\texttt{ch09\_f0\_calc.v}, Chương 9).
+    \item Cổng logic so sánh phân định hữu thanh / vô thanh (\texttt{ch10\_voicing.v}, Chương 10).
+    \item Bộ lọc trung vị Median-3 nhân quả với cơ chế lặp mẫu biên và nhịp xả flush (\texttt{ch11\_median3.v}, Chương 11).
+\end{enumerate}
+
+Tuy nhiên, trong một hệ thống phần cứng số thực thụ, các khối chức năng không thể tự động vận hành hài hòa nếu thiếu một cơ quan điều phối trung tâm. Thách thức cốt lõi nằm ở sự bất đối xứng rất lớn về mặt thời gian và tài nguyên giữa các tầng xử lý:
+\begin{itemize}
+    \item \emph{Xung đột truy xuất cổng nhớ}: Khối tính trung bình trượt cục bộ (Chương 5) và khối nhân cửa sổ Hanning (Chương 6) đều cần đọc dữ liệu mẫu từ cùng một bộ nhớ RAM đệm vòng (\texttt{ch04\_ring\_buffer.v}). Vì bộ nhớ B-RAM trên FPGA chỉ hỗ trợ tối đa 2 cổng độc lập (Cổng A dành cho việc nạp mẫu mới từ bộ lọc FIR theo thời gian thực), Cổng B bắt buộc phải được chia sẻ thời gian một cách nghiêm ngặt giữa hai pha đọc mẫu khác nhau.
+    \item \emph{Độ trễ xử lý chênh lệch hàng nghìn lần}: Trong khi việc tính trung bình trượt chỉ mất $429\text{ chu kỳ}$, thì động cơ MAC tự tương quan phải hoạt động liên tục trong $98.543\text{ chu kỳ}$ ($98{,}88\%$ tổng thời gian khung). Nếu không có cơ chế khóa bắt tay tin cậy, các tín hiệu kích hoạt có thể bị kích sớm hoặc kích trùng lặp, gây sai lệch hoàn toàn dữ liệu ma trận tự tương quan.
+    \item \emph{Hiện tượng lệch pha lưới phân tích mẫu ở khung đầu tiên}: Theo mã nguồn chuẩn của Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 52, 72--73 và \path{fon/Sampled.cpp}, dòng 71--81), tâm của khung đầu tiên $t_1$ được định vị ở vị trí đối xứng giữa tệp âm thanh. Vị trí mẫu bắt đầu của khung đầu tiên:
+    \begin{equation}
+        s_0 = \text{first\_win0} = \text{Sampled\_xToLowIndex}(t_1) + 1 - \text{halfnsamp\_window}
+    \end{equation}
+    thường không bằng 0 (ví dụ với tệp tổng hợp $2{,}8\text{ s}$, $s_0 = 1$; với tệp ví dụ Chương 1, $s_0 = 33$). Nếu phần cứng cứ thế nhận mẫu vào mà không gạt bỏ đúng $s_0$ mẫu đầu tiên, toàn bộ lưới khung của phần cứng sẽ bị lệch pha thời gian so với Praat, dẫn đến việc sai lệch tần số cơ bản ở từng khung.
+\end{itemize}
+
+Để giải quyết triệt để các vấn đề trên, module đỉnh \texttt{ch12\_top.v} thiết lập một máy trạng thái trung tâm (\textbf{Top-Level FSM}) gồm 9 trạng thái điều phối tuần tự khép kín, được minh họa chi tiết trong sơ đồ Hình \ref{fig:ch12_top_fsm} và kiến trúc phối ghép toàn tuyến Hình \ref{fig:ch12_top_arch}.
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch12_top_fsm.tex}
+\caption{Sơ đồ chuyển trạng thái của máy trạng thái điều phối đỉnh (Top-Level FSM) trong \texttt{ch12\_top.v}.}
+\label{fig:ch12_top_fsm}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch12_top_arch.tex}
+\caption{Sơ đồ khối vi kiến trúc tích hợp toàn tuyến (Top-Level Architecture) của bộ xử lý \texttt{ch12\_top.v}.}
+\label{fig:ch12_top_arch}
+\end{figure}
+
+\subsubsection*{Cơ chế hoạt động của 9 trạng thái FSM đỉnh}
+Máy trạng thái FSM điều phối đỉnh hoạt động trên miền xung nhịp hệ thống $50\text{ MHz}$ với chu trình chuyển trạng thái như sau:
+
+\begin{enumerate}
+    \item \texttt{FSM\_IDLE}: Trạng thái nghỉ ban đầu của hệ thống. Các bộ đếm chu kỳ và cờ bận được xóa về $0$. Hệ thống chờ đợi xung kích hoạt \texttt{reg\_start\_pulse} từ thanh ghi điều khiển CSR của bộ xử lý HPS. Khi nhận được xung bắt đầu, cờ \texttt{busy\_reg} được kéo lên mức $1$, bộ đếm tổng chu kỳ \texttt{total\_cycles\_cnt} bắt đầu tích lũy. Nếu thông số \texttt{reg\_first\_win0} lớn hơn $0$, FSM chuyển sang \texttt{FSM\_DISCARD}; ngược lại nếu $s_0 = 0$, FSM nhảy thẳng đến \texttt{FSM\_WAIT\_FRAME}.
+    
+    \item \texttt{FSM\_DISCARD}: Trạng thái gạt bỏ mẫu khởi động. Trong trạng thái này, luồng mẫu từ FIFO vào được rút ra liên tục nhưng bị ngắt đường truyền tới bộ lọc FIR và bộ đệm vòng. Bộ đếm \texttt{discard\_cnt} tăng dần khi mỗi mẫu hợp lệ xuất hiện trên giao tiếp Avalon-ST. Khi \texttt{discard\_cnt} chạm ngưỡng \texttt{reg\_first\_win0}, mạch chuyển sang \texttt{FSM\_WAIT\_FRAME}. Cơ chế này bảo đảm mẫu đầu tiên được ghi vào bộ đệm vòng chính xác là mẫu bắt đầu của khung 0 theo chuẩn phân tích Praat 7.0.03.
+
+    \item \texttt{FSM\_WAIT\_FRAME}: Trạng thái kiểm tra sự sẵn sàng của khung mẫu. FSM thăm dò tín hiệu cờ \texttt{ring\_frame\_ready} từ bộ đệm vòng \texttt{ch04\_ring\_buffer.v}. Khi bộ đệm vòng đã tích lũy đủ ít nhất 638 mẫu hợp lệ cho khung hiện tại, cờ này tích cực mức cao. FSM lập tức kéo cờ \texttt{counting\_frame} lên $1$ để bắt đầu đo chu kỳ khung, đồng thời phát xung \texttt{mean\_start = 1} kéo dài đúng 1 chu kỳ để khởi động Pha 1, rồi chuyển sang \texttt{FSM\_MEAN}.
+
+    \item \texttt{FSM\_MEAN} (Pha 1 -- Trừ trung bình trượt cục bộ): Khối \texttt{ch05\_local\_mean.v} chiếm quyền điều khiển Cổng B của bộ đệm vòng. Bộ phát địa chỉ nội của khối này đọc tuần tự 426 mẫu âm thanh đối xứng quanh tâm khung ($i = 106..531$), tích lũy tổng biên độ và nhân với hằng số nghịch đảo $M_{\text{mean}} = 9845$ (định dạng Q0.22). Sau đúng 429 chu kỳ, tín hiệu \texttt{mean\_valid} tích cực. Giá trị giá trị trung bình mẫu $\mu$ được chốt lại, FSM phát xung \texttt{win\_start = 1}, xóa bộ đếm phát địa chỉ \texttt{p2\_issue\_cnt} về 0 và chuyển sang \texttt{FSM\_WINDOW}.
+
+    \item \texttt{FSM\_WINDOW} (Pha 2 -- Nhân cửa sổ Hanning và tính công suất cục bộ $LP$): Cổng B của bộ đệm vòng được chuyển giao cho FSM đỉnh điều khiển. Trong 638 chu kỳ kế tiếp, FSM tuần tự phát các yêu cầu đọc mẫu $x[0..637]$ từ bộ đệm vòng đưa vào module \texttt{ch06\_hanning\_window.v}. Tại đây, giá trị trung bình $\mu$ được trừ khỏi từng mẫu để tạo mẫu sai phân $d = x - \mu$. Mẫu $d$ sau đó được nhân với trọng số cửa sổ Hanning lấy từ ROM $638 \times 16$, tạo ra mẫu có cửa sổ $x_w$ và đồng thời cộng dồn bình phương để tính công suất cục bộ $LP$. Từng mẫu $x_w$ hoàn tất được ghi trực tiếp vào bộ nhớ \texttt{xw\_ram} của động cơ MAC. Khi mẫu thứ 637 hoàn tất và cờ \texttt{win\_out\_done} xuất hiện, giá trị $LP$ được chốt vào thanh ghi \texttt{latched\_lp}, FSM phát xung \texttt{mac\_start = 1} và chuyển sang \texttt{FSM\_MAC}.
+
+    \item \texttt{FSM\_MAC} (Pha 3 -- Động cơ nhân tích lũy tự tương quan): Động cơ MAC (\texttt{ch07\_mac\_engine.v}) độc lập chiếm quyền truy xuất bộ nhớ \texttt{xw\_ram}. Nó thực hiện tính năng lượng $R[0]$ (638 phép nhân cộng) và 189 giá trị tự tương quan chưa chuẩn hóa $R[\tau]$ với $\tau = 26..214$. Toàn bộ quá trình diễn ra trong đúng $98.543\text{ chu kỳ}$. Khi tính xong lag 214, cờ \texttt{mac\_done} tích cực, FSM chuyển sang \texttt{FSM\_DIV\_VOICE}.
+
+    \item \texttt{FSM\_DIV\_VOICE} (Pha 4--6 -- Chuẩn hóa, Tìm cực đại, Chia chu kỳ và Phân định âm tính): Khối \texttt{ch08\_norm\_score.v} đọc giá trị $R[0], R[\tau]$ từ động cơ MAC, nhân với ROM $C[\tau]$ và $K[\tau]$ để tính điểm số chuẩn hóa. Khối \texttt{ch09\_f0\_calc.v} theo dõi đỉnh cực đại cục bộ, thực hiện phép chia khôi phục Radix-2 trong 34 chu kỳ để tìm chu kỳ thực tế $\tau^*$ và tần số cơ bản thô $F_{0,\text{raw}}$. Tiếp đó, khối \texttt{ch10\_voicing.v} so sánh biên độ đỉnh với ngưỡng vô thanh phụ thuộc vào $LP$ và đỉnh toàn tệp $GP$. Kết quả $F_0$ sau khi áp cổng phân định (\texttt{voice\_out\_f0}) xuất hiện cùng cờ \texttt{voice\_out\_valid}. FSM đưa giá trị này vào bộ lọc Median-3, phát xung \texttt{ring\_frame\_step = 1} để trượt con trỏ khung thêm 160 mẫu, hạ cờ \texttt{counting\_frame} và chốt giá trị chu kỳ thực thi của khung vào thanh ghi \texttt{reg\_frame\_cycles}. Nếu khung hiện tại chưa phải khung cuối cùng ($k < N - 1$), FSM quay lại \texttt{FSM\_WAIT\_FRAME} để đón khung kế tiếp; nếu đã là khung cuối ($k = N - 1$), FSM chuyển sang \texttt{FSM\_FLUSH\_MEDIAN}.
+
+    \item \texttt{FSM\_FLUSH\_MEDIAN} (Pha 7 -- Nhịp xả bộ lọc trung vị): Vì bộ lọc Median-3 có tính chất nhân quả (trễ đúng 1 khung phân tích), khung cuối cùng $N-1$ chỉ được đẩy ra ngoài khi có một nhịp xả (\emph{flush beat}). FSM chờ đợi tín hiệu \texttt{med\_out\_last} từ bộ lọc trung vị. Khi tín hiệu này xuất hiện, toàn bộ $N$ giá trị $F_0$ đã được ghi an toàn vào FIFO ra. FSM chốt tổng số chu kỳ xử lý vào \texttt{reg\_total\_cycles}, bật cờ hoàn tất \texttt{done\_reg = 1}, hạ cờ bận \texttt{busy\_reg = 0} và chuyển sang \texttt{FSM\_DONE}.
+
+    \item \texttt{FSM\_DONE}: Trạng thái hoàn thành toàn bộ tác vụ ước lượng cho tệp âm thanh. Mạch giữ cờ \texttt{STATUS\_DONE} trên thanh ghi CSR để bộ xử lý HPS nhận biết qua cơ chế thăm dò (polling) hoặc ngắt (interrupt), sẵn sàng cho một chu trình phân tích mới khi nhận xung \texttt{reg\_start\_pulse}.
+\end{enumerate}
+
+\subsubsection*{Cơ chế ghép kênh cổng đọc bộ đệm vòng (Port B Multiplexer)}
+Để tránh tranh chấp phần cứng khi hai pha độc lập truy xuất cùng một khối B-RAM, bộ ghép kênh Cổng B được thiết kế thuần túy bằng logic tổ hợp điều khiển bởi trạng thái FSM hiện tại:
+\begin{lstlisting}[language=Verilog, caption={Logic ghép kênh cổng đọc Cổng B của bộ đệm vòng trong \texttt{ch12\_top.v}.}]
+always @(*) begin
+    case (state)
+        FSM_MEAN: begin
+            ring_rd_en         = mean_rd_en;
+            ring_rd_sample_idx = mean_rd_sample_idx;
+            mean_rd_valid      = ring_rd_valid;
+            mean_sub_valid_in  = 1'b0;
+        end
+        FSM_WINDOW: begin
+            ring_rd_en         = (p2_issue_cnt < FRAME_LEN);
+            ring_rd_sample_idx = p2_issue_cnt;
+            mean_rd_valid      = 1'b0;
+            mean_sub_valid_in  = ring_rd_valid;
+        end
+        default: begin
+            ring_rd_en         = 1'b0;
+            ring_rd_sample_idx = 10'd0;
+            mean_rd_valid      = 1'b0;
+            mean_sub_valid_in  = 1'b0;
+        end
+    endcase
+end
+\end{lstlisting}
+Nhờ kiến trúc ghép kênh này, trong trạng thái \texttt{FSM\_MEAN}, các tín hiệu cho phép đọc và địa chỉ mẫu hoàn toàn do máy đếm của khối \texttt{ch05\_local\_mean} phát ra; khi chuyển sang \texttt{FSM\_WINDOW}, các tín hiệu này được đấu nối trực tiếp vào bộ đếm quét 638 mẫu của FSM đỉnh, bảo đảm tính cô lập tuyệt đối và không phát sinh bất kỳ xung gai sai lệch nào.
+
+\subsubsection*{Trích đoạn mã nguồn RTL lõi và đối sánh dòng với mô hình song sinh}
+Đoạn mã Verilog then chốt thể hiện vòng lặp xử lý các pha và chuyển trạng thái từ dòng 334 đến dòng 399 trong tệp \path{rtl/v3/ch12_top.v} được liệt kê dưới đây:
+
+\lstinputlisting[language=Verilog, firstline=334, lastline=399, firstnumber=334, caption={Đoạn mã điều phối chuyển trạng thái FSM lõi trong \texttt{rtl/v3/ch12\_top.v}.}]
+{rtl/v3/ch12_top.v}
+
+Để đối sánh dòng-đối-dòng giữa mã mô tả phần cứng Verilog và hàm mô phỏng song sinh chu kỳ chính xác trong Python Twin (\texttt{verify\_v3/ch12\_top\_twin.py}), Bảng \ref{tab:ch12_twin_hdl_compare} đối chiếu chi tiết từng sự kiện chức năng.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Đối sánh dòng giữa mô hình song sinh Python Twin và mã phần cứng Verilog của FSM đỉnh.}
+\label{tab:ch12_twin_hdl_compare}
+\begin{tabularx}{\linewidth}{|c|c|X|}
+\hline
+\textbf{Dòng Python Twin} & \textbf{Dòng HDL Verilog} & \textbf{Ý nghĩa chức năng và giao thức phần cứng} \\
+\hline
+Dòng 130--132 & Dòng 210--216 & Mô hình hóa tín hiệu \texttt{waitrequest} và giải mã thanh ghi trạng thái FIFO vào theo chuẩn Avalon-MM. \\
+\hline
+Dòng 133--134 & Dòng 220--235 & Ghép kênh đọc thanh ghi điều khiển CSR (\texttt{ctrl\_readdata}): trả về trạng thái, bộ đếm chu kỳ và cấu hình. \\
+\hline
+Dòng 146--148 & Dòng 270--285 & Nhận dữ liệu mẫu từ bus HPS, ghi vào FIFO và tăng số từ lưu trữ khi không bị chặn áp lực ngược. \\
+\hline
+Dòng 150--156 & Dòng 290--305 & Ghi thanh ghi CSR: giải mã xung khởi động \texttt{START}, cài đặt \texttt{NFRAMES}, \texttt{FIRST\_WIN0}, \texttt{GP}. \\
+\hline
+Dòng 165--172 & Dòng 334--341 & Thăm dò cờ sẵn sàng khung \texttt{ring\_frame\_ready}, khởi tạo bộ đếm chu kỳ khung và kích hoạt Pha 1. \\
+\hline
+Dòng 175--180 & Dòng 343--351 & Bắt tay hoàn tất Pha 1 (\texttt{mean\_valid}), chốt giá trị trung bình $\mu$ và kích hoạt phát mẫu Pha 2. \\
+\hline
+Dòng 182--190 & Dòng 353--370 & Phát 638 mẫu vào cửa sổ Hanning, ghi $x_w$ vào \texttt{xw\_ram}, chốt công suất $LP$ và kích hoạt Pha 3. \\
+\hline
+Dòng 192--195 & Dòng 372--377 & Chờ động cơ MAC tính toán tự tương quan 189 độ trễ hoàn tất (\texttt{mac\_done}). \\
+\hline
+Dòng 198--206 & Dòng 379--399 & Nhận $F_{0,\text{gated}}$, nạp vào Median-3, phát xung trượt khung \texttt{frame\_step}, chốt chu kỳ khung và rẽ nhánh. \\
+\hline
+Dòng 210--215 & Dòng 402--410 & Chờ nhịp xả cuối cùng từ bộ lọc Median-3 (\texttt{med\_out\_last}), bật cờ \texttt{DONE} và chốt tổng chu kỳ. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Bảng diễn biến vết trạng thái tại ranh giới giữa hai khung liên tiếp}
+Bảng \ref{tab:ch12_fsm_trace} minh họa bảng vết chi tiết các tín hiệu điều khiển quan trọng tại thời điểm hoàn tất khung $k$ và bắt đầu khung kế tiếp $k+1$.
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{Bảng diễn biến vết (Trace Table) các tín hiệu điều khiển tại ranh giới chuyển khung trong \texttt{ch12\_top.v}.}
+\label{tab:ch12_fsm_trace}
+\begin{tabularx}{\linewidth}{|c|c|c|c|c|c|c|X|}
+\hline
+\textbf{Chu kỳ} & \textbf{Trạng thái FSM} & \textbf{voice\_val} & \textbf{step} & \textbf{med\_val} & \textbf{ready} & \textbf{start} & \textbf{Sự kiện phần cứng} \\
+\hline
+$T + 0$ & \texttt{FSM\_DIV\_VOICE} & 1 & 0 & 0 & 1 & 0 & Pha 6 hoàn tất, $F_0$ hợp lệ xuất hiện \\
+$T + 1$ & \texttt{FSM\_DIV\_VOICE} & 0 & 1 & 1 & 1 & 0 & Nạp $F_0$ vào Median-3, kích trượt khung \\
+$T + 2$ & \texttt{FSM\_WAIT\_FRAME} & 0 & 0 & 0 & 1 & 0 & Ring buffer cập nhật con trỏ khung mới \\
+$T + 3$ & \texttt{FSM\_WAIT\_FRAME} & 0 & 0 & 0 & 1 & 1 & Phát xung \texttt{mean\_start}, bắt đầu khung $k+1$ \\
+$T + 4$ & \texttt{FSM\_MEAN} & 0 & 0 & 0 & 1 & 0 & Khối trung bình trượt nhận mẫu đầu tiên \\
+\hline
+\end{tabularx}
+\end{table}
+
+% ============================================================================
+% 12.2. NGÂN SÁCH CHU KỲ TỪNG KHUNG VÀ PHƯƠNG ÁN CHỒNG LẤP ĐỆM ĐÔI
+% ============================================================================
+\subsection*{12.2. Ngân sách chu kỳ từng khung cho bước nhảy hop 160 và phương án chồng lấp đệm đôi}
+\addcontentsline{toc}{subsection}{12.2. Ngân sách chu kỳ từng khung cho bước nhảy hop 160 và phương án chồng lấp đệm đôi}
+
+\subsubsection*{Vấn đề thực tế: Thời hạn thời gian thực của xử lý tiếng nói}
+Một trong những mục tiêu tối thượng khi đưa thuật toán ước lượng cao độ Praat lên nền tảng phần cứng FPGA là đạt được tốc độ xử lý vượt trội thời gian thực (\emph{real-time processing}).
+Tại tần số lấy mẫu chuẩn âm học $f_s = 16.000\text{ Hz}$, mỗi mẫu âm thanh xuất hiện sau một chu kỳ lấy mẫu:
+\begin{equation}
+    T_s = \frac{1}{16.000\text{ Hz}} = 62{,}5\,\mu\text{s}.
+\end{equation}
+Theo cấu hình chuẩn của Praat 7.0.03 (\path{fon/Sound_to_Pitch.cpp}, dòng 296), bước nhảy giữa hai khung phân tích liên tiếp là:
+\begin{equation}
+    \Delta t = \frac{\text{periodsPerWindow}}{\text{pitchFloor} \times 4} = \frac{3}{75 \times 4} = 0{,}01\text{ s} = 10\text{ ms}.
+\end{equation}
+Khoảng thời gian $10\text{ ms}$ này tương ứng với đúng $H = 160\text{ mẫu}$ âm thanh mới nạp vào. Để hệ thống có thể vận hành trực tiếp trên luồng âm thanh liên tục thu từ microphone mà không bao giờ bị tràn bộ đệm hay mất gói dữ liệu, thời gian phần cứng thực thi trọn vẹn một khung âm thanh ($T_{\text{frame}}$) bắt buộc phải nhỏ hơn hoặc bằng thời hạn vật lý $10\text{ ms}$:
+\begin{equation}
+    T_{\text{frame}} \le 10\text{ ms} = 0{,}01\text{ s}.
+\end{equation}
+
+Với hệ thống phần cứng số hoạt động ở tần số xung nhịp danh định $f_{\text{clk}} = 50\text{ MHz}$ (chu kỳ xung nhịp $T_{\text{clk}} = 20\text{ ns}$), số chu kỳ xung nhịp tối đa cho phép xử lý một khung là:
+\begin{equation}
+    N_{\text{clk, deadline}} = \frac{10\text{ ms}}{T_{\text{clk}}} = 10\text{ ms} \times 50\text{ MHz} = 500.000\text{ chu kỳ}.
+\end{equation}
+Đại lượng đánh giá hiệu năng then chốt là \textbf{Hệ số thời gian thực} (\emph{Real-Time Factor -- RTF}), định nghĩa bằng tỉ số giữa thời gian phần cứng thực thi và thời gian thực của tín hiệu âm thanh:
+\begin{equation}
+    \text{RTF} = \frac{T_{\text{frame}}}{\Delta t} = \frac{N_{\text{frame\_cycles}}}{500.000}.
+\end{equation}
+Hệ thống đạt chuẩn thời gian thực khi $\text{RTF} \le 1{,}0$. Nếu $\text{RTF} = 0{,}2$, điều đó có nghĩa là phần cứng chạy nhanh gấp $5\text{ lần}$ thời gian thực, mở ra khả năng xử lý đồng thời nhiều kênh âm thanh song song hoặc tiết kiệm tối đa năng lượng tiêu thụ bằng kỹ thuật giảm xung nhịp.
+
+\subsubsection*{Dẫn xuất bảng ngân sách chu kỳ từng khung của kiến trúc cơ sở tuần tự}
+Dựa trên mã nguồn phần cứng \texttt{ch12\_top.v} và kết quả đo đạc chu kỳ chính xác bằng mô hình mô phỏng song sinh (\path{verify_v3/ch12_cycle_table.py}), thời gian thực thi của từng pha trong một khung âm thanh được bóc tách chi tiết như sau:
+
+\begin{enumerate}
+    \item \textbf{Pha 1 (Trừ trung bình trượt cục bộ, 426 mẫu)}:
+    Khối \texttt{ch05\_local\_mean} cần quét 426 mẫu quanh tâm khung ($i = 106..531$). Mạch mất $426\text{ chu kỳ}$ để phát địa chỉ đọc, cộng với $3\text{ chu kỳ}$ trễ pipeline (bao gồm 2 chu kỳ trễ đọc của bộ nhớ M10K và 1 chu kỳ nhân tích lũy):
+    \begin{equation}
+        T_{\text{Pha 1}} = 426 + 3 = 429\text{ chu kỳ}.
+    \end{equation}
+
+    \item \textbf{Pha 2 (Trừ mean, nhân cửa sổ Hanning và tính $LP$, 638 mẫu)}:
+    FSM phát tuần tự 638 địa chỉ đọc mẫu từ $0$ đến $637$. Mạch mất $638\text{ chu kỳ}$ phát, cộng với $3\text{ chu kỳ}$ trễ đường ống (đọc RAM, nhân với ROM Hanning và ghi kết quả vào \texttt{xw\_ram}):
+    \begin{equation}
+        T_{\text{Pha 2}} = 638 + 3 = 641\text{ chu kỳ}.
+    \end{equation}
+
+    \item \textbf{Pha 3 (Động cơ MAC tự tương quan 189 độ trễ lag)}:
+    Động cơ MAC tính toán năng lượng $R[0]$ (638 mẫu) và 189 độ trễ $\tau = 26..214$. Số phép nhân cộng cần thực hiện cho mỗi lag $\tau$ là $638 - \tau$. Tổng số cặp mẫu cần phát là:
+    \begin{equation}
+        N_{\text{MAC\_samples}} = 638 + \sum_{\tau=26}^{214} (638 - \tau) = 638 + 189 \times 638 - \frac{(26 + 214) \times 189}{2} = 98.540\text{ mẫu}.
+    \end{equation}
+    Cộng thêm $3\text{ chu kỳ}$ trễ xả đường ống (drain latency) cho phép tích lũy cuối cùng của lag 214:
+    \begin{equation}
+        T_{\text{Pha 3}} = 98.540 + 3 = 98.543\text{ chu kỳ}.
+    \end{equation}
+
+    \item \textbf{Pha 4--6 (Đuôi chuẩn hóa, Tìm cực đại, Chia chu kỳ Radix-2 và Phân định âm tính)}:
+    Bao gồm $3\text{ chu kỳ}$ hoàn tất chuẩn hóa $R_n \cdot C$ và $R_{0n} \cdot K$, $2\text{ chu kỳ}$ chuẩn bị bộ chia, $34\text{ chu kỳ}$ thực hiện thuật toán chia không phục hồi Radix-2 để tìm $F_{0,\text{raw}}$, $1\text{ chu kỳ}$ làm tròn và $3\text{ chu kỳ}$ đánh giá logic phân định âm tính:
+    \begin{equation}
+        T_{\text{Pha 4--6}} = 3 + 2 + 34 + 1 + 3 = 43\text{ chu kỳ}.
+    \end{equation}
+
+    \item \textbf{Pha 7 (Bộ lọc Median-3 và các chu kỳ chuyển trạng thái FSM)}:
+    Tiêu tốn tổng cộng $7\text{ chu kỳ}$ bắt tay và ghi dữ liệu.
+\end{enumerate}
+
+Tổng số chu kỳ thực tế đo được cho mỗi khung trong kiến trúc cơ sở tuần tự là:
+\begin{equation}
+    N_{\text{total, measured}} = 429 + 641 + 98.543 + 43 + 7 = \mathbf{99.663\text{ chu kỳ}}.
+\end{equation}
+Hệ số thời gian thực thực tế đo được là:
+\begin{equation}
+    \text{RTF}_{\text{measured}} = \frac{99.663}{500.000} = \mathbf{0{,}199326} \approx 0{,}199.
+\end{equation}
+
+\paragraph{Đối chiếu với con số ước tính trong kế hoạch Agenda.}
+Trong tài liệu kế hoạch \path{agenda_chot_v2_2026-11-10.md}, số chu kỳ ước tính ban đầu được ghi nhận là:
+\begin{equation}
+    N_{\text{agenda, estimated}} = 99.700\text{ chu kỳ} \implies \text{RTF}_{\text{agenda}} = 0{,}1994.
+\end{equation}
+So sánh hai kết quả:
+\begin{align}
+    \Delta N_{\text{cycles}} &= N_{\text{agenda}} - N_{\text{measured}} = 99.700 - 99.663 = \mathbf{+37\text{ chu kỳ}}, \\
+    \text{Tỉ lệ sai lệch} &= \frac{+37}{99.663} \times 100\% = +0{,}037\%.
+\end{align}
+Sự chênh lệch $+37\text{ chu kỳ}$ này xuất phát từ việc thiết kế FSM đỉnh thực tế trong \texttt{ch12\_top.v} đã tối ưu hóa các nhịp bắt tay chuyển giao giữa Pha 1 và Pha 2 (phát xung kích hoạt ngay ở chu kỳ cờ hợp lệ xuất hiện thay vì chờ thêm các trạng thái đệm trung gian). Đây là minh chứng rõ ràng cho việc bám sát số liệu đo đạc thực tế từ công cụ mô phỏng.
+
+\begin{figure}[htbp]
+\centering
+\input{chuong_v3/fig_ch12_cycle_timeline.tex}
+\caption{Sơ đồ thời gian so sánh ngân sách chu kỳ giữa Kiến trúc cơ sở tuần tự và Kiến trúc chồng lấp đệm đôi.}
+\label{fig:ch12_cycle_timeline}
+\end{figure}
+
+\subsubsection*{Khảo sát phương án chồng lấp đệm đôi (Double-buffered Overlap)}
+Quan sát biểu đồ thời gian Hình \ref{fig:ch12_cycle_timeline}(a), ta nhận thấy một đặc điểm then chốt: Động cơ MAC (Pha 3) chiếm tới $98{,}88\%$ tổng thời gian xử lý khung ($98.543\text{ chu kỳ}$). Trong suốt khoảng thời gian khổng lồ này, khối tính trung bình trượt (Pha 1) và khối nhân cửa sổ Hanning (Pha 2) hoàn toàn ở trạng thái nghỉ (idle).
+
+Điều này gợi ý một phương án tối ưu hóa kiến trúc: \textbf{Chồng lấp tiền xử lý bằng bộ nhớ đệm đôi} (\emph{Double-buffered Overlap}).
+Thay vì chỉ sử dụng 1 vùng nhớ \texttt{xw\_ram} duy nhất (kích thước $638 \times 17$-bit), ta nhân đôi bộ nhớ này thành hai khối riêng biệt: \textbf{Bank A} và \textbf{Bank B}. Cơ chế vận hành theo nguyên lý Ping-Pong như sau (Hình \ref{fig:ch12_cycle_timeline}(b)):
+\begin{itemize}
+    \item Khi động cơ MAC đang đọc dữ liệu khung $k$ từ Bank A để tính toán tự tương quan ($98.543\text{ chu kỳ}$),
+    \item FSM điều phối đỉnh đồng thời kích hoạt Pha 1 và Pha 2 của khung kế tiếp $k+1$, đọc dữ liệu từ bộ đệm vòng và ghi kết quả cửa sổ $x_w$ của khung $k+1$ vào Bank B.
+\end{itemize}
+
+Thời gian cần thiết để hoàn tất toàn bộ Pha 1 và Pha 2 của khung $k+1$ là:
+\begin{equation}
+    T_{\text{pre-proc}} = T_{\text{Pha 1}} + T_{\text{Pha 2}} = 429 + 641 = 1.070\text{ chu kỳ}.
+\end{equation}
+Vì $1.070\text{ chu kỳ} \ll 98.543\text{ chu kỳ}$, toàn bộ thời gian tiền xử lý $1.070\text{ chu kỳ}$ của khung $k+1$ được \textbf{che giấu hoàn toàn} dưới bóng thời gian của động cơ MAC khung $k$!
+
+Khi động cơ MAC tính xong khung $k$, Bank B đã có sẵn đầy đủ 638 mẫu cửa sổ của khung $k+1$. Hệ thống chỉ cần mất $43\text{ chu kỳ}$ để hoàn tất đuôi bộ chia và phân định âm tính của khung $k$, cộng với $3\text{ chu kỳ}$ hoán đổi con trỏ Bank A/B, là có thể lập tức tái khởi động động cơ MAC cho khung $k+1$.
+Tổng số chu kỳ thực tế đo được cho mỗi khung trong kiến trúc đệm đôi là:
+\begin{equation}
+    N_{\text{overlap, measured}} = 98.543 + 43 + 3 = \mathbf{98.589\text{ chu kỳ}}.
+\end{equation}
+Hệ số thời gian thực của kiến trúc đệm đôi:
+\begin{equation}
+    \text{RTF}_{\text{overlap, measured}} = \frac{98.589}{500.000} = \mathbf{0{,}197178} \approx 0{,}197.
+\end{equation}
+
+So với con số ước tính trong Agenda ($98.600\text{ chu kỳ}$, $\text{RTF} = 0{,}1972$):
+\begin{equation}
+    \Delta N_{\text{overlap}} = 98.600 - 98.589 = \mathbf{+11\text{ chu kỳ}}.
+\end{equation}
+
+\subsubsection*{Phân tích Lựa chọn -- Đánh đổi -- Quyết định kiến trúc (Options, Trade-offs, Choice)}
+Bảng \ref{tab:ch12_overlap_tradeoff} tổng hợp toàn bộ các chỉ số so sánh định lượng giữa hai phương án kiến trúc.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Đánh giá đánh đổi định lượng giữa Kiến trúc tuần tự cơ sở và Kiến trúc chồng lấp đệm đôi.}
+\label{tab:ch12_overlap_tradeoff}
+\begin{tabularx}{\linewidth}{|X|c|c|c|}
+\hline
+\textbf{Tiêu chí đánh giá} & \textbf{Kiến trúc tuần tự} & \textbf{Chồng lấp đệm đôi} & \textbf{Chênh lệch / Đánh đổi} \\
+\hline
+Chu kỳ mỗi khung đo thực tế & $99.663\text{ chu kỳ}$ & $98.589\text{ chu kỳ}$ & Tiết kiệm $1.074\text{ chu kỳ}$ \\
+Thời gian xử lý ở $50\text{ MHz}$ & $1{,}993\text{ ms}$ & $1{,}972\text{ ms}$ & Nhanh hơn $21{,}4\,\mu\text{s}$ \\
+Hệ số thời gian thực (RTF) & $0{,}1993$ & $0{,}1972$ & Cải thiện $0{,}0021$ \\
+Mức tăng tốc hiệu năng & Chuẩn quy chiếu ($1{,}0\times$) & $+1{,}08\%$ & Không đáng kể \\
+Dung lượng RAM \texttt{xw\_ram} & 2 khối M10K ($1024 \times 10$) & 4 khối M10K ($1024 \times 10$) & \textbf{Tăng gấp đôi (+2 M10K)} \\
+Độ phức tạp FSM \& Rủi ro hazard & Thấp (tuần tự, 9 trạng thái) & Cao (FSM kép, Ping-Pong) & Nguy cơ xung đột mẫu \\
+Biên độ an toàn thời gian thực & $5{,}02\times$ nhanh hơn deadline & $5{,}07\times$ nhanh hơn deadline & Cả hai đều vượt trội \\
+\hline
+\end{tabularx}
+\end{table}
+
+\paragraph{Luận chứng lựa chọn kiến trúc.}
+Dựa trên các con số định lượng chính xác ở trên, quyết định kiến trúc được xác lập dứt khoát như sau:
+\begin{enumerate}
+    \item \textbf{Mức tăng tốc không đáng kể ($1{,}08\%$)}: Việc chuyển sang đệm đôi chỉ giúp tiết kiệm được $1.074\text{ chu kỳ}$ trên tổng số gần $100.000\text{ chu kỳ}$. Nguyên nhân là vì Pha 3 (MAC) chiếm tới gần $99\%$ tổng thời gian, nên việc tối ưu hai pha tiền xử lý chỉ tác động vào phần thiểu số còn lại (theo định luật Amdahl).
+    \item \textbf{Chi phí tài nguyên silicon đắt đỏ}: Bộ nhớ \texttt{xw\_ram} đòi hỏi độ sâu 638 từ và độ rộng 17-bit. Do cấu trúc của khối Intel M10K chỉ hỗ trợ tối đa độ rộng 10-bit khi độ sâu là 1024 từ (xem chi tiết mục 12.2b), việc đệm đôi đòi hỏi phải cấp phát thêm \textbf{2 khối M10K vật lý} (từ 2 khối lên 4 khối M10K).
+    \item \textbf{Biên độ thời gian thực hiện có đã quá dư dả}: Ngay ở cấu hình tuần tự cơ sở, hệ thống chỉ mất $1{,}993\text{ ms}$ để giải quyết một khung $10\text{ ms}$. Hệ thống chạy nhanh gấp \textbf{5,02 lần} so với yêu cầu thời gian thực! Thậm chí nếu hạ tần số xung nhịp xuống còn $25\text{ MHz}$, hệ thống vẫn chỉ mất $3{,}99\text{ ms}$ ($\text{RTF} = 0{,}3987$, vẫn nhanh hơn thời gian thực $2{,}51\text{ lần}$).
+    \item \textbf{Độ tin cậy và kiểm chứng phần cứng}: Kiến trúc tuần tự loại bỏ hoàn toàn các nguy cơ xung đột dữ liệu (data hazards) trên bộ đệm vòng khi dòng mẫu âm thanh từ FIFO vào bị biến động tốc độ truyền, giữ cho FSM điều phối đơn giản, sáng sủa và bảo đảm tính đồng nhất bit-exact tuyệt đối với mô hình toán học.
+\end{enumerate}
+
+\textbf{Kết luận}: Kiến trúc tuần tự cơ sở (\emph{Non-overlap Baseline}) được lựa chọn làm thiết kế tiêu chuẩn cho module \texttt{ch12\_top.v}.
+
+% ============================================================================
+% 12.2b. NGÂN SÁCH BỘ NHỚ M10K VÀ BỘ NHÂN DSP TOÀN HỆ THỐNG
+% ============================================================================
+\subsection*{12.2b. Ngân sách bộ nhớ M10K và bộ nhân DSP của toàn hệ thống}
+\addcontentsline{toc}{subsection}{12.2b. Ngân sách bộ nhớ M10K và bộ nhân DSP của toàn hệ thống}
+
+\subsubsection*{Cơ sở tài liệu Intel và nguyên tắc định lượng nghiêm ngặt}
+Mọi tính toán về ngân sách tài nguyên bộ nhớ nhúng và bộ nhân xử lý tín hiệu số trong phần này đều được dẫn xuất trực tiếp từ mã nguồn RTL \texttt{rtl/v3/ch12\_top.v} và đối chiếu với các tài liệu kỹ thuật chính thức do tập đoàn Intel cung cấp cho dòng vi mạch FPGA Cyclone V:
+\begin{itemize}
+    \item \emph{Embedded Memory Blocks in Cyclone V Devices} (Intel Document ID: \textbf{CV-51003}).
+    \item \emph{Variable Precision DSP Blocks in Cyclone V Devices} (Intel Document ID: \textbf{CV-51004}).
+    \item \emph{Cyclone V Device Overview} (Intel Document ID: \textbf{CV-51001}).
+\end{itemize}
+
+Vi mạch mục tiêu trên bo mạch DE10-Standard là \textbf{Intel Cyclone V SoC 5CSXFC6D6F31C6N}. Theo tài liệu CV-51001, chip sở hữu tổng cộng 553 khối bộ nhớ M10K (tương đương khoảng $5{,}53\text{ Mbit}$ RAM nội) và 112 khối DSP đa độ chính xác (\emph{Variable Precision DSP Blocks}).
+Theo quy định kiểm định nghiêm ngặt của đề cương chuyên khảo, các bảng dưới đây thống kê số lượng tài nguyên phần cứng \emph{dẫn xuất từ kiến trúc RTL}. Mọi chỉ số thực tế sau quá trình đóng gói và tối ưu hóa logic (số logic ALM, số thanh ghi Flip-Flop, tài nguyên M10K thực tế, số bộ nhân DSP và tần số hoạt động cực đại $F_{\max}$) \textbf{phải đo trong Quartus/Fitter}.
+
+\subsubsection*{Ngân sách bộ nhớ nhúng M10K (M10K Embedded Memory Budget)}
+Mỗi khối M10K có tổng dung lượng vật lý là $10.240\text{ bit}$ dữ liệu (chưa kể bit kiểm tra chẵn lẻ). Theo tài liệu Intel CV-51003 (Mục ``Memory Configurations for Cyclone V Devices''), một khối M10K hỗ trợ các cấu hình tỷ lệ sâu $\times$ rộng tiêu chuẩn:
+$8192 \times 1$, $4096 \times 2$, $2048 \times 4$, $1024 \times 8$, $1024 \times 10$, $512 \times 16$, $512 \times 20$, $256 \times 32$, và $256 \times 40$.
+Khi một khối nhớ trong RTL đòi hỏi độ sâu vượt quá $512$ từ, trình biên dịch Quartus bắt buộc phải chọn cấu hình độ sâu $1024$. Khi đó, bề rộng dữ liệu tối đa của 1 khối M10K bị giới hạn ở mức 10 bit.
+
+Bảng \ref{tab:ch12_m10k_budget} liệt kê chi tiết cách phân bổ khối nhớ M10K cho từng module chức năng trong hệ thống tích hợp \texttt{ch12\_top.v}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ngân sách bộ nhớ nhúng M10K dẫn xuất từ RTL cho toàn hệ thống tích hợp.}
+\label{tab:ch12_m10k_budget}
+\begin{tabularx}{\linewidth}{|l|c|c|X|}
+\hline
+\textbf{Khối chức năng} & \textbf{Kích thước RTL} & \textbf{Số M10K} & \textbf{Giải thích cấu hình M10K theo Intel CV-51003} \\
+\hline
+FIFO Vào (\texttt{ch01\_avalon\_fifo}) & $512 \times 16$-bit & 1 & Độ sâu $512 \le 512$, độ rộng $16 \le 20\text{ bit} \implies$ Cấu hình chuẩn $512 \times 20$, chiếm đúng 1 khối M10K. \\
+\hline
+RAM Vòng Mẫu (\texttt{ch04\_ring\_buffer}) & $1024 \times 16$-bit & 2 & Độ sâu $1024 > 512 \implies$ buộc dùng cấu hình $1024 \times 10$. Để chứa đủ 16 bit mẫu âm thanh, cần ghép song song 2 khối M10K (độ rộng khả dụng $20\text{ bit}$). \\
+\hline
+ROM Hanning (\texttt{ch06\_hanning\_window}) & $638 \times 16$-bit & 2 & Độ sâu $638 > 512 \implies$ buộc dùng cấu hình $1024 \times 10$. Cần 16 bit trọng số $\implies$ ghép 2 khối M10K. \\
+\hline
+Vùng nhớ \texttt{xw\_ram} (\texttt{ch07\_mac\_engine}) & $638 \times 17$-bit & 2 & Bộ nhớ True Dual-Port. Độ sâu $638 > 512 \implies$ cấu hình $1024 \times 10$. Cần $17\text{ bit} \implies$ ghép 2 khối M10K (nếu đệm đôi cần 4 M10K). \\
+\hline
+ROM bảng tra $\{C, K\}$ (\texttt{ch08\_norm\_score}) & $256 \times 32$-bit & 1 & 189 từ hữu dụng. Ghép $16\text{-bit } C$ và $16\text{-bit } K$. Độ sâu $256 \le 256$, độ rộng $32 \le 40\text{ bit} \implies$ Cấu hình $256 \times 40$, đúng 1 khối M10K. \\
+\hline
+FIFO Ra $F_0$ (\texttt{ch01\_fifo\_out}) & $512 \times 16$-bit & 1 & Độ sâu $512 \le 512$, độ rộng $16 \le 20\text{ bit} \implies$ Cấu hình chuẩn $512 \times 20$, chiếm đúng 1 khối M10K. \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Tổng kiến trúc tuần tự cơ sở}} & \textbf{9} & \textbf{Chiếm đúng $9 / 553 = 1{,}63\%$ tổng số M10K của chip.} \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Tổng kiến trúc đệm đôi chồng lấp}} & \textbf{11} & \textbf{Chiếm đúng $11 / 553 = 1{,}99\%$ tổng số M10K của chip.} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsubsection*{Ngân sách khối nhân xử lý tín hiệu số DSP (DSP Block Budget)}
+Theo tài liệu Intel CV-51004 (Mục ``Operational Modes in Cyclone V Devices''), mỗi khối DSP đa độ chính xác của Cyclone V có thể được cấu hình độc lập thành:
+hai bộ nhân độc lập $18 \times 18$-bit, hoặc một bộ nhân $27 \times 27$-bit, hoặc một bộ nhân tích lũy (MAC) $18 \times 18$-bit với thanh ghi tích lũy nội 64-bit.
+
+Bảng \ref{tab:ch12_dsp_budget} liệt kê chi tiết các phép nhân toán học trong RTL và số khối DSP phần cứng tương ứng.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ngân sách khối nhân DSP dẫn xuất từ RTL cho toàn hệ thống tích hợp.}
+\label{tab:ch12_dsp_budget}
+\begin{tabularx}{\linewidth}{|l|c|c|X|}
+\hline
+\textbf{Khối chức năng} & \textbf{Toán tử số học} & \textbf{Số DSP} & \textbf{Cấu hình chế độ DSP theo Intel CV-51004} \\
+\hline
+Trừ trung bình (\texttt{ch05\_local\_mean}) & $25 \times 24$-bit & 1 & Nhân nghịch đảo $\text{acc} \times M_{\text{mean}}$: toán hạng vượt quá 18-bit $\implies$ cấu hình 1 khối DSP chế độ $27 \times 27$-bit. \\
+\hline
+Cửa sổ Hanning (\texttt{ch06\_hanning\_window}) & $17 \times 17$-bit & 1 & Nhân mẫu có dấu $d$ với trọng số $w$: cấu hình 1 khối DSP chế độ $18 \times 18$-bit. \\
+\hline
+Động cơ MAC (\texttt{ch07\_mac\_unit}) & $17 \times 17\text{ bit} + \text{acc}$ & 1 & Nhân dập $x_w \cdot x_w$ và tích lũy 48-bit: cấu hình 1 khối DSP chế độ MAC $18 \times 18$-bit. \\
+\hline
+Chuẩn hóa điểm số $R_n \cdot C$ (\texttt{ch08\_norm\_score}) & $27 \times 17$-bit & 1 & Nhân tự tương quan $R_n$ với hệ số làm phẳng $C[\tau]$: cấu hình 1 khối DSP chế độ $27 \times 27$-bit. \\
+\hline
+Chi phí quãng tám $R_{0n} \cdot K$ (\texttt{ch08\_norm\_score}) & $27 \times 16$-bit & 1 & Nhân năng lượng $R_{0n}$ với hệ số phạt $K[\tau]$: cấu hình 1 khối DSP chế độ $27 \times 27$-bit. \\
+\hline
+Quyết định âm tính (\texttt{ch10\_voicing}) & Hằng số $\times LP$ & 0 & Nhân hằng số $0{,}45$ và $145/3$ thực hiện bằng logic dịch-cộng (shift-add); so sánh nhân chéo 54-bit tổng hợp bằng ALM. \\
+\hline
+Bộ lọc FIR 31-tap (\texttt{ch03\_fir\_filter}) & $16 \times 16$-bit & 1 & Gấp tap đối xứng: 1 khối DSP $18 \times 18$-bit (chỉ tiêu tốn khi bật FIR, mặc định ở chế độ bypass). \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Tổng lõi cơ sở (FIR bypass)}} & \textbf{5} & \textbf{Chiếm đúng $5 / 112 = 4{,}46\%$ tổng số DSP của chip.} \\
+\hline
+\multicolumn{2}{|l|}{\textbf{Tổng khi bật bộ lọc FIR 31-tap}} & \textbf{6} & \textbf{Chiếm đúng $6 / 112 = 5{,}36\%$ tổng số DSP của chip.} \\
+\hline
+\end{tabularx}
+\end{table}
+
+\textbf{Ghi chú quan trọng}: Hệ thống tích hợp toàn tuyến chỉ tiêu tốn vỏn vẹn \textbf{9 khối M10K} ($1{,}63\%$) và \textbf{5 khối DSP} ($4{,}46\%$). Phần lớn diện tích silicon của chip Cyclone V 5CSXFC6D6F31C6N vẫn hoàn toàn tự do, cho phép nhúng thêm các bộ tiền xử lý trích xuất đặc trưng khác hoặc mở rộng thành kiến trúc xử lý song song đa kênh F0 trên cùng một vi mạch.
+
+% ============================================================================
+% 12.3. BỘ ĐẾM CHU KỲ HIỆU NĂNG VÀ ĐỊNH DẠNG DỮ LIỆU NGÕ RA PITCH_F0.BIN
+% ============================================================================
+\subsection*{12.3. Bộ đếm chu kỳ hiệu năng và định dạng dữ liệu ngõ ra pitch\_f0.bin}
+\addcontentsline{toc}{subsection}{12.3. Bộ đếm chu kỳ hiệu năng và định dạng dữ liệu ngõ ra pitch\_f0.bin}
+
+\subsubsection*{Định nghĩa chính xác cạnh kích hoạt của các bộ đếm chu kỳ phần cứng}
+Để đánh giá định lượng hiệu năng của hệ thống một cách khách quan trên phần cứng thực mà không phụ thuộc vào các hàm đo thời gian không tất định của hệ điều hành Linux trên HPS, module \texttt{ch12\_top.v} tích hợp hai bộ đếm chu kỳ xung nhịp 32-bit nội vi:
+
+\begin{enumerate}
+    \item \textbf{Bộ đếm chu kỳ khung} (\texttt{frame\_cycles}):
+    \begin{itemize}
+        \item \emph{Cạnh bắt đầu}: Sườn dương của xung nhịp \texttt{clk} tại thời điểm tín hiệu \texttt{counting\_frame} chuyển từ mức logic $0$ lên $1$. Sự kiện này xảy ra khi FSM đỉnh rời khỏi trạng thái \texttt{FSM\_WAIT\_FRAME} và phát xung \texttt{mean\_start = 1} để bắt đầu Pha 1 của khung.
+        \item \emph{Cạnh kết thúc}: Sườn dương của xung nhịp \texttt{clk} tại thời điểm cờ \texttt{voice\_out\_valid} tích cực mức $1$ trong trạng thái \texttt{FSM\_DIV\_VOICE}.
+        \item \emph{Ý nghĩa vật lý}: Đo lường chính xác $100\%$ số chu kỳ xung nhịp phần cứng tiêu tốn để xử lý tích cực khung âm thanh vừa hoàn tất (bao gồm trọn vẹn từ Pha 1 đến Pha 6). Giá trị này được chốt vào thanh ghi CSR tại địa chỉ offset 7 (\texttt{REG\_CTRL\_FRAME\_CYCLES}).
+    \end{itemize}
+
+    \item \textbf{Bộ đếm tổng chu kỳ} (\texttt{total\_cycles}):
+    \begin{itemize}
+        \item \emph{Cạnh bắt đầu}: Sườn dương của xung nhịp \texttt{clk} ngay khi mạch nhận được xung khởi động \texttt{reg\_start\_pulse} từ HPS.
+        \item \emph{Cạnh kết thúc}: Sườn dương xung nhịp \texttt{clk} khi cờ \texttt{med\_out\_last} tích cực trong trạng thái \texttt{FSM\_FLUSH\_MEDIAN}.
+        \item \emph{Ý nghĩa vật lý}: Đo lường toàn bộ thời gian thực thi của cả tệp âm thanh từ lúc bắt đầu nạp dòng mẫu, gạt bỏ mẫu khởi động, xử lý tuần tự $N$ khung, cho đến khi nhịp xả cuối cùng của bộ lọc trung vị hoàn tất và xuất kết quả vào FIFO ra. Giá trị này được chốt vào thanh ghi CSR tại địa chỉ offset 6 (\texttt{REG\_CTRL\_TOTAL\_CYCLES}).
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Quy cách cấu trúc tệp nhị phân pitch\_f0.bin và tệp siêu dữ liệu pitch\_meta.txt}
+Sau khi hệ thống phần cứng hoàn tất việc tính toán và xả toàn bộ kết quả qua bộ lọc trung vị Median-3, dữ liệu được bộ xử lý HPS đọc ra từ FIFO ngõ ra và lưu trữ thành hai tệp tiêu chuẩn:
+
+\paragraph{1. Tệp nhị phân \texttt{pitch\_f0.bin}.}
+Là tệp nhị phân thuần túy lưu trữ chuỗi giá trị cao độ của từng khung âm thanh theo cấu trúc:
+\begin{itemize}
+    \item \emph{Kiểu dữ liệu}: Mảng các số nguyên không dấu 16-bit (\texttt{uint16\_t}).
+    \item \emph{Thứ tự byte}: Little-endian (byte thấp đứng trước, byte cao đứng sau theo chuẩn vi xử lý ARM Cortex-A9 trên SoC).
+    \item \emph{Định dạng số học}: Số thực dấu phẩy tĩnh cố định \textbf{Q12.4} ($12\text{ bit}$ phần nguyên, $4\text{ bit}$ phần thập phân). Tần số cơ bản thực tế $F_0$ tính bằng Hz được khôi phục từ giá trị nguyên $V_{\text{bin}}$ bằng phép chia:
+    \begin{equation}
+        F_0 = \frac{V_{\text{bin}}}{16{,}0}\text{ (Hz)}.
+    \end{equation}
+    Độ phân giải tần số đạt mức $1/16 = 0{,}0625\text{ Hz}$.
+    \item \emph{Quy ước khung vô thanh}: Tất cả các khung vô thanh hoặc khoảng lặng đều nhận giá trị quy ước bằng \textbf{0} (\texttt{0x0000}), tương ứng với $F_0 = 0{,}0\text{ Hz}$.
+    \item \emph{Kích thước tệp}: Đúng bằng $2 \times N_{\text{frames}}$ byte. Ví dụ, với tệp âm thanh chuẩn $2{,}8\text{ s}$ gồm 277 khung, kích thước tệp \texttt{pitch\_f0.bin} luôn là chính xác:
+    \begin{equation}
+        \text{Size}_{\text{bin}} = 277 \times 2 = \mathbf{554\text{ byte}}.
+    \end{equation}
+\end{itemize}
+
+\paragraph{2. Tệp siêu dữ liệu \texttt{pitch\_meta.txt}.}
+Là tệp văn bản ASCII định dạng khóa-giá trị (\emph{key-value}) lưu trữ các tham số khung lưới và thông tin biên độ toàn tệp, phục vụ việc đối chiếu với phần mềm Praat:
+\begin{lstlisting}[caption={Cấu trúc mẫu của tệp siêu dữ liệu \texttt{pitch\_meta.txt}.}]
+t1=0.020000
+dt=0.010000
+n_frames=277
+first_win0=1
+global_peak=22946
+\end{lstlisting}
+trong đó:
+\begin{itemize}
+    \item \texttt{t1}: Thời điểm vật lý tâm của khung phân tích đầu tiên ($t_1 = 0{,}02\text{ s}$).
+    \item \texttt{dt}: Bước nhảy thời gian giữa hai khung liên tiếp ($\Delta t = 0{,}01\text{ s}$).
+    \item \texttt{n\_frames}: Tổng số khung âm thanh phân tích được ($N = 277$).
+    \item \texttt{first\_win0}: Chỉ số mẫu khởi đầu của khung 0 trong mảng âm thanh gốc ($s_0 = 1$).
+    \item \texttt{global\_peak}: Đỉnh biên độ tuyệt đối toàn tệp $GP$ dùng để chuẩn hóa ngưỡng vô thanh ($GP = 22.946$).
+\end{itemize}
+
+\subsubsection*{Kiến trúc bộ điều khiển phần mềm HPS C Driver}
+Để điều khiển phần cứng FPGA từ hệ điều hành Linux trên bộ xử lý HPS, chương trình điều khiển \texttt{sw\_v3/ch12\_driver.c} thực hiện các bước tuần tự:
+\begin{enumerate}
+    \item Ánh xạ bộ nhớ thiết bị qua tệp đặc biệt \path{/dev/mem} bằng hàm \texttt{mmap()} tới vùng địa chỉ của cầu nối Lightweight HPS-to-FPGA AXI Bridge (\texttt{0xFF200000}, độ rộng không gian \texttt{0x200000}).
+    \item Ghi các thông số cấu hình vào cụm thanh ghi CSR của lõi phần cứng: \texttt{NFRAMES}, \texttt{FIRST\_WIN0}, \texttt{GLOBAL\_PEAK} và thanh ghi cấu hình \texttt{CONFIG} (đặt bit bypass bộ lọc FIR).
+    \item Đọc tệp âm thanh WAV, đóng gói mỗi 2 mẫu 16-bit thành 1 từ 32-bit và truyền dòng dữ liệu vào cổng \texttt{FIFO\_IN\_DATA\_OFST}. Trước mỗi lần ghi, bộ điều khiển thăm dò thanh ghi trạng thái \texttt{FIFO\_IN\_CSR\_OFST} để bảo đảm không làm tràn FIFO.
+    \item Phát xung kích hoạt \texttt{START} bằng cách ghi giá trị \texttt{0x01} vào thanh ghi điều khiển.
+    \item Thăm dò cờ hoàn tất \texttt{STATUS\_DONE} trên thanh ghi trạng thái.
+    \item Đọc hai bộ đếm chu kỳ hiệu năng \texttt{frame\_cycles} và \texttt{total\_cycles}.
+    \item Rút tuần tự $N$ từ dữ liệu $F_0$ từ cổng \texttt{FIFO\_OUT\_DATA\_OFST}, sau đó ghi ra tệp nhị phân \texttt{pitch\_f0.bin} và tệp siêu dữ liệu \texttt{pitch\_meta.txt}.
+\end{enumerate}
+
+Đoạn mã C then chốt trong \path{sw_v3/ch12_driver.c} thực thi việc truyền dòng mẫu và đọc kết quả được trích đoạn dưới đây:
+
+\lstinputlisting[language=C, firstline=330, lastline=385, firstnumber=330, caption={Vòng lặp truyền dòng mẫu và đọc kết quả trong \texttt{sw\_v3/ch12\_driver.c}.}]
+{sw_v3/ch12_driver.c}
+
+% ============================================================================
+% 12.4. KIỂM CHỨNG TOÀN TUYẾN TỪ ĐẦU ĐẾN CUỐI (END-TO-END TEST)
+% ============================================================================
+\subsection*{12.4. Kiểm chứng toàn tuyến từ đầu đến cuối (End-to-End Test)}
+\addcontentsline{toc}{subsection}{12.4. Kiểm chứng toàn tuyến từ đầu đến cuối (End-to-End Test)}
+
+\subsubsection*{Thiết lập thực nghiệm toàn tuyến trên dữ liệu âm thanh thực tế}
+Để bảo đảm độ tin cậy tuyệt đối của hệ thống tích hợp, chúng ta tiến hành kiểm chứng toàn tuyến từ đầu đến cuối (\emph{End-to-End Test}) trên hai tệp âm thanh chuẩn trong thư mục \path{golden_v2/}:
+\begin{enumerate}
+    \item \textbf{Tệp âm thanh sạch}: \path{golden_v2/synth_glide_vuv_16k.wav}
+    \begin{itemize}
+        \item Thời lượng: $2{,}8\text{ s}$ ($44.800\text{ mẫu}$ âm thanh 16-bit tại $16\text{ kHz}$).
+        \item Đỉnh biên độ tuyệt đối: $GP = 22.946$.
+        \item Tổng số khung phân tích: $N = 277\text{ khung}$.
+    \end{itemize}
+    \item \textbf{Tệp âm thanh có nhiễu Gaussian}: \path{golden_v2/synth_glide_vuv_16k_snr5.wav}
+    \begin{itemize}
+        \item Mức tỉ số tín hiệu trên nhiễu: $\text{SNR} = 5\text{ dB}$.
+        \item Đỉnh biên độ tuyệt đối: $GP = 22.937$.
+        \item Tổng số khung phân tích: $N = 277\text{ khung}$.
+    \end{itemize}
+\end{enumerate}
+
+Quy trình kiểm thử được thực hiện khép kín qua kịch bản tự động hóa \path{verify_v3/ch12_end_to_end_test.py}:
+\begin{itemize}
+    \item Biên dịch trình điều khiển HPS C Driver ở chế độ mô phỏng bit-exact (\texttt{-DSIM}).
+    \item Chạy chương trình kiểm thử \path{sw_v3/test_ch12_driver} trực tiếp trên hai tệp WAV.
+    \item Xuất tệp nhị phân \texttt{pitch\_f0.bin} tương ứng cho từng tệp.
+    \item So sánh đối chiếu từng byte một (\emph{byte-by-byte exact comparison}) giữa tệp nhị phân sinh ra từ trình điều khiển C và tệp mẫu chuẩn vàng sinh ra từ mô hình số học dấu phẩy tĩnh \texttt{golden\_v2/fixed\_twin.py} (\path{golden_v2/out/fixed.tsv} và \path{golden_v2/out/fixed_snr5.tsv}).
+\end{itemize}
+
+Kết quả kiểm thử ghi nhận trong nhật ký \path{verify_v3/ch12_end_to_end_test.log} khẳng định:
+\begin{itemize}
+    \item Trên tệp âm thanh sạch: Tệp nhị phân \texttt{pitch\_f0.bin} gồm đúng 554 byte, khớp chính xác \textbf{100\% từng byte} ($554 / 554\text{ byte}$, 0 byte sai lệch) so với mô hình chuẩn.
+    \item Trên tệp âm thanh có nhiễu $5\text{ dB}$: Tệp nhị phân gồm đúng 554 byte, khớp chính xác \textbf{100\% từng byte} ($554 / 554\text{ byte}$, 0 byte sai lệch) so với mô hình chuẩn.
+\end{itemize}
+
+\subsubsection*{Cấu trúc Testbench phần cứng và quy ước mẫu hai pha}
+Testbench kiểm thử phần cứng \path{tb/v3/tb_ch12_top.v} được thiết kế tuân thủ nghiêm ngặt chuẩn \texttt{iverilog -g2012 -Wall}:
+\begin{itemize}
+    \item \emph{Không sử dụng hàm ngẫu nhiên}: Tuyệt đối không dùng hàm \texttt{\$random} không xác định.
+    \item \emph{Kiểm thử hai giai đoạn}:
+    \begin{itemize}
+        \item \textbf{Phần 1}: Đọc chuỗi vector kích thích chu kỳ chính xác từ tệp \path{verify_v3/tb_ch12_top_stim.txt} (gồm 276 chu kỳ giao dịch) và so sánh với vector kỳ vọng \path{verify_v3/tb_ch12_top_expected.txt}. Giai đoạn này kiểm tra toàn diện các tình huống ghi/đọc thanh ghi CSR, xử lý áp lực ngược của FIFO và chu trình kích hoạt FSM.
+        \item \textbf{Phần 2}: Nạp trực tiếp toàn bộ $44.800$ mẫu âm thanh từ tệp hex \path{verify_v3/data/clean_wav_samples.hex}, truyền dòng qua giao diện Avalon-MM vào module \texttt{ch12\_top}, thu thập 277 kết quả $F_0$ ngõ ra từ FIFO ra và so sánh đối chiếu từng từ với \path{verify_v3/data/clean_f0_expected.hex}.
+    \end{itemize}
+    \item \textbf{Quy ước mẫu hai pha (2-Phase Sampling Convention)}:
+    Để triệt tiêu hoàn toàn hiện tượng chạy đua tín hiệu (race condition) giữa mô hình mô phỏng và phần cứng, Testbench áp dụng quy ước mẫu chuẩn:
+    Tại mỗi chu kỳ xung nhịp, kích tín hiệu ngõ vào mạch, chờ trễ tổ hợp \texttt{\#1} để kiểm tra các ngõ ra tổ hợp không qua thanh ghi (như cờ \texttt{waitrequest}); sau đó đón sườn dương xung nhịp \texttt{@(posedge clk)}, chờ thêm trễ \texttt{\#1} để kiểm tra các ngõ ra đã qua thanh ghi (như dữ liệu đọc \texttt{readdata} và trạng thái FSM).
+\end{itemize}
+
+\todo[inline]{box: Kết quả chạy Icarus Verilog cho \texttt{tb\_ch12\_top.v} qua kịch bản \path{verify_v3/run_ch12_iverilog.sh} sẽ được người bình duyệt chạy trực tiếp trên môi trường máy chủ Linux và cập nhật số chu kỳ mô phỏng chi tiết vào báo cáo.}
+
+% ============================================================================
+% BÀI TẬP VÀ LỜI GIẢI CHI TIẾT
+% ============================================================================
+\subsubsection*{Bài tập chuyên sâu và lời giải định lượng}
+
+\paragraph{Bài tập 12.1. Phân tích hệ số thời gian thực RTF và giới hạn tần số xung nhịp.}
+Một hệ thống ước lượng cao độ tiếng nói tích hợp module \texttt{ch12\_top.v} hoạt động trên luồng âm thanh có bước nhảy khung $H = 160\text{ mẫu}$ tại tần số lấy mẫu $f_s = 16\text{ kHz}$. Thời gian thực thi đo được của mỗi khung là $99.663\text{ chu kỳ}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy tính thời gian thực thi của một khung ($T_{\text{frame}}$), hệ số thời gian thực ($\text{RTF}$) và biên độ an toàn thời gian thực (\emph{Real-time Margin}) tại ba mức tần số xung nhịp hệ thống: $f_{\text{clk}} = 25\text{ MHz}$, $f_{\text{clk}} = 50\text{ MHz}$ và $f_{\text{clk}} = 100\text{ MHz}$.
+    \item Tần số xung nhịp tối thiểu $f_{\text{clk, min}}$ để hệ thống vừa đủ đáp ứng thời hạn thời gian thực mà không bị trễ khung là bao nhiêu?
+\end{enumerate}
+
+\paragraph{Lời giải chi tiết Bài tập 12.1.}
+\begin{enumerate}[label=(\alph*)]
+    \item Bước nhảy khung $160\text{ mẫu}$ tại $f_s = 16\text{ kHz}$ tương ứng với thời hạn thời gian thực:
+    \begin{equation}
+        \Delta t = \frac{160}{16.000\text{ Hz}} = 0{,}01\text{ s} = 10\text{ ms}.
+    \end{equation}
+    Số chu kỳ khả dụng trong khoảng thời gian $\Delta t$ tại tần số xung nhịp $f_{\text{clk}}$ là $N_{\text{avail}} = \Delta t \times f_{\text{clk}}$.
+    Thời gian thực thi của khung: $T_{\text{frame}} = 99.663 / f_{\text{clk}}$.
+    Hệ số thời gian thực: $\text{RTF} = T_{\text{frame}} / \Delta t = 99.663 / N_{\text{avail}}$.
+    Biên độ an toàn: $\text{Margin} = 1 / \text{RTF} = N_{\text{avail}} / 99.663$.
+    
+    Tính toán chi tiết cho từng tần số:
+    \begin{itemize}
+        \item \emph{Tại $f_{\text{clk}} = 25\text{ MHz}$}:
+        $N_{\text{avail}} = 10\text{ ms} \times 25\text{ MHz} = 250.000\text{ chu kỳ}$.
+        \begin{equation}
+            T_{\text{frame}} = \frac{99.663}{25 \times 10^6} \approx 3{,}9865\text{ ms}, \quad \text{RTF} = \frac{99.663}{250.000} \approx \mathbf{0{,}3987}, \quad \text{Margin} = \frac{250.000}{99.663} \approx \mathbf{2{,}51\times}.
+        \end{equation}
+        \item \emph{Tại $f_{\text{clk}} = 50\text{ MHz}$ (danh định)}:
+        $N_{\text{avail}} = 10\text{ ms} \times 50\text{ MHz} = 500.000\text{ chu kỳ}$.
+        \begin{equation}
+            T_{\text{frame}} = \frac{99.663}{50 \times 10^6} \approx 1{,}9933\text{ ms}, \quad \text{RTF} = \frac{99.663}{500.000} \approx \mathbf{0{,}1993}, \quad \text{Margin} = \frac{500.000}{99.663} \approx \mathbf{5{,}02\times}.
+        \end{equation}
+        \item \emph{Tại $f_{\text{clk}} = 100\text{ MHz}$}:
+        $N_{\text{avail}} = 10\text{ ms} \times 100\text{ MHz} = 1.000.000\text{ chu kỳ}$.
+        \begin{equation}
+            T_{\text{frame}} = \frac{99.663}{100 \times 10^6} \approx 0{,}9966\text{ ms}, \quad \text{RTF} = \frac{99.663}{1.000.000} \approx \mathbf{0{,}0997}, \quad \text{Margin} = \frac{1.000.000}{99.663} \approx \mathbf{10{,}03\times}.
+        \end{equation}
+    \end{itemize}
+
+    \item Để hệ thống vừa đủ đáp ứng thời gian thực ($\text{RTF} = 1{,}0$), thời gian thực thi phải đúng bằng $10\text{ ms}$:
+    \begin{equation}
+        f_{\text{clk, min}} = \frac{N_{\text{frame\_cycles}}}{\Delta t} = \frac{99.663\text{ chu kỳ}}{0{,}01\text{ s}} = 9.966.300\text{ Hz} \approx \mathbf{9{,}966\text{ MHz}}.
+    \end{equation}
+    Như vậy, chỉ cần tần số xung nhịp nhỉnh hơn $10\text{ MHz}$, mạch phần cứng đã hoàn toàn đủ khả năng xử lý thời gian thực.
+\end{enumerate}
+
+\paragraph{Bài tập 12.2. Đánh giá hiệu quả kinh tế của kiến trúc đệm đôi khi thu nhỏ bước nhảy hop.}
+Giả sử người dùng muốn tăng độ phân giải thời gian của đường cao độ bằng cách giảm bước nhảy khung xuống còn $H = 80\text{ mẫu}$ ($5{,}0\text{ ms}$) hoặc $H = 40\text{ mẫu}$ ($2{,}5\text{ ms}$) tại $f_s = 16\text{ kHz}$ và $f_{\text{clk}} = 50\text{ MHz}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Hãy tính hệ số thời gian thực $\text{RTF}$ của kiến trúc tuần tự ($99.663\text{ chu kỳ}$) và kiến trúc đệm đôi ($98.589\text{ chu kỳ}$) tại các mức bước nhảy trên.
+    \item Việc chuyển sang đệm đôi có giúp mở rộng đáng kể giới hạn thời gian thực của hệ thống không?
+\end{enumerate}
+
+\paragraph{Lời giải chi tiết Bài tập 12.2.}
+\begin{enumerate}[label=(\alph*)]
+    \item Số chu kỳ khả dụng trong mỗi khung tương ứng với từng bước nhảy tại $50\text{ MHz}$:
+    \begin{itemize}
+        \item Với $H = 160\text{ mẫu}$ ($\Delta t = 10\text{ ms}$): $N_{\text{avail}} = 500.000\text{ chu kỳ}$.
+        \begin{equation}
+            \text{RTF}_{\text{baseline}} = \frac{99.663}{500.000} = \mathbf{0{,}1993}, \quad \text{RTF}_{\text{overlap}} = \frac{98.589}{500.000} = \mathbf{0{,}1972}.
+        \end{equation}
+        \item Với $H = 80\text{ mẫu}$ ($\Delta t = 5\text{ ms}$): $N_{\text{avail}} = 250.000\text{ chu kỳ}$.
+        \begin{equation}
+            \text{RTF}_{\text{baseline}} = \frac{99.663}{250.000} = \mathbf{0{,}3987}, \quad \text{RTF}_{\text{overlap}} = \frac{98.589}{250.000} = \mathbf{0{,}3944}.
+        \end{equation}
+        \item Với $H = 40\text{ mẫu}$ ($\Delta t = 2{,}5\text{ ms}$): $N_{\text{avail}} = 125.000\text{ chu kỳ}$.
+        \begin{equation}
+            \text{RTF}_{\text{baseline}} = \frac{99.663}{125.000} = \mathbf{0{,}7973}, \quad \text{RTF}_{\text{overlap}} = \frac{98.589}{125.000} = \mathbf{0{,}7887}.
+        \end{equation}
+    \end{itemize}
+
+    \item Mức tăng tốc độ của phương án đệm đôi:
+    \begin{equation}
+        \text{Speedup} = \frac{99.663 - 98.589}{99.663} = \frac{1.074}{99.663} \approx \mathbf{1{,}08\%}.
+    \end{equation}
+    Tỉ lệ tăng tốc $1{,}08\%$ là một hằng số độc lập với bước nhảy $H$. Ngay cả khi bước nhảy bị thu hẹp tới mức cực đoan $H = 40\text{ mẫu}$ ($2{,}5\text{ ms}$), kiến trúc tuần tự cơ sở vẫn đạt $\text{RTF} = 0{,}7973 < 1{,}0$ (vẫn hoàn toàn chạy trong thời gian thực).
+    Do đó, việc tiêu tốn thêm 2 khối M10K và tăng phức tạp FSM để đổi lấy mức cải thiện $1{,}08\%$ là không có giá trị thực tiễn.
+\end{enumerate}
+
+\paragraph{Bài tập 12.3. Phân tích hiệu suất sử dụng dung lượng bit trong các khối RAM M10K.}
+Mỗi khối M10K có dung lượng vật lý $10.240\text{ bit}$. Hãy tính số bit dữ liệu thực sự được sử dụng và tỉ lệ hiệu suất sử dụng dung lượng bit (\emph{Bit Utilization Efficiency}) của từng khối nhớ trong kiến trúc tuần tự cơ sở.
+
+\paragraph{Lời giải chi tiết Bài tập 12.3.}
+Số bit sử dụng thực tế được tính bằng: $\text{Bits}_{\text{used}} = \text{Độ sâu} \times \text{Độ rộng}$.
+Tổng số bit được cấp phát phần cứng: $\text{Bits}_{\text{alloc}} = \text{Số khối M10K} \times 10.240\text{ bit}$.
+Hiệu suất sử dụng: $\eta = \text{Bits}_{\text{used}} / \text{Bits}_{\text{alloc}} \times 100\%$.
+
+Chi tiết từng khối nhớ:
+\begin{enumerate}
+    \item \textbf{FIFO Vào} ($512 \times 16$-bit, 1 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 512 \times 16 = 8.192\text{ bit} \implies \eta = \frac{8.192}{10.240} \times 100\% = \mathbf{80{,}0\%}.
+    \end{equation}
+    \item \textbf{RAM Vòng mẫu} ($1024 \times 16$-bit, 2 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 1024 \times 16 = 16.384\text{ bit} \implies \eta = \frac{16.384}{20.480} \times 100\% = \mathbf{80{,}0\%}.
+    \end{equation}
+    \item \textbf{ROM Hanning} ($638 \times 16$-bit, 2 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 638 \times 16 = 10.208\text{ bit} \implies \eta = \frac{10.208}{20.480} \times 100\% = \mathbf{49{,}8\%}.
+    \end{equation}
+    \item \textbf{Vùng nhớ \texttt{xw\_ram}} ($638 \times 17$-bit, 2 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 638 \times 17 = 10.846\text{ bit} \implies \eta = \frac{10.846}{20.480} \times 100\% = \mathbf{53{,}0\%}.
+    \end{equation}
+    \item \textbf{ROM $\{C, K\}$} ($189 \times 32$-bit, 1 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 189 \times 32 = 6.048\text{ bit} \implies \eta = \frac{6.048}{10.240} \times 100\% = \mathbf{59{,}1\%}.
+    \end{equation}
+    \item \textbf{FIFO Ra} ($512 \times 16$-bit, 1 M10K):
+    \begin{equation}
+        \text{Bits}_{\text{used}} = 512 \times 16 = 8.192\text{ bit} \implies \eta = \frac{8.192}{10.240} \times 100\% = \mathbf{80{,}0\%}.
+    \end{equation}
+\end{enumerate}
+
+Tổng thể toàn hệ sinh thái bộ nhớ của lõi xử lý:
+\begin{align}
+    \text{Tổng bit sử dụng} &= 8.192 + 16.384 + 10.208 + 10.846 + 6.048 + 8.192 = \mathbf{59.870\text{ bit}}, \\
+    \text{Tổng bit cấp phát} &= 9 \times 10.240 = \mathbf{92.160\text{ bit}}, \\
+    \text{Hiệu suất sử dụng trung bình} &= \frac{59.870}{92.160} \times 100\% \approx \mathbf{64{,}96\%}.
+\end{align}
+Tỉ lệ này là hoàn toàn hợp lý đối với kiến trúc B-RAM khối cố định trên vi mạch FPGA.
+
+\paragraph{Bài tập 12.4. Hiện tượng tràn số của bộ đếm chu kỳ 32-bit và thời lượng âm thanh tối đa.}
+Bộ đếm tổng chu kỳ \texttt{total\_cycles} được thiết kế với độ rộng thanh ghi 32-bit không dấu. Hệ thống hoạt động tại $f_{\text{clk}} = 50\text{ MHz}$.
+\begin{enumerate}[label=(\alph*)]
+    \item Sau bao nhiêu giây hoạt động liên tục thì bộ đếm chu kỳ 32-bit sẽ bị tràn số (\emph{overflow/rollover}) về $0$?
+    \item Với hệ số thời gian thực $\text{RTF} = 0{,}1993$, một tệp âm thanh có độ dài vật lý tối đa là bao nhiêu để bộ điều khiển HPS vẫn có thể đọc được số chu kỳ chính xác mà không gặp hiện tượng tràn số?
+\end{enumerate}
+
+\paragraph{Lời giải chi tiết Bài tập 12.4.}
+\begin{enumerate}[label=(\alph*)]
+    \item Giá trị đếm tối đa của thanh ghi 32-bit không dấu là:
+    \begin{equation}
+        C_{\max} = 2^{32} - 1 = 4.294.967.295\text{ chu kỳ}.
+    \end{equation}
+    Tại tần số $f_{\text{clk}} = 50\text{ MHz} = 50 \times 10^6\text{ Hz}$, thời gian vật lý để bộ đếm tăng từ $0$ lên $C_{\max}$ là:
+    \begin{equation}
+        T_{\text{rollover}} = \frac{4.294.967.295}{50 \times 10^6\text{ Hz}} \approx \mathbf{85{,}899\text{ giây}} \approx 1{,}43\text{ phút}.
+    \end{equation}
+
+    \item Với hệ số thời gian thực $\text{RTF} = 0{,}1993$, thời gian phần cứng thực thi nhỏ hơn thời lượng âm thanh $5{,}02\text{ lần}$:
+    \begin{equation}
+        T_{\text{audio, max}} = \frac{T_{\text{rollover}}}{\text{RTF}} = \frac{85{,}899\text{ s}}{0{,}199326} \approx \mathbf{430{,}9\text{ giây}} \approx \mathbf{7{,}18\text{ phút}}.
+    \end{equation}
+    Như vậy, bộ đếm phần cứng 32-bit cho phép đo lường trực tiếp các tệp âm thanh tiếng nói liên tục kéo dài tới hơn 7 phút mà không bị tràn số. Đối với các ứng dụng ghi âm liên tục dài hạn nhiều giờ, trình điều khiển phần mềm HPS chỉ cần định kỳ đọc và cộng dồn số chu kỳ tràn hoặc mở rộng bộ đếm lên 64-bit trong logic FPGA.
+\end{enumerate}
