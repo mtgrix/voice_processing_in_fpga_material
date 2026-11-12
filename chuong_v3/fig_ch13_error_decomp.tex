@@ -2,62 +2,62 @@
 % Sơ đồ phân rã các nguồn sai số giữa Praat và hệ thống FPGA
 
 \begin{tikzpicture}[
-    scale=0.88, transform shape,
+    scale=0.85, transform shape,
     pbox/.style={rectangle, draw=blue!80!black, fill=blue!8, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
     gbox/.style={rectangle, draw=teal!80!black, fill=teal!8, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
     fpgabox/.style={rectangle, draw=orange!80!black, fill=orange!8, rounded corners=3pt, thick, align=center, inner sep=5pt, font=\small},
     labelbox/.style={font=\scriptsize, align=left, fill=white, inner sep=4pt, draw=gray!40, rounded corners=2pt},
-    annot/.style={font=\scriptsize, align=center, fill=white, draw=teal!40, rounded corners=2pt, inner sep=2pt},
+    annot/.style={font=\scriptsize, align=center, fill=white, draw=teal!40, rounded corners=2pt, inner sep=2.5pt},
     arrow/.style={->, >=stealth, thick, line width=1.1pt}
 ]
 
 % Central column: 4 main processing stages
-\node[pbox, text width=5.4cm] (r1) at (0, 7.8) {
+\node[pbox, text width=4.8cm] (r1) at (0, 7.8) {
     \textbf{Praat 7.0.03 Chuẩn R1}\\
     \scriptsize Tham số mặc định: \texttt{octave\_jump}=0,35; \texttt{vuv}=0,14\\
     \scriptsize Dò đường Viterbi toàn cục, sinc70 + Brent
 };
 
-\node[pbox, text width=5.4cm] (r2) at (0, 5.2) {
+\node[pbox, text width=4.8cm] (r2) at (0, 5.2) {
     \textbf{Praat 7.0.03 Tham chiếu R2}\\
     \scriptsize Tham số: \texttt{octave\_jump}=0; \texttt{vuv}=0\\
     \scriptsize Chọn cực đại cục bộ từng khung (Argmax)
 };
 
-\node[fpgabox, text width=5.4cm] (fpga_raw) at (0, 2.6) {
+\node[fpgabox, text width=4.8cm] (fpga_raw) at (0, 2.6) {
     \textbf{Lõi FPGA Thô (trước Median-3)}\\
     \scriptsize\texttt{rtl/v3/ch12\_top.v} / \texttt{fixed\_twin.py}\\
     \scriptsize MAC, Parabol, chia Radix-2, lưới lag nguyên
 };
 
-\node[fpgabox, text width=5.4cm] (fpga_med) at (0, 0.0) {
+\node[fpgabox, text width=4.8cm] (fpga_med) at (0, 0.0) {
     \textbf{Đầu ra toàn tuyến FPGA (sau Median-3)}\\
     \scriptsize\texttt{pitch\_f0.bin} / Median-3 trễ 1 khung\\
     \scriptsize Gạt bỏ gai nhọn đơn lẻ, lặp biên \& nhịp xả
 };
 
-% Left side: Float port reference (shifted to -5.8cm to give 1.4cm clear space)
-\node[gbox, text width=3.8cm] (float_ref) at (-5.8, 5.2) {
+% Left side: Float port reference (gap = 1.9 cm, ample space for label)
+\node[gbox, text width=3.4cm] (float_ref) at (-6.0, 5.2) {
     \textbf{Bản chuyển đổi Float}\\
     \scriptsize\texttt{golden\_v2/}\allowbreak\texttt{praat\_float\_ref.py}\\
     \scriptsize Khớp mã C++ tới sai số làm tròn\\
     \scriptsize ($\le 1{,}5 \cdot 10^{-4}\text{ cent}$)
 };
 
-% Right side: 3 Error decomposition explanatory blocks
-\node[labelbox, text width=5.2cm] (delta_viterbi) at (5.5, 6.5) {
+% Right side: 3 Error decomposition explanatory blocks (clearance = 10 mm >= 3 mm)
+\node[labelbox, text width=5.0cm] (delta_viterbi) at (5.9, 6.5) {
     \textbf{$\Delta(\text{Viterbi Path Finder})$}:\\
     \textbullet~Tệp sạch: Trùng khớp $100\%$ ($0/208\text{ khung}$).\\
     \textbullet~Tệp nhiễu: Lệch $19/207\text{ khung}$ ($9{,}18\%$).
 };
 
-\node[labelbox, text width=5.2cm] (delta_hw) at (5.5, 3.9) {
+\node[labelbox, text width=5.0cm] (delta_hw) at (5.9, 3.9) {
     \textbf{$\Delta(\text{MAC, Parabol, Lưới, Q12.4})$}:\\
     \textbullet~Tệp sạch: $\le 1{,}08\text{ cent}$ (tb $0{,}21\text{ cent}$).\\
     \textbullet~Tệp nhiễu: $3/207\text{ khung}$ GPE do lưới.
 };
 
-\node[labelbox, text width=5.2cm] (delta_med) at (5.5, 1.3) {
+\node[labelbox, text width=5.0cm] (delta_med) at (5.9, 1.3) {
     \textbf{$\Delta(\text{Bộ lọc Median-3})$}:\\
     \textbullet~Sửa lỗi gai nhọn nhảy quãng tám.\\
     \textbullet~Giảm GPE vs Ground Truth từ 22 xuống 15 khung.
@@ -73,7 +73,7 @@
 \draw[dashed, thick, color=gray!60] (0, 3.9) -- (delta_hw.west);
 \draw[dashed, thick, color=gray!60] (0, 1.3) -- (delta_med.west);
 
-% Connection to Float Ref (clean short label)
-\draw[arrow, <->, dashed, color=teal!80!black] (r2.west) -- node[above, annot] {Khớp float} (float_ref.east);
+% Connection to Float Ref (label above arrow in open space)
+\draw[arrow, <->, dashed, color=teal!80!black] (float_ref.east) -- node[above=4pt, annot] {Khớp float} (r2.west);
 
 \end{tikzpicture}

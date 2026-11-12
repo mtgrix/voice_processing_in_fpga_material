@@ -1,72 +1,73 @@
 % chuong_v3/fig_ch13_frame_align.tex
-% Sơ đồ căn chỉnh khung theo thời gian t_k = t_1 + k*dt so với chỉ số mẫu
+% Sơ đồ căn chỉnh khung theo thời gian t_k = t_1 + (k-1)*dt so với chỉ số mẫu
 
 \begin{tikzpicture}[
     scale=0.88, transform shape,
     axis/.style={->, >=stealth, thick, line width=1.1pt},
     tick/.style={thick},
     frameline/.style={thick, dashed, color=blue!70!black},
-    winbar/.style={fill=blue!15, draw=blue!60!black, rounded corners=2pt},
-    annot/.style={font=\scriptsize, align=center, fill=white, draw=gray!30, rounded corners=2pt, inner sep=2pt}
+    winbar/.style={rounded corners=2pt, thick},
+    annot/.style={font=\scriptsize, align=center, fill=white, draw=gray!30, rounded corners=2pt, inner sep=2.5pt}
 ]
 
-% Time axis (seconds)
-\draw[axis] (0, 0) -- (13.5, 0) node[right, font=\small] {Thời gian $t$ (giây)};
+% Time axis (seconds/ms)
+\draw[axis] (-0.5, 0) -- (14.5, 0) node[right, font=\small] {Thời gian $t$ (mili-giây)};
 
 % Sample index axis (samples)
-\draw[axis] (0, -2.5) -- (13.5, -2.5) node[right, font=\small] {Chỉ số mẫu $n$ (bước $1/f_s$)};
+\draw[axis] (-0.5, -2.0) -- (14.5, -2.0) node[right, font=\small] {Chỉ số mẫu $n$ ($f_s = 16\text{ kHz}$)};
 
-% Tick marks on time axis
-\draw[tick] (1.5, 0.1) -- (1.5, -0.1) node[below=2pt, font=\scriptsize] {$t_0 = 10\text{ ms}$};
-\draw[tick] (4.0, 0.1) -- (4.0, -0.1) node[below=2pt, font=\scriptsize] {$t_1 = 20\text{ ms}$};
-\draw[tick] (6.5, 0.1) -- (6.5, -0.1) node[below=2pt, font=\scriptsize] {$t_2 = 30\text{ ms}$};
-\draw[tick] (9.0, 0.1) -- (9.0, -0.1) node[below=2pt, font=\scriptsize] {$t_3 = 40\text{ ms}$};
-\draw[tick] (11.5, 0.1) -- (11.5, -0.1) node[below=2pt, font=\scriptsize] {$t_4 = 50\text{ ms}$};
+% Tick marks on time axis (scale: 2.0 units = 10 ms, so 0.2 units/ms)
+\draw[tick] (0.0, 0.1) -- (0.0, -0.1) node[below=2pt, font=\scriptsize] {$0\text{ ms}$};
+\draw[tick] (2.0, 0.1) -- (2.0, -0.1) node[below=2pt, font=\scriptsize] {$10\text{ ms}$};
+\draw[tick] (4.0, 0.1) -- (4.0, -0.1) node[below=2pt, font=\scriptsize] {$t_1 \approx 20\text{ ms}^*$};
+\draw[tick] (6.0, 0.1) -- (6.0, -0.1) node[below=2pt, font=\scriptsize] {$t_2 \approx 30\text{ ms}$};
+\draw[tick] (8.0, 0.1) -- (8.0, -0.1) node[below=2pt, font=\scriptsize] {$t_3 \approx 40\text{ ms}$};
+\draw[tick] (10.0, 0.1) -- (10.0, -0.1) node[below=2pt, font=\scriptsize] {$50\text{ ms}$};
+\draw[tick] (12.0, 0.1) -- (12.0, -0.1) node[below=2pt, font=\scriptsize] {$60\text{ ms}$};
 
-% Time step dt annotation
-\draw[<->, thick, draw=red!70!black] (4.0, 0.7) -- (6.5, 0.7)
-    node[midway, above, fill=white, inner sep=2pt, font=\scriptsize, text=red!70!black] {Bước nhảy $dt = 10\text{ ms}$ ($160\text{ mẫu}$)};
+% Vertical dashed center lines through frame centers
+\draw[frameline, color=blue!70!black] (4.0, 1.8) -- (4.0, 0.1);
+\draw[frameline, color=teal!70!black] (6.0, 2.8) -- (6.0, 0.1);
+\draw[frameline, color=purple!70!black] (8.0, 3.8) -- (8.0, 0.1);
 
-% Analysis windows (40 ms duration = 638 samples)
-% Frame 1 centered at t1 = 20 ms, span [0 ms, 40 ms] -> [1.5, 6.5]
-\draw[winbar] (1.5, 1.4) rectangle (6.5, 2.0);
-\node[font=\scriptsize\bfseries, color=blue!80!black] at (4.0, 1.7) {Cửa sổ Khung 1 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
-\draw[frameline] (4.0, 1.4) -- (4.0, 0.1);
+% Analysis windows (638 samples = 39.875 ms duration -> span tk +- 19.94 ms, width = 7.975 units ~ 8.0 units)
+% Frame 1 centered at t1 = 20 ms (x = 4.0), span [0.06 ms, 39.94 ms] -> [0.01, 7.99]
+\draw[winbar, fill=blue!15, draw=blue!70!black] (0.01, 1.2) rectangle (7.99, 1.8);
+\node[font=\scriptsize\bfseries, color=blue!80!black] at (4.0, 1.5) {Cửa sổ Khung 1 ($N = 638\text{ mẫu}$, $39{,}88\text{ ms}$, tâm $t_1 \approx 20\text{ ms}$)};
 
-% Frame 2 centered at t2 = 30 ms, span [10 ms, 50 ms] -> [4.0, 9.0]
-\draw[winbar, fill=teal!15, draw=teal!60!black] (4.0, 2.4) rectangle (9.0, 3.0);
-\node[font=\scriptsize\bfseries, color=teal!80!black] at (6.5, 2.7) {Cửa sổ Khung 2 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
-\draw[frameline, color=teal!70!black] (6.5, 2.4) -- (6.5, 2.0);
-\draw[frameline, color=teal!70!black] (6.5, 1.4) -- (6.5, 0.1);
+% Frame 2 centered at t2 = 30 ms (x = 6.0), span [10.06 ms, 49.94 ms] -> [2.01, 9.99]
+\draw[winbar, fill=teal!15, draw=teal!70!black] (2.01, 2.2) rectangle (9.99, 2.8);
+\node[font=\scriptsize\bfseries, color=teal!80!black] at (6.0, 2.5) {Cửa sổ Khung 2 ($N = 638\text{ mẫu}$, $39{,}88\text{ ms}$, tâm $t_2 \approx 30\text{ ms}$)};
 
-% Frame 3 centered at t3 = 40 ms, span [20 ms, 60 ms] -> [6.5, 11.5]
-\draw[winbar, fill=purple!15, draw=purple!60!black] (6.5, 3.4) rectangle (11.5, 4.0);
-\node[font=\scriptsize\bfseries, color=purple!80!black] at (9.0, 3.7) {Cửa sổ Khung 3 ($N = 638\text{ mẫu}$, $40\text{ ms}$)};
-\draw[frameline, color=purple!70!black] (9.0, 3.4) -- (9.0, 3.0);
-\draw[frameline, color=purple!70!black] (9.0, 2.4) -- (9.0, 0.1);
+% Frame 3 centered at t3 = 40 ms (x = 8.0), span [20.06 ms, 59.94 ms] -> [4.01, 11.99]
+\draw[winbar, fill=purple!15, draw=purple!70!black] (4.01, 3.2) rectangle (11.99, 3.8);
+\node[font=\scriptsize\bfseries, color=purple!80!black] at (8.0, 3.5) {Cửa sổ Khung 3 ($N = 638\text{ mẫu}$, $39{,}88\text{ ms}$, tâm $t_3 \approx 40\text{ ms}$)};
 
-% Sample index ticks below
-\draw[tick] (1.6, -2.4) -- (1.6, -2.6) node[below=2pt, font=\scriptsize] {$s_0 = 1$};
-\draw[tick] (4.1, -2.4) -- (4.1, -2.6) node[below=2pt, font=\scriptsize] {$s_1 = 161$};
-\draw[tick] (6.6, -2.4) -- (6.6, -2.6) node[below=2pt, font=\scriptsize] {$s_2 = 321$};
-\draw[tick] (9.1, -2.4) -- (9.1, -2.6) node[below=2pt, font=\scriptsize] {$s_3 = 481$};
-\draw[tick] (11.6, -2.4) -- (11.6, -2.6) node[below=2pt, font=\scriptsize] {$s_4 = 641$};
+% Time step dt annotation placed above windows in clear free space (y = 4.4)
+\draw[dotted, thick, color=gray!60] (4.0, 1.8) -- (4.0, 4.5);
+\draw[dotted, thick, color=gray!60] (6.0, 2.8) -- (6.0, 4.5);
+\draw[<->, thick, draw=red!70!black] (4.0, 4.4) -- (6.0, 4.4)
+    node[midway, above=2pt, fill=white, inner sep=2pt, font=\scriptsize, text=red!70!black] {Bước nhảy thời gian $dt = 10\text{ ms}$};
 
-% Lead lines between time ticks and sample ticks (starting below time labels)
-\draw[dotted, thick, color=gray!60] (1.5, -0.65) -- (1.6, -2.35);
-\draw[dotted, thick, color=gray!60] (4.0, -0.65) -- (4.1, -2.35);
-\draw[dotted, thick, color=gray!60] (6.5, -0.65) -- (6.6, -2.35);
-\draw[dotted, thick, color=gray!60] (9.0, -0.65) -- (9.1, -2.35);
+% Sample index ticks on sample axis
+\draw[tick] (0.01, -1.9) -- (0.01, -2.1) node[below=2pt, font=\scriptsize] {$s_1 = 1$};
+\draw[tick] (2.01, -1.9) -- (2.01, -2.1) node[below=2pt, font=\scriptsize] {$s_2 = 161$};
+\draw[tick] (4.01, -1.9) -- (4.01, -2.1) node[below=2pt, font=\scriptsize] {$s_3 = 321$};
+\draw[tick] (6.01, -1.9) -- (6.01, -2.1) node[below=2pt, font=\scriptsize] {$s_4 = 481$};
+\draw[tick] (8.01, -1.9) -- (8.01, -2.1) node[below=2pt, font=\scriptsize] {$s_5 = 641$};
 
-% Hop annotation
-\draw[<->, thick, draw=red!70!black] (1.6, -1.5) -- (4.1, -1.5)
+% Lead lines from window starts down to sample ticks
+\draw[dotted, thick, color=gray!60] (0.01, 1.2) -- (0.01, -1.9);
+\draw[dotted, thick, color=gray!60] (2.01, 2.2) -- (2.01, -1.9);
+\draw[dotted, thick, color=gray!60] (4.01, 1.2) -- (4.01, -1.9);
+
+% Hop annotation between sample ticks
+\draw[<->, thick, draw=red!70!black] (0.01, -1.1) -- (2.01, -1.1)
     node[midway, fill=white, inner sep=2pt, font=\scriptsize, text=red!70!black] {$\text{hop} = 160\text{ mẫu}$};
 
-% First sample offset note below sample axis
-\draw[<-, thick, color=blue!80!black] (1.6, -2.85) -- (1.6, -3.35)
-    node[below, annot, text width=6.6cm] {
-        Mẫu bắt đầu khung đầu tiên $s_0 = \text{first\_win0} = 1$\\
-        (Khung không bắt đầu từ mẫu 0 do cơ chế định tâm đối xứng của Praat)
-    };
+% Note box under axis (centered, well within margins, no overlap)
+\node[annot, text width=13.0cm, align=left] at (6.5, -3.2) {
+    $^*$~\textbf{Ghi chú căn khung}: $t_1 = 20{,}00\text{ ms}$ trên tệp âm thanh chuẩn $2{,}8\text{ s}$ chẵn mẫu ($20{,}03\text{ ms}$ trên tệp độ dài lẻ). Mỗi cửa sổ phân tích $638\text{ mẫu}$ ($39{,}875\text{ ms}$) trải đối xứng hai bên tâm: $t_k \pm 19{,}94\text{ ms}$. Mẫu bắt đầu khung 1 là $s_1 = \text{first\_win0} = 1$ (ở $t \approx 0{,}06\text{ ms}$, không phải mẫu 0 do cơ chế định tâm đối xứng của Praat).
+};
 
 \end{tikzpicture}

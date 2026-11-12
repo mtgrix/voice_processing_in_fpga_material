@@ -370,16 +370,16 @@ Vì vậy, nguyên tắc bất biến của việc đối chuẩn là: \textbf{P
 \begin{figure}[htbp]
 \centering
 \input{chuong_v3/fig_ch13_frame_align.tex}
-\caption{Nguyên lý căn chỉnh khung phân tích theo trục thời gian vật lý $t_k = t_1 + k \cdot dt$ so với chỉ số mẫu rời rạc $n$ tại tần số lấy mẫu $f_s = 16\text{ kHz}$.}
+\caption{Nguyên lý căn chỉnh khung phân tích theo trục thời gian vật lý $t_k = t_1 + (k - 1) \cdot dt$ so với chỉ số mẫu rời rạc $n$ tại tần số lấy mẫu $f_s = 16\text{ kHz}$.}
 \label{fig:ch13_frame_align}
 \end{figure}
 
-\textbf{Đọc hình.} Sơ đồ Hình \ref{fig:ch13_frame_align} minh họa mối liên hệ giữa trục thời gian liên tục $t$ (ở trên) và trục chỉ số mẫu rời rạc $n$ (ở dưới). Mỗi khung phân tích có tâm đối xứng nằm tại thời điểm $t_k = t_1 + k \cdot dt$. Cửa sổ phân tích Hanning có độ dài $40\text{ ms}$ ($638\text{ mẫu}$) mở rộng đối xứng hai bên tâm khung. Vị trí mẫu bắt đầu của khung đầu tiên là $s_0 = 1$, các khung kế tiếp dịch chuyển đều đặn với bước nhảy $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$).
+\textbf{Đọc hình.} Sơ đồ Hình \ref{fig:ch13_frame_align} minh họa mối liên hệ giữa trục thời gian liên tục $t$ (ở trên) và trục chỉ số mẫu rời rạc $n$ (ở dưới). Mỗi khung phân tích $k$ ($k \ge 1$) có tâm đối xứng nằm tại thời điểm $t_k = t_1 + (k - 1) \cdot dt$. Cửa sổ phân tích Hanning có độ dài $39{,}875\text{ ms}$ ($638\text{ mẫu}$) mở rộng đối xứng hai bên tâm khung ($t_k \pm 19{,}94\text{ ms}$). Vị trí mẫu bắt đầu của khung đầu tiên là $s_1 = \text{first\_win0} = 1$, các khung kế tiếp dịch chuyển đều đặn với bước nhảy $\text{hop} = 160\text{ mẫu}$ ($10\text{ ms}$).
 
 \subsubsection*{Dẫn xuất công thức căn khung theo thời gian và bẫy làm tròn mẫu trên tệp độ dài lẻ}
-Theo đặc tả giải thuật của đối tượng Pitch trong Praat (\path{fon/Sampled.cpp}, dòng 71--81), thời điểm tâm của khung thứ $k$ ($0 \le k < n_x$) được xác định bởi:
+Theo đặc tả giải thuật của đối tượng Pitch trong Praat (\path{fon/Sampled.cpp}, dòng 71--81), thời điểm tâm của khung thứ $k$ ($1 \le k \le n_{\text{frames}}$) được xác định bởi:
 \begin{equation}
-    t_k = t_1 + k \cdot dt
+    t_k = t_1 + (k - 1) \cdot dt
 \end{equation}
 trong đó bước thời gian $dt = 10\text{ ms}$ ($0{,}010\text{ s}$) và thời điểm tâm khung đầu tiên $t_1$ được dẫn xuất từ thời lượng tệp $T = \text{duration} = n_x \cdot dx$:
 \begin{align}
