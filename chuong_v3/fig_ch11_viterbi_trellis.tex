@@ -5,7 +5,7 @@
 \begin{tikzpicture}[
     >=Stealth,
     scale=0.88,
-    frame_box/.style={rectangle, draw=blue!70!black, fill=blue!3, rounded corners=3pt, minimum width=2.4cm, minimum height=5.2cm, inner sep=2pt},
+    frame_box/.style={rectangle, draw=blue!70!black, fill=blue!3, rounded corners=3pt, minimum width=1.6cm, minimum height=5.2cm, inner sep=2pt},
     cand_uv/.style={circle, draw=red!80!black, fill=red!10, thick, minimum size=0.68cm, inner sep=0pt, font=\scriptsize\bfseries},
     cand_v/.style={circle, draw=blue!80!black, fill=blue!10, thick, minimum size=0.68cm, inner sep=0pt, font=\scriptsize\bfseries},
     cand_best/.style={circle, draw=orange!90!black, fill=orange!25, very thick, minimum size=0.72cm, inner sep=0pt, font=\scriptsize\bfseries},
@@ -19,19 +19,19 @@
     % -------------------------------------------------------------------------
     % Khung t-1
     \node[frame_box] (f_prev) at (2.0, 2.5) {};
-    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_prev.south) {Khung $t-1$};
+    \node[below=7pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_prev.south) {Khung $t-1$};
 
     % Khung t
     \node[frame_box] (f_cur) at (6.0, 2.5) {};
-    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_cur.south) {Khung $t$};
+    \node[below=7pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_cur.south) {Khung $t$};
 
     % Khung t+1
     \node[frame_box] (f_next) at (10.0, 2.5) {};
-    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_next.south) {Khung $t+1$};
+    \node[below=7pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_next.south) {Khung $t+1$};
 
     % Khung N (Khung cuối cùng)
     \node[frame_box] (f_end) at (14.0, 2.5) {};
-    \node[below=4pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_end.south) {Khung cuối $N$};
+    \node[below=7pt, font=\scriptsize\bfseries, text=blue!80!black] at (f_end.south) {Khung cuối $N$};
 
     % Dấu chấm lửng giữa t+1 và N
     \node[font=\large\bfseries, text=black!60] at (12.0, 2.5) {$\cdots$};
@@ -76,11 +76,12 @@
 
     % 2. Đổi trạng thái V/UV: c_1 (vô thanh) -> c_2 (hữu thanh) (chi phí = 0,14)
     \draw[wire_trans, draw=purple!80!black] (c_p_uv.east) -- (c_c_v1.west);
-    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=purple!60, text=purple!80!black] at (3.8, 3.48) {Đổi V/UV: $0{,}14$};
+    \path (c_p_uv.east) -- (c_c_v1.west) node[pos=0.48, sloped, above=3pt, font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=purple!60, text=purple!80!black] {Đổi V/UV: $0{,}14$};
 
     % 3. Nhảy tần số F0: c_2 -> c_3 (chi phí = 0,35*|log2(f1/f2)|)
     \draw[wire_trans, draw=blue!80!black] (c_p_v1.east) -- (c_c_v2.west);
-    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=blue!50, text=blue!80!black] at (4.0, 2.05) {Nhảy $F_0$: $0{,}35|\log_2\frac{f_1}{f_2}|$};
+    \node[font=\scriptsize, fill=white, inner sep=2pt, rounded corners=2pt, draw=blue!50, text=blue!80!black, align=center] (lbl_nhay) at (4.0, 1.05) {Nhảy $F_0$:\\$0{,}35|\log_2\frac{f_1}{f_2}|$};
+    \draw[draw=blue!60, thin, ->] (lbl_nhay.north) -- (4.0, 2.45);
 
     % Chuyển tiếp giữa khung t và t+1
     \draw[wire_trans] (c_c_uv.east) -- (c_n_uv.west);
@@ -100,7 +101,7 @@
     % -------------------------------------------------------------------------
     % CHÚ THÍCH PHÂN TÁCH VITERBI VS MEDIAN-3
     % -------------------------------------------------------------------------
-    \node[draw=red!70!black, fill=red!3, rounded corners=2pt, font=\scriptsize, align=left, inner sep=4pt] at (8.0, -1.2) {
+    \node[draw=red!70!black, fill=red!3, rounded corners=2pt, font=\scriptsize, align=left, inner sep=4pt] at (8.0, -1.6) {
         \textbf{Praat Path Finder (R1):} Lưu trữ toàn bộ ma trận $\delta, \psi$ kích thước $N \times 15$; bước tính xuôi cộng dồn chi phí chuyển tiếp,\\
         sau đó truy vết ngược từ khung cuối $N$ về khung 1 $\implies$ Bùng nổ RAM và độ trễ toàn file trên FPGA.
     };
