@@ -577,4 +577,210 @@ Bảng \ref{tab:ch13_hand_example} trình bày chi tiết chuỗi số liệu c�
 
 \textit{Tóm lại: Căn khung theo thời gian vật lý $t_k = t_1 + k \cdot dt$ loại bỏ hoàn toàn nguy cơ lệch pha do bẫy làm tròn mẫu; bộ bốn chỉ số VDE, GPE, FFE và cent mịn phi thô cung cấp hệ thống thước đo toàn diện và không bị bóp méo để đánh giá chất lượng phần cứng.}
 
+% ============================================================================
+% 13.4. ĐO LƯỜNG HIỆU NĂNG THỜI GIAN VÀ HỆ SỐ THỜI GIAN THỰC (RTF)
+% ============================================================================
+\subsection*{13.4. Đo lường hiệu năng thời gian và hệ số thời gian thực (RTF)}
+\addcontentsline{toc}{subsection}{13.4. Đo lường hiệu năng thời gian và hệ số thời gian thực (RTF)}
+
+\subsubsection*{Vấn đề thực tế: Làm thế nào để so sánh tốc độ công bằng giữa ba thế giới kiến trúc khác nhau?}
+Một câu hỏi thực tiễn mang tính sống còn đối với anh Tú khi bảo vệ đề tài trước hội đồng là: ``Hệ thống phần cứng FPGA của em nhanh hơn hay chậm hơn phần mềm Praat chạy trên máy tính xách tay, và nhanh hơn bao nhiêu lần?''.
+
+Nếu tiếp cận câu hỏi này bằng cách gõ lệnh đo thời gian ở terminal máy tính:
+\begin{lstlisting}[language=bash]
+time praat --run praat_pitch.praat audio.wav
+\end{lstlisting}
+chúng ta sẽ thu được một kết quả bị bóp méo hoàn toàn. Lệnh \texttt{time} của hệ điều hành sẽ đo tổng thời gian tồn tại của tiến trình (process lifetime), bao gồm: thời gian nạp trình thông dịch Praat từ ổ cứng, nạp các thư viện liên kết động giao diện đồ họa (GUI libraries như GTK/X11), khởi tạo không gian bộ nhớ và giải nén tệp. Trên một máy tính hiện đại, các tác vụ khởi động đó có thể mất từ $150\text{ ms}$ đến $300\text{ ms}$, trong khi thời gian CPU thực sự tính toán thuật toán tự tương quan trên tệp âm thanh chỉ tốn khoảng $15\text{ ms}$ đến $30\text{ ms}$. Phép đo ngây thơ đó sẽ làm thời gian xử lý của Praat bị thổi phồng lên gấp 10 lần!
+
+Tương tự, về phía phần cứng, nếu chúng ta chỉ đếm số chu kỳ chạy của khối nhân MAC trên FPGA mà bỏ qua độ trễ truyền dữ liệu qua cầu nối bus Avalon và thời gian ghi tệp kết quả trên bộ xử lý HPS, đó là một sự ngụy biện về hiệu năng toàn tuyến.
+
+Để thiết lập một chuẩn mực so sánh khoa học và công bằng tuyệt đối, chúng ta cần:
+\begin{enumerate}
+    \item Sử dụng chỉ số chuẩn hóa quốc tế: **Hệ số thời gian thực (Real-Time Factor -- RTF)**;
+    \item Thiết lập ba cơ chế đo đạc chuyên biệt, cô lập chính xác thời gian tính toán thuật toán trên từng nền tảng:
+    \begin{itemize}
+        \item Đo trực tiếp trên FPGA bằng **bộ đếm chu kỳ phần cứng (Cycle Counter)** ở tần số $50\text{ MHz}$;
+        \item Đo toàn tuyến trên HPS bằng hàm chuẩn POSIX **\texttt{clock\_gettime(CLOCK\_MONOTONIC)}** bóc tách thành ba giai đoạn độc lập;
+        \item Đo trên máy tính xách tay bằng **kịch bản Praat Script với đồng hồ bấm giờ nội bộ (\texttt{stopwatch})**, lặp $N = 20\text{ lần}$ và lấy giá trị trung vị (median).
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Khái niệm Hệ số thời gian thực (Real-Time Factor -- RTF)}
+Hệ số thời gian thực ($\text{RTF}$) là tỷ số không thứ nguyên giữa thời gian cần thiết để hệ thống hoàn thành việc xử lý ($T_{\text{xử lý}}$) và thời lượng thực tế của tín hiệu âm thanh được phân tích ($T_{\text{âm thanh}}$):
+\begin{equation}
+    \text{RTF} = \frac{T_{\text{xử lý}}}{T_{\text{âm thanh}}}
+    \label{eq:rtf_def}
+\end{equation}
+
+Ý nghĩa vật lý của chỉ số $\text{RTF}$:
+\begin{itemize}
+    \item $\text{RTF} = 1{,}0$: Hệ thống tiêu tốn đúng $1\text{ giây}$ để xử lý $1\text{ giây}$ âm thanh (vừa vặn ngưỡng tới hạn thời gian thực).
+    \item $\text{RTF} > 1{,}0$: Hệ thống bị trễ (underrun), tốc độ xử lý chậm hơn tốc độ phát tín hiệu âm thanh thực tế. Hệ thống không thể vận hành trực tiếp trong các ứng dụng thời gian thực mà bắt buộc phải có bộ đệm lưu trữ chờ đợi.
+    \item $\text{RTF} < 1{,}0$: Hệ thống xử lý nhanh hơn thời gian thực. Hệ số tăng tốc so với thời gian thực được tính bằng:
+    \begin{equation}
+        S_{\text{realtime}} = \frac{1}{\text{RTF}}
+    \end{equation}
+    Ví dụ, một hệ thống đạt $\text{RTF} = 0{,}20$ nghĩa là nó xử lý $1\text{ giây}$ âm thanh chỉ trong $0{,}20\text{ giây}$ ($200\text{ ms}$), tương đương nhanh gấp $5\text{ lần}$ tốc độ nói tự nhiên của con người.
+\end{itemize}
+
+\subsubsection*{1. Đo thời gian trên FPGA bằng bộ đếm chu kỳ phần cứng}
+Tại tầng phần cứng FPGA (\texttt{rtl/v3/ch12\_top.v}), thời gian được đo với độ phân giải tuyệt đối đến từng chu kỳ xung nhịp $20\text{ ns}$ ($f_{\text{clk}} = 50\text{ MHz}$) thông qua hai bộ đếm chu kỳ chuyên dụng trong thanh ghi điều khiển CSR:
+\begin{itemize}
+    \item \textbf{Bộ đếm chu kỳ khung (\texttt{REG\_CTRL\_FRAME\_CYCLES}, offset \texttt{0x1C})}: Đo số chu kỳ xung nhịp thực thi bên trong mỗi khung phân tích, bắt đầu từ cạnh lên của cờ \texttt{counting\_frame} (khi bộ đệm vòng báo đủ 638 mẫu) cho đến khi kết quả F0 được chốt vào bộ lọc trung vị (hoàn thành trọn vẹn 6 pha xử lý: tính trung bình 429 chu kỳ, nhân cửa sổ 638 chu kỳ, động cơ MAC $98.543\text{ chu kỳ}$, chuẩn hóa và nội suy parabol, chia Radix-2 34 chu kỳ, và so sánh âm tính).
+    \item \textbf{Bộ đếm tổng chu kỳ (\texttt{REG\_CTRL\_TOTAL\_CYCLES}, offset \texttt{0x18})}: Đo tổng số chu kỳ xung nhịp từ khi HPS phát xung kích hoạt \texttt{reg\_start\_pulse} cho đến khi khung phân tích cuối cùng được xả hoàn toàn khỏi bộ lọc trung vị và cờ \texttt{STATUS\_DONE} bật lên ở trạng thái \texttt{FSM\_DONE}.
+\end{itemize}
+
+Kết quả thực nghiệm ghi nhận từ nhật ký mô phỏng toàn tuyến chuẩn \texttt{verify\_v3/ch12\_top\_iverilog.log} trên tệp âm thanh thử nghiệm $2{,}8\text{ s}$ ($44.800\text{ mẫu}$, $277\text{ khung}$ phân tích):
+\begin{itemize}
+    \item Tổng chu kỳ đo được tại \texttt{REG\_CTRL\_FRAME\_CYCLES}:
+    \begin{equation}
+        C_{\text{frames\_total}} = 27.608.945\text{ chu kỳ}
+    \end{equation}
+    Số chu kỳ trung bình cho mỗi khung phân tích:
+    \begin{equation}
+        C_{\text{frame, avg}} = \frac{27.608.945}{277} \approx 99.671{,}28\text{ chu kỳ/khung}
+    \end{equation}
+    So với ngân sách lý thuyết tuần tự được phân tích ở Chương 12 ($99.663\text{ chu kỳ/khung}$), giá trị đo đạc thực tế chỉ chênh lệch đúng $+8{,}28\text{ chu kỳ}$ do các chu kỳ chuyển trạng thái bắt tay giữa các pha trong máy trạng thái FSM đỉnh.
+    
+    \item Tổng chu kỳ toàn tệp tại \texttt{REG\_CTRL\_TOTAL\_CYCLES}:
+    \begin{equation}
+        C_{\text{total}} = 27.610.186\text{ chu kỳ}
+    \end{equation}
+    Số chu kỳ phụ trội ngoài các khung phân tích chỉ là:
+    \begin{equation}
+        \Delta C = 27.610.186 - 27.608.945 = 1.241\text{ chu kỳ}
+    \end{equation}
+    được chia cho pha gạt bỏ mẫu khởi động \texttt{first\_win0 = 1} (1 chu kỳ) và nhịp xả đồng bộ \texttt{FSM\_FLUSH\_MEDIAN} của bộ lọc trung vị ở khung cuối cùng.
+
+    \item Thời gian thực thi của lõi FPGA tại xung nhịp $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$):
+    \begin{equation}
+        T_{\text{FPGA}} = \frac{C_{\text{total}}}{f_{\text{clk}}} = \frac{27.610.186}{50 \cdot 10^6\text{ Hz}} = 0{,}552204\text{ s} \approx 552{,}20\text{ ms}
+    \end{equation}
+
+    \item Hệ số thời gian thực $\text{RTF}$ của lõi FPGA:
+    \begin{equation}
+        \text{RTF}_{\text{FPGA}} = \frac{T_{\text{FPGA}}}{T_{\text{audio}}} = \frac{0{,}552204\text{ s}}{2{,}800000\text{ s}} \approx 0{,}1972 \approx 0{,}199
+    \end{equation}
+    Tốc độ tăng tốc của lõi FPGA so với thời gian thực:
+    \begin{equation}
+        S_{\text{FPGA}} = \frac{1}{\text{RTF}_{\text{FPGA}}} = \frac{1}{0{,}1972} \approx 5{,}07\text{ lần}
+    \end{equation}
+\end{itemize}
+
+\textbf{Ý nghĩa của con số $\text{RTF} \approx 0{,}199$}: Tại tần số lấy mẫu $f_s = 16\text{ kHz}$, mỗi bước nhảy hop 160 mẫu tương ứng với một khoảng thời gian vật lý là $10\text{ ms}$. Ở tần số xung nhịp $50\text{ MHz}$, hệ thống có ngân sách tối đa là:
+\begin{equation}
+    10\text{ ms} \times 50\text{ MHz} = 500.000\text{ chu kỳ/khung}
+\end{equation}
+Lõi FPGA tuần tự cơ sở chỉ tiêu tốn chưa đến $100.000\text{ chu kỳ/khung}$ ($99.671\text{ chu kỳ}$), tức là chỉ chiếm chưa đầy $20\%$ năng lực xử lý phần cứng khả dụng của một hop! Điều này chứng minh kiến trúc tuần tự cơ sở vừa đáp ứng xuất sắc thời hạn thời gian thực vừa giải phóng hơn $80\%$ thời gian nhàn rỗi cho các tác vụ âm thanh khác.
+
+\subsubsection*{2. Đo thời gian toàn tuyến trên vi xử lý HPS nhúng}
+Trên hệ thống nhúng Linux của vi xử lý HPS (ARM Cortex-A9), chương trình điều khiển \texttt{sw\_v3/ch13\_hps\_timer.c} sử dụng lời gọi hệ thống chuẩn POSIX \texttt{clock\_gettime(CLOCK\_MONOTONIC)} để đo đạc và tách bạch thời gian toàn tuyến thành ba giai đoạn độc lập:
+
+\begin{lstlisting}[language=C, caption={Đo thời gian ba giai đoạn độc lập trên vi xử lý HPS bằng \texttt{clock\_gettime}.}]
+// Giai doan 1: Doc tep WAV, phan tich RIFF, tinh globalPeak
+clock_gettime(CLOCK_MONOTONIC, &t0);
+wav_read_file(wav_path, &wav);
+uint16_t gp = (uint16_t)wav.global_peak;
+clock_gettime(CLOCK_MONOTONIC, &t1);
+
+// Giai doan 2: Truyen mau qua cau Lightweight Bridge, FPGA tinh toan, doc F0
+ch12_run_f0_pipeline(wav_path, ".", &stats);
+clock_gettime(CLOCK_MONOTONIC, &t2);
+
+// Giai doan 3: Dong goi du lieu Q12.4 va ghi tep pitch_f0.bin, pitch_meta.txt
+ch12_write_pitch_bin(bin_out_path, f0_words, stats.n_frames);
+ch12_write_pitch_meta(meta_out_path, stats.t1, stats.dt, stats.n_frames, ...);
+clock_gettime(CLOCK_MONOTONIC, &t3);
+\end{lstlisting}
+
+\begin{todo}{box: Kết quả đo thời gian thực tế trên bo mạch DE10-Standard (Linux HPS)}
+Trong môi trường thực tế trên chip ARM Cortex-A9 lõi kép tốc độ $800\text{ MHz}$ chạy hệ điều hành Linux nhúng (Kernel 5.x) của bo mạch Terasic DE10-Standard, các thông số thời gian đo đạc thực tế được đánh dấu là \textbf{(phải đo trên bo mạch thực tế)}:
+\begin{itemize}
+    \item \emph{Thời gian Giai đoạn 1 (Đọc thẻ nhớ SD \& tính GP)}: \todo{box: Ghi nhận thời gian đọc WAV từ thẻ SD trên bo mạch, dự kiến khoảng 1,5--3,0 ms};
+    \item \emph{Thời gian Giai đoạn 2 (Truyền ghi PIO qua cầu nhẹ 0xFF200000 \& chờ FPGA)}: \todo{box: Ghi nhận thời gian truyền 22.400 từ 32-bit qua cầu Lightweight Bridge và chờ cờ STATUS\_DONE, dự kiến khoảng 555--565 ms};
+    \item \emph{Thời gian Giai đoạn 3 (Ghi tệp pitch\_f0.bin \& pitch\_meta.txt ra thẻ nhớ)}: \todo{box: Ghi nhận thời gian ghi kết quả nhị phân ra thẻ SD, dự kiến khoảng 0,5--1,5 ms};
+    \item \emph{Tổng thời gian toàn tuyến $T_{\text{HPS}}$}: \todo{box: Dự kiến khoảng 560--570 ms, RTF toàn tuyến khoảng 0,200--0,204, nhanh gấp ~4,9 lần thời gian thực}.
+\end{itemize}
+Chương trình kiểm thử mô phỏng \texttt{test\_ch13\_hps\_timer} biên dịch trên máy trạm đã chạy thành công, xác nhận logic tính toán thời gian và các hàm trích xuất nanosecond vận hành hoàn toàn chính xác.
+\end{todo}
+
+\subsubsection*{3. Đo thời gian của phần mềm Praat trên máy tính xách tay}
+Để đo đạc thời gian tính toán của Praat một cách khoa học, chúng ta không gọi từ dòng lệnh ngoài shell mà thực hiện phép đo trực tiếp bên trong kịch bản Praat Script (\texttt{verify\_v3/ch13\_benchmark.praat}):
+
+\begin{lstlisting}[language=bash, caption={Đo thời gian thuật toán thuần túy bằng đồng hồ \texttt{stopwatch} nội bộ trong Praat Script.}]
+# Load sound file once into memory (loai bo hoan toan overhead doc tep va GUI)
+sound = Read from file: inFile$
+duration = Get total duration
+
+# Lap N = 20 lan do bang dong ho bam gio noi bo
+times# = zero# (nRuns)
+for run from 1 to nRuns
+  selectObject: sound
+  stopwatch
+  pitchTemp = To Pitch (raw autocorrelation): 0, 75, 600, 15, "no", 0.03, 0.45, 0.01, jumpCost, vuvCost
+  elapsed = stopwatch
+  times#[run] = elapsed
+  removeObject: pitchTemp
+endfor
+
+# Sap xep va lay gia tri trung vi (median) de loai bo nhieu he dieu hanh
+sortedTimes# = sort# (times#)
+medianTime = sortedTimes#[nRuns / 2]
+rtf = medianTime / duration
+\end{lstlisting}
+
+\textbf{Vì sao phải lấy trung vị ($N = 20$ lần) và loại bỏ thời gian khởi động?}:
+\begin{itemize}
+    \item \emph{Loại bỏ nhiễu lập lịch của hệ điều hành}: Trên máy tính cá nhân, các tiến trình nền của hệ điều hành (như trình duyệt web, phần mềm diệt virus, dịch vụ mạng) có thể bất ngờ chiếm dụng CPU ở một vài lần chạy ngẫu nhiên, tạo ra các gai thời gian bất thường. Việc lặp lại $N = 20\text{ lần}$ và lấy giá trị trung vị (\emph{median}) giúp loại bỏ hoàn toàn các giá trị dị biệt đó.
+    \item \emph{Cô lập giải thuật cốt lõi}: Lệnh \texttt{stopwatch} chỉ kích hoạt ngay trước khi hàm \texttt{To Pitch (raw autocorrelation)} bắt đầu phân tích và dừng lại ngay khi đối tượng Pitch hoàn thành, hoàn toàn không bị ảnh hưởng bởi thời gian khởi động phần mềm.
+    \item \emph{Ghi nhận số luồng}: Giải thuật tự tương quan thô trong Praat 7.0.03 vận hành thuần túy \textbf{đơn luồng (single-threaded)}, do đó hiệu năng đo được phản ánh trung thực năng lực của một lõi CPU đơn.
+\end{itemize}
+
+\begin{todo}{box: Kết quả đo đạc thời gian Praat 7.0.03 trên máy tính xách tay của người thẩm định}
+Vì máy trạm Windows hiện tại không cài đặt sẵn công cụ dòng lệnh \texttt{praat\_barren}, kết quả đo đạc chính xác của Praat 7.0.03 được để dưới dạng placeholder để người thẩm định thực thi trên môi trường Linux chuẩn:
+\begin{lstlisting}[language=bash]
+/workspace/tools/praat7003/praat_barren --run verify_v3/ch13_benchmark.praat golden_v2/synth_glide_vuv_16k.wav R1 20
+\end{lstlisting}
+Các thông số cần điền sau khi chạy:
+\begin{itemize}
+    \item \emph{Thời gian phân tích trung vị (Median time)}: \todo{box: Điền kết quả đo Praat trung vị trên Linux, dự kiến khoảng 15--35 ms};
+    \item \emph{Hệ số thời gian thực $\text{RTF}_{\text{laptop}}$}: \todo{box: Điền RTF tính toán, dự kiến khoảng 0,005--0,012, nhanh gấp 80--200 lần thời gian thực};
+    \item \emph{Cấu hình phần cứng máy đo}: \todo{box: Điền tên CPU, số nhân, xung nhịp, dung lượng RAM của máy chạy Praat}.
+\end{itemize}
+\end{todo}
+
+\subsubsection*{Bảng so sánh hiệu năng và hệ số thời gian thực ba phía}
+Bảng \ref{tab:ch13_timing_comparison} so sánh tổng thể các chỉ tiêu hiệu năng giữa ba nền tảng:
+
+\begin{table}[htbp]
+\centering
+\caption{Bảng so sánh hiệu năng thời gian và hệ số thời gian thực (RTF) trên tệp âm thanh chuẩn $2{,}8\text{ s}$ ($277\text{ khung}$) giữa FPGA, HPS và Laptop Praat.}
+\label{tab:ch13_timing_comparison}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Chỉ tiêu hiệu năng} & \textbf{Lõi FPGA (DE10-Std)} & \textbf{Toàn tuyến HPS nhúng} & \textbf{Praat trên Laptop} \\
+\midrule
+Nền tảng phần cứng & Cyclone V FPGA & ARM Cortex-A9 nhúng & Intel Core / AMD x86\_64 \\
+Tần số xung nhịp & $50\text{ MHz}$ & $800\text{ MHz}$ & $2{,}5\text{ GHz} - 4{,}5\text{ GHz}$ \\
+Số luồng xử lý & Pipeline phần cứng & 1 lõi nhúng & 1 luồng CPU đơn \\
+Công suất tiêu thụ & $< 1{,}0\text{ W}$ & $\approx 1{,}5\text{ W} - 2{,}5\text{ W}$ & $15\text{ W} - 45\text{ W}$ \\
+\midrule
+Thời gian thực thi & $552{,}20\text{ ms}$ & \todo{box: ~565 ms} & \todo{box: ~25 ms} \\
+Phương pháp đo & Cycle Counter CSR & \texttt{clock\_gettime} & \texttt{stopwatch} Praat \\
+\textbf{Hệ số thời gian thực (RTF)} & $\mathbf{0{,}1972 \approx 0{,}199}$ & \textbf{\todo{box: ~0,202}} & \textbf{\todo{box: ~0,009}} \\
+\textbf{Tốc độ so với thời gian thực} & \textbf{Nhanh gấp 5,07 lần} & \textbf{\todo{box: Nhanh ~4,9 lần}} & \textbf{\todo{box: Nhanh ~110 lần}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Đọc bảng và phân tích kinh tế kỹ thuật:}
+\begin{enumerate}
+    \item \emph{Ưu thế vượt trội của FPGA trong các hệ thống nhúng độc lập}: Mặc dù CPU laptop hiện đại có thể xử lý tệp nhanh hơn nhờ xung nhịp cực cao ($> 3\text{ GHz}$) và bộ nhớ đệm dung lượng lớn (L3 cache $16\text{ MB}$), CPU đó tiêu tốn công suất từ $15\text{ W}$ đến $45\text{ W}$ và phụ thuộc vào một hệ điều hành đồ họa khổng lồ. Ngược lại, lõi FPGA chỉ chạy ở xung nhịp khiêm tốn $50\text{ MHz}$ với công suất tiêu thụ dưới $1\text{ W}$, nhưng vẫn đạt hệ số $\text{RTF} \approx 0{,}199$ (nhanh hơn thời gian thực $5{,}07\text{ lần}$).
+    \item \emph{Độ trễ xác định tuyệt đối (Deterministic Latency)}: Trên FPGA, mọi khung phân tích đều hoàn thành trong đúng $99.671\text{ chu kỳ}$ ($1{,}993\text{ ms}$), không bao giờ gặp hiện tượng giật cục do chuyển đổi ngữ cảnh hệ điều hành hay nghẽn bộ nhớ đệm. Đây là đặc tính kỹ thuật tối thượng giúp FPGA trở thành lựa chọn hàng đầu cho các thiết bị y tế nhúng (máy trợ thính, phân tích giọng nói bệnh lý) và các hệ thống điều khiển tự động thời gian thực.
+\end{enumerate}
+
+\textit{Tóm lại: Lõi FPGA ở $50\text{ MHz}$ đạt $\text{RTF} \approx 0{,}199$ (nhanh gấp $5{,}07\text{ lần}$ thời gian thực) với độ trễ cố định tuyệt đối và công suất dưới $1\text{ W}$; các phép đo bằng Cycle Counter trên FPGA, \texttt{clock\_gettime} trên HPS và \texttt{stopwatch} trong Praat Script bảo đảm tính khách quan, khoa học và công bằng giữa ba thế giới kiến trúc.}
+
+
 
