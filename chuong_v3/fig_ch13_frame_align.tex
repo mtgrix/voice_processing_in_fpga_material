@@ -56,10 +56,10 @@
 \draw[tick] (6.01, -1.9) -- (6.01, -2.1) node[below=2pt, font=\scriptsize] {$s_4 = 481$};
 \draw[tick] (8.01, -1.9) -- (8.01, -2.1) node[below=2pt, font=\scriptsize] {$s_5 = 641$};
 
-% Lead lines from window starts down to sample ticks
-\draw[dotted, thick, color=gray!60] (0.01, 1.2) -- (0.01, -1.9);
-\draw[dotted, thick, color=gray!60] (2.01, 2.2) -- (2.01, -1.9);
-\draw[dotted, thick, color=gray!60] (4.01, 1.2) -- (4.01, -1.9);
+% Lead lines between time ticks and sample ticks (in the clear vertical gap between axes)
+\draw[dotted, thick, color=gray!60] (0.01, -0.2) -- (0.01, -1.9);
+\draw[dotted, thick, color=gray!60] (2.01, -0.2) -- (2.01, -1.9);
+\draw[dotted, thick, color=gray!60] (4.01, -0.2) -- (4.01, -1.9);
 
 % Hop annotation between sample ticks
 \draw[<->, thick, draw=red!70!black] (0.01, -1.1) -- (2.01, -1.1)

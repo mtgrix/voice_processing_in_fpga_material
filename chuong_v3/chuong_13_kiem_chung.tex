@@ -742,7 +742,7 @@ Kết quả đo đạc thực nghiệm chuẩn xác được người thẩm đ�
 /workspace/tools/praat7003/praat_barren --run verify_v3/ch13_benchmark.praat golden_v2/synth_glide_vuv_16k.wav R2 20
 \end{lstlisting}
 
-Các thông số hiệu năng đo đạc thu được từ hai tệp nhật ký \texttt{verify\_v3/ch13\_praat\_bench\_R1.log} và \texttt{verify\_v3/ch13\_praat\_bench\_R2.log} trên tệp âm thanh chuẩn $2{,}800\text{ s}$ ($277\text{ khung}$, $N = 20\text{ lần lặp}$):
+Các thông số hiệu năng đo đạc thu được từ hai tệp nhật ký \path{verify_v3/ch13_praat_bench_R1.log} và \path{verify_v3/ch13_praat_bench_R2.log} trên tệp âm thanh chuẩn $2{,}800\text{ s}$ ($277\text{ khung}$, $N = 20\text{ lần lặp}$):
 \begin{itemize}
     \item \textbf{Cấu hình chuẩn R1} (Viterbi mặc định, \texttt{octave\_jump}=0,35; \texttt{vuv}=0,14):
     \begin{itemize}
@@ -987,7 +987,7 @@ Hãy tính:
 \begin{itemize}
     \item Lõi FPGA chạy tại xung nhịp $50\text{ MHz}$, mỗi khung phân tích tốn trung bình $99.663\text{ chu kỳ}$, thời gian phụ trợ khởi động và xả kết thúc tốn $1.200\text{ chu kỳ}$;
     \item Trên vi xử lý HPS nhúng (ARM Cortex-A9), hàm đo \texttt{clock\_gettime} ghi nhận: Giai đoạn 1 (đọc WAV \& tính GP) mất $1{,}8\text{ ms}$; Giai đoạn 2 (truyền ghi PIO qua bus và chờ FPGA) mất $992{,}0\text{ ms}$; Giai đoạn 3 (ghi tệp ra) mất $0{,}7\text{ ms}$;
-    \item Trên máy tính chủ Linux (box), thuật toán Praat chuẩn đạt hệ số thời gian thực đo được qua benchmark thực nghiệm (\texttt{verify\_v3/ch13\_praat\_bench\_R1.log}) là $\text{RTF}_{\text{praat}} = 0{,}000395$.
+    \item Trên máy tính chủ Linux (box), thuật toán Praat chuẩn đạt hệ số thời gian thực đo được qua benchmark thực nghiệm (\path{verify_v3/ch13_praat_bench_R1.log}) là $\text{RTF}_{\text{praat}} = 0{,}000395$.
 \end{itemize}
 Hãy tính:
 \begin{enumerate}[label=(\alph*)]
