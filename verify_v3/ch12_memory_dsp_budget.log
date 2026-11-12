@@ -17,7 +17,7 @@ FIFO ra F0 (pitch_f0)          | 512x16     | 1      | Cấu hình 512x20 (độ
 ------------------------------------------------------------------------------------------
 Tổng baseline (tuần tự)        |            | 9      | Chiếm 9/553 = 1.63% tổng tài nguyên M10K
 Tổng đệm đôi (chồng lấp)       |            | 11     | Chiếm 11/553 = 1.99% tổng tài nguyên M10K
-Tổng tài nguyên của chip Cyclone V 5CSXFC6D6F31C6N: 553-557 khối M10K (phải kiểm trong datasheet/Quartus).
+Tổng tài nguyên M10K của chip Cyclone V 5CSXFC6D6F31C6N: 553 khối M10K (5,662,720 bits = 5.66 Mbit) theo CV-51001 Bảng 1-2 (phải kiểm trong datasheet/Quartus).
 
 --- 2. Variable Precision DSP Block Budget ---
 Khối chức năng                      | Toán tử        | DSP   | Ghi chú kiến trúc
@@ -35,6 +35,6 @@ Tổng khi bật FIR 31-tap             |                | 6     | Chiếm 6/112
 Tổng tài nguyên DSP trên chip: 112 khối (phải đo số thực trong Quartus/Fitter).
 
 Summary:
-  - M10K budget derived from RTL: 9 blocks (baseline) / 11 blocks (overlap) on 553-557 M10K.
-  - DSP budget derived from RTL: 5 blocks (baseline) / 6 blocks (with FIR) on 112 DSPs.
-  - Real post-fitting counts (ALM, FF, M10K, DSP, Fmax): 'phải đo trong Quartus/Fitter'.
+  - M10K budget derived from RTL: 9 blocks (baseline) / 11 blocks (overlap) on 553 M10K (theo CV-51001 Bang 1-2, phai kiem trong datasheet/Quartus).
+  - DSP budget derived from RTL: 5 blocks (baseline) / 6 blocks (with FIR) on 112 DSPs (phai do trong Quartus/Fitter).
+  - Real post-fitting counts (ALM, FF, M10K, DSP, Fmax): 'phai do trong Quartus/Fitter'.

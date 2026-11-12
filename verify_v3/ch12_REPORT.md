@@ -33,7 +33,7 @@
 ## 3. Các con số chưa thể đo đạc trực tiếp và mục "phải đo trong Quartus/Fitter"
 
 Do môi trường làm việc trên máy trạm Windows hiện tại không cài đặt Quartus Prime Fitter (các công cụ tổng hợp và nạp bitstream được vận hành trên máy chủ Linux của người bình duyệt), các thông số vật lý sau đây được dẫn xuất từ phân tích mã nguồn RTL và **phải đo trong Quartus/Fitter**:
-1. **Diện tích ô logic ALM thực tế**: Phải đo số ALM sau khâu Fitting trong Quartus Prime (dự kiến ước tính khoảng 3.000–4.500 ALM cho toàn lõi).
+1. **Diện tích ô logic ALM thực tế**: Phải đo số ALM sau khâu Fitting trong Quartus Prime (không phỏng đoán số lượng ALM trước khi biên dịch theo bài học v).
 2. **Số thanh ghi Flip-Flop (FF)**: Phải đo số lượng FF phân bổ thực tế sau khâu tổng hợp.
 3. **Số khối RAM M10K và DSP thực tế**: Theo RTL dẫn xuất là 9 M10K (cấu hình cơ sở) và 5 khối DSP (FIR bypass). Quartus Fitter có thể tối ưu gom nhóm hoặc phân rã các khối nhớ/nhân tùy theo thiết lập gom cụm logic (`Auto RAM Replacement`, `DSP Block Balancing`).
 4. **Tần số xung nhịp cực đại ($F_{\max}$)**: Phải đo bằng công cụ Timing Analyzer (TimeQuest) ở điều kiện biên xấu nhất (Slow 85°C Model, điện áp thấp). Tần số danh định thiết kế là $50\text{ MHz}$ ($T_{\text{clk}} = 20\text{ ns}$).

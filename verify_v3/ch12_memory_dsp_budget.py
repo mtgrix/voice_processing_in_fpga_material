@@ -38,7 +38,9 @@ def derive_hardware_budgets():
     
     total_m10k_base = sum(m[4] for m in modules_ram)
     total_m10k_overlap = total_m10k_base + 2 # +2 for xw_ram double buffering
-    chip_m10k_total = "553-557" # 553 per CV-51001 Table 1-1, 557 per Quartus fitter reports
+    chip_m10k_blocks = 553 # Per Intel CV-51001 Table 1-2 (Cyclone V SoC Device Features)
+    chip_m10k_bits = chip_m10k_blocks * 10240
+    chip_m10k_mbit = chip_m10k_bits / 1e6 # 5.662720 Mbit
     
     print("--- 1. M10K Embedded Memory Budget ---")
     print(f"{'Khối chức năng':<30} | {'Kích thước':<10} | {'M10K':<6} | {'Giải thích cấu hình M10K'}")
@@ -46,13 +48,13 @@ def derive_hardware_budgets():
     for name, size, depth, width, m10k, note in modules_ram:
         print(f"{name:<30} | {size:<10} | {m10k:<6} | {note}")
     print("-" * 90)
-    print(f"{'Tổng baseline (tuần tự)':<30} | {' ':10} | {total_m10k_base:<6} | Chiếm {total_m10k_base}/553 = {total_m10k_base/553*100:.2f}% tổng tài nguyên M10K")
-    print(f"{'Tổng đệm đôi (chồng lấp)':<30} | {' ':10} | {total_m10k_overlap:<6} | Chiếm {total_m10k_overlap}/553 = {total_m10k_overlap/553*100:.2f}% tổng tài nguyên M10K")
-    print(f"Tổng tài nguyên của chip Cyclone V 5CSXFC6D6F31C6N: {chip_m10k_total} khối M10K (phải kiểm trong datasheet/Quartus).\n")
+    print(f"{'Tổng baseline (tuần tự)':<30} | {' ':10} | {total_m10k_base:<6} | Chiếm {total_m10k_base}/{chip_m10k_blocks} = {total_m10k_base/chip_m10k_blocks*100:.2f}% tổng tài nguyên M10K")
+    print(f"{'Tổng đệm đôi (chồng lấp)':<30} | {' ':10} | {total_m10k_overlap:<6} | Chiếm {total_m10k_overlap}/{chip_m10k_blocks} = {total_m10k_overlap/chip_m10k_blocks*100:.2f}% tổng tài nguyên M10K")
+    print(f"Tổng tài nguyên M10K của chip Cyclone V 5CSXFC6D6F31C6N: {chip_m10k_blocks} khối M10K ({chip_m10k_bits:,} bits = {chip_m10k_mbit:.2f} Mbit) theo CV-51001 Bảng 1-2 (phải kiểm trong datasheet/Quartus).\n")
     
     # DSP Block specifications
     # Cyclone V Variable Precision DSP Block:
-    # 112 DSP blocks total on 5CSXFC6D6F31C6N
+    # 112 DSP blocks total on 5CSXFC6D6F31C6N per CV-51001 Table 1-2 (phải kiểm trong datasheet/Quartus)
     # Each DSP block supports:
     #   - 3x 9x9 multipliers
     #   - 2x 18x18 multipliers
@@ -84,9 +86,9 @@ def derive_hardware_budgets():
     print(f"Tổng tài nguyên DSP trên chip: {chip_dsp_total} khối (phải đo số thực trong Quartus/Fitter).\n")
     
     print("Summary:")
-    print("  - M10K budget derived from RTL: 9 blocks (baseline) / 11 blocks (overlap) on 553-557 M10K.")
-    print("  - DSP budget derived from RTL: 5 blocks (baseline) / 6 blocks (with FIR) on 112 DSPs.")
-    print("  - Real post-fitting counts (ALM, FF, M10K, DSP, Fmax): 'phải đo trong Quartus/Fitter'.")
+    print("  - M10K budget derived from RTL: 9 blocks (baseline) / 11 blocks (overlap) on 553 M10K (theo CV-51001 Bang 1-2, phai kiem trong datasheet/Quartus).")
+    print("  - DSP budget derived from RTL: 5 blocks (baseline) / 6 blocks (with FIR) on 112 DSPs (phai do trong Quartus/Fitter).")
+    print("  - Real post-fitting counts (ALM, FF, M10K, DSP, Fmax): 'phai do trong Quartus/Fitter'.")
 
 if __name__ == '__main__':
     derive_hardware_budgets()

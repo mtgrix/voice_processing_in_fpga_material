@@ -351,7 +351,7 @@ Mọi tính toán về ngân sách tài nguyên bộ nhớ nhúng và bộ nhân
     \item \emph{Cyclone V Device Overview} (Intel Document ID: \textbf{CV-51001}).
 \end{itemize}
 
-Vi mạch mục tiêu trên bo mạch DE10-Standard là \textbf{Intel Cyclone V SoC 5CSXFC6D6F31C6N}. Theo tài liệu CV-51001, chip sở hữu tổng cộng 553 khối bộ nhớ M10K (tương đương khoảng $5{,}53\text{ Mbit}$ RAM nội) và 112 khối DSP đa độ chính xác (\emph{Variable Precision DSP Blocks}).
+Vi mạch mục tiêu trên bo mạch DE10-Standard là \textbf{Intel Cyclone V SoC 5CSXFC6D6F31C6N}. Theo Bảng 1-2 tài liệu Intel CV-51001 (hoặc phải kiểm trong datasheet/Quartus), chip sở hữu 553 khối bộ nhớ M10K ($553 \times 10.240\text{ bit} = 5.662.720\text{ bit} \approx 5{,}66\text{ Mbit}$ RAM nội) và 112 khối DSP đa độ chính xác (\emph{Variable Precision DSP Blocks}, phải kiểm trong datasheet/Quartus).
 Theo quy định kiểm định nghiêm ngặt của đề cương chuyên khảo, các bảng dưới đây thống kê số lượng tài nguyên phần cứng \emph{dẫn xuất từ kiến trúc RTL}. Mọi chỉ số thực tế sau quá trình đóng gói và tối ưu hóa logic (số logic ALM, số thanh ghi Flip-Flop, tài nguyên M10K thực tế, số bộ nhân DSP và tần số hoạt động cực đại $F_{\max}$) \textbf{phải đo trong Quartus/Fitter}.
 
 \subsubsection*{Ngân sách bộ nhớ nhúng M10K (M10K Embedded Memory Budget)}
