@@ -10,13 +10,13 @@
     tail_box/.style={rectangle, draw=green!60!black, fill=green!12, rounded corners=2pt, font=\scriptsize, align=center},
     overlap_box/.style={rectangle, draw=purple!80!black, fill=purple!10, rounded corners=2pt, font=\scriptsize, align=center},
     time_axis/.style={draw=black!70, thick, ->},
-    lbl/.style={font=\scriptsize, fill=white, inner sep=1.5pt, align=center}
+    lbl/.style={font=\scriptsize, align=center}
 ]
 
     % =========================================================================
     % (A) KIẾN TRÚC CƠ SỞ TUẦN TỰ (BASELINE NON-OVERLAP)
     % =========================================================================
-    \node[anchor=west, font=\scriptsize\bfseries] at (-0.5, 5.2) {(a) Kiến trúc cơ sở tuần tự (Non-overlap Baseline): 1 vùng đệm \texttt{xw\_ram} (2 khối M10K)};
+    \node[anchor=west, font=\scriptsize\bfseries] at (-2.2, 5.3) {(a) Kiến trúc cơ sở tuần tự (Non-overlap Baseline): 1 vùng đệm \texttt{xw\_ram} (2 khối M10K)};
 
     % Các pha khung k
     \node[phase_box, minimum width=1.5cm, minimum height=0.8cm] (p1) at (2.75, 4.2) {P1: Mean\\429 ck};
@@ -27,27 +27,30 @@
     % Khung k+1 bắt đầu sau khi khung k kết thúc
     \node[phase_box, minimum width=1.5cm, minimum height=0.8cm] (p1_next) at (16.35, 4.2) {P1 ($k+1$)\\429 ck};
 
-    % Kích thước tổng khung k
-    \draw[|<->|, thick] (2.0, 3.3) -- node[below, lbl] {\textbf{Tổng chu kỳ khung $k$:} $429 + 641 + 98.543 + 43 + 7 = \mathbf{99.663\text{ chu kỳ}}$ ($\text{RTF} = 0{,}199$, thực thi $1{,}99\text{ ms} < 10\text{ ms}$)} (15.55, 3.3);
+    % Đoạn đo kích thước tổng khung k: đường mũi tên và nhãn văn bản tách biệt có khoảng cách an toàn
+    \draw[|<->|, thick] (2.0, 3.4) -- (15.55, 3.4);
+    \node[anchor=north, font=\scriptsize, align=center] at (8.775, 3.15) {\textbf{Tổng chu kỳ khung $k$:} $429 + 641 + 98.543 + 43 + 7 = \mathbf{99.663\text{ chu kỳ}}$ ($\text{RTF} = 0{,}199$, thực thi $1{,}99\text{ ms} < 10\text{ ms}$)};
 
     % =========================================================================
     % (B) KIẾN TRÚC CHỒNG LẤP ĐỆM ĐÔI (DOUBLE-BUFFERED OVERLAP)
     % =========================================================================
-    \node[anchor=west, font=\scriptsize\bfseries] at (-0.5, 2.0) {(b) Kiến trúc chồng lấp đệm đôi (Double-buffered Overlap): 2 vùng đệm Bank A/B (4 khối M10K)};
+    \node[anchor=west, font=\scriptsize\bfseries] at (-2.2, 2.2) {(b) Kiến trúc chồng lấp đệm đôi (Double-buffered Overlap): 2 vùng đệm Bank A/B (4 khối M10K)};
 
-    % Luồng Khung k (trên Bank A)
-    \node[anchor=west, font=\scriptsize\bfseries, text=red!80!black] at (-0.5, 1.0) {Khung $k$ (Bank A):};
-    \node[mac_box, minimum width=8.5cm, minimum height=0.75cm] (b_mac) at (6.25, 1.0) {P3: MAC khung $k$ trên Bank A (98.543 chu kỳ)};
-    \node[tail_box, minimum width=1.4cm, minimum height=0.75cm] (b_tail) at (11.30, 1.0) {P4--6: 43 ck};
+    % Luồng Khung k (trên Bank A) - nhãn hàng đặt lùi hẳn sang trái tránh che khuất P1
+    \node[anchor=west, font=\scriptsize\bfseries, text=red!80!black] at (-2.2, 1.1) {Khung $k$ (Bank A):};
+    \node[mac_box, minimum width=8.5cm, minimum height=0.75cm] (b_mac) at (6.25, 1.1) {P3: MAC khung $k$ trên Bank A (98.543 chu kỳ)};
+    \node[tail_box, minimum width=1.4cm, minimum height=0.75cm] (b_tail) at (11.30, 1.1) {P4--6: 43 ck};
 
     % Luồng Khung k+1 (trên Bank B chạy song song)
-    \node[anchor=west, font=\scriptsize\bfseries, text=purple!80!black] at (-0.5, 0.0) {Khung $k+1$ (Bank B):};
-    \node[overlap_box, minimum width=1.5cm, minimum height=0.7cm] (b_p1) at (2.75, 0.0) {P1 ($k+1$)\\429 ck};
-    \node[overlap_box, minimum width=1.8cm, minimum height=0.7cm] (b_p2) at (4.50, 0.0) {P2 ($k+1$)\\641 ck};
-    \node[anchor=west, font=\scriptsize\itshape, text=gray!80!black] at (5.6, 0.0) {Ẩn hoàn toàn dưới MAC ($1.070 < 98.543\text{ chu kỳ}$) $\implies$ Bank B sẵn sàng};
+    \node[anchor=west, font=\scriptsize\bfseries, text=purple!80!black] at (-2.2, 0.1) {Khung $k+1$ (Bank B):};
+    \node[overlap_box, minimum width=1.5cm, minimum height=0.7cm] (b_p1) at (2.75, 0.1) {P1 ($k+1$)\\429 ck};
+    \node[overlap_box, minimum width=1.8cm, minimum height=0.7cm] (b_p2) at (4.50, 0.1) {P2 ($k+1$)\\641 ck};
+    % Ghi chú chữ nghiêng xám đặt dịch sang phải có khoảng cách an toàn với hộp P2
+    \node[anchor=west, font=\scriptsize\itshape, text=gray!80!black] at (5.8, 0.1) {Ẩn hoàn toàn dưới MAC ($1.070 < 98.543\text{ chu kỳ}$) $\implies$ Bank B sẵn sàng};
 
-    % Kích thước tổng khung đệm đôi
-    \draw[|<->|, thick] (2.0, -0.8) -- node[below, lbl] {\textbf{Tổng chu kỳ hiệu dụng:} $98.543 + 43 + 3 = \mathbf{98.589\text{ chu kỳ}}$ ($\text{RTF} = 0{,}197$, nhanh hơn $1{,}08\%$, tốn thêm 2 M10K)} (12.05, -0.8);
+    % Đoạn đo kích thước tổng khung đệm đôi: đường mũi tên và nhãn văn bản tách biệt có khoảng cách an toàn
+    \draw[|<->|, thick] (2.0, -0.65) -- (12.05, -0.65);
+    \node[anchor=north, font=\scriptsize, align=center] at (7.025, -0.9) {\textbf{Tổng chu kỳ hiệu dụng:} $98.543 + 43 + 3 = \mathbf{98.589\text{ chu kỳ}}$ ($\text{RTF} = 0{,}197$, nhanh hơn $1{,}08\%$, tốn thêm 2 M10K)};
 
 \end{tikzpicture}%
 }
