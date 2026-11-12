@@ -264,7 +264,9 @@ So sánh hai kết quả:
     \text{Tỉ lệ sai lệch} &= \frac{+37}{99.663} \times 100\% = +0{,}037\%.
 \end{align}
 Sự chênh lệch $+37\text{ chu kỳ}$ này xuất phát từ việc thiết kế FSM đỉnh thực tế trong \texttt{ch12\_top.v} đã tối ưu hóa các nhịp bắt tay chuyển giao giữa Pha 1 và Pha 2 (phát xung kích hoạt ngay ở chu kỳ cờ hợp lệ xuất hiện thay vì chờ thêm các trạng thái đệm trung gian).
-\todo{box: Số chu kỳ khung thực tế (frame\_cycles) đo từ mô phỏng Iverilog/VVP của testbench tb\_ch12\_top trên máy chủ Linux của người bình duyệt: }
+\begin{tcolorbox}[colback=green!4,colframe=green!45!black,title={Kết quả mô phỏng Icarus Verilog (người bình duyệt chạy, tệp sạch 277 khung)}]
+Thanh ghi \texttt{REG\_CTRL\_FRAME\_CYCLES} đọc được ở cuối mô phỏng là $27.608.945$ chu kỳ và \texttt{REG\_CTRL\_TOTAL\_CYCLES} là $27.610.186$ chu kỳ (\path{verify_v3/ch12_top_iverilog.log}). Trong RTL hiện tại, bộ đếm \texttt{frame\_cycles\_cnt} cộng dồn qua mọi khung (không xóa về 0 mỗi khung), nên giá trị này là tổng của 277 khung: trung bình $27.608.945/277 \approx 99.671{,}3$ chu kỳ/khung, lớn hơn mô hình $99.663$ chu kỳ khoảng $8{,}3$ chu kỳ/khung (tổng chênh $2.294$ chu kỳ). RTF theo mô phỏng: $99.671{,}3/500.000 \approx 0{,}1993$.
+\end{tcolorbox}
 
 \begin{figure}[htbp]
 \centering
@@ -561,7 +563,9 @@ Testbench kiểm thử phần cứng \path{tb/v3/tb_ch12_top.v} được thiết
     Tại mỗi chu kỳ xung nhịp, kích tín hiệu ngõ vào mạch, chờ trễ tổ hợp \texttt{\#1} để kiểm tra các ngõ ra tổ hợp không qua thanh ghi (như cờ \texttt{waitrequest}); sau đó đón sườn dương xung nhịp \texttt{@(posedge clk)}, chờ thêm trễ \texttt{\#1} để kiểm tra các ngõ ra đã qua thanh ghi (như dữ liệu đọc \texttt{readdata} và trạng thái FSM).
 \end{itemize}
 
-\todo[inline]{box: Kết quả chạy Icarus Verilog cho \texttt{tb\_ch12\_top.v} qua kịch bản \path{verify_v3/run_ch12_iverilog.sh} sẽ được người bình duyệt chạy trực tiếp trên môi trường máy chủ Linux và cập nhật số chu kỳ mô phỏng chi tiết vào báo cáo.}
+\begin{tcolorbox}[colback=green!4,colframe=green!45!black,title={Kết quả Icarus Verilog 12 (người bình duyệt chạy trên Linux)}]
+\texttt{iverilog -g2012 -Wall} biên dịch không lỗi. Phần 1: 276/276 chu kỳ khớp từng bit với twin Python. Phần 2: nạp đủ $44.800$ mẫu của tệp sạch qua FIFO vào, nhận đúng 277 khung từ FIFO ra, so khớp cả 277 giá trị F0 với \path{verify_v3/data/clean_f0_expected.hex}: 0 lỗi. Tổng số lỗi so sánh: 0 (\path{verify_v3/sim_ch12_top.log}, \path{verify_v3/ch12_top_iverilog.log}; mô phỏng dừng ở $552{,}2$~ms thời gian mô phỏng).
+\end{tcolorbox}
 
 % ============================================================================
 % BÀI TẬP VÀ LỜI GIẢI CHI TIẾT
